@@ -5,6 +5,7 @@ Created on Fri Mar 20 15:13:24 2020
 @author: _Xavi
 """
 from pyqtgraph.Qt import QtGui
+import view.widgets as widgets
 import sys
 
 class TempestaView():
@@ -20,10 +21,10 @@ class TempestaView():
         
     def startView(self):
         # Shortcuts
-        # ToDo
+        # TODO
         
         # Menu Bar
-        # ToDo
+        # TODO
         
         self.win.setWindowTitle('Tempesta 2.0')
         self.win.cwidget = QtGui.QWidget()
@@ -33,6 +34,9 @@ class TempestaView():
         self.win.cwidget.setLayout(layout)
         
         # Add all Widgets
+        self.settingsWidget = widgets.SettingsWidget()
+        layout.addWidget(self.settingsWidget, 1, 0, 2, 2)
+        # TODO
         layout.setRowMinimumHeight(2, 175)
         layout.setRowMinimumHeight(3, 100)
         layout.setRowMinimumHeight(5, 175)
@@ -41,3 +45,4 @@ class TempestaView():
         
         self.win.show()
         sys.exit(self.app.exec_())
+        

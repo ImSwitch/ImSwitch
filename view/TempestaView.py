@@ -102,25 +102,19 @@ class TempestaView():
         
         # Dock Area
         dockArea = DockArea()
-
-        # Focus Lock widget
-        FocusLockDock = Dock("Focus Lock", size=(400, 400))
-        self.FocusLockWidget = focus.FocusWidget(pzt, webcam)
-        FocusLockDock.addWidget(self.FocusLockWidget)
-        dockArea.addDock(FocusLockDock)
-
         # Scanner
-        scanDock = Dock('Scan', size=(1, 1))
-        self.scanWidget = scanner.ScanWidget(self.nidaq, self)
-        scanDock.addWidget(self.scanWidget)
-        dockArea.addDock(scanDock, 'below', FocusLockDock)
+#        scanDock = Dock('Scan', size=(1, 1))
+#        self.scanWidget = scanner.ScanWidget(self.nidaq, self)
+#        scanDock.addWidget(self.scanWidget)
+#        dockArea.addDock(scanDock, 'below', FocusLockDock)
 
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
-        self.piezoWidget = scanner.Positionner(self.scanWidget)
+        self.piezoWidget = widgets.PositionerWidget()
         piezoDock.addWidget(self.piezoWidget)
         dockArea.addDock(piezoDock, 'bottom', alignmentDock)
         
+        layout.addWidget(dockArea, 2, 3, 4, 1)
         # Add all other Widgets
         self.settingsWidget = widgets.SettingsWidget()
         layout.addWidget(self.settingsWidget, 1, 0, 2, 2)

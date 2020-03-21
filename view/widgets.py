@@ -11,6 +11,8 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 import time
+from pyqtgraph.dockarea import Dock, DockArea
+import matplotlib.pyplot as plt
 
 class ScanWidget(QtGui.QMainWindow):
     ''' This class is intended as a widget in the bigger GUI, Thus all the
@@ -90,7 +92,7 @@ class ScanWidget(QtGui.QMainWindow):
         self.graph.plot.getAxis('bottom').setScale(1000/self.sampleRate)
         self.graph.setFixedHeight(100)
         
-        #self.multiScanWgt = MultipleScanWidget()
+        self.multiScanWgt = MultipleScanWidget()
 
         self.cwidget = QtGui.QWidget()
         self.setCentralWidget(self.cwidget)
@@ -131,7 +133,7 @@ class ScanWidget(QtGui.QMainWindow):
         grid.addWidget(QtGui.QLabel('End (ms):'), 8, 2)
         
         grid.addWidget(self.graph, 8, 3, 5, 5)
-      #  grid.addWidget(self.multiScanWgt, 13, 0, 4, 9)
+        grid.addWidget(self.multiScanWgt, 13, 0, 4, 9)
 
         grid.setColumnMinimumWidth(6, 160)
         grid.setRowMinimumHeight(1, 10)
@@ -155,6 +157,120 @@ class GraphFrame(pg.GraphicsWindow):
 #            g = deviceInfo[i][2][1]
 #            b = deviceInfo[i][2][2]
 #            self.plotSigDict[devs[i]] = self.plot.plot(pen=pg.mkPen(r, g, b))
+    
+class MultipleScanWidget(QtGui.QFrame):
+
+    def __init__(self):
+        super().__init__()
+        illumPlotsDockArea = DockArea()
+        
+        self.illumWgt = IllumImageWidget()
+        fovDock = Dock("2D scanning")
+        fovDock.addWidget(self.illumWgt)
+        
+        self.illumWgt3D = pg.ImageView()
+        pos, rgba = zip(*guitools.cmapToColormap(plt.get_cmap('inferno')))
+        self.illumWgt3D.setColorMap(pg.ColorMap(pos, rgba))
+        for tick in self.illumWgt3D.ui.histogram.gradient.ticks:
+            tick.hide()
+        volDock = Dock("3D scanning")
+        volDock.addWidget(self.illumWgt3D)
+
+        illumPlotsDockArea.addDock(volDock)
+        illumPlotsDockArea.addDock(fovDock, 'above', volDock)
+
+        self.makeImgBox = QtGui.QCheckBox('Build scan image')
+        self.saveScanButton = QtGui.QPushButton('Save scan image')
+        #self.saveScanButton.pressed.connect(self.saveScan)
+        
+        # Crosshair
+        self.crosshair = guitools.Crosshair(self.illumWgt.vb)
+        self.crossButton = QtGui.QPushButton('Crosshair')
+        self.crossButton.setCheckable(True)
+        #self.crossButton.pressed.connect(self.crosshair.toggle)
+        self.analysis_btn = QtGui.QPushButton('Analyze')
+        #self.analysis_btn.clicked.connect(self.worker.analyze)
+        self.analysis_btn.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                        QtGui.QSizePolicy.Expanding)
+        self.show_beads_btn = QtGui.QPushButton('Show beads')
+        #self.show_beads_btn.clicked.connect(self.worker.find_fp)
+        self.quality_label = QtGui.QLabel('Quality level of points')
+        self.quality_edit = QtGui.QLineEdit('0.05')
+        #self.quality_edit.editingFinished.connect(self.worker.find_fp)
+        self.win_size_label = QtGui.QLabel('Window size [px]')
+        self.win_size_edit = QtGui.QLineEdit('10')
+        #self.win_size_edit.editingFinished.connect(self.worker.find_fp)
+
+        self.beads_label = QtGui.QLabel('Bead number')
+        self.beadsBox = QtGui.QComboBox()
+        #self.beadsBox.activated.connect(self.change_illum_image)
+        self.change_beads_button = QtGui.QPushButton('Change')
+        #self.change_beads_button.clicked.connect(self.nextBead)
+        self.overlayBox = QtGui.QComboBox()
+        #self.overlayBox.activated.connect(self.worker.overlay)
+        self.overlay_check = QtGui.QCheckBox('Overlay')
+        #self.overlay_check.stateChanged.connect(self.worker.overlay)
+        self.clear_btn = QtGui.QPushButton('Clear')
+        #self.clear_btn.clicked.connect(self.clear)
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+
+        grid.addWidget(self.crossButton, 0, 0)
+        grid.addWidget(self.makeImgBox, 0, 1)
+        grid.addWidget(self.saveScanButton, 0, 2)
+        grid.addWidget(illumPlotsDockArea, 1, 0, 1, 8)
+
+        grid.addWidget(self.quality_label, 2, 0)
+        grid.addWidget(self.quality_edit, 2, 1)
+        grid.addWidget(self.win_size_label, 3, 0)
+        grid.addWidget(self.win_size_edit, 3, 1)
+        grid.addWidget(self.show_beads_btn, 2, 2)
+        grid.addWidget(self.analysis_btn, 3, 2)
+
+        grid.addWidget(self.beads_label, 2, 4)
+        grid.addWidget(self.beadsBox, 2, 5)
+        grid.addWidget(self.change_beads_button, 3, 4, 1, 2)
+        grid.addWidget(self.overlay_check, 2, 6)
+        grid.addWidget(self.overlayBox, 2, 7)
+        grid.addWidget(self.clear_btn, 3, 6, 1, 2)
+
+        grid.setColumnMinimumWidth(3, 100)
+        
+class IllumImageWidget(pg.GraphicsLayoutWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.vb = self.addViewBox(row=1, col=1)
+        self.vb.setAspectLocked(True)
+        self.vb.enableAutoRange()
+
+        self.img = pg.ImageItem()
+        self.vb.addItem(self.img)
+        self.hist = pg.HistogramLUTItem(image=self.img)
+        self.hist.vb.setLimits(yMin=0, yMax=66000)
+        redsColormap = pg.ColorMap([0, 1], [(0, 0, 0), (255, 0, 0)])
+        self.hist.gradient.setColorMap(redsColormap)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.addItem(self.hist, row=1, col=2)
+
+        self.imgBack = pg.ImageItem()
+        self.vb.addItem(self.imgBack)
+        self.imgBack.setZValue(10)
+        self.imgBack.setOpacity(0.5)
+        self.histBack = pg.HistogramLUTItem(image=self.imgBack)
+        self.histBack.vb.setLimits(yMin=0, yMax=66000)
+        pos, rgba = zip(*guitools.cmapToColormap(plt.get_cmap('viridis')))
+        greensColormap = pg.ColorMap(pos, rgba)
+        self.histBack.gradient.setColorMap(greensColormap)
+        for tick in self.histBack.gradient.ticks:
+            tick.hide()
+        self.addItem(self.histBack, row=1, col=3)
+
+        self.first = True
+        self.firstBack = True        
         
 class FocusWidget(QtGui.QFrame):
     

@@ -12,6 +12,69 @@ import numpy as np
 import view.guitools as guitools
 
 
+class FFTWidget(QtGui.QFrame):
+    """ FFT Transform window for alignment """
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+        # Do FFT button
+        self.doButton = QtGui.QPushButton('Do FFT')
+        #self.doButton.clicked.connect(self.doFFT)
+
+        # Period button and text for changing the vertical lines
+        self.changePosButton = QtGui.QPushButton('Period (pix)')
+        #self.changePosButton.clicked.connect(self.changePos)
+        
+        self.linePos = QtGui.QLineEdit('4')
+        
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        self.cwidget = pg.GraphicsLayoutWidget()        
+        
+        self.vb = self.cwidget.addViewBox(row=1, col=1)
+        self.vb.setMouseMode(pg.ViewBox.RectMode)
+        self.img = pg.ImageItem()
+        self.img.translate(-0.5, -0.5)
+        self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
+        self.hist = pg.HistogramLUTItem(image=self.img)
+        self.hist.vb.setLimits(yMin=0, yMax=66000)
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
+        self.hist.gradient.setColorMap(self.cubehelixCM)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.cwidget.addItem(self.hist, row=1, col=2)
+        
+        # Vertical and horizontal lines 
+        self.vline = pg.InfiniteLine()
+        self.hline = pg.InfiniteLine()
+        self.rvline = pg.InfiniteLine()
+        self.lvline = pg.InfiniteLine()
+        self.uhline = pg.InfiniteLine()
+        self.dhline = pg.InfiniteLine()
+        
+        self.vline.hide()
+        self.hline.hide()
+        self.rvline.hide()
+        self.lvline.hide()
+        self.uhline.hide()
+        self.dhline.hide()
+
+        self.vb.addItem(self.vline)
+        self.vb.addItem(self.hline)
+        self.vb.addItem(self.lvline)
+        self.vb.addItem(self.rvline)
+        self.vb.addItem(self.uhline)
+        self.vb.addItem(self.dhline)
+        
+
+        grid.addWidget(self.cwidget, 0, 0, 1, 6)
+        grid.addWidget(self.doButton, 1, 0, 1, 1)
+        grid.addWidget(self.changePosButton, 2, 0, 1, 1)
+        grid.addWidget(self.linePos, 2, 1, 1, 1)
+        grid.setRowMinimumHeight(0, 300)
+
+        self.init = False
 
 # Widget to control image or sequence recording. Recording only possible when
 # liveview active. StartRecording called when "Rec" presset. Creates recording

@@ -11,7 +11,8 @@ from pyqtgraph.console import ConsoleWidget
 import pyqtgraph as pg
 import numpy as np
 import os
-import view.guitools as guitools
+#import view.guitools as guitools
+from pyqtgraph.dockarea import Dock, DockArea
 
 class TempestaView():
     
@@ -25,13 +26,15 @@ class TempestaView():
         self.controller = controller
         
     def startView(self):
+        # Think what is self. and what is not !
+        
         # Shortcuts
         # TODO
         
         # Menu Bar
         # TODO
 
-        
+        # Window
         self.win.setWindowTitle('Tempesta 2.0')
         self.win.cwidget = QtGui.QWidget()
         self.win.setCentralWidget(self.win.cwidget)
@@ -51,13 +54,22 @@ class TempestaView():
         for preset in os.listdir(self.presetDir):
             self.presetsMenu.addItem(preset)
         self.loadPresetButton = QtGui.QPushButton('Load preset')
+        
+        layout.addWidget(self.presetsMenu, 0, 0)
+        layout.addWidget(self.loadPresetButton, 0, 1)
 
         #def loadPresetFunction(): return guitools.loadPreset(self)
         #self.loadPresetButton.pressed.connect(loadPresetFunction)
-
-        layout.addWidget(self.presetsMenu, 0, 0)
-        layout.addWidget(self.loadPresetButton, 0, 1)
+        # Alignment area
+        self.illumDockArea = DockArea()
         
+        FFTDock = Dock("FFT Tool", size=(1, 1))
+        self.FFTWidget = widgets.FFTWidget()
+        FFTDock.addWidget(self.FFTWidget)
+        self.illumDockArea.addDock(FFTDock)
+        
+
+        layout.addWidget(self.illumDockArea, 0, 3, 2, 1)
         # Add all other Widgets
         self.settingsWidget = widgets.SettingsWidget()
         layout.addWidget(self.settingsWidget, 1, 0, 2, 2)

@@ -11,7 +11,159 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 
+class LaserWidget(QtGui.QFrame):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.actControl = LaserControl('<h3>405<h3>', color=(130, 0, 200))
+        self.offControl = LaserControl('<h3>488<h3>', color=(0, 247, 255))
+        self.excControl = LaserControl('<h3>473<h3>', color=(0, 183, 255))      
+        
+        self.DigCtrl = DigitalControl()
+
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        
+        
+        grid.addWidget(self.actControl, 0, 0, 4, 1)
+        grid.addWidget(self.offControl, 0, 1, 4, 1)
+        grid.addWidget(self.excControl, 0, 2, 4, 1)
+        grid.addWidget(self.DigCtrl, 4, 0, 2, 3)
+        
+class DigitalControl(QtGui.QFrame):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)   
+        
+        title = QtGui.QLabel('<h3>Digital modulation<h3>')
+        title.setTextFormat(QtCore.Qt.RichText)
+        title.setAlignment(QtCore.Qt.AlignCenter)
+        title.setStyleSheet("font-size:12px")
+        title.setFixedHeight(20)
+        
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        #actPower = str(self.controls[0].laser.power_mod.magnitude)
+        self.ActPower = QtGui.QLineEdit('actPower')
+        #self.ActPower.textChanged.connect(self.updateDigitalPowers)
+        #offPower = str(self.controls[1].laser.power_mod.magnitude)
+        self.OffPower = QtGui.QLineEdit('offPower')
+        #self.OffPower.textChanged.connect(self.updateDigitalPowers)
+        #excPower = str(self.controls[2].laser.power)
+        self.ExcPower = QtGui.QLineEdit('excPower')
+        #self.ExcPower.textChanged.connect(self.updateDigitalPowers)
+    
+        self.DigitalControlButton = QtGui.QPushButton('Enable')
+        self.DigitalControlButton.setCheckable(True)
+        #self.DigitalControlButton.clicked.connect(self.GlobalDigitalMod)
+        style = "background-color: rgb{}".format((160, 160, 160))
+        self.DigitalControlButton.setStyleSheet(style)
+
+        self.updateDigPowersButton = QtGui.QPushButton('Update powers')
+        #self.updateDigPowersButton.clicked.connect(self.updateDigitalPowers)
+        
+        actUnit = QtGui.QLabel('mW')
+        actUnit.setFixedWidth(20)
+        actModFrame = QtGui.QFrame()
+        actModGrid = QtGui.QGridLayout()
+        actModFrame.setLayout(actModGrid)
+        actModGrid.addWidget(self.ActPower, 0, 0)
+        actModGrid.addWidget(actUnit, 0, 1)
+
+        offUnit = QtGui.QLabel('mW')
+        offUnit.setFixedWidth(20)
+        offModFrame = QtGui.QFrame()
+        offModGrid = QtGui.QGridLayout()
+        offModFrame.setLayout(offModGrid)
+        offModGrid.addWidget(self.OffPower, 0, 0)
+        offModGrid.addWidget(offUnit, 0, 1)
+
+        excUnit = QtGui.QLabel('V')
+        excUnit.setFixedWidth(20)
+        excModFrame = QtGui.QFrame()
+        excModGrid = QtGui.QGridLayout()
+        excModFrame.setLayout(excModGrid)
+        excModGrid.addWidget(self.ExcPower, 0, 0)
+        excModGrid.addWidget(excUnit, 0, 1)
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(title, 0, 0)
+        grid.addWidget(actModFrame, 1, 0)
+        grid.addWidget(offModFrame, 1, 1)
+        grid.addWidget(excModFrame, 1, 2)
+        grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
+        
+class LaserControl(QtGui.QFrame):
+    def __init__(self, name, color, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        
+        self.name = QtGui.QLabel(name)
+        self.name.setTextFormat(QtCore.Qt.RichText)
+        self.name.setAlignment(QtCore.Qt.AlignCenter)
+        self.name.setStyleSheet("font-size:16px")
+        self.name.setFixedHeight(40)
+        
+        # Power widget
+        self.setPointLabel = QtGui.QLabel('Setpoint')
+        self.setPointEdit = QtGui.QLineEdit('0')
+        self.setPointEdit.setFixedWidth(50)
+        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
+
+        self.powerLabel = QtGui.QLabel('Power')
+        #powerMag = self.laser.power
+        self.powerIndicator = QtGui.QLabel('str(powerMag)')
+        self.powerIndicator.setFixedWidth(50)
+        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
+        
+        # Slider
+        self.maxpower = QtGui.QLabel('5')
+        self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
+        self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
+        self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(5)
+        self.slider.setTickInterval(5)
+        self.slider.setSingleStep(0.1)
+        self.slider.setValue(0)
+        self.minpower = QtGui.QLabel('0')
+        self.minpower.setAlignment(QtCore.Qt.AlignCenter)
+
+        powerFrame = QtGui.QFrame(self)
+        self.powerGrid = QtGui.QGridLayout()
+        powerFrame.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Plain)
+        powerFrame.setLayout(self.powerGrid)
+        self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
+        self.powerGrid.addWidget(self.setPointEdit, 2, 0)
+        self.powerGrid.addWidget(QtGui.QLabel('V'), 2, 1)
+        self.powerGrid.addWidget(self.powerLabel, 3, 0, 1, 2)
+        self.powerGrid.addWidget(self.powerIndicator, 4, 0)
+        self.powerGrid.addWidget(QtGui.QLabel('V'), 4, 1)
+        self.powerGrid.addWidget(self.maxpower, 0, 3)
+        self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
+        self.powerGrid.addWidget(self.minpower, 9, 3)
+
+        # ON/OFF button
+        self.enableButton = QtGui.QPushButton('ON')
+        style = "background-color: rgb{}".format(color)
+        self.enableButton.setStyleSheet(style)
+        self.enableButton.setCheckable(True)
+        #if self.laser.enabled:
+         #   self.enableButton.setChecked(True)
+
+        self.grid = QtGui.QGridLayout()
+        self.setLayout(self.grid)
+        self.grid.addWidget(self.name, 0, 0, 1, 2)
+        self.grid.addWidget(powerFrame, 1, 0, 1, 2)
+        self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
+
+        
+        
+        
+        
 class FFTWidget(QtGui.QFrame):
     """ FFT Transform window for alignment """
     def __init__(self, *args, **kwargs):

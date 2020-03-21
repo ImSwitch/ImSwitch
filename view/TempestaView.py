@@ -68,6 +68,11 @@ class TempestaView():
         FFTDock.addWidget(self.FFTWidget)
         self.illumDockArea.addDock(FFTDock)
         
+        # Laser dock
+        laserDock = Dock("Laser Control", size=(300, 1))
+        self.laserWidgets = widgets.LaserWidget()
+        laserDock.addWidget(self.laserWidgets)
+        self.illumDockArea.addDock(laserDock, 'above', FFTDock) 
 
         layout.addWidget(self.illumDockArea, 0, 3, 2, 1)
         # Add all other Widgets

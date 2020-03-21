@@ -11,6 +11,62 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 
+
+class PositionerWidget(QtGui.QWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.xLabel = QtGui.QLabel(
+            "<strong>x = {0:.2f} µm</strong>".format(0))
+        self.xLabel.setTextFormat(QtCore.Qt.RichText)
+        self.xUpButton = QtGui.QPushButton("+")
+        #self.xUpButton.pressed.connect(self.xMoveUp)
+        self.xDownButton = QtGui.QPushButton("-")
+        #self.xDownButton.pressed.connect(self.xMoveDown)
+        self.xStepEdit = QtGui.QLineEdit("0.05")
+        self.xStepUnit = QtGui.QLabel(" µm")
+
+        self.yLabel = QtGui.QLabel(
+            "<strong>y = {0:.2f} µm</strong>".format(0))
+        self.yLabel.setTextFormat(QtCore.Qt.RichText)
+        self.yUpButton = QtGui.QPushButton("+")
+        #self.yUpButton.pressed.connect(self.yMoveUp)
+        self.yDownButton = QtGui.QPushButton("-")
+        #self.yDownButton.pressed.connect(self.yMoveDown)
+        self.yStepEdit = QtGui.QLineEdit("0.05")
+        self.yStepUnit = QtGui.QLabel(" µm")
+
+        self.zLabel = QtGui.QLabel(
+            "<strong>z = {0:.2f} µm</strong>".format(0))
+        self.zLabel.setTextFormat(QtCore.Qt.RichText)
+        self.zUpButton = QtGui.QPushButton("+")
+        #self.zUpButton.pressed.connect(self.zMoveUp)
+        self.zDownButton = QtGui.QPushButton("-")
+        #self.zDownButton.pressed.connect(self.zMoveDown)
+        self.zStepEdit = QtGui.QLineEdit("0.05")
+        self.zStepUnit = QtGui.QLabel(" µm")
+
+        layout = QtGui.QGridLayout()
+        self.setLayout(layout)
+        layout.addWidget(self.xLabel, 1, 0)
+        layout.addWidget(self.xUpButton, 1, 1)
+        layout.addWidget(self.xDownButton, 1, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 1, 3)
+        layout.addWidget(self.xStepEdit, 1, 4)
+        layout.addWidget(self.xStepUnit, 1, 5)
+        layout.addWidget(self.yLabel, 2, 0)
+        layout.addWidget(self.yUpButton, 2, 1)
+        layout.addWidget(self.yDownButton, 2, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 2, 3)
+        layout.addWidget(self.yStepEdit, 2, 4)
+        layout.addWidget(self.yStepUnit, 2, 5)
+        layout.addWidget(self.zLabel, 3, 0)
+        layout.addWidget(self.zUpButton, 3, 1)
+        layout.addWidget(self.zDownButton, 3, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 3, 3)
+        layout.addWidget(self.zStepEdit, 3, 4)
+        layout.addWidget(self.zStepUnit, 3, 5)
+        
+        
 class ULensesWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

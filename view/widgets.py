@@ -11,6 +11,8 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 
+
+
 # Widget to control image or sequence recording. Recording only possible when
 # liveview active. StartRecording called when "Rec" presset. Creates recording
 # thread with RecWorker, recording is then done in this seperate thread.

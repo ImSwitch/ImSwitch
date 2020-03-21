@@ -68,6 +68,30 @@ class TempestaView():
         FFTDock.addWidget(self.FFTWidget)
         self.illumDockArea.addDock(FFTDock)
         
+        # Line Alignment Tool
+        alignmentWidget = widgets.AlignmentWidget()
+        alignmentDock = Dock("Alignment Tool", size=(1, 1))
+        alignmentDock.addWidget(alignmentWidget)
+        self.illumDockArea.addDock(alignmentDock, 'right')
+        
+        # Z align widget
+        ZalignDock = Dock("Axial Alignment Tool", size=(1, 1))
+        self.ZalignWidget = widgets.AlignWidgetAverage()
+        ZalignDock.addWidget(self.ZalignWidget)
+        self.illumDockArea.addDock(ZalignDock, 'above', alignmentDock)
+
+        # Rotational align widget
+        RotalignDock = Dock("Rotational Alignment Tool", size=(1, 1))
+        self.RotalignWidget = widgets.AlignWidgetXYProject()
+        RotalignDock.addWidget(self.RotalignWidget)
+        self.illumDockArea.addDock(RotalignDock, 'above', alignmentDock)
+        
+        # ulenses Alignment Tool
+        self.ulensesWidget = widgets.ULensesWidget()
+        ulensesDock = Dock("uLenses Tool", size=(1, 1))
+        ulensesDock.addWidget(self.ulensesWidget)
+        self.illumDockArea.addDock(ulensesDock, 'above', alignmentDock)
+        
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
         self.laserWidgets = widgets.LaserWidget()

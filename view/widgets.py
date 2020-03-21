@@ -11,6 +11,115 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 
+class ULensesWidget(QtGui.QWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ulensesLayout = QtGui.QGridLayout()
+        self.setLayout(ulensesLayout)
+        self.xEdit = QtGui.QLineEdit('0')
+        self.yEdit = QtGui.QLineEdit('0')
+        self.pxEdit = QtGui.QLineEdit('157.5')
+        self.upEdit = QtGui.QLineEdit('1182')
+        self.ulensesButton = QtGui.QPushButton('uLenses')
+        self.x = np.float(self.xEdit.text())
+        self.y = np.float(self.yEdit.text())
+        self.px = np.float(self.pxEdit.text())
+        self.up = np.float(self.upEdit.text())
+        #self.ulensesButton.clicked.connect(self.ulensesToolAux)
+        self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
+        ulensesLayout.addWidget(QtGui.QLabel('Pixel Size'), 0, 0)
+        ulensesLayout.addWidget(self.pxEdit, 0, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('Periodicity'), 1, 0)
+        ulensesLayout.addWidget(self.upEdit, 1, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('X offset'), 2, 0)
+        ulensesLayout.addWidget(self.xEdit, 2, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('Y offset'), 3, 0)
+        ulensesLayout.addWidget(self.yEdit, 3, 1)
+        ulensesLayout.addWidget(self.ulensesButton, 4, 0)
+        ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
+        
+class AlignWidgetXYProject(QtGui.QFrame):
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+#        self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
+#                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
+#                       scaleSnap=True, translateSnap=True)
+
+#        self.ROI.hide()
+        self.graph = guitools.ProjectionGraph()
+        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton.setCheckable(True)
+       # self.roiButton.clicked.connect(self.ROItoggle)
+
+        self.Xradio = QtGui.QRadioButton('X dimension')
+        self.Yradio = QtGui.QRadioButton('Y dimension')
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.graph, 0, 0, 1, 6)
+        grid.addWidget(self.roiButton, 1, 0, 1, 1)
+        grid.addWidget(self.Xradio, 1, 1, 1, 1)
+        grid.addWidget(self.Yradio, 1, 2, 1, 1)
+
+        self.scansPerS = 10
+        self.alignTime = 1000 / self.scansPerS
+        self.alignTimer = QtCore.QTimer()
+        #self.alignTimer.timeout.connect(self.updateValue)
+        self.alignTimer.start(self.alignTime)
+
+        # 2 zeros because it has to have the attribute "len"
+        self.latest_values = np.zeros(2)
+        self.s_fac = 0.3
+
+class AlignWidgetAverage(QtGui.QFrame):
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        #self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
+         #              handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
+          #             scaleSnap=True, translateSnap=True)
+
+        #self.ROI.hide()
+        self.graph = guitools.SumpixelsGraph()
+        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton.setCheckable(True)
+        #self.roiButton.clicked.connect(self.ROItoggle)
+        self.resetButton = QtGui.QPushButton('Reset graph')
+        #self.resetButton.clicked.connect(self.resetGraph)
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.graph, 0, 0, 1, 6)
+        grid.addWidget(self.roiButton, 1, 0, 1, 1)
+        grid.addWidget(self.resetButton, 1, 1, 1, 1)
+        grid.setRowMinimumHeight(0, 300)
+
+        self.scansPerS = 10
+        self.alignTime = 1000 / self.scansPerS
+        self.alignTimer = QtCore.QTimer()
+        #self.alignTimer.timeout.connect(self.updateValue)
+#        self.alignTimer.start(self.alignTime)
+
+
+class AlignmentWidget(QtGui.QWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        alignmentLayout = QtGui.QGridLayout()
+        self.setLayout(alignmentLayout)
+        self.angleEdit = QtGui.QLineEdit('30')
+        self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
+        self.angle = np.float(self.angleEdit.text())
+        #self.alignmentLineMakerButton.clicked.connect(self.alignmentToolAux)
+        self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
+        alignmentLayout.addWidget(QtGui.QLabel('Line Angle'), 0, 0)
+        alignmentLayout.addWidget(self.angleEdit, 0, 1)
+        alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
+        alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
+        
 class LaserWidget(QtGui.QFrame):
 
     def __init__(self, *args, **kwargs):

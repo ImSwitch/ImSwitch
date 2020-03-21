@@ -20,6 +20,9 @@ The main characteristics of Tempesta v2.0 are:
 - The multithreading will be managed in a smarter way than before.
 - The code is intuitive to make it easy to understand and new users can easily implement new Widgets without having to understand all the parts of the code.
 
+The UML design of the code is attached below.
+
+
 
  
  

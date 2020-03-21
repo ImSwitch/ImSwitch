@@ -11,6 +11,54 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 
+class viewCtrlWidget(QtGui.QWidget):
+    def __init__(self, vb, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vb = vb
+         # Liveview functionality
+        self.liveviewButton = QtGui.QPushButton('LIVEVIEW')
+        self.liveviewButton.setStyleSheet("font-size:20px")
+        self.liveviewButton.setCheckable(True)
+        self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                          QtGui.QSizePolicy.Expanding)
+        # Link button click to funciton liveview
+        #self.liveviewButton.clicked.connect(self.liveview)
+#        self.liveviewButton.setEnabled(True)
+#        self.viewtimer = QtCore.QTimer()
+#        self.viewtimer.timeout.connect(self.updateView)
+
+        self.alignmentON = False
+        self.ulensesON = False
+        # Liveview control buttons
+        self.viewCtrlLayout = QtGui.QGridLayout()
+        self.setLayout(self.viewCtrlLayout)
+        self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
+#        if len(self.cameras) > 1:
+#            self.toggleCamButton = QtGui.QPushButton('Toggle camera')
+#            self.toggleCamButton.setStyleSheet("font-size:18px")
+#            self.toggleCamButton.clicked.connect(self.toggleCamera)
+#            self.camLabel = QtGui.QLabel('Hamamatsu0')
+#            self.camLabel.setStyleSheet("font-size:18px")
+#            self.viewCtrlLayout.addWidget(self.toggleCamButton, 2, 0)
+#            self.viewCtrlLayout.addWidget(self.camLabel, 2, 1)
+        self.grid = guitools.Grid(self.vb)
+        self.gridButton = QtGui.QPushButton('Grid')
+        self.gridButton.setCheckable(True)
+        self.gridButton.setEnabled(False)
+        self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                      QtGui.QSizePolicy.Expanding)
+        self.gridButton.clicked.connect(self.grid.toggle)
+        self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
+
+        self.crosshair = guitools.Crosshair(self.vb)
+        self.crosshairButton = QtGui.QPushButton('Crosshair')
+        self.crosshairButton.setCheckable(True)
+        self.crosshairButton.setEnabled(False)
+        self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                           QtGui.QSizePolicy.Expanding)
+        self.crosshairButton.pressed.connect(self.crosshair.toggle)
+        self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+        
 class imageWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -10,8 +10,217 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
+import time
 
+class ScanWidget(QtGui.QMainWindow):
+    ''' This class is intended as a widget in the bigger GUI, Thus all the
+    commented parameters etc. It contain an instance of stageScan and
+    pixel_scan which in turn harbour the analog and digital signals
+    respectively.
+    The function run starts the communication with the Nidaq through the
+    Scanner object. This object was initially written as a QThread object but
+    is not right now.
+    As seen in the commened lines of run() I also tried running in a QThread
+    created in run().
+    The rest of the functions contain mostly GUI related code.'''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scanInLiveviewWar = QtGui.QMessageBox()
+        self.scanInLiveviewWar.setInformativeText(
+            "You need to be in liveview to scan")
 
+        self.digModWarning = QtGui.QMessageBox()
+        self.digModWarning.setInformativeText(
+            "You need to be in digital laser modulation and external "
+            "frame-trigger acquisition mode")
+        self.saveScanBtn = QtGui.QPushButton('Save Scan')
+        # TODO connect
+        self.loadScanBtn = QtGui.QPushButton('Load Scan')
+        self.sampleRateEdit = QtGui.QLineEdit()
+        self.sizeXPar = QtGui.QLineEdit('2')
+        #self.sizeXPar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('sizeX'))
+        self.sizeYPar = QtGui.QLineEdit('2')
+        #self.sizeYPar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('sizeY'))
+        self.sizeZPar = QtGui.QLineEdit('10')
+        #self.sizeZPar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('sizeZ'))
+        self.seqTimePar = QtGui.QLineEdit('10')     # ms
+        #self.seqTimePar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('seqTime'))
+        self.nrFramesPar = QtGui.QLabel()
+        self.scanDuration = 0
+        self.scanDurationLabel = QtGui.QLabel(str(self.scanDuration))
+        self.stepSizeXYPar = QtGui.QLineEdit('0.1')
+        #self.stepSizeXYPar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('stepSizeXY'))
+        self.stepSizeZPar = QtGui.QLineEdit('1')
+        #self.stepSizeZPar.textChanged.connect(
+         #   lambda: self.scanParameterChanged('stepSizeZ'))
+        self.sampleRate = 100000
+
+        self.scanMode = QtGui.QComboBox()
+        self.scanModes = ['FOV scan', 'VOL scan', 'Line scan']
+        self.scanMode.addItems(self.scanModes)
+        #self.scanMode.currentIndexChanged.connect(
+         #   lambda: self.setScanMode(self.scanMode.currentText()))
+
+        self.primScanDim = QtGui.QComboBox()
+        self.scanDims = ['x', 'y']
+        self.primScanDim.addItems(self.scanDims)
+        #self.primScanDim.currentIndexChanged.connect(
+         #   lambda: self.setPrimScanDim(self.primScanDim.currentText()))
+        self.scanRadio = QtGui.QRadioButton('Scan')
+        #self.scanRadio.clicked.connect(lambda: self.setScanOrNot(True))
+        self.scanRadio.setChecked(True)
+        self.contLaserPulsesRadio = QtGui.QRadioButton('Cont. Laser Pulses')
+        #self.contLaserPulsesRadio.clicked.connect(
+         #   lambda: self.setScanOrNot(False))
+        self.scanButton = QtGui.QPushButton('Scan')
+        self.scanning = False
+        #self.scanButton.clicked.connect(self.scanOrAbort)
+        self.previewButton = QtGui.QPushButton('Plot scan path')
+        self.previewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                         QtGui.QSizePolicy.Expanding)
+        #self.previewButton.clicked.connect(self.previewScan)
+        self.continuousCheck = QtGui.QCheckBox('Repeat')
+        
+        self.graph = GraphFrame()
+        self.graph.plot.getAxis('bottom').setScale(1000/self.sampleRate)
+        self.graph.setFixedHeight(100)
+        
+        #self.multiScanWgt = MultipleScanWidget()
+
+        self.cwidget = QtGui.QWidget()
+        self.setCentralWidget(self.cwidget)
+        grid = QtGui.QGridLayout()
+        self.cwidget.setLayout(grid)
+
+        grid.addWidget(self.loadScanBtn, 0, 0)
+        grid.addWidget(self.saveScanBtn, 0, 1)
+        grid.addWidget(self.scanRadio, 0, 2) #nop
+        grid.addWidget(self.contLaserPulsesRadio, 0, 3) #nop
+        grid.addWidget(self.scanButton, 0, 4, 1, 2)
+        grid.addWidget(self.continuousCheck, 0, 6)
+
+        grid.addWidget(QtGui.QLabel('Size X (µm):'), 2, 0)
+        grid.addWidget(self.sizeXPar, 2, 1)
+        grid.addWidget(QtGui.QLabel('Size Y (µm):'), 3, 0)
+        grid.addWidget(self.sizeYPar, 3, 1)
+        grid.addWidget(QtGui.QLabel('Size Z (µm):'), 4, 0)
+        grid.addWidget(self.sizeZPar, 4, 1)
+        grid.addWidget(QtGui.QLabel('Step XY (µm):'), 2, 2)
+        grid.addWidget(self.stepSizeXYPar, 2, 3)
+        grid.addWidget(QtGui.QLabel('Step Z (µm):'), 4, 2)
+        grid.addWidget(self.stepSizeZPar, 4, 3)
+
+        grid.addWidget(QtGui.QLabel('Mode:'), 2, 4)
+        grid.addWidget(self.scanMode, 2, 5)
+        grid.addWidget(QtGui.QLabel('Primary dimension:'), 3, 4)
+        grid.addWidget(self.primScanDim, 3, 5)
+        grid.addWidget(QtGui.QLabel('Number of frames:'), 4, 4)
+        grid.addWidget(self.nrFramesPar, 4, 5)
+        grid.addWidget(self.previewButton, 2, 6, 3, 2)
+
+        grid.addWidget(QtGui.QLabel('Dwell time (ms):'), 7, 0)
+        grid.addWidget(self.seqTimePar, 7, 1)
+        grid.addWidget(QtGui.QLabel('Total time (s):'), 7, 2)
+        grid.addWidget(self.scanDurationLabel, 7, 3)
+        grid.addWidget(QtGui.QLabel('Start (ms):'), 8, 1)
+        grid.addWidget(QtGui.QLabel('End (ms):'), 8, 2)
+        
+        grid.addWidget(self.graph, 8, 3, 5, 5)
+      #  grid.addWidget(self.multiScanWgt, 13, 0, 4, 9)
+
+        grid.setColumnMinimumWidth(6, 160)
+        grid.setRowMinimumHeight(1, 10)
+        grid.setRowMinimumHeight(6, 10)
+        grid.setRowMinimumHeight(13, 10)
+        
+class GraphFrame(pg.GraphicsWindow):
+    """Creates the plot that plots the preview of the pulses.
+    Fcn update() updates the plot of "device" with signal "signal"."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        #self.pxCycle = pxCycle
+        #devs = list(pxCycle.sigDict.keys())
+        self.plot = self.addPlot(row=1, col=0)
+        self.plot.setYRange(0, 1)
+        self.plot.showGrid(x=False, y=False)
+        #self.plotSigDict = dict()
+#        for i in range(0, len(pxCycle.sigDict)):
+#            r = deviceInfo[i][2][0]
+#            g = deviceInfo[i][2][1]
+#            b = deviceInfo[i][2][2]
+#            self.plotSigDict[devs[i]] = self.plot.plot(pen=pg.mkPen(r, g, b))
+        
+class FocusWidget(QtGui.QFrame):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Focus lock widgets
+        self.kpEdit = QtGui.QLineEdit('0.008')
+        #self.kpEdit.textChanged.connect(self.unlockFocus)
+        self.kpLabel = QtGui.QLabel('kp')
+        self.kiEdit = QtGui.QLineEdit('0.0006')
+        #self.kiEdit.textChanged.connect(self.unlockFocus)
+        self.kiLabel = QtGui.QLabel('ki')
+        self.lockButton = QtGui.QPushButton('Lock')
+        self.lockButton.setCheckable(True)
+        #self.lockButton.clicked.connect(self.toggleFocus)
+        self.lockButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                      QtGui.QSizePolicy.Expanding)
+        self.focusDataBox = QtGui.QCheckBox('Save focus data')
+        self.twoFociBox = QtGui.QCheckBox('Two foci')
+
+        # PZT position widgets
+        time.sleep(0.1)
+        self.positionLabel = QtGui.QLabel('Position[um]')
+        self.positionEdit = QtGui.QLineEdit('0')
+        self.positionSetButton = QtGui.QPushButton('Set')
+        #self.positionSetButton.clicked.connect(self.movePZT)
+
+        # focus calibration widgets
+        self.CalibFromLabel = QtGui.QLabel('from [um]')
+        self.CalibFromEdit = QtGui.QLineEdit('49')
+        self.CalibToLabel = QtGui.QLabel('to [um]')
+        self.CalibToEdit = QtGui.QLineEdit('51')
+        self.focusCalibButton = QtGui.QPushButton('Calib')
+        self.focusCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                            QtGui.QSizePolicy.Expanding)
+        #self.focusCalibButton.clicked.connect(self.focusCalibThread.start)
+        self.CalibCurveButton = QtGui.QPushButton('See Calib')
+        #self.CalibCurveButton.clicked.connect(self.showCalibCurve)
+        #self.CalibCurveWindow = CaribCurveWindow(self)
+        self.calibrationDisplay = QtGui.QLineEdit('0 px --> 0 nm')
+        self.focusLockGraph = pg.GraphicsWindow()
+        self.webcamGraph =pg.GraphicsWindow()
+        
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.focusLockGraph, 0, 0, 1, 8)
+        grid.addWidget(self.webcamGraph, 1, 0, 1, 8)
+        grid.addWidget(self.focusCalibButton, 2, 2, 2, 1)
+        grid.addWidget(self.calibrationDisplay, 4, 0, 1, 2)
+        grid.addWidget(self.kpLabel, 2, 3)
+        grid.addWidget(self.kpEdit, 2, 4)
+        grid.addWidget(self.kiLabel, 3, 3)
+        grid.addWidget(self.kiEdit, 3, 4)
+        grid.addWidget(self.lockButton, 2, 5, 2, 1)
+        grid.addWidget(self.focusDataBox, 4, 4, 1, 2)
+        grid.addWidget(self.twoFociBox, 4, 6)
+        grid.addWidget(self.CalibFromLabel, 2, 0)
+        grid.addWidget(self.CalibFromEdit, 2, 1)
+        grid.addWidget(self.CalibToLabel, 3, 0)
+        grid.addWidget(self.CalibToEdit, 3, 1)
+        grid.addWidget(self.CalibCurveButton, 4, 2)
+        grid.addWidget(self.positionLabel, 2, 6)
+        grid.addWidget(self.positionEdit, 2, 7)
+        grid.addWidget(self.positionSetButton, 3, 6, 1, 2)
+        
 class PositionerWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

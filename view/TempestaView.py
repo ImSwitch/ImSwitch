@@ -36,12 +36,17 @@ class TempestaView():
         # Add all Widgets
         self.settingsWidget = widgets.SettingsWidget()
         layout.addWidget(self.settingsWidget, 1, 0, 2, 2)
+        
+        self.imageWidget = widgets.imageWidget()
+        layout.addWidget(self.imageWidget, 0, 2, 6, 1)
         # TODO
         layout.setRowMinimumHeight(2, 175)
         layout.setRowMinimumHeight(3, 100)
         layout.setRowMinimumHeight(5, 175)
         layout.setColumnMinimumWidth(0, 275)
         layout.setColumnMinimumWidth(2, 1350)
+        self.imageWidget.ci.layout.setColumnFixedWidth(1, 1150)
+        self.imageWidget.ci.layout.setRowFixedHeight(1, 1150)
         
         self.win.show()
         sys.exit(self.app.exec_())

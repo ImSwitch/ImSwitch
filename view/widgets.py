@@ -7,7 +7,62 @@ Created on Fri Mar 20 17:08:54 2020
 from pyqtgraph.Qt import QtGui  
 from pyqtgraph.Qt import QtCore
 from pyqtgraph.parametertree import Parameter, ParameterTree
+import pyqtgraph as pg
+import numpy as np
+import view.guitools as guitools
 
+class imageWidget(pg.GraphicsLayoutWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.vb = self.addViewBox(row=1, col=1)
+        self.vb.setMouseMode(pg.ViewBox.RectMode)
+        self.img = pg.ImageItem()
+        self.img.translate(-0.5, -0.5)
+        self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
+        self.setAspectLocked(True)
+        self.hist = pg.HistogramLUTItem(image=self.img)
+        self.hist.vb.setLimits(yMin=0, yMax=66000)
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256),
+                                       guitools.cubehelix().astype(int))
+        self.hist.gradient.setColorMap(self.cubehelixCM)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.addItem(self.hist, row=1, col=2)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.addItem(self.hist, row=1, col=2)
+        self.ROI = guitools.ROI((0, 0), self.vb, (0, 0), handlePos=(1, 0),
+                                handleCenter=(0, 1), color='y', scaleSnap=True,
+                                translateSnap=True)
+        #self.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
+        self.ROI.hide()
+
+        # x and y profiles
+        xPlot = self.addPlot(row=0, col=1)
+        xPlot.hideAxis('left')
+        xPlot.hideAxis('bottom')
+        self.xProfile = xPlot.plot()
+        self.ci.layout.setRowMaximumHeight(0, 40)
+        xPlot.setXLink(self.vb)
+        yPlot = self.addPlot(row=1, col=0)
+        yPlot.hideAxis('left')
+        yPlot.hideAxis('bottom')
+        self.yProfile = yPlot.plot()
+        self.yProfile.rotate(90)
+        self.ci.layout.setColumnMaximumWidth(0, 40)
+        yPlot.setYLink(self.vb)
+
+        self.levelsButton = QtGui.QPushButton('Update Levels')
+        self.levelsButton.setEnabled(False)
+        self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                        QtGui.QSizePolicy.Expanding)
+        #self.levelsButton.pressed.connect(self.autoLevels)
+
+        proxy = QtGui.QGraphicsProxyWidget()
+        proxy.setWidget(self.levelsButton)
+        self.addItem(proxy, row=0, col=2)
+    
 class SettingsWidget(QtGui.QFrame):
     
     def __init__(self, *args, **kwargs):

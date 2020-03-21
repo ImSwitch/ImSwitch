@@ -17,10 +17,10 @@ The main characteristics of Tempesta v2.0 are:
 
 - Another focus of this version is to use inheritance to separate a general class from different implementations, very useful to create different versions of the same device for different optical setups. 
 
-- The multithreading will be managed in a smarter way than before.
+- The multithreading (TODO) will be managed in a smarter way than before.
 - The code is intuitive to make it easy to understand and new users can easily implement new Widgets without having to understand all the parts of the code.
 
-The UML design of the code is attached below.
+The UML design of the code is attached below (to be updated).
 
 ![](NewTempesta.png)
 

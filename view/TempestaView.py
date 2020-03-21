@@ -37,11 +37,14 @@ class TempestaView():
         self.settingsWidget = widgets.SettingsWidget()
         layout.addWidget(self.settingsWidget, 1, 0, 2, 2)
         
-        self.imageWidget = widgets.imageWidget()
+        self.imageWidget = widgets.ImageWidget()
         layout.addWidget(self.imageWidget, 0, 2, 6, 1)
         
-        self.viewCtrlWidget = widgets.viewCtrlWidget(self.imageWidget.vb)
+        self.viewCtrlWidget = widgets.ViewCtrlWidget(self.imageWidget.vb)
         layout.addWidget(self.viewCtrlWidget, 3, 0, 1, 2)
+        
+        self.recordingWidget = widgets.RecordingWidget()
+        layout.addWidget(self.recordingWidget, 4, 0, 1, 2)
         # TODO
         layout.setRowMinimumHeight(2, 175)
         layout.setRowMinimumHeight(3, 100)

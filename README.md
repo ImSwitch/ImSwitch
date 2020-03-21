@@ -1,6 +1,6 @@
 # Tempesta-v2.0
  
-This is a new version of the control software Tempesta from TestaLab (www.testalab.org). The new version uses the same principles as before, but making substantial structural changes.
+This is a new version of the control software Tempesta from TestaLab (www.testalab.org). The new version uses the same principles and code as before, but making substantial structural changes.
 
 The v2.0 addresses some problems detected from the previous version:
 

@@ -89,6 +89,7 @@ class TempestaView():
         # ulenses Alignment Tool
         self.ulensesWidget = widgets.ULensesWidget()
         ulensesDock = Dock("uLenses Tool", size=(1, 1))
+        self.ulensesWidget.registerListener(self.controller)
         ulensesDock.addWidget(self.ulensesWidget)
         self.illumDockArea.addDock(ulensesDock, 'above', alignmentDock)
         

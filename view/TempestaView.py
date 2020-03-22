@@ -119,6 +119,7 @@ class TempestaView():
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
         self.piezoWidget = widgets.PositionerWidget()
+        self.piezoWidget.registerListener(self.controller)
         piezoDock.addWidget(self.piezoWidget)
         dockArea.addDock(piezoDock, 'bottom', alignmentDock)
         

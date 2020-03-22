@@ -422,7 +422,6 @@ class ULensesWidget(QtGui.QWidget):
         self.y = np.float(self.yEdit.text())
         self.px = np.float(self.pxEdit.text())
         self.up = np.float(self.upEdit.text())
-        #self.ulensesButton.clicked.connect(self.ulensesToolAux)
         self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
         ulensesLayout.addWidget(QtGui.QLabel('Pixel Size'), 0, 0)
         ulensesLayout.addWidget(self.pxEdit, 0, 1)
@@ -434,6 +433,9 @@ class ULensesWidget(QtGui.QWidget):
         ulensesLayout.addWidget(self.yEdit, 3, 1)
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
+        
+    def registerListener(self, controller):
+        self.ulensesButton.clicked.connect(controller.uLensesController.ulensesToolAux)
         
 class AlignWidgetXYProject(QtGui.QFrame):
 

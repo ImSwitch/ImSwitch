@@ -17,5 +17,6 @@ class TempestaController():
         self.focusLockController = controllers.FocusLockController()
         self.positionerController = controllers.PositionerController()
         self.uLensesController = controllers.ULensesController()
+        self.alignXYController = controllers.AlignXYController()
         
         

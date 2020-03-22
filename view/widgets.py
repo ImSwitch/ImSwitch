@@ -442,6 +442,7 @@ class AlignWidgetXYProject(QtGui.QFrame):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
+        # From model
 #        self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
 #                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
 #                       scaleSnap=True, translateSnap=True)
@@ -450,8 +451,7 @@ class AlignWidgetXYProject(QtGui.QFrame):
         self.graph = guitools.ProjectionGraph()
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-       # self.roiButton.clicked.connect(self.ROItoggle)
-
+       
         self.Xradio = QtGui.QRadioButton('X dimension')
         self.Yradio = QtGui.QRadioButton('Y dimension')
 
@@ -465,12 +465,15 @@ class AlignWidgetXYProject(QtGui.QFrame):
         self.scansPerS = 10
         self.alignTime = 1000 / self.scansPerS
         self.alignTimer = QtCore.QTimer()
-        #self.alignTimer.timeout.connect(self.updateValue)
-        self.alignTimer.start(self.alignTime)
+        #self.alignTimer.start(self.alignTime)
 
         # 2 zeros because it has to have the attribute "len"
         self.latest_values = np.zeros(2)
         self.s_fac = 0.3
+        
+    def registerListener(self, controller):
+        self.roiButton.clicked.connect(controller.alignXYController.ROItoggle)
+        self.alignTimer.timeout.connect(controller.alignXYController.updateValue)
 
 class AlignWidgetAverage(QtGui.QFrame):
 

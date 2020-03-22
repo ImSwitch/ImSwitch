@@ -83,6 +83,7 @@ class TempestaView():
         # Rotational align widget
         RotalignDock = Dock("Rotational Alignment Tool", size=(1, 1))
         self.RotalignWidget = widgets.AlignWidgetXYProject()
+        self.RotalignWidget.registerListener(self.controller)
         RotalignDock.addWidget(self.RotalignWidget)
         self.illumDockArea.addDock(RotalignDock, 'above', alignmentDock)
         

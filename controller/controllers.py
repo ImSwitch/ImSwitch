@@ -83,5 +83,14 @@ class ULensesController():
         print('Init ulenses controller')
     def ulensesToolAux(self):
         print('Draw microlenses')
+  
+class AlignXYController():
+    def __init__(self):
+        print('Init XY Alignment')
+    def ROItoggle(self):
+        print('Align XY ROI toggle')
+    def updateValue(self):
+        print('update Align XY')
+
         
         

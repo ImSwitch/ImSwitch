@@ -359,9 +359,7 @@ class PositionerWidget(QtGui.QWidget):
             "<strong>x = {0:.2f} µm</strong>".format(0))
         self.xLabel.setTextFormat(QtCore.Qt.RichText)
         self.xUpButton = QtGui.QPushButton("+")
-        #self.xUpButton.pressed.connect(self.xMoveUp)
         self.xDownButton = QtGui.QPushButton("-")
-        #self.xDownButton.pressed.connect(self.xMoveDown)
         self.xStepEdit = QtGui.QLineEdit("0.05")
         self.xStepUnit = QtGui.QLabel(" µm")
 
@@ -369,9 +367,7 @@ class PositionerWidget(QtGui.QWidget):
             "<strong>y = {0:.2f} µm</strong>".format(0))
         self.yLabel.setTextFormat(QtCore.Qt.RichText)
         self.yUpButton = QtGui.QPushButton("+")
-        #self.yUpButton.pressed.connect(self.yMoveUp)
         self.yDownButton = QtGui.QPushButton("-")
-        #self.yDownButton.pressed.connect(self.yMoveDown)
         self.yStepEdit = QtGui.QLineEdit("0.05")
         self.yStepUnit = QtGui.QLabel(" µm")
 
@@ -379,9 +375,7 @@ class PositionerWidget(QtGui.QWidget):
             "<strong>z = {0:.2f} µm</strong>".format(0))
         self.zLabel.setTextFormat(QtCore.Qt.RichText)
         self.zUpButton = QtGui.QPushButton("+")
-        #self.zUpButton.pressed.connect(self.zMoveUp)
         self.zDownButton = QtGui.QPushButton("-")
-        #self.zDownButton.pressed.connect(self.zMoveDown)
         self.zStepEdit = QtGui.QLineEdit("0.05")
         self.zStepUnit = QtGui.QLabel(" µm")
 
@@ -406,6 +400,13 @@ class PositionerWidget(QtGui.QWidget):
         layout.addWidget(self.zStepEdit, 3, 4)
         layout.addWidget(self.zStepUnit, 3, 5)
         
+    def registerListener(self, controller):   
+        self.xUpButton.pressed.connect(controller.positionerController.xMoveUp)
+        self.xDownButton.pressed.connect(controller.positionerController.xMoveDown)
+        self.yUpButton.pressed.connect(controller.positionerController.yMoveUp)
+        self.yDownButton.pressed.connect(controller.positionerController.yMoveDown)
+        self.zUpButton.pressed.connect(controller.positionerController.zMoveUp)
+        self.zDownButton.pressed.connect(controller.positionerController.zMoveDown)
         
 class ULensesWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):

@@ -61,7 +61,22 @@ class FocusLockController():
         print('Focus calib thread Start')
     def showCalibCurve(self):
         print('Focus calib curve')
+        
+class PositionerController():
+    def __init__(self):
+        print('Init Positioner Controller')
+    def xMoveUp(self):
+        print('x Move up')
+    def xMoveDown(self):
+        print('x Move down')
+    def yMoveUp(self):
+        print('y Move up')
+    def yMoveDown(self):
+        print('y Move down')
+    def zMoveUp(self):
+        print('z Move up')
+    def zMoveDown(self):
+        print('z Move down')
 
-    
         
         

@@ -77,6 +77,7 @@ class TempestaView():
         # Z align widget
         ZalignDock = Dock("Axial Alignment Tool", size=(1, 1))
         self.ZalignWidget = widgets.AlignWidgetAverage()
+        self.ZalignWidget.registerListener(self.controller)
         ZalignDock.addWidget(self.ZalignWidget)
         self.illumDockArea.addDock(ZalignDock, 'above', alignmentDock)
 

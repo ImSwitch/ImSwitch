@@ -122,6 +122,14 @@ class LaserController():
     def GlobalDigitalMod(self):
         print('Global Digital Mod')
         
+class FFTController():
+    def __init__(self):
+        print('init FFT controller')
+    def doFFT(self):
+        print('Do FFT')
+    def changePos(self):
+        print('Change Pos')
+        
 
 
         

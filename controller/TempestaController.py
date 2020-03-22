@@ -21,5 +21,6 @@ class TempestaController():
         self.alignAverageController = controllers.AlignAverageController()
         self.alignmentController = controllers.AlignmentController()
         self.laserController = controllers.LaserController()
+        self.fftController = controllers.FFTController()
         
         

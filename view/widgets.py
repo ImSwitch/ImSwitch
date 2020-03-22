@@ -772,10 +772,8 @@ class RecordingWidget(QtGui.QFrame):
 
         # Folder and filename fields
         self.folderEdit = QtGui.QLineEdit('self.initialDir')
-        openFolderButton = QtGui.QPushButton('Open')
-        #openFolderButton.clicked.connect(self.openFolder)
+        self.openFolderButton = QtGui.QPushButton('Open')
         self.specifyfile = QtGui.QCheckBox('Specify file name')
-        #self.specifyfile.clicked.connect(self.specFile)
         self.filenameEdit = QtGui.QLineEdit('Current_time')
         self.formatBox = QtGui.QComboBox()
         self.formatBox.addItem('tiff')
@@ -786,34 +784,26 @@ class RecordingWidget(QtGui.QFrame):
         self.snapTIFFButton.setStyleSheet("font-size:16px")
         self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                           QtGui.QSizePolicy.Expanding)
-        #self.snapTIFFButton.clicked.connect(self.snapTIFF)
         self.recButton = QtGui.QPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
         self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                      QtGui.QSizePolicy.Expanding)
-        #self.recButton.clicked.connect(self.startRecording)
 
         # Number of frames and measurement timing
         modeTitle = QtGui.QLabel('<strong>Mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
         self.specifyFrames = QtGui.QRadioButton('Number of frames')
-        #self.specifyFrames.clicked.connect(self.specFrames)
         self.specifyTime = QtGui.QRadioButton('Time (s)')
-        #self.specifyTime.clicked.connect(self.specTime)
         self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
-        #self.recScanOnceBtn.clicked.connect(self.recScanOnce)
         self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
-        #self.recScanLapseBtn.clicked.connect(self.recScanLapse)
         self.timeLapseEdit = QtGui.QLineEdit('5')
         self.timeLapseLabel = QtGui.QLabel('Each/Total [s]')
         self.timeLapseLabel.setAlignment(QtCore.Qt.AlignRight)
         self.timeLapseTotalEdit = QtGui.QLineEdit('60')
         self.timeLapseScan = 0
         self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
-        #self.untilSTOPbtn.clicked.connect(self.untilStop)
         self.timeToRec = QtGui.QLineEdit('1')
-        #self.timeToRec.textChanged.connect(self.filesizeupdate)
         self.currentTime = QtGui.QLabel('0 / ')
         self.currentTime.setAlignment((QtCore.Qt.AlignRight |
                                        QtCore.Qt.AlignVCenter))
@@ -824,7 +814,6 @@ class RecordingWidget(QtGui.QFrame):
         self.tRemaining = QtGui.QLabel()
         self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
                                       QtCore.Qt.AlignVCenter))
-        #self.numExpositionsEdit.textChanged.connect(self.filesizeupdate)
 
         self.progressBar = QtGui.QProgressBar()
         self.progressBar.setTextVisible(False)
@@ -857,7 +846,7 @@ class RecordingWidget(QtGui.QFrame):
 #            recGrid.addWidget(self.formatBox, 3, 3)
 #        else:
         recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-        recGrid.addWidget(openFolderButton, 2, 3)
+        recGrid.addWidget(self.openFolderButton, 2, 3)
         recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
         recGrid.addWidget(self.formatBox, 3, 3)
 
@@ -888,6 +877,18 @@ class RecordingWidget(QtGui.QFrame):
         self.filenameEdit.setEnabled(False)
         self.specifyTime.setChecked(True)
 
+    def registerListener(self, controller):
+        self.openFolderButton.clicked.connect(controller.recorderController.openFolder)
+        self.specifyfile.clicked.connect(controller.recorderController.specFile)
+        self.snapTIFFButton.clicked.connect(controller.recorderController.snapTIFF)
+        self.recButton.clicked.connect(controller.recorderController.startRecording)
+        self.specifyFrames.clicked.connect(controller.recorderController.specFrames)
+        self.specifyTime.clicked.connect(controller.recorderController.specTime)
+        self.recScanOnceBtn.clicked.connect(controller.recorderController.recScanOnce)
+        self.recScanLapseBtn.clicked.connect(controller.recorderController.recScanLapse)
+        self.untilSTOPbtn.clicked.connect(controller.recorderController.untilStop)
+        self.timeToRec.textChanged.connect(controller.recorderController.filesizeupdate)
+        self.numExpositionsEdit.textChanged.connect(controller.recorderController.filesizeupdate)
         
 class ViewCtrlWidget(QtGui.QWidget):
     def __init__(self, vb, *args, **kwargs):

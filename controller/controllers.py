@@ -130,6 +130,30 @@ class FFTController():
     def changePos(self):
         print('Change Pos')
         
+class RecorderController():
+    def __init__(self):
+        print('Recording Controller init')
+    def openFolder(self):
+        print('Open folder recorder')
+    def specFile(self):
+        print('Spec file')
+    def snapTIFF(self):
+        print('Snap TIFF')
+    def startRecording(self):
+        print('Start recording')
+    def specFrames(self):
+        print('Spec Frames')
+    def specTime(self):
+        print('Spec Time')
+    def recScanOnce(self):
+        print('Scan once')
+    def recScanLapse(self):
+        print('Scan lapse')
+    def untilStop(self):
+        print('Rec till stop')
+    def filesizeupdate(self):
+        print('File size update')
+
 
 
         

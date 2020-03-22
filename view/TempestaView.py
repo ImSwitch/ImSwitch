@@ -110,6 +110,7 @@ class TempestaView():
         
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = widgets.ScanWidget()
+        self.scanWidget.registerListener(self.controller)
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock, 'below', FocusLockDock)
         

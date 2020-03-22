@@ -5,7 +5,7 @@ Created on Fri Mar 20 15:17:46 2020
 @author: _Xavi
 """
 
-from TempestaController import TempestaController
+from controller.TempestaController import TempestaController
 from view.TempestaView import TempestaView
 from model.TempestaModel import TempestaModel
 

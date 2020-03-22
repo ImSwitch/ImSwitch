@@ -15,16 +15,9 @@ from pyqtgraph.dockarea import Dock, DockArea
 import matplotlib.pyplot as plt
 
 class ScanWidget(QtGui.QMainWindow):
-    ''' This class is intended as a widget in the bigger GUI, Thus all the
-    commented parameters etc. It contain an instance of stageScan and
-    pixel_scan which in turn harbour the analog and digital signals
-    respectively.
-    The function run starts the communication with the Nidaq through the
-    Scanner object. This object was initially written as a QThread object but
-    is not right now.
-    As seen in the commened lines of run() I also tried running in a QThread
-    created in run().
-    The rest of the functions contain mostly GUI related code.'''
+    ''' Widget containing scanner interface and beadscan reconstruction.
+            This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget'''
+            
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scanInLiveviewWar = QtGui.QMessageBox()
@@ -35,57 +28,41 @@ class ScanWidget(QtGui.QMainWindow):
         self.digModWarning.setInformativeText(
             "You need to be in digital laser modulation and external "
             "frame-trigger acquisition mode")
+        
         self.saveScanBtn = QtGui.QPushButton('Save Scan')
-        # TODO connect
         self.loadScanBtn = QtGui.QPushButton('Load Scan')
+        
         self.sampleRateEdit = QtGui.QLineEdit()
         self.sizeXPar = QtGui.QLineEdit('2')
-        #self.sizeXPar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('sizeX'))
         self.sizeYPar = QtGui.QLineEdit('2')
-        #self.sizeYPar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('sizeY'))
         self.sizeZPar = QtGui.QLineEdit('10')
-        #self.sizeZPar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('sizeZ'))
         self.seqTimePar = QtGui.QLineEdit('10')     # ms
-        #self.seqTimePar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('seqTime'))
         self.nrFramesPar = QtGui.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtGui.QLabel(str(self.scanDuration))
         self.stepSizeXYPar = QtGui.QLineEdit('0.1')
-        #self.stepSizeXYPar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('stepSizeXY'))
         self.stepSizeZPar = QtGui.QLineEdit('1')
-        #self.stepSizeZPar.textChanged.connect(
-         #   lambda: self.scanParameterChanged('stepSizeZ'))
-        self.sampleRate = 100000
+        
+        self.sampleRate = 100000 # Take from model
 
         self.scanMode = QtGui.QComboBox()
         self.scanModes = ['FOV scan', 'VOL scan', 'Line scan']
         self.scanMode.addItems(self.scanModes)
-        #self.scanMode.currentIndexChanged.connect(
-         #   lambda: self.setScanMode(self.scanMode.currentText()))
 
         self.primScanDim = QtGui.QComboBox()
         self.scanDims = ['x', 'y']
         self.primScanDim.addItems(self.scanDims)
-        #self.primScanDim.currentIndexChanged.connect(
-         #   lambda: self.setPrimScanDim(self.primScanDim.currentText()))
+        
         self.scanRadio = QtGui.QRadioButton('Scan')
-        #self.scanRadio.clicked.connect(lambda: self.setScanOrNot(True))
         self.scanRadio.setChecked(True)
         self.contLaserPulsesRadio = QtGui.QRadioButton('Cont. Laser Pulses')
-        #self.contLaserPulsesRadio.clicked.connect(
-         #   lambda: self.setScanOrNot(False))
         self.scanButton = QtGui.QPushButton('Scan')
         self.scanning = False
-        #self.scanButton.clicked.connect(self.scanOrAbort)
+    
         self.previewButton = QtGui.QPushButton('Plot scan path')
         self.previewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                          QtGui.QSizePolicy.Expanding)
-        #self.previewButton.clicked.connect(self.previewScan)
+    
         self.continuousCheck = QtGui.QCheckBox('Repeat')
         
         self.graph = GraphFrame()
@@ -139,13 +116,41 @@ class ScanWidget(QtGui.QMainWindow):
         grid.setRowMinimumHeight(1, 10)
         grid.setRowMinimumHeight(6, 10)
         grid.setRowMinimumHeight(13, 10)
+    
+    def registerListener(self, controller):
+        self.saveScanBtn.clicked.connect(controller.scanController.saveScan)
+        self.loadScanBtn.clicked.connect(controller.scanController.loadScan)
+        self.sizeXPar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('sizeX'))
+        self.sizeYPar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('sizeY'))
+        self.sizeZPar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('sizeZ'))
+        self.seqTimePar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('seqTime'))
+        self.stepSizeXYPar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('stepSizeXY'))
+        self.stepSizeZPar.textChanged.connect(
+            lambda: controller.scanController.scanParameterChanged('stepSizeZ'))
+        self.scanMode.currentIndexChanged.connect(
+            lambda: controller.scanController.setScanMode(self.scanMode.currentText()))
+        self.primScanDim.currentIndexChanged.connect(
+            lambda: controller.scanController.setPrimScanDim(self.primScanDim.currentText()))
+        self.scanRadio.clicked.connect(lambda: controller.scanController.setScanOrNot(True))
+        self.contLaserPulsesRadio.clicked.connect(
+            lambda: controller.scanController.setScanOrNot(False))
+        self.scanButton.clicked.connect(controller.scanController.scanOrAbort)
+        self.previewButton.clicked.connect(controller.scanController.previewScan)
+        self.multiScanWgt.registerListener(controller)
+        
+        
         
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.
     Fcn update() updates the plot of "device" with signal "signal"."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        # Take params from model
         #self.pxCycle = pxCycle
         #devs = list(pxCycle.sigDict.keys())
         self.plot = self.addPlot(row=1, col=0)
@@ -181,37 +186,31 @@ class MultipleScanWidget(QtGui.QFrame):
 
         self.makeImgBox = QtGui.QCheckBox('Build scan image')
         self.saveScanButton = QtGui.QPushButton('Save scan image')
-        #self.saveScanButton.pressed.connect(self.saveScan)
+        
         
         # Crosshair
         self.crosshair = guitools.Crosshair(self.illumWgt.vb)
         self.crossButton = QtGui.QPushButton('Crosshair')
         self.crossButton.setCheckable(True)
-        #self.crossButton.pressed.connect(self.crosshair.toggle)
+
         self.analysis_btn = QtGui.QPushButton('Analyze')
-        #self.analysis_btn.clicked.connect(self.worker.analyze)
         self.analysis_btn.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                         QtGui.QSizePolicy.Expanding)
         self.show_beads_btn = QtGui.QPushButton('Show beads')
-        #self.show_beads_btn.clicked.connect(self.worker.find_fp)
+
         self.quality_label = QtGui.QLabel('Quality level of points')
         self.quality_edit = QtGui.QLineEdit('0.05')
-        #self.quality_edit.editingFinished.connect(self.worker.find_fp)
+                           
         self.win_size_label = QtGui.QLabel('Window size [px]')
         self.win_size_edit = QtGui.QLineEdit('10')
-        #self.win_size_edit.editingFinished.connect(self.worker.find_fp)
+        
 
         self.beads_label = QtGui.QLabel('Bead number')
         self.beadsBox = QtGui.QComboBox()
-        #self.beadsBox.activated.connect(self.change_illum_image)
         self.change_beads_button = QtGui.QPushButton('Change')
-        #self.change_beads_button.clicked.connect(self.nextBead)
         self.overlayBox = QtGui.QComboBox()
-        #self.overlayBox.activated.connect(self.worker.overlay)
         self.overlay_check = QtGui.QCheckBox('Overlay')
-        #self.overlay_check.stateChanged.connect(self.worker.overlay)
         self.clear_btn = QtGui.QPushButton('Clear')
-        #self.clear_btn.clicked.connect(self.clear)
 
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
@@ -236,6 +235,19 @@ class MultipleScanWidget(QtGui.QFrame):
         grid.addWidget(self.clear_btn, 3, 6, 1, 2)
 
         grid.setColumnMinimumWidth(3, 100)
+    
+    def registerListener(self, controller):
+        self.saveScanButton.pressed.connect(controller.multiScanController.saveScan)
+        self.crossButton.pressed.connect(controller.multiScanController.toggleCrossHair)
+        self.analysis_btn.clicked.connect(controller.multiScanController.analyzeWorker)
+        self.show_beads_btn.clicked.connect(controller.multiScanController.find_fpWorker)
+        self.quality_edit.editingFinished.connect(controller.multiScanController.find_fpWorker)
+        self.win_size_edit.editingFinished.connect(controller.multiScanController.find_fpWorker)
+        self.beadsBox.activated.connect(controller.multiScanController.change_illum_image)
+        self.change_beads_button.clicked.connect(controller.multiScanController.nextBead)
+        self.overlayBox.activated.connect(controller.multiScanController.overlayWorker)
+        self.overlay_check.stateChanged.connect(controller.multiScanController.overlayWorker)
+        self.clear_btn.clicked.connect(controller.multiScanController.clear)
         
 class IllumImageWidget(pg.GraphicsLayoutWidget):
 

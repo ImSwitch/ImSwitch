@@ -153,6 +153,15 @@ class RecorderController():
         print('Rec till stop')
     def filesizeupdate(self):
         print('File size update')
+        
+class ViewController():
+    def __init__(self):
+        print('View Controller Init')
+    def liveview(self):
+        print('liveview')
+    def updateView(self):
+        print('Update view')
+
 
 
 

@@ -141,6 +141,7 @@ class TempestaView():
         layout.addWidget(self.viewCtrlWidget, 3, 0, 1, 2)
         
         self.recordingWidget = widgets.RecordingWidget()
+        self.recordingWidget.registerListener(self.controller)
         layout.addWidget(self.recordingWidget, 4, 0, 1, 2)
         
         console = ConsoleWidget(namespace={'pg': pg, 'np': np})

@@ -105,6 +105,7 @@ class TempestaView():
 
         FocusLockDock = Dock("Focus Lock", size=(400, 400))
         self.FocusLockWidget = widgets.FocusWidget()
+        self.FocusLockWidget.registerListener(self.controller)
         FocusLockDock.addWidget(self.FocusLockWidget)
         dockArea.addDock(FocusLockDock)
         

@@ -138,6 +138,7 @@ class TempestaView():
         layout.addWidget(self.imageWidget, 0, 2, 6, 1)
         
         self.viewCtrlWidget = widgets.ViewCtrlWidget(self.imageWidget.vb)
+        self.viewCtrlWidget.registerListener(self.controller)
         layout.addWidget(self.viewCtrlWidget, 3, 0, 1, 2)
         
         self.recordingWidget = widgets.RecordingWidget()

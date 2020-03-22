@@ -23,5 +23,6 @@ class TempestaController():
         self.laserController = controllers.LaserController()
         self.fftController = controllers.FFTController()
         self.recorderController = controllers.RecorderController()
+        self.viewController = controllers.ViewController()
         
         

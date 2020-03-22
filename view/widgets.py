@@ -901,10 +901,8 @@ class ViewCtrlWidget(QtGui.QWidget):
         self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                           QtGui.QSizePolicy.Expanding)
         # Link button click to funciton liveview
-        #self.liveviewButton.clicked.connect(self.liveview)
-#        self.liveviewButton.setEnabled(True)
-#        self.viewtimer = QtCore.QTimer()
-#        self.viewtimer.timeout.connect(self.updateView)
+        self.liveviewButton.setEnabled(True)
+        self.viewtimer = QtCore.QTimer()
 
         self.alignmentON = False
         self.ulensesON = False
@@ -937,6 +935,10 @@ class ViewCtrlWidget(QtGui.QWidget):
                                            QtGui.QSizePolicy.Expanding)
         self.crosshairButton.pressed.connect(self.crosshair.toggle)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+    
+    def registerListener(self, controller):
+        self.liveviewButton.clicked.connect(controller.viewController.liveview)
+        self.viewtimer.timeout.connect(controller.viewController.updateView)
         
 class ImageWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs):

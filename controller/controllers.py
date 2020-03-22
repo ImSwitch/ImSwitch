@@ -161,6 +161,14 @@ class ViewController():
         print('liveview')
     def updateView(self):
         print('Update view')
+       
+class ImageController():
+    def __init__(self):
+        print('Init Image controller')
+    def ROIchanged(self):
+        print('ROI changed')
+    def autoLevels(self):
+        print('Auto levels')
 
 
 

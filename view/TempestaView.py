@@ -65,6 +65,7 @@ class TempestaView():
         
         FFTDock = Dock("FFT Tool", size=(1, 1))
         self.FFTWidget = widgets.FFTWidget()
+        self.FFTWidget.registerListener(self.controller)
         FFTDock.addWidget(self.FFTWidget)
         self.illumDockArea.addDock(FFTDock)
         

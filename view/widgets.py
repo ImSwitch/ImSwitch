@@ -695,11 +695,9 @@ class FFTWidget(QtGui.QFrame):
         super().__init__(*args, **kwargs)
         # Do FFT button
         self.doButton = QtGui.QPushButton('Do FFT')
-        #self.doButton.clicked.connect(self.doFFT)
 
         # Period button and text for changing the vertical lines
         self.changePosButton = QtGui.QPushButton('Period (pix)')
-        #self.changePosButton.clicked.connect(self.changePos)
         
         self.linePos = QtGui.QLineEdit('4')
         
@@ -751,6 +749,10 @@ class FFTWidget(QtGui.QFrame):
         grid.setRowMinimumHeight(0, 300)
 
         self.init = False
+        
+    def registerListener(self, controller):
+        self.doButton.clicked.connect(controller.fftController.doFFT)
+        self.changePosButton.clicked.connect(controller.fftController.changePos)
 
 # Widget to control image or sequence recording. Recording only possible when
 # liveview active. StartRecording called when "Rec" presset. Creates recording

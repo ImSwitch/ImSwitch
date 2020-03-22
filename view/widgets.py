@@ -508,8 +508,6 @@ class AlignWidgetAverage(QtGui.QFrame):
         self.resetButton.clicked.connect(controller.alignAverageController.resetGraph)
         self.alignTimer.timeout.connect(controller.alignAverageController.updateValue)
         
-
-
 class AlignmentWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -518,21 +516,23 @@ class AlignmentWidget(QtGui.QWidget):
         self.angleEdit = QtGui.QLineEdit('30')
         self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
         self.angle = np.float(self.angleEdit.text())
-        #self.alignmentLineMakerButton.clicked.connect(self.alignmentToolAux)
         self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
         alignmentLayout.addWidget(QtGui.QLabel('Line Angle'), 0, 0)
         alignmentLayout.addWidget(self.angleEdit, 0, 1)
         alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
         
+    def registerListener(self, controller):
+        self.alignmentLineMakerButton.clicked.connect(controller.alignmentController.alignmentToolAux)
+        
 class LaserWidget(QtGui.QFrame):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.actControl = LaserControl('<h3>405<h3>', color=(130, 0, 200))
-        self.offControl = LaserControl('<h3>488<h3>', color=(0, 247, 255))
-        self.excControl = LaserControl('<h3>473<h3>', color=(0, 183, 255))      
+        self.actControl = LaserControl('<h3>405<h3>',405, color=(130, 0, 200))
+        self.offControl = LaserControl('<h3>488<h3>',488, color=(0, 247, 255))
+        self.excControl = LaserControl('<h3>473<h3>',473, color=(0, 183, 255))      
         
         self.DigCtrl = DigitalControl()
 
@@ -540,11 +540,16 @@ class LaserWidget(QtGui.QFrame):
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
         
-        
         grid.addWidget(self.actControl, 0, 0, 4, 1)
         grid.addWidget(self.offControl, 0, 1, 4, 1)
         grid.addWidget(self.excControl, 0, 2, 4, 1)
         grid.addWidget(self.DigCtrl, 4, 0, 2, 3)
+        
+    def registerListener(self, controller):
+        self.actControl.registerListener(controller)
+        self.offControl.registerListener(controller)
+        self.excControl.registerListener(controller)
+        self.DigCtrl.registerListener(controller)
         
 class DigitalControl(QtGui.QFrame):
 
@@ -558,24 +563,19 @@ class DigitalControl(QtGui.QFrame):
         title.setFixedHeight(20)
         
         self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
-        #actPower = str(self.controls[0].laser.power_mod.magnitude)
+        #From model actPower = str(self.controls[0].laser.power_mod.magnitude)
         self.ActPower = QtGui.QLineEdit('actPower')
-        #self.ActPower.textChanged.connect(self.updateDigitalPowers)
         #offPower = str(self.controls[1].laser.power_mod.magnitude)
         self.OffPower = QtGui.QLineEdit('offPower')
-        #self.OffPower.textChanged.connect(self.updateDigitalPowers)
         #excPower = str(self.controls[2].laser.power)
         self.ExcPower = QtGui.QLineEdit('excPower')
-        #self.ExcPower.textChanged.connect(self.updateDigitalPowers)
     
         self.DigitalControlButton = QtGui.QPushButton('Enable')
         self.DigitalControlButton.setCheckable(True)
-        #self.DigitalControlButton.clicked.connect(self.GlobalDigitalMod)
         style = "background-color: rgb{}".format((160, 160, 160))
         self.DigitalControlButton.setStyleSheet(style)
 
         self.updateDigPowersButton = QtGui.QPushButton('Update powers')
-        #self.updateDigPowersButton.clicked.connect(self.updateDigitalPowers)
         
         actUnit = QtGui.QLabel('mW')
         actUnit.setFixedWidth(20)
@@ -608,13 +608,20 @@ class DigitalControl(QtGui.QFrame):
         grid.addWidget(offModFrame, 1, 1)
         grid.addWidget(excModFrame, 1, 2)
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
+    
+    def registerListener(self, controller):
+        self.ActPower.textChanged.connect(controller.laserController.updateDigitalPowers)
+        self.OffPower.textChanged.connect(controller.laserController.updateDigitalPowers)
+        self.ExcPower.textChanged.connect(controller.laserController.updateDigitalPowers)
+        self.DigitalControlButton.clicked.connect(controller.laserController.GlobalDigitalMod)
+        self.updateDigPowersButton.clicked.connect(controller.laserController.updateDigitalPowers)
         
 class LaserControl(QtGui.QFrame):
-    def __init__(self, name, color, *args, **kwargs):
+    def __init__(self, name, laser, color, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
-        
+        self.laser = laser
         self.name = QtGui.QLabel(name)
         self.name.setTextFormat(QtCore.Qt.RichText)
         self.name.setAlignment(QtCore.Qt.AlignCenter)
@@ -628,7 +635,7 @@ class LaserControl(QtGui.QFrame):
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
 
         self.powerLabel = QtGui.QLabel('Power')
-        #powerMag = self.laser.power
+        #powerMag = self.laser.power From model
         self.powerIndicator = QtGui.QLabel('str(powerMag)')
         self.powerIndicator.setFixedWidth(50)
         self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
@@ -674,7 +681,10 @@ class LaserControl(QtGui.QFrame):
         self.grid.addWidget(powerFrame, 1, 0, 1, 2)
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
-        
+    def registerListener(self, controller):
+        self.enableButton.toggled.connect(lambda: controller.laserController.toggleLaser(self.laser))
+        self.slider.valueChanged[int].connect(lambda: controller.laserController.changeSlider(self.laser))
+        self.setPointEdit.returnPressed.connect(lambda: controller.laserController.changeEdit(self.laser))
         
         
         

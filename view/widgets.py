@@ -489,9 +489,7 @@ class AlignWidgetAverage(QtGui.QFrame):
         self.graph = guitools.SumpixelsGraph()
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-        #self.roiButton.clicked.connect(self.ROItoggle)
         self.resetButton = QtGui.QPushButton('Reset graph')
-        #self.resetButton.clicked.connect(self.resetGraph)
 
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
@@ -503,8 +501,13 @@ class AlignWidgetAverage(QtGui.QFrame):
         self.scansPerS = 10
         self.alignTime = 1000 / self.scansPerS
         self.alignTimer = QtCore.QTimer()
-        #self.alignTimer.timeout.connect(self.updateValue)
-#        self.alignTimer.start(self.alignTime)
+        #self.alignTimer.start(self.alignTime)
+        
+    def registerListener(self, controller):
+        self.roiButton.clicked.connect(controller.alignAverageController.ROItoggle)
+        self.resetButton.clicked.connect(controller.alignAverageController.resetGraph)
+        self.alignTimer.timeout.connect(controller.alignAverageController.updateValue)
+        
 
 
 class AlignmentWidget(QtGui.QWidget):

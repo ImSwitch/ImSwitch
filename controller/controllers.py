@@ -91,6 +91,17 @@ class AlignXYController():
         print('Align XY ROI toggle')
     def updateValue(self):
         print('update Align XY')
+        
+class AlignAverageController():
+    def __init__(self):
+        print('Init Z Alignment')
+    def ROItoggle(self):
+        print('ROI toggle')
+    def resetGraph(self):
+        print('Reset Graph Z Alignment')
+    def updateValue(self):
+        print('Update value Align Z')
+
 
         
         

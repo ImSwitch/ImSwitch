@@ -78,5 +78,10 @@ class PositionerController():
     def zMoveDown(self):
         print('z Move down')
 
+class ULensesController():
+    def __init__(self):
+        print('Init ulenses controller')
+    def ulensesToolAux(self):
+        print('Draw microlenses')
         
         

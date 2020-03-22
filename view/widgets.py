@@ -964,7 +964,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.ROI = guitools.ROI((0, 0), self.vb, (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
-        #self.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
         self.ROI.hide()
 
         # x and y profiles
@@ -986,11 +985,14 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.levelsButton.setEnabled(False)
         self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                         QtGui.QSizePolicy.Expanding)
-        #self.levelsButton.pressed.connect(self.autoLevels)
-
         proxy = QtGui.QGraphicsProxyWidget()
         proxy.setWidget(self.levelsButton)
         self.addItem(proxy, row=0, col=2)
+    
+    def registerListener(self, controller):      
+        self.ROI.sigRegionChangeFinished.connect(controller.imageController.ROIchanged)
+        self.levelsButton.pressed.connect(controller.imageController.autoLevels)
+
     
 class SettingsWidget(QtGui.QFrame):
     

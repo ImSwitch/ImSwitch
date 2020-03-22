@@ -7,7 +7,7 @@ Created on Sun Mar 22 10:40:53 2020
 
 class ScanController():
     def __init__(self):
-        print('init')
+        print('Init Scan Controller')
     def saveScan(self):
         print('save scan')
     def loadScan(self):
@@ -30,7 +30,7 @@ class ScanController():
         
 class MultipleScanController():
     def __init__(self):
-        print('init')
+        print('Init Multiple Scan Controller')
     def saveScan(self):
         print('save scan')
     def toggleCrossHair(self):
@@ -47,6 +47,21 @@ class MultipleScanController():
         print('Overlay Worker')
     def clear(self):
         print('Clear')
+        
+class FocusLockController():
+    def __init__(self):
+        print('Init Focus Lock Controller')
+    def unlockFocus(self):
+        print('Unlock focus')
+    def toggleFocus(self):
+        print('Toggle focus')
+    def movePZT(self):
+        print('Move PZT')
+    def focusCalibThreadStart(self):
+        print('Focus calib thread Start')
+    def showCalibCurve(self):
+        print('Focus calib curve')
+
     
         
         

@@ -290,14 +290,11 @@ class FocusWidget(QtGui.QFrame):
         super().__init__(*args, **kwargs)
         # Focus lock widgets
         self.kpEdit = QtGui.QLineEdit('0.008')
-        #self.kpEdit.textChanged.connect(self.unlockFocus)
         self.kpLabel = QtGui.QLabel('kp')
         self.kiEdit = QtGui.QLineEdit('0.0006')
-        #self.kiEdit.textChanged.connect(self.unlockFocus)
         self.kiLabel = QtGui.QLabel('ki')
         self.lockButton = QtGui.QPushButton('Lock')
         self.lockButton.setCheckable(True)
-        #self.lockButton.clicked.connect(self.toggleFocus)
         self.lockButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                       QtGui.QSizePolicy.Expanding)
         self.focusDataBox = QtGui.QCheckBox('Save focus data')
@@ -308,7 +305,7 @@ class FocusWidget(QtGui.QFrame):
         self.positionLabel = QtGui.QLabel('Position[um]')
         self.positionEdit = QtGui.QLineEdit('0')
         self.positionSetButton = QtGui.QPushButton('Set')
-        #self.positionSetButton.clicked.connect(self.movePZT)
+        
 
         # focus calibration widgets
         self.CalibFromLabel = QtGui.QLabel('from [um]')
@@ -318,10 +315,8 @@ class FocusWidget(QtGui.QFrame):
         self.focusCalibButton = QtGui.QPushButton('Calib')
         self.focusCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                             QtGui.QSizePolicy.Expanding)
-        #self.focusCalibButton.clicked.connect(self.focusCalibThread.start)
+        
         self.CalibCurveButton = QtGui.QPushButton('See Calib')
-        #self.CalibCurveButton.clicked.connect(self.showCalibCurve)
-        #self.CalibCurveWindow = CaribCurveWindow(self)
         self.calibrationDisplay = QtGui.QLineEdit('0 px --> 0 nm')
         self.focusLockGraph = pg.GraphicsWindow()
         self.webcamGraph =pg.GraphicsWindow()
@@ -348,6 +343,14 @@ class FocusWidget(QtGui.QFrame):
         grid.addWidget(self.positionLabel, 2, 6)
         grid.addWidget(self.positionEdit, 2, 7)
         grid.addWidget(self.positionSetButton, 3, 6, 1, 2)
+        
+    def registerListener(self, controller):
+        self.kpEdit.textChanged.connect(controller.focusLockController.unlockFocus)
+        self.kiEdit.textChanged.connect(controller.focusLockController.unlockFocus)
+        self.lockButton.clicked.connect(controller.focusLockController.toggleFocus)
+        self.positionSetButton.clicked.connect(controller.focusLockController.movePZT)
+        self.focusCalibButton.clicked.connect(controller.focusLockController.focusCalibThreadStart)
+        self.CalibCurveButton.clicked.connect(controller.focusLockController.showCalibCurve)
         
 class PositionerWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):

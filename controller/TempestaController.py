@@ -19,5 +19,7 @@ class TempestaController():
         self.uLensesController = controllers.ULensesController()
         self.alignXYController = controllers.AlignXYController()
         self.alignAverageController = controllers.AlignAverageController()
+        self.alignmentController = controllers.AlignmentController()
+        self.laserController = controllers.LaserController()
         
         

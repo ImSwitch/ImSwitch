@@ -2,7 +2,7 @@
 """
 Created on Sun Mar 22 10:40:53 2020
 
-@author: Testa4
+@author: _Xavi
 """
 
 class ScanController():
@@ -101,6 +101,27 @@ class AlignAverageController():
         print('Reset Graph Z Alignment')
     def updateValue(self):
         print('Update value Align Z')
+        
+class AlignmentController():
+    def __init__(self):
+        print('Init Alignment Controller')
+    def alignmentToolAux(self):
+        print('Alignment tool aux')
+        
+class LaserController():
+    def __init__(self):
+        print('Laser Controller init')
+    def toggleLaser(self, laser):
+        print('Laser toggle'+str(laser))
+    def changeSlider(self, laser):
+        print('Change slider'+str(laser))
+    def changeEdit(self, laser):
+        print('Change edit'+str(laser))
+    def updateDigitalPowers(self):
+        print('update digital powers')
+    def GlobalDigitalMod(self):
+        print('Global Digital Mod')
+        
 
 
         

@@ -70,6 +70,7 @@ class TempestaView():
         
         # Line Alignment Tool
         alignmentWidget = widgets.AlignmentWidget()
+        alignmentWidget.registerListener(self.controller)
         alignmentDock = Dock("Alignment Tool", size=(1, 1))
         alignmentDock.addWidget(alignmentWidget)
         self.illumDockArea.addDock(alignmentDock, 'right')
@@ -98,6 +99,7 @@ class TempestaView():
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
         self.laserWidgets = widgets.LaserWidget()
+        self.laserWidgets.registerListener(self.controller)
         laserDock.addWidget(self.laserWidgets)
         self.illumDockArea.addDock(laserDock, 'above', FFTDock) 
 

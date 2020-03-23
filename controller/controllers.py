@@ -27,6 +27,7 @@ class ScanController():
         print('Scan or Abort')
     def previewScan(self):
         print('previewScan')
+
         
 class MultipleScanController():
     def __init__(self):
@@ -153,6 +154,7 @@ class RecorderController():
         print('Rec till stop')
     def filesizeupdate(self):
         print('File size update')
+        
         
 class ViewController():
     def __init__(self):

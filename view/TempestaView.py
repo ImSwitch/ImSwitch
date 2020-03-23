@@ -24,6 +24,7 @@ class TempestaView():
 
     def setController(self, controller):
         self.controller = controller
+
         
     def startView(self):
         # Think what is self. and what is not !

@@ -12,7 +12,7 @@ from model.TempestaModel import TempestaModel
 model = TempestaModel()
 view = TempestaView(model)
 controller = TempestaController(model, view)
-view.setController(controller)
+view.registerController(controller)
 view.startView()
 
 

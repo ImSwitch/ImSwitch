@@ -20,13 +20,8 @@ class TempestaView():
 
         self.model = model
         self.app = QtGui.QApplication([])
-        self.win = QtGui.QMainWindow()    
-
-    def setController(self, controller):
-        self.controller = controller
-
+        self.win = QtGui.QMainWindow()  
         
-    def startView(self):
         # Think what is self. and what is not !
         
         # Shortcuts
@@ -66,42 +61,36 @@ class TempestaView():
         
         FFTDock = Dock("FFT Tool", size=(1, 1))
         self.FFTWidget = widgets.FFTWidget()
-        self.FFTWidget.registerListener(self.controller)
         FFTDock.addWidget(self.FFTWidget)
         self.illumDockArea.addDock(FFTDock)
         
         # Line Alignment Tool
-        alignmentWidget = widgets.AlignmentWidget()
-        alignmentWidget.registerListener(self.controller)
+        self.alignmentWidget = widgets.AlignmentWidget()
         alignmentDock = Dock("Alignment Tool", size=(1, 1))
-        alignmentDock.addWidget(alignmentWidget)
+        alignmentDock.addWidget(self.alignmentWidget)
         self.illumDockArea.addDock(alignmentDock, 'right')
         
         # Z align widget
         ZalignDock = Dock("Axial Alignment Tool", size=(1, 1))
         self.ZalignWidget = widgets.AlignWidgetAverage()
-        self.ZalignWidget.registerListener(self.controller)
         ZalignDock.addWidget(self.ZalignWidget)
         self.illumDockArea.addDock(ZalignDock, 'above', alignmentDock)
 
         # Rotational align widget
         RotalignDock = Dock("Rotational Alignment Tool", size=(1, 1))
         self.RotalignWidget = widgets.AlignWidgetXYProject()
-        self.RotalignWidget.registerListener(self.controller)
         RotalignDock.addWidget(self.RotalignWidget)
         self.illumDockArea.addDock(RotalignDock, 'above', alignmentDock)
         
         # ulenses Alignment Tool
         self.ulensesWidget = widgets.ULensesWidget()
         ulensesDock = Dock("uLenses Tool", size=(1, 1))
-        self.ulensesWidget.registerListener(self.controller)
         ulensesDock.addWidget(self.ulensesWidget)
         self.illumDockArea.addDock(ulensesDock, 'above', alignmentDock)
         
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
         self.laserWidgets = widgets.LaserWidget()
-        self.laserWidgets.registerListener(self.controller)
         laserDock.addWidget(self.laserWidgets)
         self.illumDockArea.addDock(laserDock, 'above', FFTDock) 
 
@@ -112,13 +101,11 @@ class TempestaView():
 
         FocusLockDock = Dock("Focus Lock", size=(400, 400))
         self.FocusLockWidget = widgets.FocusWidget()
-        self.FocusLockWidget.registerListener(self.controller)
         FocusLockDock.addWidget(self.FocusLockWidget)
         dockArea.addDock(FocusLockDock)
         
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = widgets.ScanWidget()
-        self.scanWidget.registerListener(self.controller)
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock, 'below', FocusLockDock)
         
@@ -126,7 +113,6 @@ class TempestaView():
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
         self.piezoWidget = widgets.PositionerWidget()
-        self.piezoWidget.registerListener(self.controller)
         piezoDock.addWidget(self.piezoWidget)
         dockArea.addDock(piezoDock, 'bottom', alignmentDock)
         
@@ -136,15 +122,12 @@ class TempestaView():
         layout.addWidget(self.settingsWidget, 1, 0, 2, 2)
         
         self.imageWidget = widgets.ImageWidget()
-        self.imageWidget.registerListener(self.controller)
         layout.addWidget(self.imageWidget, 0, 2, 6, 1)
         
         self.viewCtrlWidget = widgets.ViewCtrlWidget(self.imageWidget.vb)
-        self.viewCtrlWidget.registerListener(self.controller)
         layout.addWidget(self.viewCtrlWidget, 3, 0, 1, 2)
         
         self.recordingWidget = widgets.RecordingWidget()
-        self.recordingWidget.registerListener(self.controller)
         layout.addWidget(self.recordingWidget, 4, 0, 1, 2)
         
         console = ConsoleWidget(namespace={'pg': pg, 'np': np})
@@ -157,7 +140,23 @@ class TempestaView():
         layout.setColumnMinimumWidth(2, 1350)
         self.imageWidget.ci.layout.setColumnFixedWidth(1, 1150)
         self.imageWidget.ci.layout.setRowFixedHeight(1, 1150)
+
+    def registerController(self, controller):
+        self.FFTWidget.registerListener(controller)
+        self.alignmentWidget.registerListener(controller)
+        self.ZalignWidget.registerListener(controller)
+        self.RotalignWidget.registerListener(controller)
+        self.ulensesWidget.registerListener(controller)
+        self.laserWidgets.registerListener(controller)
+        self.FocusLockWidget.registerListener(controller)
+        self.scanWidget.registerListener(controller)
+        self.piezoWidget.registerListener(controller)
+        self.imageWidget.registerListener(controller)
+        self.viewCtrlWidget.registerListener(controller)
+        self.recordingWidget.registerListener(controller)
+
         
+    def startView(self):
         self.win.show()
         sys.exit(self.app.exec_())
         

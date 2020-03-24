@@ -68,8 +68,8 @@ class PositionerController():
         print('Init Positioner Controller')
     def move(self, axis, dist):
         print('Move axis '+ axis)
-#        newPos = model.XYpiezzo.move(axis, dist)
-#        view.Positioner.newPos(axis, newPos)
+       newPos = masterController.move(axis, dist)
+       view.Positioner.newPos(axis, newPos)
 
 class ULensesController():
     def __init__(self):

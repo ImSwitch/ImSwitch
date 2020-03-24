@@ -400,6 +400,11 @@ class PositionerWidget(QtGui.QWidget):
         layout.addWidget(self.zStepEdit, 3, 4)
         layout.addWidget(self.zStepUnit, 3, 5)
         
+    def newPos(self, axis, newPos):
+        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
+        getattr(self, axis + "Label").setText(newText)
+
+
     def registerListener(self, controller):   
         self.xUpButton.pressed.connect(lambda: controller.positionerController.move('x', float(self.xStepEdit.text())))
         self.xDownButton.pressed.connect(lambda: controller.positionerController.move('x', -float(self.xStepEdit.text())))

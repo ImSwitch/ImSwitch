@@ -401,12 +401,12 @@ class PositionerWidget(QtGui.QWidget):
         layout.addWidget(self.zStepUnit, 3, 5)
         
     def registerListener(self, controller):   
-        self.xUpButton.pressed.connect(controller.positionerController.xMoveUp)
-        self.xDownButton.pressed.connect(controller.positionerController.xMoveDown)
-        self.yUpButton.pressed.connect(controller.positionerController.yMoveUp)
-        self.yDownButton.pressed.connect(controller.positionerController.yMoveDown)
-        self.zUpButton.pressed.connect(controller.positionerController.zMoveUp)
-        self.zDownButton.pressed.connect(controller.positionerController.zMoveDown)
+        self.xUpButton.pressed.connect(lambda: controller.positionerController.move('x', float(self.xStepEdit.text())))
+        self.xDownButton.pressed.connect(lambda: controller.positionerController.move('x', -float(self.xStepEdit.text())))
+        self.yUpButton.pressed.connect(lambda: controller.positionerController.move('y', float(self.yStepEdit.text())))
+        self.yDownButton.pressed.connect(lambda: controller.positionerController.move('y', -float(self.yStepEdit.text())))
+        self.zUpButton.pressed.connect(lambda: controller.positionerController.move('z', float(self.zStepEdit.text())))
+        self.zDownButton.pressed.connect(lambda: controller.positionerController.move('z', -float(self.zStepEdit.text())))
         
 class ULensesWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):

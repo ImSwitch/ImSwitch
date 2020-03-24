@@ -66,19 +66,34 @@ class FocusLockController():
 class PositionerController():
     def __init__(self):
         print('Init Positioner Controller')
-    def xMoveUp(self):
-        print('x Move up')
-    def xMoveDown(self):
-        print('x Move down')
-    def yMoveUp(self):
-        print('y Move up')
-    def yMoveDown(self):
-        print('y Move down')
-    def zMoveUp(self):
-        print('z Move up')
-    def zMoveDown(self):
-        print('z Move down')
-
+    def move(self, axis, dist):
+        print('Move axis '+ axis)
+# def move(self, axis, dist):
+#        """moves the position along the axis specified a distance dist."""
+#
+#        # read initial position for all channels
+#        texts = [getattr(self, ax + "Label").text()
+#                 for ax in self.activeChannels]
+#        initPos = [re.findall(r"[-+]?\d*\.\d+|[-+]?\d+", t)[0] for t in texts]
+#        initPos = np.array(initPos, dtype=float)[:, np.newaxis]
+#        fullPos = np.repeat(initPos, self.nSamples, axis=1)
+#
+#        # make position ramp for moving axis
+#        ramp = makeRamp(0, dist, self.nSamples)
+#        fullPos[self.activeChannels.index(axis)] += ramp
+#
+#        # convert um to V and send signal to piezo
+#        factors = np.array([i for i in convFactors.values()])[:, np.newaxis]
+#        fullSignal = fullPos/factors
+#        self.aotask.write(fullSignal, auto_start=True)
+#        self.aotask.wait_until_done()
+#        self.aotask.stop()
+#
+#        # update position text
+#        newPos = fullPos[self.activeChannels.index(axis)][-1]
+#        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
+#        getattr(self, axis + "Label").setText(newText)
+        
 class ULensesController():
     def __init__(self):
         print('Init ulenses controller')

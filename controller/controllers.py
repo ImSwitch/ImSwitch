@@ -4,9 +4,15 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
-
-class ScanController():
-    def __init__(self):
+class WidgetController():
+    def __init__(self, master, widget):
+        self.master = master
+        self.widget = widget
+        
+class ScanController(WidgetController):
+    def __init__(self, master, widget):
+        super().__init__(master, widget)
+        self.multipleScanController = MultipleScanController(master, widget.multiScanWgt)
         print('Init Scan Controller')
     def saveScan(self):
         print('save scan')
@@ -28,9 +34,9 @@ class ScanController():
     def previewScan(self):
         print('previewScan')
 
-        
-class MultipleScanController():
-    def __init__(self):
+class MultipleScanController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Multiple Scan Controller')
     def saveScan(self):
         print('save scan')
@@ -49,8 +55,9 @@ class MultipleScanController():
     def clear(self):
         print('Clear')
         
-class FocusLockController():
-    def __init__(self):
+class FocusLockController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Focus Lock Controller')
     def unlockFocus(self):
         print('Unlock focus')
@@ -63,30 +70,34 @@ class FocusLockController():
     def showCalibCurve(self):
         print('Focus calib curve')
         
-class PositionerController():
-    def __init__(self):
+class PositionerController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Positioner Controller')
     def move(self, axis, dist):
         print('Move axis '+ axis)
-       newPos = masterController.move(axis, dist)
-       view.Positioner.newPos(axis, newPos)
+#       newPos = masterController.move(axis, dist)
+ #      view.Positioner.newPos(axis, newPos)
 
-class ULensesController():
-    def __init__(self):
+class ULensesController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init ulenses controller')
     def ulensesToolAux(self):
         print('Draw microlenses')
   
-class AlignXYController():
-    def __init__(self):
+class AlignXYController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init XY Alignment')
     def ROItoggle(self):
         print('Align XY ROI toggle')
     def updateValue(self):
         print('update Align XY')
         
-class AlignAverageController():
-    def __init__(self):
+class AlignAverageController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Z Alignment')
     def ROItoggle(self):
         print('ROI toggle')
@@ -95,14 +106,16 @@ class AlignAverageController():
     def updateValue(self):
         print('Update value Align Z')
         
-class AlignmentController():
-    def __init__(self):
+class AlignmentController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Alignment Controller')
     def alignmentToolAux(self):
         print('Alignment tool aux')
         
-class LaserController():
-    def __init__(self):
+class LaserController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Laser Controller init')
     def toggleLaser(self, laser):
         print('Laser toggle'+str(laser))
@@ -115,16 +128,18 @@ class LaserController():
     def GlobalDigitalMod(self):
         print('Global Digital Mod')
         
-class FFTController():
-    def __init__(self):
+class FFTController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('init FFT controller')
     def doFFT(self):
         print('Do FFT')
     def changePos(self):
         print('Change Pos')
         
-class RecorderController():
-    def __init__(self):
+class RecorderController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Recording Controller init')
     def openFolder(self):
         print('Open folder recorder')
@@ -148,16 +163,18 @@ class RecorderController():
         print('File size update')
         
         
-class ViewController():
-    def __init__(self):
+class ViewController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('View Controller Init')
     def liveview(self):
         print('liveview')
     def updateView(self):
         print('Update view')
        
-class ImageController():
-    def __init__(self):
+class ImageController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         print('Init Image controller')
     def ROIchanged(self):
         print('ROI changed')

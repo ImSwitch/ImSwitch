@@ -60,8 +60,8 @@ class TempestaView():
         self.illumDockArea = DockArea()
         
         FFTDock = Dock("FFT Tool", size=(1, 1))
-        self.FFTWidget = widgets.FFTWidget()
-        FFTDock.addWidget(self.FFTWidget)
+        self.fftWidget = widgets.FFTWidget()
+        FFTDock.addWidget(self.fftWidget)
         self.illumDockArea.addDock(FFTDock)
         
         # Line Alignment Tool
@@ -72,14 +72,14 @@ class TempestaView():
         
         # Z align widget
         ZalignDock = Dock("Axial Alignment Tool", size=(1, 1))
-        self.ZalignWidget = widgets.AlignWidgetAverage()
-        ZalignDock.addWidget(self.ZalignWidget)
+        self.alignWidgetAverage = widgets.AlignWidgetAverage()
+        ZalignDock.addWidget(self.alignWidgetAverage)
         self.illumDockArea.addDock(ZalignDock, 'above', alignmentDock)
 
         # Rotational align widget
         RotalignDock = Dock("Rotational Alignment Tool", size=(1, 1))
-        self.RotalignWidget = widgets.AlignWidgetXYProject()
-        RotalignDock.addWidget(self.RotalignWidget)
+        self.alignWidgetXY = widgets.AlignWidgetXY()
+        RotalignDock.addWidget(self.alignWidgetXY)
         self.illumDockArea.addDock(RotalignDock, 'above', alignmentDock)
         
         # ulenses Alignment Tool
@@ -142,18 +142,18 @@ class TempestaView():
         self.imageWidget.ci.layout.setRowFixedHeight(1, 1150)
 
     def registerController(self, controller):
-        self.FFTWidget.registerListener(controller)
-        self.alignmentWidget.registerListener(controller)
-        self.ZalignWidget.registerListener(controller)
-        self.RotalignWidget.registerListener(controller)
-        self.ulensesWidget.registerListener(controller)
-        self.laserWidgets.registerListener(controller)
-        self.focusLockWidget.registerListener(controller)
-        self.scanWidget.registerListener(controller)
-        self.positionerWidget.registerListener(controller)
-        self.imageWidget.registerListener(controller)
-        self.viewCtrlWidget.registerListener(controller)
-        self.recordingWidget.registerListener(controller)
+        self.scanWidget.registerListener(controller.scanController)
+        self.focusLockWidget.registerListener(controller.focusLockController)
+        self.positionerWidget.registerListener(controller.positionerController)
+        self.ulensesWidget.registerListener(controller.uLensesController)
+        self.alignWidgetXY.registerListener(controller.alignXYController)
+        self.alignWidgetAverage.registerListener(controller.alignAverageController)
+        self.alignmentWidget.registerListener(controller.alignmentController)
+        self.laserWidgets.registerListener(controller.laserController)
+        self.fftWidget.registerListener(controller.fftController)
+        self.recordingWidget.registerListener(controller.recorderController)
+        self.viewCtrlWidget.registerListener(controller.viewController)
+        self.imageWidget.registerListener(controller.imageController)
 
         
     def startView(self):

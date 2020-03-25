@@ -118,32 +118,30 @@ class ScanWidget(QtGui.QMainWindow):
         grid.setRowMinimumHeight(13, 10)
     
     def registerListener(self, controller):
-        self.saveScanBtn.clicked.connect(controller.scanController.saveScan)
-        self.loadScanBtn.clicked.connect(controller.scanController.loadScan)
+        self.saveScanBtn.clicked.connect(controller.saveScan)
+        self.loadScanBtn.clicked.connect(controller.loadScan)
         self.sizeXPar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('sizeX'))
+            lambda: controller.scanParameterChanged('sizeX'))
         self.sizeYPar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('sizeY'))
+            lambda: controller.scanParameterChanged('sizeY'))
         self.sizeZPar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('sizeZ'))
+            lambda: controller.scanParameterChanged('sizeZ'))
         self.seqTimePar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('seqTime'))
+            lambda: controller.scanParameterChanged('seqTime'))
         self.stepSizeXYPar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('stepSizeXY'))
+            lambda: controller.scanParameterChanged('stepSizeXY'))
         self.stepSizeZPar.textChanged.connect(
-            lambda: controller.scanController.scanParameterChanged('stepSizeZ'))
+            lambda: controller.scanParameterChanged('stepSizeZ'))
         self.scanMode.currentIndexChanged.connect(
-            lambda: controller.scanController.setScanMode(self.scanMode.currentText()))
+            lambda: controller.setScanMode(self.scanMode.currentText()))
         self.primScanDim.currentIndexChanged.connect(
-            lambda: controller.scanController.setPrimScanDim(self.primScanDim.currentText()))
-        self.scanRadio.clicked.connect(lambda: controller.scanController.setScanOrNot(True))
+            lambda: controller.setPrimScanDim(self.primScanDim.currentText()))
+        self.scanRadio.clicked.connect(lambda: controller.setScanOrNot(True))
         self.contLaserPulsesRadio.clicked.connect(
-            lambda: controller.scanController.setScanOrNot(False))
-        self.scanButton.clicked.connect(controller.scanController.scanOrAbort)
-        self.previewButton.clicked.connect(controller.scanController.previewScan)
-        self.multiScanWgt.registerListener(controller)
-        
-        
+            lambda: controller.setScanOrNot(False))
+        self.scanButton.clicked.connect(controller.scanOrAbort)
+        self.previewButton.clicked.connect(controller.previewScan)
+        self.multiScanWgt.registerListener(controller.multipleScanController)
         
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.
@@ -237,17 +235,17 @@ class MultipleScanWidget(QtGui.QFrame):
         grid.setColumnMinimumWidth(3, 100)
     
     def registerListener(self, controller):
-        self.saveScanButton.pressed.connect(controller.multiScanController.saveScan)
-        self.crossButton.pressed.connect(controller.multiScanController.toggleCrossHair)
-        self.analysis_btn.clicked.connect(controller.multiScanController.analyzeWorker)
-        self.show_beads_btn.clicked.connect(controller.multiScanController.find_fpWorker)
-        self.quality_edit.editingFinished.connect(controller.multiScanController.find_fpWorker)
-        self.win_size_edit.editingFinished.connect(controller.multiScanController.find_fpWorker)
-        self.beadsBox.activated.connect(controller.multiScanController.change_illum_image)
-        self.change_beads_button.clicked.connect(controller.multiScanController.nextBead)
-        self.overlayBox.activated.connect(controller.multiScanController.overlayWorker)
-        self.overlay_check.stateChanged.connect(controller.multiScanController.overlayWorker)
-        self.clear_btn.clicked.connect(controller.multiScanController.clear)
+        self.saveScanButton.pressed.connect(controller.saveScan)
+        self.crossButton.pressed.connect(controller.toggleCrossHair)
+        self.analysis_btn.clicked.connect(controller.analyzeWorker)
+        self.show_beads_btn.clicked.connect(controller.find_fpWorker)
+        self.quality_edit.editingFinished.connect(controller.find_fpWorker)
+        self.win_size_edit.editingFinished.connect(controller.find_fpWorker)
+        self.beadsBox.activated.connect(controller.change_illum_image)
+        self.change_beads_button.clicked.connect(controller.nextBead)
+        self.overlayBox.activated.connect(controller.overlayWorker)
+        self.overlay_check.stateChanged.connect(controller.overlayWorker)
+        self.clear_btn.clicked.connect(controller.clear)
         
 class IllumImageWidget(pg.GraphicsLayoutWidget):
 
@@ -345,12 +343,12 @@ class FocusWidget(QtGui.QFrame):
         grid.addWidget(self.positionSetButton, 3, 6, 1, 2)
         
     def registerListener(self, controller):
-        self.kpEdit.textChanged.connect(controller.focusLockController.unlockFocus)
-        self.kiEdit.textChanged.connect(controller.focusLockController.unlockFocus)
-        self.lockButton.clicked.connect(controller.focusLockController.toggleFocus)
-        self.positionSetButton.clicked.connect(controller.focusLockController.movePZT)
-        self.focusCalibButton.clicked.connect(controller.focusLockController.focusCalibThreadStart)
-        self.CalibCurveButton.clicked.connect(controller.focusLockController.showCalibCurve)
+        self.kpEdit.textChanged.connect(controller.unlockFocus)
+        self.kiEdit.textChanged.connect(controller.unlockFocus)
+        self.lockButton.clicked.connect(controller.toggleFocus)
+        self.positionSetButton.clicked.connect(controller.movePZT)
+        self.focusCalibButton.clicked.connect(controller.focusCalibThreadStart)
+        self.CalibCurveButton.clicked.connect(controller.showCalibCurve)
         
 class PositionerWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
@@ -406,12 +404,12 @@ class PositionerWidget(QtGui.QWidget):
 
 
     def registerListener(self, controller):   
-        self.xUpButton.pressed.connect(lambda: controller.positionerController.move('x', float(self.xStepEdit.text())))
-        self.xDownButton.pressed.connect(lambda: controller.positionerController.move('x', -float(self.xStepEdit.text())))
-        self.yUpButton.pressed.connect(lambda: controller.positionerController.move('y', float(self.yStepEdit.text())))
-        self.yDownButton.pressed.connect(lambda: controller.positionerController.move('y', -float(self.yStepEdit.text())))
-        self.zUpButton.pressed.connect(lambda: controller.positionerController.move('z', float(self.zStepEdit.text())))
-        self.zDownButton.pressed.connect(lambda: controller.positionerController.move('z', -float(self.zStepEdit.text())))
+        self.xUpButton.pressed.connect(lambda: controller.move('x', float(self.xStepEdit.text())))
+        self.xDownButton.pressed.connect(lambda: controller.move('x', -float(self.xStepEdit.text())))
+        self.yUpButton.pressed.connect(lambda: controller.move('y', float(self.yStepEdit.text())))
+        self.yDownButton.pressed.connect(lambda: controller.move('y', -float(self.yStepEdit.text())))
+        self.zUpButton.pressed.connect(lambda: controller.move('z', float(self.zStepEdit.text())))
+        self.zDownButton.pressed.connect(lambda: controller.move('z', -float(self.zStepEdit.text())))
         
 class ULensesWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
@@ -440,9 +438,9 @@ class ULensesWidget(QtGui.QWidget):
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
         
     def registerListener(self, controller):
-        self.ulensesButton.clicked.connect(controller.uLensesController.ulensesToolAux)
+        self.ulensesButton.clicked.connect(controller.ulensesToolAux)
         
-class AlignWidgetXYProject(QtGui.QFrame):
+class AlignWidgetXY(QtGui.QFrame):
 
     def __init__(self, *args, **kwargs):
 
@@ -477,8 +475,8 @@ class AlignWidgetXYProject(QtGui.QFrame):
         self.s_fac = 0.3
         
     def registerListener(self, controller):
-        self.roiButton.clicked.connect(controller.alignXYController.ROItoggle)
-        self.alignTimer.timeout.connect(controller.alignXYController.updateValue)
+        self.roiButton.clicked.connect(controller.ROItoggle)
+        self.alignTimer.timeout.connect(controller.updateValue)
 
 class AlignWidgetAverage(QtGui.QFrame):
 
@@ -509,9 +507,9 @@ class AlignWidgetAverage(QtGui.QFrame):
         #self.alignTimer.start(self.alignTime)
         
     def registerListener(self, controller):
-        self.roiButton.clicked.connect(controller.alignAverageController.ROItoggle)
-        self.resetButton.clicked.connect(controller.alignAverageController.resetGraph)
-        self.alignTimer.timeout.connect(controller.alignAverageController.updateValue)
+        self.roiButton.clicked.connect(controller.ROItoggle)
+        self.resetButton.clicked.connect(controller.resetGraph)
+        self.alignTimer.timeout.connect(controller.updateValue)
         
 class AlignmentWidget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
@@ -528,7 +526,7 @@ class AlignmentWidget(QtGui.QWidget):
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
         
     def registerListener(self, controller):
-        self.alignmentLineMakerButton.clicked.connect(controller.alignmentController.alignmentToolAux)
+        self.alignmentLineMakerButton.clicked.connect(controller.alignmentToolAux)
         
 class LaserWidget(QtGui.QFrame):
 
@@ -615,11 +613,11 @@ class DigitalControl(QtGui.QFrame):
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
     
     def registerListener(self, controller):
-        self.ActPower.textChanged.connect(controller.laserController.updateDigitalPowers)
-        self.OffPower.textChanged.connect(controller.laserController.updateDigitalPowers)
-        self.ExcPower.textChanged.connect(controller.laserController.updateDigitalPowers)
-        self.DigitalControlButton.clicked.connect(controller.laserController.GlobalDigitalMod)
-        self.updateDigPowersButton.clicked.connect(controller.laserController.updateDigitalPowers)
+        self.ActPower.textChanged.connect(controller.updateDigitalPowers)
+        self.OffPower.textChanged.connect(controller.updateDigitalPowers)
+        self.ExcPower.textChanged.connect(controller.updateDigitalPowers)
+        self.DigitalControlButton.clicked.connect(controller.GlobalDigitalMod)
+        self.updateDigPowersButton.clicked.connect(controller.updateDigitalPowers)
         
 class LaserControl(QtGui.QFrame):
     def __init__(self, name, laser, color, *args, **kwargs):
@@ -687,9 +685,9 @@ class LaserControl(QtGui.QFrame):
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
     def registerListener(self, controller):
-        self.enableButton.toggled.connect(lambda: controller.laserController.toggleLaser(self.laser))
-        self.slider.valueChanged[int].connect(lambda: controller.laserController.changeSlider(self.laser))
-        self.setPointEdit.returnPressed.connect(lambda: controller.laserController.changeEdit(self.laser))
+        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
+        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
+        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))
         
         
         
@@ -756,8 +754,8 @@ class FFTWidget(QtGui.QFrame):
         self.init = False
         
     def registerListener(self, controller):
-        self.doButton.clicked.connect(controller.fftController.doFFT)
-        self.changePosButton.clicked.connect(controller.fftController.changePos)
+        self.doButton.clicked.connect(controller.doFFT)
+        self.changePosButton.clicked.connect(controller.changePos)
 
 # Widget to control image or sequence recording. Recording only possible when
 # liveview active. StartRecording called when "Rec" presset. Creates recording
@@ -883,17 +881,17 @@ class RecordingWidget(QtGui.QFrame):
         self.specifyTime.setChecked(True)
 
     def registerListener(self, controller):
-        self.openFolderButton.clicked.connect(controller.recorderController.openFolder)
-        self.specifyfile.clicked.connect(controller.recorderController.specFile)
-        self.snapTIFFButton.clicked.connect(controller.recorderController.snapTIFF)
-        self.recButton.clicked.connect(controller.recorderController.startRecording)
-        self.specifyFrames.clicked.connect(controller.recorderController.specFrames)
-        self.specifyTime.clicked.connect(controller.recorderController.specTime)
-        self.recScanOnceBtn.clicked.connect(controller.recorderController.recScanOnce)
-        self.recScanLapseBtn.clicked.connect(controller.recorderController.recScanLapse)
-        self.untilSTOPbtn.clicked.connect(controller.recorderController.untilStop)
-        self.timeToRec.textChanged.connect(controller.recorderController.filesizeupdate)
-        self.numExpositionsEdit.textChanged.connect(controller.recorderController.filesizeupdate)
+        self.openFolderButton.clicked.connect(controller.openFolder)
+        self.specifyfile.clicked.connect(controller.specFile)
+        self.snapTIFFButton.clicked.connect(controller.snapTIFF)
+        self.recButton.clicked.connect(controller.startRecording)
+        self.specifyFrames.clicked.connect(controller.specFrames)
+        self.specifyTime.clicked.connect(controller.specTime)
+        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
+        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
+        self.untilSTOPbtn.clicked.connect(controller.untilStop)
+        self.timeToRec.textChanged.connect(controller.filesizeupdate)
+        self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
 class ViewCtrlWidget(QtGui.QWidget):
     def __init__(self, vb, *args, **kwargs):
@@ -942,8 +940,8 @@ class ViewCtrlWidget(QtGui.QWidget):
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
     
     def registerListener(self, controller):
-        self.liveviewButton.clicked.connect(controller.viewController.liveview)
-        self.viewtimer.timeout.connect(controller.viewController.updateView)
+        self.liveviewButton.clicked.connect(controller.liveview)
+        self.viewtimer.timeout.connect(controller.updateView)
         
 class ImageWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs):
@@ -995,8 +993,8 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.addItem(proxy, row=0, col=2)
     
     def registerListener(self, controller):      
-        self.ROI.sigRegionChangeFinished.connect(controller.imageController.ROIchanged)
-        self.levelsButton.pressed.connect(controller.imageController.autoLevels)
+        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
+        self.levelsButton.pressed.connect(controller.autoLevels)
 
     
 class SettingsWidget(QtGui.QFrame):

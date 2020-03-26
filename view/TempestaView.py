@@ -155,7 +155,6 @@ class TempestaView():
         self.viewCtrlWidget.registerListener(controller.viewController)
         self.imageWidget.registerListener(controller.imageController)
 
-        
     def startView(self):
         self.win.show()
         sys.exit(self.app.exec_())

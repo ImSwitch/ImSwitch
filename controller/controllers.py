@@ -4,6 +4,8 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
+import numpy as np
+
 class WidgetController():
     def __init__(self, master, widget):
         self.master = master
@@ -33,7 +35,9 @@ class ScanController(WidgetController):
         print('Scan or Abort')
     def previewScan(self):
         print('previewScan')
-
+    def getSampleRate(self):
+        return 10000
+    
 class MultipleScanController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,20 +75,15 @@ class FocusLockController(WidgetController):
         print('Focus calib curve')
         
 class PositionerController(WidgetController):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Init Positioner Controller')
     def move(self, axis, dist):
-        print('Move axis '+ axis)
-#       newPos = masterController.move(axis, dist)
- #      view.Positioner.newPos(axis, newPos)
+        newPos = self.master.moveStage(axis, dist)
+        self.widget.newPos(axis, newPos)
 
 class ULensesController(WidgetController):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Init ulenses controller')
-    def ulensesToolAux(self):
-        print('Draw microlenses')
+    def getImageSize(self):
+        return self.master.getImageSize()
+    def addTovb(self, plot):
+        self.master.addItemTovb(plot)
   
 class AlignXYController(WidgetController):
     def __init__(self, *args, **kwargs):
@@ -127,15 +126,13 @@ class LaserController(WidgetController):
         print('update digital powers')
     def GlobalDigitalMod(self):
         print('Global Digital Mod')
+    def getPower(laser):
+        return 200
         
 class FFTController(WidgetController):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('init FFT controller')
     def doFFT(self):
-        print('Do FFT')
-    def changePos(self):
-        print('Change Pos')
+        fft = self.master.doFFT()
+        self.widget.setImage(fft)
         
 class RecorderController(WidgetController):
     def __init__(self, *args, **kwargs):

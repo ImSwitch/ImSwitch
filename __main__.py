@@ -14,8 +14,3 @@ view = TempestaView(model)
 controller = TempestaController(model, view)
 view.registerController(controller)
 view.startView()
-
-
-
-
-

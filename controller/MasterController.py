@@ -14,12 +14,15 @@ class MasterController():
         self.stagePos[axis] += dist
         return self.stagePos[axis]
         
-    def doFFT(self):
+    def getImage(self):
         im = 20 + np.zeros((20, 20))
         return im
         
-    def ulensesToolMaker(self, x, y, px, up):
-        return [1000, 1000]
-        
-    def addItemTovb(plot):
+    def addItemTovb(self, plot):
         print('Item added to viewbox')
+        
+    def removeItemFromvb(self, plot):
+        print('Item removed from viewbox')
+        
+    def getImageSize(self):
+        return [500, 500]

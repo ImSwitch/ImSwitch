@@ -415,6 +415,8 @@ class PositionerWidget(Widget):
 class ULensesWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.points = [0, 0]
+        self.ulensesPlot = pg.ScatterPlotItem()
         ulensesLayout = QtGui.QGridLayout()
         self.setLayout(ulensesLayout)
         self.xEdit = QtGui.QLineEdit('0')
@@ -439,33 +441,34 @@ class ULensesWidget(Widget):
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
         
     def registerListener(self, controller):
-        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(controller))
-
-    def ulensesToolAux(self, controller):
-        x = np.float(self.xEdit.text())
-        y = np.float(self.yEdit.text())
-        px = np.float(self.pxEdit.text())
-        up = np.float(self.upEdit.text())  
+        controller.addPlot(self.ulensesPlot)
+        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(np.float(controller, self.xEdit.text()), np.float(self.yEdit.text()), np.float(self.pxEdit.text()),  np.float(self.upEdit.text()), self.ulensesCheck.isChecked()))
+        self.ulensesCheck.stateChanged.connect(lambda: self.show(self.ulensesCheck.isChecked()))
         
-        size_x, size_y = controller.getImageSize()
+    def ulensesToolAux(self, controller, x, y, px, up, show):
+        size_x, size_y = self.controller.getImageSize()
         pattern_x = np.arange(x, size_x, up/px)
         pattern_y = np.arange(y, size_y, up/px)
-        points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)
-        self.ulensesPlot = pg.ScatterPlotItem(x = points[:,0], y = points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
-        self.controller.addTovb(self.ulensesPlot)
-        
+        self.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
+        if show:
+            self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+            
+    def show(self, show):
+        if show:
+            self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+        else:
+            self.ulensesPlot.clear()
         
 class AlignWidgetXY(Widget):
 
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
-        # From model
-#        self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
-#                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-#                       scaleSnap=True, translateSnap=True)
+        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
+                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
+                       scaleSnap=True, translateSnap=True)
 
-#        self.ROI.hide()
+        self.ROI.hide()
         self.graph = guitools.ProjectionGraph()
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
@@ -490,8 +493,19 @@ class AlignWidgetXY(Widget):
         self.s_fac = 0.3
         
     def registerListener(self, controller):
-        self.roiButton.clicked.connect(controller.ROItoggle)
+        controller.addROI(self.ROI)
+        self.roiButton.clicked.connect(self.ROItoggle)
         self.alignTimer.timeout.connect(controller.updateValue)
+        
+    def ROItoggle(self):
+        if self.roiButton.isChecked() is False:
+            self.ROI.hide()
+            self.roiButton.setText('Show ROI')
+        else:
+            self.ROI.show()
+            self.roiButton.setText('Hide ROI')
+    
+ 
 
 class AlignWidgetAverage(Widget):
 
@@ -523,8 +537,11 @@ class AlignWidgetAverage(Widget):
         
     def registerListener(self, controller):
         self.roiButton.clicked.connect(controller.ROItoggle)
-        self.resetButton.clicked.connect(controller.resetGraph)
+        self.resetButton.clicked.connect(self.resetGraph)
         self.alignTimer.timeout.connect(controller.updateValue)
+        
+    def resetGraph(self):
+        self.graph.resetData()
         
 class AlignmentWidget(Widget):
     def __init__(self, *args, **kwargs):
@@ -772,7 +789,7 @@ class FFTWidget(Widget):
         self.changePosButton.clicked.connect(lambda: self.changePos(float(self.linePos.text())))
         
     def setImage(self, im):
-        self.img.setImage(im)
+        self.img.setImage(im, autoLevels=False)
         
     def changePos(self, pos):
         if pos == self.show or pos == 0:
@@ -1015,7 +1032,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         for tick in self.hist.gradient.ticks:
             tick.hide()
         self.addItem(self.hist, row=1, col=2)
-        self.ROI = guitools.ROI((0, 0), self.vb, (0, 0), handlePos=(1, 0),
+        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
         self.ROI.hide()

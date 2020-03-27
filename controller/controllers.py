@@ -5,6 +5,7 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import numpy as np
+import pyqtgraph as pg
 
 class WidgetController():
     def __init__(self, master, widget):
@@ -80,17 +81,14 @@ class PositionerController(WidgetController):
         self.widget.newPos(axis, newPos)
 
 class ULensesController(WidgetController):
-    def getImageSize(self):
-        return self.master.getImageSize()
-    def addTovb(self, plot):
+    def addPlot(self, plot):
         self.master.addItemTovb(plot)
-  
+    def getImageSize(self, plot):
+        return self.master.getImageSize()
+        
 class AlignXYController(WidgetController):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Init XY Alignment')
-    def ROItoggle(self):
-        print('Align XY ROI toggle')
+    def addROI(self, roi):
+        self.master.addItemTovb(roi)
     def updateValue(self):
         print('update Align XY')
         
@@ -131,8 +129,8 @@ class LaserController(WidgetController):
         
 class FFTController(WidgetController):
     def doFFT(self):
-        fft = self.master.doFFT()
-        self.widget.setImage(fft)
+        im = np.fft.fftshift(np.log10(abs(np.fft.fft2(self.master.getImage()))))
+        self.widget.setImage(im)
         
 class RecorderController(WidgetController):
     def __init__(self, *args, **kwargs):

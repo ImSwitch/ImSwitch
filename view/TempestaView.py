@@ -142,6 +142,7 @@ class TempestaView():
         self.imageWidget.ci.layout.setRowFixedHeight(1, 1150)
 
     def registerController(self, controller):
+        self.imageWidget.registerListener(controller.imageController)
         self.scanWidget.registerListener(controller.scanController)
         self.focusLockWidget.registerListener(controller.focusLockController)
         self.positionerWidget.registerListener(controller.positionerController)
@@ -153,7 +154,7 @@ class TempestaView():
         self.fftWidget.registerListener(controller.fftController)
         self.recordingWidget.registerListener(controller.recorderController)
         self.viewCtrlWidget.registerListener(controller.viewController)
-        self.imageWidget.registerListener(controller.imageController)
+        
 
     def startView(self):
         self.win.show()

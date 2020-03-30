@@ -98,16 +98,11 @@ class TempestaView():
         
         # Dock Area
         dockArea = DockArea()
-
-        FocusLockDock = Dock("Focus Lock", size=(400, 400))
-        self.focusLockWidget = widgets.FocusWidget()
-        FocusLockDock.addWidget(self.focusLockWidget)
-        dockArea.addDock(FocusLockDock)
         
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = widgets.ScanWidget()
         scanDock.addWidget(self.scanWidget)
-        dockArea.addDock(scanDock, 'below', FocusLockDock)
+        dockArea.addDock(scanDock)
         
       
         # Piezo positioner
@@ -144,7 +139,6 @@ class TempestaView():
     def registerController(self, controller):
         self.imageWidget.registerListener(controller.imageController)
         self.scanWidget.registerListener(controller.scanController)
-        self.focusLockWidget.registerListener(controller.focusLockController)
         self.positionerWidget.registerListener(controller.positionerController)
         self.ulensesWidget.registerListener(controller.uLensesController)
         self.alignWidgetXY.registerListener(controller.alignXYController)

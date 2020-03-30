@@ -442,22 +442,22 @@ class ULensesWidget(Widget):
         
     def registerListener(self, controller):
         controller.addPlot(self.ulensesPlot)
-        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(np.float(controller, self.xEdit.text()), np.float(self.yEdit.text()), np.float(self.pxEdit.text()),  np.float(self.upEdit.text()), self.ulensesCheck.isChecked()))
+        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(controller, np.float(self.xEdit.text()), np.float(self.yEdit.text()), np.float(self.pxEdit.text()),  np.float(self.upEdit.text()), self.ulensesCheck.isChecked()))
         self.ulensesCheck.stateChanged.connect(lambda: self.show(self.ulensesCheck.isChecked()))
         
     def ulensesToolAux(self, controller, x, y, px, up, show):
-        size_x, size_y = self.controller.getImageSize()
+        size_x, size_y = controller.getImageSize()
         pattern_x = np.arange(x, size_x, up/px)
         pattern_y = np.arange(y, size_y, up/px)
         self.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
-        if show:
-            self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
-            
+        self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+        self.show(show)
+                    
     def show(self, show):
         if show:
-            self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+            self.ulensesPlot.show()
         else:
-            self.ulensesPlot.clear()
+            self.ulensesPlot.hide()
         
 class AlignWidgetXY(Widget):
 
@@ -495,7 +495,7 @@ class AlignWidgetXY(Widget):
     def registerListener(self, controller):
         controller.addROI(self.ROI)
         self.roiButton.clicked.connect(self.ROItoggle)
-        self.alignTimer.timeout.connect(controller.updateValue)
+        self.alignTimer.timeout.connect(lambda: controller.updateValue(self.ROI))
         
     def ROItoggle(self):
         if self.roiButton.isChecked() is False:
@@ -513,11 +513,11 @@ class AlignWidgetAverage(Widget):
 
         super().__init__(*args, **kwargs)
 
-        #self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
-         #              handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-          #             scaleSnap=True, translateSnap=True)
+        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
+                       handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
+                       scaleSnap=True, translateSnap=True)
 
-        #self.ROI.hide()
+        self.ROI.hide()
         self.graph = guitools.SumpixelsGraph()
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
@@ -536,16 +536,31 @@ class AlignWidgetAverage(Widget):
         #self.alignTimer.start(self.alignTime)
         
     def registerListener(self, controller):
-        self.roiButton.clicked.connect(controller.ROItoggle)
+        controller.addROI(self.ROI)
+        self.roiButton.clicked.connect(self.ROItoggle)
         self.resetButton.clicked.connect(self.resetGraph)
-        self.alignTimer.timeout.connect(controller.updateValue)
+        self.alignTimer.timeout.connect(lambda: controller.updateValue(self.ROI))
         
     def resetGraph(self):
         self.graph.resetData()
         
+    def ROItoggle(self):
+        if self.roiButton.isChecked() is False:
+            self.ROI.hide()
+            self.roiButton.setText('Show ROI')
+        else:
+            self.ROI.show()
+            self.roiButton.setText('Hide ROI')
+        
 class AlignmentWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        pen = pg.mkPen(color=(255, 255, 0), width=0.5,
+                       style=QtCore.Qt.SolidLine, antialias=True)
+        self.alignmentLine = pg.InfiniteLine(
+            pen=pen, movable=True)
+        self.alignmentLine.hide()
+        
         alignmentLayout = QtGui.QGridLayout()
         self.setLayout(alignmentLayout)
         self.angleEdit = QtGui.QLineEdit('30')
@@ -558,7 +573,20 @@ class AlignmentWidget(Widget):
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
         
     def registerListener(self, controller):
-        self.alignmentLineMakerButton.clicked.connect(controller.alignmentToolAux)
+        controller.addLine(self.alignmentLine)
+        self.alignmentLineMakerButton.clicked.connect(lambda: self.alignmentToolAux(self.alignmentCheck.isChecked()))
+        self.alignmentCheck.stateChanged.connect(lambda: self.show(self.alignmentCheck.isChecked()))
+       
+    def alignmentToolAux(self, show):
+        self.angle = np.float(self.angleEdit.text())
+        self.alignmentLine.setAngle(self.angle)
+        self.show(show)
+        
+    def show(self, show):
+        if show:
+            self.alignmentLine.show()
+        else:
+            self.alignmentLine.hide()
         
 class LaserWidget(Widget):
 
@@ -584,6 +612,22 @@ class LaserWidget(Widget):
         self.offControl.registerListener(controller)
         self.excControl.registerListener(controller)
         self.DigCtrl.registerListener(controller)
+        
+    def changeEdit(self, magnitude, laser):
+        if laser == 405:
+            self.actControl.changeEdit(magnitude)
+        elif laser == 488:
+            self.offControl.changeEdit(magnitude)
+        else:
+            self.excControl.changeEdit(magnitude)
+        
+    def changeSlider(self, magnitude, laser):
+        if laser == 405:
+            self.actControl.changeSlider(magnitude)
+        elif laser == 488:
+            self.offControl.changeSlider(magnitude)
+        else:
+            self.excControl.changeSlider(magnitude)
         
 class DigitalControl(QtGui.QFrame):
 
@@ -640,14 +684,11 @@ class DigitalControl(QtGui.QFrame):
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
     
     def registerListener(self, controller):
-        self.ActPower.textChanged.connect(controller.updateDigitalPowers)
-        self.OffPower.textChanged.connect(controller.updateDigitalPowers)
-        self.ExcPower.textChanged.connect(controller.updateDigitalPowers)
-        self.DigitalControlButton.clicked.connect(controller.GlobalDigitalMod)
-        self.updateDigPowersButton.clicked.connect(controller.updateDigitalPowers)
-       # self.actPower = controller.getPower('405')
-       # self.excPower = controller.getPower('473')
-       # self.offPower = controller.getPower('488')
+        self.ActPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text())], [405]))
+        self.OffPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.OffPower.text())], [488]))
+        self.ExcPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ExcPower.text())], [473]))
+        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488, 473]))
+        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488, 473]))
         
 class LaserControl(QtGui.QFrame):
     def __init__(self, name,  units, laser, color, *args, **kwargs):
@@ -715,11 +756,16 @@ class LaserControl(QtGui.QFrame):
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
     def registerListener(self, controller):
-        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
-        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
-        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))
+        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser, self.enableButton.isChecked()))
+        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser, self.slider.value()))
+        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser, float(self.setPointEdit.text())))
+    
+    def changeEdit(self, magnitude):
+        self.setPointEdit.setText(magnitude)
         
-        
+    def changeSlider(self, magnitude):
+        self.slider.setValue(magnitude)
+       
         
 class FFTWidget(Widget):
     """ FFT Transform window for alignment """
@@ -1060,7 +1106,8 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         proxy.setWidget(self.levelsButton)
         self.addItem(proxy, row=0, col=2)
     
-    def registerListener(self, controller):      
+    def registerListener(self, controller): 
+        controller.addVb(self.vb)
         self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
         self.levelsButton.pressed.connect(controller.autoLevels)
 

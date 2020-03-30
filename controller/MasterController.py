@@ -32,10 +32,10 @@ class MasterController():
         return [500, 500]
         
     def toggleLaser(self, enable, laser):
-        print('Change enabler of laser '+ str(laser) + 'to ' + str(enable))
+        print('Change enabler of laser '+ str(laser) + ' to ' + str(enable))
         
     def changePower(self, magnitude, laser):
-        print('Change power of laser '+ str(laser) + 'to ' + str(magnitude))
+        print('Change power of laser '+ str(laser) + ' to ' + str(magnitude))
         
     def digitalMod(self, digital, powers, laser):
-        print('Digital modulation for laser '+ str(laser) + 'set to ' + str(digital))
+        print('Digital modulation for laser '+ str(laser) + ' set to ' + str(digital))

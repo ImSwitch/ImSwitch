@@ -135,21 +135,6 @@ class MultipleScanController(WidgetController): # TODO
         print('Clear')
       
 # Hardware control
-
-class FocusLockController(WidgetController): # TODO or NOT TODO
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Init Focus Lock Controller')
-    def unlockFocus(self):
-        print('Unlock focus')
-    def toggleFocus(self):
-        print('Toggle focus')
-    def movePZT(self):
-        print('Move PZT')
-    def focusCalibThreadStart(self):
-        print('Focus calib thread Start')
-    def showCalibCurve(self):
-        print('Focus calib curve')
         
 class PositionerController(WidgetController): 
     def move(self, axis, dist):

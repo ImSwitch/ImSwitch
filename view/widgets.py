@@ -10,9 +10,10 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
-import time
+import os
 from pyqtgraph.dockarea import Dock, DockArea
 import matplotlib.pyplot as plt
+import configparser
 
 class Widget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
@@ -22,8 +23,17 @@ class ScanWidget(Widget):
     ''' Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget'''
             
-    def __init__(self, *args, **kwargs):
+    def __init__(self, deviceInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
+    
+        self.allDevices = [x[0] for x in deviceInfo]
+        self.controlFolder = os.path.split(os.path.realpath(__file__))[0]
+        os.chdir(self.controlFolder)
+        self.scanDir = os.path.join(self.controlFolder, 'scans')
+
+        if not os.path.exists(self.scanDir):
+            os.makedirs(self.scanDir)
+            
         self.scanInLiveviewWar = QtGui.QMessageBox()
         self.scanInLiveviewWar.setInformativeText(
             "You need to be in liveview to scan")
@@ -46,7 +56,7 @@ class ScanWidget(Widget):
         self.scanDurationLabel = QtGui.QLabel(str(self.scanDuration))
         self.stepSizeXYPar = QtGui.QLineEdit('0.1')
         self.stepSizeZPar = QtGui.QLineEdit('1')
-
+        
         self.scanMode = QtGui.QComboBox()
         self.scanModes = ['FOV scan', 'VOL scan', 'Line scan']
         self.scanMode.addItems(self.scanModes)
@@ -55,6 +65,31 @@ class ScanWidget(Widget):
         self.scanDims = ['x', 'y']
         self.primScanDim.addItems(self.scanDims)
         
+        self.scanPar = {'sizeX': self.sizeXPar,
+                        'sizeY': self.sizeYPar,
+                        'sizeZ': self.sizeZPar,
+                        'seqTime': self.seqTimePar,
+                        'stepSizeXY': self.stepSizeXYPar,
+                        'stepSizeZ': self.stepSizeZPar}
+
+        self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
+                              'sizeY': float(self.sizeYPar.text()),
+                              'sizeZ': float(self.sizeZPar.text()),
+                              'seqTime': 0.001*float(self.seqTimePar.text()),
+                              'stepSizeXY': float(self.stepSizeXYPar.text()),
+                              'stepSizeZ': float(self.stepSizeZPar.text())}
+        self.pxParameters = dict()
+        self.pxParValues = dict()                       
+      
+        for i in range(0, len(self.allDevices)):
+     
+            self.pxParameters['sta'+self.allDevices[i]] = QtGui.QLineEdit('0')
+            self.pxParameters['end'+self.allDevices[i]] = QtGui.QLineEdit('10')
+            start = self.pxParameters['sta' + self.allDevices[i]].text()
+            end = self.pxParameters['end' + self.allDevices[i]].text()
+            self.pxParValues['sta' + self.allDevices[i]] = 0.001*float(start)
+            self.pxParValues['end' + self.allDevices[i]] = 0.001*float(end)
+            
         self.scanRadio = QtGui.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
         self.contLaserPulsesRadio = QtGui.QRadioButton('Cont. Laser Pulses')
@@ -110,6 +145,14 @@ class ScanWidget(Widget):
         grid.addWidget(QtGui.QLabel('Start (ms):'), 8, 1)
         grid.addWidget(QtGui.QLabel('End (ms):'), 8, 2)
         
+        start_row = 9
+        for i in range(0, len(self.allDevices)):
+            grid.addWidget(QtGui.QLabel(self.allDevices[i]), start_row+i, 0)
+            grid.addWidget(
+                self.pxParameters['sta'+self.allDevices[i]], start_row+i, 1)
+            grid.addWidget(
+                self.pxParameters['end'+self.allDevices[i]], start_row+i, 2)
+        
         grid.addWidget(self.graph, 8, 3, 5, 5)
         grid.addWidget(self.multiScanWgt, 13, 0, 4, 9)
 
@@ -119,8 +162,8 @@ class ScanWidget(Widget):
         grid.setRowMinimumHeight(13, 10)
     
     def registerListener(self, controller):
-        self.saveScanBtn.clicked.connect(controller.saveScan)
-        self.loadScanBtn.clicked.connect(controller.loadScan)
+        self.saveScanBtn.clicked.connect(self.saveScan)
+        self.loadScanBtn.clicked.connect(self.loadScan)
         self.sizeXPar.textChanged.connect(
             lambda: controller.scanParameterChanged('sizeX'))
         self.sizeYPar.textChanged.connect(
@@ -144,6 +187,67 @@ class ScanWidget(Widget):
         self.previewButton.clicked.connect(controller.previewScan)
         self.multiScanWgt.registerListener(controller.multipleScanController)
         self.sampleRate = controller.getSampleRate()
+#        self.pxParameters['sta'+self.allDevices[i]].textChanged.connect(
+#                lambda: self.pxParameterChanged())
+#            self.pxParameters['end'+self.allDevices[i]].textChanged.connect(
+#                lambda: self.pxParameterChanged())
+        
+    def saveScan(self):
+        config = configparser.ConfigParser()
+        config.optionxform = str
+    
+        config['pxParValues'] = self.pxParValues
+        config['scanParValues'] = self.scanParValues
+        config['Modes'] = {'scanMode': self.scanMode.currentText(),
+                           'scan_or_not': self.scanRadio.isChecked()}
+        fileName = QtGui.QFileDialog.getSaveFileName(self, 'Save scan',
+                                                     self.scanDir)
+        if fileName == '':
+            return
+    
+        with open(fileName, 'w') as configfile:
+            config.write(configfile)
+
+
+    def loadScan(self):
+        config = configparser.ConfigParser()
+        config.optionxform = str
+    
+        fileName = QtGui.QFileDialog.getOpenFileName(self, 'Load scan',
+                                                     self.scanDir)
+        if fileName == '':
+            return
+    
+        config.read(fileName)
+    
+        for key in self.pxParValues:
+            self.pxParValues[key] = float(config._sections['pxParValues'][key])
+            self.pxParameters[key].setText(
+                str(1000*float(config._sections['pxParValues'][key])))
+    
+        for key in self.scanParValues:
+            value = config._sections['scanParValues'][key]
+            self.scanParValues[key] = float(value)
+            if key == 'seqTime':
+                self.scanPar[key].setText(
+                    str(1000*float(config._sections['scanParValues'][key])))
+            else:
+                self.scanPar[key].setText(
+                    config._sections['scanParValues'][key])
+    
+        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
+#        self.setScanOrNot(scanOrNot)
+        if scanOrNot:
+            self.scanRadio.setChecked(True)
+        else:
+            self.contLaserPulsesRadio.setChecked(True)
+#    
+        scanMode = config._sections['Modes']['scanMode']
+#        self.setScanMode(scanMode)
+        self.scanMode.setCurrentIndex(self.scanMode.findText(scanMode))
+#    
+#        self.updateScan(self.allDevices)
+#        self.graph.update()
         
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.

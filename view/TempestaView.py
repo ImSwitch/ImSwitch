@@ -21,7 +21,12 @@ class TempestaView():
         self.model = model
         self.app = QtGui.QApplication([])
         self.win = QtGui.QMainWindow()  
-        
+        # Devices
+        self.deviceInfo = [['405', 0, [130, 0, 200]],
+                           ['488', 1, [0, 247, 255]],
+                           ['473', 2, [0, 183, 255]],
+                           ['CAM', 3, [255, 255, 255]]]
+                           
         # Think what is self. and what is not !
         
         # Shortcuts
@@ -100,7 +105,7 @@ class TempestaView():
         dockArea = DockArea()
         
         scanDock = Dock('Scan', size=(1, 1))
-        self.scanWidget = widgets.ScanWidget()
+        self.scanWidget = widgets.ScanWidget(self.deviceInfo)
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock)
         

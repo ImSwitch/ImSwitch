@@ -1144,10 +1144,14 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.addItem(proxy, row=0, col=2)
     
     def registerListener(self, controller): 
-        controller.addVb(self.vb)
         self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
         self.levelsButton.pressed.connect(controller.autoLevels)
 
+    def addItemTovb(self, item):
+        self.vb.addItem(item)
+
+    def removeItemFromvb(self, item):
+        self.removeItem(item)
     
 class SettingsWidget(Widget):
     

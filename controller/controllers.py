@@ -14,26 +14,38 @@ class WidgetController():
 # Alignment control  
 
 class ULensesController(WidgetController):
+    def __init__(self, addFunc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addFunc = addFunc
     def addPlot(self, plot):
-        self.master.addItemTovb(plot)
+        self.addFunc(plot)
     def getImageSize(self):
         return self.master.getImageSize()
         
 class AlignXYController(WidgetController):
+    def __init__(self, addFunc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addFunc = addFunc
     def addROI(self, roi):
-        self.master.addItemTovb(roi)
+        self.addFunc(roi)
     def updateValue(self, roi): # TODO
         print('update Align XY')
         
 class AlignAverageController(WidgetController):
+    def __init__(self, addFunc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addFunc = addFunc
     def addROI(self, roi):
-        self.master.addItemTovb(roi)
+        self.addFunc(roi)
     def updateValue(self, roi): # TODO
         print('Update value Align Z')
         
 class AlignmentController(WidgetController):
-    def addLine(self, line):
-        self.master.addItemTovb(line)
+    def __init__(self, addFunc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addFunc = addFunc
+    def addLine(self,line):
+        self.addFunc(line)
 
 class FFTController(WidgetController): # improve taking image
     def doFFT(self):
@@ -42,7 +54,7 @@ class FFTController(WidgetController): # improve taking image
     
 # Image control
 
-class ViewController(WidgetController): # TODO
+class ViewController(WidgetController): # TODO Having the timers and call TempestaController that updates the update for every widget
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         print('View Controller Init')
@@ -52,12 +64,14 @@ class ViewController(WidgetController): # TODO
         print('Update view')
        
 class ImageController(WidgetController): # TODO
-    def addVb(self, vb):
-        self.master.addVb(vb)
     def ROIchanged(self):
         print('ROI changed')
     def autoLevels(self):
         print('Auto levels')
+    def addItemTovb(self, item):
+        self.widget.addItemTovb(item)
+    def removeItemFromvb(self, item):
+        self.view.removeItemFromvb(item)
         
 class RecorderController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):

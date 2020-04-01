@@ -58,8 +58,11 @@ class ViewController(WidgetController): # TODO Having the timers and call Tempes
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         print('View Controller Init')
-    def liveview(self):
-        print('liveview')
+    def liveview(self, clicked):
+        if clicked:
+            self.master.startLiveview()
+        else:
+            self.master.stopLiveview()
     def updateView(self):
         print('Update view')
        
@@ -71,7 +74,9 @@ class ImageController(WidgetController): # TODO
     def addItemTovb(self, item):
         self.widget.addItemTovb(item)
     def removeItemFromvb(self, item):
-        self.view.removeItemFromvb(item)
+        self.widget.removeItemFromvb(item)
+    def updateImage(self, img):
+        self.widget.updateImage(img)
         
 class RecorderController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):

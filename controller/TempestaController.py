@@ -14,7 +14,7 @@ class TempestaController():
         self.model = model
         self.view = view
         
-        self.masterController = MasterController()
+        self.masterController = MasterController(model, self.updateImage)
         
         self.scanController = controllers.ScanController(self.masterController, self.view.scanWidget)
         self.positionerController = controllers.PositionerController(self.masterController, self.view.positionerWidget) 
@@ -28,6 +28,9 @@ class TempestaController():
         self.viewController = controllers.ViewController(self.masterController, self.view.viewCtrlWidget)
         self.imageController = controllers.ImageController(self.masterController, self.view.imageWidget)
 
+    def updateImage(self, img):
+        self.imageController.updateImage(img)
+        
     def addItemTovb(self, item):
         self.imageController.addItemTovb(item)
 

@@ -1091,8 +1091,8 @@ class ViewCtrlWidget(Widget):
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
     
     def registerListener(self, controller):
-        self.liveviewButton.clicked.connect(controller.liveview)
-        self.viewtimer.timeout.connect(controller.updateView)
+        self.liveviewButton.clicked.connect(lambda: controller.liveview(self.liveviewButton.isChecked()))
+        #self.viewtimer.timeout.connect(controller.updateView)
         
 class ImageWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs):
@@ -1152,6 +1152,11 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     def removeItemFromvb(self, item):
         self.removeItem(item)
+        
+    def updateImage(self, img):
+        self.img.setImage(img)
+        self.hist.setLevels(*guitools.bestLimits(img))
+        self.hist.vb.autoRange()
     
 class SettingsWidget(Widget):
     

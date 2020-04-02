@@ -775,9 +775,14 @@ class HamamatsuCameraMR(HamamatsuCamera):
         return [frames, [self.frame_x, self.frame_y]]
         
     def getLast(self):
-        index = self.newFrames()
-        last = index[len(index)-1]
-        return [self.hcam_data[last], [self.frame_x, self.frame_y]]
+        dwait = ctypes.c_int(DCAMCAP_EVENT_FRAMEREADY)
+        self.checkStatus(dcam.dcam_wait(self.camera_handle,
+                                        ctypes.byref(dwait),
+                                        ctypes.c_int(DCAMWAIT_TIMEOUT_INFINITE),
+                                        None),
+                         "dcam_wait")
+        [b_index, f_count] = self.getAq_Info()
+        return [self.hcam_data[b_index], [self.frame_x, self.frame_y]]
 
     def getSpecFrames(self, ids):
         """Get frames specified by their id's"""

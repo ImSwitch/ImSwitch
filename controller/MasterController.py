@@ -5,40 +5,15 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 import numpy as np
-from threading import Timer, Thread
+from pyqtgraph.Qt import QtCore
 
-class MyTimer(Timer):
-    def __init__(self, time, function):
-        super().__init__(time, self.run)
-        self.stop = False
-        self.function = function
-        
-    def run(self):
-        while not self.stop:
-            self.function()
-    
-    def stop(self):
-        self.stop = True
-        
-class MyThread(Thread):
-    def __init__(self, function):
-        super().__init__()
-        self.stop = False
-        self.function = function
-        
-    def run(self):
-        while not self.stop:
-            self.function()
-    
-    def stop(self):
-        self.stop = True
-            
 class CameraHelper():
-    def __init__(self, cameras, updateImage):
+    def __init__(self, comm_channel, cameras):
         self.cameras = cameras
-        self.updateImage = updateImage
-        
-    def startAcquisition(self):
+        self.comm_channel = comm_channel
+        self.time = 100
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.updateLatestFrame)
         c = self.cameras[0]
         c.setPropertyValue('readout_speed', 3)
         c.setPropertyValue('trigger_global_exposure', 5)
@@ -52,11 +27,12 @@ class CameraHelper():
         c.setPropertyValue('subarray_vsize', 2048)
         c.setPropertyValue('subarray_hsize', 2048)
         
-        c.startAcquisition()
-        self.timer = MyTimer(0.1, self.updateLatestFrame)
-        self.timer.start()
-#        
+    def startAcquisition(self):
+        self.timer.start(self.time)
+        self.cameras[0].startAcquisition()  
+        
     def stopAcquisition(self):
+        self.timer.stop()
         self.cameras[0].stopAcquisition()
 #        
 #    def changeParameter(self):
@@ -67,18 +43,35 @@ class CameraHelper():
         frame = hcData[0].getData()
         self.image = np.reshape(
             frame, (size), 'F')
-        self.updateImage(self.image)
+        self.comm_channel.updateImage(self.image)
 
+#class NidaqHelper():
+#    
+#    def __init__(self, ):
+#        import nidaqmx
+#        self.deviceInfo = [['488 Exc', 1, [0, 247, 255]],
+#                           ['405', 2, [130, 0, 200]],
+#                           ['488 OFF', 3, [0, 247, 255]],
+#                           ['Camera', 4, [255, 255, 255]]]
+#    def __createDOTask(self):
+#    def __createAOTask(self):
+#        
+#    def setDigital(self, target, enable):
+#    def setAnalog(self, target, voltage):
+#
+#    def runScan(self, analog_targets, digital_targets, analog_signals, digital_signals):
+#    def runContinuous(self, digital_targets, digital_signals):
 
         
 class MasterController():
     
-    def __init__(self, model, updateImage):
+    def __init__(self, model, comm_channel):
         print('init master controller')
         self.model = model
         self.stagePos = [0, 0, 0]
-        self.updateImage = updateImage
-        self.cameraHelper = CameraHelper(self.model.cameras, self.updateImage)
+        self.comm_channel = comm_channel
+        self.cameraHelper = CameraHelper(self.comm_channel, self.model.cameras)
+        
         
     def startLiveview(self):
         self.cameraHelper.startAcquisition()

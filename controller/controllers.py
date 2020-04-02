@@ -7,45 +7,34 @@ Created on Sun Mar 22 10:40:53 2020
 import numpy as np
 
 class WidgetController():
-    def __init__(self, master, widget):
+    def __init__(self, comm_channel, master, widget):
         self.master = master
         self.widget = widget
+        self.comm_channel = comm_channel
         
 # Alignment control  
 
 class ULensesController(WidgetController):
-    def __init__(self, addFunc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.addFunc = addFunc
     def addPlot(self, plot):
-        self.addFunc(plot)
+        self.comm_channel.addItemTovb(plot)
     def getImageSize(self):
         return self.master.getImageSize()
         
 class AlignXYController(WidgetController):
-    def __init__(self, addFunc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.addFunc = addFunc
     def addROI(self, roi):
-        self.addFunc(roi)
+         self.comm_channel.addItemTovb(roi)
     def updateValue(self, roi): # TODO
         print('update Align XY')
         
 class AlignAverageController(WidgetController):
-    def __init__(self, addFunc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.addFunc = addFunc
     def addROI(self, roi):
-        self.addFunc(roi)
+         self.comm_channel.addItemTovb(roi)
     def updateValue(self, roi): # TODO
         print('Update value Align Z')
         
 class AlignmentController(WidgetController):
-    def __init__(self, addFunc, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.addFunc = addFunc
     def addLine(self,line):
-        self.addFunc(line)
+         self.comm_channel.addItemTovb(line)
 
 class FFTController(WidgetController): # improve taking image
     def doFFT(self):
@@ -106,9 +95,9 @@ class RecorderController(WidgetController): # TODO
 # Scan control
 
 class ScanController(WidgetController): # TODO
-    def __init__(self, master, widget):
-        super().__init__(master, widget)
-        self.multipleScanController = MultipleScanController(master, widget.multiScanWgt)
+    def __init__(self, comm_channel, master, widget):
+        super().__init__(comm_channel, master, widget)
+        self.multipleScanController = MultipleScanController(comm_channel, master, widget.multiScanWgt)
         print('Init Scan Controller')
     def saveScan(self):
         print('save scan')

@@ -11,28 +11,35 @@ class TempestaController():
     
     def __init__(self, model, view):
         
-        self.model = model
-        self.view = view
+        __model = model # Private
+        __view = view #Private
         
-        self.masterController = MasterController(model, self.updateImage)
+        self.comm_channel = CommunicationChannel(self)
         
-        self.scanController = controllers.ScanController(self.masterController, self.view.scanWidget)
-        self.positionerController = controllers.PositionerController(self.masterController, self.view.positionerWidget) 
-        self.uLensesController = controllers.ULensesController(self.addItemTovb, self.masterController, self.view.ulensesWidget)
-        self.alignXYController = controllers.AlignXYController(self.addItemTovb, self.masterController, self.view.alignWidgetXY)
-        self.alignAverageController = controllers.AlignAverageController(self.addItemTovb, self.masterController, self.view.alignWidgetAverage)
-        self.alignmentController = controllers.AlignmentController(self.addItemTovb, self.masterController, self.view.alignmentWidget)
-        self.laserController = controllers.LaserController(self.masterController, self.view.laserWidgets)
-        self.fftController = controllers.FFTController(self.masterController, self.view.fftWidget)
-        self.recorderController = controllers.RecorderController(self.masterController, self.view.recordingWidget)
-        self.viewController = controllers.ViewController(self.masterController, self.view.viewCtrlWidget)
-        self.imageController = controllers.ImageController(self.masterController, self.view.imageWidget)
+        __masterController = MasterController(__model, self.comm_channel) # Private
+        
+        
+        self.scanController = controllers.ScanController(self.comm_channel, __masterController, __view.scanWidget)
+        self.positionerController = controllers.PositionerController(self.comm_channel, __masterController, __view.positionerWidget) 
+        self.uLensesController = controllers.ULensesController(self.comm_channel, __masterController, __view.ulensesWidget)
+        self.alignXYController = controllers.AlignXYController(self.comm_channel, __masterController, __view.alignWidgetXY)
+        self.alignAverageController = controllers.AlignAverageController(self.comm_channel, __masterController, __view.alignWidgetAverage)
+        self.alignmentController = controllers.AlignmentController(self.comm_channel, __masterController, __view.alignmentWidget)
+        self.laserController = controllers.LaserController(self.comm_channel, __masterController, __view.laserWidgets)
+        self.fftController = controllers.FFTController(self.comm_channel, __masterController, __view.fftWidget)
+        self.recorderController = controllers.RecorderController(self.comm_channel, __masterController, __view.recordingWidget)
+        self.viewController = controllers.ViewController(self.comm_channel, __masterController, __view.viewCtrlWidget)
+        self.imageController = controllers.ImageController(self.comm_channel, __masterController, __view.imageWidget)
 
+class CommunicationChannel():
+    def __init__(self, main):
+        self.__main = main
+        
     def updateImage(self, img):
-        self.imageController.updateImage(img)
+        self.__main.imageController.updateImage(img)
         
     def addItemTovb(self, item):
-        self.imageController.addItemTovb(item)
+        self.__main.imageController.addItemTovb(item)
 
     def removeItemFromvb(self, item):
-        self.imageController.removeItemFromvb(item)
+        self.__main.imageController.removeItemFromvb(item)

@@ -32,3 +32,4 @@ class Cameras(object):
         except:
             print('Initializing Mock Hamamatsu')
             return [mockers.MockHamamatsu()]
+            

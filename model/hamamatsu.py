@@ -775,6 +775,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
         return [frames, [self.frame_x, self.frame_y]]
         
     def getLast(self):
+#         Wait for a new frame.
         dwait = ctypes.c_int(DCAMCAP_EVENT_FRAMEREADY)
         self.checkStatus(dcam.dcam_wait(self.camera_handle,
                                         ctypes.byref(dwait),

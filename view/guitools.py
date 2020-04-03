@@ -411,6 +411,17 @@ class Grid():
         self.xline3 = pg.InfiniteLine(pen=pen2, angle=0)
         self.xline4 = pg.InfiniteLine(pen=pen2, angle=0)
         self.xline5 = pg.InfiniteLine(pen=pen, angle=0)
+        self.vb.addItem(self.xline1)
+        self.vb.addItem(self.xline2)
+        self.vb.addItem(self.xline3)
+        self.vb.addItem(self.xline4)
+        self.vb.addItem(self.xline5)
+        self.vb.addItem(self.yline1)
+        self.vb.addItem(self.yline2)
+        self.vb.addItem(self.yline3)
+        self.vb.addItem(self.yline4)
+        self.vb.addItem(self.yline5)
+        self.hide()
 
     def update(self, shape):
         self.yline1.setPos(0.25*shape[0])
@@ -431,29 +442,29 @@ class Grid():
             self.show()
 
     def show(self):
-        self.vb.addItem(self.xline1)
-        self.vb.addItem(self.xline2)
-        self.vb.addItem(self.xline3)
-        self.vb.addItem(self.xline4)
-        self.vb.addItem(self.xline5)
-        self.vb.addItem(self.yline1)
-        self.vb.addItem(self.yline2)
-        self.vb.addItem(self.yline3)
-        self.vb.addItem(self.yline4)
-        self.vb.addItem(self.yline5)
+        self.yline1.show()
+        self.yline2.show()
+        self.yline3.show()
+        self.yline4.show()
+        self.yline5.show()
+        self.xline1.show()
+        self.xline2.show()
+        self.xline3.show()
+        self.xline4.show()
+        self.xline5.show()
         self.showed = True
 
     def hide(self):
-        self.vb.removeItem(self.xline1)
-        self.vb.removeItem(self.xline2)
-        self.vb.removeItem(self.xline3)
-        self.vb.removeItem(self.xline4)
-        self.vb.removeItem(self.xline5)
-        self.vb.removeItem(self.yline1)
-        self.vb.removeItem(self.yline2)
-        self.vb.removeItem(self.yline3)
-        self.vb.removeItem(self.yline4)
-        self.vb.removeItem(self.yline5)
+        self.yline1.hide()
+        self.yline2.hide()
+        self.yline3.hide()
+        self.yline4.hide()
+        self.yline5.hide()
+        self.xline1.hide()
+        self.xline2.hide()
+        self.xline3.hide()
+        self.xline4.hide()
+        self.xline5.hide()
         self.showed = False
 
 
@@ -476,6 +487,7 @@ class TwoColorGrid():
         self.xLine = pg.InfiniteLine(pos=0.5*self.shape[1], pen=pen2, angle=0)
         self.xLineT = pg.InfiniteLine(pos=182, pen=pen2, angle=0)
         self.xLineR = pg.InfiniteLine(pos=330, pen=pen2, angle=0)
+
 
     def toggle(self):
         if self.showed:
@@ -511,6 +523,9 @@ class Crosshair():
         self.vLine = pg.InfiniteLine(pos=0, angle=90, movable=False)
         self.hLine = pg.InfiniteLine(pos=0, angle=0,  movable=False)
         self.vb = viewBox
+        self.vb.addItem(self.vLine, ignoreBounds=False)
+        self.vb.addItem(self.hLine, ignoreBounds=False)
+        self.hide()
 
     def mouseMoved(self, pos):
         if self.vb.sceneBoundingRect().contains(pos):
@@ -533,13 +548,13 @@ class Crosshair():
     def show(self):
         self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
         self.vb.scene().sigMouseMoved.connect(self.mouseMoved)
-        self.vb.addItem(self.vLine, ignoreBounds=False)
-        self.vb.addItem(self.hLine, ignoreBounds=False)
+        self.vLine.show()
+        self.hLine.show()
         self.showed = True
 
     def hide(self):
-        self.vb.removeItem(self.vLine)
-        self.vb.removeItem(self.hLine)
+        self.vLine.hide()
+        self.hLine.hide()
         self.showed = False
 
 
@@ -600,6 +615,7 @@ class AlignWidgetAverage(QtGui.QFrame):
                        scaleSnap=True, translateSnap=True)
 
         self.ROI.hide()
+        self.active = False
         self.graph = SumpixelsGraph()
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
@@ -619,29 +635,26 @@ class AlignWidgetAverage(QtGui.QFrame):
         self.alignTimer = QtCore.QTimer()
         self.alignTimer.timeout.connect(self.updateValue)
 #        self.alignTimer.start(self.alignTime)
-
+        
     def resetGraph(self):
         self.graph.resetData()
 
     def ROItoggle(self):
         if self.roiButton.isChecked() is False:
             self.ROI.hide()
-            self.alignTimer.stop()
+            self.active = False
             self.roiButton.setText('Show ROI')
         else:
             self.ROI.show()
             self.roiButton.setText('Hide ROI')
-            self.alignTimer.start(self.alignTime)
+            self.active = True
 
-    def updateValue(self):
-
-        if self.main.liveviewButton.isChecked():
+    def updateValue(self, im):
+        if self.active:
             self.selected = self.ROI.getArrayRegion(
-                self.main.latest_images[self.main.currCamIdx], self.main.img)
+                im, self.main.img)
             value = np.mean(self.selected)
             self.graph.updateGraph(value)
-        else:
-            pass
 
     def closeEvent(self, *args, **kwargs):
 

@@ -18,54 +18,157 @@ class ULensesController(WidgetController):
     def addPlot(self, plot):
         self.comm_channel.addItemTovb(plot)
     def getImageSize(self):
-        return self.master.getImageSize()
+        return self.master.cameraHelper.getShapes()
         
 class AlignXYController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__active = False
+        self.__radio = 0
     def addROI(self, roi):
          self.comm_channel.addItemTovb(roi)
-    def updateValue(self, roi): # TODO
-        print('update Align XY')
+    def updateValue(self, im):
+        if self.__active:
+            ROI = self.widget.getROI()
+            selected = ROI.getArrayRegion(im, self.comm_channel.getImg())
+            value = np.mean(selected, self.__radio)    
+            self.widget.updateValue(value)
+    def updateActive(self, b):
+        self.__active = b
+    def setRadio(self, radio):
+        self.__radio = radio
         
 class AlignAverageController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__active = False
     def addROI(self, roi):
          self.comm_channel.addItemTovb(roi)
-    def updateValue(self, roi): # TODO
-        print('Update value Align Z')
+    def updateValue(self, im): 
+        if self.__active:
+            ROI = self.widget.getROI()
+            selected = ROI.getArrayRegion(im, self.comm_channel.getImg())
+            value = np.mean(selected)    
+            self.widget.updateValue(value)
+        
+    def updateActive(self, b):
+        self.__active = b
         
 class AlignmentController(WidgetController):
     def addLine(self,line):
          self.comm_channel.addItemTovb(line)
 
-class FFTController(WidgetController): # improve taking image
-    def doFFT(self):
-        im = np.fft.fftshift(np.log10(abs(np.fft.fft2(self.master.getImage()))))
-        self.widget.setImage(im)
-    
-# Image control
-
-class ViewController(WidgetController): # TODO Having the timers and call TempestaController that updates the update for every widget
+class FFTController(WidgetController): 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print('View Controller Init')
+        self.__active = False
+        self.__updateRate = 10
+        self.__it = 0
+        self.__init = False
+    def showFFT(self, clicked):
+        self.__active = clicked
+        self.__init = False
+    def updateImage(self, img):
+        if self.__active and (self.__it == self.__updateRate):
+            self.__it = 0
+            self.widget.setImage(np.fft.fftshift(np.log10(abs(np.fft.fft2(img)))), self.__init)
+            self.__init = True
+            
+        elif self.__active and (not (self.__it == self.__updateRate)):
+            self.__it += 1
+    def changeRate(self, rate):
+        self.__updateRate = rate
+        self.__it = 0
+        
+# Image control
+class SettingsController(WidgetController):
+    def adjustFrame(self, binPar, widthPar, heightPar, X0par, Y0par):
+        binning = binPar.value()
+        width = widthPar.value()
+        height = heightPar.value()
+        
+        # Round to closest "divisable by 4" value.
+        #        vpos = int(4 * np.ceil(vpos / 4))
+        #        hpos = int(4 * np.ceil(hpos / 4))
+        # Following is to adapt to the V3 camera on Fra's setup
+        vpos = binning*X0par.value()
+        hpos = binning*Y0par.value()
+        vsize = binning*width
+        hsize = binning*height
+        
+        
+        if not (vpos == 0 and hpos == 0 and vsize == 2048 and hsize == 2048):
+            vpos = int(128 * np.ceil(binning*X0par.value() / 128))
+            hpos = int(128 * np.ceil(binning*Y0par.value() / 128))
+            vsize = int(128 * np.ceil(binning*width / 128))
+            hsize = int(128 * np.ceil(height / 128))
+            minroi = 64
+            vsize = int(min(2048 - vpos, minroi * np.ceil(vsize / minroi)))
+            hsize = int(min(2048 - hpos, minroi * np.ceil(hsize / minroi)))
+            
+        self.master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize)
+
+        # Final shape values might differ from the user-specified one because
+        # of camera limitation x128
+        width, height = self.master.cameraHelper.getShapes()
+        self.comm_channel.adjustFrame(width, height)
+        frameStart = self.master.cameraHelper.getFrameStart()
+        X0par.setValue(frameStart[0])
+        Y0par.setValue(frameStart[1])
+        widthPar.setValue(width)
+        heightPar.setValue(height)
+        self.widget.updateTimings(self.master.cameraHelper.getTimings())
+        
+    def ROIchanged(self, pos, size):
+        self.widget.ROIchanged(self.master.cameraHelper.getFrameStart(), pos, size)
+    def customROI(self):
+        return self.comm_channel.customROI()
+    def abortROI(self, X0par, Y0par, widthPar, heightPar):
+        self.comm_channel.toggleROI(False)
+        frameStart = self.master.cameraHelper.getFrameStart()
+        shapes = self.master.cameraHelper.getShapes()
+        X0par.setValue(frameStart[0])
+        Y0par.setValue(frameStart[1])
+        widthPar.setValue(shapes[0])
+        heightPar.setValue(shapes[1])
+    def changeTriggerSource(self, source):
+        self.master.cameraHelper.changeTriggerSource(source)
+    def setExposure(self, time):
+        params = self.master.cameraHelper.setExposure(time)
+        self.widget.updateTimings(params)
+    def setBinning(self, binning):
+        self.master.cameraHelper.setBinning(binning)
+  
+class ViewController(WidgetController): 
     def liveview(self, clicked):
         if clicked:
-            self.master.startLiveview()
+            self.master.cameraHelper.startAcquisition()
         else:
-            self.master.stopLiveview()
-    def updateView(self):
-        print('Update view')
+            self.master.cameraHelper.stopAcquisition()
+    def updateGrid(self, width, height):
+        self.widget.updateGrid(width, height)
        
-class ImageController(WidgetController): # TODO
-    def ROIchanged(self):
-        print('ROI changed')
-    def autoLevels(self):
-        print('Auto levels')
+class ImageController(WidgetController): 
+    def toggleROI(self, b):
+        self.widget.toggleROI(b)
+    def autoLevels(self, init=True):
+        self.widget.autoLevels(init)
     def addItemTovb(self, item):
         self.widget.addItemTovb(item)
     def removeItemFromvb(self, item):
         self.widget.removeItemFromvb(item)
     def updateImage(self, img):
         self.widget.updateImage(img)
+    def adjustFrame(self, width, height):
+        self.widget.adjustFrame(width, height)
+    def customROI(self):
+        [pos, size] = self.widget.customROI()
+        return [self.master.cameraHelper.getFrameStart(), pos, size]
+    def ROIchanged(self, pos, size):
+        self.comm_channel.ROIchanged(pos, size)
+    def getImg(self):
+        return self.widget.getImg()
+        
         
 class RecorderController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):

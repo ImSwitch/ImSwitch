@@ -153,6 +153,7 @@ class TempestaView():
         self.fftWidget.registerListener(controller.fftController)
         self.recordingWidget.registerListener(controller.recorderController)
         self.viewCtrlWidget.registerListener(controller.viewController)
+        self.settingsWidget.registerListener(controller.settingsController)
         
 
     def startView(self):

@@ -5,7 +5,7 @@ Created on Wed Apr  1 15:18:49 2020
 @author: Testa4
 """
 import numpy as np
-from model import mockers, hamamatsu
+from model import mockers
 
 class Cameras(object):
     """ Buffer class for testing whether the camera is connected. If it's not,
@@ -23,13 +23,13 @@ class Cameras(object):
     def __new__(cls, *args, **kwargs):
         cameras = []
         try:     
-            for i in np.arange(hamamatsu.n_cameras):
+            import model.hamamatsu as hm
+            for i in np.arange(hm.n_cameras):
                 print('Trying to import camera', i)
-                cameras.append(hamamatsu.HamamatsuCameraMR(i))
+                cameras.append(hm.HamamatsuCameraMR(i))
                 print('Initialized Hamamatsu Camera Object, model: ', cameras[i].camera_model)
             return cameras
 
         except:
             print('Initializing Mock Hamamatsu')
             return [mockers.MockHamamatsu()]
-            

@@ -531,18 +531,27 @@ class AlignWidgetXY(Widget):
         
     def registerListener(self, controller):
         controller.addROI(self.ROI)
-        self.roiButton.clicked.connect(self.ROItoggle)
+        self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
         self.alignTimer.timeout.connect(lambda: controller.updateValue(self.ROI))
+        self.Xradio.clicked.connect(lambda: controller.setRadio(0))
+        self.Yradio.clicked.connect(lambda: controller.setRadio(1))
         
-    def ROItoggle(self):
+    def ROItoggle(self, controller):
         if self.roiButton.isChecked() is False:
             self.ROI.hide()
+            controller.updateActive(False)
             self.roiButton.setText('Show ROI')
         else:
             self.ROI.show()
+            controller.updateActive(True)
             self.roiButton.setText('Hide ROI')
     
- 
+    def getROI(self):
+        return self.ROI
+        
+    def updateValue(self, value):
+        self.graph.updateGraph(value)
+    
 
 class AlignWidgetAverage(Widget):
 
@@ -567,27 +576,30 @@ class AlignWidgetAverage(Widget):
         grid.addWidget(self.resetButton, 1, 1, 1, 1)
         grid.setRowMinimumHeight(0, 300)
 
-        self.scansPerS = 10
-        self.alignTime = 1000 / self.scansPerS
-        self.alignTimer = QtCore.QTimer()
-        #self.alignTimer.start(self.alignTime)
         
     def registerListener(self, controller):
         controller.addROI(self.ROI)
-        self.roiButton.clicked.connect(self.ROItoggle)
+        self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
         self.resetButton.clicked.connect(self.resetGraph)
-        self.alignTimer.timeout.connect(lambda: controller.updateValue(self.ROI))
         
     def resetGraph(self):
         self.graph.resetData()
         
-    def ROItoggle(self):
+    def ROItoggle(self, controller):
         if self.roiButton.isChecked() is False:
             self.ROI.hide()
+            controller.updateActive(False)
             self.roiButton.setText('Show ROI')
         else:
             self.ROI.show()
+            controller.updateActive(True)
             self.roiButton.setText('Hide ROI')
+            
+    def updateValue(self, value):
+        self.graph.updateGraph(value)
+        
+    def getROI(self):
+        return self.ROI
         
 class AlignmentWidget(Widget):
     def __init__(self, *args, **kwargs):
@@ -810,13 +822,16 @@ class FFTWidget(Widget):
 
         super().__init__(*args, **kwargs)
         # Do FFT button
-        self.doButton = QtGui.QPushButton('Do FFT')
-
+        self.showCheck = QtGui.QCheckBox('Show FFT')
+        self.showCheck.setCheckable = True
         # Period button and text for changing the vertical lines
         self.changePosButton = QtGui.QPushButton('Period (pix)')
         
         self.linePos = QtGui.QLineEdit('4')
         self.show = 0 
+        
+        self.lineRate = QtGui.QLineEdit('10')
+        self.labelRate = QtGui.QLabel('Update rate')
         
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
@@ -860,22 +875,33 @@ class FFTWidget(Widget):
         
 
         grid.addWidget(self.cwidget, 0, 0, 1, 6)
-        grid.addWidget(self.doButton, 1, 0, 1, 1)
+        grid.addWidget(self.showCheck, 1, 0, 1, 1)
         grid.addWidget(self.changePosButton, 2, 0, 1, 1)
         grid.addWidget(self.linePos, 2, 1, 1, 1)
+        grid.addWidget(self.labelRate, 2, 2, 1, 1)
+        grid.addWidget(self.lineRate, 2, 3, 1, 1)
+        
         grid.setRowMinimumHeight(0, 300)
 
         self.init = False
         
     def registerListener(self, controller):
-        self.doButton.clicked.connect(controller.doFFT)
+        self.showCheck.stateChanged.connect(lambda: controller.showFFT(self.showCheck.isChecked()))
         self.changePosButton.clicked.connect(lambda: self.changePos(float(self.linePos.text())))
+        self.linePos.textChanged.connect(lambda: self.changePos(float(self.linePos.text())))
+        self.lineRate.textChanged.connect(lambda: controller.changeRate(float(self.lineRate.text())))
         
-    def setImage(self, im):
+    def setImage(self, im, init):
         self.img.setImage(im, autoLevels=False)
+        if not init:
+            self.vb.setAspectLocked()
+            self.vb.setLimits(xMin=-0.5, xMax=self.img.width(), minXRange=4,
+                          yMin=-0.5, yMax=self.img.height(), minYRange=4)
+            self.hist.setLevels(*guitools.bestLimits(im))
+            self.hist.vb.autoRange()
         
     def changePos(self, pos):
-        if pos == self.show or pos == 0:
+        if (pos == self.show) or pos == 0:
             self.vline.hide()
             self.hline.hide()
             self.rvline.hide()
@@ -884,6 +910,7 @@ class FFTWidget(Widget):
             self.dhline.hide()
             self.show = 0
         else:
+            self.show = pos
             pos = float(1 / pos)
             self.imgWidth = self.img.width()
             self.imgHeight = self.img.height()
@@ -905,7 +932,7 @@ class FFTWidget(Widget):
             self.lvline.show()
             self.uhline.show()
             self.dhline.show()
-            self.show = pos
+            
 
 
 # Widget to control image or sequence recording. Recording only possible when
@@ -1091,8 +1118,15 @@ class ViewCtrlWidget(Widget):
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
     
     def registerListener(self, controller):
-        self.liveviewButton.clicked.connect(lambda: controller.liveview(self.liveviewButton.isChecked()))
-        #self.viewtimer.timeout.connect(controller.updateView)
+        self.liveviewButton.clicked.connect(lambda: self.liveview(controller) )
+        
+    def liveview(self, controller):
+        self.crosshairButton.setEnabled(True)
+        self.gridButton.setEnabled(True)
+        controller.liveview(self.liveviewButton.isChecked())
+    
+    def updateGrid(self, width, height):
+        self.grid.update([width, height])
         
 class ImageWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs):
@@ -1119,7 +1153,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
         self.ROI.hide()
-
+        self.vb.addItem(self.ROI)
         # x and y profiles
         xPlot = self.addPlot(row=0, col=1)
         xPlot.hideAxis('left')
@@ -1144,7 +1178,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.addItem(proxy, row=0, col=2)
     
     def registerListener(self, controller): 
-        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
+        self.ROI.sigRegionChangeFinished.connect(lambda: controller.ROIchanged(self.ROI.pos(), self.ROI.size()))
         self.levelsButton.pressed.connect(controller.autoLevels)
 
     def addItemTovb(self, item):
@@ -1154,10 +1188,42 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.removeItem(item)
         
     def updateImage(self, img):
-        self.img.setImage(img)
-        self.hist.setLevels(*guitools.bestLimits(img))
+        self.img.setImage(img, autoLevels=False, autoDownsample=False)
+
+    def adjustFrame(self, width, height):
+        self.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
+                          yMin=-0.5, yMax=height - 0.5, minYRange=4)
+        self.vb.setAspectLocked()
+        self.ROI.hide()
+        
+    def autoLevels(self, init=True):
+        if not init:
+            self.levelsButton.setEnabled(True)
+        self.hist.setLevels(*guitools.bestLimits(self.img.image))
         self.hist.vb.autoRange()
     
+    def customROI(self):
+        ROIsize = (64, 64)
+        ROIcenter = (int(self.vb.viewRect().center().x()),
+                     int(self.vb.viewRect().center().y()))
+        ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
+                  ROIcenter[1] - 0.5 * ROIsize[1])
+
+        self.ROI.setPos(ROIpos)
+        self.ROI.setSize(ROIsize)
+        self.ROI.show()
+        
+        return [self.ROI.pos(), self.ROI.size()]
+        
+    def toggleROI(self, b):
+        if b:
+            self.ROI.show()
+        else:
+            self.ROI.hide()
+
+    def getImg(self):
+        return self.img
+        
 class SettingsWidget(Widget):
     
     def __init__(self, *args, **kwargs):
@@ -1173,6 +1239,112 @@ class SettingsWidget(Widget):
         cameraGrid.addWidget(cameraTitle, 0, 0)
         cameraGrid.addWidget(self.tree, 1, 0)
         
+        self.umxpx = self.tree.p.param('Pixel size').value()
+        self.framePar = self.tree.p.param('Image frame')
+        self.binPar = self.framePar.param('Binning')
+        self.FrameMode = self.framePar.param('Mode')
+        self.X0par = self.framePar.param('X0')
+        self.Y0par = self.framePar.param('Y0')
+        self.widthPar = self.framePar.param('Width')
+        self.heightPar = self.framePar.param('Height')
+        self.applyParam = self.framePar.param('Apply')
+        self.NewROIParam = self.framePar.param('New ROI')
+        self.AbortROIParam = self.framePar.param('Abort ROI')
+        
+        timingsPar = self.tree.p.param('Timings')
+        self.EffFRPar = timingsPar.param('Internal frame rate')
+        self.expPar = timingsPar.param('Set exposure time')
+        self.ReadoutPar = timingsPar.param('Readout time')
+        self.RealExpPar = timingsPar.param('Real exposure time')
+        self.FrameInt = timingsPar.param('Internal frame interval')
+        self.RealExpPar.setOpts(decimals=5)
+        
+        acquisParam = self.tree.p.param('Acquisition mode')
+        self.trigsourceparam = acquisParam.param('Trigger source')
+        
+        
+    def registerListener(self, controller):
+        controller.setExposure(self.expPar.value())
+        self.updateFrame(controller)
+        self.applyParam.sigStateChanged.connect(lambda: controller.adjustFrame(self.binPar, self.widthPar, self.heightPar, self.X0par, self.Y0par))
+        self.NewROIParam.sigStateChanged.connect(lambda: self.updateFrame(controller))
+        self.AbortROIParam.sigStateChanged.connect(lambda: controller.abortROI(self.X0par, self.Y0par, self.widthPar, self.heightPar))
+        self.trigsourceparam.sigValueChanged.connect(lambda: controller.changeTriggerSource(self.trigsourceparam.value()))
+        self.expPar.sigValueChanged.connect(lambda: controller.setExposure(self.expPar.value()))
+        self.binPar.sigValueChanged.connect(lambda: controller.setBinning(self.binPar.value()))
+        self.FrameMode.sigValueChanged.connect(lambda: self.updateFrame(controller))
+        self.expPar.sigValueChanged.connect(lambda: controller.setExposure(self.expPar.value()))
+        
+    def updateTimings(self, params):
+        self.RealExpPar.setValue(params[0])
+        self.FrameInt.setValue(params[1])
+        self.ReadoutPar.setValue(params[2])
+        self.EffFRPar.setValue(params[3])
+        
+    def updateFrame(self, controller):
+        """ Method to change the image frame size and position in the sensor.
+        """
+        frameParam = self.tree.p.param('Image frame')
+        if frameParam.param('Mode').value() == 'Custom':
+            self.X0par.setWritable(True)
+            self.Y0par.setWritable(True)
+            self.widthPar.setWritable(True)
+            self.heightPar.setWritable(True)
+            
+            [frameStart, pos, size] = controller.customROI()
+            
+            self.ROIchanged(self, frameStart, pos, size)  # [1] is Height
+
+        else:
+            self.X0par.setWritable(False)
+            self.Y0par.setWritable(False)
+            self.widthPar.setWritable(False)
+            self.heightPar.setWritable(False)
+
+            if frameParam.param('Mode').value() == 'Full chip':
+                self.X0par.setValue(0)
+                self.Y0par.setValue(0)
+                self.widthPar.setValue(2048)
+                self.heightPar.setValue(2048)
+            elif frameParam.param('Mode').value() == 'Full Widefield':
+                self.X0par.setValue(630)
+                self.Y0par.setValue(610)
+                self.widthPar.setValue(800)
+                self.heightPar.setValue(800)
+
+            elif frameParam.param('Mode').value() == 'Microlenses':
+                self.X0par.setValue(595)
+                self.Y0par.setValue(685)
+                self.widthPar.setValue(600)
+                self.heightPar.setValue(600)
+
+            elif frameParam.param('Mode').value() == 'Fast ROI':
+                self.X0par.setValue(595)
+                self.Y0par.setValue(960)
+                self.widthPar.setValue(600)
+                self.heightPar.setValue(128)
+
+            elif frameParam.param('Mode').value() == 'Fast ROI only v2':
+                self.X0par.setValue(595)
+                self.Y0par.setValue(1000)
+                self.widthPar.setValue(600)
+                self.heightPar.setValue(50)
+
+            elif frameParam.param('Mode').value() == 'Minimal line':
+                self.X0par.setValue(0)
+                self.Y0par.setValue(1020)
+                self.widthPar.setValue(2048)
+                self.heightPar.setValue(8)
+                
+            controller.adjustFrame(self.binPar, self.widthPar, self.heightPar, self.X0par, self.Y0par)
+
+    def ROIchanged(self, frameStart, pos, size):
+        self.X0par.setValue(frameStart[0] + int(pos[0]))
+        self.Y0par.setValue(frameStart[1] + int(pos[1]))
+
+        self.widthPar.setValue(int(size[0]))   # [0] is Width
+        self.heightPar.setValue(int(size[1]))  # [1] is Height
+      
 class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the camera during imaging
     """
@@ -1192,7 +1364,7 @@ class CamParamTree(ParameterTree):
                       {'name': 'Binning', 'type': 'list',
                        'values': [1, 2, 4], 'tip': BinTip},
                       {'name': 'Mode', 'type': 'list', 'values':
-                          ['Full Widefield', 'Full chip', 'Microlenses',
+                          ['Full chip', 'Full Widefield', 'Microlenses',
                            'alignROI', 'Custom']},
                       {'name': 'X0', 'type': 'int', 'value': 0,
                        'limits': (0, 2044)},
@@ -1236,6 +1408,58 @@ class CamParamTree(ParameterTree):
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
         self._writable = True
+
+    def enableCropMode(self):
+        value = self.frameTransferParam.value()
+        if value:
+            self.cropModeEnableParam.setWritable(True)
+        else:
+            self.cropModeEnableParam.setValue(False)
+            self.cropModeEnableParam.setWritable(False)
+
+    @property
+    def writable(self):
+        return self._writable
+
+    @writable.setter
+    def writable(self, value):
+        """
+        property to set basically the whole parameters tree as writable
+        (value=True) or not writable (value=False)
+        useful to set it as not writable during recording
+        """
+        self._writable = value
+        framePar = self.p.param('Image frame')
+        framePar.param('Binning').setWritable(value)
+        framePar.param('Mode').setWritable(value)
+        framePar.param('X0').setWritable(value)
+        framePar.param('Y0').setWritable(value)
+        framePar.param('Width').setWritable(value)
+        framePar.param('Height').setWritable(value)
+
+        # WARNING: If Apply and New ROI button are included here they will
+        # emit status changed signal and their respective functions will be
+        # called... -> problems.
+        timingPar = self.p.param('Timings')
+        timingPar.param('Set exposure time').setWritable(value)
+
+    def attrs(self):
+        attrs = []
+        for ParName in self.p.getValues():
+            Par = self.p.param(str(ParName))
+            if not(Par.hasChildren()):
+                attrs.append((str(ParName), Par.value()))
+            else:
+                for sParName in Par.getValues():
+                    sPar = Par.param(str(sParName))
+                    if sPar.type() != 'action':
+                        if not(sPar.hasChildren()):
+                            attrs.append((str(sParName), sPar.value()))
+                        else:
+                            for ssParName in sPar.getValues():
+                                ssPar = sPar.param(str(ssParName))
+                                attrs.append((str(ssParName), ssPar.value()))
+        return attrs
 
 
         

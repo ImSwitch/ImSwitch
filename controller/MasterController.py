@@ -9,42 +9,117 @@ from pyqtgraph.Qt import QtCore
 
 class CameraHelper():
     def __init__(self, comm_channel, cameras):
-        self.cameras = cameras
-        self.comm_channel = comm_channel
-        self.time = 100
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.updateLatestFrame)
-        c = self.cameras[0]
-        c.setPropertyValue('readout_speed', 3)
-        c.setPropertyValue('trigger_global_exposure', 5)
-        c.setPropertyValue(
+        self.__cameras = cameras
+        self.__comm_channel = comm_channel
+        self.__time = 100
+        self.__timer = QtCore.QTimer()
+        self.__timer.timeout.connect(self.updateLatestFrame) 
+        self.__cameras[0].setPropertyValue('readout_speed', 3)
+        self.__cameras[0].setPropertyValue('trigger_global_exposure', 5)
+        self.__cameras[0].setPropertyValue(
                 'trigger_active', 2)
-        c.setPropertyValue('trigger_polarity', 2)
-        c.setPropertyValue('exposure_time', 0.01)
-        c.setPropertyValue('trigger_source', 1)
-        c.setPropertyValue('subarray_vpos', 0)
-        c.setPropertyValue('subarray_hpos', 0)
-        c.setPropertyValue('subarray_vsize', 2048)
-        c.setPropertyValue('subarray_hsize', 2048)
+        self.__cameras[0].setPropertyValue('trigger_polarity', 2)
+        self.__cameras[0].setPropertyValue('exposure_time', 0.01)
+        self.__cameras[0].setPropertyValue('trigger_source', 1)
+        self.__cameras[0].setPropertyValue('subarray_vpos', 0)
+        self.__cameras[0].setPropertyValue('subarray_hpos', 0)
+        self.__cameras[0].setPropertyValue('subarray_vsize', 2048)
+        self.__cameras[0].setPropertyValue('subarray_hsize', 2048)
+        self.__frameStart = (0, 0)
+        self.__shapes = (self.__cameras[0].getPropertyValue('image_height')[0], self.__cameras[0].getPropertyValue('image_width')[0])
         
     def startAcquisition(self):
-        self.timer.start(self.time)
-        self.cameras[0].startAcquisition()  
+        self.__cameras[0].startAcquisition()
+        self.updateLatestFrame(False)
+        self.__timer.start(self.__time)
         
     def stopAcquisition(self):
-        self.timer.stop()
-        self.cameras[0].stopAcquisition()
-#        
-#    def changeParameter(self):
-#        
-    def updateLatestFrame(self):
-        hcData = self.cameras[0].getLast()
+        self.__timer.stop()
+        self.__cameras[0].stopAcquisition()
+        
+    def changeParameter(self, function):
+            """ This method is used to change those camera properties that need
+            the camera to be idle to be able to be adjusted.
+            """
+            try:
+                function()
+            except BaseException:
+                self.stopAcquisition()
+                function()
+                self.startAcquisition()  
+
+    def updateLatestFrame(self, init=True):
+        hcData = self.__cameras[0].getLast()
         size = hcData[1]
         frame = hcData[0].getData()
-        self.image = np.reshape(
+        image = np.reshape(
             frame, (size), 'F')
-        self.comm_channel.updateImage(self.image)
+        self.__comm_channel.updateImage(image, init)
+        
+    def setExposure(self, time):
+        self.__cameras[0].setPropertyValue('exposure_time', time)
+        return self.getTimings()
+        
+    def getTimings(self):
+        return [self.__cameras[0].getPropertyValue('exposure_time')[0], self.__cameras[0].getPropertyValue('internal_frame_interval')[0], self.__cameras[0].getPropertyValue('timing_readout_time')[0], self.__cameras[0].getPropertyValue('internal_frame_rate')[0]]
 
+                
+    def cropOrca(self, hpos, vpos, hsize, vsize):
+        """Method to crop the frame read out by Orcaflash. """
+        self.stopAcquisition()
+        self.__cameras[0].setPropertyValue('subarray_vpos', 0)
+        self.__cameras[0].setPropertyValue('subarray_hpos', 0)
+        self.__cameras[0].setPropertyValue('subarray_vsize', 2048)
+        self.__cameras[0].setPropertyValue('subarray_hsize', 2048)
+        
+        if not (hpos == 0 and vpos == 0 and hsize == 2048 and vsize == 2048):
+            self.__cameras[0].setPropertyValue('subarray_vsize', vsize)
+            self.__cameras[0].setPropertyValue('subarray_hsize', hsize)
+            self.__cameras[0].setPropertyValue('subarray_vpos', vpos)
+            self.__cameras[0].setPropertyValue('subarray_hpos', hpos)
+            
+        self.startAcquisition()
+        # This should be the only place where self.frameStart is changed
+        self.__frameStart = (hpos, vpos)
+        # Only place self.shapes is changed
+        self.__shapes = (hsize, vsize)
+            
+    def changeTriggerSource(self, source):
+        if source == 'Internal trigger':
+            self.changeParameter(
+                lambda: self.__cameras[0].setPropertyValue(
+                    'trigger_source', 1))
+
+        elif source == 'External "Start-trigger"':
+            self.changeParameter(
+                lambda: self.__cameras[0].setPropertyValue(
+                    'trigger_source', 2))
+            self.changeParameter(
+                lambda: self.__cameras[0].setPropertyValue(
+                    'trigger_mode', 6))
+
+        elif source == 'External "frame-trigger"':
+            self.changeParameter(
+                lambda: self.__cameras[0].setPropertyValue(
+                    'trigger_source', 2))
+            self.changeParameter(
+                lambda: self.__cameras[0].setPropertyValue(
+                    'trigger_mode', 1))
+            
+    def setBinning(self, binning):    
+        binning = str(binning)
+        binstring = binning + 'x' + binning
+        coded = binstring.encode('ascii')
+    
+        self.changeParameter(
+           lambda: self.__cameras[0].setPropertyValue('binning', coded))
+ 
+    def getFrameStart(self):
+        return self.__frameStart
+        
+    def getShapes(self):
+        return self.__shapes
+        
 #class NidaqHelper():
 #    
 #    def __init__(self, ):
@@ -71,13 +146,7 @@ class MasterController():
         self.stagePos = [0, 0, 0]
         self.comm_channel = comm_channel
         self.cameraHelper = CameraHelper(self.comm_channel, self.model.cameras)
-        
-        
-    def startLiveview(self):
-        self.cameraHelper.startAcquisition()
-        
-    def stopLiveview(self):
-        self.cameraHelper.stopAcquisition()
+    
         
     def moveStage(self, axis, dist):
         self.stagePos[axis] += dist

@@ -11,12 +11,13 @@ class TempestaController():
     
     def __init__(self, model, view):
         
-        __model = model # Private
-        __view = view #Private
+        __model = model 
+        __view = view 
         
         self.__comm_channel = CommunicationChannel(self)
-        __masterController = MasterController(__model, self.__comm_channel) # Private
+        __masterController = MasterController(__model, self.__comm_channel) 
         
+        # List of Controllers for the GUI Widgets
         
         self.scanController = controllers.ScanController(self.__comm_channel, __masterController, __view.scanWidget)
         self.positionerController = controllers.PositionerController(self.__comm_channel, __masterController, __view.positionerWidget) 
@@ -31,10 +32,15 @@ class TempestaController():
         self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
         self.settingsController = controllers.SettingsController(self.__comm_channel, __masterController, __view.settingsWidget)
 
+    
 class CommunicationChannel():
+    # Communication Channel is a class that handles the communication between Master Controller and Widgets, or between Widgets 
+    
     def __init__(self, main):
         self.__main = main
+    
     def updateImage(self, init):
+        # Called from Master Controller, it updates the Liveview and Liveview Updated Widgets
         self.__main.imageController.update()
         self.__main.fftController.update()
         self.__main.alignXYController.update()
@@ -56,5 +62,6 @@ class CommunicationChannel():
         return  self.__main.imageController.getROIdata(ROI)
         
     def centerROI(self):
+        # Returns the center of the VB to align the ROI
         return self.__main.imageController.centerROI()
         

@@ -14,33 +14,31 @@ class TempestaController():
         __model = model # Private
         __view = view #Private
         
-        self.comm_channel = CommunicationChannel(self)
+        self.__comm_channel = CommunicationChannel(self)
+        __masterController = MasterController(__model, self.__comm_channel) # Private
         
-        __masterController = MasterController(__model, self.comm_channel) # Private
         
-        
-        self.scanController = controllers.ScanController(self.comm_channel, __masterController, __view.scanWidget)
-        self.positionerController = controllers.PositionerController(self.comm_channel, __masterController, __view.positionerWidget) 
-        self.uLensesController = controllers.ULensesController(self.comm_channel, __masterController, __view.ulensesWidget)
-        self.alignXYController = controllers.AlignXYController(self.comm_channel, __masterController, __view.alignWidgetXY)
-        self.alignAverageController = controllers.AlignAverageController(self.comm_channel, __masterController, __view.alignWidgetAverage)
-        self.alignmentController = controllers.AlignmentController(self.comm_channel, __masterController, __view.alignmentWidget)
-        self.laserController = controllers.LaserController(self.comm_channel, __masterController, __view.laserWidgets)
-        self.fftController = controllers.FFTController(self.comm_channel, __masterController, __view.fftWidget)
-        self.recorderController = controllers.RecorderController(self.comm_channel, __masterController, __view.recordingWidget)
-        self.viewController = controllers.ViewController(self.comm_channel, __masterController, __view.viewCtrlWidget)
-        self.imageController = controllers.ImageController(self.comm_channel, __masterController, __view.imageWidget)
-        self.settingsController = controllers.SettingsController(self.comm_channel, __masterController, __view.settingsWidget)
+        self.scanController = controllers.ScanController(self.__comm_channel, __masterController, __view.scanWidget)
+        self.positionerController = controllers.PositionerController(self.__comm_channel, __masterController, __view.positionerWidget) 
+        self.uLensesController = controllers.ULensesController(self.__comm_channel, __masterController, __view.ulensesWidget)
+        self.alignXYController = controllers.AlignXYController(self.__comm_channel, __masterController, __view.alignWidgetXY)
+        self.alignAverageController = controllers.AlignAverageController(self.__comm_channel, __masterController, __view.alignWidgetAverage)
+        self.alignmentController = controllers.AlignmentController(self.__comm_channel, __masterController, __view.alignmentWidget)
+        self.laserController = controllers.LaserController(self.__comm_channel, __masterController, __view.laserWidgets)
+        self.fftController = controllers.FFTController(self.__comm_channel, __masterController, __view.fftWidget)
+        self.recorderController = controllers.RecorderController(self.__comm_channel, __masterController, __view.recordingWidget)
+        self.viewController = controllers.ViewController(self.__comm_channel, __masterController, __view.viewCtrlWidget)
+        self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
+        self.settingsController = controllers.SettingsController(self.__comm_channel, __masterController, __view.settingsWidget)
 
 class CommunicationChannel():
     def __init__(self, main):
         self.__main = main
-        
-    def updateImage(self, img, init):
-        self.__main.imageController.updateImage(img)
-        self.__main.fftController.updateImage(img)
-        self.__main.alignXYController.updateValue(img)
-        self.__main.alignAverageController.updateValue(img)
+    def updateImage(self, init):
+        self.__main.imageController.update()
+        self.__main.fftController.update()
+        self.__main.alignXYController.update()
+        self.__main.alignAverageController.update()
         if not init:
             self.__main.imageController.autoLevels(init)
             
@@ -48,20 +46,15 @@ class CommunicationChannel():
         self.__main.imageController.adjustFrame(width, height)
         self.__main.viewController.updateGrid(width, height)
         
-    def customROI(self):
-        return self.__main.imageController.customROI()
-        
-    def toggleROI(self, b):
-        self.__main.imageController.toggleROI(b)
-        
     def addItemTovb(self, item):
         self.__main.imageController.addItemTovb(item)
 
     def removeItemFromvb(self, item):
         self.__main.imageController.removeItemFromvb(item)
-    
-    def ROIchanged(self, pos, size):
-        self.__main.settingsController.ROIchanged(pos, size)
-
-    def getImg(self):
-        return self.__main.imageController.getImg()
+        
+    def getROIdata(self, ROI):
+        return  self.__main.imageController.getROIdata(ROI)
+        
+    def centerROI(self):
+        return self.__main.imageController.centerROI()
+        

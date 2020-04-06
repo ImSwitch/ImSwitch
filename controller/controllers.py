@@ -8,166 +8,186 @@ import numpy as np
 
 class WidgetController():
     def __init__(self, comm_channel, master, widget):
-        self.master = master
-        self.widget = widget
-        self.comm_channel = comm_channel
+        self._master = master
+        self._widget = widget
+        self._comm_channel = comm_channel
         
-# Alignment control  
+class LiveUpdatedController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.active = False
+    def update(self):
+        raise NotImplementedError
+
+# Alignment control
 
 class ULensesController(WidgetController):
-    def addPlot(self, plot):
-        self.comm_channel.addItemTovb(plot)
+    def addPlot(self):
+        self._comm_channel.addItemTovb(self._widget.ulensesPlot)
     def getImageSize(self):
-        return self.master.cameraHelper.getShapes()
+        return self._master.cameraHelper.shapes
         
-class AlignXYController(WidgetController):
+class AlignXYController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__active = False
-        self.__radio = 0
-    def addROI(self, roi):
-         self.comm_channel.addItemTovb(roi)
-    def updateValue(self, im):
-        if self.__active:
-            ROI = self.widget.getROI()
-            selected = ROI.getArrayRegion(im, self.comm_channel.getImg())
-            value = np.mean(selected, self.__radio)    
-            self.widget.updateValue(value)
-    def updateActive(self, b):
-        self.__active = b
+        self.radio = 0
+    def addROI(self):
+         self._comm_channel.addItemTovb(self._widget.ROI)
+    def update(self):
+        if self.active:
+            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI), self.radio)    
+            self._widget.updateValue(value)
     def setRadio(self, radio):
-        self.__radio = radio
+        self.radio = radio
         
-class AlignAverageController(WidgetController):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__active = False
-    def addROI(self, roi):
-         self.comm_channel.addItemTovb(roi)
-    def updateValue(self, im): 
-        if self.__active:
-            ROI = self.widget.getROI()
-            selected = ROI.getArrayRegion(im, self.comm_channel.getImg())
-            value = np.mean(selected)    
-            self.widget.updateValue(value)
-        
-    def updateActive(self, b):
-        self.__active = b
+class AlignAverageController(LiveUpdatedController):
+    def addROI(self):
+         self._comm_channel.addItemTovb(self._widget.ROI)
+    def update(self): 
+        if self.active:
+            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI))    
+            self._widget.updateValue(value)
         
 class AlignmentController(WidgetController):
     def addLine(self,line):
-         self.comm_channel.addItemTovb(line)
+         self._comm_channel.addItemTovb(line)
 
-class FFTController(WidgetController): 
+class FFTController(LiveUpdatedController): 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__active = False
-        self.__updateRate = 10
-        self.__it = 0
-        self.__init = False
-    def showFFT(self, clicked):
-        self.__active = clicked
-        self.__init = False
-    def updateImage(self, img):
-        if self.__active and (self.__it == self.__updateRate):
-            self.__it = 0
-            self.widget.setImage(np.fft.fftshift(np.log10(abs(np.fft.fft2(img)))), self.__init)
-            self.__init = True
-            
-        elif self.__active and (not (self.__it == self.__updateRate)):
-            self.__it += 1
-    def changeRate(self, rate):
-        self.__updateRate = rate
-        self.__it = 0
+        self.updateRate = 10
+        self.it = 0
+        self.init = False
+    def showFFT(self):
+        self.active = self._widget.showCheck.isChecked()
+        self.init = False
+    def update(self):
+        if self.active and (self.it == self.updateRate):
+            self.it = 0
+            self._widget.setImage(np.fft.fftshift(np.log10(abs(np.fft.fft2(self._master.cameraHelper.image)))), self.init)
+            self.init = True
+        elif self.active and (not (self.it == self.updateRate)):
+            self.it += 1
+    def changeRate(self):
+        self.updateRate = float(self._widget.lineRate.text())
+        self.it = 0
         
 # Image control
 class SettingsController(WidgetController):
-    def adjustFrame(self, binPar, widthPar, heightPar, X0par, Y0par):
-        binning = binPar.value()
-        width = widthPar.value()
-        height = heightPar.value()
-        
+    def addROI(self):
+         self._comm_channel.addItemTovb(self._widget.ROI)
+         
+    def adjustFrame(self):
+        binning = self._widget.binPar.value()
+        width = self._widget.widthPar.value()
+        height = self._widget.heightPar.value()
+        X0par = self._widget.X0par.value()
+        Y0par = self._widget.Y0par.value()
         # Round to closest "divisable by 4" value.
         #        vpos = int(4 * np.ceil(vpos / 4))
         #        hpos = int(4 * np.ceil(hpos / 4))
         # Following is to adapt to the V3 camera on Fra's setup
-        vpos = binning*X0par.value()
-        hpos = binning*Y0par.value()
+        vpos = binning*X0par
+        hpos = binning*Y0par
         vsize = binning*width
         hsize = binning*height
         
         
         if not (vpos == 0 and hpos == 0 and vsize == 2048 and hsize == 2048):
-            vpos = int(128 * np.ceil(binning*X0par.value() / 128))
-            hpos = int(128 * np.ceil(binning*Y0par.value() / 128))
-            vsize = int(128 * np.ceil(binning*width / 128))
-            hsize = int(128 * np.ceil(height / 128))
+            vpos = int(128 * np.ceil(vpos / 128))
+            hpos = int(128 * np.ceil(hpos / 128))
+            vsize = int(128 * np.ceil(vsize / 128))
+            hsize = int(128 * np.ceil(hsize / 128))
             minroi = 64
             vsize = int(min(2048 - vpos, minroi * np.ceil(vsize / minroi)))
             hsize = int(min(2048 - hpos, minroi * np.ceil(hsize / minroi)))
             
-        self.master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize)
+        self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize)
 
         # Final shape values might differ from the user-specified one because
         # of camera limitation x128
-        width, height = self.master.cameraHelper.getShapes()
-        self.comm_channel.adjustFrame(width, height)
-        frameStart = self.master.cameraHelper.getFrameStart()
-        X0par.setValue(frameStart[0])
-        Y0par.setValue(frameStart[1])
-        widthPar.setValue(width)
-        heightPar.setValue(height)
-        self.widget.updateTimings(self.master.cameraHelper.getTimings())
+        width, height = self._master.cameraHelper.shapes
+        self._comm_channel.adjustFrame(width, height)
+        self._widget.ROI.hide()
+        frameStart = self._master.cameraHelper.frameStart
+        self._widget.X0par.setValue(frameStart[0])
+        self._widget.Y0par.setValue(frameStart[1])
+        self._widget.widthPar.setValue(width)
+        self._widget.heightPar.setValue(height)
+        self.updateTimings(self._master.cameraHelper.getTimings())
         
-    def ROIchanged(self, pos, size):
-        self.widget.ROIchanged(self.master.cameraHelper.getFrameStart(), pos, size)
     def customROI(self):
-        return self.comm_channel.customROI()
-    def abortROI(self, X0par, Y0par, widthPar, heightPar):
-        self.comm_channel.toggleROI(False)
-        frameStart = self.master.cameraHelper.getFrameStart()
-        shapes = self.master.cameraHelper.getShapes()
-        X0par.setValue(frameStart[0])
-        Y0par.setValue(frameStart[1])
-        widthPar.setValue(shapes[0])
-        heightPar.setValue(shapes[1])
-    def changeTriggerSource(self, source):
-        self.master.cameraHelper.changeTriggerSource(source)
-    def setExposure(self, time):
-        params = self.master.cameraHelper.setExposure(time)
-        self.widget.updateTimings(params)
-    def setBinning(self, binning):
-        self.master.cameraHelper.setBinning(binning)
+        ROIsize = (64, 64)
+        ROIcenter = self._comm_channel.centerROI()
+        
+        ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
+                      ROIcenter[1] - 0.5 * ROIsize[1])
+    
+        self._widget.ROI.setPos(ROIpos)
+        self._widget.ROI.setSize(ROIsize)
+        self._widget.ROI.show()
+        self.ROIchanged()  
+        
+    def ROIchanged(self):
+        frameStart = self._master.cameraHelper.frameStart
+        pos = self._widget.ROI.pos()
+        size = self._widget.ROI.size()
+        self._widget.X0par.setValue(frameStart[0] + int(pos[0]))
+        self._widget.Y0par.setValue(frameStart[1] + int(pos[1]))
+
+        self._widget.widthPar.setValue(int(size[0]))   # [0] is Width
+        self._widget.heightPar.setValue(int(size[1]))  # [1] is Height
+        
+    def abortROI(self):
+        self._widget.toggleROI(False)
+        frameStart = self._master.cameraHelper.frameStart
+        shapes = self._master.cameraHelper.shapes
+        self._widget.X0par.setValue(frameStart[0])
+        self._widget.Y0par.setValue(frameStart[1])
+        self._widget.widthPar.setValue(shapes[0])
+        self._widget.heightPar.setValue(shapes[1])
+        
+    def changeTriggerSource(self):
+        self._master.cameraHelper.changeTriggerSource(self._widget.trigsourceparam.value())
+        
+    def setExposure(self):
+        params = self._master.cameraHelper.setExposure(self._widget.expPar.value())
+        self.updateTimings(params)
+        
+    def setBinning(self):
+        self._master.cameraHelper.setBinning(self.binPar.value())
+        
+    def updateTimings(self, params):
+        self._widget.RealExpPar.setValue(params[0])
+        self._widget.FrameInt.setValue(params[1])
+        self._widget.ReadoutPar.setValue(params[2])
+        self._widget.EffFRPar.setValue(params[3])
   
 class ViewController(WidgetController): 
-    def liveview(self, clicked):
-        if clicked:
-            self.master.cameraHelper.startAcquisition()
+    def liveview(self):
+        if self._widget.liveviewButton.isChecked():
+            self._master.cameraHelper.startAcquisition()
         else:
-            self.master.cameraHelper.stopAcquisition()
+            self._master.cameraHelper.stopAcquisition()
     def updateGrid(self, width, height):
-        self.widget.updateGrid(width, height)
+        self._widget.updateGrid(width, height)
        
-class ImageController(WidgetController): 
-    def toggleROI(self, b):
-        self.widget.toggleROI(b)
+class ImageController(LiveUpdatedController):
     def autoLevels(self, init=True):
-        self.widget.autoLevels(init)
+        self._widget.autoLevels(init)
     def addItemTovb(self, item):
-        self.widget.addItemTovb(item)
+        self._widget.addItemTovb(item)
     def removeItemFromvb(self, item):
-        self.widget.removeItemFromvb(item)
-    def updateImage(self, img):
-        self.widget.updateImage(img)
+        self._widget.removeItemFromvb(item)
+    def update(self):
+        self._widget.updateImage(self._master.cameraHelper.image)
     def adjustFrame(self, width, height):
-        self.widget.adjustFrame(width, height)
-    def customROI(self):
-        [pos, size] = self.widget.customROI()
-        return [self.master.cameraHelper.getFrameStart(), pos, size]
-    def ROIchanged(self, pos, size):
-        self.comm_channel.ROIchanged(pos, size)
-    def getImg(self):
-        return self.widget.getImg()
+        self._widget.adjustFrame(width, height)
+    def getROIdata(self, roi):
+        return roi.getArrayRegion(self._master.cameraHelper.image, self._widget.img)
+    def centerROI(self):
+        return (int(self._widget.vb.viewRect().center().x()),
+                         int(self._widget.vb.viewRect().center().y()))
         
         
 class RecorderController(WidgetController): # TODO
@@ -249,8 +269,8 @@ class MultipleScanController(WidgetController): # TODO
         
 class PositionerController(WidgetController): 
     def move(self, axis, dist):
-        newPos = self.master.moveStage(axis, dist)
-        self.widget.newPos(axis, newPos)
+        newPos = self._master.moveStage(axis, dist)
+        self._widget.newPos(axis, newPos)
 
 class LaserController(WidgetController): 
     def __init__(self, *args, **kwargs):
@@ -259,30 +279,30 @@ class LaserController(WidgetController):
     def toggleLaser(self, laser, enable):
         if not self.digMod:
             if enable:
-                self.master.toggleLaser(True, laser)
+                self._master.toggleLaser(True, laser)
             else:
-                self.master.toggleLaser(False, laser)
+                self._master.toggleLaser(False, laser)
     def changeSlider(self, laser, value):
         if not self.digMod:
             magnitude =  value 
-            self.master.changePower(magnitude, laser)
-            self.widget.changeEdit(str(magnitude), laser)
+            self._master.changePower(magnitude, laser)
+            self._widget.changeEdit(str(magnitude), laser)
     def changeEdit(self, laser, value):
         if not self.digMod:
             magnitude = value
-            self.master.changePower(magnitude, laser)
-            self.widget.changeSlider(magnitude, laser)
+            self._master.changePower(magnitude, laser)
+            self._widget.changeSlider(magnitude, laser)
     def updateDigitalPowers(self, digital, powers, lasers):
         self.digMod = digital
         if digital:
             for i in np.arange(len(lasers)):
-                self.master.changePower(powers[i], lasers[i])
+                self._master.changePower(powers[i], lasers[i])
             
     def GlobalDigitalMod(self, digital, powers, lasers):
         self.digMod = digital
         if digital:
             for i in np.arange(len(lasers)):
-                self.master.digitalMod(True, powers[i], lasers[i])
+                self._master.digitalMod(True, powers[i], lasers[i])
         
 
         

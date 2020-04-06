@@ -13,6 +13,7 @@ class WidgetController():
         self._comm_channel = comm_channel
         
 class LiveUpdatedController(WidgetController):
+    # Those controllers that will update the widgets with an upcoming frame from the camera 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.active = False
@@ -73,6 +74,7 @@ class FFTController(LiveUpdatedController):
         self.it = 0
         
 # Image control
+
 class SettingsController(WidgetController):
     def addROI(self):
          self._comm_channel.addItemTovb(self._widget.ROI)

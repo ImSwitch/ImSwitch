@@ -13,7 +13,7 @@ class CameraHelper():
         self.__comm_channel = comm_channel
         self.__time = 100
         self.__timer = QtCore.QTimer()
-        self.__timer.timeout.connect(self.updateLatestFrame) 
+        self.__timer.timeout.connect(self.__updateLatestFrame) 
         self.__cameras[0].setPropertyValue('readout_speed', 3)
         self.__cameras[0].setPropertyValue('trigger_global_exposure', 5)
         self.__cameras[0].setPropertyValue(
@@ -27,10 +27,24 @@ class CameraHelper():
         self.__cameras[0].setPropertyValue('subarray_hsize', 2048)
         self.__frameStart = (0, 0)
         self.__shapes = (self.__cameras[0].getPropertyValue('image_height')[0], self.__cameras[0].getPropertyValue('image_width')[0])
+        self.__image = []
+
+        
+    @property
+    def frameStart(self):
+        return self.__frameStart
+    
+    @property
+    def shapes(self):
+        return self.__shapes
+        
+    @property
+    def image(self):
+        return self.__image
         
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
-        self.updateLatestFrame(False)
+        self.__updateLatestFrame(False)
         self.__timer.start(self.__time)
         
     def stopAcquisition(self):
@@ -48,13 +62,13 @@ class CameraHelper():
                 function()
                 self.startAcquisition()  
 
-    def updateLatestFrame(self, init=True):
+    def __updateLatestFrame(self, init=True):
         hcData = self.__cameras[0].getLast()
         size = hcData[1]
         frame = hcData[0].getData()
-        image = np.reshape(
+        self.__image = np.reshape(
             frame, (size), 'F')
-        self.__comm_channel.updateImage(image, init)
+        self.__comm_channel.updateImage(init)
         
     def setExposure(self, time):
         self.__cameras[0].setPropertyValue('exposure_time', time)
@@ -114,11 +128,6 @@ class CameraHelper():
         self.changeParameter(
            lambda: self.__cameras[0].setPropertyValue('binning', coded))
  
-    def getFrameStart(self):
-        return self.__frameStart
-        
-    def getShapes(self):
-        return self.__shapes
         
 #class NidaqHelper():
 #    
@@ -142,22 +151,16 @@ class MasterController():
     
     def __init__(self, model, comm_channel):
         print('init master controller')
-        self.model = model
+        self.__model = model
         self.stagePos = [0, 0, 0]
-        self.comm_channel = comm_channel
-        self.cameraHelper = CameraHelper(self.comm_channel, self.model.cameras)
+        self.__comm_channel = comm_channel
+        self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
     
         
     def moveStage(self, axis, dist):
         self.stagePos[axis] += dist
         return self.stagePos[axis]
         
-    def getImage(self):
-        im = 20 + np.zeros((20, 20))
-        return im
-        
-    def getImageSize(self):
-        return [500, 500]
         
     def toggleLaser(self, enable, laser):
         print('Change enabler of laser '+ str(laser) + ' to ' + str(enable))

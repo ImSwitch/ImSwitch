@@ -19,6 +19,7 @@ class Widget(QtGui.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        
 class ScanWidget(Widget):
     ''' Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget'''
@@ -478,20 +479,24 @@ class ULensesWidget(Widget):
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
         
     def registerListener(self, controller):
-        controller.addPlot(self.ulensesPlot)
-        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(controller, np.float(self.xEdit.text()), np.float(self.yEdit.text()), np.float(self.pxEdit.text()),  np.float(self.upEdit.text()), self.ulensesCheck.isChecked()))
-        self.ulensesCheck.stateChanged.connect(lambda: self.show(self.ulensesCheck.isChecked()))
+        controller.addPlot()
+        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(controller))
+        self.ulensesCheck.stateChanged.connect(self.show)
         
-    def ulensesToolAux(self, controller, x, y, px, up, show):
+    def ulensesToolAux(self, controller):
+        x = np.float(self.xEdit.text())
+        y = np.float(self.yEdit.text())
+        px = np.float(self.pxEdit.text())
+        up = np.float(self.upEdit.text())
         size_x, size_y = controller.getImageSize()
         pattern_x = np.arange(x, size_x, up/px)
         pattern_y = np.arange(y, size_y, up/px)
         self.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
         self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
-        self.show(show)
+        self.show()
                     
-    def show(self, show):
-        if show:
+    def show(self):
+        if self.ulensesCheck.isChecked():
             self.ulensesPlot.show()
         else:
             self.ulensesPlot.hide()
@@ -519,35 +524,22 @@ class AlignWidgetXY(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.Xradio, 1, 1, 1, 1)
         grid.addWidget(self.Yradio, 1, 2, 1, 1)
-
-        self.scansPerS = 10
-        self.alignTime = 1000 / self.scansPerS
-        self.alignTimer = QtCore.QTimer()
-        #self.alignTimer.start(self.alignTime)
-
-        # 2 zeros because it has to have the attribute "len"
-        self.latest_values = np.zeros(2)
-        self.s_fac = 0.3
         
     def registerListener(self, controller):
-        controller.addROI(self.ROI)
+        controller.addROI()
         self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
-        self.alignTimer.timeout.connect(lambda: controller.updateValue(self.ROI))
         self.Xradio.clicked.connect(lambda: controller.setRadio(0))
         self.Yradio.clicked.connect(lambda: controller.setRadio(1))
         
     def ROItoggle(self, controller):
         if self.roiButton.isChecked() is False:
             self.ROI.hide()
-            controller.updateActive(False)
+            controller.active = False
             self.roiButton.setText('Show ROI')
         else:
             self.ROI.show()
-            controller.updateActive(True)
+            controller.active = True
             self.roiButton.setText('Hide ROI')
-    
-    def getROI(self):
-        return self.ROI
         
     def updateValue(self, value):
         self.graph.updateGraph(value)
@@ -578,7 +570,7 @@ class AlignWidgetAverage(Widget):
 
         
     def registerListener(self, controller):
-        controller.addROI(self.ROI)
+        controller.addROI()
         self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
         self.resetButton.clicked.connect(self.resetGraph)
         
@@ -588,11 +580,11 @@ class AlignWidgetAverage(Widget):
     def ROItoggle(self, controller):
         if self.roiButton.isChecked() is False:
             self.ROI.hide()
-            controller.updateActive(False)
+            controller.active = False
             self.roiButton.setText('Show ROI')
         else:
             self.ROI.show()
-            controller.updateActive(True)
+            controller.active = True
             self.roiButton.setText('Hide ROI')
             
     def updateValue(self, value):
@@ -623,16 +615,16 @@ class AlignmentWidget(Widget):
         
     def registerListener(self, controller):
         controller.addLine(self.alignmentLine)
-        self.alignmentLineMakerButton.clicked.connect(lambda: self.alignmentToolAux(self.alignmentCheck.isChecked()))
-        self.alignmentCheck.stateChanged.connect(lambda: self.show(self.alignmentCheck.isChecked()))
+        self.alignmentLineMakerButton.clicked.connect(self.alignmentToolAux)
+        self.alignmentCheck.stateChanged.connect(self.show)
        
-    def alignmentToolAux(self, show):
+    def alignmentToolAux(self):
         self.angle = np.float(self.angleEdit.text())
         self.alignmentLine.setAngle(self.angle)
-        self.show(show)
+        self.show()
         
-    def show(self, show):
-        if show:
+    def show(self):
+        if self.alignmentCheck.isChecked():
             self.alignmentLine.show()
         else:
             self.alignmentLine.hide()
@@ -886,10 +878,10 @@ class FFTWidget(Widget):
         self.init = False
         
     def registerListener(self, controller):
-        self.showCheck.stateChanged.connect(lambda: controller.showFFT(self.showCheck.isChecked()))
-        self.changePosButton.clicked.connect(lambda: self.changePos(float(self.linePos.text())))
-        self.linePos.textChanged.connect(lambda: self.changePos(float(self.linePos.text())))
-        self.lineRate.textChanged.connect(lambda: controller.changeRate(float(self.lineRate.text())))
+        self.showCheck.stateChanged.connect(controller.showFFT)
+        self.changePosButton.clicked.connect(self.changePos)
+        self.linePos.textChanged.connect(self.changePos)
+        self.lineRate.textChanged.connect(controller.changeRate)
         
     def setImage(self, im, init):
         self.img.setImage(im, autoLevels=False)
@@ -900,7 +892,8 @@ class FFTWidget(Widget):
             self.hist.setLevels(*guitools.bestLimits(im))
             self.hist.vb.autoRange()
         
-    def changePos(self, pos):
+    def changePos(self):
+        pos = float(self.linePos.text())
         if (pos == self.show) or pos == 0:
             self.vline.hide()
             self.hline.hide()
@@ -1118,12 +1111,12 @@ class ViewCtrlWidget(Widget):
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
     
     def registerListener(self, controller):
-        self.liveviewButton.clicked.connect(lambda: self.liveview(controller) )
+        self.liveviewButton.clicked.connect(lambda: self.liveview(controller))
         
     def liveview(self, controller):
         self.crosshairButton.setEnabled(True)
         self.gridButton.setEnabled(True)
-        controller.liveview(self.liveviewButton.isChecked())
+        controller.liveview()
     
     def updateGrid(self, width, height):
         self.grid.update([width, height])
@@ -1149,11 +1142,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         for tick in self.hist.gradient.ticks:
             tick.hide()
         self.addItem(self.hist, row=1, col=2)
-        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
-                                handleCenter=(0, 1), color='y', scaleSnap=True,
-                                translateSnap=True)
-        self.ROI.hide()
-        self.vb.addItem(self.ROI)
         # x and y profiles
         xPlot = self.addPlot(row=0, col=1)
         xPlot.hideAxis('left')
@@ -1178,7 +1166,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.addItem(proxy, row=0, col=2)
     
     def registerListener(self, controller): 
-        self.ROI.sigRegionChangeFinished.connect(lambda: controller.ROIchanged(self.ROI.pos(), self.ROI.size()))
         self.levelsButton.pressed.connect(controller.autoLevels)
 
     def addItemTovb(self, item):
@@ -1194,35 +1181,12 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
                           yMin=-0.5, yMax=height - 0.5, minYRange=4)
         self.vb.setAspectLocked()
-        self.ROI.hide()
         
     def autoLevels(self, init=True):
         if not init:
             self.levelsButton.setEnabled(True)
         self.hist.setLevels(*guitools.bestLimits(self.img.image))
         self.hist.vb.autoRange()
-    
-    def customROI(self):
-        ROIsize = (64, 64)
-        ROIcenter = (int(self.vb.viewRect().center().x()),
-                     int(self.vb.viewRect().center().y()))
-        ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
-                  ROIcenter[1] - 0.5 * ROIsize[1])
-
-        self.ROI.setPos(ROIpos)
-        self.ROI.setSize(ROIsize)
-        self.ROI.show()
-        
-        return [self.ROI.pos(), self.ROI.size()]
-        
-    def toggleROI(self, b):
-        if b:
-            self.ROI.show()
-        else:
-            self.ROI.hide()
-
-    def getImg(self):
-        return self.img
         
 class SettingsWidget(Widget):
     
@@ -1262,24 +1226,24 @@ class SettingsWidget(Widget):
         acquisParam = self.tree.p.param('Acquisition mode')
         self.trigsourceparam = acquisParam.param('Trigger source')
         
+        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
+                                handleCenter=(0, 1), color='y', scaleSnap=True,
+                                translateSnap=True)
+        self.ROI.hide()
         
     def registerListener(self, controller):
-        controller.setExposure(self.expPar.value())
+        controller.addROI()
+        controller.setExposure()
         self.updateFrame(controller)
-        self.applyParam.sigStateChanged.connect(lambda: controller.adjustFrame(self.binPar, self.widthPar, self.heightPar, self.X0par, self.Y0par))
+        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
+        self.applyParam.sigStateChanged.connect(controller.adjustFrame)
         self.NewROIParam.sigStateChanged.connect(lambda: self.updateFrame(controller))
-        self.AbortROIParam.sigStateChanged.connect(lambda: controller.abortROI(self.X0par, self.Y0par, self.widthPar, self.heightPar))
-        self.trigsourceparam.sigValueChanged.connect(lambda: controller.changeTriggerSource(self.trigsourceparam.value()))
-        self.expPar.sigValueChanged.connect(lambda: controller.setExposure(self.expPar.value()))
-        self.binPar.sigValueChanged.connect(lambda: controller.setBinning(self.binPar.value()))
+        self.AbortROIParam.sigStateChanged.connect(controller.abortROI)
+        self.trigsourceparam.sigValueChanged.connect(controller.changeTriggerSource)
+        self.expPar.sigValueChanged.connect(controller.setExposure)
+        self.binPar.sigValueChanged.connect(controller.setBinning)
         self.FrameMode.sigValueChanged.connect(lambda: self.updateFrame(controller))
-        self.expPar.sigValueChanged.connect(lambda: controller.setExposure(self.expPar.value()))
-        
-    def updateTimings(self, params):
-        self.RealExpPar.setValue(params[0])
-        self.FrameInt.setValue(params[1])
-        self.ReadoutPar.setValue(params[2])
-        self.EffFRPar.setValue(params[3])
+        self.expPar.sigValueChanged.connect(controller.setExposure)
         
     def updateFrame(self, controller):
         """ Method to change the image frame size and position in the sensor.
@@ -1289,11 +1253,9 @@ class SettingsWidget(Widget):
             self.X0par.setWritable(True)
             self.Y0par.setWritable(True)
             self.widthPar.setWritable(True)
-            self.heightPar.setWritable(True)
+            self.heightPar.setWritable(True) 
             
-            [frameStart, pos, size] = controller.customROI()
-            
-            self.ROIchanged(self, frameStart, pos, size)  # [1] is Height
+            controller.customROI()
 
         else:
             self.X0par.setWritable(False)
@@ -1336,15 +1298,14 @@ class SettingsWidget(Widget):
                 self.widthPar.setValue(2048)
                 self.heightPar.setValue(8)
                 
-            controller.adjustFrame(self.binPar, self.widthPar, self.heightPar, self.X0par, self.Y0par)
-
-    def ROIchanged(self, frameStart, pos, size):
-        self.X0par.setValue(frameStart[0] + int(pos[0]))
-        self.Y0par.setValue(frameStart[1] + int(pos[1]))
-
-        self.widthPar.setValue(int(size[0]))   # [0] is Width
-        self.heightPar.setValue(int(size[1]))  # [1] is Height
-      
+            controller.adjustFrame()
+            
+    def toggleROI(self, b):
+        if b:
+            self.ROI.show()
+        else:
+            self.ROI.hide()
+            
 class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the camera during imaging
     """

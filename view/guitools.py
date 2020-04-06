@@ -7,7 +7,6 @@ Created on Fri Feb  6 13:20:02 2015
 import os
 import time
 import numpy as np
-import scipy as sp
 import h5py as hdf
 import tifffile as tiff
 import configparser

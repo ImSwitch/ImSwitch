@@ -5,9 +5,12 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import numpy as np
+import view.guitools as guitools
+import pyqtgraph as pg
 
 class WidgetController():
     def __init__(self, comm_channel, master, widget):
+        # Protected attributes, which should only be accessed from WidgetController and its subclasses
         self._master = master
         self._widget = widget
         self._comm_channel = comm_channel
@@ -25,21 +28,52 @@ class LiveUpdatedController(WidgetController):
 class ULensesController(WidgetController):
     def addPlot(self):
         self._comm_channel.addItemTovb(self._widget.ulensesPlot)
-    def getImageSize(self):
-        return self._master.cameraHelper.shapes
+    def ulensesToolAux(self):
+        x = np.float(self._widget.xEdit.text())
+        y = np.float(self._widget.yEdit.text())
+        px = np.float(self._widget.pxEdit.text())
+        up = np.float(self._widget.upEdit.text())
+        size_x, size_y = self._master.cameraHelper.shapes
+        pattern_x = np.arange(x, size_x, up/px)
+        pattern_y = np.arange(y, size_y, up/px)
+        self._widget.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
+        self._widget.ulensesPlot.setData(x = self._widget.points[:,0], y = self._widget.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+        self._widget.show()
+    def show(self):
+        if self._widget.ulensesCheck.isChecked():
+            self._widget.ulensesPlot.show()
+        else:
+            self._widget.ulensesPlot.hide()
         
 class AlignXYController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.radio = 0
+        self.axis = 0
     def addROI(self):
          self._comm_channel.addItemTovb(self._widget.ROI)
     def update(self):
         if self.active:
-            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI), self.radio)    
-            self._widget.updateValue(value)
-    def setRadio(self, radio):
-        self.radio = radio
+            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI), self.axis) 
+            self._widget.graph.updateGraph(value)
+    def setAxis(self, axis):
+        self.axis = axis
+    def ROItoggle(self):
+        if self._widget.roiButton.isChecked() is False:
+            self._widget.ROI.hide()
+            self.active = False
+            self._widget.roiButton.setText('Show ROI')
+        else:
+            ROIsize = (64, 64)
+            ROIcenter = self._comm_channel.centerROI()
+            
+            ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
+                          ROIcenter[1] - 0.5 * ROIsize[1])
+        
+            self._widget.ROI.setPos(ROIpos)
+            self._widget.ROI.setSize(ROIsize)
+            self._widget.ROI.show()
+            self.active = True
+            self._widget.roiButton.setText('Hide ROI')        
         
 class AlignAverageController(LiveUpdatedController):
     def addROI(self):
@@ -47,11 +81,39 @@ class AlignAverageController(LiveUpdatedController):
     def update(self): 
         if self.active:
             value = np.mean(self._comm_channel.getROIdata(self._widget.ROI))    
-            self._widget.updateValue(value)
+            self._widget.graph.updateGraph(value)
+    def ROItoggle(self):
+        if self._widget.roiButton.isChecked() is False:
+            self._widget.ROI.hide()
+            self.active = False
+            self._widget.roiButton.setText('Show ROI')
+        else:
+            ROIsize = (64, 64)
+            ROIcenter = self._comm_channel.centerROI()
+            
+            ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
+                          ROIcenter[1] - 0.5 * ROIsize[1])
+        
+            self._widget.ROI.setPos(ROIpos)
+            self._widget.ROI.setSize(ROIsize)
+            self._widget.ROI.show()
+            self._widget.ROI.show()
+            self.active = True
+            self._widget.roiButton.setText('Hide ROI')
         
 class AlignmentController(WidgetController):
-    def addLine(self,line):
-         self._comm_channel.addItemTovb(line)
+    def addLine(self):
+         self._comm_channel.addItemTovb(self._widget.alignmentLine)
+    def alignmentToolAux(self):
+        self.angle = np.float(self._widget.angleEdit.text())
+        self.alignmentLine.setAngle(self._widget.angle)
+        self.show()
+        
+    def show(self):
+        if self._widget.alignmentCheck.isChecked():
+            self._widget.alignmentLine.show()
+        else:
+            self._widget.alignmentLine.hide()
 
 class FFTController(LiveUpdatedController): 
     def __init__(self, *args, **kwargs):
@@ -108,6 +170,7 @@ class SettingsController(WidgetController):
 
         # Final shape values might differ from the user-specified one because
         # of camera limitation x128
+        
         width, height = self._master.cameraHelper.shapes
         self._comm_channel.adjustFrame(width, height)
         self._widget.ROI.hide()
@@ -176,15 +239,21 @@ class ViewController(WidgetController):
        
 class ImageController(LiveUpdatedController):
     def autoLevels(self, init=True):
-        self._widget.autoLevels(init)
+        if not init:
+            self._widget.levelsButton.setEnabled(True)
+        self._widget.hist.setLevels(*guitools.bestLimits(self._widget.img.image))
+        self._widget.hist.vb.autoRange()
     def addItemTovb(self, item):
-        self._widget.addItemTovb(item)
+        self._widget.vb.addItem(item)
     def removeItemFromvb(self, item):
-        self._widget.removeItemFromvb(item)
+        self._widget.vb.removeItem(item)
     def update(self):
-        self._widget.updateImage(self._master.cameraHelper.image)
+        im = self._master.cameraHelper.image
+        self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
     def adjustFrame(self, width, height):
-        self._widget.adjustFrame(width, height)
+        self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
+                          yMin=-0.5, yMax=height - 0.5, minYRange=4)
+        self._widget.vb.setAspectLocked()
     def getROIdata(self, roi):
         return roi.getArrayRegion(self._master.cameraHelper.image, self._widget.img)
     def centerROI(self):
@@ -223,6 +292,7 @@ class ScanController(WidgetController): # TODO
     def __init__(self, comm_channel, master, widget):
         super().__init__(comm_channel, master, widget)
         self.multipleScanController = MultipleScanController(comm_channel, master, widget.multiScanWgt)
+        self.parameter_dictionary = None
         print('Init Scan Controller')
     def saveScan(self):
         print('save scan')
@@ -245,6 +315,10 @@ class ScanController(WidgetController): # TODO
         print('previewScan')
     def getSampleRate(self):
         return 10000
+    def parametersToSend():
+        return None #Some list of parameters
+    def runScan(self):
+        self._master.scanHelper.runScan(self.parameter_dictionary)
     
 class MultipleScanController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):
@@ -272,7 +346,9 @@ class MultipleScanController(WidgetController): # TODO
 class PositionerController(WidgetController): 
     def move(self, axis, dist):
         newPos = self._master.moveStage(axis, dist)
-        self._widget.newPos(axis, newPos)
+        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
+        
+        getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
 
 class LaserController(WidgetController): 
     def __init__(self, *args, **kwargs):
@@ -305,8 +381,6 @@ class LaserController(WidgetController):
         if digital:
             for i in np.arange(len(lasers)):
                 self._master.digitalMod(True, powers[i], lasers[i])
-        
-
         
 
         

@@ -435,12 +435,6 @@ class PositionerWidget(Widget):
         layout.addWidget(QtGui.QLabel("Step"), 3, 3)
         layout.addWidget(self.zStepEdit, 3, 4)
         layout.addWidget(self.zStepUnit, 3, 5)
-        
-    def newPos(self, axis, newPos):
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
-        
-        getattr(self, ['x', 'y', 'z'][axis] + "Label").setText(newText)
-
 
     def registerListener(self, controller):   
         self.xUpButton.pressed.connect(lambda: controller.move(0, float(self.xStepEdit.text())))
@@ -478,28 +472,11 @@ class ULensesWidget(Widget):
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
         
+        
     def registerListener(self, controller):
         controller.addPlot()
-        self.ulensesButton.clicked.connect(lambda: self.ulensesToolAux(controller))
-        self.ulensesCheck.stateChanged.connect(self.show)
-        
-    def ulensesToolAux(self, controller):
-        x = np.float(self.xEdit.text())
-        y = np.float(self.yEdit.text())
-        px = np.float(self.pxEdit.text())
-        up = np.float(self.upEdit.text())
-        size_x, size_y = controller.getImageSize()
-        pattern_x = np.arange(x, size_x, up/px)
-        pattern_y = np.arange(y, size_y, up/px)
-        self.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
-        self.ulensesPlot.setData(x = self.points[:,0], y = self.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
-        self.show()
-                    
-    def show(self):
-        if self.ulensesCheck.isChecked():
-            self.ulensesPlot.show()
-        else:
-            self.ulensesPlot.hide()
+        self.ulensesButton.clicked.connect(controller.ulensesToolAux)
+        self.ulensesCheck.stateChanged.connect(controller.show)
         
 class AlignWidgetXY(Widget):
 
@@ -527,22 +504,9 @@ class AlignWidgetXY(Widget):
         
     def registerListener(self, controller):
         controller.addROI()
-        self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
-        self.Xradio.clicked.connect(lambda: controller.setRadio(0))
-        self.Yradio.clicked.connect(lambda: controller.setRadio(1))
-        
-    def ROItoggle(self, controller):
-        if self.roiButton.isChecked() is False:
-            self.ROI.hide()
-            controller.active = False
-            self.roiButton.setText('Show ROI')
-        else:
-            self.ROI.show()
-            controller.active = True
-            self.roiButton.setText('Hide ROI')
-        
-    def updateValue(self, value):
-        self.graph.updateGraph(value)
+        self.roiButton.clicked.connect(controller.ROItoggle)
+        self.Xradio.clicked.connect(lambda: controller.setAxis(0))
+        self.Yradio.clicked.connect(lambda: controller.setAxis(1))
     
 
 class AlignWidgetAverage(Widget):
@@ -571,27 +535,9 @@ class AlignWidgetAverage(Widget):
         
     def registerListener(self, controller):
         controller.addROI()
-        self.roiButton.clicked.connect(lambda: self.ROItoggle(controller))
-        self.resetButton.clicked.connect(self.resetGraph)
+        self.roiButton.clicked.connect(controller.ROItoggle)
+        self.resetButton.clicked.connect(self.graph.resetData)
         
-    def resetGraph(self):
-        self.graph.resetData()
-        
-    def ROItoggle(self, controller):
-        if self.roiButton.isChecked() is False:
-            self.ROI.hide()
-            controller.active = False
-            self.roiButton.setText('Show ROI')
-        else:
-            self.ROI.show()
-            controller.active = True
-            self.roiButton.setText('Hide ROI')
-            
-    def updateValue(self, value):
-        self.graph.updateGraph(value)
-        
-    def getROI(self):
-        return self.ROI
         
 class AlignmentWidget(Widget):
     def __init__(self, *args, **kwargs):
@@ -614,20 +560,9 @@ class AlignmentWidget(Widget):
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
         
     def registerListener(self, controller):
-        controller.addLine(self.alignmentLine)
-        self.alignmentLineMakerButton.clicked.connect(self.alignmentToolAux)
-        self.alignmentCheck.stateChanged.connect(self.show)
-       
-    def alignmentToolAux(self):
-        self.angle = np.float(self.angleEdit.text())
-        self.alignmentLine.setAngle(self.angle)
-        self.show()
-        
-    def show(self):
-        if self.alignmentCheck.isChecked():
-            self.alignmentLine.show()
-        else:
-            self.alignmentLine.hide()
+        controller.addLine()
+        self.alignmentLineMakerButton.clicked.connect(controller.alignmentToolAux)
+        self.alignmentCheck.stateChanged.connect(controller.show)
         
 class LaserWidget(Widget):
 
@@ -636,7 +571,8 @@ class LaserWidget(Widget):
         
         self.actControl = LaserControl('<h3>405<h3>', 'mW', 405, color=(130, 0, 200))
         self.offControl = LaserControl('<h3>488<h3>', 'mW', 488, color=(0, 247, 255))
-        self.excControl = LaserControl('<h3>473<h3>', 'V', 473, color=(0, 183, 255))      
+        self.excControl = LaserControl('<h3>473<h3>', 'V', 473, color=(0, 183, 255))
+        
         
         self.DigCtrl = DigitalControl()
 
@@ -1167,26 +1103,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     
     def registerListener(self, controller): 
         self.levelsButton.pressed.connect(controller.autoLevels)
-
-    def addItemTovb(self, item):
-        self.vb.addItem(item)
-
-    def removeItemFromvb(self, item):
-        self.removeItem(item)
-        
-    def updateImage(self, img):
-        self.img.setImage(img, autoLevels=False, autoDownsample=False)
-
-    def adjustFrame(self, width, height):
-        self.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
-                          yMin=-0.5, yMax=height - 0.5, minYRange=4)
-        self.vb.setAspectLocked()
-        
-    def autoLevels(self, init=True):
-        if not init:
-            self.levelsButton.setEnabled(True)
-        self.hist.setLevels(*guitools.bestLimits(self.img.image))
-        self.hist.vb.autoRange()
         
 class SettingsWidget(Widget):
     

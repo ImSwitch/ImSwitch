@@ -28,6 +28,7 @@ class LiveUpdatedController(WidgetController):
 class ULensesController(WidgetController):
     def addPlot(self):
         self._comm_channel.addItemTovb(self._widget.ulensesPlot)
+        
     def ulensesToolAux(self):
         x = np.float(self._widget.xEdit.text())
         y = np.float(self._widget.yEdit.text())
@@ -39,6 +40,7 @@ class ULensesController(WidgetController):
         self._widget.points = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
         self._widget.ulensesPlot.setData(x = self._widget.points[:,0], y = self._widget.points[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
         self._widget.show()
+        
     def show(self):
         if self._widget.ulensesCheck.isChecked():
             self._widget.ulensesPlot.show()
@@ -49,14 +51,18 @@ class AlignXYController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.axis = 0
+        
     def addROI(self):
          self._comm_channel.addItemTovb(self._widget.ROI)
+         
     def update(self):
         if self.active:
             value = np.mean(self._comm_channel.getROIdata(self._widget.ROI), self.axis) 
             self._widget.graph.updateGraph(value)
+            
     def setAxis(self, axis):
         self.axis = axis
+        
     def ROItoggle(self):
         if self._widget.roiButton.isChecked() is False:
             self._widget.ROI.hide()
@@ -78,10 +84,12 @@ class AlignXYController(LiveUpdatedController):
 class AlignAverageController(LiveUpdatedController):
     def addROI(self):
          self._comm_channel.addItemTovb(self._widget.ROI)
+         
     def update(self): 
         if self.active:
             value = np.mean(self._comm_channel.getROIdata(self._widget.ROI))    
             self._widget.graph.updateGraph(value)
+            
     def ROItoggle(self):
         if self._widget.roiButton.isChecked() is False:
             self._widget.ROI.hide()
@@ -104,6 +112,7 @@ class AlignAverageController(LiveUpdatedController):
 class AlignmentController(WidgetController):
     def addLine(self):
          self._comm_channel.addItemTovb(self._widget.alignmentLine)
+         
     def alignmentToolAux(self):
         self.angle = np.float(self._widget.angleEdit.text())
         self.alignmentLine.setAngle(self._widget.angle)
@@ -121,9 +130,11 @@ class FFTController(LiveUpdatedController):
         self.updateRate = 10
         self.it = 0
         self.init = False
+        
     def showFFT(self):
         self.active = self._widget.showCheck.isChecked()
         self.init = False
+        
     def update(self):
         if self.active and (self.it == self.updateRate):
             self.it = 0
@@ -131,6 +142,7 @@ class FFTController(LiveUpdatedController):
             self.init = True
         elif self.active and (not (self.it == self.updateRate)):
             self.it += 1
+            
     def changeRate(self):
         self.updateRate = float(self._widget.lineRate.text())
         self.it = 0
@@ -234,6 +246,7 @@ class ViewController(WidgetController):
             self._master.cameraHelper.startAcquisition()
         else:
             self._master.cameraHelper.stopAcquisition()
+            
     def updateGrid(self, width, height):
         self._widget.updateGrid(width, height)
        
@@ -243,19 +256,25 @@ class ImageController(LiveUpdatedController):
             self._widget.levelsButton.setEnabled(True)
         self._widget.hist.setLevels(*guitools.bestLimits(self._widget.img.image))
         self._widget.hist.vb.autoRange()
+        
     def addItemTovb(self, item):
         self._widget.vb.addItem(item)
+        
     def removeItemFromvb(self, item):
         self._widget.vb.removeItem(item)
+        
     def update(self):
         im = self._master.cameraHelper.image
         self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
+        
     def adjustFrame(self, width, height):
         self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
                           yMin=-0.5, yMax=height - 0.5, minYRange=4)
         self._widget.vb.setAspectLocked()
+        
     def getROIdata(self, roi):
         return roi.getArrayRegion(self._master.cameraHelper.image, self._widget.img)
+        
     def centerROI(self):
         return (int(self._widget.vb.viewRect().center().x()),
                          int(self._widget.vb.viewRect().center().y()))
@@ -354,22 +373,26 @@ class LaserController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.digMod = False
+        
     def toggleLaser(self, laser, enable):
         if not self.digMod:
             if enable:
                 self._master.toggleLaser(True, laser)
             else:
                 self._master.toggleLaser(False, laser)
+                
     def changeSlider(self, laser, value):
         if not self.digMod:
             magnitude =  value 
             self._master.changePower(magnitude, laser)
             self._widget.changeEdit(str(magnitude), laser)
+            
     def changeEdit(self, laser, value):
         if not self.digMod:
             magnitude = value
             self._master.changePower(magnitude, laser)
             self._widget.changeSlider(magnitude, laser)
+            
     def updateDigitalPowers(self, digital, powers, lasers):
         self.digMod = digital
         if digital:

@@ -31,8 +31,11 @@ class CameraHelper():
         self.__frameStart = (0, 0)
         self.__shapes = (self.__cameras[0].getPropertyValue('image_height')[0], self.__cameras[0].getPropertyValue('image_width')[0])
         self.__image = []
-
-        
+        self.__model = self.__cameras[0].camera_model.decode("utf-8")
+     
+    @property
+    def model(self):
+        return self.__model
     @property
     def frameStart(self):
         return self.__frameStart

@@ -24,11 +24,11 @@ class TempestaController():
         self.uLensesController = controllers.ULensesController(self.__comm_channel, __masterController, __view.ulensesWidget)
         self.alignXYController = controllers.AlignXYController(self.__comm_channel, __masterController, __view.alignWidgetXY)
         self.alignAverageController = controllers.AlignAverageController(self.__comm_channel, __masterController, __view.alignWidgetAverage)
-        self.alignmentController = controllers.AlignmentController(self.__comm_channel, __masterController, __view.alignmentWidget)
+        self.alignmentLineController = controllers.AlignmentLineController(self.__comm_channel, __masterController, __view.alignmentLineWidget)
         self.laserController = controllers.LaserController(self.__comm_channel, __masterController, __view.laserWidgets)
         self.fftController = controllers.FFTController(self.__comm_channel, __masterController, __view.fftWidget)
         self.recorderController = controllers.RecorderController(self.__comm_channel, __masterController, __view.recordingWidget)
-        self.viewController = controllers.ViewController(self.__comm_channel, __masterController, __view.viewCtrlWidget)
+        self.viewController = controllers.ViewController(self.__comm_channel, __masterController, __view.viewWidget)
         self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
         self.settingsController = controllers.SettingsController(self.__comm_channel, __masterController, __view.settingsWidget)
 
@@ -50,10 +50,15 @@ class CommunicationChannel():
             
     def adjustFrame(self, width, height):
         self.__main.imageController.adjustFrame(width, height)
-        self.__main.viewController.updateGrid(width, height)
         
-    def addItemTovb(self, item):
-        self.__main.imageController.addItemTovb(item)
+    def gridToggle(self):
+        self.__main.imageController.gridToggle()
+        
+    def crosshairToggle(self):
+        self.__main.imageController.crosshairToggle()
+        
+    def addItemTovb(self, item, *args, **kwargs):
+        self.__main.imageController.addItemTovb(item, *args, **kwargs)
 
     def removeItemFromvb(self, item):
         self.__main.imageController.removeItemFromvb(item)

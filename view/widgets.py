@@ -6,7 +6,6 @@ Created on Fri Mar 20 17:08:54 2020
 """
 from pyqtgraph.Qt import QtGui  
 from pyqtgraph.Qt import QtCore
-from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
@@ -16,8 +15,603 @@ import matplotlib.pyplot as plt
 import configparser
 
 class Widget(QtGui.QWidget):
+    """ Superclass for all Widgets. 
+            All Widgets are subclasses of QWidget and should have a registerListener function. """
+            
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+    def registerListener(self):
+        """ Manage interactions with the WidgetController linked to the Widget. """
+        raise NotImplementedError 
+     
+        
+# Alignment
+
+
+class ULensesWidget(Widget):
+    """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
+        
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical Elements
+        self.ulensesButton = QtGui.QPushButton('uLenses')
+        self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
+        self.xEdit = QtGui.QLineEdit('0')
+        self.yEdit = QtGui.QLineEdit('0')
+        self.pxEdit = QtGui.QLineEdit('157.5')
+        self.upEdit = QtGui.QLineEdit('1182')
+        self.ulensesPlot = pg.ScatterPlotItem()
+        
+        # Add elements to GridLayout
+        ulensesLayout = QtGui.QGridLayout()
+        self.setLayout(ulensesLayout)
+        ulensesLayout.addWidget(QtGui.QLabel('Pixel Size'), 0, 0)
+        ulensesLayout.addWidget(self.pxEdit, 0, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('Periodicity'), 1, 0)
+        ulensesLayout.addWidget(self.upEdit, 1, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('X offset'), 2, 0)
+        ulensesLayout.addWidget(self.xEdit, 2, 1)
+        ulensesLayout.addWidget(QtGui.QLabel('Y offset'), 3, 0)
+        ulensesLayout.addWidget(self.yEdit, 3, 1)
+        ulensesLayout.addWidget(self.ulensesButton, 4, 0)
+        ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
+        
+    def registerListener(self, controller):
+        """ Manage interactions with ULensesController. """
+        controller.addPlot()
+        self.ulensesButton.clicked.connect(controller.updateGrid)
+        self.ulensesCheck.stateChanged.connect(controller.show)
+
+
+class AlignWidgetXY(Widget):
+    """ Alignment widget that shows the mean over an axis of a selected ROI."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical elements
+        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton.setCheckable(True)
+        self.XButton = QtGui.QRadioButton('X dimension')
+        self.YButton = QtGui.QRadioButton('Y dimension')
+        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
+                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
+                       scaleSnap=True, translateSnap=True)
+        self.ROI.hide()
+        self.graph = guitools.ProjectionGraph()
+        
+        # Add elements to GridLayout
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.graph, 0, 0, 1, 6)
+        grid.addWidget(self.roiButton, 1, 0, 1, 1)
+        grid.addWidget(self.XButton, 1, 1, 1, 1)
+        grid.addWidget(self.YButton, 1, 2, 1, 1)
+        
+    def registerListener(self, controller):
+        """ Manage interactions with AlignXYController. """
+        controller.addROI()
+        self.roiButton.clicked.connect(controller.toggleROI)
+        self.XButton.clicked.connect(lambda: controller.setAxis(0))
+        self.YButton.clicked.connect(lambda: controller.setAxis(1))        
+   
+        
+class AlignWidgetAverage(Widget):
+    """ Alignment widget that shows the mean over a selected ROI."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Graphical elements
+        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton.setCheckable(True)
+        self.resetButton = QtGui.QPushButton('Reset graph')
+        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
+                       handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
+                       scaleSnap=True, translateSnap=True)
+        self.ROI.hide()
+        self.graph = guitools.SumpixelsGraph()
+        
+        # Add items to GridLayout
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.graph, 0, 0, 1, 6)
+        grid.addWidget(self.roiButton, 1, 0, 1, 1)
+        grid.addWidget(self.resetButton, 1, 1, 1, 1)
+        grid.setRowMinimumHeight(0, 300)
+
+        
+    def registerListener(self, controller):
+        """ Manage interactions with AlignAverageController. """
+        controller.addROI()
+        self.roiButton.clicked.connect(controller.toggleROI)
+        self.resetButton.clicked.connect(self.graph.resetData)
+    
+
+class AlignmentLineWidget(Widget):
+    """ Alignment widget that displays a line on top of the image in the viewbox."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical elements
+        self.angleEdit = QtGui.QLineEdit('30')
+        self.angle = np.float(self.angleEdit.text())
+        self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
+        self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
+        pen = pg.mkPen(color=(255, 255, 0), width=0.5,
+                       style=QtCore.Qt.SolidLine, antialias=True)
+        self.alignmentLine = pg.InfiniteLine(
+            pen=pen, movable=True)
+        self.alignmentLine.hide()
+        
+        # Add items to GridLayout
+        alignmentLayout = QtGui.QGridLayout()
+        self.setLayout(alignmentLayout)
+        alignmentLayout.addWidget(QtGui.QLabel('Line Angle'), 0, 0)
+        alignmentLayout.addWidget(self.angleEdit, 0, 1)
+        alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
+        alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
+        
+    def registerListener(self, controller):
+        """ Manage interactions with AlignmentLineController. """
+        controller.addLine()
+        self.alignmentLineMakerButton.clicked.connect(controller.updateLine)
+        self.alignmentCheck.stateChanged.connect(controller.show)
+        
+        
+class FFTWidget(Widget):
+    """ Displays the FFT transform of the image. """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical elements
+        self.showCheck = QtGui.QCheckBox('Show FFT')
+        self.showCheck.setCheckable = True
+        self.changePosButton = QtGui.QPushButton('Period (pix)')
+        self.linePos = QtGui.QLineEdit('4')
+        self.lineRate = QtGui.QLineEdit('10')
+        self.labelRate = QtGui.QLabel('Update rate')
+        
+            # Vertical and horizontal lines 
+        self.vline = pg.InfiniteLine()
+        self.hline = pg.InfiniteLine()
+        self.rvline = pg.InfiniteLine()
+        self.lvline = pg.InfiniteLine()
+        self.uhline = pg.InfiniteLine()
+        self.dhline = pg.InfiniteLine()
+        
+        self.vline.hide()
+        self.hline.hide()
+        self.rvline.hide()
+        self.lvline.hide()
+        self.uhline.hide()
+        self.dhline.hide()
+
+            # Viewbox
+        self.cwidget = pg.GraphicsLayoutWidget()
+        self.vb = self.cwidget.addViewBox(row=1, col=1)
+        self.vb.setMouseMode(pg.ViewBox.RectMode)
+        self.img = pg.ImageItem()
+        self.img.translate(-0.5, -0.5)
+        self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
+        self.hist = pg.HistogramLUTItem(image=self.img)
+        self.hist.vb.setLimits(yMin=0, yMax=66000)
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
+        self.hist.gradient.setColorMap(self.cubehelixCM)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.cwidget.addItem(self.hist, row=1, col=2)
+        
+            # Add lines to viewbox
+        self.vb.addItem(self.vline)
+        self.vb.addItem(self.hline)
+        self.vb.addItem(self.lvline)
+        self.vb.addItem(self.rvline)
+        self.vb.addItem(self.uhline)
+        self.vb.addItem(self.dhline)
+
+        # Add elements to GridLayout
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.cwidget, 0, 0, 1, 6)
+        grid.addWidget(self.showCheck, 1, 0, 1, 1)
+        grid.addWidget(self.changePosButton, 2, 0, 1, 1)
+        grid.addWidget(self.linePos, 2, 1, 1, 1)
+        grid.addWidget(self.labelRate, 2, 2, 1, 1)
+        grid.addWidget(self.lineRate, 2, 3, 1, 1)   
+        grid.setRowMinimumHeight(0, 300)
+        
+    def registerListener(self, controller):
+        """ Manage interactions with AlignmentLineController. """
+        self.showCheck.stateChanged.connect(controller.showFFT)
+        self.changePosButton.clicked.connect(controller.changePos)
+        self.linePos.textChanged.connect(controller.changePos)
+        self.lineRate.textChanged.connect(controller.changeRate)
+            
+
+# Image related Widgets
+  
+
+class SettingsWidget(Widget):
+    """ Camera settings and ROI parameters. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Graphical elements
+        cameraTitle = QtGui.QLabel('<h2><strong>Camera settings</strong></h2>')
+        cameraTitle.setTextFormat(QtCore.Qt.RichText)
+        self.tree = guitools.CamParamTree()
+        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
+                                handleCenter=(0, 1), color='y', scaleSnap=True,
+                                translateSnap=True)
+        self.ROI.hide()
+        
+        # Add elements to GridLayout
+        cameraGrid = QtGui.QGridLayout()
+        self.setLayout(cameraGrid)
+        cameraGrid.addWidget(cameraTitle, 0, 0)
+        cameraGrid.addWidget(self.tree, 1, 0)
+          
+    def registerListener(self, controller):
+        """ Manage interactions with SettingsController. """
+        controller.addROI()
+        controller.getParameters()
+        controller.setExposure()
+        controller.adjustFrame()
+        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
+ 
+ 
+class ViewWidget(Widget):
+    """ View settings (liveview, grid, crosshair). """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical elements
+            # Grid
+        self.gridButton = QtGui.QPushButton('Grid')
+        self.gridButton.setCheckable(True)
+        self.gridButton.setEnabled(False)
+        self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                      QtGui.QSizePolicy.Expanding)
+    
+            # Crosshair
+        self.crosshairButton = QtGui.QPushButton('Crosshair')
+        self.crosshairButton.setCheckable(True)
+        self.crosshairButton.setEnabled(False)
+        self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                           QtGui.QSizePolicy.Expanding)
+            # liveview
+        self.liveviewButton = QtGui.QPushButton('LIVEVIEW')
+        self.liveviewButton.setStyleSheet("font-size:20px")
+        self.liveviewButton.setCheckable(True)
+        self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                          QtGui.QSizePolicy.Expanding)
+        self.liveviewButton.setEnabled(True)
+    
+        # Add elements to GridLayout
+        self.viewCtrlLayout = QtGui.QGridLayout()
+        self.setLayout(self.viewCtrlLayout)
+        self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
+        self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
+        self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+    
+    def registerListener(self, controller):
+        """ Manage interactions with ViewController. """
+        self.gridButton.clicked.connect(controller.gridToggle)
+        self.crosshairButton.pressed.connect(controller.crosshairToggle)
+        self.liveviewButton.clicked.connect(controller.liveview)
+        
+        
+class ImageWidget(pg.GraphicsLayoutWidget):
+    """ Widget containing viewbox that displays the new camera frames.  """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical elements
+        self.levelsButton = QtGui.QPushButton('Update Levels')
+        self.levelsButton.setEnabled(False)
+        self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                        QtGui.QSizePolicy.Expanding)
+        proxy = QtGui.QGraphicsProxyWidget()
+        proxy.setWidget(self.levelsButton)
+        self.addItem(proxy, row=0, col=2)
+        
+            # Viewbox and related elements
+        self.vb = self.addViewBox(row=1, col=1)
+        self.vb.setMouseMode(pg.ViewBox.RectMode)
+        self.img = pg.ImageItem()
+        self.img.translate(-0.5, -0.5)
+        self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
+        self.setAspectLocked(True)
+        self.hist = pg.HistogramLUTItem(image=self.img)
+        self.hist.vb.setLimits(yMin=0, yMax=66000)
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256),
+                                       guitools.cubehelix().astype(int))
+        self.hist.gradient.setColorMap(self.cubehelixCM)
+        self.grid = guitools.Grid(self.vb)
+        self.crosshair = guitools.Crosshair(self.vb)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.addItem(self.hist, row=1, col=2)
+        for tick in self.hist.gradient.ticks:
+            tick.hide()
+        self.addItem(self.hist, row=1, col=2)
+            # x and y profiles
+        xPlot = self.addPlot(row=0, col=1)
+        xPlot.hideAxis('left')
+        xPlot.hideAxis('bottom')
+        self.xProfile = xPlot.plot()
+        self.ci.layout.setRowMaximumHeight(0, 40)
+        xPlot.setXLink(self.vb)
+        yPlot = self.addPlot(row=1, col=0)
+        yPlot.hideAxis('left')
+        yPlot.hideAxis('bottom')
+        self.yProfile = yPlot.plot()
+        self.yProfile.rotate(90)
+        self.ci.layout.setColumnMaximumWidth(0, 40)
+        yPlot.setYLink(self.vb)
+    
+    def registerListener(self, controller): 
+        """ Manage interactions with ImageController. """
+        self.levelsButton.pressed.connect(controller.autoLevels)
+        
+        
+# Hardware widgets
+
+
+class PositionerWidget(Widget):
+    """" Widget in control of the piezzo movement. """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Graphical element
+        self.xLabel = QtGui.QLabel(
+            "<strong>x = {0:.2f} µm</strong>".format(0))
+        self.xLabel.setTextFormat(QtCore.Qt.RichText)
+        self.xUpButton = QtGui.QPushButton("+")
+        self.xDownButton = QtGui.QPushButton("-")
+        self.xStepEdit = QtGui.QLineEdit("0.05")
+        self.xStepUnit = QtGui.QLabel(" µm")
+
+        self.yLabel = QtGui.QLabel(
+            "<strong>y = {0:.2f} µm</strong>".format(0))
+        self.yLabel.setTextFormat(QtCore.Qt.RichText)
+        self.yUpButton = QtGui.QPushButton("+")
+        self.yDownButton = QtGui.QPushButton("-")
+        self.yStepEdit = QtGui.QLineEdit("0.05")
+        self.yStepUnit = QtGui.QLabel(" µm")
+
+        self.zLabel = QtGui.QLabel(
+            "<strong>z = {0:.2f} µm</strong>".format(0))
+        self.zLabel.setTextFormat(QtCore.Qt.RichText)
+        self.zUpButton = QtGui.QPushButton("+")
+        self.zDownButton = QtGui.QPushButton("-")
+        self.zStepEdit = QtGui.QLineEdit("0.05")
+        self.zStepUnit = QtGui.QLabel(" µm")
+
+        # Add elements to GridLayout
+        layout = QtGui.QGridLayout()
+        self.setLayout(layout)
+        layout.addWidget(self.xLabel, 1, 0)
+        layout.addWidget(self.xUpButton, 1, 1)
+        layout.addWidget(self.xDownButton, 1, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 1, 3)
+        layout.addWidget(self.xStepEdit, 1, 4)
+        layout.addWidget(self.xStepUnit, 1, 5)
+        layout.addWidget(self.yLabel, 2, 0)
+        layout.addWidget(self.yUpButton, 2, 1)
+        layout.addWidget(self.yDownButton, 2, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 2, 3)
+        layout.addWidget(self.yStepEdit, 2, 4)
+        layout.addWidget(self.yStepUnit, 2, 5)
+        layout.addWidget(self.zLabel, 3, 0)
+        layout.addWidget(self.zUpButton, 3, 1)
+        layout.addWidget(self.zDownButton, 3, 2)
+        layout.addWidget(QtGui.QLabel("Step"), 3, 3)
+        layout.addWidget(self.zStepEdit, 3, 4)
+        layout.addWidget(self.zStepUnit, 3, 5)
+
+    def registerListener(self, controller): 
+        """ Manage interactions with PositionerController. """
+        self.xUpButton.pressed.connect(lambda: controller.move(0, float(self.xStepEdit.text())))
+        self.xDownButton.pressed.connect(lambda: controller.move(0, -float(self.xStepEdit.text())))
+        self.yUpButton.pressed.connect(lambda: controller.move(1, float(self.yStepEdit.text())))
+        self.yDownButton.pressed.connect(lambda: controller.move(1, -float(self.yStepEdit.text())))
+        self.zUpButton.pressed.connect(lambda: controller.move(2, float(self.zStepEdit.text())))
+        self.zDownButton.pressed.connect(lambda: controller.move(2, -float(self.zStepEdit.text())))
+        
+
+class LaserWidget(Widget):
+    """" Laser widget containing digital modulation and normal control. """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Create laser modules
+        self.actControl = LaserModule('<h3>405<h3>', 'mW', 405, color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
+        self.offControl = LaserModule('<h3>488<h3>', 'mW', 488, color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
+        self.excControl = LaserModule('<h3>473<h3>', 'V', 473, color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
+        
+        
+        self.DigCtrl = DigitalControl()
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        
+        grid.addWidget(self.actControl, 0, 0, 4, 1)
+        grid.addWidget(self.offControl, 0, 1, 4, 1)
+        grid.addWidget(self.excControl, 0, 2, 4, 1)
+        grid.addWidget(self.DigCtrl, 4, 0, 2, 3)
+        
+    def registerListener(self, controller):
+        self.actControl.registerListener(controller)
+        self.offControl.registerListener(controller)
+        self.excControl.registerListener(controller)
+        self.DigCtrl.registerListener(controller)
+        
+    def changeEdit(self, magnitude, laser):
+        if laser == 405:
+            self.actControl.changeEdit(magnitude)
+        elif laser == 488:
+            self.offControl.changeEdit(magnitude)
+        else:
+            self.excControl.changeEdit(magnitude)
+        
+    def changeSlider(self, magnitude, laser):
+        if laser == 405:
+            self.actControl.changeSlider(magnitude)
+        elif laser == 488:
+            self.offControl.changeSlider(magnitude)
+        else:
+            self.excControl.changeSlider(magnitude)
+        
+class DigitalControl(QtGui.QFrame):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)   
+        
+        title = QtGui.QLabel('<h3>Digital modulation<h3>')
+        title.setTextFormat(QtCore.Qt.RichText)
+        title.setAlignment(QtCore.Qt.AlignCenter)
+        title.setStyleSheet("font-size:12px")
+        title.setFixedHeight(20)
+        
+        self.ActPower = QtGui.QLineEdit('100')
+        self.OffPower = QtGui.QLineEdit('100')
+        self.ExcPower = QtGui.QLineEdit('100')
+    
+        self.DigitalControlButton = QtGui.QPushButton('Enable')
+        self.DigitalControlButton.setCheckable(True)
+        style = "background-color: rgb{}".format((160, 160, 160))
+        self.DigitalControlButton.setStyleSheet(style)
+
+        self.updateDigPowersButton = QtGui.QPushButton('Update powers')
+        
+        actUnit = QtGui.QLabel('mW')
+        actUnit.setFixedWidth(20)
+        actModFrame = QtGui.QFrame()
+        actModGrid = QtGui.QGridLayout()
+        actModFrame.setLayout(actModGrid)
+        actModGrid.addWidget(self.ActPower, 0, 0)
+        actModGrid.addWidget(actUnit, 0, 1)
+
+        offUnit = QtGui.QLabel('mW')
+        offUnit.setFixedWidth(20)
+        offModFrame = QtGui.QFrame()
+        offModGrid = QtGui.QGridLayout()
+        offModFrame.setLayout(offModGrid)
+        offModGrid.addWidget(self.OffPower, 0, 0)
+        offModGrid.addWidget(offUnit, 0, 1)
+
+        excUnit = QtGui.QLabel('V')
+        excUnit.setFixedWidth(20)
+        excModFrame = QtGui.QFrame()
+        excModGrid = QtGui.QGridLayout()
+        excModFrame.setLayout(excModGrid)
+        excModGrid.addWidget(self.ExcPower, 0, 0)
+        excModGrid.addWidget(excUnit, 0, 1)
+
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(title, 0, 0)
+        grid.addWidget(actModFrame, 1, 0)
+        grid.addWidget(offModFrame, 1, 1)
+        grid.addWidget(excModFrame, 1, 2)
+        grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
+    
+    def registerListener(self, controller):
+        self.ActPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text())], [405]))
+        self.OffPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.OffPower.text())], [488]))
+        self.ExcPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ExcPower.text())], [473]))
+        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488]))
+        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488]))
+        
+class LaserModule(QtGui.QFrame):
+    def __init__(self, name,  units, laser, color, prange, tickInterval, singleStep, init_power,  *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        self.laser = laser
+        self.name = QtGui.QLabel(name)
+        self.name.setTextFormat(QtCore.Qt.RichText)
+        self.name.setAlignment(QtCore.Qt.AlignCenter)
+        self.name.setStyleSheet("font-size:16px")
+        self.name.setFixedHeight(40)
+        
+        # Power widget
+        self.init_power = init_power
+        self.setPointLabel = QtGui.QLabel('Setpoint')
+        self.setPointEdit = QtGui.QLineEdit(str(self.init_power))
+        self.setPointEdit.setFixedWidth(50)
+        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
+
+        self.powerLabel = QtGui.QLabel('Power')
+        #powerMag = self.laser.power From model
+        self.powerIndicator = QtGui.QLabel(str(self.init_power))
+        self.powerIndicator.setFixedWidth(50)
+        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
+        
+        # Slider
+        self.maxpower = QtGui.QLabel(str(prange[1]))
+        self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
+        self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
+        self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.slider.setMinimum(prange[0])
+        self.slider.setMaximum(prange[1])
+        self.slider.setTickInterval(tickInterval)
+        self.slider.setSingleStep(singleStep)
+        self.slider.setValue(0)
+        self.minpower = QtGui.QLabel(str(prange[0]))
+        self.minpower.setAlignment(QtCore.Qt.AlignCenter)
+
+        powerFrame = QtGui.QFrame(self)
+        self.powerGrid = QtGui.QGridLayout()
+        powerFrame.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Plain)
+        powerFrame.setLayout(self.powerGrid)
+        self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
+        self.powerGrid.addWidget(self.setPointEdit, 2, 0)
+        self.powerGrid.addWidget(QtGui.QLabel(units), 2, 1)
+        self.powerGrid.addWidget(self.powerLabel, 3, 0, 1, 2)
+        self.powerGrid.addWidget(self.powerIndicator, 4, 0)
+        self.powerGrid.addWidget(QtGui.QLabel(units), 4, 1)
+        self.powerGrid.addWidget(self.maxpower, 0, 3)
+        self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
+        self.powerGrid.addWidget(self.minpower, 9, 3)
+
+        # ON/OFF button
+        self.enableButton = QtGui.QPushButton('ON')
+        style = "background-color: rgb{}".format(color)
+        self.enableButton.setStyleSheet(style)
+        self.enableButton.setCheckable(True)
+        #if self.laser.enabled:
+         #   self.enableButton.setChecked(True)
+
+        self.grid = QtGui.QGridLayout()
+        self.setLayout(self.grid)
+        self.grid.addWidget(self.name, 0, 0, 1, 2)
+        self.grid.addWidget(powerFrame, 1, 0, 1, 2)
+        self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
+
+    def registerListener(self, controller):
+        if not self.laser==473: controller.changeEdit(self.laser, self.init_power)
+        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser, self.enableButton.isChecked()))
+        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser, self.slider.value()))
+        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser, float(self.setPointEdit.text())))
+    
+    def changeEdit(self, magnitude):
+        self.setPointEdit.setText(magnitude)
+        
+    def changeSlider(self, magnitude):
+        self.slider.setValue(magnitude)
+           
+        
         
         
 class ScanWidget(Widget):
@@ -386,483 +980,7 @@ class IllumImageWidget(pg.GraphicsLayoutWidget):
         self.addItem(self.histBack, row=1, col=3)
 
         self.first = True
-        self.firstBack = True        
-        
-class PositionerWidget(Widget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.xLabel = QtGui.QLabel(
-            "<strong>x = {0:.2f} µm</strong>".format(0))
-        self.xLabel.setTextFormat(QtCore.Qt.RichText)
-        self.xUpButton = QtGui.QPushButton("+")
-        self.xDownButton = QtGui.QPushButton("-")
-        self.xStepEdit = QtGui.QLineEdit("0.05")
-        self.xStepUnit = QtGui.QLabel(" µm")
-
-        self.yLabel = QtGui.QLabel(
-            "<strong>y = {0:.2f} µm</strong>".format(0))
-        self.yLabel.setTextFormat(QtCore.Qt.RichText)
-        self.yUpButton = QtGui.QPushButton("+")
-        self.yDownButton = QtGui.QPushButton("-")
-        self.yStepEdit = QtGui.QLineEdit("0.05")
-        self.yStepUnit = QtGui.QLabel(" µm")
-
-        self.zLabel = QtGui.QLabel(
-            "<strong>z = {0:.2f} µm</strong>".format(0))
-        self.zLabel.setTextFormat(QtCore.Qt.RichText)
-        self.zUpButton = QtGui.QPushButton("+")
-        self.zDownButton = QtGui.QPushButton("-")
-        self.zStepEdit = QtGui.QLineEdit("0.05")
-        self.zStepUnit = QtGui.QLabel(" µm")
-
-        layout = QtGui.QGridLayout()
-        self.setLayout(layout)
-        layout.addWidget(self.xLabel, 1, 0)
-        layout.addWidget(self.xUpButton, 1, 1)
-        layout.addWidget(self.xDownButton, 1, 2)
-        layout.addWidget(QtGui.QLabel("Step"), 1, 3)
-        layout.addWidget(self.xStepEdit, 1, 4)
-        layout.addWidget(self.xStepUnit, 1, 5)
-        layout.addWidget(self.yLabel, 2, 0)
-        layout.addWidget(self.yUpButton, 2, 1)
-        layout.addWidget(self.yDownButton, 2, 2)
-        layout.addWidget(QtGui.QLabel("Step"), 2, 3)
-        layout.addWidget(self.yStepEdit, 2, 4)
-        layout.addWidget(self.yStepUnit, 2, 5)
-        layout.addWidget(self.zLabel, 3, 0)
-        layout.addWidget(self.zUpButton, 3, 1)
-        layout.addWidget(self.zDownButton, 3, 2)
-        layout.addWidget(QtGui.QLabel("Step"), 3, 3)
-        layout.addWidget(self.zStepEdit, 3, 4)
-        layout.addWidget(self.zStepUnit, 3, 5)
-
-    def registerListener(self, controller):   
-        self.xUpButton.pressed.connect(lambda: controller.move(0, float(self.xStepEdit.text())))
-        self.xDownButton.pressed.connect(lambda: controller.move(0, -float(self.xStepEdit.text())))
-        self.yUpButton.pressed.connect(lambda: controller.move(1, float(self.yStepEdit.text())))
-        self.yDownButton.pressed.connect(lambda: controller.move(1, -float(self.yStepEdit.text())))
-        self.zUpButton.pressed.connect(lambda: controller.move(2, float(self.zStepEdit.text())))
-        self.zDownButton.pressed.connect(lambda: controller.move(2, -float(self.zStepEdit.text())))
-        
-class ULensesWidget(Widget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.points = [0, 0]
-        self.ulensesPlot = pg.ScatterPlotItem()
-        ulensesLayout = QtGui.QGridLayout()
-        self.setLayout(ulensesLayout)
-        self.xEdit = QtGui.QLineEdit('0')
-        self.yEdit = QtGui.QLineEdit('0')
-        self.pxEdit = QtGui.QLineEdit('157.5')
-        self.upEdit = QtGui.QLineEdit('1182')
-        self.ulensesButton = QtGui.QPushButton('uLenses')
-        self.x = np.float(self.xEdit.text())
-        self.y = np.float(self.yEdit.text())
-        self.px = np.float(self.pxEdit.text())
-        self.up = np.float(self.upEdit.text())
-        self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
-        ulensesLayout.addWidget(QtGui.QLabel('Pixel Size'), 0, 0)
-        ulensesLayout.addWidget(self.pxEdit, 0, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('Periodicity'), 1, 0)
-        ulensesLayout.addWidget(self.upEdit, 1, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('X offset'), 2, 0)
-        ulensesLayout.addWidget(self.xEdit, 2, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('Y offset'), 3, 0)
-        ulensesLayout.addWidget(self.yEdit, 3, 1)
-        ulensesLayout.addWidget(self.ulensesButton, 4, 0)
-        ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
-        
-        
-    def registerListener(self, controller):
-        controller.addPlot()
-        self.ulensesButton.clicked.connect(controller.ulensesToolAux)
-        self.ulensesCheck.stateChanged.connect(controller.show)
-        
-class AlignWidgetXY(Widget):
-
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-                       scaleSnap=True, translateSnap=True)
-
-        self.ROI.hide()
-        self.graph = guitools.ProjectionGraph()
-        self.roiButton = QtGui.QPushButton('Show ROI')
-        self.roiButton.setCheckable(True)
-       
-        self.Xradio = QtGui.QRadioButton('X dimension')
-        self.Yradio = QtGui.QRadioButton('Y dimension')
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(self.graph, 0, 0, 1, 6)
-        grid.addWidget(self.roiButton, 1, 0, 1, 1)
-        grid.addWidget(self.Xradio, 1, 1, 1, 1)
-        grid.addWidget(self.Yradio, 1, 2, 1, 1)
-        
-    def registerListener(self, controller):
-        controller.addROI()
-        self.roiButton.clicked.connect(controller.ROItoggle)
-        self.Xradio.clicked.connect(lambda: controller.setAxis(0))
-        self.Yradio.clicked.connect(lambda: controller.setAxis(1))
-    
-
-class AlignWidgetAverage(Widget):
-
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
-                       scaleSnap=True, translateSnap=True)
-
-        self.ROI.hide()
-        self.graph = guitools.SumpixelsGraph()
-        self.roiButton = QtGui.QPushButton('Show ROI')
-        self.roiButton.setCheckable(True)
-        self.resetButton = QtGui.QPushButton('Reset graph')
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(self.graph, 0, 0, 1, 6)
-        grid.addWidget(self.roiButton, 1, 0, 1, 1)
-        grid.addWidget(self.resetButton, 1, 1, 1, 1)
-        grid.setRowMinimumHeight(0, 300)
-
-        
-    def registerListener(self, controller):
-        controller.addROI()
-        self.roiButton.clicked.connect(controller.ROItoggle)
-        self.resetButton.clicked.connect(self.graph.resetData)
-        
-        
-class AlignmentWidget(Widget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        pen = pg.mkPen(color=(255, 255, 0), width=0.5,
-                       style=QtCore.Qt.SolidLine, antialias=True)
-        self.alignmentLine = pg.InfiniteLine(
-            pen=pen, movable=True)
-        self.alignmentLine.hide()
-        
-        alignmentLayout = QtGui.QGridLayout()
-        self.setLayout(alignmentLayout)
-        self.angleEdit = QtGui.QLineEdit('30')
-        self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
-        self.angle = np.float(self.angleEdit.text())
-        self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
-        alignmentLayout.addWidget(QtGui.QLabel('Line Angle'), 0, 0)
-        alignmentLayout.addWidget(self.angleEdit, 0, 1)
-        alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
-        alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
-        
-    def registerListener(self, controller):
-        controller.addLine()
-        self.alignmentLineMakerButton.clicked.connect(controller.alignmentToolAux)
-        self.alignmentCheck.stateChanged.connect(controller.show)
-        
-class LaserWidget(Widget):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self.actControl = LaserControl('<h3>405<h3>', 'mW', 405, color=(130, 0, 200))
-        self.offControl = LaserControl('<h3>488<h3>', 'mW', 488, color=(0, 247, 255))
-        self.excControl = LaserControl('<h3>473<h3>', 'V', 473, color=(0, 183, 255))
-        
-        
-        self.DigCtrl = DigitalControl()
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        
-        grid.addWidget(self.actControl, 0, 0, 4, 1)
-        grid.addWidget(self.offControl, 0, 1, 4, 1)
-        grid.addWidget(self.excControl, 0, 2, 4, 1)
-        grid.addWidget(self.DigCtrl, 4, 0, 2, 3)
-        
-    def registerListener(self, controller):
-        self.actControl.registerListener(controller)
-        self.offControl.registerListener(controller)
-        self.excControl.registerListener(controller)
-        self.DigCtrl.registerListener(controller)
-        
-    def changeEdit(self, magnitude, laser):
-        if laser == 405:
-            self.actControl.changeEdit(magnitude)
-        elif laser == 488:
-            self.offControl.changeEdit(magnitude)
-        else:
-            self.excControl.changeEdit(magnitude)
-        
-    def changeSlider(self, magnitude, laser):
-        if laser == 405:
-            self.actControl.changeSlider(magnitude)
-        elif laser == 488:
-            self.offControl.changeSlider(magnitude)
-        else:
-            self.excControl.changeSlider(magnitude)
-        
-class DigitalControl(QtGui.QFrame):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)   
-        
-        title = QtGui.QLabel('<h3>Digital modulation<h3>')
-        title.setTextFormat(QtCore.Qt.RichText)
-        title.setAlignment(QtCore.Qt.AlignCenter)
-        title.setStyleSheet("font-size:12px")
-        title.setFixedHeight(20)
-        
-        self.ActPower = QtGui.QLineEdit('100')
-        self.OffPower = QtGui.QLineEdit('100')
-        self.ExcPower = QtGui.QLineEdit('100')
-    
-        self.DigitalControlButton = QtGui.QPushButton('Enable')
-        self.DigitalControlButton.setCheckable(True)
-        style = "background-color: rgb{}".format((160, 160, 160))
-        self.DigitalControlButton.setStyleSheet(style)
-
-        self.updateDigPowersButton = QtGui.QPushButton('Update powers')
-        
-        actUnit = QtGui.QLabel('mW')
-        actUnit.setFixedWidth(20)
-        actModFrame = QtGui.QFrame()
-        actModGrid = QtGui.QGridLayout()
-        actModFrame.setLayout(actModGrid)
-        actModGrid.addWidget(self.ActPower, 0, 0)
-        actModGrid.addWidget(actUnit, 0, 1)
-
-        offUnit = QtGui.QLabel('mW')
-        offUnit.setFixedWidth(20)
-        offModFrame = QtGui.QFrame()
-        offModGrid = QtGui.QGridLayout()
-        offModFrame.setLayout(offModGrid)
-        offModGrid.addWidget(self.OffPower, 0, 0)
-        offModGrid.addWidget(offUnit, 0, 1)
-
-        excUnit = QtGui.QLabel('V')
-        excUnit.setFixedWidth(20)
-        excModFrame = QtGui.QFrame()
-        excModGrid = QtGui.QGridLayout()
-        excModFrame.setLayout(excModGrid)
-        excModGrid.addWidget(self.ExcPower, 0, 0)
-        excModGrid.addWidget(excUnit, 0, 1)
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(title, 0, 0)
-        grid.addWidget(actModFrame, 1, 0)
-        grid.addWidget(offModFrame, 1, 1)
-        grid.addWidget(excModFrame, 1, 2)
-        grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
-    
-    def registerListener(self, controller):
-        self.ActPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text())], [405]))
-        self.OffPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.OffPower.text())], [488]))
-        self.ExcPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ExcPower.text())], [473]))
-        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488, 473]))
-        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488, 473]))
-        
-class LaserControl(QtGui.QFrame):
-    def __init__(self, name,  units, laser, color, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
-        self.laser = laser
-        self.name = QtGui.QLabel(name)
-        self.name.setTextFormat(QtCore.Qt.RichText)
-        self.name.setAlignment(QtCore.Qt.AlignCenter)
-        self.name.setStyleSheet("font-size:16px")
-        self.name.setFixedHeight(40)
-        
-        # Power widget
-        self.setPointLabel = QtGui.QLabel('Setpoint')
-        self.setPointEdit = QtGui.QLineEdit('0')
-        self.setPointEdit.setFixedWidth(50)
-        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
-
-        self.powerLabel = QtGui.QLabel('Power')
-        #powerMag = self.laser.power From model
-        self.powerIndicator = QtGui.QLabel('100')
-        self.powerIndicator.setFixedWidth(50)
-        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
-        
-        # Slider
-        self.maxpower = QtGui.QLabel('5')
-        self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
-        self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
-        self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(5)
-        self.slider.setTickInterval(5)
-        self.slider.setSingleStep(0.1)
-        self.slider.setValue(0)
-        self.minpower = QtGui.QLabel('0')
-        self.minpower.setAlignment(QtCore.Qt.AlignCenter)
-
-        powerFrame = QtGui.QFrame(self)
-        self.powerGrid = QtGui.QGridLayout()
-        powerFrame.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Plain)
-        powerFrame.setLayout(self.powerGrid)
-        self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
-        self.powerGrid.addWidget(self.setPointEdit, 2, 0)
-        self.powerGrid.addWidget(QtGui.QLabel(units), 2, 1)
-        self.powerGrid.addWidget(self.powerLabel, 3, 0, 1, 2)
-        self.powerGrid.addWidget(self.powerIndicator, 4, 0)
-        self.powerGrid.addWidget(QtGui.QLabel(units), 4, 1)
-        self.powerGrid.addWidget(self.maxpower, 0, 3)
-        self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
-        self.powerGrid.addWidget(self.minpower, 9, 3)
-
-        # ON/OFF button
-        self.enableButton = QtGui.QPushButton('ON')
-        style = "background-color: rgb{}".format(color)
-        self.enableButton.setStyleSheet(style)
-        self.enableButton.setCheckable(True)
-        #if self.laser.enabled:
-         #   self.enableButton.setChecked(True)
-
-        self.grid = QtGui.QGridLayout()
-        self.setLayout(self.grid)
-        self.grid.addWidget(self.name, 0, 0, 1, 2)
-        self.grid.addWidget(powerFrame, 1, 0, 1, 2)
-        self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
-
-    def registerListener(self, controller):
-        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser, self.enableButton.isChecked()))
-        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser, self.slider.value()))
-        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser, float(self.setPointEdit.text())))
-    
-    def changeEdit(self, magnitude):
-        self.setPointEdit.setText(magnitude)
-        
-    def changeSlider(self, magnitude):
-        self.slider.setValue(magnitude)
-       
-        
-class FFTWidget(Widget):
-    """ FFT Transform window for alignment """
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-        # Do FFT button
-        self.showCheck = QtGui.QCheckBox('Show FFT')
-        self.showCheck.setCheckable = True
-        # Period button and text for changing the vertical lines
-        self.changePosButton = QtGui.QPushButton('Period (pix)')
-        
-        self.linePos = QtGui.QLineEdit('4')
-        self.show = 0 
-        
-        self.lineRate = QtGui.QLineEdit('10')
-        self.labelRate = QtGui.QLabel('Update rate')
-        
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        self.cwidget = pg.GraphicsLayoutWidget()        
-        
-        self.vb = self.cwidget.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = pg.ImageItem()
-        self.img.translate(-0.5, -0.5)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
-        self.hist.gradient.setColorMap(self.cubehelixCM)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.cwidget.addItem(self.hist, row=1, col=2)
-        
-        # Vertical and horizontal lines 
-        self.vline = pg.InfiniteLine()
-        self.hline = pg.InfiniteLine()
-        self.rvline = pg.InfiniteLine()
-        self.lvline = pg.InfiniteLine()
-        self.uhline = pg.InfiniteLine()
-        self.dhline = pg.InfiniteLine()
-        
-        self.vline.hide()
-        self.hline.hide()
-        self.rvline.hide()
-        self.lvline.hide()
-        self.uhline.hide()
-        self.dhline.hide()
-
-        self.vb.addItem(self.vline)
-        self.vb.addItem(self.hline)
-        self.vb.addItem(self.lvline)
-        self.vb.addItem(self.rvline)
-        self.vb.addItem(self.uhline)
-        self.vb.addItem(self.dhline)
-        
-
-        grid.addWidget(self.cwidget, 0, 0, 1, 6)
-        grid.addWidget(self.showCheck, 1, 0, 1, 1)
-        grid.addWidget(self.changePosButton, 2, 0, 1, 1)
-        grid.addWidget(self.linePos, 2, 1, 1, 1)
-        grid.addWidget(self.labelRate, 2, 2, 1, 1)
-        grid.addWidget(self.lineRate, 2, 3, 1, 1)
-        
-        grid.setRowMinimumHeight(0, 300)
-
-        self.init = False
-        
-    def registerListener(self, controller):
-        self.showCheck.stateChanged.connect(controller.showFFT)
-        self.changePosButton.clicked.connect(self.changePos)
-        self.linePos.textChanged.connect(self.changePos)
-        self.lineRate.textChanged.connect(controller.changeRate)
-        
-    def setImage(self, im, init):
-        self.img.setImage(im, autoLevels=False)
-        if not init:
-            self.vb.setAspectLocked()
-            self.vb.setLimits(xMin=-0.5, xMax=self.img.width(), minXRange=4,
-                          yMin=-0.5, yMax=self.img.height(), minYRange=4)
-            self.hist.setLevels(*guitools.bestLimits(im))
-            self.hist.vb.autoRange()
-        
-    def changePos(self):
-        pos = float(self.linePos.text())
-        if (pos == self.show) or pos == 0:
-            self.vline.hide()
-            self.hline.hide()
-            self.rvline.hide()
-            self.lvline.hide()
-            self.uhline.hide()
-            self.dhline.hide()
-            self.show = 0
-        else:
-            self.show = pos
-            pos = float(1 / pos)
-            self.imgWidth = self.img.width()
-            self.imgHeight = self.img.height()
-            self.vb.setAspectLocked()
-            self.vb.setLimits(xMin=-0.5, xMax=self.imgWidth, minXRange=4,
-                      yMin=-0.5, yMax=self.imgHeight, minYRange=4)
-            self.vline.setValue(0.5*self.imgWidth)
-            self.hline.setAngle(0)
-            self.hline.setValue(0.5*self.imgHeight)
-            self.rvline.setValue((0.5+pos)*self.imgWidth)
-            self.lvline.setValue((0.5-pos)*self.imgWidth)
-            self.dhline.setAngle(0)
-            self.dhline.setValue((0.5-pos)*self.imgHeight)
-            self.uhline.setAngle(0)
-            self.uhline.setValue((0.5+pos)*self.imgHeight)
-            self.vline.show()
-            self.hline.show()
-            self.rvline.show()
-            self.lvline.show()
-            self.uhline.show()
-            self.dhline.show()
-            
-
+        self.firstBack = True           
 
 # Widget to control image or sequence recording. Recording only possible when
 # liveview active. StartRecording called when "Rec" presset. Creates recording
@@ -1000,343 +1118,12 @@ class RecordingWidget(Widget):
         self.timeToRec.textChanged.connect(controller.filesizeupdate)
         self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
-class ViewCtrlWidget(Widget):
-    def __init__(self, vb, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.vb = vb
-         # Liveview functionality
-        self.liveviewButton = QtGui.QPushButton('LIVEVIEW')
-        self.liveviewButton.setStyleSheet("font-size:20px")
-        self.liveviewButton.setCheckable(True)
-        self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                          QtGui.QSizePolicy.Expanding)
-        # Link button click to funciton liveview
-        self.liveviewButton.setEnabled(True)
-        self.viewtimer = QtCore.QTimer()
 
-        self.alignmentON = False
-        self.ulensesON = False
-        # Liveview control buttons
-        self.viewCtrlLayout = QtGui.QGridLayout()
-        self.setLayout(self.viewCtrlLayout)
-        self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
-#        if len(self.cameras) > 1:
-#            self.toggleCamButton = QtGui.QPushButton('Toggle camera')
-#            self.toggleCamButton.setStyleSheet("font-size:18px")
-#            self.toggleCamButton.clicked.connect(self.toggleCamera)
-#            self.camLabel = QtGui.QLabel('Hamamatsu0')
-#            self.camLabel.setStyleSheet("font-size:18px")
-#            self.viewCtrlLayout.addWidget(self.toggleCamButton, 2, 0)
-#            self.viewCtrlLayout.addWidget(self.camLabel, 2, 1)
-        self.grid = guitools.Grid(self.vb)
-        self.gridButton = QtGui.QPushButton('Grid')
-        self.gridButton.setCheckable(True)
-        self.gridButton.setEnabled(False)
-        self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                      QtGui.QSizePolicy.Expanding)
-        self.gridButton.clicked.connect(self.grid.toggle)
-        self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
+        
 
-        self.crosshair = guitools.Crosshair(self.vb)
-        self.crosshairButton = QtGui.QPushButton('Crosshair')
-        self.crosshairButton.setCheckable(True)
-        self.crosshairButton.setEnabled(False)
-        self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                           QtGui.QSizePolicy.Expanding)
-        self.crosshairButton.pressed.connect(self.crosshair.toggle)
-        self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+        
     
-    def registerListener(self, controller):
-        self.liveviewButton.clicked.connect(lambda: self.liveview(controller))
-        
-    def liveview(self, controller):
-        self.crosshairButton.setEnabled(True)
-        self.gridButton.setEnabled(True)
-        controller.liveview()
-    
-    def updateGrid(self, width, height):
-        self.grid.update([width, height])
-        
-class ImageWidget(pg.GraphicsLayoutWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.vb = self.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = pg.ImageItem()
-        self.img.translate(-0.5, -0.5)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256),
-                                       guitools.cubehelix().astype(int))
-        self.hist.gradient.setColorMap(self.cubehelixCM)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        # x and y profiles
-        xPlot = self.addPlot(row=0, col=1)
-        xPlot.hideAxis('left')
-        xPlot.hideAxis('bottom')
-        self.xProfile = xPlot.plot()
-        self.ci.layout.setRowMaximumHeight(0, 40)
-        xPlot.setXLink(self.vb)
-        yPlot = self.addPlot(row=1, col=0)
-        yPlot.hideAxis('left')
-        yPlot.hideAxis('bottom')
-        self.yProfile = yPlot.plot()
-        self.yProfile.rotate(90)
-        self.ci.layout.setColumnMaximumWidth(0, 40)
-        yPlot.setYLink(self.vb)
-
-        self.levelsButton = QtGui.QPushButton('Update Levels')
-        self.levelsButton.setEnabled(False)
-        self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                        QtGui.QSizePolicy.Expanding)
-        proxy = QtGui.QGraphicsProxyWidget()
-        proxy.setWidget(self.levelsButton)
-        self.addItem(proxy, row=0, col=2)
-    
-    def registerListener(self, controller): 
-        self.levelsButton.pressed.connect(controller.autoLevels)
-        
-class SettingsWidget(Widget):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # TODO retrieve model from TempestaModel
-        self.tree = CamParamTree('v3')
-        # TODO retrieve parameters from Tree and coordinate with Model or Controller
-#        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
-        cameraTitle = QtGui.QLabel('<h2><strong>Camera settings</strong></h2>')
-        cameraTitle.setTextFormat(QtCore.Qt.RichText)
-        cameraGrid = QtGui.QGridLayout()
-        self.setLayout(cameraGrid)
-        cameraGrid.addWidget(cameraTitle, 0, 0)
-        cameraGrid.addWidget(self.tree, 1, 0)
-        
-        self.umxpx = self.tree.p.param('Pixel size').value()
-        self.framePar = self.tree.p.param('Image frame')
-        self.binPar = self.framePar.param('Binning')
-        self.FrameMode = self.framePar.param('Mode')
-        self.X0par = self.framePar.param('X0')
-        self.Y0par = self.framePar.param('Y0')
-        self.widthPar = self.framePar.param('Width')
-        self.heightPar = self.framePar.param('Height')
-        self.applyParam = self.framePar.param('Apply')
-        self.NewROIParam = self.framePar.param('New ROI')
-        self.AbortROIParam = self.framePar.param('Abort ROI')
-        
-        timingsPar = self.tree.p.param('Timings')
-        self.EffFRPar = timingsPar.param('Internal frame rate')
-        self.expPar = timingsPar.param('Set exposure time')
-        self.ReadoutPar = timingsPar.param('Readout time')
-        self.RealExpPar = timingsPar.param('Real exposure time')
-        self.FrameInt = timingsPar.param('Internal frame interval')
-        self.RealExpPar.setOpts(decimals=5)
-        
-        acquisParam = self.tree.p.param('Acquisition mode')
-        self.trigsourceparam = acquisParam.param('Trigger source')
-        
-        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
-                                handleCenter=(0, 1), color='y', scaleSnap=True,
-                                translateSnap=True)
-        self.ROI.hide()
-        
-    def registerListener(self, controller):
-        controller.addROI()
-        controller.setExposure()
-        self.updateFrame(controller)
-        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
-        self.applyParam.sigStateChanged.connect(controller.adjustFrame)
-        self.NewROIParam.sigStateChanged.connect(lambda: self.updateFrame(controller))
-        self.AbortROIParam.sigStateChanged.connect(controller.abortROI)
-        self.trigsourceparam.sigValueChanged.connect(controller.changeTriggerSource)
-        self.expPar.sigValueChanged.connect(controller.setExposure)
-        self.binPar.sigValueChanged.connect(controller.setBinning)
-        self.FrameMode.sigValueChanged.connect(lambda: self.updateFrame(controller))
-        self.expPar.sigValueChanged.connect(controller.setExposure)
-        
-    def updateFrame(self, controller):
-        """ Method to change the image frame size and position in the sensor.
-        """
-        frameParam = self.tree.p.param('Image frame')
-        if frameParam.param('Mode').value() == 'Custom':
-            self.X0par.setWritable(True)
-            self.Y0par.setWritable(True)
-            self.widthPar.setWritable(True)
-            self.heightPar.setWritable(True) 
             
-            controller.customROI()
-
-        else:
-            self.X0par.setWritable(False)
-            self.Y0par.setWritable(False)
-            self.widthPar.setWritable(False)
-            self.heightPar.setWritable(False)
-
-            if frameParam.param('Mode').value() == 'Full chip':
-                self.X0par.setValue(0)
-                self.Y0par.setValue(0)
-                self.widthPar.setValue(2048)
-                self.heightPar.setValue(2048)
-            elif frameParam.param('Mode').value() == 'Full Widefield':
-                self.X0par.setValue(630)
-                self.Y0par.setValue(610)
-                self.widthPar.setValue(800)
-                self.heightPar.setValue(800)
-
-            elif frameParam.param('Mode').value() == 'Microlenses':
-                self.X0par.setValue(595)
-                self.Y0par.setValue(685)
-                self.widthPar.setValue(600)
-                self.heightPar.setValue(600)
-
-            elif frameParam.param('Mode').value() == 'Fast ROI':
-                self.X0par.setValue(595)
-                self.Y0par.setValue(960)
-                self.widthPar.setValue(600)
-                self.heightPar.setValue(128)
-
-            elif frameParam.param('Mode').value() == 'Fast ROI only v2':
-                self.X0par.setValue(595)
-                self.Y0par.setValue(1000)
-                self.widthPar.setValue(600)
-                self.heightPar.setValue(50)
-
-            elif frameParam.param('Mode').value() == 'Minimal line':
-                self.X0par.setValue(0)
-                self.Y0par.setValue(1020)
-                self.widthPar.setValue(2048)
-                self.heightPar.setValue(8)
-                
-            controller.adjustFrame()
-            
-    def toggleROI(self, b):
-        if b:
-            self.ROI.show()
-        else:
-            self.ROI.hide()
-            
-class CamParamTree(ParameterTree):
-    """ Making the ParameterTree for configuration of the camera during imaging
-    """
-    def __init__(self, camera, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
-                  "many pixels are to be read out and interpreted as a \n"
-                  "single pixel value.")
-
-        # Parameter tree for the camera configuration
-        params = [{'name': 'Model', 'type': 'str', 'readonly': True,
-                   'value': camera},
-                  {'name': 'Pixel size', 'type': 'float',
-                   'value': 0.159, 'readonly': False, 'suffix': ' µm'},
-                  {'name': 'Image frame', 'type': 'group', 'children': [
-                      {'name': 'Binning', 'type': 'list',
-                       'values': [1, 2, 4], 'tip': BinTip},
-                      {'name': 'Mode', 'type': 'list', 'values':
-                          ['Full chip', 'Full Widefield', 'Microlenses',
-                           'alignROI', 'Custom']},
-                      {'name': 'X0', 'type': 'int', 'value': 0,
-                       'limits': (0, 2044)},
-                      {'name': 'Y0', 'type': 'int', 'value': 0,
-                       'limits': (0, 2044)},
-                      {'name': 'Width', 'type': 'int', 'value': 2048,
-                       'limits': (1, 2048)},
-                      {'name': 'Height', 'type': 'int', 'value': 2048,
-                       'limits': (1, 2048)},
-                      {'name': 'Apply', 'type': 'action'},
-                      {'name': 'New ROI', 'type': 'action'},
-                      {'name': 'Abort ROI', 'type': 'action',
-                       'align': 'right'}]},
-                  {'name': 'Timings', 'type': 'group', 'children': [
-                      {'name': 'Set exposure time', 'type': 'float',
-                       'value': 0.01, 'limits': (0, 9999),
-                       'siPrefix': True, 'suffix': 's'},
-                      {'name': 'Real exposure time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': ' s'},
-                      {'name': 'Internal frame interval', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': ' s'},
-                      {'name': 'Readout time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': 's'},
-                      {'name': 'Internal frame rate', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': False,
-                       'suffix': ' fps'}]},
-                  {'name': 'Acquisition mode', 'type': 'group', 'children': [
-                      {'name': 'Trigger source', 'type': 'list',
-                       'values': ['Internal trigger',
-                                  'External "Start-trigger"',
-                                  'External "frame-trigger"'],
-                       'siPrefix': True, 'suffix': 's'}]}]
-#                        {'name': 'High Dynamic Range', 'type': 'list',
-#                         'values': ['OFF',
-#                                  'ON',],
-#                       'siPrefix': True, 'suffix': 's'}]}]
-
-        self.p = Parameter.create(name='params', type='group', children=params)
-        self.setParameters(self.p, showTop=False)
-        self._writable = True
-
-    def enableCropMode(self):
-        value = self.frameTransferParam.value()
-        if value:
-            self.cropModeEnableParam.setWritable(True)
-        else:
-            self.cropModeEnableParam.setValue(False)
-            self.cropModeEnableParam.setWritable(False)
-
-    @property
-    def writable(self):
-        return self._writable
-
-    @writable.setter
-    def writable(self, value):
-        """
-        property to set basically the whole parameters tree as writable
-        (value=True) or not writable (value=False)
-        useful to set it as not writable during recording
-        """
-        self._writable = value
-        framePar = self.p.param('Image frame')
-        framePar.param('Binning').setWritable(value)
-        framePar.param('Mode').setWritable(value)
-        framePar.param('X0').setWritable(value)
-        framePar.param('Y0').setWritable(value)
-        framePar.param('Width').setWritable(value)
-        framePar.param('Height').setWritable(value)
-
-        # WARNING: If Apply and New ROI button are included here they will
-        # emit status changed signal and their respective functions will be
-        # called... -> problems.
-        timingPar = self.p.param('Timings')
-        timingPar.param('Set exposure time').setWritable(value)
-
-    def attrs(self):
-        attrs = []
-        for ParName in self.p.getValues():
-            Par = self.p.param(str(ParName))
-            if not(Par.hasChildren()):
-                attrs.append((str(ParName), Par.value()))
-            else:
-                for sParName in Par.getValues():
-                    sPar = Par.param(str(sParName))
-                    if sPar.type() != 'action':
-                        if not(sPar.hasChildren()):
-                            attrs.append((str(sParName), sPar.value()))
-                        else:
-                            for ssParName in sPar.getValues():
-                                ssPar = sPar.param(str(ssParName))
-                                attrs.append((str(ssParName), ssPar.value()))
-        return attrs
 
 
         

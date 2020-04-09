@@ -456,6 +456,7 @@ class LaserWidget(Widget):
         self.laserModules[488].registerListener(controller)
         self.laserModules[473].registerListener(controller)
         self.DigModule.registerListener(controller)
+      
         
 class DigitalModule(QtGui.QFrame):
     """" Module from LaserWidget to handle digital modulation. """
@@ -518,6 +519,7 @@ class DigitalModule(QtGui.QFrame):
         self.powers[473].textChanged.connect(lambda: controller.updateDigitalPowers([473]))
         self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod([405, 488]))
         self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers([405, 488]))
+      
         
 class LaserModule(QtGui.QFrame):
     """" Module from LaserWidget to handle a single laser. """

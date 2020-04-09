@@ -262,7 +262,7 @@ class SettingsWidget(Widget):
         controller.addROI()
         controller.getParameters()
         controller.setExposure()
-        controller.adjustFrame()
+        #controller.adjustFrame()
         self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
  
  

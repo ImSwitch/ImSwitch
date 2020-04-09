@@ -78,7 +78,7 @@ class AlignXYController(LiveUpdatedController):
             self._widget.graph.updateGraph(value)
             
     def addROI(self):
-        """" Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
+        """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
         self._comm_channel.addItemTovb(self._widget.ROI)
         
     def toggleROI(self):
@@ -282,8 +282,7 @@ class SettingsController(WidgetController):
         self.expPar.sigValueChanged.connect(self.setExposure)
         self.binPar.sigValueChanged.connect(self.setBinning)
         self.FrameMode.sigValueChanged.connect(self.updateFrame)
-        self.expPar.sigValueChanged.connect(self.setExposure)     
-        
+        self.expPar.sigValueChanged.connect(self.setExposure)            
             
     def adjustFrame(self):
         """ Crop camera and adjust frame. """

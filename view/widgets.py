@@ -366,7 +366,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
 
 class PositionerWidget(Widget):
-    """" Widget in control of the piezzo movement. """
+    """ Widget in control of the piezzo movement. """
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -429,7 +429,7 @@ class PositionerWidget(Widget):
         
 
 class LaserWidget(Widget):
-    """" Laser widget containing digital modulation and normal control. """
+    """ Laser widget containing digital modulation and normal control. """
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -451,7 +451,7 @@ class LaserWidget(Widget):
         grid.addWidget(self.DigModule, 4, 0, 2, 3)
         
     def registerListener(self, controller):
-        """" Manage interactions with LaserController. """
+        """ Manage interactions with LaserController. """
         self.laserModules[405].registerListener(controller)
         self.laserModules[488].registerListener(controller)
         self.laserModules[473].registerListener(controller)
@@ -459,7 +459,7 @@ class LaserWidget(Widget):
       
         
 class DigitalModule(QtGui.QFrame):
-    """" Module from LaserWidget to handle digital modulation. """
+    """ Module from LaserWidget to handle digital modulation. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)   
         
@@ -513,7 +513,7 @@ class DigitalModule(QtGui.QFrame):
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
     
     def registerListener(self, controller):
-        """" Manage interactions with LaserController. """
+        """ Manage interactions with LaserController. """
         self.powers[405].textChanged.connect(lambda: controller.updateDigitalPowers([405]))
         self.powers[488].textChanged.connect(lambda: controller.updateDigitalPowers([488]))
         self.powers[473].textChanged.connect(lambda: controller.updateDigitalPowers([473]))
@@ -522,7 +522,7 @@ class DigitalModule(QtGui.QFrame):
       
         
 class LaserModule(QtGui.QFrame):
-    """" Module from LaserWidget to handle a single laser. """
+    """ Module from LaserWidget to handle a single laser. """
     def __init__(self, name,  units, laser, color, prange, tickInterval, singleStep, init_power,  *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -582,7 +582,7 @@ class LaserModule(QtGui.QFrame):
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
     def registerListener(self, controller):
-        """" Manage interactions with LaserController. """
+        """ Manage interactions with LaserController. """
         if not self.laser==473: controller.changeEdit(self.laser)
         self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
         self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))

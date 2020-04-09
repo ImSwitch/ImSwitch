@@ -86,7 +86,6 @@ class CameraHelper():
                 
     def cropOrca(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by Orcaflash. """
-        self.stopAcquisition()
         self.__cameras[0].setPropertyValue('subarray_vpos', 0)
         self.__cameras[0].setPropertyValue('subarray_hpos', 0)
         self.__cameras[0].setPropertyValue('subarray_vsize', 2048)
@@ -97,8 +96,7 @@ class CameraHelper():
             self.__cameras[0].setPropertyValue('subarray_hsize', hsize)
             self.__cameras[0].setPropertyValue('subarray_vpos', vpos)
             self.__cameras[0].setPropertyValue('subarray_hpos', hpos)
-            
-        self.startAcquisition()
+
         # This should be the only place where self.frameStart is changed
         self.__frameStart = (hpos, vpos)
         # Only place self.shapes is changed

@@ -371,7 +371,7 @@ class PositionerWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Graphical element
+        # Graphical elements
         self.xLabel = QtGui.QLabel(
             "<strong>x = {0:.2f} µm</strong>".format(0))
         self.xLabel.setTextFormat(QtCore.Qt.RichText)
@@ -435,79 +435,63 @@ class LaserWidget(Widget):
         super().__init__(*args, **kwargs)
         
         # Create laser modules
-        self.actControl = LaserModule('<h3>405<h3>', 'mW', 405, color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
-        self.offControl = LaserModule('<h3>488<h3>', 'mW', 488, color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
-        self.excControl = LaserModule('<h3>473<h3>', 'V', 473, color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
-        
-        
-        self.DigCtrl = DigitalControl()
+        actControl = LaserModule('<h3>405<h3>', 'mW', 405, color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
+        offControl = LaserModule('<h3>488<h3>', 'mW', 488, color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
+        excControl = LaserModule('<h3>473<h3>', 'V', 473, color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
+        self.DigModule = DigitalModule()
 
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
+        self.laserModules = {405: actControl, 488: offControl, 473: excControl}
         
-        grid.addWidget(self.actControl, 0, 0, 4, 1)
-        grid.addWidget(self.offControl, 0, 1, 4, 1)
-        grid.addWidget(self.excControl, 0, 2, 4, 1)
-        grid.addWidget(self.DigCtrl, 4, 0, 2, 3)
+        # Add modules to GridLayout
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid) 
+        grid.addWidget(actControl, 0, 0, 4, 1)
+        grid.addWidget(offControl, 0, 1, 4, 1)
+        grid.addWidget(excControl, 0, 2, 4, 1)
+        grid.addWidget(self.DigModule, 4, 0, 2, 3)
         
     def registerListener(self, controller):
-        self.actControl.registerListener(controller)
-        self.offControl.registerListener(controller)
-        self.excControl.registerListener(controller)
-        self.DigCtrl.registerListener(controller)
+        """" Manage interactions with LaserController. """
+        self.laserModules[405].registerListener(controller)
+        self.laserModules[488].registerListener(controller)
+        self.laserModules[473].registerListener(controller)
+        self.DigModule.registerListener(controller)
         
-    def changeEdit(self, magnitude, laser):
-        if laser == 405:
-            self.actControl.changeEdit(magnitude)
-        elif laser == 488:
-            self.offControl.changeEdit(magnitude)
-        else:
-            self.excControl.changeEdit(magnitude)
-        
-    def changeSlider(self, magnitude, laser):
-        if laser == 405:
-            self.actControl.changeSlider(magnitude)
-        elif laser == 488:
-            self.offControl.changeSlider(magnitude)
-        else:
-            self.excControl.changeSlider(magnitude)
-        
-class DigitalControl(QtGui.QFrame):
-
+class DigitalModule(QtGui.QFrame):
+    """" Module from LaserWidget to handle digital modulation. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)   
         
+        # Graphical elements
         title = QtGui.QLabel('<h3>Digital modulation<h3>')
         title.setTextFormat(QtCore.Qt.RichText)
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size:12px")
         title.setFixedHeight(20)
-        
-        self.ActPower = QtGui.QLineEdit('100')
-        self.OffPower = QtGui.QLineEdit('100')
-        self.ExcPower = QtGui.QLineEdit('100')
-    
+        ActPower = QtGui.QLineEdit('100')
+        OffPower = QtGui.QLineEdit('100')
+        ExcPower = QtGui.QLineEdit('100')
+        self.powers = {405 : ActPower, 488 : OffPower, 473 : ExcPower}
         self.DigitalControlButton = QtGui.QPushButton('Enable')
         self.DigitalControlButton.setCheckable(True)
         style = "background-color: rgb{}".format((160, 160, 160))
         self.DigitalControlButton.setStyleSheet(style)
-
-        self.updateDigPowersButton = QtGui.QPushButton('Update powers')
-        
+        self.updateDigPowersButton = QtGui.QPushButton('Update powers')   
         actUnit = QtGui.QLabel('mW')
         actUnit.setFixedWidth(20)
+        
         actModFrame = QtGui.QFrame()
         actModGrid = QtGui.QGridLayout()
         actModFrame.setLayout(actModGrid)
-        actModGrid.addWidget(self.ActPower, 0, 0)
+        actModGrid.addWidget(ActPower, 0, 0)
         actModGrid.addWidget(actUnit, 0, 1)
-
+        
         offUnit = QtGui.QLabel('mW')
         offUnit.setFixedWidth(20)
         offModFrame = QtGui.QFrame()
         offModGrid = QtGui.QGridLayout()
         offModFrame.setLayout(offModGrid)
-        offModGrid.addWidget(self.OffPower, 0, 0)
+        offModGrid.addWidget(OffPower, 0, 0)
         offModGrid.addWidget(offUnit, 0, 1)
 
         excUnit = QtGui.QLabel('V')
@@ -515,9 +499,10 @@ class DigitalControl(QtGui.QFrame):
         excModFrame = QtGui.QFrame()
         excModGrid = QtGui.QGridLayout()
         excModFrame.setLayout(excModGrid)
-        excModGrid.addWidget(self.ExcPower, 0, 0)
+        excModGrid.addWidget(ExcPower, 0, 0)
         excModGrid.addWidget(excUnit, 0, 1)
 
+        # Add elements to GridLayout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
         grid.addWidget(title, 0, 0)
@@ -527,16 +512,19 @@ class DigitalControl(QtGui.QFrame):
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
     
     def registerListener(self, controller):
-        self.ActPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text())], [405]))
-        self.OffPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.OffPower.text())], [488]))
-        self.ExcPower.textChanged.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ExcPower.text())], [473]))
-        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488]))
-        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(self.DigitalControlButton.isChecked(), [float(self.ActPower.text()), float(self.OffPower.text()), float(self.ExcPower.text())], [405, 488]))
+        """" Manage interactions with LaserController. """
+        self.powers[405].textChanged.connect(lambda: controller.updateDigitalPowers([405]))
+        self.powers[488].textChanged.connect(lambda: controller.updateDigitalPowers([488]))
+        self.powers[473].textChanged.connect(lambda: controller.updateDigitalPowers([473]))
+        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod([405, 488]))
+        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers([405, 488]))
         
 class LaserModule(QtGui.QFrame):
+    """" Module from LaserWidget to handle a single laser. """
     def __init__(self, name,  units, laser, color, prange, tickInterval, singleStep, init_power,  *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # Graphical elements
         self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
         self.laser = laser
         self.name = QtGui.QLabel(name)
@@ -544,21 +532,15 @@ class LaserModule(QtGui.QFrame):
         self.name.setAlignment(QtCore.Qt.AlignCenter)
         self.name.setStyleSheet("font-size:16px")
         self.name.setFixedHeight(40)
-        
-        # Power widget
         self.init_power = init_power
         self.setPointLabel = QtGui.QLabel('Setpoint')
         self.setPointEdit = QtGui.QLineEdit(str(self.init_power))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
-
         self.powerLabel = QtGui.QLabel('Power')
-        #powerMag = self.laser.power From model
         self.powerIndicator = QtGui.QLabel(str(self.init_power))
         self.powerIndicator.setFixedWidth(50)
         self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
-        
-        # Slider
         self.maxpower = QtGui.QLabel(str(prange[1]))
         self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
         self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
@@ -585,14 +567,12 @@ class LaserModule(QtGui.QFrame):
         self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
         self.powerGrid.addWidget(self.minpower, 9, 3)
 
-        # ON/OFF button
         self.enableButton = QtGui.QPushButton('ON')
         style = "background-color: rgb{}".format(color)
         self.enableButton.setStyleSheet(style)
         self.enableButton.setCheckable(True)
-        #if self.laser.enabled:
-         #   self.enableButton.setChecked(True)
 
+        # Add elements to GridLayout
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
         self.grid.addWidget(self.name, 0, 0, 1, 2)
@@ -600,18 +580,11 @@ class LaserModule(QtGui.QFrame):
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
     def registerListener(self, controller):
-        if not self.laser==473: controller.changeEdit(self.laser, self.init_power)
-        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser, self.enableButton.isChecked()))
-        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser, self.slider.value()))
-        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser, float(self.setPointEdit.text())))
-    
-    def changeEdit(self, magnitude):
-        self.setPointEdit.setText(magnitude)
-        
-    def changeSlider(self, magnitude):
-        self.slider.setValue(magnitude)
-           
-        
+        """" Manage interactions with LaserController. """
+        if not self.laser==473: controller.changeEdit(self.laser)
+        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
+        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
+        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))
         
         
 class ScanWidget(Widget):

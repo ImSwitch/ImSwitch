@@ -488,42 +488,44 @@ class LaserController(WidgetController):
         super().__init__(*args, **kwargs)
         self.digMod = False
         
-    def toggleLaser(self, laser, enable):
+    def toggleLaser(self, laser):
         """ Enable or disable laser (on/off)."""
         if not self.digMod:
-            if enable:
+            if self._widget.laserModules[laser].enableButton.isChecked():
                 self._master.toggleLaser(True, laser)
             else:
                 self._master.toggleLaser(False, laser)
                 
-    def changeSlider(self, laser, value):
+    def changeSlider(self, laser):
         """ Change power with slider magnitude. """
         if not self.digMod:
-            magnitude =  value 
+            magnitude =  self._widget.laserModules[laser].slider.value() 
             self._master.changePower(magnitude, laser)
-            self._widget.changeEdit(str(magnitude), laser)
+            self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
             
-    def changeEdit(self, laser, value):
+    def changeEdit(self, laser):
         """ Change power with edit magnitude. """
         if not self.digMod:
-            magnitude = value
+            magnitude = float(self._widget.laserModules[laser].setPointEdit.text())
             self._master.changePower(magnitude, laser)
-            self._widget.changeSlider(magnitude, laser)
+            self._widget.laserModules[laser].slider.setValue(magnitude)
             
             
-    def updateDigitalPowers(self, digital, powers, lasers):
+    def updateDigitalPowers(self, lasers):
         """ Update the powers if the digital mod is on. """
-        self.digMod = digital
-        if digital:
+        self.digMod = self.DigitalControlButton.isChecked()
+        if self.digMod:
             for i in np.arange(len(lasers)):
-                self._master.changePower(powers[i], lasers[i])
+                laser = lasers[i]
+                self._master.changePower(self._widget.DigModule.powers[laser], laser)
             
-    def GlobalDigitalMod(self, digital, powers, lasers):
+    def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
-        self.digMod = digital
-        if digital:
+        self.digMod = self.DigitalControlButton.isChecked()
+        if self.digMod:
             for i in np.arange(len(lasers)):
-                self._master.digitalMod(True, powers[i], lasers[i])
+                laser = lasers[i]
+                self._master.digitalMod(True, self._widget.DigModule.powers[laser], laser)
         
 
 # Scan control

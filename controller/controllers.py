@@ -47,7 +47,7 @@ class ULensesController(WidgetController):
         pattern_y = np.arange(self.y, size_y, self.up/self.px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)  
         self._widget.ulensesPlot.setData(x = grid[:,0], y = grid[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
-        self._widget.show()
+        if self._widget.ulensesCheck.isChecked(): self._widget.show()
         
     def show(self):
         """ Shows or hides grid. """
@@ -58,10 +58,10 @@ class ULensesController(WidgetController):
             
     def getParameters(self):
         """ Update new parameters from graphical elements in the widget."""
-        self.x = np.float(self.xEdit.text())
-        self.y = np.float(self.yEdit.text())
-        self.px = np.float(self.pxEdit.text())
-        self.up = np.float(self.upEdit.text())
+        self.x = np.float(self._widget.xEdit.text())
+        self.y = np.float(self._widget.yEdit.text())
+        self.px = np.float(self._widget.pxEdit.text())
+        self.up = np.float(self._widget.upEdit.text())
   
         
 class AlignXYController(LiveUpdatedController):

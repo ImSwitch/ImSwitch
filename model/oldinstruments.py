@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr  1 15:18:49 2020
+Created on Sun Dec 28 13:25:27 2014
 
-@author: Testa4
+@author: federico
 """
-import numpy as np
-from model import mockers
 
 import importlib
+import model.mockers as mockers
+import numpy as np
+import nidaqmx
+
 
 class Laser(object):
 
@@ -18,7 +20,7 @@ class Laser(object):
             driver = getattr(package, driverName)
             laser = driver(*args)
             laser.initialize()
-            return laser
+            return driver(*args)
 
         except:
             return mockers.MockLaser()
@@ -113,6 +115,88 @@ class LinkedLaser(object):
         self.lasers[0].finalize()
         self.lasers[1].finalize()
 
+
+class LaserTTL(object):
+    def __init__(self, line):
+        self.line = line
+        # Nidaq task
+        self.aotask = nidaqmx.Task('AOTF_voltage')
+        self.aotask.ao_channels.add_ao_voltage_chan('Dev1/ao3', min_val = 0, max_val = 5)
+        self._digital_mod = False
+        
+        self._power = 0
+        self.enabled = False
+        
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, value):
+        try:
+            self.dotask
+        except:
+            self.dotask = nidaqmx.Task('dotaskEnableTTL')
+            self.dotask.do_channels.add_do_chan(
+                lines='Dev1/port0/line%s' % self.line,
+                name_to_assign_to_lines='chan')
+
+            self.dotask.timing.cfg_samp_clk_timing(
+               source=r'100kHzTimeBase',
+               rate=100000,
+               sample_mode=nidaqmx.constants.AcquisitionType.FINITE)
+            
+        if value:
+            self.dotask.write(np.ones(100, dtype=bool), auto_start=True)
+            self.dotask.wait_until_done()
+            self.dotask.stop()
+        else:
+            self.dotask.write(np.zeros(100, dtype=bool), auto_start=True)
+            self.dotask.wait_until_done()
+            self.dotask.stop()
+
+        self._enabled = value
+        
+    @property
+    def power(self):
+        return self._power
+        
+    @power.setter
+    def power(self, value):
+        self.analog(value)
+        
+    def analog(self, value):
+        self.aotask.write(value)
+        
+    @property
+    def digital_mod(self):
+        return self._digital_mod
+
+    @digital_mod.setter
+    def digital_mod(self, value):
+        self._digital_mod = value
+        if value:
+            print('Closing task in LaserTTL')
+            self.dotask.close()
+        else:
+            self.dotask = nidaqmx.Task('dotaskEnableTTL')
+            self.dotask.do_channels.add_do_chan(
+                lines='Dev1/port0/line%s' % self.line,
+                name_to_assign_to_lines='chan')
+
+            self.dotask.timing.cfg_samp_clk_timing(
+               source=r'100kHzTimeBase',
+               rate=100000,
+               sample_mode=nidaqmx.constants.AcquisitionType.FINITE)
+
+    def enter_mod_mode(self):
+        pass
+
+    def query(self, value):
+        pass
+
+
 class Cameras(object):
     """ Buffer class for testing whether the camera is connected. If it's not,
     it returns a dummy class for program testing. """
@@ -129,7 +213,7 @@ class Cameras(object):
     def __new__(cls, *args, **kwargs):
         cameras = []
         try:     
-            import model.hamamatsu as hm
+            import hamamatsu.hamamatsu_camera_Testa as hm
             for i in np.arange(hm.n_cameras):
                 print('Trying to import camera', i)
                 cameras.append(hm.HamamatsuCameraMR(i))
@@ -139,3 +223,27 @@ class Cameras(object):
         except:
             print('Initializing Mock Hamamatsu')
             return [mockers.MockHamamatsu()]
+
+
+class PZT(object):
+
+    def __new__(cls, port, *args):
+        try:
+            from lantz.drivers.piezosystemjena.nv401 import nv401
+            inst = nv401.via_serial(port)
+            inst.initialize()
+            inst.position
+            return inst
+        except:
+            return mockers.MockPZT()
+
+
+class Webcam(object):
+
+    def __new__(cls):
+        try:
+            from instrumental.drivers.cameras.uc480 import UC480_Camera
+            webcam = UC480_Camera()
+        except:
+            webcam = mockers.MockWebcam()
+        return webcam

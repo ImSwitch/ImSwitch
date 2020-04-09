@@ -70,28 +70,28 @@ class TempestaView():
         self.illumDockArea.addDock(FFTDock)
         
         # Line Alignment Tool
-        self.alignmentWidget = widgets.AlignmentWidget()
-        alignmentDock = Dock("Alignment Tool", size=(1, 1))
-        alignmentDock.addWidget(self.alignmentWidget)
-        self.illumDockArea.addDock(alignmentDock, 'right')
+        self.alignmentLineWidget = widgets.AlignmentLineWidget()
+        alignmentLineDock = Dock("Alignment Tool", size=(1, 1))
+        alignmentLineDock.addWidget(self.alignmentLineWidget)
+        self.illumDockArea.addDock(alignmentLineDock, 'right')
         
         # Z align widget
         ZalignDock = Dock("Axial Alignment Tool", size=(1, 1))
         self.alignWidgetAverage = widgets.AlignWidgetAverage()
         ZalignDock.addWidget(self.alignWidgetAverage)
-        self.illumDockArea.addDock(ZalignDock, 'above', alignmentDock)
+        self.illumDockArea.addDock(ZalignDock, 'above', alignmentLineDock)
 
         # Rotational align widget
         RotalignDock = Dock("Rotational Alignment Tool", size=(1, 1))
         self.alignWidgetXY = widgets.AlignWidgetXY()
         RotalignDock.addWidget(self.alignWidgetXY)
-        self.illumDockArea.addDock(RotalignDock, 'above', alignmentDock)
+        self.illumDockArea.addDock(RotalignDock, 'above', alignmentLineDock)
         
         # ulenses Alignment Tool
         self.ulensesWidget = widgets.ULensesWidget()
         ulensesDock = Dock("uLenses Tool", size=(1, 1))
         ulensesDock.addWidget(self.ulensesWidget)
-        self.illumDockArea.addDock(ulensesDock, 'above', alignmentDock)
+        self.illumDockArea.addDock(ulensesDock, 'above', alignmentLineDock)
         
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
@@ -114,7 +114,7 @@ class TempestaView():
         piezoDock = Dock('Piezo positioner', size=(1, 1))
         self.positionerWidget = widgets.PositionerWidget()
         piezoDock.addWidget(self.positionerWidget)
-        dockArea.addDock(piezoDock, 'bottom', alignmentDock)
+        dockArea.addDock(piezoDock, 'bottom', alignmentLineDock)
         
         layout.addWidget(dockArea, 2, 3, 4, 1)
         # Add all other Widgets
@@ -124,8 +124,8 @@ class TempestaView():
         self.imageWidget = widgets.ImageWidget()
         layout.addWidget(self.imageWidget, 0, 2, 6, 1)
         
-        self.viewCtrlWidget = widgets.ViewCtrlWidget(self.imageWidget.vb)
-        layout.addWidget(self.viewCtrlWidget, 3, 0, 1, 2)
+        self.viewWidget = widgets.ViewWidget()
+        layout.addWidget(self.viewWidget, 3, 0, 1, 2)
         
         self.recordingWidget = widgets.RecordingWidget()
         layout.addWidget(self.recordingWidget, 4, 0, 1, 2)
@@ -148,11 +148,12 @@ class TempestaView():
         self.ulensesWidget.registerListener(controller.uLensesController)
         self.alignWidgetXY.registerListener(controller.alignXYController)
         self.alignWidgetAverage.registerListener(controller.alignAverageController)
-        self.alignmentWidget.registerListener(controller.alignmentController)
+        self.alignmentLineWidget.registerListener(controller.alignmentLineController)
         self.laserWidgets.registerListener(controller.laserController)
         self.fftWidget.registerListener(controller.fftController)
         self.recordingWidget.registerListener(controller.recorderController)
-        self.viewCtrlWidget.registerListener(controller.viewController)
+        self.viewWidget.registerListener(controller.viewController)
+        self.settingsWidget.registerListener(controller.settingsController)
         
 
     def startView(self):

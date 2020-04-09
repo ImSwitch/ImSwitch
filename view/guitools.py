@@ -7,7 +7,6 @@ Created on Fri Feb  6 13:20:02 2015
 import os
 import time
 import numpy as np
-import scipy as sp
 import h5py as hdf
 import tifffile as tiff
 import configparser
@@ -18,6 +17,7 @@ import glob
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.ptime as ptime
+from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from tkinter import Tk, filedialog, simpledialog
 
@@ -411,6 +411,17 @@ class Grid():
         self.xline3 = pg.InfiniteLine(pen=pen2, angle=0)
         self.xline4 = pg.InfiniteLine(pen=pen2, angle=0)
         self.xline5 = pg.InfiniteLine(pen=pen, angle=0)
+        self.vb.addItem(self.xline1)
+        self.vb.addItem(self.xline2)
+        self.vb.addItem(self.xline3)
+        self.vb.addItem(self.xline4)
+        self.vb.addItem(self.xline5)
+        self.vb.addItem(self.yline1)
+        self.vb.addItem(self.yline2)
+        self.vb.addItem(self.yline3)
+        self.vb.addItem(self.yline4)
+        self.vb.addItem(self.yline5)
+        self.hide()
 
     def update(self, shape):
         self.yline1.setPos(0.25*shape[0])
@@ -431,29 +442,29 @@ class Grid():
             self.show()
 
     def show(self):
-        self.vb.addItem(self.xline1)
-        self.vb.addItem(self.xline2)
-        self.vb.addItem(self.xline3)
-        self.vb.addItem(self.xline4)
-        self.vb.addItem(self.xline5)
-        self.vb.addItem(self.yline1)
-        self.vb.addItem(self.yline2)
-        self.vb.addItem(self.yline3)
-        self.vb.addItem(self.yline4)
-        self.vb.addItem(self.yline5)
+        self.yline1.show()
+        self.yline2.show()
+        self.yline3.show()
+        self.yline4.show()
+        self.yline5.show()
+        self.xline1.show()
+        self.xline2.show()
+        self.xline3.show()
+        self.xline4.show()
+        self.xline5.show()
         self.showed = True
 
     def hide(self):
-        self.vb.removeItem(self.xline1)
-        self.vb.removeItem(self.xline2)
-        self.vb.removeItem(self.xline3)
-        self.vb.removeItem(self.xline4)
-        self.vb.removeItem(self.xline5)
-        self.vb.removeItem(self.yline1)
-        self.vb.removeItem(self.yline2)
-        self.vb.removeItem(self.yline3)
-        self.vb.removeItem(self.yline4)
-        self.vb.removeItem(self.yline5)
+        self.yline1.hide()
+        self.yline2.hide()
+        self.yline3.hide()
+        self.yline4.hide()
+        self.yline5.hide()
+        self.xline1.hide()
+        self.xline2.hide()
+        self.xline3.hide()
+        self.xline4.hide()
+        self.xline5.hide()
         self.showed = False
 
 
@@ -476,6 +487,7 @@ class TwoColorGrid():
         self.xLine = pg.InfiniteLine(pos=0.5*self.shape[1], pen=pen2, angle=0)
         self.xLineT = pg.InfiniteLine(pos=182, pen=pen2, angle=0)
         self.xLineR = pg.InfiniteLine(pos=330, pen=pen2, angle=0)
+
 
     def toggle(self):
         if self.showed:
@@ -511,6 +523,9 @@ class Crosshair():
         self.vLine = pg.InfiniteLine(pos=0, angle=90, movable=False)
         self.hLine = pg.InfiniteLine(pos=0, angle=0,  movable=False)
         self.vb = viewBox
+        self.vb.addItem(self.vLine, ignoreBounds=False)
+        self.vb.addItem(self.hLine, ignoreBounds=False)
+        self.hide()
 
     def mouseMoved(self, pos):
         if self.vb.sceneBoundingRect().contains(pos):
@@ -533,13 +548,13 @@ class Crosshair():
     def show(self):
         self.vb.scene().sigMouseClicked.connect(self.mouseClicked)
         self.vb.scene().sigMouseMoved.connect(self.mouseMoved)
-        self.vb.addItem(self.vLine, ignoreBounds=False)
-        self.vb.addItem(self.hLine, ignoreBounds=False)
+        self.vLine.show()
+        self.hLine.show()
         self.showed = True
 
     def hide(self):
-        self.vb.removeItem(self.vLine)
-        self.vb.removeItem(self.hLine)
+        self.vLine.hide()
+        self.hLine.hide()
         self.showed = False
 
 
@@ -586,68 +601,6 @@ class cropROI(pg.ROI):
                         pen='y', *args, **kwargs)
         self.addScaleHandle((0, 1), (1, 0))
 
-
-class AlignWidgetAverage(QtGui.QFrame):
-
-    def __init__(self, main, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.main = main
-
-        self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-                       scaleSnap=True, translateSnap=True)
-
-        self.ROI.hide()
-        self.graph = SumpixelsGraph()
-        self.roiButton = QtGui.QPushButton('Show ROI')
-        self.roiButton.setCheckable(True)
-        self.roiButton.clicked.connect(self.ROItoggle)
-        self.resetButton = QtGui.QPushButton('Reset graph')
-        self.resetButton.clicked.connect(self.resetGraph)
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(self.graph, 0, 0, 1, 6)
-        grid.addWidget(self.roiButton, 1, 0, 1, 1)
-        grid.addWidget(self.resetButton, 1, 1, 1, 1)
-        grid.setRowMinimumHeight(0, 300)
-
-        self.scansPerS = 10
-        self.alignTime = 1000 / self.scansPerS
-        self.alignTimer = QtCore.QTimer()
-        self.alignTimer.timeout.connect(self.updateValue)
-#        self.alignTimer.start(self.alignTime)
-
-    def resetGraph(self):
-        self.graph.resetData()
-
-    def ROItoggle(self):
-        if self.roiButton.isChecked() is False:
-            self.ROI.hide()
-            self.alignTimer.stop()
-            self.roiButton.setText('Show ROI')
-        else:
-            self.ROI.show()
-            self.roiButton.setText('Hide ROI')
-            self.alignTimer.start(self.alignTime)
-
-    def updateValue(self):
-
-        if self.main.liveviewButton.isChecked():
-            self.selected = self.ROI.getArrayRegion(
-                self.main.latest_images[self.main.currCamIdx], self.main.img)
-            value = np.mean(self.selected)
-            self.graph.updateGraph(value)
-        else:
-            pass
-
-    def closeEvent(self, *args, **kwargs):
-
-        self.alignTimer.stop()
-
-        super().closeEvent(*args, **kwargs)
 
 
 class SumpixelsGraph(pg.GraphicsWindow):
@@ -701,84 +654,6 @@ class SumpixelsGraph(pg.GraphicsWindow):
 
         self.ptr += 1
 
-
-class AlignWidgetXYProject(QtGui.QFrame):
-
-    def __init__(self, main, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.main = main
-
-        self.ROI = ROI((50, 50), self.main.vb, (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-                       scaleSnap=True, translateSnap=True)
-
-        self.ROI.hide()
-        self.graph = ProjectionGraph()
-        self.roiButton = QtGui.QPushButton('Show ROI')
-        self.roiButton.setCheckable(True)
-        self.roiButton.clicked.connect(self.ROItoggle)
-
-        self.Xradio = QtGui.QRadioButton('X dimension')
-        self.Yradio = QtGui.QRadioButton('Y dimension')
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        grid.addWidget(self.graph, 0, 0, 1, 6)
-        grid.addWidget(self.roiButton, 1, 0, 1, 1)
-        grid.addWidget(self.Xradio, 1, 1, 1, 1)
-        grid.addWidget(self.Yradio, 1, 2, 1, 1)
-
-        self.scansPerS = 10
-        self.alignTime = 1000 / self.scansPerS
-        self.alignTimer = QtCore.QTimer()
-        self.alignTimer.timeout.connect(self.updateValue)
-        self.alignTimer.start(self.alignTime)
-
-        # 2 zeros because it has to have the attribute "len"
-        self.latest_values = np.zeros(2)
-        self.s_fac = 0.3
-
-    def resetGraph(self):
-        self.graph.resetData()
-
-    def ROItoggle(self):
-        if self.roiButton.isChecked() is False:
-            self.ROI.hide()
-            self.roiButton.setText('Show ROI')
-        else:
-            self.ROI.show()
-            self.roiButton.setText('Hide ROI')
-
-    def updateValue(self):
-
-        if (self.main.liveviewButton.isChecked() and
-                self.roiButton.isChecked()):
-            self.selected = self.ROI.getArrayRegion(self.main.latest_images[0],
-                                                    self.main.img)
-        else:
-            self.selected = self.main.latest_images[self.main.currCamIdx]
-
-        if self.Xradio.isChecked():
-            values = np.mean(self.selected, 0)
-        else:
-            values = np.mean(self.selected, 1)
-
-        if len(self.latest_values) == len(values):
-            smoothed = self.s_fac*values + (1-self.s_fac)*self.latest_values
-            self.latest_values = smoothed
-        else:
-            smoothed = values
-            self.latest_values = values
-
-        self.graph.updateGraph(smoothed)
-
-    def closeEvent(self, *args, **kwargs):
-        self.alignTimer.stop()
-        super().closeEvent(*args, **kwargs)
-
-
 class ProjectionGraph(pg.GraphicsWindow):
     """The graph window class"""
     def __init__(self, *args, **kwargs):
@@ -809,114 +684,112 @@ class ProjectionGraph(pg.GraphicsWindow):
         self.data = values
         self.sumCurve.setData(np.arange(len(self.data)), self.data)
         
-class FFTWidget(QtGui.QFrame):
-    """ FFT Transform window for alignment """
-    def __init__(self, main, *args, **kwargs):
-
+class CamParamTree(ParameterTree):
+    """ Making the ParameterTree for configuration of the camera during imaging
+    """
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+                # TODO retrieve model from TempestaModel
+        BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
+                  "many pixels are to be read out and interpreted as a \n"
+                  "single pixel value.")
 
-        self.main = main
-        
-        # Do FFT button
-        self.doButton = QtGui.QPushButton('Do FFT')
-        self.doButton.clicked.connect(self.doFFT)
+        # Parameter tree for the camera configuration
+        params = [{'name': 'Model', 'type': 'str', 'readonly': True},
+                  {'name': 'Pixel size', 'type': 'float',
+                   'value': 0.159, 'readonly': False, 'suffix': ' µm'},
+                  {'name': 'Image frame', 'type': 'group', 'children': [
+                      {'name': 'Binning', 'type': 'list',
+                       'values': [1, 2, 4], 'tip': BinTip},
+                      {'name': 'Mode', 'type': 'list', 'values':
+                          ['Full chip', 'Custom']},
+                      {'name': 'X0', 'type': 'int', 'value': 0,
+                       'limits': (0, 2044)},
+                      {'name': 'Y0', 'type': 'int', 'value': 0,
+                       'limits': (0, 2044)},
+                      {'name': 'Width', 'type': 'int', 'value': 2048,
+                       'limits': (1, 2048)},
+                      {'name': 'Height', 'type': 'int', 'value': 2048,
+                       'limits': (1, 2048)},
+                      {'name': 'Apply', 'type': 'action'},
+                      {'name': 'New ROI', 'type': 'action'},
+                      {'name': 'Abort ROI', 'type': 'action',
+                       'align': 'right'}]},
+                  {'name': 'Timings', 'type': 'group', 'children': [
+                      {'name': 'Set exposure time', 'type': 'float',
+                       'value': 0.01, 'limits': (0, 9999),
+                       'siPrefix': True, 'suffix': 's'},
+                      {'name': 'Real exposure time', 'type': 'float',
+                       'value': 0, 'readonly': True, 'siPrefix': True,
+                       'suffix': ' s'},
+                      {'name': 'Internal frame interval', 'type': 'float',
+                       'value': 0, 'readonly': True, 'siPrefix': True,
+                       'suffix': ' s'},
+                      {'name': 'Readout time', 'type': 'float',
+                       'value': 0, 'readonly': True, 'siPrefix': True,
+                       'suffix': 's'},
+                      {'name': 'Internal frame rate', 'type': 'float',
+                       'value': 0, 'readonly': True, 'siPrefix': False,
+                       'suffix': ' fps'}]},
+                  {'name': 'Acquisition mode', 'type': 'group', 'children': [
+                      {'name': 'Trigger source', 'type': 'list',
+                       'values': ['Internal trigger',
+                                  'External "Start-trigger"',
+                                  'External "frame-trigger"'],
+                       'siPrefix': True, 'suffix': 's'}]}]
+        self.p = Parameter.create(name='params', type='group', children=params)
+        self.setParameters(self.p, showTop=False)
+        self._writable = True
 
-        # Period button and text for changing the vertical lines
-        self.changePosButton = QtGui.QPushButton('Period (pix)')
-        self.changePosButton.clicked.connect(self.changePos)
-        
-        self.linePos = QtGui.QLineEdit('4')
-        
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-        self.cwidget = pg.GraphicsLayoutWidget()        
-        
-        self.vb = self.cwidget.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = pg.ImageItem()
-        self.img.translate(-0.5, -0.5)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), cubehelix().astype(int))
-        self.hist.gradient.setColorMap(self.cubehelixCM)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.cwidget.addItem(self.hist, row=1, col=2)
-        
-        # Vertical and horizontal lines 
-        self.vline = pg.InfiniteLine()
-        self.hline = pg.InfiniteLine()
-        self.rvline = pg.InfiniteLine()
-        self.lvline = pg.InfiniteLine()
-        self.uhline = pg.InfiniteLine()
-        self.dhline = pg.InfiniteLine()
-        
-        self.vline.hide()
-        self.hline.hide()
-        self.rvline.hide()
-        self.lvline.hide()
-        self.uhline.hide()
-        self.dhline.hide()
+    def enableCropMode(self):
+        value = self.frameTransferParam.value()
+        if value:
+            self.cropModeEnableParam.setWritable(True)
+        else:
+            self.cropModeEnableParam.setValue(False)
+            self.cropModeEnableParam.setWritable(False)
 
-        self.vb.addItem(self.vline)
-        self.vb.addItem(self.hline)
-        self.vb.addItem(self.lvline)
-        self.vb.addItem(self.rvline)
-        self.vb.addItem(self.uhline)
-        self.vb.addItem(self.dhline)
-        
+    @property
+    def writable(self):
+        return self._writable
 
-        grid.addWidget(self.cwidget, 0, 0, 1, 6)
-        grid.addWidget(self.doButton, 1, 0, 1, 1)
-        grid.addWidget(self.changePosButton, 2, 0, 1, 1)
-        grid.addWidget(self.linePos, 2, 1, 1, 1)
-        grid.setRowMinimumHeight(0, 300)
+    @writable.setter
+    def writable(self, value):
+        """
+        property to set basically the whole parameters tree as writable
+        (value=True) or not writable (value=False)
+        useful to set it as not writable during recording
+        """
+        self._writable = value
+        framePar = self.p.param('Image frame')
+        framePar.param('Binning').setWritable(value)
+        framePar.param('Mode').setWritable(value)
+        framePar.param('X0').setWritable(value)
+        framePar.param('Y0').setWritable(value)
+        framePar.param('Width').setWritable(value)
+        framePar.param('Height').setWritable(value)
 
-        self.init = False
+        # WARNING: If Apply and New ROI button are included here they will
+        # emit status changed signal and their respective functions will be
+        # called... -> problems.
+        timingPar = self.p.param('Timings')
+        timingPar.param('Set exposure time').setWritable(value)
 
-    def doFFT(self):
-        " FFT of the latest camera image, centering (0, 0) in the middle with fftshift "
-        f = np.fft.fftshift(np.log10(abs(np.fft.fft2(self.main.latest_images[self.main.currCamIdx]))))
-        self.img.setImage(f, autoLevels=False)
-        
-        # By default F = 0.25, period of T = 4 pixels
-        pos = 0.25
-        self.imgWidth = self.img.width()
-        self.imgHeight = self.img.height()
-        self.vb.setAspectLocked()
-        self.vb.setLimits(xMin=-0.5, xMax=self.imgWidth, minXRange=4,
-                  yMin=-0.5, yMax=self.imgHeight, minYRange=4)
-        self.vline.setValue(0.5*self.imgWidth)
-        self.hline.setAngle(0)
-        self.hline.setValue(0.5*self.imgHeight)
-        self.rvline.setValue((0.5+pos)*self.imgWidth)
-        self.lvline.setValue((0.5-pos)*self.imgWidth)
-        self.dhline.setAngle(0)
-        self.dhline.setValue((0.5-pos)*self.imgHeight)
-        self.uhline.setAngle(0)
-        self.uhline.setValue((0.5+pos)*self.imgHeight)
-        
-    def closeEvent(self, *args, **kwargs):
-        super().closeEvent(*args, **kwargs)
-
-    def changePos(self):
-        # Move vertical lines
-        pos = float(1 / float(self.linePos.text()))
-        self.rvline.setValue((0.5+pos)*self.imgWidth)
-        self.lvline.setValue((0.5-pos)*self.imgWidth)
-        self.dhline.setAngle(0)
-        self.dhline.setValue((0.5-pos)*self.imgHeight)
-        self.uhline.setAngle(0)
-        self.uhline.setValue((0.5+pos)*self.imgHeight)
-        
-        if self.init == False:
-            self.vline.show()
-            self.hline.show()
-            self.rvline.show()
-            self.lvline.show()
-            self.uhline.show()
-            self.dhline.show()
-            self.init = True
+    def attrs(self):
+        attrs = []
+        for ParName in self.p.getValues():
+            Par = self.p.param(str(ParName))
+            if not(Par.hasChildren()):
+                attrs.append((str(ParName), Par.value()))
+            else:
+                for sParName in Par.getValues():
+                    sPar = Par.param(str(sParName))
+                    if sPar.type() != 'action':
+                        if not(sPar.hasChildren()):
+                            attrs.append((str(sParName), sPar.value()))
+                        else:
+                            for ssParName in sPar.getValues():
+                                ssPar = sPar.param(str(ssParName))
+                                attrs.append((str(ssParName), ssPar.value()))
+        return attrs
 

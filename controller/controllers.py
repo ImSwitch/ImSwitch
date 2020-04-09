@@ -148,8 +148,8 @@ class AlignmentLineController(WidgetController):
          
     def updateLine(self):
         """ Updates line with new parameters. """
-        self.angle = np.float(self._widget.angleEdit.text())
-        self.alignmentLine.setAngle(self._widget.angle)
+        self._widget.angle = np.float(self._widget.angleEdit.text())
+        self._widget.alignmentLine.setAngle(self._widget.angle)
         self.show()
         
     def show(self):
@@ -307,8 +307,8 @@ class SettingsController(WidgetController):
             minroi = 64
             vsize = int(min(2048 - vpos, minroi * np.ceil(vsize / minroi)))
             hsize = int(min(2048 - hpos, minroi * np.ceil(hsize / minroi)))
-            
-        self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize)
+        
+        self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize))
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
         width, height = self._master.cameraHelper.shapes
@@ -432,6 +432,7 @@ class ImageController(LiveUpdatedController):
     def addItemTovb(self, item):
         """ Add item from communication channel to viewbox."""
         self._widget.vb.addItem(item)
+        item.hide()
         
     def removeItemFromvb(self, item):
         """ Remove item from communication channel to viewbox."""
@@ -512,19 +513,19 @@ class LaserController(WidgetController):
             
     def updateDigitalPowers(self, lasers):
         """ Update the powers if the digital mod is on. """
-        self.digMod = self.DigitalControlButton.isChecked()
+        self.digMod = self.digModule.DigitalControlButton.isChecked()
         if self.digMod:
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
-                self._master.changePower(self._widget.DigModule.powers[laser], laser)
+                self._master.changePower(self._widget.digModule.powers[laser], laser)
             
     def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
-        self.digMod = self.DigitalControlButton.isChecked()
+        self.digMod = self.digModule.DigitalControlButton.isChecked()
         if self.digMod:
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
-                self._master.digitalMod(True, self._widget.DigModule.powers[laser], laser)
+                self._master.digModule(True, self._widget.digModule.powers[laser], laser)
         
 
 # Scan control

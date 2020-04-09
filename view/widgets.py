@@ -79,7 +79,6 @@ class AlignWidgetXY(Widget):
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
                        handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
                        scaleSnap=True, translateSnap=True)
-        self.ROI.hide()
         self.graph = guitools.ProjectionGraph()
         
         # Add elements to GridLayout
@@ -111,7 +110,6 @@ class AlignWidgetAverage(Widget):
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
                        handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
                        scaleSnap=True, translateSnap=True)
-        self.ROI.hide()
         self.graph = guitools.SumpixelsGraph()
         
         # Add items to GridLayout
@@ -145,7 +143,6 @@ class AlignmentLineWidget(Widget):
                        style=QtCore.Qt.SolidLine, antialias=True)
         self.alignmentLine = pg.InfiniteLine(
             pen=pen, movable=True)
-        self.alignmentLine.hide()
         
         # Add items to GridLayout
         alignmentLayout = QtGui.QGridLayout()
@@ -183,13 +180,6 @@ class FFTWidget(Widget):
         self.lvline = pg.InfiniteLine()
         self.uhline = pg.InfiniteLine()
         self.dhline = pg.InfiniteLine()
-        
-        self.vline.hide()
-        self.hline.hide()
-        self.rvline.hide()
-        self.lvline.hide()
-        self.uhline.hide()
-        self.dhline.hide()
 
             # Viewbox
         self.cwidget = pg.GraphicsLayoutWidget()
@@ -249,7 +239,6 @@ class SettingsWidget(Widget):
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
-        self.ROI.hide()
         
         # Add elements to GridLayout
         cameraGrid = QtGui.QGridLayout()
@@ -262,7 +251,7 @@ class SettingsWidget(Widget):
         controller.addROI()
         controller.getParameters()
         controller.setExposure()
-        #controller.adjustFrame()
+        controller.adjustFrame()
         self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
  
  
@@ -438,7 +427,7 @@ class LaserWidget(Widget):
         actControl = LaserModule('<h3>405<h3>', 'mW', 405, color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
         offControl = LaserModule('<h3>488<h3>', 'mW', 488, color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
         excControl = LaserModule('<h3>473<h3>', 'V', 473, color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
-        self.DigModule = DigitalModule()
+        self.digModule = DigitalModule()
 
         self.laserModules = {405: actControl, 488: offControl, 473: excControl}
         
@@ -448,14 +437,14 @@ class LaserWidget(Widget):
         grid.addWidget(actControl, 0, 0, 4, 1)
         grid.addWidget(offControl, 0, 1, 4, 1)
         grid.addWidget(excControl, 0, 2, 4, 1)
-        grid.addWidget(self.DigModule, 4, 0, 2, 3)
+        grid.addWidget(self.digModule, 4, 0, 2, 3)
         
     def registerListener(self, controller):
         """ Manage interactions with LaserController. """
         self.laserModules[405].registerListener(controller)
         self.laserModules[488].registerListener(controller)
         self.laserModules[473].registerListener(controller)
-        self.DigModule.registerListener(controller)
+        self.digModule.registerListener(controller)
       
         
 class DigitalModule(QtGui.QFrame):

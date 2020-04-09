@@ -7,7 +7,6 @@ Created on Sun Mar 22 10:40:53 2020
 import numpy as np
 import view.guitools as guitools
 import pyqtgraph as pg
-from pyqtgraph.parametertree import Parameter
 
 class WidgetController():
     """ Superclass for all WidgetControllers. 
@@ -468,33 +467,67 @@ class ImageController(LiveUpdatedController):
         """ Shows or hides crosshair. """
         self._widget.crosshair.toggle()
       
+
+# Hardware control
         
-class RecorderController(WidgetController): # TODO
+
+class PositionerController(WidgetController): 
+    """ Linked to PositionerWidget."""
+    
+    def move(self, axis, dist):
+        """ Moves the piezzos in x y or z (axis) by dist micrometers. """
+        newPos = self._master.moveStage(axis, dist)
+        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
+        
+        getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
+
+class LaserController(WidgetController): 
+    """ Linked to LaserWidget."""
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print('Recording Controller init')
-    def openFolder(self):
-        print('Open folder recorder')
-    def specFile(self):
-        print('Spec file')
-    def snapTIFF(self):
-        print('Snap TIFF')
-    def startRecording(self):
-        print('Start recording')
-    def specFrames(self):
-        print('Spec Frames')
-    def specTime(self):
-        print('Spec Time')
-    def recScanOnce(self):
-        print('Scan once')
-    def recScanLapse(self):
-        print('Scan lapse')
-    def untilStop(self):
-        print('Rec till stop')
-    def filesizeupdate(self):
-        print('File size update')
+        self.digMod = False
+        
+    def toggleLaser(self, laser, enable):
+        """ Enable or disable laser (on/off)."""
+        if not self.digMod:
+            if enable:
+                self._master.toggleLaser(True, laser)
+            else:
+                self._master.toggleLaser(False, laser)
+                
+    def changeSlider(self, laser, value):
+        """ Change power with slider magnitude. """
+        if not self.digMod:
+            magnitude =  value 
+            self._master.changePower(magnitude, laser)
+            self._widget.changeEdit(str(magnitude), laser)
+            
+    def changeEdit(self, laser, value):
+        """ Change power with edit magnitude. """
+        if not self.digMod:
+            magnitude = value
+            self._master.changePower(magnitude, laser)
+            self._widget.changeSlider(magnitude, laser)
+            
+            
+    def updateDigitalPowers(self, digital, powers, lasers):
+        """ Update the powers if the digital mod is on. """
+        self.digMod = digital
+        if digital:
+            for i in np.arange(len(lasers)):
+                self._master.changePower(powers[i], lasers[i])
+            
+    def GlobalDigitalMod(self, digital, powers, lasers):
+        """ Start digital modulation. """
+        self.digMod = digital
+        if digital:
+            for i in np.arange(len(lasers)):
+                self._master.digitalMod(True, powers[i], lasers[i])
+        
 
 # Scan control
+
 
 class ScanController(WidgetController): # TODO
     def __init__(self, comm_channel, master, widget):
@@ -549,57 +582,33 @@ class MultipleScanController(WidgetController): # TODO
     def clear(self):
         print('Clear')
       
-# Hardware control
-        
-class PositionerController(WidgetController): 
-    def move(self, axis, dist):
-        newPos = self._master.moveStage(axis, dist)
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
-        
-        getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
 
-class LaserController(WidgetController): 
+        
+
+
+
+        
+class RecorderController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.digMod = False
-        
-    def toggleLaser(self, laser, enable):
-        if not self.digMod:
-            if enable:
-                self._master.toggleLaser(True, laser)
-            else:
-                self._master.toggleLaser(False, laser)
-                
-    def changeSlider(self, laser, value):
-        if not self.digMod:
-            magnitude =  value 
-            self._master.changePower(magnitude, laser)
-            self._widget.changeEdit(str(magnitude), laser)
-            
-    def changeEdit(self, laser, value):
-        if not self.digMod:
-            magnitude = value
-            self._master.changePower(magnitude, laser)
-            self._widget.changeSlider(magnitude, laser)
-            
-            
-    def updateDigitalPowers(self, digital, powers, lasers):
-        self.digMod = digital
-        if digital:
-            for i in np.arange(len(lasers)):
-                self._master.changePower(powers[i], lasers[i])
-            
-    def GlobalDigitalMod(self, digital, powers, lasers):
-        self.digMod = digital
-        if digital:
-            for i in np.arange(len(lasers)):
-                self._master.digitalMod(True, powers[i], lasers[i])
-        
-
-        
-        
-
-
-
-        
-        
+        print('Recording Controller init')
+    def openFolder(self):
+        print('Open folder recorder')
+    def specFile(self):
+        print('Spec file')
+    def snapTIFF(self):
+        print('Snap TIFF')
+    def startRecording(self):
+        print('Start recording')
+    def specFrames(self):
+        print('Spec Frames')
+    def specTime(self):
+        print('Spec Time')
+    def recScanOnce(self):
+        print('Scan once')
+    def recScanLapse(self):
+        print('Scan lapse')
+    def untilStop(self):
+        print('Rec till stop')
+    def filesizeupdate(self):
+        print('File size update')

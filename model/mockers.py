@@ -232,6 +232,10 @@ class MockHamamatsu(Driver):
 
         return [frames, [self.frame_x, self.frame_y]]
 
+    def getLast(self):
+        hc_data = HMockCamData(self.frame_x * self.frame_y)
+        return [hc_data, [self.frame_x, self.frame_y]]
+        
     def getModelInfo(self):
         ''' Returns the model of the camera
 

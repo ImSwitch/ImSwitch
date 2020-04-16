@@ -6,13 +6,14 @@ Created on Tue Apr  7 16:37:09 2020
 """
 import numpy as np
 from pyqtgraph.Qt import QtCore
+#import time
 
 class CameraHelper():
     # CameraHelper deals with the Hamamatsu parameters and frame extraction
     def __init__(self, comm_channel, cameras):
         self.__cameras = cameras
         self.__comm_channel = comm_channel
-        self.__time = 100
+        self.__time = 30
         
         # A timer will collect the new frame and update it through the communication channel
         self.__timer = QtCore.QTimer()
@@ -32,10 +33,11 @@ class CameraHelper():
         self.__shapes = (self.__cameras[0].getPropertyValue('image_height')[0], self.__cameras[0].getPropertyValue('image_width')[0])
         self.__image = []
         self.__model = self.__cameras[0].camera_model.decode("utf-8")
-     
+        
     @property
     def model(self):
         return self.__model
+        
     @property
     def frameStart(self):
         return self.__frameStart
@@ -69,12 +71,14 @@ class CameraHelper():
                 self.startAcquisition()  
 
     def __updateLatestFrame(self, init=True):
-        hcData = self.__cameras[0].getLast()
-        size = hcData[1]
-        frame = hcData[0].getData()
-        self.__image = np.reshape(
-            frame, (size), 'F')
+        self.__image = self.__cameras[0].getLast()
         self.__comm_channel.updateImage(init)
+        
+    def getChunk(self):
+        return self.__cameras[0].getFrames()
+        
+    def updateCameraIndices(self):
+        self.__cameras[0].updateIndices()
         
     def setExposure(self, time):
         self.__cameras[0].setPropertyValue('exposure_time', time)
@@ -131,3 +135,4 @@ class CameraHelper():
     
         self.changeParameter(
            lambda: self.__cameras[0].setPropertyValue('binning', coded))
+            

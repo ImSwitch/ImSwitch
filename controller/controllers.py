@@ -600,8 +600,11 @@ class RecorderController(WidgetController): # TODO
         print('Spec file')
     def snapTIFF(self):
         print('Snap TIFF')
-    def startRecording(self):
-        print('Start recording')
+    def toggleREC(self):
+        if self._widget.recButton.isChecked():
+            self._master.recordingHelper.startRecording()
+        else:
+            self._master.recordingHelper.endRecording()
     def specFrames(self):
         print('Spec Frames')
     def specTime(self):

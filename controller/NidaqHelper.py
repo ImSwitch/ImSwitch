@@ -6,7 +6,7 @@ Created on Tue Apr  7 16:46:33 2020
 """
 import nidaqmx
 import numpy as np
-from TempestaErrors import NidaqHelperError
+from controller.TempestaErrors import NidaqHelperError
 
 class NidaqHelper():
     
@@ -30,7 +30,7 @@ class NidaqHelper():
         lines = np.atleast_1d(lines)
         
         for line in lines:
-            dotask.do_channels.add_do_chan(line=('Dev1/port0/line%s', line))
+            dotask.do_channels.add_do_chan('Dev1/port0/line%s' % line)
         dotask.timing.cfg_samp_clk_timing(source=source, rate=rate, \
                                           sample_mode=acquisition)
         return dotask
@@ -43,7 +43,7 @@ class NidaqHelper():
         channels = np.atleast_1d(channels)
         
         for channel in channels:
-            aotask.ao_channels.add_ao_voltage_chan(('Dev1/ao%s', channel),  \
+            aotask.ao_channels.add_ao_voltage_chan('Dev1/ao%s' % channel,  \
                                                min_val = min_val, \
                                                    max_val = max_val)
         aotask.timing.cfg_samp_clk_timing(source=source, rate=rate, \
@@ -65,10 +65,10 @@ class NidaqHelper():
                                                '100kHzTimebase', \
                                                    100000)
             signal = np.array([enable])
-            dotask.write(signal, auto_start=True)
+            print(dotask.write(signal, auto_start=True))
             dotask.wait_until_done()
             dotask.stop()
-            dotask.clear()
+            dotask.close()
             
     def setAnalog(self, target, voltage):
         """ Function to set the analog channel to a specific target
@@ -86,10 +86,10 @@ class NidaqHelper():
                                                    100000)
                 
             signal = np.array([voltage])
-            aotask.write(signal, auto_start=True)
+            print(aotask.write(signal, auto_start=True))
             aotask.wait_until_done()
             aotask.stop()
-            aotask.clear()
+            aotask.close()
             
     def runScan(self, analog_targets, digital_targets, analog_signals, digital_signals):
         self.aotask.close()

@@ -4,13 +4,12 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
-from TempestaErrors import InvalidChildClassError, IncompatibilityError
-from Factory import ValidChildFactory
+from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import json
 import matplotlib.pyplot as plt
 
-class SignalDesignerFactory(ValidChildFactory):
+class SignalDesignerFactory():
     """Factory class for creating a SignalDesigner object. Factory checks
     that the new object is compatible with the parameters that will we 
     be sent to its make_signal method."""

@@ -536,6 +536,8 @@ class ScanController(WidgetController): # TODO
         super().__init__(comm_channel, master, widget)
         self.multipleScanController = MultipleScanController(comm_channel, master, widget.multiScanWgt)
         self.parameter_dictionary = None
+        self.stageParameterList = []
+        self.TTLcycleParameterList = []
         print('Init Scan Controller')
     def saveScan(self):
         print('save scan')
@@ -558,8 +560,8 @@ class ScanController(WidgetController): # TODO
         print('previewScan')
     def getSampleRate(self):
         return 10000
-    def parametersToSend():
-        return None #Some list of parameters
+    def parametersToSend(self):
+        return (self.stageParameterList, self.TTLcycleParameterList) #Some list of parameters
     def runScan(self):
         self._master.scanHelper.runScan(self.parameter_dictionary)
     

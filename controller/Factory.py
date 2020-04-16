@@ -7,7 +7,7 @@ Created on Wed Apr  8 19:11:50 2020
 import SignalDesigner
 
 class ValidChildFactory():
-    def __new__(cls, className, *args, **kwargs):
-        product = eval(className+'()')
+    def __new__(cls, main, className, *args, **kwargs):
+        product = eval(main.className+'()')
         if product.isValidChild(*args, **kwargs):
             return product

@@ -50,7 +50,9 @@ class ScanHelper():
         return [stageScanSignalsDict, TTLCycleSignalsDict]
 
 
-            
+
+
+""" Developement testing """            
 if __name__ == '__main__':
     print('Running main')
 

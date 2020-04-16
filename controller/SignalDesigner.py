@@ -19,8 +19,8 @@ class SignalDesignerFactory(ValidChildFactory):
         scanDesignerName = config_dict[configKeyName]
         
 #        SignalDesigner = super().__new__(cls, 'SignalDesigner.'+scanDesignerName)
-        SignalDesigner = eval(scanDesignerName+'()')
-        SignalDesigner.isValidChild()
+        signalDesigner = eval(scanDesignerName+'()')
+        signalDesigner.isValidChild()
         
         if SignalDesigner.parameterCompatibility(futureParameters):
             return SignalDesigner

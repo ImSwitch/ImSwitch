@@ -4,7 +4,8 @@ Created on Tue Mar 24 16:41:57 2020
 
 @author: _Xavi
 """
-from controller.CameraHelper import CameraHelper
+from CameraHelper import CameraHelper
+from ScanHelper import ScanHelper
 from lantz import Q_
 
 class MasterController():
@@ -15,7 +16,7 @@ class MasterController():
         self.stagePos = [0, 0, 0]
         self.__comm_channel = comm_channel
         self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
-       # self.scanHelper = ScanHelper()  #Make sure compatibility 
+        self.scanHelper = ScanHelper()  #Make sure compatibility 
        
     def moveStage(self, axis, dist):
         self.stagePos[axis] += dist

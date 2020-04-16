@@ -1073,7 +1073,7 @@ class RecordingWidget(Widget):
         self.openFolderButton.clicked.connect(controller.openFolder)
         self.specifyfile.clicked.connect(controller.specFile)
         self.snapTIFFButton.clicked.connect(controller.snapTIFF)
-        self.recButton.clicked.connect(controller.startRecording)
+        self.recButton.clicked.connect(controller.toggleREC)
         self.specifyFrames.clicked.connect(controller.specFrames)
         self.specifyTime.clicked.connect(controller.specTime)
         self.recScanOnceBtn.clicked.connect(controller.recScanOnce)

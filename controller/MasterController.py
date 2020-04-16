@@ -5,6 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from controller.CameraHelper import CameraHelper
+from controller.RecordingHelper import RecordingHelper
 from lantz import Q_
 
 class MasterController():
@@ -15,6 +16,7 @@ class MasterController():
         self.stagePos = [0, 0, 0]
         self.__comm_channel = comm_channel
         self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
+        self.recordingHelper = RecordingHelper(self.cameraHelper)
        # self.scanHelper = ScanHelper()  #Make sure compatibility 
        
     def moveStage(self, axis, dist):

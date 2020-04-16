@@ -770,9 +770,9 @@ class HamamatsuCameraMR(HamamatsuCamera):
     def getFrames(self):
         frames = []
         for n in self.newFrames():
-            frames.append(self.hcam_data[n])
-
-        return [frames, [self.frame_x, self.frame_y]]
+            im = self.hcam_data[n].getData()
+            frames.append(np.reshape(im, (self.frame_x, self.frame_y)))
+        return frames
         
     def getLast(self):
 #         Wait for a new frame.
@@ -783,8 +783,14 @@ class HamamatsuCameraMR(HamamatsuCamera):
                                         None),
                          "dcam_wait")
         [b_index, f_count] = self.getAq_Info()
-        return [self.hcam_data[b_index], [self.frame_x, self.frame_y]]
-
+        im = self.hcam_data[b_index].getData()
+        return np.reshape(im, (self.frame_x, self.frame_y))
+        
+    def updateIndices(self):
+        [b_index, f_count] = self.getAq_Info()
+        self.buffer_index = b_index
+        self.last_frame_number = f_count
+        
     def getSpecFrames(self, ids):
         """Get frames specified by their id's"""
         frames = []

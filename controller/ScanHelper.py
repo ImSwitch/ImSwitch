@@ -5,11 +5,8 @@ Created on Tue Apr  7 17:00:05 2020
 @author: andreas.boden
 """
 
-
-from TempestaErrors import InvalidChildClassError, IncompatibilityError
-import SignalDesigner
+import controller.SignalDesigner as SignalDesigner
 import numpy as np
-import matplotlib.pyplot as plt
 
 class ScanHelper():
     def __init__(self, stageScaneParameters, TTLCycleParameters, syncParameters):

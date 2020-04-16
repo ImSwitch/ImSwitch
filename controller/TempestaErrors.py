@@ -13,6 +13,12 @@ class InvalidChildClassError(Exception):
         self.message = message
         
 class IncompatibilityError(Exception):
-    """Exception raised when trying to inialize an invalid child"""
+    """Exception raised when initialized object is not compatibile with 
+    other module/s"""
     def __init__(self, message):
-        self.message = message 
+        self.message = message
+        
+class NidaqHelperError(Exception):
+    """ Exception raised when error occurs in NidaqHelper """
+    def __init__(self, message):
+        self.message = message    

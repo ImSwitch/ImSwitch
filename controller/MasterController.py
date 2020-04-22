@@ -17,10 +17,9 @@ class MasterController():
         self.stagePos = [0, 0, 0]
         self.__comm_channel = comm_channel
         self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
-        self.recordingHelper = RecordingHelper(self.cameraHelper)
+        self.recordingHelper = RecordingHelper(self.__comm_channel, self.cameraHelper)
         #self.scanHelper = ScanHelper()  #Make sure compatibility 
-
-       
+        
     def moveStage(self, axis, dist):
         self.stagePos[axis] += dist
         return self.stagePos[axis]

@@ -4,7 +4,6 @@ Created on Tue Apr  7 16:37:09 2020
 
 @author: _Xavi
 """
-import numpy as np
 from pyqtgraph.Qt import QtCore
 #import time
 
@@ -13,11 +12,14 @@ class CameraHelper():
     def __init__(self, comm_channel, cameras):
         self.__cameras = cameras
         self.__comm_channel = comm_channel
-        self.__time = 30
+
         
         # A timer will collect the new frame and update it through the communication channel
-        self.__timer = QtCore.QTimer()
-        self.__timer.timeout.connect(self.__updateLatestFrame) 
+        self.__lvWorker = LVWorker(self)
+        self.__thread = QtCore.QThread()
+        self.__lvWorker.moveToThread(self.__thread)
+        self.__thread.started.connect(self.__lvWorker.run)
+        
         self.__cameras[0].setPropertyValue('readout_speed', 3)
         self.__cameras[0].setPropertyValue('trigger_global_exposure', 5)
         self.__cameras[0].setPropertyValue(
@@ -52,11 +54,11 @@ class CameraHelper():
         
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
-        self.__updateLatestFrame(False)
-        self.__timer.start(self.__time)
+        self.updateLatestFrame(False)
+        self.__thread.start()
         
     def stopAcquisition(self):
-        self.__timer.stop()
+        self.__thread.quit()
         self.__cameras[0].stopAcquisition()
         
     def changeParameter(self, function):
@@ -70,7 +72,7 @@ class CameraHelper():
                 function()
                 self.startAcquisition()  
 
-    def __updateLatestFrame(self, init=True):
+    def updateLatestFrame(self, init=True):
         self.__image = self.__cameras[0].getLast()
         self.__comm_channel.updateImage(init)
         
@@ -135,4 +137,17 @@ class CameraHelper():
     
         self.changeParameter(
            lambda: self.__cameras[0].setPropertyValue('binning', coded))
+        
+class LVWorker(QtCore.QObject):
+
+    def __init__(self, cameraHelper, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__cameraHelper = cameraHelper
+
+    def run(self):
+        self.vtimer = QtCore.QTimer()
+        self.vtimer.timeout.connect(self.__cameraHelper.updateLatestFrame)
+        self.vtimer.start(30)
             
+
+           

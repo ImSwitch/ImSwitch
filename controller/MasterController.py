@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from controller.CameraHelper import CameraHelper
-#from controller.ScanHelper import ScanHelper
+from controller.ScanHelper import ScanHelperFactory
 from controller.RecordingHelper import RecordingHelper
 from lantz import Q_
 
@@ -19,7 +19,8 @@ class MasterController():
         self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
         self.recordingHelper = RecordingHelper(self.__comm_channel, self.cameraHelper)
         #self.scanHelper = ScanHelper()  #Make sure compatibility 
-        
+
+
     def moveStage(self, axis, dist):
         self.stagePos[axis] += dist
         return self.stagePos[axis]

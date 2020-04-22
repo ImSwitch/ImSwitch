@@ -4,47 +4,89 @@ Created on Tue Apr  7 17:00:05 2020
 
 @author: andreas.boden
 """
-
-import controller.SignalDesigner as SignalDesigner
+try:
+    from SignalDesigner import SignalDesignerFactory
+except ModuleNotFoundError:
+    from controller.SignalDesigner import SignalDesignerFactory
+    
+from controller.TempestaErrors import IncompatibilityError
 import numpy as np
 
-class ScanHelper():
-    def __init__(self, stageScaneParameters, TTLCycleParameters, syncParameters):
-        self.__stageScanDesigner = SignalDesigner.SignalDesignerFactory('stageScanDesigner', stageScaneParameters)
-        self.__ttlCycleDesigner = SignalDesigner.SignalDesignerFactory('TTLCycleDesigner', TTLCycleParameters)
+class ScanHelperFactory():
+    """Factory class for creating a ScanHelper object. Factory checks
+    that the new object is a valid ScanHelper."""
+    def __new__(cls , className, *args):
+
+        scanHelper = eval(className+'(*args)')
+        if scanHelper.isValidChild():
+            return scanHelper
+
+class SuperScanHelper():
+    def __init__(self):
+        self.isValidScanHelper = self.__isValidScanHelper
+        self.isValidChild = self.isValidScanHelper
         
-        self._expectedSyncParameters = ['TTLRepetitions', 'TTLZeroPad_seconds', 'Sample_rate']
+    def __isValidScanHelper(self): #For future possivle implementation
+        return True
+
+    def _parameterCompatibility(self, parameterDict=None):
+        raise NotImplementedError("Method not implemented in child")
+    
+
+
+
+class ScanHelper(SuperScanHelper):
+    def __init__(self):
+        super().__init__()
+        self.__stageScanDesigner = SignalDesignerFactory('stageScanDesigner')
+        self.__TTLCycleDesigner = SignalDesignerFactory('TTLCycleDesigner')
         
-        if not self._sync_parameter_compatibility(syncParameters):
-            print('WARNING: Incompatible sync parameters')
+        self._expectedSyncParameters = []
+
         
-    def _sync_parameter_compatibility(self, parameter_dict):
-        expected = set(self._expectedSyncParameters)
-        incoming = set([*parameter_dict])
+    def _parameterCompatibility(self, parameterDict):
         
-        return expected == incoming
+        stageExpected = set(self.__stageScanDesigner.expectedParameters)
+        stageIncoming = set(parameterDict['stageParameterList'])
+         
+        if not stageExpected == stageIncoming:
+            raise IncompatibilityError('Incompatible stage scan parameters')
+
+        TTLExpected = set(self.__TTLCycleDesigner.expectedParameters)
+        TTLIncoming = set(parameterDict['TTLParameterList'])
+ 
+        if not TTLExpected == TTLIncoming:
+            raise IncompatibilityError('Incompatible TTL parameters')
+
+        # syncExpected = set(self.expectedSyncParameters)
+        # syncIncoming = set(stageParameterList)
         
-    def make_full_scan(self, stageScanParameters, TTLParameters, SyncParameters):
+        # if not syncExpected == syncIncoming:
+        #     raise IncompatibilityError('Incompatible sync parameters')
+    
+    def make_full_scan(self, stageScanParameters, TTLParameters):
         
-        stageScanSignalsDict = \
-        self.__stageScanDesigner.make_signal(stageScanParameters)
+        stageScanSignalsDict, nrOfFrames = \
+        self.__stageScanDesigner.make_signal(stageScanParameters, \
+                                             returnFrames=True)
         
         TTLCycleSignalsDict = \
-        self.__ttlCycleDesigner.make_signal(TTLParameters)
+        self.__TTLCycleDesigner.make_signal(TTLParameters)
         
         #Calculate samples to zero pad TTL signals with
-        TTLZeroPadSamples = SyncParameters['TTLZeroPad_seconds'] * \
-        SyncParameters['Sample_rate']
+        TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
+        TTLParameters['Sample_rate']
         if not TTLZeroPadSamples.is_integer():
             print('WARNIGN: Non-integer number of return sampels, rounding up')
-            TTLZeroPadSamples = np.ceil(TTLZeroPadSamples)
+        TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
-            signal = np.tile(signal, SyncParameters['TTLRepetitions'])
+            signal = np.tile(signal, nrOfFrames)
             signal = np.append(signal, np.zeros(TTLZeroPadSamples))
             TTLCycleSignalsDict[target] = signal
             
-        return [stageScanSignalsDict, TTLCycleSignalsDict]
+        return {'stageScanSignalsDict': stageScanSignalsDict, \
+                'TTLCycleSignalsDict': TTLCycleSignalsDict}
 
 
 
@@ -66,8 +108,8 @@ if __name__ == '__main__':
                   'Sample_rate': 100000}
     
     SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
-    sh = ScanHelper(Stageparameters, TTLparameters, SyncParameters)
-    ttlsig = sh.make_full_scan(Stageparameters, TTLparameters, SyncParameters)
+    sh = ScanHelperFactory('ScanHelper')
+    fullsig = sh.make_full_scan(Stageparameters, TTLparameters)
 
     """
     parameters = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \

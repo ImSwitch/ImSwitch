@@ -7,6 +7,10 @@ Created on Sun Mar 22 10:40:53 2020
 import numpy as np
 import view.guitools as guitools
 import pyqtgraph as pg
+import sys
+import subprocess
+import os
+import time
 
 class WidgetController():
     """ Superclass for all WidgetControllers. 
@@ -251,37 +255,38 @@ class SettingsController(WidgetController):
             
     def getParameters(self):
         """ Take parameters from the camera Tree map. """
-        self._widget.tree.p.param('Model').setValue(self._master.cameraHelper.model)
-        self.umxpx = self._widget.tree.p.param('Pixel size').value()
+        self.model = self._master.cameraHelper.model
+        self._widget.tree.p.param('Model').setValue(self.model)
+        self.umxpx = self._widget.tree.p.param('Pixel size')
         framePar = self._widget.tree.p.param('Image frame')
         self.binPar = framePar.param('Binning')
-        self.FrameMode = framePar.param('Mode')
-        self.X0par = framePar.param('X0')
-        self.Y0par = framePar.param('Y0')
+        self.frameMode = framePar.param('Mode')
+        self.x0par = framePar.param('X0')
+        self.y0par = framePar.param('Y0')
         self.widthPar = framePar.param('Width')
         self.heightPar = framePar.param('Height')
         self.applyParam = framePar.param('Apply')
-        self.NewROIParam = framePar.param('New ROI')
-        self.AbortROIParam = framePar.param('Abort ROI')
+        self.newROIParam = framePar.param('New ROI')
+        self.abortROIParam = framePar.param('Abort ROI')
         
         timingsPar = self._widget.tree.p.param('Timings')
-        self.EffFRPar = timingsPar.param('Internal frame rate')
+        self.effFRPar = timingsPar.param('Internal frame rate')
         self.expPar = timingsPar.param('Set exposure time')
-        self.ReadoutPar = timingsPar.param('Readout time')
-        self.RealExpPar = timingsPar.param('Real exposure time')
-        self.FrameInt = timingsPar.param('Internal frame interval')
-        self.RealExpPar.setOpts(decimals=5)
+        self.readoutPar = timingsPar.param('Readout time')
+        self.realExpPar = timingsPar.param('Real exposure time')
+        self.frameInt = timingsPar.param('Internal frame interval')
+        self.realExpPar.setOpts(decimals=5)
         
         acquisParam = self._widget.tree.p.param('Acquisition mode')
         self.trigsourceparam = acquisParam.param('Trigger source')
         
         self.applyParam.sigStateChanged.connect(self.adjustFrame)
-        self.NewROIParam.sigStateChanged.connect(self.updateFrame)
-        self.AbortROIParam.sigStateChanged.connect(self.abortROI)
+        self.newROIParam.sigStateChanged.connect(self.updateFrame)
+        self.abortROIParam.sigStateChanged.connect(self.abortROI)
         self.trigsourceparam.sigValueChanged.connect(self.changeTriggerSource)
         self.expPar.sigValueChanged.connect(self.setExposure)
         self.binPar.sigValueChanged.connect(self.setBinning)
-        self.FrameMode.sigValueChanged.connect(self.updateFrame)
+        self.frameMode.sigValueChanged.connect(self.updateFrame)
         self.expPar.sigValueChanged.connect(self.setExposure)            
             
     def adjustFrame(self):
@@ -289,8 +294,8 @@ class SettingsController(WidgetController):
         binning = self.binPar.value()
         width = self.widthPar.value()
         height = self.heightPar.value()
-        X0par = self.X0par.value()
-        Y0par = self.Y0par.value()
+        X0par = self.x0par.value()
+        Y0par = self.y0par.value()
         
         # Round to closest "divisable by 4" value.
         vpos = binning*X0par
@@ -315,8 +320,8 @@ class SettingsController(WidgetController):
         self._comm_channel.adjustFrame(width, height)
         self._widget.ROI.hide()
         frameStart = self._master.cameraHelper.frameStart
-        self.X0par.setValue(frameStart[0])
-        self.Y0par.setValue(frameStart[1])
+        self.x0par.setValue(frameStart[0])
+        self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(width)
         self.heightPar.setValue(height)
         self.updateTimings(self._master.cameraHelper.getTimings())
@@ -326,8 +331,8 @@ class SettingsController(WidgetController):
         frameStart = self._master.cameraHelper.frameStart
         pos = self._widget.ROI.pos()
         size = self._widget.ROI.size()
-        self.X0par.setValue(frameStart[0] + int(pos[0]))
-        self.Y0par.setValue(frameStart[1] + int(pos[1]))
+        self.x0par.setValue(frameStart[0] + int(pos[0]))
+        self.y0par.setValue(frameStart[1] + int(pos[1]))
 
         self.widthPar.setValue(int(size[0]))   # [0] is Width
         self.heightPar.setValue(int(size[1]))  # [1] is Height
@@ -337,8 +342,8 @@ class SettingsController(WidgetController):
         self._widget.toggleROI(False)
         frameStart = self._master.cameraHelper.frameStart
         shapes = self._master.cameraHelper.shapes
-        self.X0par.setValue(frameStart[0])
-        self.Y0par.setValue(frameStart[1])
+        self.x0par.setValue(frameStart[0])
+        self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(shapes[0])
         self.heightPar.setValue(shapes[1])
         
@@ -348,10 +353,10 @@ class SettingsController(WidgetController):
         
     def updateTimings(self, params):
         """ Update the real exposure times from the camera. """
-        self.RealExpPar.setValue(params[0])
-        self.FrameInt.setValue(params[1])
-        self.ReadoutPar.setValue(params[2])
-        self.EffFRPar.setValue(params[3])
+        self.realExpPar.setValue(params[0])
+        self.frameInt.setValue(params[1])
+        self.readoutPar.setValue(params[2])
+        self.effFRPar.setValue(params[3])
         
     def setExposure(self):
         """ Update a new exposure time to the camera. """
@@ -366,8 +371,8 @@ class SettingsController(WidgetController):
         """ Change the image frame size and position in the sensor. """
         frameParam = self._widget.tree.p.param('Image frame')
         if frameParam.param('Mode').value() == 'Custom':
-            self.X0par.setWritable(True)
-            self.Y0par.setWritable(True)
+            self.x0par.setWritable(True)
+            self.y0par.setWritable(True)
             self.widthPar.setWritable(True)
             self.heightPar.setWritable(True) 
             
@@ -383,20 +388,23 @@ class SettingsController(WidgetController):
             self.ROIchanged() 
 
         else:
-            self.X0par.setWritable(False)
-            self.Y0par.setWritable(False)
+            self.x0par.setWritable(False)
+            self.y0par.setWritable(False)
             self.widthPar.setWritable(False)
             self.heightPar.setWritable(False)
 
             # Change this to config File.
             if frameParam.param('Mode').value() == 'Full chip':
-                self.X0par.setValue(0)
-                self.Y0par.setValue(0)
+                self.x0par.setValue(0)
+                self.y0par.setValue(0)
                 self.widthPar.setValue(2048)
                 self.heightPar.setValue(2048)
                
                 self.adjustFrame()
-        
+                
+    def getCamAttrs(self):
+        attrs =  {'pixel_size': self.umxpx.value(), 'camera_model': self.model, 'binning': self.binPar.value(), 'Mode': self.frameMode.value(), 'Exposure time': self.realExpPar.value(), 'ROI': [self.x0par.value(), self.y0par.value(), self.widthPar.value(), self.heightPar.value()] }
+        return attrs
   
 class ViewController(WidgetController): 
     """ Linked to ViewWidget."""
@@ -466,7 +474,99 @@ class ImageController(LiveUpdatedController):
     def crosshairToggle(self):
         """ Shows or hides crosshair. """
         self._widget.crosshair.toggle()
-      
+     
+        
+class RecorderController(WidgetController): 
+    """ Linked to RecordingWidget. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dataname = 'data'
+        print('Recording Controller init')
+        
+    def openFolder(self):
+        """ Opens current folder in File Explorer. """
+        try:
+            if sys.platform == 'darwin':
+                subprocess.check_call(['open', '', self._widget.folderEdit.text()])
+            elif sys.platform == 'linux':
+                subprocess.check_call(
+                    ['gnome-open', '', self._widget.folderEdit.text()])
+            elif sys.platform == 'win32':
+                os.startfile(self._widget.folderEdit.text())
+
+        except FileNotFoundError:
+            if sys.platform == 'darwin':
+                subprocess.check_call(['open', '', self._widget.dataDir])
+            elif sys.platform == 'linux':
+                subprocess.check_call(['gnome-open', '', self._widget.dataDir])
+            elif sys.platform == 'win32':
+                os.startfile(self._widget.dataDir)
+                
+    def specFile(self):
+        """ Enables the ability to type a specific filename for the data to . """
+        if self._widget.specifyfile.checkState():
+            self._widget.filenameEdit.setEnabled(True)
+            self._widget.filenameEdit.setText('Filename')
+        else:
+            self._widget.filenameEdit.setEnabled(False)
+            self._widget.filenameEdit.setText('Current time')
+            
+    def snap(self):
+        """ Take a snap and save it to a .tiff file. """
+        folder = self._widget.folderEdit.text()
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        time.sleep(0.01)
+        ext = self._widget.formatBox.currentText()
+        name = os.path.join(folder, self.getFileName()) + '_snap.' + ext
+        savename = guitools.getUniqueName(name)
+        attrs = self._comm_channel.getCamAttrs()
+        self._master.recordingHelper.snap(savename, self.dataname, attrs, ext)
+        
+    def toggleREC(self):
+        """ Start or end recording. """
+        if self._widget.recButton.isChecked():
+            self._master.recordingHelper.startRecording(self.recMode, int(self._widget.numExpositionsEdit.text()))
+        else:
+            self._master.recordingHelper.endRecording()
+            
+    def endRecording(self):
+        self._widget.recButton.click()
+        self._widget.currentFrame.setText('0 / ')
+        
+    def specFrames(self):
+        self._widget.numExpositionsEdit.setEnabled(True)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.timeLapseTotalEdit.setEnabled(False)
+        self._widget.filesizeBar.setEnabled(True)
+        self._widget.progressBar.setEnabled(True)
+        self.recMode = 1
+        self.filesizeupdate()
+        
+    def updateFrameNumber(self, f):
+        self._widget.currentFrame.setText(str(f) +  ' /')
+        
+    def specTime(self):
+        print('Spec Time')
+    def recScanOnce(self):
+        print('Scan once')
+    def recScanLapse(self):
+        print('Scan lapse')
+    def untilStop(self):
+        print('Rec till stop')
+    def filesizeupdate(self):
+        print('File size update')
+        
+    def getFileName(self):
+        """ Gets the filename of the data to save. """
+        if self._widget.specifyfile.checkState():
+            filename = self._widget.filenameEdit.text()
+
+        else:
+            filename = time.strftime('%Hh%Mm%Ss')
+
+        return filename
 
 # Hardware control
         
@@ -592,30 +692,3 @@ class MultipleScanController(WidgetController): # TODO
 
 
         
-class RecorderController(WidgetController): # TODO
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Recording Controller init')
-    def openFolder(self):
-        print('Open folder recorder')
-    def specFile(self):
-        print('Spec file')
-    def snapTIFF(self):
-        print('Snap TIFF')
-    def toggleREC(self):
-        if self._widget.recButton.isChecked():
-            self._master.recordingHelper.startRecording()
-        else:
-            self._master.recordingHelper.endRecording()
-    def specFrames(self):
-        print('Spec Frames')
-    def specTime(self):
-        print('Spec Time')
-    def recScanOnce(self):
-        print('Scan once')
-    def recScanLapse(self):
-        print('Scan lapse')
-    def untilStop(self):
-        print('Rec till stop')
-    def filesizeupdate(self):
-        print('File size update')

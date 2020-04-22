@@ -13,6 +13,7 @@ import os
 from pyqtgraph.dockarea import Dock, DockArea
 import matplotlib.pyplot as plt
 import configparser
+import time
 
 class Widget(QtGui.QWidget):
     """ Superclass for all Widgets. 
@@ -349,6 +350,128 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def registerListener(self, controller): 
         """ Manage interactions with ImageController. """
         self.levelsButton.pressed.connect(controller.autoLevels)
+        
+    
+class RecordingWidget(Widget):
+    """ Widget to control image or sequence recording.
+    Recording only possible when liveview active. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Graphical elements
+        recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
+        recTitle.setTextFormat(QtCore.Qt.RichText)
+  
+            # Folder and filename fields
+        self.dataDir = r"D:\Data"
+        self.initialDir = os.path.join(self.dataDir, time.strftime('%Y-%m-%d'))
+        self.folderEdit = QtGui.QLineEdit(self.initialDir)
+        self.openFolderButton = QtGui.QPushButton('Open')
+        self.specifyfile = QtGui.QCheckBox('Specify file name')
+        self.filenameEdit = QtGui.QLineEdit('Current time')
+        self.formatBox = QtGui.QComboBox()
+        self.formatBox.addItem('tiff')
+        self.formatBox.addItem('hdf5')
+
+            # Snap and recording buttons
+        self.snapTIFFButton = QtGui.QPushButton('Snap')
+        self.snapTIFFButton.setStyleSheet("font-size:16px")
+        self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                          QtGui.QSizePolicy.Expanding)
+        self.recButton = QtGui.QPushButton('REC')
+        self.recButton.setStyleSheet("font-size:16px")
+        self.recButton.setCheckable(True)
+        self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                     QtGui.QSizePolicy.Expanding)
+            # Number of frames and measurement timing
+        modeTitle = QtGui.QLabel('<strong>Mode</strong>')
+        modeTitle.setTextFormat(QtCore.Qt.RichText)
+        self.specifyFrames = QtGui.QRadioButton('Number of frames')
+        self.specifyTime = QtGui.QRadioButton('Time (s)')
+        self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
+        self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
+        self.timeLapseEdit = QtGui.QLineEdit('5')
+        self.timeLapseLabel = QtGui.QLabel('Each/Total [s]')
+        self.timeLapseLabel.setAlignment(QtCore.Qt.AlignRight)
+        self.timeLapseTotalEdit = QtGui.QLineEdit('60')
+        self.timeLapseScan = 0
+        self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
+        self.timeToRec = QtGui.QLineEdit('1')
+        self.currentTime = QtGui.QLabel('0 / ')
+        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
+                                       QtCore.Qt.AlignVCenter))
+        self.currentFrame = QtGui.QLabel('0 /')
+        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
+                                        QtCore.Qt.AlignVCenter))
+        self.numExpositionsEdit = QtGui.QLineEdit('100')
+        self.tRemaining = QtGui.QLabel()
+        self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
+                                      QtCore.Qt.AlignVCenter))
+
+        self.progressBar = QtGui.QProgressBar()
+        self.progressBar.setTextVisible(False)
+
+        self.filesizeBar = QtGui.QProgressBar()
+        self.filesizeBar.setTextVisible(False)
+        self.filesizeBar.setRange(0, 2000000000)
+
+        # Add items to GridLayout
+        buttonWidget = QtGui.QWidget()
+        buttonGrid = QtGui.QGridLayout()
+        buttonWidget.setLayout(buttonGrid)
+        buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
+        buttonWidget.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                   QtGui.QSizePolicy.Expanding)
+        buttonGrid.addWidget(self.recButton, 0, 2)
+
+        recGrid = QtGui.QGridLayout()
+        self.setLayout(recGrid)
+
+        recGrid.addWidget(recTitle, 0, 0, 1, 3)
+        recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
+        recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
+        recGrid.addWidget(self.openFolderButton, 2, 3)
+        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
+        recGrid.addWidget(self.formatBox, 3, 3)
+
+        recGrid.addWidget(self.specifyfile, 3, 0)
+
+        recGrid.addWidget(modeTitle, 4, 0)
+        recGrid.addWidget(self.specifyFrames, 5, 0, 1, 5)
+        recGrid.addWidget(self.currentFrame, 5, 1)
+        recGrid.addWidget(self.numExpositionsEdit, 5, 2)
+        recGrid.addWidget(self.specifyTime, 6, 0, 1, 5)
+        recGrid.addWidget(self.currentTime, 6, 1)
+        recGrid.addWidget(self.timeToRec, 6, 2)
+        recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
+        recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
+        recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
+        recGrid.addWidget(self.timeLapseLabel, 8, 1)
+        recGrid.addWidget(self.timeLapseEdit, 8, 2)
+        recGrid.addWidget(self.timeLapseTotalEdit, 8, 3)
+        recGrid.addWidget(self.untilSTOPbtn, 9, 0, 1, 5)
+        recGrid.addWidget(buttonWidget, 10, 0, 1, 0)
+
+        recGrid.setColumnMinimumWidth(0, 70)
+
+        # Initial condition of fields and checkboxes.
+        self.writable = True
+        self.readyToRecord = False
+        self.filenameEdit.setEnabled(False)
+        self.specifyTime.setChecked(True)
+
+    def registerListener(self, controller):
+        self.openFolderButton.clicked.connect(controller.openFolder)
+        self.specifyfile.clicked.connect(controller.specFile)
+        self.snapTIFFButton.clicked.connect(controller.snap)
+        self.recButton.clicked.connect(controller.toggleREC)
+        self.specifyFrames.clicked.connect(controller.specFrames)
+        self.specifyTime.clicked.connect(controller.specTime)
+        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
+        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
+        self.untilSTOPbtn.clicked.connect(controller.untilStop)
+        self.timeToRec.textChanged.connect(controller.filesizeupdate)
+        self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
         
 # Hardware widgets
@@ -946,141 +1069,8 @@ class IllumImageWidget(pg.GraphicsLayoutWidget):
         self.first = True
         self.firstBack = True           
 
-# Widget to control image or sequence recording. Recording only possible when
-# liveview active. StartRecording called when "Rec" presset. Creates recording
-# thread with RecWorker, recording is then done in this seperate thread.
-class RecordingWidget(Widget):
-    '''Widget to control image or sequence recording.
-    Recording only possible when liveview active.
-    StartRecording called when "Rec" presset.
-    Creates recording thread with RecWorker, recording is then done in this
-    seperate thread.'''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Title
-        recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
-        recTitle.setTextFormat(QtCore.Qt.RichText)
-#        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
 
-        # Folder and filename fields
-        self.folderEdit = QtGui.QLineEdit('self.initialDir')
-        self.openFolderButton = QtGui.QPushButton('Open')
-        self.specifyfile = QtGui.QCheckBox('Specify file name')
-        self.filenameEdit = QtGui.QLineEdit('Current_time')
-        self.formatBox = QtGui.QComboBox()
-        self.formatBox.addItem('tiff')
-        self.formatBox.addItem('hdf5')
 
-        # Snap and recording buttons
-        self.snapTIFFButton = QtGui.QPushButton('Snap')
-        self.snapTIFFButton.setStyleSheet("font-size:16px")
-        self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                          QtGui.QSizePolicy.Expanding)
-        self.recButton = QtGui.QPushButton('REC')
-        self.recButton.setStyleSheet("font-size:16px")
-        self.recButton.setCheckable(True)
-        self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                     QtGui.QSizePolicy.Expanding)
-
-        # Number of frames and measurement timing
-        modeTitle = QtGui.QLabel('<strong>Mode</strong>')
-        modeTitle.setTextFormat(QtCore.Qt.RichText)
-        self.specifyFrames = QtGui.QRadioButton('Number of frames')
-        self.specifyTime = QtGui.QRadioButton('Time (s)')
-        self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
-        self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
-        self.timeLapseEdit = QtGui.QLineEdit('5')
-        self.timeLapseLabel = QtGui.QLabel('Each/Total [s]')
-        self.timeLapseLabel.setAlignment(QtCore.Qt.AlignRight)
-        self.timeLapseTotalEdit = QtGui.QLineEdit('60')
-        self.timeLapseScan = 0
-        self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
-        self.timeToRec = QtGui.QLineEdit('1')
-        self.currentTime = QtGui.QLabel('0 / ')
-        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
-                                       QtCore.Qt.AlignVCenter))
-        self.currentFrame = QtGui.QLabel('0 /')
-        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
-                                        QtCore.Qt.AlignVCenter))
-        self.numExpositionsEdit = QtGui.QLineEdit('100')
-        self.tRemaining = QtGui.QLabel()
-        self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
-                                      QtCore.Qt.AlignVCenter))
-
-        self.progressBar = QtGui.QProgressBar()
-        self.progressBar.setTextVisible(False)
-
-        self.filesizeBar = QtGui.QProgressBar()
-        self.filesizeBar.setTextVisible(False)
-        self.filesizeBar.setRange(0, 2000000000)
-
-        # Layout
-        buttonWidget = QtGui.QWidget()
-        buttonGrid = QtGui.QGridLayout()
-        buttonWidget.setLayout(buttonGrid)
-        buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
-        buttonWidget.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                   QtGui.QSizePolicy.Expanding)
-        buttonGrid.addWidget(self.recButton, 0, 2)
-
-        recGrid = QtGui.QGridLayout()
-        self.setLayout(recGrid)
-
-        recGrid.addWidget(recTitle, 0, 0, 1, 3)
-        recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
-
-#        if len(self.main.cameras) > 1:
-#            self.DualCam = QtGui.QCheckBox('Two-cam rec')
-#            recGrid.addWidget(self.DualCam, 1, 3)
-#            recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-#            recGrid.addWidget(openFolderButton, 2, 3)
-#            recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
-#            recGrid.addWidget(self.formatBox, 3, 3)
-#        else:
-        recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-        recGrid.addWidget(self.openFolderButton, 2, 3)
-        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
-        recGrid.addWidget(self.formatBox, 3, 3)
-
-        recGrid.addWidget(self.specifyfile, 3, 0)
-
-        recGrid.addWidget(modeTitle, 4, 0)
-        recGrid.addWidget(self.specifyFrames, 5, 0, 1, 5)
-        recGrid.addWidget(self.currentFrame, 5, 1)
-        recGrid.addWidget(self.numExpositionsEdit, 5, 2)
-        recGrid.addWidget(self.specifyTime, 6, 0, 1, 5)
-        recGrid.addWidget(self.currentTime, 6, 1)
-        recGrid.addWidget(self.timeToRec, 6, 2)
-        recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
-#        recGrid.addWidget(self.progressBar, 5, 4, 1, 2)
-        recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
-        recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
-        recGrid.addWidget(self.timeLapseLabel, 8, 1)
-        recGrid.addWidget(self.timeLapseEdit, 8, 2)
-        recGrid.addWidget(self.timeLapseTotalEdit, 8, 3)
-        recGrid.addWidget(self.untilSTOPbtn, 9, 0, 1, 5)
-        recGrid.addWidget(buttonWidget, 10, 0, 1, 0)
-
-        recGrid.setColumnMinimumWidth(0, 70)
-
-        # Initial condition of fields and checkboxes.
-        self.writable = True
-        self.readyToRecord = False
-        self.filenameEdit.setEnabled(False)
-        self.specifyTime.setChecked(True)
-
-    def registerListener(self, controller):
-        self.openFolderButton.clicked.connect(controller.openFolder)
-        self.specifyfile.clicked.connect(controller.specFile)
-        self.snapTIFFButton.clicked.connect(controller.snapTIFF)
-        self.recButton.clicked.connect(controller.toggleREC)
-        self.specifyFrames.clicked.connect(controller.specFrames)
-        self.specifyTime.clicked.connect(controller.specTime)
-        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
-        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
-        self.untilSTOPbtn.clicked.connect(controller.untilStop)
-        self.timeToRec.textChanged.connect(controller.filesizeupdate)
-        self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
 
         

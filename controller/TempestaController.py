@@ -70,3 +70,11 @@ class CommunicationChannel():
         # Returns the center of the VB to align the ROI
         return self.__main.imageController.centerROI()
         
+    def endRecording(self):
+        self.__main.recorderController.endRecording()
+        
+    def updateFrameNumber(self, f):
+        self.__main.recorderController.updateFrameNumber(f)
+        
+    def getCamAttrs(self):
+        return self.__main.settingsController.getCamAttrs()

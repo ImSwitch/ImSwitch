@@ -4,28 +4,26 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
-from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
+try:
+    from TempestaErrors import InvalidChildClassError, IncompatibilityError
+except ModuleNotFoundError:
+    from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import json
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 class SignalDesignerFactory():
     """Factory class for creating a SignalDesigner object. Factory checks
     that the new object is compatible with the parameters that will we 
     be sent to its make_signal method."""
-    def __new__(cls , configKeyName, futureParameters):
+    def __new__(cls , configKeyName):
         config_dict = json.load(open('../config_files/config.json'))
         scanDesignerName = config_dict[configKeyName]
         
 #        SignalDesigner = super().__new__(cls, 'SignalDesigner.'+scanDesignerName)
         signalDesigner = eval(scanDesignerName+'()')
-        signalDesigner.isValidChild()
-        
-        if SignalDesigner.parameterCompatibility(futureParameters):
-            return SignalDesigner
-        else:
-            raise IncompatibilityError('SignalDesigner seems to be \
-                                       incompatible with future parameters.')
+        if signalDesigner.isValidSignalDesigner():
+            return signalDesigner
 
 
 class SignalDesigner():
@@ -33,24 +31,24 @@ class SignalDesigner():
     self._expected_parameters and its own make_signal method."""
     def __init__(self):
         
-        self.last_signal = None
-        self.last_parameter_dict = None
+        self.lastSignal = None
+        self.lastParameterDict = None
         
-        self._expected_parameters = None
+        self._expectedParameters = None
         
         #Make non-overwritable functions
-        self.isValidChild = self.__isValidChild
+        self.isValidSignalDesigner = self.__isValidSignalDesigner
         self.parameterCompatibility = self.__parameterCompatibility
         
     @property
-    def expected_parameters(self):
-        if self._expected_parameters is None:
+    def expectedParameters(self):
+        if self._expectedParameters is None:
             raise ValueError('Value "%s" is not defined')
         else:
-            return self._expected_parameters
+            return self._expectedParameters
     
-    def __isValidChild(self):
-        if self._expected_parameters is None:
+    def __isValidSignalDesigner(self):
+        if self._expectedParameters is None:
             raise InvalidChildClassError('Child of SignalDesigner should define \
                                  "self.expected_parameters" in __init__.')
         else:
@@ -61,11 +59,11 @@ class SignalDesigner():
         {'target': signal} pairs. """
         raise NotImplementedError("Method not implemented in child")
     
-    def __parameterCompatibility(self, parameter_dict):
+    def __parameterCompatibility(self, parameterDict):
         """ Method to check the compatibility of parameter 'parameter_dict'
         and the expected parameters of the object. """
-        expected = set(self._expected_parameters)
-        incoming = set([*parameter_dict])
+        expected = set(self._expectedParameters)
+        incoming = set([*parameterDict])
         
         return expected == incoming
         
@@ -74,7 +72,7 @@ class BetaStageScanDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self._expected_parameters = ['Targets[3]',\
+        self._expectedParameters = ['Targets[3]',\
                                      'Sizes[3]', \
                                      'Step_sizes[3]', \
                                      'Sequence_time_seconds', \
@@ -82,7 +80,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                      'Return_time_seconds']
         
     
-    def make_signal(self, parameter_dict):
+    def make_signal(self, parameter_dict, returnFrames = False):
         
         if not self.parameterCompatibility(parameter_dict):
             print('Parameters seem incompatible, this error should not be \
@@ -106,21 +104,20 @@ class BetaStageScanDesigner(SignalDesigner):
         parameter_dict['Return_time_seconds'] * parameter_dict['Sample_rate']
         if not sequenceSamples.is_integer():
             print('WARNIGN: Non-integer number of sequence sampels, rounding up')
-            sequenceSamples = np.ceil(sequenceSamples)
+        sequenceSamples = np.int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
             print('WARNIGN: Non-integer number of return sampels, rounding up')
-            returnSamples = np.ceil(returnSamples)
-        
+        returnSamples = np.int(np.ceil(returnSamples))
         
         #Make fast axis signal
         rampSamples = fast_axis_positions * sequenceSamples
         lineSamples = rampSamples + returnSamples
+
         rampSignal = self.__makeRamp(0, fast_axis_size, rampSamples)
         returnRamp = self.__smoothRamp(fast_axis_size, 0, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
         
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions*slow_axis_positions)
-        plt.plot(fastAxisSignal)
         
         #Make middle axis signal
         colSamples = middle_axis_positions * lineSamples
@@ -141,7 +138,6 @@ class BetaStageScanDesigner(SignalDesigner):
                                  self.__smoothRamp(colValues[s], 0, returnSamples)
         
         middleAxisSignal = np.tile(fullSquareSignal, slow_axis_positions)
-        plt.plot(middleAxisSignal)
         
         #Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
@@ -160,21 +156,24 @@ class BetaStageScanDesigner(SignalDesigner):
                 fullCubeSignal[(s+1)*colSamples - returnSamples: \
                                  (s+1)*colSamples] = \
                                  self.__smoothRamp(sliceValues[s], 0, returnSamples)
-        slowAxisSignal = fullCubeSignal             
-        plt.plot(slowAxisSignal)
+        slowAxisSignal = fullCubeSignal
         
         sig_dict = {parameter_dict['Targets[3]'][0]: fastAxisSignal, \
                     parameter_dict['Targets[3]'][1]: middleAxisSignal, \
                     parameter_dict['Targets[3]'][2]: slowAxisSignal}
         
-        return sig_dict
+        if not returnFrames:
+            return sig_dict
+        else:
+            return sig_dict, fast_axis_positions*middle_axis_positions*slow_axis_positions
         
     def __makeRamp(self, start, end, samples):
         return np.linspace(start, end, num=samples)
 
     def __smoothRamp(self, start, end, samples):
         curve_half = 0.6
-        x = np.linspace(0, np.pi/2, num=np.floor(curve_half*samples), endpoint=True)
+        n = np.int(np.floor(curve_half*samples))
+        x = np.linspace(0, np.pi/2, num=n, endpoint=True)
         signal = start + (end-start)*np.sin(x)
         signal = np.append(signal, end*np.ones(int(np.ceil((1-curve_half)*samples))))
         return signal
@@ -184,7 +183,7 @@ class BetaTTLCycleDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self._expected_parameters = ['Targets[x]',\
+        self._expectedParameters = ['Targets[x]',\
                                      'TTLStarts[x,y]', \
                                      'TTLEnds[x,y]', \
                                      'Sequence_time_seconds', \
@@ -200,7 +199,9 @@ class BetaTTLCycleDesigner(SignalDesigner):
         targets = parameter_dict['Targets[x]']
         sampleRate = parameter_dict['Sample_rate']
         cycleSamples = parameter_dict['Sequence_time_seconds'] * sampleRate
-        
+        if not cycleSamples.is_integer():
+            print('WARNIGN: Non-integer number of sequence sampels, rounding up')
+        cycleSamples = np.int(np.ceil(cycleSamples))
         signalDict = {}
         tmpSigArr = np.zeros(cycleSamples)
         for i, target in enumerate(targets):

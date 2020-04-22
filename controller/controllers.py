@@ -4,6 +4,8 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
+
+from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import view.guitools as guitools
 import pyqtgraph as pg
@@ -12,6 +14,16 @@ import subprocess
 import os
 import time
 
+
+class WidgetControllerFactory():
+    """Factory class for creating a WidgetController object. Factory checks
+    that the new object is a valid WidgetController."""
+    def __new__(cls , className, *args):
+
+        widgetController = eval(className+'(*args)')
+        if widgetController.isValidChild():
+            return widgetController
+        
 class WidgetController():
     """ Superclass for all WidgetControllers. 
             All WidgetControllers should have access to MasterController, CommunicationChannel and the linked Widget. """ 
@@ -22,6 +34,7 @@ class WidgetController():
         self._widget = widget
         self._comm_channel = comm_channel
     
+        
 
 class LiveUpdatedController(WidgetController):
     """ Superclass for those controllers that will update the widgets with an upcoming frame from the camera. 
@@ -33,6 +46,42 @@ class LiveUpdatedController(WidgetController):
         
     def update(self):
         raise NotImplementedError
+        
+class SuperScanController(WidgetController):
+    def __init__(self, comm_channel, master, widget):
+        super().__init__(comm_channel, master, widget)
+        # self._stageParameterDict = None
+        # self._TTLParameterDict = None
+        #Make non-overwritable functions
+        self.isValidScanController = self.__isValidScanController
+        self.isValidChild = self.isValidScanController
+        
+    # @property
+    # def stageParameterList(self):
+    #     if self._stageParameterDict is None:
+    #         raise ValueError('Scan controller has no parameters defined')
+    #     else:
+    #         return [*self._stageParameterDict] #makes list of dict keys
+
+    # @property
+    # def TTLParameterList(self):
+    #     if self._TTLParameterDict is None:
+    #         raise ValueError('Scan controller has no parameters defined')
+    #     else:
+    #         return [*self._TTLParameterDict] #makes list of dict keys
+        
+    @property
+    def parameterDict(self):
+        return None
+        
+    def __isValidScanController(self):
+        if self.parameterDict is None:
+            raise InvalidChildClassError('ScanController needs to return a valid parameterDict')
+        else:
+            return True
+            
+    
+        
 
 # Alignment control
 
@@ -631,14 +680,30 @@ class LaserController(WidgetController):
 # Scan control
 
 
-class ScanController(WidgetController): # TODO
+class ScanController(SuperScanController): # TODO
     def __init__(self, comm_channel, master, widget):
         super().__init__(comm_channel, master, widget)
-        self.multipleScanController = MultipleScanController(comm_channel, master, widget.multiScanWgt)
-        self.parameter_dictionary = None
-        self.stageParameterList = []
-        self.TTLcycleParameterList = []
+        self._stageParameterDict = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
+                  'Sizes[3]':[5,5,0], \
+                  'Step_sizes[3]': [1,1,1], \
+                  'Sequence_time_seconds': 0.005, \
+                  'Sample_rate': 100000, \
+                  'Return_time_seconds': 0.001}
+        self._TTLParameterDict = {'Targets[x]': ['405', '488'], \
+                  'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
+                  'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
+                  'Sequence_time_seconds': 0.005, \
+                  'Sample_rate': 100000}
         print('Init Scan Controller')
+    
+    @property
+    def parameterDict(self):
+        stageParameterList = [*self._stageParameterDict]
+        TTLParameterList = [*self._TTLParameterDict]
+        
+        return {'stageParameterList': stageParameterList,\
+                'TTLParameterList': TTLParameterList}
+    
     def saveScan(self):
         print('save scan')
     def loadScan(self):
@@ -660,8 +725,6 @@ class ScanController(WidgetController): # TODO
         print('previewScan')
     def getSampleRate(self):
         return 10000
-    def parametersToSend(self):
-        return (self.stageParameterList, self.TTLcycleParameterList) #Some list of parameters
     def runScan(self):
         self._master.scanHelper.runScan(self.parameter_dictionary)
     

@@ -31,6 +31,10 @@ class TempestaController():
         self.viewController = controllers.ViewController(self.__comm_channel, __masterController, __view.viewWidget)
         self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
         self.settingsController = controllers.SettingsController(self.__comm_channel, __masterController, __view.settingsWidget)
+        
+        
+        #Check widget compatibility
+        __masterController.scanHelper._parameterCompatibility(self.scanController.parameterDict)
 
     
 class CommunicationChannel():

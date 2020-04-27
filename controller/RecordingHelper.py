@@ -8,7 +8,6 @@ from pyqtgraph.Qt import QtCore
 import numpy as np
 import h5py
 import time
-import tifffile as tiff
 
 class RecordingHelper():
     def __init__(self, comm_channel, cameraHelper):
@@ -32,9 +31,13 @@ class RecordingHelper():
     def comm_channel(self):
         return self.__comm_channel
             
-    def startRecording(self, recMode, frames=None):
-        self.recMode = recMode
-        self.frames = frames
+    def startRecording(self, recMode, savename, attrs, frames=None, time=None):
+        print('Start recording')
+        self.__recordingWorker.recMode = recMode
+        self.__recordingWorker.savename = savename
+        self.__recordingWorker.attrs = attrs
+        self.__recordingWorker.frames = frames
+        self.__recordingWorker.time = time
         self.__cameraHelper.updateCameraIndices()
         self.__record = True
         self.__thread.start()
@@ -43,13 +46,13 @@ class RecordingHelper():
         self.__record = False
         self.__thread.quit()
                    
-    def snap(self, savename, dataname, attrs, ext):
-        store_file = h5py.File(savename)
+    def snap(self, savename, attrs):
+        store_file = h5py.File(savename, 'w', track_order=True)
         for key in attrs.keys():
             store_file.attrs[key] = attrs[key]
         size = self.__cameraHelper.shapes
-        d = store_file.create_dataset(dataname, (size[0], size[1]), dtype = 'i2')
-        umxpx = attrs["pixel_size"]
+        d = store_file.create_dataset('data', (size[0], size[1]),  dtype = 'i2')
+        umxpx = attrs['Camera_pixel_size']
         d.attrs["element_size_um"] = [1, umxpx, umxpx] 
         d[:, :] = self.__cameraHelper.image
         store_file.close()
@@ -58,18 +61,18 @@ class RecordingWorker(QtCore.QObject):
     def __init__(self, recordingHelper, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__recordingHelper = recordingHelper
-        
-        
+
     def run(self):
-        print("Thread started")
         it = 0
-       # f = h5py.File('C:\\Users\\Testa4\\Documents\\mvcTempesta\\test\\stack2.hdf5', 'w', libver="latest") 
-        f = h5py.File('D:\\test\\stack2.hdf5', 'w', libver="latest") 
+        f = h5py.File(self.savename, 'w') 
+        for key in self.attrs.keys():
+            f.attrs[key] = self.attrs[key]
         size = self.__recordingHelper.cameraHelper.shapes
-        d = f.create_dataset('dataset', (1, size[0], size[1]), maxshape=(None, size[0], size[1]), dtype='i2')
-        print("File created")
-        if self.__recordingHelper.recMode == 1:
-            frames = self.__recordingHelper.frames
+        d = f.create_dataset('data', (1, size[0], size[1]), maxshape=(None, size[0], size[1]), dtype='i2')
+        umxpx = self.attrs['Camera_pixel_size']
+        d.attrs["element_size_um"] = [1, umxpx, umxpx]
+        if self.recMode == 1:
+            frames = self.frames
             while it<frames:
                 newframes = self.__recordingHelper.cameraHelper.getChunk()
                 n = len(newframes)
@@ -81,10 +84,27 @@ class RecordingWorker(QtCore.QObject):
                     d.resize(frames, axis = 0)     
                     d[it:frames, :, :] = np.array(newframes[0:frames-it])
                     it = frames
-                self.__recordingHelper.comm_channel.updateFrameNumber(it)
+                self.__recordingHelper.comm_channel.updateRecFrameNumber(it)
             f.close()
+            self.__recordingHelper.comm_channel.updateRecFrameNumber(0)
             self.__recordingHelper.comm_channel.endRecording()
             self.__recordingHelper.endRecording()
+        elif self.recMode == 2:
+            start = time.time()
+            current = 0
+            while current < self.time:
+                newframes = self.__recordingHelper.cameraHelper.getChunk()
+                n = len(newframes)
+                d.resize(n + it, axis = 0)
+                d[it:it+n, :,:] = np.array(newframes)
+                it += n 
+                self.__recordingHelper.comm_channel.updateRecTime(np.around(current, decimals=2))
+                current = time.time() - start
+            f.close()
+            self.__recordingHelper.comm_channel.updateRecTime(0)
+            self.__recordingHelper.comm_channel.endRecording()
+            self.__recordingHelper.endRecording()
+                
         else:
             while self.__recordingHelper.record:
                 newframes = self.__recordingHelper.cameraHelper.getChunk()

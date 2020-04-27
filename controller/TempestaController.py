@@ -77,8 +77,27 @@ class CommunicationChannel():
     def endRecording(self):
         self.__main.recorderController.endRecording()
         
-    def updateFrameNumber(self, f):
-        self.__main.recorderController.updateFrameNumber(f)
+    def updateRecFrameNumber(self, f):
+        self.__main.recorderController.updateRecFrameNumber(f)
+        
+    def updateRecTime(self, t):
+        self.__main.recorderController.updateRecTime(t)
         
     def getCamAttrs(self):
         return self.__main.settingsController.getCamAttrs()
+    
+    def getScanAttrs(self):
+        return self.__main.scanController.getScanAttrs()
+        
+    def prepareScan(self):
+        self.__main.settingsController.setTriggerParam('External "frame-trigger"')
+        self.__main.laserController.setDigitalButton(True)
+        self.__main.scanController.setScanButton(True)
+        
+    def endScan(self):
+        self.__main.settingsController.setTriggerParam('Internal trigger')
+        self.__main.laserController.setDigitalButton(False)
+        self.__main.scanController.setScanButton(False)
+        
+    def moveZstage(self, step):
+        self.__main.positionerController.move(2, step)

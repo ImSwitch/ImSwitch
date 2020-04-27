@@ -4,10 +4,10 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
-try:
-    from TempestaErrors import InvalidChildClassError, IncompatibilityError
-except ModuleNotFoundError:
-    from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
+#try:
+#    from TempestaErrors import InvalidChildClassError, IncompatibilityError
+#except ModuleNotFoundError:
+from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import json
 # import matplotlib.pyplot as plt

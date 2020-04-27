@@ -369,9 +369,6 @@ class RecordingWidget(Widget):
         self.openFolderButton = QtGui.QPushButton('Open')
         self.specifyfile = QtGui.QCheckBox('Specify file name')
         self.filenameEdit = QtGui.QLineEdit('Current time')
-        self.formatBox = QtGui.QComboBox()
-        self.formatBox.addItem('tiff')
-        self.formatBox.addItem('hdf5')
 
             # Snap and recording buttons
         self.snapTIFFButton = QtGui.QPushButton('Snap')
@@ -390,11 +387,15 @@ class RecordingWidget(Widget):
         self.specifyTime = QtGui.QRadioButton('Time (s)')
         self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
         self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
+        self.currentLapse = QtGui.QLabel('0 / ')
         self.timeLapseEdit = QtGui.QLineEdit('5')
-        self.timeLapseLabel = QtGui.QLabel('Each/Total [s]')
-        self.timeLapseLabel.setAlignment(QtCore.Qt.AlignRight)
-        self.timeLapseTotalEdit = QtGui.QLineEdit('60')
-        self.timeLapseScan = 0
+        self.freqLabel = QtGui.QLabel('Freq [s]')
+        self.freqEdit = QtGui.QLineEdit('0')
+        self.dimLapse = QtGui.QRadioButton('3D-lapse')
+        self.currentSlice = QtGui.QLabel('0 / ')
+        self.totalSlices = QtGui.QLineEdit('5')
+        self.stepSizeLabel = QtGui.QLabel('Step size [um]')
+        self.stepSizeEdit = QtGui.QLineEdit('0.05')
         self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
         self.timeToRec = QtGui.QLineEdit('1')
         self.currentTime = QtGui.QLabel('0 / ')
@@ -407,13 +408,6 @@ class RecordingWidget(Widget):
         self.tRemaining = QtGui.QLabel()
         self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
                                       QtCore.Qt.AlignVCenter))
-
-        self.progressBar = QtGui.QProgressBar()
-        self.progressBar.setTextVisible(False)
-
-        self.filesizeBar = QtGui.QProgressBar()
-        self.filesizeBar.setTextVisible(False)
-        self.filesizeBar.setRange(0, 2000000000)
 
         # Add items to GridLayout
         buttonWidget = QtGui.QWidget()
@@ -432,7 +426,6 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
         recGrid.addWidget(self.openFolderButton, 2, 3)
         recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
-        recGrid.addWidget(self.formatBox, 3, 3)
 
         recGrid.addWidget(self.specifyfile, 3, 0)
 
@@ -446,11 +439,17 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
         recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
         recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
-        recGrid.addWidget(self.timeLapseLabel, 8, 1)
+        recGrid.addWidget(self.currentLapse, 8, 1)
         recGrid.addWidget(self.timeLapseEdit, 8, 2)
-        recGrid.addWidget(self.timeLapseTotalEdit, 8, 3)
-        recGrid.addWidget(self.untilSTOPbtn, 9, 0, 1, 5)
-        recGrid.addWidget(buttonWidget, 10, 0, 1, 0)
+        recGrid.addWidget(self.freqLabel, 8, 3)
+        recGrid.addWidget(self.freqEdit, 8, 4)
+        recGrid.addWidget(self.dimLapse, 9, 0, 1, 5)
+        recGrid.addWidget(self.currentSlice, 9, 1)
+        recGrid.addWidget(self.totalSlices, 9, 2)
+        recGrid.addWidget(self.stepSizeLabel, 9, 3)
+        recGrid.addWidget(self.stepSizeEdit, 9, 4)
+        recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, 5)
+        recGrid.addWidget(buttonWidget, 11, 0, 1, 0)
 
         recGrid.setColumnMinimumWidth(0, 70)
 
@@ -458,9 +457,10 @@ class RecordingWidget(Widget):
         self.writable = True
         self.readyToRecord = False
         self.filenameEdit.setEnabled(False)
-        self.specifyTime.setChecked(True)
+        self.untilSTOPbtn.setChecked(True)
 
     def registerListener(self, controller):
+        controller.untilStop()
         self.openFolderButton.clicked.connect(controller.openFolder)
         self.specifyfile.clicked.connect(controller.specFile)
         self.snapTIFFButton.clicked.connect(controller.snap)
@@ -469,9 +469,8 @@ class RecordingWidget(Widget):
         self.specifyTime.clicked.connect(controller.specTime)
         self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
         self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
+        self.dimLapse.clicked.connect(controller.dimLapse)
         self.untilSTOPbtn.clicked.connect(controller.untilStop)
-        self.timeToRec.textChanged.connect(controller.filesizeupdate)
-        self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
         
 # Hardware widgets

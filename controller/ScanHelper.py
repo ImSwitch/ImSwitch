@@ -4,10 +4,10 @@ Created on Tue Apr  7 17:00:05 2020
 
 @author: andreas.boden
 """
-try:
-    from SignalDesigner import SignalDesignerFactory
-except ModuleNotFoundError:
-    from controller.SignalDesigner import SignalDesignerFactory
+#try:
+#from SignalDesigner import SignalDesignerFactory
+#except ModuleNotFoundError:
+from controller.SignalDesigner import SignalDesignerFactory
     
 from controller.TempestaErrors import IncompatibilityError
 import numpy as np

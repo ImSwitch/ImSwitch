@@ -4,17 +4,15 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
-
-from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import view.guitools as guitools
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 import sys
 import subprocess
 import os
 import time
-
+import configparser
 
 class WidgetControllerFactory():
     """Factory class for creating a WidgetController object. Factory checks
@@ -705,7 +703,6 @@ class RecorderController(WidgetController):
         return filename
 
 # Hardware control
-        
 
 class PositionerController(WidgetController): 
     """ Linked to PositionerWidget."""
@@ -780,8 +777,8 @@ class ScanController(SuperScanController): # TODO
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
         self._TTLParameterDict = {'Targets[x]': ['405', '488'], \
-                  'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
-                  'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
+                  'TTLStarts[x,y]': [[0.0012, 0.002, 0, 0], [0, 0]], \
+                  'TTLEnds[x,y]': [[0.0015, 0.0025, 0, 0], [0, 0]], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000}
         print('Init Scan Controller')
@@ -805,28 +802,78 @@ class ScanController(SuperScanController): # TODO
         return attrs
         
     def saveScan(self):
-        print('save scan')
+        self.getParameters()
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        config['pxParValues'] = self._widget.pxParValues
+        config['scanParValues'] = self._widget.scanParValues
+        config['Modes'] = {'scanMode': self._widget.scanMode.currentText(),
+                           'scan_or_not': self._widget.scanRadio.isChecked()}
+        fileName = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan',
+                                                     self._widget.scanDir)
+        if fileName == '':
+            return
+
+        with open(fileName, 'w') as configfile:
+            config.write(configfile)
+            
     def loadScan(self):
-        print('load scan')
-    def scanParameterChanged(self, scanParam):
-        print('Parameter' + scanParam + 'changed')
-    def setScanMode(self, scanMode):
-        print('Scan mode set to ' + scanMode)
-    def setPrimScanDim(self, dim):
-        print('Primary scan dimension set to ' + dim)
-    def setScanOrNot(self, b):
-        if b:
-            print('Scan')
+        config = configparser.ConfigParser()
+        config.optionxform = str
+    
+        fileName = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan',
+                                                     self._widget.scanDir)
+        if fileName == '':
+            return
+    
+        config.read(fileName)
+    
+        for key in self._widget.pxParValues:
+            self._widget.pxParValues[key] = float(config._sections['pxParValues'][key])
+            self._widget.pxParameters[key].setText(
+                str(1000*float(config._sections['pxParValues'][key])))
+    
+        for key in self._widget.scanParValues:
+            value = config._sections['scanParValues'][key]
+            self._widget.scanParValues[key] = float(value)
+            if key == 'seqTime':
+                self._widget.scanPar[key].setText(
+                    str(1000*float(config._sections['scanParValues'][key])))
+            else:
+                self._widget.scanPar[key].setText(
+                    config._sections['scanParValues'][key])
+    
+        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
+        self.setScanOrNot(scanOrNot)
+        if scanOrNot:
+            self._widget.scanRadio.setChecked(True)
         else:
-            print('Not Scan')
+            self._widget.contLaserPulsesRadio.setChecked(True)
+    
+        scanMode = config._sections['Modes']['scanMode']
+        self.setScanMode(scanMode)
+        self._widget.scanMode.setCurrentIndex(self._widget.scanMode.findText(scanMode))
+    
+        #self._widget.updateScan(self._widget.allDevices)
+        #self._widget.graph.update()
+
     def scanOrAbort(self):
-        print('Scan or Abort')
+        self.runScan()
     def previewScan(self):
         print('previewScan')
-    def getSampleRate(self):
-        return 10000
     def runScan(self):
-        self._master.scanHelper.runScan(self.parameter_dictionary)
+        self.getParameters()
+       # self._master.scanHelper.runScan(self.parameter_dictionary)
+     
+    def getParameters(self):
+        self._stageParameterDict['Sizes[3]'] = (float(self._widget.sizeXPar.text()), float(self._widget.sizeYPar.text()), float(self._widget.sizeZPar.text()))
+        self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.stepSizeXPar.text()), float(self._widget.stepSizeYPar.text()), float(self._widget.stepSizeZPar.text()))
+        for i in range(len(self._TTLParameterDict['Targets[x]'])):
+            self._TTLParameterDict['TTLStarts[x,y]'][0][i] = self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]
+            self._TTLParameterDict['TTLEnds[x,y]'][0][i] = self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]
+        self._TTLParameterDict['Sequence_time_seconds'] = self._widget.seqTimePar
+        self._stageParameterDict['Sequence_time_seconds'] = self._widget.seqTimePar
         
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)

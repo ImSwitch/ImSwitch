@@ -747,19 +747,22 @@ class ScanWidget(Widget):
         self.scanDims = ['x', 'y']
         self.primScanDim.addItems(self.scanDims)
         
-        # self.scanPar = {'sizeX': self.sizeXPar,
-        #                 'sizeY': self.sizeYPar,
-        #                 'sizeZ': self.sizeZPar,
-        #                 'seqTime': self.seqTimePar,
-        #                 'stepSizeXY': self.stepSizeXYPar,
-        #                 'stepSizeZ': self.stepSizeZPar}
-
-        # self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
-        #                       'sizeY': float(self.sizeYPar.text()),
-        #                       'sizeZ': float(self.sizeZPar.text()),
-        #                       'seqTime': 0.001*float(self.seqTimePar.text()),
-        #                       'stepSizeXY': float(self.stepSizeXYPar.text()),
-        #                       'stepSizeZ': float(self.stepSizeZPar.text())}
+        self.scanPar = {'sizeX': self.sizeXPar,
+                         'sizeY': self.sizeYPar,
+                         'sizeZ': self.sizeZPar,
+                         'seqTime': self.seqTimePar,
+                         'stepSizeX': self.stepSizeXPar,
+                         'stepSizeY': self.stepSizeYPar,
+                         'stepSizeZ': self.stepSizeZPar}
+    
+        self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
+                               'sizeY': float(self.sizeYPar.text()),
+                               'sizeZ': float(self.sizeZPar.text()),
+                               'seqTime': 0.001*float(self.seqTimePar.text()),
+                               'stepSizeX': float(self.stepSizeXPar.text()),
+                               'stepSizeY': float(self.stepSizeXPar.text()),
+                               'stepSizeZ': float(self.stepSizeZPar.text())}
+                               
         self.pxParameters = dict()
         self.pxParValues = dict()                       
       
@@ -809,8 +812,8 @@ class ScanWidget(Widget):
         grid.addWidget(self.sizeZPar, 4, 1)
         grid.addWidget(QtGui.QLabel('Step X (µm):'), 2, 2)
         grid.addWidget(self.stepSizeXPar, 2, 3)
-        grid.addWidget(QtGui.QLabel('Step X (µm):'), 2, 2)
-        grid.addWidget(self.stepSizeXPar, 3, 3)
+        grid.addWidget(QtGui.QLabel('Step Y (µm):'), 3, 2)
+        grid.addWidget(self.stepSizeYPar, 3, 3)
         grid.addWidget(QtGui.QLabel('Step Z (µm):'), 4, 2)
         grid.addWidget(self.stepSizeZPar, 4, 3)
 
@@ -846,87 +849,11 @@ class ScanWidget(Widget):
         grid.setRowMinimumHeight(13, 10)
     
     def registerListener(self, controller):
-        self.saveScanBtn.clicked.connect(self.saveScan)
-        self.loadScanBtn.clicked.connect(self.loadScan)
-        self.sizeXPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeX'))
-        self.sizeYPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeY'))
-        self.sizeZPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeZ'))
-        self.seqTimePar.textChanged.connect(
-            lambda: controller.scanParameterChanged('seqTime'))
-        self.stepSizeXPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeX'))
-        self.stepSizeYPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeY'))
-        self.stepSizeZPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeZ'))
-        self.scanRadio.clicked.connect(lambda: controller.setScanOrNot(True))
-        self.contLaserPulsesRadio.clicked.connect(
-            lambda: controller.setScanOrNot(False))
+        self.saveScanBtn.clicked.connect(controller.saveScan)
+        self.loadScanBtn.clicked.connect(controller.loadScan)
         self.scanButton.clicked.connect(controller.scanOrAbort)
         self.previewButton.clicked.connect(controller.previewScan)
-
-
-        
-    def saveScan(self):
-        config = configparser.ConfigParser()
-        config.optionxform = str
-    
-        config['pxParValues'] = self.pxParValues
-        config['scanParValues'] = self.scanParValues
-        config['Modes'] = {'scanMode': self.scanMode.currentText(),
-                           'scan_or_not': self.scanRadio.isChecked()}
-        fileName = QtGui.QFileDialog.getSaveFileName(self, 'Save scan',
-                                                     self.scanDir)
-        if fileName == '':
-            return
-    
-        with open(fileName, 'w') as configfile:
-            config.write(configfile)
-
-
-    def loadScan(self):
-        config = configparser.ConfigParser()
-        config.optionxform = str
-    
-        fileName = QtGui.QFileDialog.getOpenFileName(self, 'Load scan',
-                                                     self.scanDir)
-        if fileName == '':
-            return
-    
-        config.read(fileName)
-    
-        for key in self.pxParValues:
-            self.pxParValues[key] = float(config._sections['pxParValues'][key])
-            self.pxParameters[key].setText(
-                str(1000*float(config._sections['pxParValues'][key])))
-    
-        for key in self.scanParValues:
-            value = config._sections['scanParValues'][key]
-            self.scanParValues[key] = float(value)
-            if key == 'seqTime':
-                self.scanPar[key].setText(
-                    str(1000*float(config._sections['scanParValues'][key])))
-            else:
-                self.scanPar[key].setText(
-                    config._sections['scanParValues'][key])
-    
-        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
-#        self.setScanOrNot(scanOrNot)
-        if scanOrNot:
-            self.scanRadio.setChecked(True)
-        else:
-            self.contLaserPulsesRadio.setChecked(True)
-#    
-        scanMode = config._sections['Modes']['scanMode']
-#        self.setScanMode(scanMode)
-        self.scanMode.setCurrentIndex(self.scanMode.findText(scanMode))
-#    
-#        self.updateScan(self.allDevices)
-#        self.graph.update()
-        
+   
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.
     Fcn update() updates the plot of "device" with signal "signal"."""

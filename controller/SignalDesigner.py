@@ -203,14 +203,13 @@ class BetaTTLCycleDesigner(SignalDesigner):
             print('WARNIGN: Non-integer number of sequence sampels, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
         signalDict = {}
-        tmpSigArr = np.zeros(cycleSamples)
+        tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
-            tmpSigArr[:] = 0
+            tmpSigArr[:] = False
             for j, start in enumerate(parameter_dict['TTLStarts[x,y]'][i]):
                 startSamp = np.int(np.round(start * sampleRate))
                 endSamp = np.int(np.round(parameter_dict['TTLEnds[x,y]'][i][j] * sampleRate))
-                tmpSigArr[startSamp:endSamp] = 1
+                tmpSigArr[startSamp:endSamp] = True
                 
             signalDict[target] = np.copy(tmpSigArr)
-            
         return signalDict

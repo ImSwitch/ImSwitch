@@ -17,7 +17,7 @@ class NidaqHelper():
                                'RO_Laser': {'AOChan': None, 'DOLine': 2},
                                'X_Stage': {'AOChan': 0, 'DOLine': None},
                                'Y_Stage': {'AOChan': 1, 'DOLine': None},
-                               'Z_Stage': {'AOChan': 0, 'DOLine': None}}
+                               'Z_Stage': {'AOChan': 2, 'DOLine': None}}
         else:
             self.deviceInfo = deviceInfo
                 
@@ -86,14 +86,17 @@ class NidaqHelper():
                                                    100000)
                 
             signal = np.array([voltage])
-            print(aotask.write(signal, auto_start=True))
+            aotask.write(signal, auto_start=True)
             aotask.wait_until_done()
             aotask.stop()
             aotask.close()
             
-    def runScan(self, analog_targets, digital_targets, analog_signals, digital_signals):
-        self.aotask.close()
+    def runScan(self, signalDic):
+        stageDic = signalDic['stageScanSignalsDict']
+        ttlDic = signalDic['TTLCycleSignalsDict']
+         
         
+    
     def runContinuous(self, digital_targets, digital_signals):
         pass
         

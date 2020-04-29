@@ -706,11 +706,17 @@ class RecorderController(WidgetController):
 
 class PositionerController(WidgetController): 
     """ Linked to PositionerWidget."""
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stagePos = [0, 0, 0]
+        self.convFactors = [1.5870, 1.5907, 10]
+        self.targets = ['X_Stage', 'Y_Stage', 'Z_Stage']
+        
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.moveStage(axis, dist)
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
+        self.stagePos[axis] += dist
+        self._master.nidaqHelper.setAnalog(self.targets[axis], self.stagePos[axis]/self.convFactors[axis])
+        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
         
         getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
 
@@ -864,7 +870,8 @@ class ScanController(SuperScanController): # TODO
         print('previewScan')
     def runScan(self):
         self.getParameters()
-       # self._master.scanHelper.runScan(self.parameter_dictionary)
+        signal_dictionary = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
+        self._master.nidaHelper.runScan(signal_dictionary)
      
     def getParameters(self):
         self._stageParameterDict['Sizes[3]'] = (float(self._widget.sizeXPar.text()), float(self._widget.sizeYPar.text()), float(self._widget.sizeZPar.text()))
@@ -872,8 +879,8 @@ class ScanController(SuperScanController): # TODO
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
             self._TTLParameterDict['TTLStarts[x,y]'][0][i] = self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]
             self._TTLParameterDict['TTLEnds[x,y]'][0][i] = self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]
-        self._TTLParameterDict['Sequence_time_seconds'] = self._widget.seqTimePar
-        self._stageParameterDict['Sequence_time_seconds'] = self._widget.seqTimePar
+        self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
+        self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)

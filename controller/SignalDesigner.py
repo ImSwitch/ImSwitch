@@ -89,10 +89,11 @@ class BetaStageScanDesigner(SignalDesigner):
         #Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
         [parameter_dict['Sizes[3]'][i] for i in range(3)]
-        
+
         #Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
         [parameter_dict['Step_sizes[3]'][i] for i in range(3)]
+
         
         fast_axis_positions =  1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
@@ -118,7 +119,7 @@ class BetaStageScanDesigner(SignalDesigner):
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
         
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions*slow_axis_positions)
-        
+        print(fastAxisSignal)
         #Make middle axis signal
         colSamples = middle_axis_positions * lineSamples
         colValues = self.__makeRamp(0, middle_axis_size, middle_axis_positions)
@@ -138,7 +139,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                  self.__smoothRamp(colValues[s], 0, returnSamples)
         
         middleAxisSignal = np.tile(fullSquareSignal, slow_axis_positions)
-        
+
         #Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
         sliceValues = self.__makeRamp(0, slow_axis_size, slow_axis_positions)
@@ -157,7 +158,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                  (s+1)*colSamples] = \
                                  self.__smoothRamp(sliceValues[s], 0, returnSamples)
         slowAxisSignal = fullCubeSignal
-        
+
         sig_dict = {parameter_dict['Targets[3]'][0]: fastAxisSignal, \
                     parameter_dict['Targets[3]'][1]: middleAxisSignal, \
                     parameter_dict['Targets[3]'][2]: slowAxisSignal}

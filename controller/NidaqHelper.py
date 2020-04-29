@@ -34,7 +34,7 @@ class NidaqHelper():
         return targetPairs
 
             
-    def __createLineDOTask(self, name, lines, acquisition, source, rate, sampsInScan = None):
+    def __createLineDOTask(self, name, lines, acquisition, source, rate, sampsInScan = 1000):
         """ Simplified function to create a digital output task """
         dotask = nidaqmx.Task(name)
         
@@ -47,7 +47,7 @@ class NidaqHelper():
         return dotask
 
     def __createChanAOTask(self, name, channels, acquisitionType, \
-                                 source, rate, min_val=-1, max_val=1, sampsInScan = None):
+                                 source, rate, min_val=-1, max_val=1, sampsInScan = 1000):
         """ Simplified function to create an analog output task """
         aotask = nidaqmx.Task(name)
         

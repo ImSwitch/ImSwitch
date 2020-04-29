@@ -710,7 +710,7 @@ class PositionerController(WidgetController):
         super().__init__(*args, **kwargs)
         self.stagePos = [0, 0, 0]
         self.convFactors = [1.5870, 1.5907, 10]
-        self.targets = ['X_Stage', 'Y_Stage', 'Z_Stage']
+        self.targets = ['StageX', 'StageY', 'StageZ']
         
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
@@ -719,6 +719,7 @@ class PositionerController(WidgetController):
         newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
         
         getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
+        
 
 class LaserController(WidgetController): 
     """ Linked to LaserWidget."""
@@ -782,9 +783,9 @@ class ScanController(SuperScanController): # TODO
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
-        self._TTLParameterDict = {'Targets[x]': ['405', '488'], \
-                  'TTLStarts[x,y]': [[0.0012, 0.002, 0, 0], [0, 0]], \
-                  'TTLEnds[x,y]': [[0.0015, 0.0025, 0, 0], [0, 0]], \
+        self._TTLParameterDict = {'Targets[x]': ['405', '473', '488'], \
+                  'TTLStarts[x,y]': [[0.0012], [0.002], [0]], \
+                  'TTLEnds[x,y]': [[0.0015], [0.0025], [0]], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000}
         print('Init Scan Controller')
@@ -871,14 +872,14 @@ class ScanController(SuperScanController): # TODO
     def runScan(self):
         self.getParameters()
         signal_dictionary = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
-        self._master.nidaHelper.runScan(signal_dictionary)
+        self._master.nidaqHelper.runScan(signal_dictionary)
      
     def getParameters(self):
         self._stageParameterDict['Sizes[3]'] = (float(self._widget.sizeXPar.text()), float(self._widget.sizeYPar.text()), float(self._widget.sizeZPar.text()))
         self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.stepSizeXPar.text()), float(self._widget.stepSizeYPar.text()), float(self._widget.stepSizeZPar.text()))
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
-            self._TTLParameterDict['TTLStarts[x,y]'][0][i] = self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]
-            self._TTLParameterDict['TTLEnds[x,y]'][0][i] = self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]
+            self._TTLParameterDict['TTLStarts[x,y]'][i] = [self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]]
+            self._TTLParameterDict['TTLEnds[x,y]'][i] = [self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]]
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         

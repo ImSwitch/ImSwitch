@@ -4,10 +4,10 @@ Created on Tue Apr  7 17:00:05 2020
 
 @author: andreas.boden
 """
-try:
-    from SignalDesigner import SignalDesignerFactory
-except ModuleNotFoundError:
-    from controller.SignalDesigner import SignalDesignerFactory
+#try:
+#from SignalDesigner import SignalDesignerFactory
+#except ModuleNotFoundError:
+from controller.SignalDesigner import SignalDesignerFactory
     
 from TempestaErrors import IncompatibilityError
 import numpy as np
@@ -73,21 +73,30 @@ class ScanHelper(SuperScanHelper):
 
         TTLCycleSignalsDict = \
         self.__TTLCycleDesigner.make_signal(TTLParameters)
+<<<<<<< HEAD
         print(TTLCycleSignalsDict['405'].shape)
+=======
+>>>>>>> 260a7b2d5691ef646933af19c1eba0197145533b
         #Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
         TTLParameters['Sample_rate']
         print(TTLZeroPadSamples)
         if not TTLZeroPadSamples.is_integer():
-            print('WARNIGN: Non-integer number of return sampels, rounding up')
+            print('WARNING: Non-integer number of return sampels, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
+<<<<<<< HEAD
             signal = np.tile(signal, positions[0])
             signal = np.append(signal, np.zeros(TTLZeroPadSamples))
             signal = np.tile(signal, positions[1]*positions[2])
             TTLCycleSignalsDict[target] = signal
             
+=======
+            signal = np.tile(signal, nrOfFrames)
+            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
+            TTLCycleSignalsDict[target] = signal   
+>>>>>>> 260a7b2d5691ef646933af19c1eba0197145533b
         return {'stageScanSignalsDict': stageScanSignalsDict, \
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 

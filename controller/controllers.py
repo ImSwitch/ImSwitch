@@ -346,20 +346,17 @@ class SettingsController(WidgetController):
         Y0par = self.y0par.value()
         
         # Round to closest "divisable by 4" value.
-        vpos = binning*X0par
-        hpos = binning*Y0par
-        vsize = binning*width
-        hsize = binning*height
+        hpos = binning*X0par
+        vpos = binning*Y0par
+        hsize = binning*width
+        vsize = height
         
-        # Only if the new FOV is not Full chip
-        if not (vpos == 0 and hpos == 0 and vsize == 2048 and hsize == 2048):
-            vpos = int(128 * np.ceil(vpos / 128))
-            hpos = int(128 * np.ceil(hpos / 128))
-            vsize = int(128 * np.ceil(vsize / 128))
-            hsize = int(128 * np.ceil(hsize / 128))
-            minroi = 64
-            vsize = int(min(2048 - vpos, minroi * np.ceil(vsize / minroi)))
-            hsize = int(min(2048 - hpos, minroi * np.ceil(hsize / minroi)))
+        hmodulus = 4
+        vmodulus = 4
+        vpos = int(vmodulus * np.ceil(vpos / vmodulus))
+        hpos = int(hmodulus * np.ceil(hpos / hmodulus))
+        vsize = int(vmodulus * np.ceil(vsize / vmodulus))
+        hsize = int(hmodulus * np.ceil(hsize / hmodulus))
         
         self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize))
 

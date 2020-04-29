@@ -4,10 +4,10 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
-try:
-    from TempestaErrors import InvalidChildClassError, IncompatibilityError
-except ModuleNotFoundError:
-    from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
+#try:
+#    from TempestaErrors import InvalidChildClassError, IncompatibilityError
+#except ModuleNotFoundError:
+from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import json
 # import matplotlib.pyplot as plt
@@ -89,10 +89,11 @@ class BetaStageScanDesigner(SignalDesigner):
         #Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
         [parameter_dict['Sizes[3]'][i] for i in range(3)]
-        
+
         #Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
         [parameter_dict['Step_sizes[3]'][i] for i in range(3)]
+
         
         fast_axis_positions =  1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
@@ -118,7 +119,7 @@ class BetaStageScanDesigner(SignalDesigner):
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
         
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions*slow_axis_positions)
-        
+        print(fastAxisSignal)
         #Make middle axis signal
         colSamples = middle_axis_positions * lineSamples
         colValues = self.__makeRamp(0, middle_axis_size, middle_axis_positions)
@@ -138,7 +139,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                  self.__smoothRamp(colValues[s], 0, returnSamples)
         
         middleAxisSignal = np.tile(fullSquareSignal, slow_axis_positions)
-        
+
         #Make slow axis signal
         sliceSamples = slow_axis_positions * colSamples
         sliceValues = self.__makeRamp(0, slow_axis_size, slow_axis_positions)
@@ -157,7 +158,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                  (s+1)*colSamples] = \
                                  self.__smoothRamp(sliceValues[s], 0, returnSamples)
         slowAxisSignal = fullCubeSignal
-        
+
         sig_dict = {parameter_dict['Targets[3]'][0]: fastAxisSignal, \
                     parameter_dict['Targets[3]'][1]: middleAxisSignal, \
                     parameter_dict['Targets[3]'][2]: slowAxisSignal}
@@ -203,14 +204,13 @@ class BetaTTLCycleDesigner(SignalDesigner):
             print('WARNIGN: Non-integer number of sequence sampels, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
         signalDict = {}
-        tmpSigArr = np.zeros(cycleSamples)
+        tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
-            tmpSigArr[:] = 0
+            tmpSigArr[:] = False
             for j, start in enumerate(parameter_dict['TTLStarts[x,y]'][i]):
                 startSamp = np.int(np.round(start * sampleRate))
                 endSamp = np.int(np.round(parameter_dict['TTLEnds[x,y]'][i][j] * sampleRate))
-                tmpSigArr[startSamp:endSamp] = 1
+                tmpSigArr[startSamp:endSamp] = True
                 
             signalDict[target] = np.copy(tmpSigArr)
-            
         return signalDict

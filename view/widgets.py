@@ -13,6 +13,7 @@ import os
 from pyqtgraph.dockarea import Dock, DockArea
 import matplotlib.pyplot as plt
 import configparser
+import time
 
 class Widget(QtGui.QWidget):
     """ Superclass for all Widgets. 
@@ -350,6 +351,127 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         """ Manage interactions with ImageController. """
         self.levelsButton.pressed.connect(controller.autoLevels)
         
+    
+class RecordingWidget(Widget):
+    """ Widget to control image or sequence recording.
+    Recording only possible when liveview active. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Graphical elements
+        recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
+        recTitle.setTextFormat(QtCore.Qt.RichText)
+  
+            # Folder and filename fields
+        self.dataDir = r"D:\Data"
+        self.initialDir = os.path.join(self.dataDir, time.strftime('%Y-%m-%d'))
+        self.folderEdit = QtGui.QLineEdit(self.initialDir)
+        self.openFolderButton = QtGui.QPushButton('Open')
+        self.specifyfile = QtGui.QCheckBox('Specify file name')
+        self.filenameEdit = QtGui.QLineEdit('Current time')
+
+            # Snap and recording buttons
+        self.snapTIFFButton = QtGui.QPushButton('Snap')
+        self.snapTIFFButton.setStyleSheet("font-size:16px")
+        self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                          QtGui.QSizePolicy.Expanding)
+        self.recButton = QtGui.QPushButton('REC')
+        self.recButton.setStyleSheet("font-size:16px")
+        self.recButton.setCheckable(True)
+        self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                     QtGui.QSizePolicy.Expanding)
+            # Number of frames and measurement timing
+        modeTitle = QtGui.QLabel('<strong>Mode</strong>')
+        modeTitle.setTextFormat(QtCore.Qt.RichText)
+        self.specifyFrames = QtGui.QRadioButton('Number of frames')
+        self.specifyTime = QtGui.QRadioButton('Time (s)')
+        self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
+        self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
+        self.currentLapse = QtGui.QLabel('0 / ')
+        self.timeLapseEdit = QtGui.QLineEdit('5')
+        self.freqLabel = QtGui.QLabel('Freq [s]')
+        self.freqEdit = QtGui.QLineEdit('0')
+        self.dimLapse = QtGui.QRadioButton('3D-lapse')
+        self.currentSlice = QtGui.QLabel('0 / ')
+        self.totalSlices = QtGui.QLineEdit('5')
+        self.stepSizeLabel = QtGui.QLabel('Step size [um]')
+        self.stepSizeEdit = QtGui.QLineEdit('0.05')
+        self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
+        self.timeToRec = QtGui.QLineEdit('1')
+        self.currentTime = QtGui.QLabel('0 / ')
+        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
+                                       QtCore.Qt.AlignVCenter))
+        self.currentFrame = QtGui.QLabel('0 /')
+        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
+                                        QtCore.Qt.AlignVCenter))
+        self.numExpositionsEdit = QtGui.QLineEdit('100')
+        self.tRemaining = QtGui.QLabel()
+        self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
+                                      QtCore.Qt.AlignVCenter))
+
+        # Add items to GridLayout
+        buttonWidget = QtGui.QWidget()
+        buttonGrid = QtGui.QGridLayout()
+        buttonWidget.setLayout(buttonGrid)
+        buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
+        buttonWidget.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                   QtGui.QSizePolicy.Expanding)
+        buttonGrid.addWidget(self.recButton, 0, 2)
+
+        recGrid = QtGui.QGridLayout()
+        self.setLayout(recGrid)
+
+        recGrid.addWidget(recTitle, 0, 0, 1, 3)
+        recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
+        recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
+        recGrid.addWidget(self.openFolderButton, 2, 3)
+        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
+
+        recGrid.addWidget(self.specifyfile, 3, 0)
+
+        recGrid.addWidget(modeTitle, 4, 0)
+        recGrid.addWidget(self.specifyFrames, 5, 0, 1, 5)
+        recGrid.addWidget(self.currentFrame, 5, 1)
+        recGrid.addWidget(self.numExpositionsEdit, 5, 2)
+        recGrid.addWidget(self.specifyTime, 6, 0, 1, 5)
+        recGrid.addWidget(self.currentTime, 6, 1)
+        recGrid.addWidget(self.timeToRec, 6, 2)
+        recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
+        recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
+        recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
+        recGrid.addWidget(self.currentLapse, 8, 1)
+        recGrid.addWidget(self.timeLapseEdit, 8, 2)
+        recGrid.addWidget(self.freqLabel, 8, 3)
+        recGrid.addWidget(self.freqEdit, 8, 4)
+        recGrid.addWidget(self.dimLapse, 9, 0, 1, 5)
+        recGrid.addWidget(self.currentSlice, 9, 1)
+        recGrid.addWidget(self.totalSlices, 9, 2)
+        recGrid.addWidget(self.stepSizeLabel, 9, 3)
+        recGrid.addWidget(self.stepSizeEdit, 9, 4)
+        recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, 5)
+        recGrid.addWidget(buttonWidget, 11, 0, 1, 0)
+
+        recGrid.setColumnMinimumWidth(0, 70)
+
+        # Initial condition of fields and checkboxes.
+        self.writable = True
+        self.readyToRecord = False
+        self.filenameEdit.setEnabled(False)
+        self.untilSTOPbtn.setChecked(True)
+
+    def registerListener(self, controller):
+        controller.untilStop()
+        self.openFolderButton.clicked.connect(controller.openFolder)
+        self.specifyfile.clicked.connect(controller.specFile)
+        self.snapTIFFButton.clicked.connect(controller.snap)
+        self.recButton.clicked.connect(controller.toggleREC)
+        self.specifyFrames.clicked.connect(controller.specFrames)
+        self.specifyTime.clicked.connect(controller.specTime)
+        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
+        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
+        self.dimLapse.clicked.connect(controller.dimLapse)
+        self.untilSTOPbtn.clicked.connect(controller.untilStop)
+        
         
 # Hardware widgets
 
@@ -625,19 +747,22 @@ class ScanWidget(Widget):
         self.scanDims = ['x', 'y']
         self.primScanDim.addItems(self.scanDims)
         
-        # self.scanPar = {'sizeX': self.sizeXPar,
-        #                 'sizeY': self.sizeYPar,
-        #                 'sizeZ': self.sizeZPar,
-        #                 'seqTime': self.seqTimePar,
-        #                 'stepSizeXY': self.stepSizeXYPar,
-        #                 'stepSizeZ': self.stepSizeZPar}
-
-        # self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
-        #                       'sizeY': float(self.sizeYPar.text()),
-        #                       'sizeZ': float(self.sizeZPar.text()),
-        #                       'seqTime': 0.001*float(self.seqTimePar.text()),
-        #                       'stepSizeXY': float(self.stepSizeXYPar.text()),
-        #                       'stepSizeZ': float(self.stepSizeZPar.text())}
+        self.scanPar = {'sizeX': self.sizeXPar,
+                         'sizeY': self.sizeYPar,
+                         'sizeZ': self.sizeZPar,
+                         'seqTime': self.seqTimePar,
+                         'stepSizeX': self.stepSizeXPar,
+                         'stepSizeY': self.stepSizeYPar,
+                         'stepSizeZ': self.stepSizeZPar}
+    
+        self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
+                               'sizeY': float(self.sizeYPar.text()),
+                               'sizeZ': float(self.sizeZPar.text()),
+                               'seqTime': 0.001*float(self.seqTimePar.text()),
+                               'stepSizeX': float(self.stepSizeXPar.text()),
+                               'stepSizeY': float(self.stepSizeXPar.text()),
+                               'stepSizeZ': float(self.stepSizeZPar.text())}
+                               
         self.pxParameters = dict()
         self.pxParValues = dict()                       
       
@@ -687,8 +812,8 @@ class ScanWidget(Widget):
         grid.addWidget(self.sizeZPar, 4, 1)
         grid.addWidget(QtGui.QLabel('Step X (µm):'), 2, 2)
         grid.addWidget(self.stepSizeXPar, 2, 3)
-        grid.addWidget(QtGui.QLabel('Step X (µm):'), 2, 2)
-        grid.addWidget(self.stepSizeXPar, 3, 3)
+        grid.addWidget(QtGui.QLabel('Step Y (µm):'), 3, 2)
+        grid.addWidget(self.stepSizeYPar, 3, 3)
         grid.addWidget(QtGui.QLabel('Step Z (µm):'), 4, 2)
         grid.addWidget(self.stepSizeZPar, 4, 3)
 
@@ -724,87 +849,11 @@ class ScanWidget(Widget):
         grid.setRowMinimumHeight(13, 10)
     
     def registerListener(self, controller):
-        self.saveScanBtn.clicked.connect(self.saveScan)
-        self.loadScanBtn.clicked.connect(self.loadScan)
-        self.sizeXPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeX'))
-        self.sizeYPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeY'))
-        self.sizeZPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('sizeZ'))
-        self.seqTimePar.textChanged.connect(
-            lambda: controller.scanParameterChanged('seqTime'))
-        self.stepSizeXPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeX'))
-        self.stepSizeYPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeY'))
-        self.stepSizeZPar.textChanged.connect(
-            lambda: controller.scanParameterChanged('stepSizeZ'))
-        self.scanRadio.clicked.connect(lambda: controller.setScanOrNot(True))
-        self.contLaserPulsesRadio.clicked.connect(
-            lambda: controller.setScanOrNot(False))
+        self.saveScanBtn.clicked.connect(controller.saveScan)
+        self.loadScanBtn.clicked.connect(controller.loadScan)
         self.scanButton.clicked.connect(controller.scanOrAbort)
         self.previewButton.clicked.connect(controller.previewScan)
-
-
-        
-    def saveScan(self):
-        config = configparser.ConfigParser()
-        config.optionxform = str
-    
-        config['pxParValues'] = self.pxParValues
-        config['scanParValues'] = self.scanParValues
-        config['Modes'] = {'scanMode': self.scanMode.currentText(),
-                           'scan_or_not': self.scanRadio.isChecked()}
-        fileName = QtGui.QFileDialog.getSaveFileName(self, 'Save scan',
-                                                     self.scanDir)
-        if fileName == '':
-            return
-    
-        with open(fileName, 'w') as configfile:
-            config.write(configfile)
-
-
-    def loadScan(self):
-        config = configparser.ConfigParser()
-        config.optionxform = str
-    
-        fileName = QtGui.QFileDialog.getOpenFileName(self, 'Load scan',
-                                                     self.scanDir)
-        if fileName == '':
-            return
-    
-        config.read(fileName)
-    
-        for key in self.pxParValues:
-            self.pxParValues[key] = float(config._sections['pxParValues'][key])
-            self.pxParameters[key].setText(
-                str(1000*float(config._sections['pxParValues'][key])))
-    
-        for key in self.scanParValues:
-            value = config._sections['scanParValues'][key]
-            self.scanParValues[key] = float(value)
-            if key == 'seqTime':
-                self.scanPar[key].setText(
-                    str(1000*float(config._sections['scanParValues'][key])))
-            else:
-                self.scanPar[key].setText(
-                    config._sections['scanParValues'][key])
-    
-        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
-#        self.setScanOrNot(scanOrNot)
-        if scanOrNot:
-            self.scanRadio.setChecked(True)
-        else:
-            self.contLaserPulsesRadio.setChecked(True)
-#    
-        scanMode = config._sections['Modes']['scanMode']
-#        self.setScanMode(scanMode)
-        self.scanMode.setCurrentIndex(self.scanMode.findText(scanMode))
-#    
-#        self.updateScan(self.allDevices)
-#        self.graph.update()
-        
+   
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.
     Fcn update() updates the plot of "device" with signal "signal"."""
@@ -943,141 +992,8 @@ class IllumImageWidget(pg.GraphicsLayoutWidget):
         self.first = True
         self.firstBack = True           
 
-# Widget to control image or sequence recording. Recording only possible when
-# liveview active. StartRecording called when "Rec" presset. Creates recording
-# thread with RecWorker, recording is then done in this seperate thread.
-class RecordingWidget(Widget):
-    '''Widget to control image or sequence recording.
-    Recording only possible when liveview active.
-    StartRecording called when "Rec" presset.
-    Creates recording thread with RecWorker, recording is then done in this
-    seperate thread.'''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Title
-        recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
-        recTitle.setTextFormat(QtCore.Qt.RichText)
-#        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
 
-        # Folder and filename fields
-        self.folderEdit = QtGui.QLineEdit('self.initialDir')
-        self.openFolderButton = QtGui.QPushButton('Open')
-        self.specifyfile = QtGui.QCheckBox('Specify file name')
-        self.filenameEdit = QtGui.QLineEdit('Current_time')
-        self.formatBox = QtGui.QComboBox()
-        self.formatBox.addItem('tiff')
-        self.formatBox.addItem('hdf5')
 
-        # Snap and recording buttons
-        self.snapTIFFButton = QtGui.QPushButton('Snap')
-        self.snapTIFFButton.setStyleSheet("font-size:16px")
-        self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                          QtGui.QSizePolicy.Expanding)
-        self.recButton = QtGui.QPushButton('REC')
-        self.recButton.setStyleSheet("font-size:16px")
-        self.recButton.setCheckable(True)
-        self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                     QtGui.QSizePolicy.Expanding)
-
-        # Number of frames and measurement timing
-        modeTitle = QtGui.QLabel('<strong>Mode</strong>')
-        modeTitle.setTextFormat(QtCore.Qt.RichText)
-        self.specifyFrames = QtGui.QRadioButton('Number of frames')
-        self.specifyTime = QtGui.QRadioButton('Time (s)')
-        self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
-        self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
-        self.timeLapseEdit = QtGui.QLineEdit('5')
-        self.timeLapseLabel = QtGui.QLabel('Each/Total [s]')
-        self.timeLapseLabel.setAlignment(QtCore.Qt.AlignRight)
-        self.timeLapseTotalEdit = QtGui.QLineEdit('60')
-        self.timeLapseScan = 0
-        self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
-        self.timeToRec = QtGui.QLineEdit('1')
-        self.currentTime = QtGui.QLabel('0 / ')
-        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
-                                       QtCore.Qt.AlignVCenter))
-        self.currentFrame = QtGui.QLabel('0 /')
-        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
-                                        QtCore.Qt.AlignVCenter))
-        self.numExpositionsEdit = QtGui.QLineEdit('100')
-        self.tRemaining = QtGui.QLabel()
-        self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
-                                      QtCore.Qt.AlignVCenter))
-
-        self.progressBar = QtGui.QProgressBar()
-        self.progressBar.setTextVisible(False)
-
-        self.filesizeBar = QtGui.QProgressBar()
-        self.filesizeBar.setTextVisible(False)
-        self.filesizeBar.setRange(0, 2000000000)
-
-        # Layout
-        buttonWidget = QtGui.QWidget()
-        buttonGrid = QtGui.QGridLayout()
-        buttonWidget.setLayout(buttonGrid)
-        buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
-        buttonWidget.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                   QtGui.QSizePolicy.Expanding)
-        buttonGrid.addWidget(self.recButton, 0, 2)
-
-        recGrid = QtGui.QGridLayout()
-        self.setLayout(recGrid)
-
-        recGrid.addWidget(recTitle, 0, 0, 1, 3)
-        recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
-
-#        if len(self.main.cameras) > 1:
-#            self.DualCam = QtGui.QCheckBox('Two-cam rec')
-#            recGrid.addWidget(self.DualCam, 1, 3)
-#            recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-#            recGrid.addWidget(openFolderButton, 2, 3)
-#            recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
-#            recGrid.addWidget(self.formatBox, 3, 3)
-#        else:
-        recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-        recGrid.addWidget(self.openFolderButton, 2, 3)
-        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
-        recGrid.addWidget(self.formatBox, 3, 3)
-
-        recGrid.addWidget(self.specifyfile, 3, 0)
-
-        recGrid.addWidget(modeTitle, 4, 0)
-        recGrid.addWidget(self.specifyFrames, 5, 0, 1, 5)
-        recGrid.addWidget(self.currentFrame, 5, 1)
-        recGrid.addWidget(self.numExpositionsEdit, 5, 2)
-        recGrid.addWidget(self.specifyTime, 6, 0, 1, 5)
-        recGrid.addWidget(self.currentTime, 6, 1)
-        recGrid.addWidget(self.timeToRec, 6, 2)
-        recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
-#        recGrid.addWidget(self.progressBar, 5, 4, 1, 2)
-        recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
-        recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
-        recGrid.addWidget(self.timeLapseLabel, 8, 1)
-        recGrid.addWidget(self.timeLapseEdit, 8, 2)
-        recGrid.addWidget(self.timeLapseTotalEdit, 8, 3)
-        recGrid.addWidget(self.untilSTOPbtn, 9, 0, 1, 5)
-        recGrid.addWidget(buttonWidget, 10, 0, 1, 0)
-
-        recGrid.setColumnMinimumWidth(0, 70)
-
-        # Initial condition of fields and checkboxes.
-        self.writable = True
-        self.readyToRecord = False
-        self.filenameEdit.setEnabled(False)
-        self.specifyTime.setChecked(True)
-
-    def registerListener(self, controller):
-        self.openFolderButton.clicked.connect(controller.openFolder)
-        self.specifyfile.clicked.connect(controller.specFile)
-        self.snapTIFFButton.clicked.connect(controller.snapTIFF)
-        self.recButton.clicked.connect(controller.toggleREC)
-        self.specifyFrames.clicked.connect(controller.specFrames)
-        self.specifyTime.clicked.connect(controller.specTime)
-        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
-        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
-        self.untilSTOPbtn.clicked.connect(controller.untilStop)
-        self.timeToRec.textChanged.connect(controller.filesizeupdate)
-        self.numExpositionsEdit.textChanged.connect(controller.filesizeupdate)
         
 
         

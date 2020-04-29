@@ -4,12 +4,15 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
-
-from controller.TempestaErrors import InvalidChildClassError, IncompatibilityError
 import numpy as np
 import view.guitools as guitools
+from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
-
+import sys
+import subprocess
+import os
+import time
+import configparser
 
 class WidgetControllerFactory():
     """Factory class for creating a WidgetController object. Factory checks
@@ -300,37 +303,38 @@ class SettingsController(WidgetController):
             
     def getParameters(self):
         """ Take parameters from the camera Tree map. """
-        self._widget.tree.p.param('Model').setValue(self._master.cameraHelper.model)
-        self.umxpx = self._widget.tree.p.param('Pixel size').value()
+        self.model = self._master.cameraHelper.model
+        self._widget.tree.p.param('Model').setValue(self.model)
+        self.umxpx = self._widget.tree.p.param('Pixel size')
         framePar = self._widget.tree.p.param('Image frame')
         self.binPar = framePar.param('Binning')
-        self.FrameMode = framePar.param('Mode')
-        self.X0par = framePar.param('X0')
-        self.Y0par = framePar.param('Y0')
+        self.frameMode = framePar.param('Mode')
+        self.x0par = framePar.param('X0')
+        self.y0par = framePar.param('Y0')
         self.widthPar = framePar.param('Width')
         self.heightPar = framePar.param('Height')
         self.applyParam = framePar.param('Apply')
-        self.NewROIParam = framePar.param('New ROI')
-        self.AbortROIParam = framePar.param('Abort ROI')
+        self.newROIParam = framePar.param('New ROI')
+        self.abortROIParam = framePar.param('Abort ROI')
         
         timingsPar = self._widget.tree.p.param('Timings')
-        self.EffFRPar = timingsPar.param('Internal frame rate')
+        self.effFRPar = timingsPar.param('Internal frame rate')
         self.expPar = timingsPar.param('Set exposure time')
-        self.ReadoutPar = timingsPar.param('Readout time')
-        self.RealExpPar = timingsPar.param('Real exposure time')
-        self.FrameInt = timingsPar.param('Internal frame interval')
-        self.RealExpPar.setOpts(decimals=5)
+        self.readoutPar = timingsPar.param('Readout time')
+        self.realExpPar = timingsPar.param('Real exposure time')
+        self.frameInt = timingsPar.param('Internal frame interval')
+        self.realExpPar.setOpts(decimals=5)
         
         acquisParam = self._widget.tree.p.param('Acquisition mode')
         self.trigsourceparam = acquisParam.param('Trigger source')
         
         self.applyParam.sigStateChanged.connect(self.adjustFrame)
-        self.NewROIParam.sigStateChanged.connect(self.updateFrame)
-        self.AbortROIParam.sigStateChanged.connect(self.abortROI)
+        self.newROIParam.sigStateChanged.connect(self.updateFrame)
+        self.abortROIParam.sigStateChanged.connect(self.abortROI)
         self.trigsourceparam.sigValueChanged.connect(self.changeTriggerSource)
         self.expPar.sigValueChanged.connect(self.setExposure)
         self.binPar.sigValueChanged.connect(self.setBinning)
-        self.FrameMode.sigValueChanged.connect(self.updateFrame)
+        self.frameMode.sigValueChanged.connect(self.updateFrame)
         self.expPar.sigValueChanged.connect(self.setExposure)            
             
     def adjustFrame(self):
@@ -338,24 +342,21 @@ class SettingsController(WidgetController):
         binning = self.binPar.value()
         width = self.widthPar.value()
         height = self.heightPar.value()
-        X0par = self.X0par.value()
-        Y0par = self.Y0par.value()
+        X0par = self.x0par.value()
+        Y0par = self.y0par.value()
         
         # Round to closest "divisable by 4" value.
-        vpos = binning*X0par
-        hpos = binning*Y0par
-        vsize = binning*width
-        hsize = binning*height
+        hpos = binning*X0par
+        vpos = binning*Y0par
+        hsize = binning*width
+        vsize = height
         
-        # Only if the new FOV is not Full chip
-        if not (vpos == 0 and hpos == 0 and vsize == 2048 and hsize == 2048):
-            vpos = int(128 * np.ceil(vpos / 128))
-            hpos = int(128 * np.ceil(hpos / 128))
-            vsize = int(128 * np.ceil(vsize / 128))
-            hsize = int(128 * np.ceil(hsize / 128))
-            minroi = 64
-            vsize = int(min(2048 - vpos, minroi * np.ceil(vsize / minroi)))
-            hsize = int(min(2048 - hpos, minroi * np.ceil(hsize / minroi)))
+        hmodulus = 4
+        vmodulus = 4
+        vpos = int(vmodulus * np.ceil(vpos / vmodulus))
+        hpos = int(hmodulus * np.ceil(hpos / hmodulus))
+        vsize = int(vmodulus * np.ceil(vsize / vmodulus))
+        hsize = int(hmodulus * np.ceil(hsize / hmodulus))
         
         self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize))
 
@@ -364,8 +365,8 @@ class SettingsController(WidgetController):
         self._comm_channel.adjustFrame(width, height)
         self._widget.ROI.hide()
         frameStart = self._master.cameraHelper.frameStart
-        self.X0par.setValue(frameStart[0])
-        self.Y0par.setValue(frameStart[1])
+        self.x0par.setValue(frameStart[0])
+        self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(width)
         self.heightPar.setValue(height)
         self.updateTimings(self._master.cameraHelper.getTimings())
@@ -375,8 +376,8 @@ class SettingsController(WidgetController):
         frameStart = self._master.cameraHelper.frameStart
         pos = self._widget.ROI.pos()
         size = self._widget.ROI.size()
-        self.X0par.setValue(frameStart[0] + int(pos[0]))
-        self.Y0par.setValue(frameStart[1] + int(pos[1]))
+        self.x0par.setValue(frameStart[0] + int(pos[0]))
+        self.y0par.setValue(frameStart[1] + int(pos[1]))
 
         self.widthPar.setValue(int(size[0]))   # [0] is Width
         self.heightPar.setValue(int(size[1]))  # [1] is Height
@@ -386,21 +387,24 @@ class SettingsController(WidgetController):
         self._widget.toggleROI(False)
         frameStart = self._master.cameraHelper.frameStart
         shapes = self._master.cameraHelper.shapes
-        self.X0par.setValue(frameStart[0])
-        self.Y0par.setValue(frameStart[1])
+        self.x0par.setValue(frameStart[0])
+        self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(shapes[0])
         self.heightPar.setValue(shapes[1])
         
     def changeTriggerSource(self):
         """ Change trigger (Internal or External). """
-        self._master.cameraHelper.changeTriggerSource(self._widget.trigsourceparam.value())
+        self._master.cameraHelper.changeTriggerSource(self.trigsourceparam.value())
+        
+    def setTriggerParam(self, source):
+        self.trigsourceparam.setValue(source)
         
     def updateTimings(self, params):
         """ Update the real exposure times from the camera. """
-        self.RealExpPar.setValue(params[0])
-        self.FrameInt.setValue(params[1])
-        self.ReadoutPar.setValue(params[2])
-        self.EffFRPar.setValue(params[3])
+        self.realExpPar.setValue(params[0])
+        self.frameInt.setValue(params[1])
+        self.readoutPar.setValue(params[2])
+        self.effFRPar.setValue(params[3])
         
     def setExposure(self):
         """ Update a new exposure time to the camera. """
@@ -413,10 +417,9 @@ class SettingsController(WidgetController):
         
     def updateFrame(self, controller):
         """ Change the image frame size and position in the sensor. """
-        frameParam = self._widget.tree.p.param('Image frame')
-        if frameParam.param('Mode').value() == 'Custom':
-            self.X0par.setWritable(True)
-            self.Y0par.setWritable(True)
+        if self.frameMode.value() == 'Custom':
+            self.x0par.setWritable(True)
+            self.y0par.setWritable(True)
             self.widthPar.setWritable(True)
             self.heightPar.setWritable(True) 
             
@@ -432,20 +435,22 @@ class SettingsController(WidgetController):
             self.ROIchanged() 
 
         else:
-            self.X0par.setWritable(False)
-            self.Y0par.setWritable(False)
+            self.x0par.setWritable(False)
+            self.y0par.setWritable(False)
             self.widthPar.setWritable(False)
             self.heightPar.setWritable(False)
 
             # Change this to config File.
-            if frameParam.param('Mode').value() == 'Full chip':
-                self.X0par.setValue(0)
-                self.Y0par.setValue(0)
+            if self.frameMode.value() == 'Full chip':
+                self.x0par.setValue(0)
+                self.y0par.setValue(0)
                 self.widthPar.setValue(2048)
                 self.heightPar.setValue(2048)
                
                 self.adjustFrame()
-        
+                
+    def getCamAttrs(self):
+        return  {'Camera_pixel_size': self.umxpx.value(), 'Camera_model': self.model, 'Camera_binning': self.binPar.value(), 'FOV_mode': self.frameMode.value(), 'Camera_exposure_time': self.realExpPar.value(), 'Camera_ROI': [self.x0par.value(), self.y0par.value(), self.widthPar.value(), self.heightPar.value()] }
   
 class ViewController(WidgetController): 
     """ Linked to ViewWidget."""
@@ -515,20 +520,203 @@ class ImageController(LiveUpdatedController):
     def crosshairToggle(self):
         """ Shows or hides crosshair. """
         self._widget.crosshair.toggle()
-      
+     
+        
+class RecorderController(WidgetController): 
+    """ Linked to RecordingWidget. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.recMode = 0
+        
+    def openFolder(self):
+        """ Opens current folder in File Explorer. """
+        try:
+            if sys.platform == 'darwin':
+                subprocess.check_call(['open', '', self._widget.folderEdit.text()])
+            elif sys.platform == 'linux':
+                subprocess.check_call(
+                    ['gnome-open', '', self._widget.folderEdit.text()])
+            elif sys.platform == 'win32':
+                os.startfile(self._widget.folderEdit.text())
+
+        except FileNotFoundError:
+            if sys.platform == 'darwin':
+                subprocess.check_call(['open', '', self._widget.dataDir])
+            elif sys.platform == 'linux':
+                subprocess.check_call(['gnome-open', '', self._widget.dataDir])
+            elif sys.platform == 'win32':
+                os.startfile(self._widget.dataDir)
+                
+    def specFile(self):
+        """ Enables the ability to type a specific filename for the data to . """
+        if self._widget.specifyfile.checkState():
+            self._widget.filenameEdit.setEnabled(True)
+            self._widget.filenameEdit.setText('Filename')
+        else:
+            self._widget.filenameEdit.setEnabled(False)
+            self._widget.filenameEdit.setText('Current time')
+            
+    def snap(self):
+        """ Take a snap and save it to a .tiff file. """
+        folder = self._widget.folderEdit.text()
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        time.sleep(0.01)
+        name = os.path.join(folder, self.getFileName()) + '_snap.hdf5'
+        savename = guitools.getUniqueName(name)
+        attrs = self._comm_channel.getCamAttrs()
+        self._master.recordingHelper.snap(savename, attrs)
+        
+    def toggleREC(self):
+        """ Start or end recording. """
+        if self._widget.recButton.isChecked():
+            folder = self._widget.folderEdit.text()
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+            time.sleep(0.01)
+            name = os.path.join(folder, self.getFileName()) + '_rec.hdf5'
+            self.savename = guitools.getUniqueName(name)
+            self.attrs = self._comm_channel.getCamAttrs()
+            scan = self._comm_channel.getScanAttrs()
+            self.attrs.update(scan)
+            if self.recMode == 1:
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, frames=int(self._widget.numExpositionsEdit.text()))
+            elif self.recMode == 2:
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, time=float(self._widget.timeToRec.text()))
+            elif self.recMode == 3:
+                self._comm_channel.prepareScan()
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+            elif self.recMode == 4:
+                self._comm_channel.prepareScan()
+                self.lapseTotal = int(self._widget.timeLapseEdit.text())
+                self.lapseCurrent = 0
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+            elif self.recMode == 5:
+                self._comm_channel.prepareScan()
+                self.dimlapseTotal = int(self._widget.totalSlices.text())
+                self.dimlapseCurrent = 0
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+        else:
+            if self.recMode == 3:
+                self._comm_channel.endScan()
+                self._master.recordingHelper.endRecording()
+            elif self.recMode == 4:
+                if self.lapseCurrent < self.lapseTotal:
+                    self.lapseCurrent += 1
+                    self._widget.recButton.setChecked(True)
+                    self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
+                    self.timer = QtCore.QTimer(singleShot=True)
+                    self.timer.timeout.connect(lambda: self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs))
+                    self.timer.start(int(float(self._widget.freqEdit.text())*1000))
+                else:
+                    self.lapseCurrent = 0
+                    self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
+                    self._master.recordingHelper.endRecording() 
+            elif self.recMode == 5:
+                if self.dimlapseCurrent < self.dimlapseTotal:
+                    self.dimlapseCurrent += 1
+                    self._widget.recButton.setChecked(True)
+                    self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
+                    self._comm_channel.moveZstage(float(self._widget.stepSizeEdit.text()))
+                    self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                else:
+                    self.dimlapseCurrent = 0
+                    self._comm_channel.moveZstage(-self.dimlapseTotal*float(self._widget.stepSizeEdit.text()))
+                    self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
+                    self._master.recordingHelper.endRecording() 
+
+    def endRecording(self):
+        self._widget.recButton.click()
+        self._widget.currentFrame.setText('0 / ')
+        
+    def updateRecFrameNumber(self, f):
+        self._widget.currentFrame.setText(str(f) +  ' /')
+        
+    def updateRecTime(self, t):
+        self._widget.currentTime.setText(str(t) + ' /')
+        
+    def specFrames(self):
+        self._widget.numExpositionsEdit.setEnabled(True)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.totalSlices.setEnabled(False)
+        self._widget.freqEdit.setEnabled(False)
+        self._widget.stepSizeEdit.setEnabled(False)
+        self.recMode = 1
+        
+    def specTime(self):
+        self._widget.numExpositionsEdit.setEnabled(False)
+        self._widget.timeToRec.setEnabled(True)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.totalSlices.setEnabled(False)
+        self._widget.freqEdit.setEnabled(False)
+        self._widget.stepSizeEdit.setEnabled(False)
+        self.recMode = 2
+        
+    def recScanOnce(self):
+        self._widget.numExpositionsEdit.setEnabled(False)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.totalSlices.setEnabled(False)
+        self._widget.freqEdit.setEnabled(False)
+        self._widget.stepSizeEdit.setEnabled(False)
+        self.recMode = 3
+        
+    def recScanLapse(self):
+        self._widget.numExpositionsEdit.setEnabled(False)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(True)
+        self._widget.totalSlices.setEnabled(False)
+        self._widget.freqEdit.setEnabled(True)
+        self._widget.stepSizeEdit.setEnabled(False)
+        self.recMode = 4
+        
+    def dimLapse(self):
+        self._widget.totalSlices.setEnabled(True)
+        self._widget.numExpositionsEdit.setEnabled(False)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.freqEdit.setEnabled(False)
+        self._widget.stepSizeEdit.setEnabled(True)
+        self.recMode = 5
+        
+    def untilStop(self):
+        self._widget.numExpositionsEdit.setEnabled(False)
+        self._widget.timeToRec.setEnabled(False)
+        self._widget.timeLapseEdit.setEnabled(False)
+        self._widget.totalSlices.setEnabled(False)
+        self._widget.freqEdit.setEnabled(False)
+        self._widget.stepSizeEdit.setEnabled(False)
+        self.recMode = 6
+        
+    def getFileName(self):
+        """ Gets the filename of the data to save. """
+        if self._widget.specifyfile.checkState():
+            filename = self._widget.filenameEdit.text()
+
+        else:
+            filename = time.strftime('%Hh%Mm%Ss')
+
+        return filename
 
 # Hardware control
-        
 
 class PositionerController(WidgetController): 
     """ Linked to PositionerWidget."""
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stagePos = [0, 0, 0]
+        self.convFactors = [1.5870, 1.5907, 10]
+        self.targets = ['StageX', 'StageY', 'StageZ']
+        
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.moveStage(axis, dist)
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(newPos)
+        self.stagePos[axis] += dist
+        self._master.nidaqHelper.setAnalog(self.targets[axis], self.stagePos[axis]/self.convFactors[axis])
+        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
         
         getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
+        
 
 class LaserController(WidgetController): 
     """ Linked to LaserWidget."""
@@ -562,19 +750,22 @@ class LaserController(WidgetController):
             
     def updateDigitalPowers(self, lasers):
         """ Update the powers if the digital mod is on. """
-        self.digMod = self.digModule.DigitalControlButton.isChecked()
+        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
         if self.digMod:
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
-                self._master.changePower(self._widget.digModule.powers[laser], laser)
+                self._master.changePower(int(self._widget.digModule.powers[laser].text()), laser)
             
     def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
-        self.digMod = self.digModule.DigitalControlButton.isChecked()
-        if self.digMod:
-            for i in np.arange(len(lasers)):
-                laser = lasers[i]
-                self._master.digModule(True, self._widget.digModule.powers[laser], laser)
+        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
+        for i in np.arange(len(lasers)):
+            laser = lasers[i]
+            self._master.digitalMod(self.digMod, int(self._widget.digModule.powers[laser].text()), laser)
+    
+    def setDigitalButton(self, b):
+        self._widget.digModule.DigitalControlButton.setChecked(b)
+        self.GlobalDigitalMod([405, 488])
         
 
 # Scan control
@@ -589,9 +780,9 @@ class ScanController(SuperScanController): # TODO
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
-        self._TTLParameterDict = {'Targets[x]': ['405', '488'], \
-                  'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
-                  'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
+        self._TTLParameterDict = {'Targets[x]': ['405', '473', '488'], \
+                  'TTLStarts[x,y]': [[0.0012], [0.002], [0]], \
+                  'TTLEnds[x,y]': [[0.0015], [0.0025], [0]], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000}
         print('Init Scan Controller')
@@ -603,30 +794,95 @@ class ScanController(SuperScanController): # TODO
         
         return {'stageParameterList': stageParameterList,\
                 'TTLParameterList': TTLParameterList}
+           
+    def getScanAttrs(self):      
+        stage = self._stageParameterDict
+        ttl = self._TTLParameterDict
+        stage['Targets[3]'] = np.string_(stage['Targets[3]'])
+        ttl['Targets[x]'] = np.string_(ttl['Targets[x]'])
     
+        attrs = self._stageParameterDict
+        attrs.update(self._TTLParameterDict)
+        return attrs
+        
     def saveScan(self):
-        print('save scan')
+        self.getParameters()
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        config['pxParValues'] = self._widget.pxParValues
+        config['scanParValues'] = self._widget.scanParValues
+        config['Modes'] = {'scanMode': self._widget.scanMode.currentText(),
+                           'scan_or_not': self._widget.scanRadio.isChecked()}
+        fileName = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan',
+                                                     self._widget.scanDir)
+        if fileName == '':
+            return
+
+        with open(fileName, 'w') as configfile:
+            config.write(configfile)
+            
     def loadScan(self):
-        print('load scan')
-    def scanParameterChanged(self, scanParam):
-        print('Parameter' + scanParam + 'changed')
-    def setScanMode(self, scanMode):
-        print('Scan mode set to ' + scanMode)
-    def setPrimScanDim(self, dim):
-        print('Primary scan dimension set to ' + dim)
-    def setScanOrNot(self, b):
-        if b:
-            print('Scan')
+        config = configparser.ConfigParser()
+        config.optionxform = str
+    
+        fileName = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan',
+                                                     self._widget.scanDir)
+        if fileName == '':
+            return
+    
+        config.read(fileName)
+    
+        for key in self._widget.pxParValues:
+            self._widget.pxParValues[key] = float(config._sections['pxParValues'][key])
+            self._widget.pxParameters[key].setText(
+                str(1000*float(config._sections['pxParValues'][key])))
+    
+        for key in self._widget.scanParValues:
+            value = config._sections['scanParValues'][key]
+            self._widget.scanParValues[key] = float(value)
+            if key == 'seqTime':
+                self._widget.scanPar[key].setText(
+                    str(1000*float(config._sections['scanParValues'][key])))
+            else:
+                self._widget.scanPar[key].setText(
+                    config._sections['scanParValues'][key])
+    
+        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
+        self.setScanOrNot(scanOrNot)
+        if scanOrNot:
+            self._widget.scanRadio.setChecked(True)
         else:
-            print('Not Scan')
+            self._widget.contLaserPulsesRadio.setChecked(True)
+    
+        scanMode = config._sections['Modes']['scanMode']
+        self.setScanMode(scanMode)
+        self._widget.scanMode.setCurrentIndex(self._widget.scanMode.findText(scanMode))
+    
+        #self._widget.updateScan(self._widget.allDevices)
+        #self._widget.graph.update()
+
     def scanOrAbort(self):
-        print('Scan or Abort')
+        self.runScan()
     def previewScan(self):
         print('previewScan')
-    def getSampleRate(self):
-        return 10000
     def runScan(self):
-        self._master.scanHelper.runScan(self.parameter_dictionary)
+        self.getParameters()
+        signal_dictionary = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
+        self._master.nidaqHelper.runScan(signal_dictionary)
+     
+    def getParameters(self):
+        self._stageParameterDict['Sizes[3]'] = (float(self._widget.sizeXPar.text()), float(self._widget.sizeYPar.text()), float(self._widget.sizeZPar.text()))
+        self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.stepSizeXPar.text()), float(self._widget.stepSizeYPar.text()), float(self._widget.stepSizeZPar.text()))
+        for i in range(len(self._TTLParameterDict['Targets[x]'])):
+            self._TTLParameterDict['TTLStarts[x,y]'][i] = [self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]]
+            self._TTLParameterDict['TTLEnds[x,y]'][i] = [self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]]
+        self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
+        self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
+        
+    def setScanButton(self, b):
+        self._widget.scanButton.setChecked(b)
+        self.scanOrAbort()
     
 class MultipleScanController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):
@@ -655,30 +911,3 @@ class MultipleScanController(WidgetController): # TODO
 
 
         
-class RecorderController(WidgetController): # TODO
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Recording Controller init')
-    def openFolder(self):
-        print('Open folder recorder')
-    def specFile(self):
-        print('Spec file')
-    def snapTIFF(self):
-        print('Snap TIFF')
-    def toggleREC(self):
-        if self._widget.recButton.isChecked():
-            self._master.recordingHelper.startRecording()
-        else:
-            self._master.recordingHelper.endRecording()
-    def specFrames(self):
-        print('Spec Frames')
-    def specTime(self):
-        print('Spec Time')
-    def recScanOnce(self):
-        print('Scan once')
-    def recScanLapse(self):
-        print('Scan lapse')
-    def untilStop(self):
-        print('Rec till stop')
-    def filesizeupdate(self):
-        print('File size update')

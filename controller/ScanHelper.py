@@ -77,7 +77,7 @@ class ScanHelper(SuperScanHelper):
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
         TTLParameters['Sample_rate']
         if not TTLZeroPadSamples.is_integer():
-            print('WARNIGN: Non-integer number of return sampels, rounding up')
+            print('WARNING: Non-integer number of return sampels, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():

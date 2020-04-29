@@ -7,6 +7,7 @@ Created on Tue Mar 24 16:41:57 2020
 from controller.CameraHelper import CameraHelper
 from controller.ScanHelper import ScanHelper
 from controller.RecordingHelper import RecordingHelper
+from controller.NidaqHelper import NidaqHelper
 from lantz import Q_
 
 class MasterController():
@@ -14,16 +15,12 @@ class MasterController():
     def __init__(self, model, comm_channel):
         print('init master controller')
         self.__model = model
-        self.stagePos = [0, 0, 0]
         self.__comm_channel = comm_channel
         self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
         self.recordingHelper = RecordingHelper(self.__comm_channel, self.cameraHelper)
+        self.nidaqHelper = NidaqHelper()
         self.scanHelper = ScanHelper()  #Make sure compatibility 
-
-
-    def moveStage(self, axis, dist):
-        self.stagePos[axis] += dist
-        return self.stagePos[axis]
+        
         
     def toggleLaser(self, enable, laser):
         if enable:

@@ -72,7 +72,6 @@ class ScanHelper(SuperScanHelper):
         
         TTLCycleSignalsDict = \
         self.__TTLCycleDesigner.make_signal(TTLParameters)
-        
         #Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
         TTLParameters['Sample_rate']
@@ -82,9 +81,8 @@ class ScanHelper(SuperScanHelper):
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
             signal = np.tile(signal, nrOfFrames)
-            signal = np.append(signal, np.zeros(TTLZeroPadSamples))
-            TTLCycleSignalsDict[target] = signal
-            
+            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
+            TTLCycleSignalsDict[target] = signal   
         return {'stageScanSignalsDict': stageScanSignalsDict, \
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 

@@ -166,7 +166,7 @@ class BetaStageScanDesigner(SignalDesigner):
         if not returnFrames:
             return sig_dict
         else:
-            return sig_dict, fast_axis_positions*middle_axis_positions*slow_axis_positions
+            return sig_dict, [fast_axis_positions, middle_axis_positions, slow_axis_positions]
         
     def __makeRamp(self, start, end, samples):
         return np.linspace(start, end, num=samples)

@@ -99,5 +99,6 @@ class CommunicationChannel():
         self.__main.laserController.setDigitalButton(False)
         self.__main.scanController.setScanButton(False)
         
+        
     def moveZstage(self, step):
         self.__main.positionerController.move(2, step)

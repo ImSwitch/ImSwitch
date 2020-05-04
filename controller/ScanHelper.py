@@ -9,7 +9,7 @@ Created on Tue Apr  7 17:00:05 2020
 #except ModuleNotFoundError:
 from controller.SignalDesigner import SignalDesignerFactory
     
-from controller.TempestaErrors import IncompatibilityError
+from TempestaErrors import IncompatibilityError
 import numpy as np
 
 class ScanHelperFactory():
@@ -66,23 +66,37 @@ class ScanHelper(SuperScanHelper):
     
     def make_full_scan(self, stageScanParameters, TTLParameters):
         
-        stageScanSignalsDict, nrOfFrames = \
+        stageScanSignalsDict, positions = \
         self.__stageScanDesigner.make_signal(stageScanParameters, \
                                              returnFrames=True)
-        
+        print(stageScanSignalsDict['StageX'].shape)
+
         TTLCycleSignalsDict = \
         self.__TTLCycleDesigner.make_signal(TTLParameters)
+<<<<<<< HEAD
+        print(TTLCycleSignalsDict['405'].shape)
+=======
+>>>>>>> 260a7b2d5691ef646933af19c1eba0197145533b
         #Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
         TTLParameters['Sample_rate']
+        print(TTLZeroPadSamples)
         if not TTLZeroPadSamples.is_integer():
             print('WARNING: Non-integer number of return sampels, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
+<<<<<<< HEAD
+            signal = np.tile(signal, positions[0])
+            signal = np.append(signal, np.zeros(TTLZeroPadSamples))
+            signal = np.tile(signal, positions[1]*positions[2])
+            TTLCycleSignalsDict[target] = signal
+            
+=======
             signal = np.tile(signal, nrOfFrames)
             signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
             TTLCycleSignalsDict[target] = signal   
+>>>>>>> 260a7b2d5691ef646933af19c1eba0197145533b
         return {'stageScanSignalsDict': stageScanSignalsDict, \
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 
@@ -92,9 +106,10 @@ class ScanHelper(SuperScanHelper):
 """ Developement testing """            
 if __name__ == '__main__':
     print('Running main')
-
+    import matplotlib.pyplot as plt
+    
     Stageparameters = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
-                  'Sizes[3]':[5,5,0], \
+                  'Sizes[3]':[5,5,5], \
                   'Step_sizes[3]': [1,1,1], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
@@ -108,6 +123,9 @@ if __name__ == '__main__':
     SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
     sh = ScanHelperFactory('ScanHelper')
     fullsig = sh.make_full_scan(Stageparameters, TTLparameters)
+    plt.plot(fullsig['stageScanSignalsDict']['StageX'])
+    plt.plot(fullsig['stageScanSignalsDict']['StageY'])
+    plt.plot(fullsig['stageScanSignalsDict']['StageZ'])
 
     """
     parameters = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \

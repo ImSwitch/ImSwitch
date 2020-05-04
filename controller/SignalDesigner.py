@@ -71,6 +71,7 @@ class SignalDesigner():
 class BetaStageScanDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.convFactors = {'X': 1.5870,'Y': 1.5907, 'Z': 10}
         
         self._expectedParameters = ['Targets[3]',\
                                      'Sizes[3]', \
@@ -88,7 +89,7 @@ class BetaStageScanDesigner(SignalDesigner):
             return None
         #Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
-        [parameter_dict['Sizes[3]'][i] for i in range(3)]
+        [(parameter_dict['Sizes[3]'][i]/self.convFactors[parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
 
         #Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
@@ -107,7 +108,7 @@ class BetaStageScanDesigner(SignalDesigner):
             print('WARNIGN: Non-integer number of sequence sampels, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
-            print('WARNIGN: Non-integer number of return sampels, rounding up')
+            print('WARNING: Non-integer number of return sampels, rounding up')
         returnSamples = np.int(np.ceil(returnSamples))
         
         #Make fast axis signal
@@ -119,7 +120,6 @@ class BetaStageScanDesigner(SignalDesigner):
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
         
         fastAxisSignal = np.tile(fullLineSignal, middle_axis_positions*slow_axis_positions)
-        print(fastAxisSignal)
         #Make middle axis signal
         colSamples = middle_axis_positions * lineSamples
         colValues = self.__makeRamp(0, middle_axis_size, middle_axis_positions)
@@ -162,7 +162,7 @@ class BetaStageScanDesigner(SignalDesigner):
         sig_dict = {parameter_dict['Targets[3]'][0]: fastAxisSignal, \
                     parameter_dict['Targets[3]'][1]: middleAxisSignal, \
                     parameter_dict['Targets[3]'][2]: slowAxisSignal}
-        
+
         if not returnFrames:
             return sig_dict
         else:

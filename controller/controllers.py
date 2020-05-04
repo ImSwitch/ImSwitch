@@ -774,15 +774,16 @@ class LaserController(WidgetController):
 class ScanController(SuperScanController): # TODO
     def __init__(self, comm_channel, master, widget):
         super().__init__(comm_channel, master, widget)
+        
         self._stageParameterDict = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
                   'Sizes[3]':[5,5,0], \
                   'Step_sizes[3]': [1,1,1], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
-        self._TTLParameterDict = {'Targets[x]': ['405', '473', '488'], \
-                  'TTLStarts[x,y]': [[0.0012], [0.002], [0]], \
-                  'TTLEnds[x,y]': [[0.0015], [0.0025], [0]], \
+        self._TTLParameterDict = {'Targets[x]': ['405', '473', '488', 'CAM'], \
+                  'TTLStarts[x,y]': [[0.0012], [0.002], [0], [0]], \
+                  'TTLEnds[x,y]': [[0.0015], [0.0025], [0], [0]], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000}
         print('Init Scan Controller')
@@ -810,10 +811,9 @@ class ScanController(SuperScanController): # TODO
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        config['pxParValues'] = self._widget.pxParValues
-        config['scanParValues'] = self._widget.scanParValues
-        config['Modes'] = {'scanMode': self._widget.scanMode.currentText(),
-                           'scan_or_not': self._widget.scanRadio.isChecked()}
+        config['stageParameterDict'] = self._stageParameterDict
+        config['TTLParameterDict'] = self._TTLParameterDict
+        config['Modes'] = {'scan_or_not': self._widget.scanRadio.isChecked()}
         fileName = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan',
                                                      self._widget.scanDir)
         if fileName == '':
@@ -833,50 +833,72 @@ class ScanController(SuperScanController): # TODO
     
         config.read(fileName)
     
-        for key in self._widget.pxParValues:
-            self._widget.pxParValues[key] = float(config._sections['pxParValues'][key])
-            self._widget.pxParameters[key].setText(
-                str(1000*float(config._sections['pxParValues'][key])))
+        for key in self._stageParameterDict:
+            self._stageParameterDict[key] = eval(config._sections['stageParameterDict'][key])
     
-        for key in self._widget.scanParValues:
-            value = config._sections['scanParValues'][key]
-            self._widget.scanParValues[key] = float(value)
-            if key == 'seqTime':
-                self._widget.scanPar[key].setText(
-                    str(1000*float(config._sections['scanParValues'][key])))
-            else:
-                self._widget.scanPar[key].setText(
-                    config._sections['scanParValues'][key])
+        for key in self._TTLParameterDict:
+            self._TTLParameterDict[key] = eval(config._sections['TTLParameterDict'][key])
     
         scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
-        self.setScanOrNot(scanOrNot)
+        
+        
         if scanOrNot:
             self._widget.scanRadio.setChecked(True)
         else:
             self._widget.contLaserPulsesRadio.setChecked(True)
-    
-        scanMode = config._sections['Modes']['scanMode']
-        self.setScanMode(scanMode)
-        self._widget.scanMode.setCurrentIndex(self._widget.scanMode.findText(scanMode))
-    
+
+        self.setParameters()
         #self._widget.updateScan(self._widget.allDevices)
         #self._widget.graph.update()
+        
+    def setParameters(self):
+        primDim = self._stageParameterDict['Targets[3]'][0].split('_')[1]
+        secDim = self._stageParameterDict['Targets[3]'][1].split('_')[1]
+        thirdDim = self._stageParameterDict['Targets[3]'][2].split('_')[1]
+        
+        axis = {'X' : 0, 'Y' : 1, 'Z' : 2}
 
+        self._widget.primScanDim.setCurrentIndex(axis[primDim])
+        self._widget.secScanDim.setCurrentIndex(axis[secDim])
+        self._widget.thirdScanDim.setCurrentIndex(axis[thirdDim])
+        
+        self._widget.scanPar['size' + primDim].setText(str(round(self._stageParameterDict['Sizes[3]'][0], 3)))
+        self._widget.scanPar['size' + secDim].setText(str(round(self._stageParameterDict['Sizes[3]'][1], 3)))
+        self._widget.scanPar['size' + thirdDim].setText(str(round(self._stageParameterDict['Sizes[3]'][2], 3)))
+        
+        self._widget.scanPar['stepSize' + primDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][0], 3))) 
+        self._widget.scanPar['stepSize' + secDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][1], 3))) 
+        self._widget.scanPar['stepSize' + thirdDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][2], 3))) 
+
+        for i in range(len(self._TTLParameterDict['Targets[x]'])):
+            self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].setText(str(round(self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3)))
+            self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].setText(str(round(self._TTLParameterDict['TTLEnds[x,y]'][i][0], 3)))
+          
+        self._widget.seqTimePar.setText(str(round(float(self._TTLParameterDict['Sequence_time_seconds'])*1000, 3)))
+        
     def scanOrAbort(self):
         self.runScan()
     def previewScan(self):
         print('previewScan')
     def runScan(self):
         self.getParameters()
-        signal_dictionary = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
-        self._master.nidaqHelper.runScan(signal_dictionary)
+        signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
+        self._master.nidaqHelper.runScan(signalDic)
+        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
+        
+    def scanDone(self):
+        print('scan Done!')
      
     def getParameters(self):
-        self._stageParameterDict['Sizes[3]'] = (float(self._widget.sizeXPar.text()), float(self._widget.sizeYPar.text()), float(self._widget.sizeZPar.text()))
-        self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.stepSizeXPar.text()), float(self._widget.stepSizeYPar.text()), float(self._widget.stepSizeZPar.text()))
+        primDim = self._widget.primScanDim.currentText()
+        secDim = self._widget.secScanDim.currentText()
+        thirdDim = self._widget.thirdScanDim.currentText()
+        self._stageParameterDict['Targets[3]'] = ('Stage_'+primDim, 'Stage_'+secDim, 'Stage_'+thirdDim)
+        self._stageParameterDict['Sizes[3]'] = (float(self._widget.scanPar['size' + primDim].text()), float(self._widget.scanPar['size' + secDim].text()), float(self._widget.scanPar['size' + thirdDim].text()))
+        self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.scanPar['stepSize' + primDim].text()), float(self._widget.scanPar['stepSize' + secDim].text()), float(self._widget.scanPar['stepSize' + thirdDim].text()))
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
-            self._TTLParameterDict['TTLStarts[x,y]'][i] = [self._widget.pxParValues['sta' + self._TTLParameterDict['Targets[x]'][i]]]
-            self._TTLParameterDict['TTLEnds[x,y]'][i] = [self._widget.pxParValues['end' + self._TTLParameterDict['Targets[x]'][i]]]
+            self._TTLParameterDict['TTLStarts[x,y]'][i] = [float(self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].text())]
+            self._TTLParameterDict['TTLEnds[x,y]'][i] = [float(self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].text())]
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         

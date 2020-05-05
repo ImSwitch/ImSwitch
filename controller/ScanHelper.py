@@ -69,28 +69,21 @@ class ScanHelper(SuperScanHelper):
         stageScanSignalsDict, positions = \
         self.__stageScanDesigner.make_signal(stageScanParameters, \
                                              returnFrames=True)
-        print(stageScanSignalsDict['StageX'].shape)
 
         TTLCycleSignalsDict = \
         self.__TTLCycleDesigner.make_signal(TTLParameters)
         #Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
         TTLParameters['Sample_rate']
-        print(TTLZeroPadSamples)
         if not TTLZeroPadSamples.is_integer():
             print('WARNING: Non-integer number of return sampels, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
-#<<<<<<< HEAD
             signal = np.tile(signal, positions[0])
-            signal = np.append(signal, np.zeros(TTLZeroPadSamples))
+            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
             signal = np.tile(signal, positions[1]*positions[2])
             TTLCycleSignalsDict[target] = signal
-            
-#=======
-#            signal = np.tile(signal, nrOfFrames)
-#            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
 
         return {'stageScanSignalsDict': stageScanSignalsDict, \
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}

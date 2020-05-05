@@ -15,8 +15,8 @@ class NidaqHelper(QtCore.QObject):
     def __init__(self, deviceInfo = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if deviceInfo is None:
-            self.__deviceInfo = {'488': {'AOChan': None, 'DOLine': 0},
-                               '405': {'AOChan': None, 'DOLine': 1},
+            self.__deviceInfo = {'405': {'AOChan': None, 'DOLine': 0},
+                               '488': {'AOChan': None, 'DOLine': 1},
                                '473': {'AOChan': None, 'DOLine': 2},
                                'CAM': {'AOChan': None, 'DOLine': 3},
                                'Stage_X': {'AOChan': 0, 'DOLine': None},
@@ -80,7 +80,7 @@ class NidaqHelper(QtCore.QObject):
                                                '100kHzTimebase', \
                                                    100000)
             signal = np.array([enable])
-            print(dotask.write(signal, auto_start=True))
+            dotask.write(signal, auto_start=True)
             dotask.wait_until_done()
             dotask.stop()
             dotask.close()
@@ -115,24 +115,25 @@ class NidaqHelper(QtCore.QObject):
         AOTargetChanPairs = self.__makeSortedTargets('AOChan')
         
         AOsignals = []
-        
+        AOchannels = []
+
         for pair in AOTargetChanPairs:
             signal = stageDic[pair[0]]
+            channel = pair[1]
             AOsignals.append(signal)
+            AOchannels.append(channel)
     
         DOTargetChanPairs = self.__makeSortedTargets('DOLine')
         
         DOsignals = []
-        
+        DOlines = []
+
         for pair in DOTargetChanPairs:
             signal = ttlDic[pair[0]]
+            line = pair[1]
             DOsignals.append(signal)
+            DOlines.append(line)
             
-        AOchannels = []
-        for device in [*stageDic]:
-            channel = self.__deviceInfo[device]['AOChan']
-            if channel is not None:
-                AOchannels.append(channel)
         
         sampsInScan = len(AOsignals[0])
         acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
@@ -140,19 +141,13 @@ class NidaqHelper(QtCore.QObject):
                                  r'100kHzTimebase', 100000, min_val=-10, max_val=10, sampsInScan = sampsInScan)
         self.waiter = WaitThread(self.aoTask)
         self.waiter.waitdoneSignal.connect(self.scanDone)
-        
-        DOlines = []
-        for device in [*ttlDic]:
-            line = self.__deviceInfo[device]['DOLine']
-            if line is not None: 
-                DOlines.append(line)
-        
-        acquisitionTypeContinuous = nidaqmx.constants.AcquisitionType.CONTINUOUS
-        self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeContinuous, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
+
+        self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
         
 
         self.aoTask.write(np.array(AOsignals), auto_start=False)
         self.doTask.write(np.array(DOsignals), auto_start=False)
+
         
         self.doTask.start()
         self.aoTask.start()

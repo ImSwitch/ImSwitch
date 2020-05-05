@@ -88,6 +88,7 @@ class BetaStageScanDesigner(SignalDesigner):
             print('Parameters seem incompatible, this error should not be \
                   since this should be checked at program start-up')
             return None
+
         # Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
         [(parameter_dict['Sizes[3]'][i]/self.convFactors[parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
@@ -110,7 +111,7 @@ class BetaStageScanDesigner(SignalDesigner):
         returnSamples = \
         parameter_dict['Return_time_seconds'] * parameter_dict['Sample_rate']
         if not sequenceSamples.is_integer():
-            print('WARNIGN: Non-integer number of sequence sampels, rounding up')
+            print('WARNING: Non-integer number of sequence sampels, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
             print('WARNING: Non-integer number of return sampels, rounding up')

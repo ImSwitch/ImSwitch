@@ -155,6 +155,7 @@ class NidaqHelper(QtCore.QObject):
         self.waiter.start()
         
     def scanDone(self):
+        self.waiter.terminate()
         self.aoTask.stop()
         self.aoTask.close()
         self.doTask.stop()
@@ -170,13 +171,8 @@ class WaitThread(QtCore.QThread):
     def __init__(self, task):
         super().__init__()
         self.task = task
-        self.wait = True
 
     def run(self):
-        if self.wait:
-            self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
-        self.wait = True
+        self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
         self.waitdoneSignal.emit()
-
-    def stop(self):
-        self.wait = False        
+     

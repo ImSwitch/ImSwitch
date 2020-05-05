@@ -80,9 +80,8 @@ class ScanHelper(SuperScanHelper):
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
-            signal = np.tile(signal, positions[0])
+            signal = np.tile(signal,  positions[0]*positions[1]*positions[2])
             signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype = 'bool'))
-            signal = np.tile(signal, positions[1]*positions[2])
             TTLCycleSignalsDict[target] = signal
 
         return {'stageScanSignalsDict': stageScanSignalsDict, \

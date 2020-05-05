@@ -624,7 +624,11 @@ class RecorderController(WidgetController):
                     self._comm_channel.moveZstage(-self.dimlapseTotal*float(self._widget.stepSizeEdit.text()))
                     self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording() 
-
+                    
+    def scanDone(self):
+        self._widget.recButton.setChecked(False)
+        self.toggleREC()
+        
     def endRecording(self):
         self._widget.recButton.click()
         self._widget.currentFrame.setText('0 / ')
@@ -890,7 +894,7 @@ class ScanController(SuperScanController): # TODO
         self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
         
     def scanDone(self):
-        print('scan Done!')
+        self._comm_channel.scanDone()
      
     def getParameters(self):
         primDim = self._widget.primScanDim.currentText()

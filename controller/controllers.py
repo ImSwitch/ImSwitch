@@ -901,7 +901,6 @@ class ScanController(SuperScanController): # TODO
         self._stageParameterDict['Step_sizes[3]'] = (float(self._widget.scanPar['stepSize' + primDim].text()), float(self._widget.scanPar['stepSize' + secDim].text()), float(self._widget.scanPar['stepSize' + thirdDim].text()))
         start = self._comm_channel.getStartPos()
         self._stageParameterDict['Start[3]'] = (start[primDim], start[secDim], start[thirdDim])   
-        print(self._stageParameterDict['Start[3]'])
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
             self._TTLParameterDict['TTLStarts[x,y]'][i] = [float(self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].text())]
             self._TTLParameterDict['TTLEnds[x,y]'][i] = [float(self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].text())]

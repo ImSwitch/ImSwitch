@@ -100,6 +100,7 @@ class BetaStageScanDesigner(SignalDesigner):
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
         [(parameter_dict['Start[3]'][i]/self.convFactors[parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
          
+        
         fast_axis_positions =  1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))

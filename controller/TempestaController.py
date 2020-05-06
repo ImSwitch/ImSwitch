@@ -90,16 +90,15 @@ class CommunicationChannel():
         return self.__main.scanController.getScanAttrs()
         
     def prepareScan(self):
-        pass
-        #self.__main.settingsController.setTriggerParam('External "frame-trigger"')
-        #self.__main.laserController.setDigitalButton(True)
-        #self.__main.scanController.setScanButton(True)
+        self.__main.settingsController.setTriggerParam('External "frame-trigger"')
+        self.__main.laserController.setDigitalButton(True)
+        self.__main.scanController.setScanButton(True)
         
     def endScan(self):
-        pass
-        #self.__main.settingsController.setTriggerParam('Internal trigger')
         #self.__main.laserController.setDigitalButton(False)
-        #self.__main.scanController.setScanButton(False)
+        self.__main.scanController.setScanButton(False)
+        self.__main.recorderController.scanDone()
+        #self.__main.settingsController.setTriggerParam('Internal trigger')
     
     def scanDone(self):
         self.__main.recorderController.scanDone()

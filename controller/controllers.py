@@ -527,7 +527,9 @@ class RecorderController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recMode = 0
-        
+
+    def isRecording(self):
+        return self._widget.recButton.isChecked()
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         try:
@@ -584,8 +586,8 @@ class RecorderController(WidgetController):
             elif self.recMode == 2:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, time=float(self._widget.timeToRec.text()))
             elif self.recMode == 3:
-                self._comm_channel.prepareScan()
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._comm_channel.prepareScan()
             elif self.recMode == 4:
                 self._comm_channel.prepareScan()
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
@@ -596,10 +598,18 @@ class RecorderController(WidgetController):
                 self.dimlapseTotal = int(self._widget.totalSlices.text())
                 self.dimlapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+            else:
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)      
         else:
-            if self.recMode == 3:
+            self._master.recordingHelper.endRecording() 
+        
+                    
+    def scanDone(self):
+        if self._widget.recButton.isChecked(): 
+            if self.recMode == 3:    
+                self._widget.recButton.setChecked(False)
+                self._master.recordingHelper.endRecording() 
                 self._comm_channel.endScan()
-                self._master.recordingHelper.endRecording()
             elif self.recMode == 4:
                 if self.lapseCurrent < self.lapseTotal:
                     self.lapseCurrent += 1
@@ -609,6 +619,7 @@ class RecorderController(WidgetController):
                     self.timer.timeout.connect(lambda: self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs))
                     self.timer.start(int(float(self._widget.freqEdit.text())*1000))
                 else:
+                    self._widget.recButton.setChecked(False)
                     self.lapseCurrent = 0
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording() 
@@ -620,14 +631,13 @@ class RecorderController(WidgetController):
                     self._comm_channel.moveZstage(float(self._widget.stepSizeEdit.text()))
                     self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 else:
+                    self._widget.recButton.setChecked(False)
                     self.dimlapseCurrent = 0
                     self._comm_channel.moveZstage(-self.dimlapseTotal*float(self._widget.stepSizeEdit.text()))
                     self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording() 
                     
-    def scanDone(self):
-        self._widget.recButton.setChecked(False)
-        self.toggleREC()
+
         
     def endRecording(self):
         self._widget.recButton.click()
@@ -733,25 +743,22 @@ class LaserController(WidgetController):
         
     def toggleLaser(self, laser):
         """ Enable or disable laser (on/off)."""
-        if not self.digMod:
-            if self._widget.laserModules[laser].enableButton.isChecked():
-                self._master.toggleLaser(True, laser)
-            else:
-                self._master.toggleLaser(False, laser)
+        if self._widget.laserModules[laser].enableButton.isChecked():
+            self._master.toggleLaser(True, laser)
+        else:
+            self._master.toggleLaser(False, laser)
                 
     def changeSlider(self, laser):
         """ Change power with slider magnitude. """
-        if not self.digMod:
-            magnitude =  self._widget.laserModules[laser].slider.value() 
-            self._master.changePower(magnitude, laser)
-            self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
+        magnitude =  self._widget.laserModules[laser].slider.value() 
+        self._master.changePower(magnitude, laser, self.digMod)
+        self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
             
     def changeEdit(self, laser):
         """ Change power with edit magnitude. """
-        if not self.digMod:
-            magnitude = float(self._widget.laserModules[laser].setPointEdit.text())
-            self._master.changePower(magnitude, laser)
-            self._widget.laserModules[laser].slider.setValue(magnitude)
+        magnitude = float(self._widget.laserModules[laser].setPointEdit.text())
+        self._master.changePower(magnitude, laser, self.digMod)
+        self._widget.laserModules[laser].slider.setValue(magnitude)
             
             
     def updateDigitalPowers(self, lasers):
@@ -760,7 +767,7 @@ class LaserController(WidgetController):
         if self.digMod:
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
-                self._master.changePower(int(self._widget.digModule.powers[laser].text()), laser)
+                self._master.changePower(int(self._widget.digModule.powers[laser].text()), laser, self.digMod)
             
     def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
@@ -768,6 +775,8 @@ class LaserController(WidgetController):
         for i in np.arange(len(lasers)):
             laser = lasers[i]
             self._master.digitalMod(self.digMod, int(self._widget.digModule.powers[laser].text()), laser)
+            if not self.digMod:
+                self.changeEdit(laser)
     
     def setDigitalButton(self, b):
         self._widget.digModule.DigitalControlButton.setChecked(b)
@@ -804,14 +813,13 @@ class ScanController(SuperScanController): # TODO
                 'TTLParameterList': TTLParameterList}
            
     def getScanAttrs(self):      
-        stage = self._stageParameterDict
-        ttl = self._TTLParameterDict
+        stage = self._stageParameterDict.copy()
+        ttl = self._TTLParameterDict.copy()
         stage['Targets[3]'] = np.string_(stage['Targets[3]'])
         ttl['Targets[x]'] = np.string_(ttl['Targets[x]'])
     
-        attrs = self._stageParameterDict
-        attrs.update(self._TTLParameterDict)
-        return attrs
+        stage.update(ttl)
+        return stage
         
     def saveScan(self):
         self.getParameters()
@@ -883,8 +891,6 @@ class ScanController(SuperScanController): # TODO
           
         self._widget.seqTimePar.setText(str(round(float(self._TTLParameterDict['Sequence_time_seconds'])*1000, 3)))
         
-    def scanOrAbort(self):
-        self.runScan()
     def previewScan(self):
         print('previewScan')
     def runScan(self):
@@ -894,7 +900,7 @@ class ScanController(SuperScanController): # TODO
         self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
         
     def scanDone(self):
-        self._comm_channel.scanDone()
+        self._comm_channel.endScan()
      
     def getParameters(self):
         primDim = self._widget.primScanDim.currentText()
@@ -906,15 +912,15 @@ class ScanController(SuperScanController): # TODO
         start = self._comm_channel.getStartPos()
         self._stageParameterDict['Start[3]'] = (start[primDim], start[secDim], start[thirdDim])   
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
-            self._TTLParameterDict['TTLStarts[x,y]'][i] = [float(self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].text())]
-            self._TTLParameterDict['TTLEnds[x,y]'][i] = [float(self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].text())]
+            self._TTLParameterDict['TTLStarts[x,y]'][i] = [float(self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].text())/1000]
+            self._TTLParameterDict['TTLEnds[x,y]'][i] = [float(self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].text())/1000]
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         
         
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)
-        self.scanOrAbort()
+        if b: self.runScan()
     
 class MultipleScanController(WidgetController): # TODO
     def __init__(self, *args, **kwargs):

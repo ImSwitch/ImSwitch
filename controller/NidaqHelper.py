@@ -7,17 +7,21 @@ import nidaqmx
 import numpy as np
 from controller.TempestaErrors import NidaqHelperError
 import operator
+from pyqtgraph.Qt import QtCore
 
-class NidaqHelper():
+class NidaqHelper(QtCore.QObject):
+    scanDoneSignal = QtCore.pyqtSignal()
     
-    def __init__(self, deviceInfo = None):
+    def __init__(self, deviceInfo = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if deviceInfo is None:
-            self.__deviceInfo = {'488': {'AOChan': None, 'DOLine': 0},
-                               '405': {'AOChan': None, 'DOLine': 1},
+            self.__deviceInfo = {'405': {'AOChan': None, 'DOLine': 0},
+                               '488': {'AOChan': None, 'DOLine': 1},
                                '473': {'AOChan': None, 'DOLine': 2},
-                               'StageX': {'AOChan': 0, 'DOLine': None},
-                               'StageY': {'AOChan': 1, 'DOLine': None},
-                               'StageZ': {'AOChan': 2, 'DOLine': None}}
+                               'CAM': {'AOChan': None, 'DOLine': 3},
+                               'Stage_X': {'AOChan': 0, 'DOLine': None},
+                               'Stage_Y': {'AOChan': 1, 'DOLine': None},
+                               'Stage_Z': {'AOChan': 2, 'DOLine': None}}
         else:
             self.__deviceInfo = deviceInfo
                 
@@ -76,7 +80,7 @@ class NidaqHelper():
                                                '100kHzTimebase', \
                                                    100000)
             signal = np.array([enable])
-            print(dotask.write(signal, auto_start=True))
+            dotask.write(signal, auto_start=True)
             dotask.wait_until_done()
             dotask.stop()
             dotask.close()
@@ -108,53 +112,67 @@ class NidaqHelper():
         running. """
         stageDic = signalDic['stageScanSignalsDict']
         ttlDic = signalDic['TTLCycleSignalsDict']
-        
         AOTargetChanPairs = self.__makeSortedTargets('AOChan')
         
         AOsignals = []
-        
+        AOchannels = []
+
         for pair in AOTargetChanPairs:
             signal = stageDic[pair[0]]
+            channel = pair[1]
             AOsignals.append(signal)
+            AOchannels.append(channel)
     
         DOTargetChanPairs = self.__makeSortedTargets('DOLine')
         
         DOsignals = []
-        
+        DOlines = []
+
         for pair in DOTargetChanPairs:
             signal = ttlDic[pair[0]]
+            line = pair[1]
             DOsignals.append(signal)
+            DOlines.append(line)
             
-        AOchannels = []
-        for device in [*stageDic]:
-            channel = self.__deviceInfo[device]['AOChan']
-            if channel is not None:
-                AOchannels.append(channel)
         
         sampsInScan = len(AOsignals[0])
         acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-        AOtask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite, \
+        self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite, \
                                  r'100kHzTimebase', 100000, min_val=-10, max_val=10, sampsInScan = sampsInScan)
+        self.waiter = WaitThread(self.aoTask)
+        self.waiter.waitdoneSignal.connect(self.scanDone)
+
+        self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
         
-        DOlines = []
-        for device in [*ttlDic]:
-            line = self.__deviceInfo[device]['DOLine']
-            if line is not None: 
-                DOlines.append(line)
+
+        self.aoTask.write(np.array(AOsignals), auto_start=False)
+        self.doTask.write(np.array(DOsignals), auto_start=False)
+
         
-        acquisitionTypeContinuous = nidaqmx.constants.AcquisitionType.CONTINUOUS
-        DOtask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeContinuous, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
+        self.doTask.start()
+        self.aoTask.start()
         
+        self.waiter.start()
         
-        print(np.shape(np.array(AOsignals)))
-        print(np.shape(np.array(DOsignals)))
-        AOtask.write(np.array(AOsignals), auto_start=False)
-        DOtask.write(np.array(DOsignals), auto_start=False)
-        
-        DOtask.start()
-        AOtask.start()
-        
+    def scanDone(self):
+        self.waiter.terminate()
+        self.aoTask.stop()
+        self.aoTask.close()
+        self.doTask.stop()
+        self.doTask.close()
+        self.scanDoneSignal.emit()
         
     def runContinuous(self, digital_targets, digital_signals):
         pass
-        
+
+class WaitThread(QtCore.QThread):
+    waitdoneSignal = QtCore.pyqtSignal()
+
+    def __init__(self, task):
+        super().__init__()
+        self.task = task
+
+    def run(self):
+        self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
+        self.waitdoneSignal.emit()
+     

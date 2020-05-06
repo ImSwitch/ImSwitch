@@ -739,13 +739,18 @@ class ScanWidget(Widget):
         self.stepSizeYPar = QtGui.QLineEdit('0.1')
         self.stepSizeZPar = QtGui.QLineEdit('1')
         
-        self.scanMode = QtGui.QComboBox()
-        self.scanModes = ['FOV scan', 'VOL scan', 'Line scan']
-        self.scanMode.addItems(self.scanModes)
-
         self.primScanDim = QtGui.QComboBox()
-        self.scanDims = ['x', 'y']
+        self.scanDims = ['X', 'Y', 'Z']
         self.primScanDim.addItems(self.scanDims)
+        self.primScanDim.setCurrentIndex(0)
+        
+        self.secScanDim = QtGui.QComboBox()
+        self.secScanDim.addItems(self.scanDims)
+        self.secScanDim.setCurrentIndex(1)
+        
+        self.thirdScanDim = QtGui.QComboBox()
+        self.thirdScanDim.addItems(self.scanDims)
+        self.thirdScanDim.setCurrentIndex(2)
         
         self.scanPar = {'sizeX': self.sizeXPar,
                          'sizeY': self.sizeYPar,
@@ -754,14 +759,6 @@ class ScanWidget(Widget):
                          'stepSizeX': self.stepSizeXPar,
                          'stepSizeY': self.stepSizeYPar,
                          'stepSizeZ': self.stepSizeZPar}
-    
-        self.scanParValues = {'sizeX': float(self.sizeXPar.text()),
-                               'sizeY': float(self.sizeYPar.text()),
-                               'sizeZ': float(self.sizeZPar.text()),
-                               'seqTime': 0.001*float(self.seqTimePar.text()),
-                               'stepSizeX': float(self.stepSizeXPar.text()),
-                               'stepSizeY': float(self.stepSizeXPar.text()),
-                               'stepSizeZ': float(self.stepSizeZPar.text())}
                                
         self.pxParameters = dict()
         self.pxParValues = dict()                       
@@ -770,10 +767,6 @@ class ScanWidget(Widget):
      
             self.pxParameters['sta'+self.allDevices[i]] = QtGui.QLineEdit('0')
             self.pxParameters['end'+self.allDevices[i]] = QtGui.QLineEdit('10')
-            start = self.pxParameters['sta' + self.allDevices[i]].text()
-            end = self.pxParameters['end' + self.allDevices[i]].text()
-            self.pxParValues['sta' + self.allDevices[i]] = 0.001*float(start)
-            self.pxParValues['end' + self.allDevices[i]] = 0.001*float(end)
             
         self.scanRadio = QtGui.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
@@ -817,12 +810,14 @@ class ScanWidget(Widget):
         grid.addWidget(QtGui.QLabel('Step Z (µm):'), 4, 2)
         grid.addWidget(self.stepSizeZPar, 4, 3)
 
-        grid.addWidget(QtGui.QLabel('Mode:'), 2, 4)
-        grid.addWidget(self.scanMode, 2, 5)
-        grid.addWidget(QtGui.QLabel('Primary dimension:'), 3, 4)
-        grid.addWidget(self.primScanDim, 3, 5)
-        grid.addWidget(QtGui.QLabel('Number of frames:'), 4, 4)
-        grid.addWidget(self.nrFramesPar, 4, 5)
+        grid.addWidget(QtGui.QLabel('First dimension:'), 2, 4)
+        grid.addWidget(self.primScanDim, 2, 5)
+        grid.addWidget(QtGui.QLabel('Second dimension:'), 3, 4)
+        grid.addWidget(self.secScanDim, 3, 5)
+        grid.addWidget(QtGui.QLabel('Third dimension:'), 4, 4)
+        grid.addWidget(self.thirdScanDim, 4, 5)
+        grid.addWidget(QtGui.QLabel('Number of frames:'), 5, 4)
+        grid.addWidget(self.nrFramesPar, 5, 5)
         grid.addWidget(self.previewButton, 2, 6, 3, 2)
 
         grid.addWidget(QtGui.QLabel('Dwell time (ms):'), 7, 0)

@@ -5,9 +5,9 @@ Created on Tue Apr  7 17:00:05 2020
 @author: andreas.boden
 """
 
-from controller.SignalDesigner import SignalDesignerFactory
+from SignalDesigner import SignalDesignerFactory
     
-from controller.TempestaErrors import IncompatibilityError
+from TempestaErrors import IncompatibilityError
 import numpy as np
 
 class ScanHelperFactory():
@@ -64,6 +64,9 @@ class ScanHelper(SuperScanHelper):
     
     def make_full_scan(self, stageScanParameters, TTLParameters):
         
+        test = self.__stageScanDesigner.make_signal(stageScanParameters, \
+                                             returnFrames=True)
+        print(test)
         stageScanSignalsDict, positions = \
         self.__stageScanDesigner.make_signal(stageScanParameters, \
                                              returnFrames=True)
@@ -95,24 +98,25 @@ if __name__ == '__main__':
     print('Running main')
     import matplotlib.pyplot as plt
     
-    Stageparameters = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
+    Stageparameters = {'Targets[3]': ['Stage_X', 'Stage_Y', 'Stage_Z'], \
                   'Sizes[3]':[5,5,5], \
                   'Step_sizes[3]': [1,1,1], \
+                  'Start[3]': [0,0,0], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
     TTLparameters = {'Targets[x]': ['405', '488'], \
-                  'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
-                  'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
+                  'TTLStarts[x,y]': [[0.0001, 0.004], [0, 0]], \
+                  'TTLEnds[x,y]': [[0.0015, 0.005], [0, 0]], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000}
     
     SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
     sh = ScanHelperFactory('ScanHelper')
     fullsig = sh.make_full_scan(Stageparameters, TTLparameters)
-    plt.plot(fullsig['stageScanSignalsDict']['StageX'])
-    plt.plot(fullsig['stageScanSignalsDict']['StageY'])
-    plt.plot(fullsig['stageScanSignalsDict']['StageZ'])
+    plt.plot(fullsig['stageScanSignalsDict']['Stage_X'])
+    plt.plot(fullsig['stageScanSignalsDict']['Stage_Y'])
+    plt.plot(fullsig['stageScanSignalsDict']['Stage_Z'])
     
     plt.figure()
     plt.plot(fullsig['TTLCycleSignalsDict']['405'])

@@ -85,8 +85,9 @@ class BetaStageScanDesigner(SignalDesigner):
     def make_signal(self, parameter_dict, returnFrames = False):
         
         if not self.parameterCompatibility(parameter_dict):
-            print('Parameters seem incompatible, this error should not be \
-                  since this should be checked at program start-up')
+            print([*parameter_dict])
+            print(self._expectedParameters)
+            print('Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
             return None
 
         # Retrieve sizes
@@ -199,7 +200,7 @@ class BetaTTLCycleDesigner(SignalDesigner):
     def make_signal(self, parameter_dict):
         
         if not self.parameterCompatibility(parameter_dict):
-            print('Parameters seem incompatible, this error should not be \
+            print('TTL parameters seem incompatible, this error should not be \
                   since this should be checked at program start-up')
             return None
         

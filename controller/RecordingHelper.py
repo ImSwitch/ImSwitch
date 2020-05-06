@@ -13,10 +13,6 @@ class RecordingHelper():
     def __init__(self, comm_channel, cameraHelper):
         self.__comm_channel = comm_channel
         self.__cameraHelper = cameraHelper
-        self.__recordingWorker = RecordingWorker(self)
-        self.__thread = QtCore.QThread()
-        self.__recordingWorker.moveToThread(self.__thread)
-        self.__thread.started.connect(self.__recordingWorker.run)
         self.__record = False  
         
     @property
@@ -33,6 +29,10 @@ class RecordingHelper():
             
     def startRecording(self, recMode, savename, attrs, frames=None, time=None):
         print('Start recording')
+        self.__recordingWorker = RecordingWorker(self)
+        self.__thread = QtCore.QThread()
+        self.__recordingWorker.moveToThread(self.__thread)
+        self.__thread.started.connect(self.__recordingWorker.run)
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.attrs = attrs
@@ -44,7 +44,8 @@ class RecordingHelper():
         
     def endRecording(self):
         self.__record = False
-        self.__thread.quit()
+        self.__recordingWorker.f.close()
+        self.__thread.terminate()
                    
     def snap(self, savename, attrs):
         store_file = h5py.File(savename, 'w', track_order=True)
@@ -64,11 +65,12 @@ class RecordingWorker(QtCore.QObject):
 
     def run(self):
         it = 0
-        f = h5py.File(self.savename, 'w') 
+        self.f = h5py.File(self.savename, 'w') 
         for key in self.attrs.keys():
-            f.attrs[key] = self.attrs[key]
+            self.f.attrs[key] = self.attrs[key]
         size = self.__recordingHelper.cameraHelper.shapes
-        d = f.create_dataset('data', (1, size[0], size[1]), maxshape=(None, size[0], size[1]), dtype='i2')
+        print(size)
+        d = self.f.create_dataset('data', (1, size[0], size[1]), maxshape=(None, size[0], size[1]), dtype='i2')
         umxpx = self.attrs['Camera_pixel_size']
         d.attrs["element_size_um"] = [1, umxpx, umxpx]
         if self.recMode == 1:
@@ -85,7 +87,6 @@ class RecordingWorker(QtCore.QObject):
                     d[it:frames, :, :] = np.array(newframes[0:frames-it])
                     it = frames
                 self.__recordingHelper.comm_channel.updateRecFrameNumber(it)
-            f.close()
             self.__recordingHelper.comm_channel.updateRecFrameNumber(0)
             self.__recordingHelper.comm_channel.endRecording()
             self.__recordingHelper.endRecording()
@@ -100,7 +101,6 @@ class RecordingWorker(QtCore.QObject):
                 it += n 
                 self.__recordingHelper.comm_channel.updateRecTime(np.around(current, decimals=2))
                 current = time.time() - start
-            f.close()
             self.__recordingHelper.comm_channel.updateRecTime(0)
             self.__recordingHelper.comm_channel.endRecording()
             self.__recordingHelper.endRecording()
@@ -112,5 +112,3 @@ class RecordingWorker(QtCore.QObject):
                 d.resize(n + it, axis = 0)
                 d[it:it+n, :,:] = np.array(newframes)
                 it += n       
-            f.close()
-          

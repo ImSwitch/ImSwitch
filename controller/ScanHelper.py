@@ -5,9 +5,9 @@ Created on Tue Apr  7 17:00:05 2020
 @author: andreas.boden
 """
 
-from SignalDesigner import SignalDesignerFactory
+from controller.SignalDesigner import SignalDesignerFactory
     
-from TempestaErrors import IncompatibilityError
+from controller.TempestaErrors import IncompatibilityError
 import numpy as np
 
 class ScanHelperFactory():
@@ -63,10 +63,6 @@ class ScanHelper(SuperScanHelper):
         #     raise IncompatibilityError('Incompatible sync parameters')
     
     def make_full_scan(self, stageScanParameters, TTLParameters):
-        
-        test = self.__stageScanDesigner.make_signal(stageScanParameters, \
-                                             returnFrames=True)
-        print(test)
         stageScanSignalsDict, positions = \
         self.__stageScanDesigner.make_signal(stageScanParameters, \
                                              returnFrames=True)
@@ -82,7 +78,7 @@ class ScanHelper(SuperScanHelper):
         #Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
             signal = np.tile(signal, positions[0])
-            signal = np.append(signal, np.zeros(TTLZeroPadSamples))
+            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype='bool'))
             signal = np.tile(signal, positions[1]*positions[2])
 
             TTLCycleSignalsDict[target] = signal

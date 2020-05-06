@@ -846,7 +846,7 @@ class ScanWidget(Widget):
     def registerListener(self, controller):
         self.saveScanBtn.clicked.connect(controller.saveScan)
         self.loadScanBtn.clicked.connect(controller.loadScan)
-        self.scanButton.clicked.connect(controller.scanOrAbort)
+        self.scanButton.clicked.connect(controller.runScan)
         self.previewButton.clicked.connect(controller.previewScan)
    
 class GraphFrame(pg.GraphicsWindow):

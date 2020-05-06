@@ -143,7 +143,6 @@ class NidaqHelper(QtCore.QObject):
         self.waiter.waitdoneSignal.connect(self.scanDone)
 
         self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
-        
 
         self.aoTask.write(np.array(AOsignals), auto_start=False)
         self.doTask.write(np.array(DOsignals), auto_start=False)

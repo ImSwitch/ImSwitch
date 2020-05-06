@@ -23,13 +23,13 @@ class MasterController():
         
         
     def toggleLaser(self, enable, laser):
-        if enable:
-            self.__model.lasers[laser].enabled = True
-        else:
-            self.__model.lasers[laser].enabled = False
+        self.__model.lasers[laser].enabled = enable
         
-    def changePower(self, power, laser):
-        self.__model.lasers[laser].power_sp = power * Q_(1, 'mW')
+    def changePower(self, power, laser, dig):
+        if dig:
+            self.__model.lasers[laser].power_mod = power * Q_(1, 'mW')
+        else:
+            self.__model.lasers[laser].power_sp = power * Q_(1, 'mW')
         
     def digitalMod(self, digital, power, laser):
         laser = self.__model.lasers[laser]

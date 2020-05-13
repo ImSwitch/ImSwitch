@@ -17,11 +17,12 @@ class NidaqHelper(QtCore.QObject):
         if deviceInfo is None:
             self.__deviceInfo = {'405': {'AOChan': None, 'DOLine': 0},
                                '488': {'AOChan': None, 'DOLine': 1},
-                               '473': {'AOChan': None, 'DOLine': 2},
+                               '473': {'AOChan': 3, 'DOLine': 2},
                                'CAM': {'AOChan': None, 'DOLine': 3},
                                'Stage_X': {'AOChan': 0, 'DOLine': None},
                                'Stage_Y': {'AOChan': 1, 'DOLine': None},
                                'Stage_Z': {'AOChan': 2, 'DOLine': None}}
+                    
         else:
             self.__deviceInfo = deviceInfo
                 
@@ -79,13 +80,14 @@ class NidaqHelper(QtCore.QObject):
                                            acquisitionTypeFinite, \
                                                '100kHzTimebase', \
                                                    100000)
-            signal = np.array([enable])
+            #signal = np.array([enable])
+            signal = enable*np.ones(100, dtype=bool)
             dotask.write(signal, auto_start=True)
             dotask.wait_until_done()
             dotask.stop()
             dotask.close()
             
-    def setAnalog(self, target, voltage):
+    def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
         to a certain voltage """
         if self.__deviceInfo[target]['AOChan'] is None:
@@ -98,7 +100,7 @@ class NidaqHelper(QtCore.QObject):
                                        channel, \
                                            acquisitionTypeFinite, \
                                                '100kHzTimebase', \
-                                                   100000)
+                                                   100000, min_val, max_val)
                 
             signal = np.array([voltage])
             aotask.write(signal, auto_start=True)
@@ -118,10 +120,13 @@ class NidaqHelper(QtCore.QObject):
         AOchannels = []
 
         for pair in AOTargetChanPairs:
-            signal = stageDic[pair[0]]
-            channel = pair[1]
-            AOsignals.append(signal)
-            AOchannels.append(channel)
+            try:
+                signal = stageDic[pair[0]]
+                channel = pair[1]
+                AOsignals.append(signal)
+                AOchannels.append(channel)
+            except:
+                pass
     
         DOTargetChanPairs = self.__makeSortedTargets('DOLine')
         
@@ -129,37 +134,48 @@ class NidaqHelper(QtCore.QObject):
         DOlines = []
 
         for pair in DOTargetChanPairs:
-            signal = ttlDic[pair[0]]
-            line = pair[1]
-            DOsignals.append(signal)
-            DOlines.append(line)
+            try:
+                signal = ttlDic[pair[0]]
+                line = pair[1]
+                DOsignals.append(signal)
+                DOlines.append(line)
+            except:
+                pass
             
         
         sampsInScan = len(AOsignals[0])
         acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
         self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite, \
                                  r'100kHzTimebase', 100000, min_val=-10, max_val=10, sampsInScan = sampsInScan)
-        self.waiter = WaitThread(self.aoTask)
-        self.waiter.waitdoneSignal.connect(self.scanDone)
+        
 
         self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
 
+        
+        
+
         self.aoTask.write(np.array(AOsignals), auto_start=False)
         self.doTask.write(np.array(DOsignals), auto_start=False)
-
+        
+        self.aoTaskWaiter = WaitThread()
+        self.aoTaskWaiter.connect(self.aoTask)
+        self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+        
+        self.doTaskWaiter = WaitThread()
+        self.doTaskWaiter.connect(self.doTask)
+        self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
+        self.signalSent = False
         
         self.doTask.start()
         self.aoTask.start()
         
-        self.waiter.start()
+        self.doTaskWaiter.start()
+        self.aoTaskWaiter.start()
         
-    def scanDone(self):
-        self.waiter.terminate()
-        self.aoTask.stop()
-        self.aoTask.close()
-        self.doTask.stop()
-        self.doTask.close()
-        self.scanDoneSignal.emit()
+    def taskDone(self):
+        if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
+            self.scanDoneSignal.emit()
+            self.signalSent = True
         
     def runContinuous(self, digital_targets, digital_signals):
         pass
@@ -167,11 +183,18 @@ class NidaqHelper(QtCore.QObject):
 class WaitThread(QtCore.QThread):
     waitdoneSignal = QtCore.pyqtSignal()
 
-    def __init__(self, task):
-        super().__init__()
+    def connect(self, task):
         self.task = task
-
+        self.running = True
+        
     def run(self):
-        self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
+        if self.running:
+            self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
+            self.close()
+            
+    def close(self):
+        self.running = False
+        self.task.stop()
+        self.task.close()
         self.waitdoneSignal.emit()
-     
+        self.quit()

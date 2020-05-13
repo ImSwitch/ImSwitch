@@ -59,6 +59,7 @@ class CameraHelper():
         
     def stopAcquisition(self):
         self.__thread.quit()
+        self.__thread.wait()
         self.__cameras[0].stopAcquisition()
         
     def changeParameter(self, function):

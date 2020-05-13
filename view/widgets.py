@@ -546,12 +546,12 @@ class LaserWidget(Widget):
         super().__init__(*args, **kwargs)
         
         # Create laser modules
-        actControl = LaserModule('<h3>405<h3>', 'mW', 405, color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
-        offControl = LaserModule('<h3>488<h3>', 'mW', 488, color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
-        excControl = LaserModule('<h3>473<h3>', 'V', 473, color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
+        actControl = LaserModule('<h3>405<h3>', 'mW', '405', color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
+        offControl = LaserModule('<h3>488<h3>', 'mW', '488', color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
+        excControl = LaserModule('<h3>473<h3>', 'V', '473', color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
         self.digModule = DigitalModule()
 
-        self.laserModules = {405: actControl, 488: offControl, 473: excControl}
+        self.laserModules = {'405': actControl, '488': offControl, '473': excControl}
         
         # Add modules to GridLayout
         grid = QtGui.QGridLayout()
@@ -563,9 +563,9 @@ class LaserWidget(Widget):
         
     def registerListener(self, controller):
         """ Manage interactions with LaserController. """
-        self.laserModules[405].registerListener(controller)
-        self.laserModules[488].registerListener(controller)
-        self.laserModules[473].registerListener(controller)
+        self.laserModules['405'].registerListener(controller)
+        self.laserModules['488'].registerListener(controller)
+        self.laserModules['473'].registerListener(controller)
         self.digModule.registerListener(controller)
       
         
@@ -582,8 +582,8 @@ class DigitalModule(QtGui.QFrame):
         title.setFixedHeight(20)
         ActPower = QtGui.QLineEdit('100')
         OffPower = QtGui.QLineEdit('100')
-        ExcPower = QtGui.QLineEdit('100')
-        self.powers = {405 : ActPower, 488 : OffPower, 473 : ExcPower}
+        ExcPower = QtGui.QLineEdit('0.5')
+        self.powers = {'405' : ActPower, '488' : OffPower, '473' : ExcPower}
         self.DigitalControlButton = QtGui.QPushButton('Enable')
         self.DigitalControlButton.setCheckable(True)
         style = "background-color: rgb{}".format((160, 160, 160))
@@ -625,11 +625,11 @@ class DigitalModule(QtGui.QFrame):
     
     def registerListener(self, controller):
         """ Manage interactions with LaserController. """
-        self.powers[405].textChanged.connect(lambda: controller.updateDigitalPowers([405]))
-        self.powers[488].textChanged.connect(lambda: controller.updateDigitalPowers([488]))
-        self.powers[473].textChanged.connect(lambda: controller.updateDigitalPowers([473]))
-        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod([405, 488]))
-        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers([405, 488]))
+        self.powers['405'].textChanged.connect(lambda: controller.updateDigitalPowers(['405']))
+        self.powers['488'].textChanged.connect(lambda: controller.updateDigitalPowers(['488']))
+        self.powers['473'].textChanged.connect(lambda: controller.updateDigitalPowers(['473']))
+        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(['405', '473', '488']))
+        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(['405','473', '488']))
       
         
 class LaserModule(QtGui.QFrame):
@@ -694,7 +694,7 @@ class LaserModule(QtGui.QFrame):
 
     def registerListener(self, controller):
         """ Manage interactions with LaserController. """
-        if not self.laser==473: controller.changeEdit(self.laser)
+        if not self.laser=='473': controller.changeEdit(self.laser)
         self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
         self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
         self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))

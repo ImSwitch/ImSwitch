@@ -14,6 +14,7 @@ class NidaqHelper(QtCore.QObject):
     
     def __init__(self, deviceInfo = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.busy = False
         if deviceInfo is None:
             self.__deviceInfo = {'405': {'AOChan': None, 'DOLine': 0},
                                '488': {'AOChan': None, 'DOLine': 1},
@@ -72,20 +73,23 @@ class NidaqHelper(QtCore.QObject):
         if self.__deviceInfo[target]['DOLine'] is None:
             raise NidaqHelperError('Target has no digital output assigned to it')        
         else:
-            line = self.__deviceInfo[target]['DOLine']
-            acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-            
-            dotask = self.__createLineDOTask('setDigitalTask', \
-                                       line, \
-                                           acquisitionTypeFinite, \
-                                               '100kHzTimebase', \
-                                                   100000)
-            #signal = np.array([enable])
-            signal = enable*np.ones(100, dtype=bool)
-            dotask.write(signal, auto_start=True)
-            dotask.wait_until_done()
-            dotask.stop()
-            dotask.close()
+            if not self.busy:
+                self.busy = True
+                line = self.__deviceInfo[target]['DOLine']
+                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+                
+                dotask = self.__createLineDOTask('setDigitalTask', \
+                                           line, \
+                                               acquisitionTypeFinite, \
+                                                   '100kHzTimebase', \
+                                                       100000)
+                #signal = np.array([enable])
+                signal = enable*np.ones(100, dtype=bool)
+                dotask.write(signal, auto_start=True)
+                dotask.wait_until_done()
+                dotask.stop()
+                dotask.close()
+                self.busy = False
             
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
@@ -93,87 +97,93 @@ class NidaqHelper(QtCore.QObject):
         if self.__deviceInfo[target]['AOChan'] is None:
             raise NidaqHelperError('Target has no analog output assigned to it')        
         else:
-            channel = self.__deviceInfo[target]['AOChan']
-            acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-            
-            aotask = self.__createChanAOTask('setAnalogTask', \
-                                       channel, \
-                                           acquisitionTypeFinite, \
-                                               '100kHzTimebase', \
-                                                   100000, min_val, max_val)
+            if not self.busy:
+                self.busy = True
+                channel = self.__deviceInfo[target]['AOChan']
+                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 
-            signal = np.array([voltage])
-            aotask.write(signal, auto_start=True)
-            aotask.wait_until_done()
-            aotask.stop()
-            aotask.close()
+                aotask = self.__createChanAOTask('setAnalogTask', \
+                                           channel, \
+                                               acquisitionTypeFinite, \
+                                                   '100kHzTimebase', \
+                                                       100000, min_val, max_val)
+                    
+                signal = np.array([voltage])
+                aotask.write(signal, auto_start=True)
+                aotask.wait_until_done()
+                aotask.stop()
+                aotask.close()
+                self.busy = False
             
     def runScan(self, signalDic):
         """ Function assuming that the user wants to run a full scan with a stage 
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
         running. """
-        stageDic = signalDic['stageScanSignalsDict']
-        ttlDic = signalDic['TTLCycleSignalsDict']
-        AOTargetChanPairs = self.__makeSortedTargets('AOChan')
-        
-        AOsignals = []
-        AOchannels = []
-
-        for pair in AOTargetChanPairs:
-            try:
-                signal = stageDic[pair[0]]
-                channel = pair[1]
-                AOsignals.append(signal)
-                AOchannels.append(channel)
-            except:
-                pass
-    
-        DOTargetChanPairs = self.__makeSortedTargets('DOLine')
-        
-        DOsignals = []
-        DOlines = []
-
-        for pair in DOTargetChanPairs:
-            try:
-                signal = ttlDic[pair[0]]
-                line = pair[1]
-                DOsignals.append(signal)
-                DOlines.append(line)
-            except:
-                pass
+        if not self.busy:
+            self.busy = True
+            stageDic = signalDic['stageScanSignalsDict']
+            ttlDic = signalDic['TTLCycleSignalsDict']
+            AOTargetChanPairs = self.__makeSortedTargets('AOChan')
             
+            AOsignals = []
+            AOchannels = []
+    
+            for pair in AOTargetChanPairs:
+                try:
+                    signal = stageDic[pair[0]]
+                    channel = pair[1]
+                    AOsignals.append(signal)
+                    AOchannels.append(channel)
+                except:
+                    pass
         
-        sampsInScan = len(AOsignals[0])
-        acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-        self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite, \
-                                 r'100kHzTimebase', 100000, min_val=-10, max_val=10, sampsInScan = sampsInScan)
-        
-
-        self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
-
-        
-        
-
-        self.aoTask.write(np.array(AOsignals), auto_start=False)
-        self.doTask.write(np.array(DOsignals), auto_start=False)
-        
-        self.aoTaskWaiter = WaitThread()
-        self.aoTaskWaiter.connect(self.aoTask)
-        self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
-        
-        self.doTaskWaiter = WaitThread()
-        self.doTaskWaiter.connect(self.doTask)
-        self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
-        self.signalSent = False
-        
-        self.doTask.start()
-        self.aoTask.start()
-        
-        self.doTaskWaiter.start()
-        self.aoTaskWaiter.start()
+            DOTargetChanPairs = self.__makeSortedTargets('DOLine')
+            
+            DOsignals = []
+            DOlines = []
+    
+            for pair in DOTargetChanPairs:
+                try:
+                    signal = ttlDic[pair[0]]
+                    line = pair[1]
+                    DOsignals.append(signal)
+                    DOlines.append(line)
+                except:
+                    pass
+                
+            
+            sampsInScan = len(AOsignals[0])
+            acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+            self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite, \
+                                     r'100kHzTimebase', 100000, min_val=-10, max_val=10, sampsInScan = sampsInScan)
+            
+    
+            self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite, r'ao/SampleClock', 100000, sampsInScan = sampsInScan)
+    
+            
+            
+    
+            self.aoTask.write(np.array(AOsignals), auto_start=False)
+            self.doTask.write(np.array(DOsignals), auto_start=False)
+            
+            self.aoTaskWaiter = WaitThread()
+            self.aoTaskWaiter.connect(self.aoTask)
+            self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+            
+            self.doTaskWaiter = WaitThread()
+            self.doTaskWaiter.connect(self.doTask)
+            self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
+            self.signalSent = False
+            
+            self.doTask.start()
+            self.aoTask.start()
+            
+            self.doTaskWaiter.start()
+            self.aoTaskWaiter.start()
         
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
+            self.busy = False
             self.scanDoneSignal.emit()
             self.signalSent = True
         

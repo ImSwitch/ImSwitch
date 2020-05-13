@@ -6,7 +6,6 @@ Created on Fri Mar 20 15:13:24 2020
 """
 from pyqtgraph.Qt import QtGui
 import view.widgets as widgets
-import sys
 from pyqtgraph.console import ConsoleWidget
 import pyqtgraph as pg
 import numpy as np
@@ -14,13 +13,13 @@ import os
 #import view.guitools as guitools
 from pyqtgraph.dockarea import Dock, DockArea
 
-class TempestaView():
+class TempestaView(QtGui.QMainWindow):
     
-    def __init__(self, model):
-
+    def __init__(self, model, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.model = model
-        self.app = QtGui.QApplication([])
-        self.win = QtGui.QMainWindow()  
+        
+ 
         # Devices
         self.deviceInfo = [['405', 0, [130, 0, 200]],
                            ['488', 1, [0, 247, 255]],
@@ -36,12 +35,12 @@ class TempestaView():
         # TODO
 
         # Window
-        self.win.setWindowTitle('Tempesta 2.0')
-        self.win.cwidget = QtGui.QWidget()
-        self.win.setCentralWidget(self.win.cwidget)
+        self.setWindowTitle('Tempesta 2.0')
+        self.cwidget = QtGui.QWidget()
+        self.setCentralWidget(self.cwidget)
 
         layout = QtGui.QGridLayout()
-        self.win.cwidget.setLayout(layout)
+        self.cwidget.setLayout(layout)
         
         # Presets
         self.presetsMenu = QtGui.QComboBox()
@@ -154,9 +153,8 @@ class TempestaView():
         self.recordingWidget.registerListener(controller.recorderController)
         self.viewWidget.registerListener(controller.viewController)
         self.settingsWidget.registerListener(controller.settingsController)
+        self.close = controller.closeEvent
         
-
-    def startView(self):
-        self.win.show()
-        sys.exit(self.app.exec_())
-        
+    def closeEvent(self, event):
+        self.close()
+        event.accept()

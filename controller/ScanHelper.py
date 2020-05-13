@@ -82,7 +82,6 @@ class ScanHelper(SuperScanHelper):
             signal = np.tile(signal, positions[1]*positions[2])
 
             TTLCycleSignalsDict[target] = signal
-
         return {'stageScanSignalsDict': stageScanSignalsDict, \
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 

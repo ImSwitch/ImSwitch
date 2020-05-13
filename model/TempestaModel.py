@@ -13,9 +13,9 @@ class TempestaModel():
         cobolt = 'cobolt.cobolt0601.Cobolt0601_f2'
         offlaser = instruments.LinkedLaserCheck(cobolt, ['COM4', 'COM7'])
         actlaser = instruments.Laser(cobolt, 'COM10')
-        self.lasers = {405: actlaser , 488: offlaser}
-        self.initLaser(self.lasers[405])
-        self.initLaser(self.lasers[488])
+        self.lasers = {'405': actlaser , '488': offlaser}
+        self.initLaser(self.lasers['405'])
+        self.initLaser(self.lasers['488'])
     
     def initLaser(self, laser):
         print(laser.idn)

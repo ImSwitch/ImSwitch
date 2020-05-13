@@ -567,7 +567,6 @@ class LaserWidget(Widget):
         self.laserModules['488'].registerListener(controller)
         self.laserModules['473'].registerListener(controller)
         self.digModule.registerListener(controller)
-      
         
 class DigitalModule(QtGui.QFrame):
     """ Module from LaserWidget to handle digital modulation. """

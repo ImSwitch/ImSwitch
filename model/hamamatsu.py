@@ -558,43 +558,45 @@ class HamamatsuCamera():
     def newFrames(self):
 
 #         Wait for a new frame.
-        dwait = ctypes.c_int(DCAMCAP_EVENT_FRAMEREADY)
-        self.checkStatus(dcam.dcam_wait(self.camera_handle,
-                                        ctypes.byref(dwait),
-                                        ctypes.c_int(DCAMWAIT_TIMEOUT_INFINITE),
-                                        None),
-                         "dcam_wait")
-
-        # Check how many new frames there are.
-        [b_index, f_count] = self.getAq_Info()
-        # Check that we have not acquired more frames than we can store in our buffer.
-        # Keep track of the maximum backlog.
-        cur_frame_number = f_count
-        backlog = cur_frame_number - self.last_frame_number
-        if (backlog > self.number_image_buffers):
-            print("warning: hamamatsu camera frame buffer overrun detected!")
-        if (backlog > self.max_backlog):
-            self.max_backlog = backlog
-        self.last_frame_number = cur_frame_number
-
-        cur_buffer_index = b_index
-
-        # Create a list of the new frames.
-        new_frames = []
-        if (cur_buffer_index < self.buffer_index):
-            for i in range(self.buffer_index + 1, self.number_image_buffers):
-                new_frames.append(i)
-            for i in range(cur_buffer_index + 1):
-                new_frames.append(i)
-        else:
-            for i in range(self.buffer_index, cur_buffer_index):
-                new_frames.append(i+1)
-        self.buffer_index = cur_buffer_index
-
-        if self.debug:
-            print(new_frames)
-
-        return new_frames
+        try:
+            dwait = ctypes.c_int(DCAMCAP_EVENT_FRAMEREADY)
+            self.checkStatus(dcam.dcam_wait(self.camera_handle,
+                                            ctypes.byref(dwait),
+                                            ctypes.c_int(0),
+                                            None),
+                             "dcam_wait")
+            # Check how many new frames there are.
+            [b_index, f_count] = self.getAq_Info()
+            # Check that we have not acquired more frames than we can store in our buffer.
+            # Keep track of the maximum backlog.
+            cur_frame_number = f_count
+            backlog = cur_frame_number - self.last_frame_number
+            if (backlog > self.number_image_buffers):
+                print("warning: hamamatsu camera frame buffer overrun detected!")
+            if (backlog > self.max_backlog):
+                self.max_backlog = backlog
+            self.last_frame_number = cur_frame_number
+    
+            cur_buffer_index = b_index
+    
+            # Create a list of the new frames.
+            new_frames = []
+            if (cur_buffer_index < self.buffer_index):
+                for i in range(self.buffer_index + 1, self.number_image_buffers):
+                    new_frames.append(i)
+                for i in range(cur_buffer_index + 1):
+                    new_frames.append(i)
+            else:
+                for i in range(self.buffer_index, cur_buffer_index):
+                    new_frames.append(i+1)
+            self.buffer_index = cur_buffer_index
+    
+            if self.debug:
+                print(new_frames)
+    
+            return new_frames
+        except:
+            return []
 
     def getAq_Info(self):
         """b_index indicates which index position in the buffer was last
@@ -775,16 +777,10 @@ class HamamatsuCameraMR(HamamatsuCamera):
         return frames
         
     def getLast(self):
-#         Wait for a new frame.
-        dwait = ctypes.c_int(DCAMCAP_EVENT_FRAMEREADY)
-        self.checkStatus(dcam.dcam_wait(self.camera_handle,
-                                        ctypes.byref(dwait),
-                                        ctypes.c_int(DCAMWAIT_TIMEOUT_INFINITE),
-                                        None),
-                         "dcam_wait")
         [b_index, f_count] = self.getAq_Info()
         im = self.hcam_data[b_index].getData()
         return np.reshape(im, (self.frame_x, self.frame_y))
+
         
     def updateIndices(self):
         [b_index, f_count] = self.getAq_Info()
@@ -800,7 +796,6 @@ class HamamatsuCameraMR(HamamatsuCamera):
         return frames
         
     def UpdateFrameNrBufferIdx(self):
-        
         [b_index, f_count] = self.getAq_Info()
         self.last_frame_number = f_count
         self.buffer_index = b_index

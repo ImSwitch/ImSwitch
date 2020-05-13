@@ -564,7 +564,7 @@ class RecorderController(WidgetController):
         if not os.path.exists(folder):
             os.mkdir(folder)
         time.sleep(0.01)
-        name = os.path.join(folder, self.getFileName()) + '_snap.hdf5'
+        name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
         attrs = self._comm_channel.getCamAttrs()
         self._master.recordingHelper.snap(savename, attrs)
@@ -576,7 +576,7 @@ class RecorderController(WidgetController):
             if not os.path.exists(folder):
                 os.mkdir(folder)
             time.sleep(0.01)
-            name = os.path.join(folder, self.getFileName()) + '_rec.hdf5'
+            name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
             self.attrs = self._comm_channel.getCamAttrs()
             scan = self._comm_channel.getScanAttrs()
@@ -586,18 +586,21 @@ class RecorderController(WidgetController):
             elif self.recMode == 2:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, time=float(self._widget.timeToRec.text()))
             elif self.recMode == 3:
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs) 
+                time.sleep(0.1)
                 self._comm_channel.prepareScan()
             elif self.recMode == 4:
-                self._comm_channel.prepareScan()
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
-            elif self.recMode == 5:
+                time.sleep(0.1)
                 self._comm_channel.prepareScan()
-                self.dimlapseTotal = int(self._widget.totalSlices.text())
-                self.dimlapseCurrent = 0
+            elif self.recMode == 5:
+                self.lapseTotal = int(self._widget.totalSlices.text())
+                self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                time.sleep(0.03)
+                self._comm_channel.prepareScan()
             else:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)      
         else:
@@ -609,14 +612,13 @@ class RecorderController(WidgetController):
             if self.recMode == 3:    
                 self._widget.recButton.setChecked(False)
                 self._master.recordingHelper.endRecording() 
-                self._comm_channel.endScan()
             elif self.recMode == 4:
                 if self.lapseCurrent < self.lapseTotal:
                     self.lapseCurrent += 1
-                    self._widget.recButton.setChecked(True)
+                    self._master.recordingHelper.endRecording()
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self.timer = QtCore.QTimer(singleShot=True)
-                    self.timer.timeout.connect(lambda: self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs))
+                    self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(int(float(self._widget.freqEdit.text())*1000))
                 else:
                     self._widget.recButton.setChecked(False)
@@ -624,21 +626,26 @@ class RecorderController(WidgetController):
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording() 
             elif self.recMode == 5:
-                if self.dimlapseCurrent < self.dimlapseTotal:
-                    self.dimlapseCurrent += 1
-                    self._widget.recButton.setChecked(True)
-                    self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
+                if self.lapseCurrent < self.lapseTotal:
+                    self.lapseCurrent += 1
+                    self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
+                    self._master.recordingHelper.endRecording()
+                    time.sleep(0.1)
                     self._comm_channel.moveZstage(float(self._widget.stepSizeEdit.text()))
-                    self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                    self.timer = QtCore.QTimer(singleShot=True)
+                    self.timer.timeout.connect(self.nextLapse)
+                    self.timer.start(1000)
                 else:
                     self._widget.recButton.setChecked(False)
-                    self.dimlapseCurrent = 0
-                    self._comm_channel.moveZstage(-self.dimlapseTotal*float(self._widget.stepSizeEdit.text()))
-                    self._widget.currentSlice.setText(str(self.dimlapseCurrent) + ' / ')
+                    self.lapseCurrent = 0
+                    self._comm_channel.moveZstage(-self.lapseTotal*float(self._widget.stepSizeEdit.text()))
+                    self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording() 
                     
-
-        
+    def nextLapse(self):
+        self._master.recordingHelper.startRecording(self.recMode, self.savename+'_'+str(self.lapseCurrent), self.attrs) 
+        time.sleep(0.1)
+        self._comm_channel.prepareScan()
     def endRecording(self):
         self._widget.recButton.click()
         self._widget.currentFrame.setText('0 / ')
@@ -740,41 +747,62 @@ class LaserController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.digMod = False
+        self.aotfLasers = {'473' : False}
         
     def toggleLaser(self, laser):
-        """ Enable or disable laser (on/off)."""
-        if self._widget.laserModules[laser].enableButton.isChecked():
-            self._master.toggleLaser(True, laser)
+        """ Enable or disable laser (on/off).""" 
+        enable = self._widget.laserModules[laser].enableButton.isChecked()
+        if laser in self.aotfLasers.keys():
+            if not self.aotfLasers[laser]:
+                self._master.nidaqHelper.setDigital(laser, enable)
         else:
-            self._master.toggleLaser(False, laser)
+            self._master.toggleLaser(enable, laser)   
                 
     def changeSlider(self, laser):
         """ Change power with slider magnitude. """
-        magnitude =  self._widget.laserModules[laser].slider.value() 
-        self._master.changePower(magnitude, laser, self.digMod)
-        self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
+        magnitude =  self._widget.laserModules[laser].slider.value()
+        if laser in self.aotfLasers.keys():
+            if not self.aotfLasers[laser]:
+                self._master.nidaqHelper.setAnalog(laser, magnitude, min_val=0, max_val=5)
+                self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
+        else:
+            self._master.changePower(magnitude, laser, self.digMod)
+            self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
+        
             
     def changeEdit(self, laser):
         """ Change power with edit magnitude. """
         magnitude = float(self._widget.laserModules[laser].setPointEdit.text())
-        self._master.changePower(magnitude, laser, self.digMod)
-        self._widget.laserModules[laser].slider.setValue(magnitude)
-            
-            
+        if laser in self.aotfLasers.keys():
+            if not self.aotfLasers[laser]:
+                self._master.nidaqHelper.setAnalog(laser, magnitude, min_val=0, max_val=5)
+                self._widget.laserModules[laser].slider.setValue(magnitude)
+        else:
+            self._master.changePower(magnitude, laser, self.digMod)
+            self._widget.laserModules[laser].slider.setValue(magnitude)
+        
     def updateDigitalPowers(self, lasers):
         """ Update the powers if the digital mod is on. """
         self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
         if self.digMod:
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
-                self._master.changePower(int(self._widget.digModule.powers[laser].text()), laser, self.digMod)
+                if laser in self.aotfLasers.keys():
+                    self._master.nidaqHelper.setAnalog(laser, float(self._widget.digModule.powers[laser].text()), min_val=0, max_val=5)
+                else:
+                    self._master.changePower(int(self._widget.digModule.powers[laser].text()), laser, self.digMod)
             
     def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
         self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
         for i in np.arange(len(lasers)):
             laser = lasers[i]
-            self._master.digitalMod(self.digMod, int(self._widget.digModule.powers[laser].text()), laser)
+            if laser in self.aotfLasers.keys():
+                self._master.nidaqHelper.setAnalog(laser, float(self._widget.digModule.powers[laser].text()), min_val=0, max_val=5)
+                self.aotfLasers[laser] = self.digMod
+                self._master.nidaqHelper.setDigital(laser, False)
+            else: 
+                self._master.digitalMod(self.digMod, int(self._widget.digModule.powers[laser].text()), laser)
             if not self.digMod:
                 self.changeEdit(laser)
     
@@ -789,14 +817,14 @@ class LaserController(WidgetController):
 class ScanController(SuperScanController): # TODO
     def __init__(self, comm_channel, master, widget):
         super().__init__(comm_channel, master, widget)
-        
+        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
         self._stageParameterDict = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
                   'Sizes[3]':[5,5,0], \
                   'Step_sizes[3]': [1,1,1], \
                   'Start[3]': [0, 0, 0], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
-                  'Return_time_seconds': 0.001}
+                  'Return_time_seconds': 0.01}
         self._TTLParameterDict = {'Targets[x]': ['405', '473', '488', 'CAM'], \
                   'TTLStarts[x,y]': [[0.0012], [0.002], [0], [0]], \
                   'TTLEnds[x,y]': [[0.0015], [0.0025], [0], [0]], \
@@ -897,9 +925,9 @@ class ScanController(SuperScanController): # TODO
         self.getParameters()
         signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
         self._master.nidaqHelper.runScan(signalDic)
-        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
-        
+       
     def scanDone(self):
+        self.setScanButton(False)
         self._comm_channel.endScan()
      
     def getParameters(self):
@@ -916,7 +944,6 @@ class ScanController(SuperScanController): # TODO
             self._TTLParameterDict['TTLEnds[x,y]'][i] = [float(self._widget.pxParameters['end' + self._TTLParameterDict['Targets[x]'][i]].text())/1000]
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text())/1000
-        
         
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)

@@ -36,6 +36,10 @@ class TempestaController():
         #Check widget compatibility
         __masterController.scanHelper._parameterCompatibility(self.scanController.parameterDict)
 
+    def closeEvent(self):
+        self.positionerController.closeEvent()
+        self.laserController.closeEvent()
+        self.viewController.closeEvent()
     
 class CommunicationChannel():
     # Communication Channel is a class that handles the communication between Master Controller and Widgets, or between Widgets 

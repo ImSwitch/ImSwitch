@@ -358,7 +358,7 @@ class SettingsController(WidgetController):
         vsize = int(vmodulus * np.ceil(vsize / vmodulus))
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
         
-        self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, vsize, hsize))
+        self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, hsize, hsize))
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
         width, height = self._master.cameraHelper.shapes
@@ -379,8 +379,8 @@ class SettingsController(WidgetController):
         self.x0par.setValue(frameStart[0] + int(pos[0]))
         self.y0par.setValue(frameStart[1] + int(pos[1]))
 
-        self.widthPar.setValue(int(size[0]))   # [0] is Width
-        self.heightPar.setValue(int(size[1]))  # [1] is Height
+        self.widthPar.setValue(size[0])   # [0] is Width
+        self.heightPar.setValue(size[1])  # [1] is Height
         
     def abortROI(self):
         """ Cancel and reset parameters of the ROI. """
@@ -472,7 +472,9 @@ class ViewController(WidgetController):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
         self._comm_channel.crosshairToggle()
     
-       
+    def closeEvent(self):
+        self._master.cameraHelper.stopAcquisition()
+        
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
     
@@ -741,6 +743,11 @@ class PositionerController(WidgetController):
     def getPos(self):
         return {'X': self.stagePos[0], 'Y': self.stagePos[1], 'Z': self.stagePos[2]}
 
+    def closeEvent(self):
+        self._master.nidaqHelper.setAnalog(self.targets[0], 0)
+        self._master.nidaqHelper.setAnalog(self.targets[1], 0)
+        self._master.nidaqHelper.setAnalog(self.targets[2], 0)
+        
 class LaserController(WidgetController): 
     """ Linked to LaserWidget."""
     
@@ -748,6 +755,14 @@ class LaserController(WidgetController):
         super().__init__(*args, **kwargs)
         self.digMod = False
         self.aotfLasers = {'473' : False}
+        
+    def closeEvent(self):
+        self._master.toggleLaser(False, '405')
+        self._master.changePower(0, '405', False)
+        self._master.toggleLaser(False, '488')
+        self._master.changePower(0, '488', False)
+        self._master.nidaqHelper.setAnalog('473', 0, min_val=0, max_val=5)
+        self._master.nidaqHelper.setDigital('473', False)
         
     def toggleLaser(self, laser):
         """ Enable or disable laser (on/off).""" 
@@ -905,13 +920,13 @@ class ScanController(SuperScanController): # TODO
         self._widget.secScanDim.setCurrentIndex(axis[secDim])
         self._widget.thirdScanDim.setCurrentIndex(axis[thirdDim])
         
-        self._widget.scanPar['size' + primDim].setText(str(round(self._stageParameterDict['Sizes[3]'][0], 3)))
-        self._widget.scanPar['size' + secDim].setText(str(round(self._stageParameterDict['Sizes[3]'][1], 3)))
-        self._widget.scanPar['size' + thirdDim].setText(str(round(self._stageParameterDict['Sizes[3]'][2], 3)))
+        self._widget.scanPar['size' + primDim].setText(str(round(1000*self._stageParameterDict['Sizes[3]'][0], 3)))
+        self._widget.scanPar['size' + secDim].setText(str(round(1000*self._stageParameterDict['Sizes[3]'][1], 3)))
+        self._widget.scanPar['size' + thirdDim].setText(str(round(1000*self._stageParameterDict['Sizes[3]'][2], 3)))
         
-        self._widget.scanPar['stepSize' + primDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][0], 3))) 
-        self._widget.scanPar['stepSize' + secDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][1], 3))) 
-        self._widget.scanPar['stepSize' + thirdDim].setText(str(round(self._stageParameterDict['Step_sizes[3]'][2], 3))) 
+        self._widget.scanPar['stepSize' + primDim].setText(str(round(1000*self._stageParameterDict['Step_sizes[3]'][0], 3))) 
+        self._widget.scanPar['stepSize' + secDim].setText(str(round(1000*self._stageParameterDict['Step_sizes[3]'][1], 3))) 
+        self._widget.scanPar['stepSize' + thirdDim].setText(str(round(1000*self._stageParameterDict['Step_sizes[3]'][2], 3))) 
 
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
             self._widget.pxParameters['sta' + self._TTLParameterDict['Targets[x]'][i]].setText(str(round(self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3)))

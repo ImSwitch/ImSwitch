@@ -20,6 +20,7 @@ class TempestaController():
         # List of Controllers for the GUI Widgets
         
         self.scanController = controllers.ScanController(self.__comm_channel, __masterController, __view.scanWidget)
+        self.beadController = controllers.BeadController(self.__comm_channel, __masterController, __view.beadRecWidget)
         self.positionerController = controllers.PositionerController(self.__comm_channel, __masterController, __view.positionerWidget) 
         self.uLensesController = controllers.ULensesController(self.__comm_channel, __masterController, __view.ulensesWidget)
         self.alignXYController = controllers.AlignXYController(self.__comm_channel, __masterController, __view.alignWidgetXY)
@@ -46,8 +47,8 @@ class CommunicationChannel():
     
     def __init__(self, main):
         self.__main = main
-    
-    def updateImage(self, init):
+        
+    def updateImage(self, init=True):
         # Called from Master Controller, it updates the Liveview and Liveview Updated Widgets
         self.__main.imageController.update()
         self.__main.fftController.update()
@@ -71,8 +72,8 @@ class CommunicationChannel():
     def removeItemFromvb(self, item):
         self.__main.imageController.removeItemFromvb(item)
         
-    def getROIdata(self, ROI):
-        return  self.__main.imageController.getROIdata(ROI)
+    def getROIdata(self, image, ROI):
+        return  self.__main.imageController.getROIdata(image, ROI)
         
     def centerROI(self):
         # Returns the center of the VB to align the ROI
@@ -109,3 +110,6 @@ class CommunicationChannel():
         
     def moveZstage(self, step):
         self.__main.positionerController.move(2, step)
+        
+    def getDimsScan(self):
+        return self.__main.scanController.getDimsScan()

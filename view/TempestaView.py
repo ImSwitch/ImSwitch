@@ -15,9 +15,8 @@ from pyqtgraph.dockarea import Dock, DockArea
 
 class TempestaView(QtGui.QMainWindow):
     
-    def __init__(self, model, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model = model
         
  
         # Devices
@@ -108,7 +107,11 @@ class TempestaView(QtGui.QMainWindow):
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock)
         
-      
+        beadDock = Dock('Bead Rec', size=(1,1))
+        self.beadRecWidget = widgets.BeadRecWidget()
+        beadDock.addWidget(self.beadRecWidget)
+        dockArea.addDock(beadDock, 'bottom', scanDock)
+        
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
         self.positionerWidget = widgets.PositionerWidget()
@@ -143,6 +146,7 @@ class TempestaView(QtGui.QMainWindow):
     def registerController(self, controller):
         self.imageWidget.registerListener(controller.imageController)
         self.scanWidget.registerListener(controller.scanController)
+        self.beadRecWidget.registerListener(controller.beadController)
         self.positionerWidget.registerListener(controller.positionerController)
         self.ulensesWidget.registerListener(controller.uLensesController)
         self.alignWidgetXY.registerListener(controller.alignXYController)

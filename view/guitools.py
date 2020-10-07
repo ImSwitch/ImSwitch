@@ -697,7 +697,7 @@ class CamParamTree(ParameterTree):
         # Parameter tree for the camera configuration
         params = [{'name': 'Model', 'type': 'str', 'readonly': True},
                   {'name': 'Pixel size', 'type': 'float',
-                   'value': 0.159, 'readonly': False, 'suffix': ' µm'},
+                   'value': 0.119, 'readonly': False, 'suffix': ' µm'},
                   {'name': 'Image frame', 'type': 'group', 'children': [
                       {'name': 'Binning', 'type': 'list',
                        'values': [1, 2, 4], 'tip': BinTip},

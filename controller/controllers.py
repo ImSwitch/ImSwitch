@@ -126,7 +126,7 @@ class AlignXYController(LiveUpdatedController):
     def update(self):
         """ Update with new camera frame. """
         if self.active:
-            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI), self.axis) 
+            value = np.mean(self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI), self.axis) 
             self._widget.graph.updateGraph(value)
             
     def addROI(self):
@@ -163,7 +163,7 @@ class AlignAverageController(LiveUpdatedController):
     def update(self): 
         """ Update with new camera frame. """
         if self.active:
-            value = np.mean(self._comm_channel.getROIdata(self._widget.ROI))    
+            value = np.mean(self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI))    
             self._widget.graph.updateGraph(value)
             
     def addROI(self):
@@ -262,8 +262,8 @@ class FFTController(LiveUpdatedController):
         else:
             self.show = pos
             pos = float(1 / pos)
-            imgWidth = self.img.width()
-            imgHeight = self.img.height()
+            imgWidth = self._widget.img.width()
+            imgHeight = self._widget.img.height()
             self._widget.vb.setAspectLocked()
             self._widget.vb.setLimits(xMin=-0.5, xMax=imgWidth, minXRange=4,
                       yMin=-0.5, yMax=imgHeight, minYRange=4)
@@ -461,6 +461,7 @@ class ViewController(WidgetController):
         self._widget.gridButton.setEnabled(True)
         if self._widget.liveviewButton.isChecked():
             self._master.cameraHelper.startAcquisition()
+            self._master.cameraHelper.updateImageSignal.connect(self._comm_channel.updateImage)
         else:
             self._master.cameraHelper.stopAcquisition()
           
@@ -506,9 +507,9 @@ class ImageController(LiveUpdatedController):
                           yMin=-0.5, yMax=height - 0.5, minYRange=4)
         self._widget.vb.setAspectLocked()
         
-    def getROIdata(self, roi):
+    def getROIdata(self, image, roi):
         """ Returns the cropped image within the ROI. """
-        return roi.getArrayRegion(self._master.cameraHelper.image, self._widget.img)
+        return roi.getArrayRegion(image, self._widget.img)
         
     def centerROI(self):
         """ Returns center of viewbox to center a ROI. """
@@ -601,7 +602,7 @@ class RecorderController(WidgetController):
                 self.lapseTotal = int(self._widget.totalSlices.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
-                time.sleep(0.03)
+                time.sleep(0.3)
                 self._comm_channel.prepareScan()
             else:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)      
@@ -632,7 +633,7 @@ class RecorderController(WidgetController):
                     self.lapseCurrent += 1
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording()
-                    time.sleep(0.1)
+                    time.sleep(0.3)
                     self._comm_channel.moveZstage(float(self._widget.stepSizeEdit.text()))
                     self.timer = QtCore.QTimer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
@@ -646,7 +647,7 @@ class RecorderController(WidgetController):
                     
     def nextLapse(self):
         self._master.recordingHelper.startRecording(self.recMode, self.savename+'_'+str(self.lapseCurrent), self.attrs) 
-        time.sleep(0.1)
+        time.sleep(0.3)
         self._comm_channel.prepareScan()
     def endRecording(self):
         self._widget.recButton.click()
@@ -731,11 +732,13 @@ class PositionerController(WidgetController):
         self.stagePos = [0, 0, 0]
         self.convFactors = [1.5870, 1.5907, 10]
         self.targets = ['Stage_X', 'Stage_Y', 'Stage_Z']
+        self.minVolt = [-10, -10, 0] # piezzoconcept
+        self.maxVolt = [10, 10, 10] # piezzoconcept
         
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
         self.stagePos[axis] += dist
-        self._master.nidaqHelper.setAnalog(self.targets[axis], self.stagePos[axis]/self.convFactors[axis])
+        self._master.nidaqHelper.setAnalog(self.targets[axis], self.stagePos[axis]/self.convFactors[axis], min_val=self.minVolt[axis], max_val=self.maxVolt[axis])
         newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
         
         getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
@@ -825,7 +828,76 @@ class LaserController(WidgetController):
         self._widget.digModule.DigitalControlButton.setChecked(b)
         self.GlobalDigitalMod([405, 488])
         
+class BeadController(WidgetController):
+    def toggleROI(self):
+        """ Show or hide ROI."""
+        if self._widget.roiButton.isChecked() is False:
+            self._widget.ROI.hide()
+            self.active = False
+            self._widget.roiButton.setText('Show ROI')
+        else:
+            ROIsize = (64, 64)
+            ROIcenter = self._comm_channel.centerROI()
+            
+            ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
+                          ROIcenter[1] - 0.5 * ROIsize[1])
+        
+            self._widget.ROI.setPos(ROIpos)
+            self._widget.ROI.setSize(ROIsize)
+            self._widget.ROI.show()
+            self.active = True
+            self._widget.roiButton.setText('Hide ROI') 
+            
+    def addROI(self):
+        """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
+        self._comm_channel.addItemTovb(self._widget.ROI)
+    
+    def run(self):
+         self.dims = np.array(self._comm_channel.getDimsScan()).astype(int)
+         self.running = True
+         self.beadWorker = BeadWorker(self)
+         self.beadWorker.newChunk.connect(self.update)
+         self.thread = QtCore.QThread()
+         self.beadWorker.moveToThread(self.thread)
+         self.thread.started.connect(self.beadWorker.run)
+         self._master.cameraHelper.updateCameraIndices()
+         self.thread.start()
+         
+    def update(self):
+         self._widget.img.setImage(np.resize(self.recIm, self.dims), autoLevels = False)
 
+class BeadWorker(QtCore.QObject):
+    newChunk = QtCore.pyqtSignal()
+    def __init__(self, controller, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__controller = controller
+
+    def run(self):
+        pos = self.__controller._widget.ROI.pos()
+        size = self.__controller._widget.ROI.size()
+        
+        x0 = int(pos[0])
+        y0 = int(pos[1])
+        x1 = int(x0 + size[0])
+        y1 = int(y0 + size[1])
+
+        dims = np.array(self.__controller.dims)
+        self.__controller.recIm = np.zeros((dims[0]+1)*(dims[1]+1))      
+        i = 0
+        
+        while self.__controller.running:
+            newImages = self.__controller._master.cameraHelper.getChunk()
+            n = len(newImages)
+            if n > 0:     
+                for j in range(0, n):
+                    img = np.array(newImages[j])
+                    img = img[x0:x1, y0:y1]
+                    mean = np.mean(img)
+                    print(mean)
+                    self.__controller.recIm[i] = mean
+                    i = i + 1
+                self.newChunk.emit()
+            
 # Scan control
 
 
@@ -854,7 +926,14 @@ class ScanController(SuperScanController): # TODO
         
         return {'stageParameterList': stageParameterList,\
                 'TTLParameterList': TTLParameterList}
-           
+                
+    def getDimsScan(self):
+        self.getParameters()
+        x = self._stageParameterDict['Sizes[3]'][0] / self._stageParameterDict['Step_sizes[3]'][0]
+        y = self._stageParameterDict['Sizes[3]'][1] / self._stageParameterDict['Step_sizes[3]'][1]
+        
+        return (x, y)
+        
     def getScanAttrs(self):      
         stage = self._stageParameterDict.copy()
         ttl = self._TTLParameterDict.copy()
@@ -964,27 +1043,6 @@ class ScanController(SuperScanController): # TODO
         self._widget.scanButton.setChecked(b)
         if b: self.runScan()
     
-class MultipleScanController(WidgetController): # TODO
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('Init Multiple Scan Controller')
-    def saveScan(self):
-        print('save scan')
-    def toggleCrossHair(self):
-        print('toggle CrossHair')
-    def analyzeWorker(self):
-        print('Analyze')
-    def find_fpWorker(self):
-        print('Find fp')
-    def change_illum_image(self):
-        print('Change illum image')
-    def nextBead(self):
-        print('Next bead')
-    def overlayWorker(self):
-        print('Overlay Worker')
-    def clear(self):
-        print('Clear')
-      
 
         
 

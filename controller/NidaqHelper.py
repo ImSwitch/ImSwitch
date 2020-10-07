@@ -85,7 +85,10 @@ class NidaqHelper(QtCore.QObject):
                                                        100000)
                 #signal = np.array([enable])
                 signal = enable*np.ones(100, dtype=bool)
-                dotask.write(signal, auto_start=True)
+                try:
+                    dotask.write(signal, auto_start=True)
+                except:
+                    print(' Attempted writing analog data that is too large or too small.')
                 dotask.wait_until_done()
                 dotask.stop()
                 dotask.close()
@@ -109,7 +112,10 @@ class NidaqHelper(QtCore.QObject):
                                                        100000, min_val, max_val)
                     
                 signal = np.array([voltage])
-                aotask.write(signal, auto_start=True)
+                try:
+                    aotask.write(signal, auto_start=True)
+                except:
+                    print(' Attempted writing analog data that is too large or too small.')
                 aotask.wait_until_done()
                 aotask.stop()
                 aotask.close()

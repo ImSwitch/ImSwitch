@@ -783,8 +783,6 @@ class ScanWidget(Widget):
         self.graph = GraphFrame()
         self.graph.plot.getAxis('bottom').setScale(1000/self.sampleRate)
         self.graph.setFixedHeight(100)
-        
-        self.multiScanWgt = MultipleScanWidget()
 
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
@@ -835,12 +833,6 @@ class ScanWidget(Widget):
                 self.pxParameters['end'+self.allDevices[i]], start_row+i, 2)
         
         grid.addWidget(self.graph, 8, 3, 5, 5)
-        grid.addWidget(self.multiScanWgt, 13, 0, 4, 9)
-
-        grid.setColumnMinimumWidth(6, 160)
-        grid.setRowMinimumHeight(1, 10)
-        grid.setRowMinimumHeight(6, 10)
-        grid.setRowMinimumHeight(13, 10)
     
     def registerListener(self, controller):
         self.saveScanBtn.clicked.connect(controller.saveScan)
@@ -866,135 +858,50 @@ class GraphFrame(pg.GraphicsWindow):
 #            b = deviceInfo[i][2][2]
 #            self.plotSigDict[devs[i]] = self.plot.plot(pen=pg.mkPen(r, g, b))
     
-class MultipleScanWidget(Widget):
 
-    def __init__(self):
-        super().__init__()
-        illumPlotsDockArea = DockArea()
-        
-        self.illumWgt = IllumImageWidget()
-        fovDock = Dock("2D scanning")
-        fovDock.addWidget(self.illumWgt)
-        
-        self.illumWgt3D = pg.ImageView()
-        pos, rgba = zip(*guitools.cmapToColormap(plt.get_cmap('inferno')))
-        self.illumWgt3D.setColorMap(pg.ColorMap(pos, rgba))
-        for tick in self.illumWgt3D.ui.histogram.gradient.ticks:
-            tick.hide()
-        volDock = Dock("3D scanning")
-        volDock.addWidget(self.illumWgt3D)
-
-        illumPlotsDockArea.addDock(volDock)
-        illumPlotsDockArea.addDock(fovDock, 'above', volDock)
-
-        self.makeImgBox = QtGui.QCheckBox('Build scan image')
-        self.saveScanButton = QtGui.QPushButton('Save scan image')
-        
-        
-        # Crosshair
-        self.crosshair = guitools.Crosshair(self.illumWgt.vb)
-        self.crossButton = QtGui.QPushButton('Crosshair')
-        self.crossButton.setCheckable(True)
-
-        self.analysis_btn = QtGui.QPushButton('Analyze')
-        self.analysis_btn.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                        QtGui.QSizePolicy.Expanding)
-        self.show_beads_btn = QtGui.QPushButton('Show beads')
-
-        self.quality_label = QtGui.QLabel('Quality level of points')
-        self.quality_edit = QtGui.QLineEdit('0.05')
-                           
-        self.win_size_label = QtGui.QLabel('Window size [px]')
-        self.win_size_edit = QtGui.QLineEdit('10')
-        
-
-        self.beads_label = QtGui.QLabel('Bead number')
-        self.beadsBox = QtGui.QComboBox()
-        self.change_beads_button = QtGui.QPushButton('Change')
-        self.overlayBox = QtGui.QComboBox()
-        self.overlay_check = QtGui.QCheckBox('Overlay')
-        self.clear_btn = QtGui.QPushButton('Clear')
-
-        grid = QtGui.QGridLayout()
-        self.setLayout(grid)
-
-        grid.addWidget(self.crossButton, 0, 0)
-        grid.addWidget(self.makeImgBox, 0, 1)
-        grid.addWidget(self.saveScanButton, 0, 2)
-        grid.addWidget(illumPlotsDockArea, 1, 0, 1, 8)
-
-        grid.addWidget(self.quality_label, 2, 0)
-        grid.addWidget(self.quality_edit, 2, 1)
-        grid.addWidget(self.win_size_label, 3, 0)
-        grid.addWidget(self.win_size_edit, 3, 1)
-        grid.addWidget(self.show_beads_btn, 2, 2)
-        grid.addWidget(self.analysis_btn, 3, 2)
-
-        grid.addWidget(self.beads_label, 2, 4)
-        grid.addWidget(self.beadsBox, 2, 5)
-        grid.addWidget(self.change_beads_button, 3, 4, 1, 2)
-        grid.addWidget(self.overlay_check, 2, 6)
-        grid.addWidget(self.overlayBox, 2, 7)
-        grid.addWidget(self.clear_btn, 3, 6, 1, 2)
-
-        grid.setColumnMinimumWidth(3, 100)
     
-    def registerListener(self, controller):
-        self.saveScanButton.pressed.connect(controller.saveScan)
-        self.crossButton.pressed.connect(controller.toggleCrossHair)
-        self.analysis_btn.clicked.connect(controller.analyzeWorker)
-        self.show_beads_btn.clicked.connect(controller.find_fpWorker)
-        self.quality_edit.editingFinished.connect(controller.find_fpWorker)
-        self.win_size_edit.editingFinished.connect(controller.find_fpWorker)
-        self.beadsBox.activated.connect(controller.change_illum_image)
-        self.change_beads_button.clicked.connect(controller.nextBead)
-        self.overlayBox.activated.connect(controller.overlayWorker)
-        self.overlay_check.stateChanged.connect(controller.overlayWorker)
-        self.clear_btn.clicked.connect(controller.clear)
-        
-class IllumImageWidget(pg.GraphicsLayoutWidget):
+class BeadRecWidget(Widget):
+    """ Displays the FFT transform of the image. """
     
-    def __init__(self):
-        super().__init__()
-        self.vb = self.addViewBox(row=1, col=1)
-        self.vb.setAspectLocked(True)
-        self.vb.enableAutoRange()
-
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+            # Viewbox
+        self.cwidget = pg.GraphicsLayoutWidget()
+        self.vb = self.cwidget.addViewBox(row=1, col=1)
+        self.vb.setMouseMode(pg.ViewBox.RectMode)
         self.img = pg.ImageItem()
+        self.img.translate(-0.5, -0.5)
         self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        redsColormap = pg.ColorMap([0, 1], [(0, 0, 0), (255, 0, 0)])
-        self.hist.gradient.setColorMap(redsColormap)
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
+        self.hist.gradient.setColorMap(self.cubehelixCM)
         for tick in self.hist.gradient.ticks:
             tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-
-        self.imgBack = pg.ImageItem()
-        self.vb.addItem(self.imgBack)
-        self.imgBack.setZValue(10)
-        self.imgBack.setOpacity(0.5)
-        self.histBack = pg.HistogramLUTItem(image=self.imgBack)
-        self.histBack.vb.setLimits(yMin=0, yMax=66000)
-        pos, rgba = zip(*guitools.cmapToColormap(plt.get_cmap('viridis')))
-        greensColormap = pg.ColorMap(pos, rgba)
-        self.histBack.gradient.setColorMap(greensColormap)
-        for tick in self.histBack.gradient.ticks:
-            tick.hide()
-        self.addItem(self.histBack, row=1, col=3)
-
-        self.first = True
-        self.firstBack = True           
-
-
-
+        self.cwidget.addItem(self.hist, row=1, col=2)
         
-
+        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton.setCheckable(True)
+        self.runButton = QtGui.QPushButton('Run')
+        self.updateButton = QtGui.QPushButton('Update')
+        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
+                                handleCenter=(0, 1), color='y', scaleSnap=True,
+                                translateSnap=True)
         
-
-        
+        # Add elements to GridLayout
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.cwidget, 0, 0, 1, 6)
+        grid.addWidget(self.roiButton, 1, 0, 1, 1)
+        grid.addWidget(self.runButton, 1, 1, 1, 1)
+        grid.addWidget(self.updateButton, 1, 2, 1, 1)
+        grid.setRowMinimumHeight(0, 300)
     
-            
-
-
+    def registerListener(self, controller):
+        controller.addROI()
+        self.roiButton.clicked.connect(controller.toggleROI)
+        self.runButton.clicked.connect(controller.run)
+        self.updateButton.clicked.connect(controller.update)
         

@@ -7,9 +7,11 @@ Created on Tue Apr  7 16:37:09 2020
 from pyqtgraph.Qt import QtCore
 #import time
 
-class CameraHelper():
+class CameraHelper(QtCore.QObject):
+    updateImageSignal = QtCore.pyqtSignal()
     # CameraHelper deals with the Hamamatsu parameters and frame extraction
-    def __init__(self, comm_channel, cameras):
+    def __init__(self, comm_channel, cameras, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.__cameras = cameras
         self.__comm_channel = comm_channel
 
@@ -54,7 +56,8 @@ class CameraHelper():
         
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
-        self.updateLatestFrame(False)
+        self.__image = self.__cameras[0].getLast()
+        self.__comm_channel.updateImage(False)
         self.__thread.start()
         
     def stopAcquisition(self):
@@ -73,10 +76,10 @@ class CameraHelper():
                 function()
                 self.startAcquisition()  
 
-    def updateLatestFrame(self, init=True):
+    def updateLatestFrame(self):
         self.__image = self.__cameras[0].getLast()
-        self.__comm_channel.updateImage(init)
-        
+        self.updateImageSignal.emit()
+       
     def getChunk(self):
         return self.__cameras[0].getFrames()
         
@@ -140,6 +143,7 @@ class CameraHelper():
            lambda: self.__cameras[0].setPropertyValue('binning', coded))
         
 class LVWorker(QtCore.QObject):
+    updateSignal = QtCore.pyqtSignal()
 
     def __init__(self, cameraHelper, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -148,7 +152,7 @@ class LVWorker(QtCore.QObject):
     def run(self):
         self.vtimer = QtCore.QTimer()
         self.vtimer.timeout.connect(self.__cameraHelper.updateLatestFrame)
-        self.vtimer.start(30)
+        self.vtimer.start(100)
             
 
            

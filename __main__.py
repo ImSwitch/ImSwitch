@@ -13,7 +13,7 @@ import sys
 
 model = TempestaModel()
 app = QtGui.QApplication([])
-view = TempestaView(model)
+view = TempestaView()
 controller = TempestaController(model, view)
 view.registerController(controller)
 view.show()

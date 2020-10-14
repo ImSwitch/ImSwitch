@@ -885,7 +885,7 @@ class BeadRecWidget(Widget):
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtGui.QPushButton('Run')
-        self.updateButton = QtGui.QPushButton('Update')
+        self.runButton.setCheckable(True)
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
@@ -896,12 +896,11 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.cwidget, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
-        grid.addWidget(self.updateButton, 1, 2, 1, 1)
         grid.setRowMinimumHeight(0, 300)
     
     def registerListener(self, controller):
         controller.addROI()
         self.roiButton.clicked.connect(controller.toggleROI)
         self.runButton.clicked.connect(controller.run)
-        self.updateButton.clicked.connect(controller.update)
+
         

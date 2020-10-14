@@ -829,6 +829,10 @@ class LaserController(WidgetController):
         self.GlobalDigitalMod([405, 488])
         
 class BeadController(WidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.running = False
+        
     def toggleROI(self):
         """ Show or hide ROI."""
         if self._widget.roiButton.isChecked() is False:
@@ -853,21 +857,27 @@ class BeadController(WidgetController):
         self._comm_channel.addItemTovb(self._widget.ROI)
     
     def run(self):
-         self.dims = np.array(self._comm_channel.getDimsScan()).astype(int)
-         self.running = True
-         self.beadWorker = BeadWorker(self)
-         self.beadWorker.newChunk.connect(self.update)
-         self.thread = QtCore.QThread()
-         self.beadWorker.moveToThread(self.thread)
-         self.thread.started.connect(self.beadWorker.run)
-         self._master.cameraHelper.updateCameraIndices()
-         self.thread.start()
+        if not self.running:
+            self.dims = np.array(self._comm_channel.getDimsScan()).astype(int)
+            self.running = True
+            self.beadWorker = BeadWorker(self)
+            self.beadWorker.newChunk.connect(self.update)
+            self.thread = QtCore.QThread()
+            self.beadWorker.moveToThread(self.thread)
+            self.thread.started.connect(self.beadWorker.run)
+            self._master.cameraHelper.updateCameraIndices()
+            self.thread.start()   
+        else:
+            self.running = False
+            self.thread.quit()
+            self.thread.wait()
          
     def update(self):
-         self._widget.img.setImage(np.resize(self.recIm, self.dims), autoLevels = False)
+         self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels = False)
 
 class BeadWorker(QtCore.QObject):
     newChunk = QtCore.pyqtSignal()
+    stop = QtCore.pyqtSignal()
     def __init__(self, controller, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__controller = controller
@@ -882,7 +892,8 @@ class BeadWorker(QtCore.QObject):
         y1 = int(y0 + size[1])
 
         dims = np.array(self.__controller.dims)
-        self.__controller.recIm = np.zeros((dims[0]+1)*(dims[1]+1))      
+        N = (dims[0] + 1)*(dims[1] + 1)
+        self.__controller.recIm = np.zeros(N)      
         i = 0
         
         while self.__controller.running:
@@ -893,9 +904,10 @@ class BeadWorker(QtCore.QObject):
                     img = np.array(newImages[j])
                     img = img[x0:x1, y0:y1]
                     mean = np.mean(img)
-                    print(mean)
                     self.__controller.recIm[i] = mean
                     i = i + 1
+                    if i == N:
+                        i = 0
                 self.newChunk.emit()
             
 # Scan control
@@ -1017,12 +1029,16 @@ class ScanController(SuperScanController): # TODO
         print('previewScan')
     def runScan(self):
         self.getParameters()
-        signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
-        self._master.nidaqHelper.runScan(signalDic)
+        self.signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict, self._TTLParameterDict)
+        self._master.nidaqHelper.runScan(self.signalDic)
        
     def scanDone(self):
-        self.setScanButton(False)
-        self._comm_channel.endScan()
+        print("scan done")
+        if not self._widget.continuousCheck.isChecked():
+            self.setScanButton(False)
+            self._comm_channel.endScan()
+        else:  
+            self._master.nidaqHelper.runScan(self.signalDic)
      
     def getParameters(self):
         primDim = self._widget.primScanDim.currentText()

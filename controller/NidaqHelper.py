@@ -127,6 +127,7 @@ class NidaqHelper(QtCore.QObject):
         running. """
         if not self.busy:
             self.busy = True
+            self.signalSent = False
             stageDic = signalDic['stageScanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
             AOTargetChanPairs = self.__makeSortedTargets('AOChan')
@@ -179,7 +180,7 @@ class NidaqHelper(QtCore.QObject):
             self.doTaskWaiter = WaitThread()
             self.doTaskWaiter.connect(self.doTask)
             self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
-            self.signalSent = False
+            
             
             self.doTask.start()
             self.aoTask.start()
@@ -190,8 +191,9 @@ class NidaqHelper(QtCore.QObject):
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
             self.busy = False
-            self.scanDoneSignal.emit()
             self.signalSent = True
+            self.scanDoneSignal.emit()
+            
         
     def runContinuous(self, digital_targets, digital_signals):
         pass

@@ -9,7 +9,7 @@ from model import mockers
 
 import importlib
 
-class Laser(object):
+class Laser:
 
     def __new__(cls, iName, *args):
         try:
@@ -24,7 +24,7 @@ class Laser(object):
             return mockers.MockLaser()
 
 
-class LinkedLaserCheck(object):
+class LinkedLaserCheck:
 
     def __new__(cls, iName, ports):
         try:
@@ -41,7 +41,7 @@ class LinkedLaserCheck(object):
             return mockers.MockLaser()
 
 
-class LinkedLaser(object):
+class LinkedLaser:
 
     def __init__(self, lasers):
         self.lasers = lasers
@@ -113,7 +113,7 @@ class LinkedLaser(object):
         self.lasers[0].finalize()
         self.lasers[1].finalize()
 
-class Cameras(object):
+class Cameras:
     """ Buffer class for testing whether the camera is connected. If it's not,
     it returns a dummy class for program testing. """
 #TODO:

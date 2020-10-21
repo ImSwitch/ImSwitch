@@ -10,9 +10,6 @@ import pyqtgraph as pg
 import numpy as np
 import view.guitools as guitools
 import os
-from pyqtgraph.dockarea import Dock, DockArea
-import matplotlib.pyplot as plt
-import configparser
 import time
 
 class Widget(QtGui.QWidget):

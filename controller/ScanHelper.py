@@ -14,8 +14,7 @@ class ScanHelperFactory():
     """Factory class for creating a ScanHelper object. Factory checks
     that the new object is a valid ScanHelper."""
     def __new__(cls , className, *args):
-
-        scanHelper = eval(className+'(*args)')
+        scanHelper = globals()[className](*args)
         if scanHelper.isValidChild():
             return scanHelper
 

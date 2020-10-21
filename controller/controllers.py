@@ -18,8 +18,7 @@ class WidgetControllerFactory():
     """Factory class for creating a WidgetController object. Factory checks
     that the new object is a valid WidgetController."""
     def __new__(cls , className, *args):
-
-        widgetController = eval(className+'(*args)')
+        widgetController = globals()[className](*args)
         if widgetController.isValidChild():
             return widgetController
         

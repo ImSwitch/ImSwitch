@@ -21,7 +21,7 @@ class SignalDesignerFactory():
         scanDesignerName = config_dict[configKeyName]
         
 #        SignalDesigner = super().__new__(cls, 'SignalDesigner.'+scanDesignerName)
-        signalDesigner = eval(scanDesignerName+'()')
+        signalDesigner = globals()[scanDesignerName]()
         if signalDesigner.isValidSignalDesigner():
             return signalDesigner
 

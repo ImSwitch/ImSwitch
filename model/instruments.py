@@ -80,7 +80,7 @@ class LinkedLaser(object):
 
     @property
     def digital_mod(self):
-        return self.lasers[0].digital_mode
+        return self.lasers[0].digital_mod
 
     @digital_mod.setter
     def digital_mod(self, value):

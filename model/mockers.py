@@ -7,14 +7,12 @@ Created on Tue Aug 12 20:02:08 2014
 
 import ctypes
 import ctypes.util
-import numpy as np
-
 import logging
 
+import numpy as np
+from lantz import Action, Feat
 from lantz import Driver
 from lantz import Q_
-
-from lantz import Action, Feat
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s',
                     datefmt='%Y-%d-%m %H:%M:%S')
@@ -78,7 +76,6 @@ class MockLaser(Driver):
         return 55555 * self.mW
 
     def enter_mod_mode(self):
-
         pass
 
     @property
@@ -235,7 +232,7 @@ class MockHamamatsu(Driver):
     def getLast(self):
         hc_data = HMockCamData(self.frame_x * self.frame_y)
         return [hc_data, [self.frame_x, self.frame_y]]
-        
+
     def getModelInfo(self):
         ''' Returns the model of the camera
 
@@ -445,10 +442,10 @@ class MockWebcam(Driver):
 
     def grab_image(self, **kwargs):
         img = np.zeros((256, 320))
-        beamCenter = [int(np.random.randn()*10 + 123),
-                      int(np.random.randn()*10 + 155)]
+        beamCenter = [int(np.random.randn() * 10 + 123),
+                      int(np.random.randn() * 10 + 155)]
         img[beamCenter[0] - 10:beamCenter[0] + 10,
-            beamCenter[1] - 10:beamCenter[1] + 10] = 1
+        beamCenter[1] - 10:beamCenter[1] + 10] = 1
         return img
 
     def stop(self):

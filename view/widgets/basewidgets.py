@@ -6,6 +6,7 @@ Created on Fri Mar 20 17:08:54 2020
 """
 from pyqtgraph.Qt import QtGui
 
+
 class Widget(QtGui.QWidget):
     """ Superclass for all Widgets.
             All Widgets are subclasses of QWidget and should have a registerListener function. """

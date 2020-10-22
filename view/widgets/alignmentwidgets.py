@@ -4,11 +4,13 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
-from pyqtgraph.Qt import QtGui, QtCore
-import pyqtgraph as pg
 import numpy as np
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+
 import view.guitools as guitools
 from .basewidgets import Widget
+
 
 class ULensesWidget(Widget):
     """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
@@ -58,8 +60,8 @@ class AlignWidgetXY(Widget):
         self.XButton = QtGui.QRadioButton('X dimension')
         self.YButton = QtGui.QRadioButton('Y dimension')
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
-                       scaleSnap=True, translateSnap=True)
+                                handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
+                                scaleSnap=True, translateSnap=True)
         self.graph = guitools.ProjectionGraph()
 
         # Add elements to GridLayout
@@ -89,8 +91,8 @@ class AlignWidgetAverage(Widget):
         self.roiButton.setCheckable(True)
         self.resetButton = QtGui.QPushButton('Reset graph')
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
-                       handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
-                       scaleSnap=True, translateSnap=True)
+                                handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
+                                scaleSnap=True, translateSnap=True)
         self.graph = guitools.SumpixelsGraph()
         self.resetButton.clicked.connect(self.graph.resetData)
 
@@ -101,7 +103,6 @@ class AlignWidgetAverage(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.resetButton, 1, 1, 1, 1)
         grid.setRowMinimumHeight(0, 300)
-
 
     def registerListener(self, controller):
         """ Manage interactions with AlignAverageController. """
@@ -154,7 +155,7 @@ class FFTWidget(Widget):
         self.lineRate = QtGui.QLineEdit('10')
         self.labelRate = QtGui.QLabel('Update rate')
 
-            # Vertical and horizontal lines
+        # Vertical and horizontal lines
         self.vline = pg.InfiniteLine()
         self.hline = pg.InfiniteLine()
         self.rvline = pg.InfiniteLine()
@@ -162,7 +163,7 @@ class FFTWidget(Widget):
         self.uhline = pg.InfiniteLine()
         self.dhline = pg.InfiniteLine()
 
-            # Viewbox
+        # Viewbox
         self.cwidget = pg.GraphicsLayoutWidget()
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
@@ -172,13 +173,13 @@ class FFTWidget(Widget):
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1 / 256), guitools.cubehelix().astype(int))
         self.hist.gradient.setColorMap(self.cubehelixCM)
         for tick in self.hist.gradient.ticks:
             tick.hide()
         self.cwidget.addItem(self.hist, row=1, col=2)
 
-            # Add lines to viewbox
+        # Add lines to viewbox
         self.vb.addItem(self.vline)
         self.vb.addItem(self.hline)
         self.vb.addItem(self.lvline)

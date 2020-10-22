@@ -4,22 +4,25 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
-from pyqtgraph.Qt import QtGui, QtCore
-from pyqtgraph.parametertree import Parameter, ParameterTree
-import pyqtgraph as pg
-import numpy as np
-import view.guitools as guitools
 import os
 import time
+
+import numpy as np
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.parametertree import Parameter, ParameterTree
+
+import view.guitools as guitools
 from .basewidgets import Widget
 
 
 class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the camera during imaging
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-                # TODO retrieve model from TempestaModel
+        # TODO retrieve model from TempestaModel
         BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
                   "many pixels are to be read out and interpreted as a \n"
                   "single pixel value.")
@@ -109,13 +112,13 @@ class CamParamTree(ParameterTree):
         attrs = []
         for ParName in self.p.getValues():
             Par = self.p.param(str(ParName))
-            if not(Par.hasChildren()):
+            if not (Par.hasChildren()):
                 attrs.append((str(ParName), Par.value()))
             else:
                 for sParName in Par.getValues():
                     sPar = Par.param(str(sParName))
                     if sPar.type() != 'action':
-                        if not(sPar.hasChildren()):
+                        if not (sPar.hasChildren()):
                             attrs.append((str(sParName), sPar.value()))
                         else:
                             for ssParName in sPar.getValues():
@@ -126,6 +129,7 @@ class CamParamTree(ParameterTree):
 
 class SettingsWidget(Widget):
     """ Camera settings and ROI parameters. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -154,24 +158,25 @@ class SettingsWidget(Widget):
 
 class ViewWidget(Widget):
     """ View settings (liveview, grid, crosshair). """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-            # Grid
+        # Grid
         self.gridButton = QtGui.QPushButton('Grid')
         self.gridButton.setCheckable(True)
         self.gridButton.setEnabled(False)
         self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                       QtGui.QSizePolicy.Expanding)
 
-            # Crosshair
+        # Crosshair
         self.crosshairButton = QtGui.QPushButton('Crosshair')
         self.crosshairButton.setCheckable(True)
         self.crosshairButton.setEnabled(False)
         self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                            QtGui.QSizePolicy.Expanding)
-            # liveview
+        # liveview
         self.liveviewButton = QtGui.QPushButton('LIVEVIEW')
         self.liveviewButton.setStyleSheet("font-size:20px")
         self.liveviewButton.setCheckable(True)
@@ -195,6 +200,7 @@ class ViewWidget(Widget):
 
 class ImageWidget(pg.GraphicsLayoutWidget):
     """ Widget containing viewbox that displays the new camera frames.  """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -207,7 +213,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         proxy.setWidget(self.levelsButton)
         self.addItem(proxy, row=0, col=2)
 
-            # Viewbox and related elements
+        # Viewbox and related elements
         self.vb = self.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
         self.img = pg.ImageItem()
@@ -217,7 +223,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256),
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1 / 256),
                                        guitools.cubehelix().astype(int))
         self.hist.gradient.setColorMap(self.cubehelixCM)
         self.grid = guitools.Grid(self.vb)
@@ -228,7 +234,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         for tick in self.hist.gradient.ticks:
             tick.hide()
         self.addItem(self.hist, row=1, col=2)
-            # x and y profiles
+        # x and y profiles
         xPlot = self.addPlot(row=0, col=1)
         xPlot.hideAxis('left')
         xPlot.hideAxis('bottom')
@@ -251,6 +257,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 class RecordingWidget(Widget):
     """ Widget to control image or sequence recording.
     Recording only possible when liveview active. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -258,7 +265,7 @@ class RecordingWidget(Widget):
         recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
-            # Folder and filename fields
+        # Folder and filename fields
         self.dataDir = r"D:\Data"
         self.initialDir = os.path.join(self.dataDir, time.strftime('%Y-%m-%d'))
         self.folderEdit = QtGui.QLineEdit(self.initialDir)
@@ -266,7 +273,7 @@ class RecordingWidget(Widget):
         self.specifyfile = QtGui.QCheckBox('Specify file name')
         self.filenameEdit = QtGui.QLineEdit('Current time')
 
-            # Snap and recording buttons
+        # Snap and recording buttons
         self.snapTIFFButton = QtGui.QPushButton('Snap')
         self.snapTIFFButton.setStyleSheet("font-size:16px")
         self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
@@ -276,7 +283,7 @@ class RecordingWidget(Widget):
         self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                      QtGui.QSizePolicy.Expanding)
-            # Number of frames and measurement timing
+        # Number of frames and measurement timing
         modeTitle = QtGui.QLabel('<strong>Mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
         self.specifyFrames = QtGui.QRadioButton('Number of frames')

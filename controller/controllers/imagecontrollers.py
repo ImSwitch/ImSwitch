@@ -266,7 +266,7 @@ class RecorderController(WidgetController):
                 subprocess.check_call(['open', '', self._widget.folderEdit.text()])
             elif sys.platform == 'linux':
                 subprocess.check_call(
-                    ['gnome-open', '', self._widget.folderEdit.text()])
+                    ['xdg-open', '', self._widget.folderEdit.text()])
             elif sys.platform == 'win32':
                 os.startfile(self._widget.folderEdit.text())
 

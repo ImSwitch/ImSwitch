@@ -92,6 +92,7 @@ class AlignWidgetAverage(Widget):
                        handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
                        scaleSnap=True, translateSnap=True)
         self.graph = guitools.SumpixelsGraph()
+        self.resetButton.clicked.connect(self.graph.resetData)
 
         # Add items to GridLayout
         grid = QtGui.QGridLayout()
@@ -106,7 +107,6 @@ class AlignWidgetAverage(Widget):
         """ Manage interactions with AlignAverageController. """
         controller.addROI()
         self.roiButton.clicked.connect(controller.toggleROI)
-        self.resetButton.clicked.connect(self.graph.resetData)
 
 
 class AlignmentLineWidget(Widget):

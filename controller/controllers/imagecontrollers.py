@@ -101,7 +101,7 @@ class SettingsController(WidgetController):
         self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(width)
         self.heightPar.setValue(height)
-        self.updateTimings(self._master.cameraHelper.getTimings())
+        self.updateTimings(*self._master.cameraHelper.getTimings())
 
     def ROIchanged(self):
         """ Update parameters according to ROI. """
@@ -131,17 +131,17 @@ class SettingsController(WidgetController):
     def setTriggerParam(self, source):
         self.trigsourceparam.setValue(source)
 
-    def updateTimings(self, params):
+    def updateTimings(self, realExpParValue, frameIntValue, readoutParValue, effFRParValue):
         """ Update the real exposure times from the camera. """
-        self.realExpPar.setValue(params[0])
-        self.frameInt.setValue(params[1])
-        self.readoutPar.setValue(params[2])
-        self.effFRPar.setValue(params[3])
+        self.realExpPar.setValue(realExpParValue)
+        self.frameInt.setValue(frameIntValue)
+        self.readoutPar.setValue(readoutParValue)
+        self.effFRPar.setValue(effFRParValue)
 
     def setExposure(self):
         """ Update a new exposure time to the camera. """
         params = self._master.cameraHelper.setExposure(self.expPar.value())
-        self.updateTimings(params)
+        self.updateTimings(*params)
 
     def setBinning(self):
         """ Update a new binning to the camera. """

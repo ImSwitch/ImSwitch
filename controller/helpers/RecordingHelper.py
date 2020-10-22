@@ -9,6 +9,9 @@ import numpy as np
 import h5py
 import time
 
+from controller.enums import RecMode
+
+
 class RecordingHelper():
     def __init__(self, comm_channel, cameraHelper):
         self.__comm_channel = comm_channel
@@ -74,7 +77,7 @@ class RecordingWorker(QtCore.QObject):
         umxpx = self.attrs['Camera_pixel_size']
         d.attrs["element_size_um"] = [1, umxpx, umxpx]
         
-        if self.recMode == 1:
+        if self.recMode == RecMode.SpecFrames:
             frames = self.frames
             while it<frames:
                 newframes = self.__recordingHelper.cameraHelper.getChunk()
@@ -92,7 +95,7 @@ class RecordingWorker(QtCore.QObject):
             self.__recordingHelper.comm_channel.updateRecFrameNumber(0)
             self.__recordingHelper.comm_channel.endRecording()
             self.__recordingHelper.endRecording()
-        elif self.recMode == 2:
+        elif self.recMode == RecMode.SpecTime:
             start = time.time()
             current = 0
             while current < self.time:

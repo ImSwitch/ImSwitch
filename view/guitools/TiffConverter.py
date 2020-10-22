@@ -6,20 +6,21 @@ Created on Fri Feb  6 13:20:02 2015
 """
 import os
 import time
+
 import h5py as hdf
 import tifffile as tiff
-import view.guitools as guitools
-
 from pyqtgraph.Qt import QtCore
+
+import view.guitools as guitools
 
 
 def fileSizeGB(shape):
     # self.nPixels() * self.nExpositions * 16 / (8 * 1024**3)
-    return shape[0]*shape[1]*shape[2] / 2**29
+    return shape[0] * shape[1] * shape[2] / 2 ** 29
 
 
 def nFramesPerChunk(shape):
-    return int(1.8 * 2**29 / (shape[1] * shape[2]))
+    return int(1.8 * 2 ** 29 / (shape[1] * shape[2]))
 
 
 class TiffConverterThread(QtCore.QThread):
@@ -44,7 +45,7 @@ class TiffConverter(QtCore.QObject):
 
         if self.filenames is None:
             self.filenames = guitools.getFilenames("Select HDF5 files",
-                                          [('HDF5 files', '*.hdf5')])
+                                                   [('HDF5 files', '*.hdf5')])
 
         else:
             self.filenames = [self.filenames]
@@ -71,14 +72,14 @@ class TiffConverter(QtCore.QObject):
                         while i < filesize // 1.8:
                             suffix = '_part{}'.format(i)
                             partName = guitools.insertSuffix(filename, suffix, '.tiff')
-                            tiff.imsave(partName, data[i*n:(i + 1)*n],
+                            tiff.imsave(partName, data[i * n:(i + 1) * n],
                                         description=dataname,
                                         software='Tormenta')
                             i += 1
                         if filesize % 2 > 0:
                             suffix = '_part{}'.format(i)
                             partName = guitools.insertSuffix(filename, suffix, '.tiff')
-                            tiff.imsave(partName, data[i*n:],
+                            tiff.imsave(partName, data[i * n:],
                                         description=dataname,
                                         software='Tormenta')
 

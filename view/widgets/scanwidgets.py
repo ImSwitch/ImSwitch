@@ -4,11 +4,14 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
-from pyqtgraph.Qt import QtGui
-import pyqtgraph as pg
 import os
+
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui
+
 import constants
 from .basewidgets import Widget
+
 
 class ScanWidget(Widget):
     ''' Widget containing scanner interface and beadscan reconstruction.
@@ -39,7 +42,7 @@ class ScanWidget(Widget):
         self.sizeXPar = QtGui.QLineEdit('2')
         self.sizeYPar = QtGui.QLineEdit('2')
         self.sizeZPar = QtGui.QLineEdit('10')
-        self.seqTimePar = QtGui.QLineEdit('10')     # ms
+        self.seqTimePar = QtGui.QLineEdit('10')  # ms
         self.nrFramesPar = QtGui.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtGui.QLabel(str(self.scanDuration))
@@ -61,20 +64,19 @@ class ScanWidget(Widget):
         self.thirdScanDim.setCurrentIndex(2)
 
         self.scanPar = {'sizeX': self.sizeXPar,
-                         'sizeY': self.sizeYPar,
-                         'sizeZ': self.sizeZPar,
-                         'seqTime': self.seqTimePar,
-                         'stepSizeX': self.stepSizeXPar,
-                         'stepSizeY': self.stepSizeYPar,
-                         'stepSizeZ': self.stepSizeZPar}
+                        'sizeY': self.sizeYPar,
+                        'sizeZ': self.sizeZPar,
+                        'seqTime': self.seqTimePar,
+                        'stepSizeX': self.stepSizeXPar,
+                        'stepSizeY': self.stepSizeYPar,
+                        'stepSizeZ': self.stepSizeZPar}
 
         self.pxParameters = dict()
         self.pxParValues = dict()
 
         for i in range(0, len(self.allDevices)):
-
-            self.pxParameters['sta'+self.allDevices[i]] = QtGui.QLineEdit('0')
-            self.pxParameters['end'+self.allDevices[i]] = QtGui.QLineEdit('10')
+            self.pxParameters['sta' + self.allDevices[i]] = QtGui.QLineEdit('0')
+            self.pxParameters['end' + self.allDevices[i]] = QtGui.QLineEdit('10')
 
         self.scanRadio = QtGui.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
@@ -90,7 +92,7 @@ class ScanWidget(Widget):
 
         self.sampleRate = 10000
         self.graph = GraphFrame()
-        self.graph.plot.getAxis('bottom').setScale(1000/self.sampleRate)
+        self.graph.plot.getAxis('bottom').setScale(1000 / self.sampleRate)
         self.graph.setFixedHeight(100)
 
         grid = QtGui.QGridLayout()
@@ -99,7 +101,7 @@ class ScanWidget(Widget):
         grid.addWidget(self.loadScanBtn, 0, 0)
         grid.addWidget(self.saveScanBtn, 0, 1)
         grid.addWidget(self.scanRadio, 0, 2)
-        grid.addWidget(self.contLaserPulsesRadio, 0, 3) #
+        grid.addWidget(self.contLaserPulsesRadio, 0, 3)  #
         grid.addWidget(self.scanButton, 0, 4, 1, 2)
         grid.addWidget(self.continuousCheck, 0, 6)
 
@@ -135,11 +137,11 @@ class ScanWidget(Widget):
 
         start_row = 9
         for i in range(0, len(self.allDevices)):
-            grid.addWidget(QtGui.QLabel(self.allDevices[i]), start_row+i, 0)
+            grid.addWidget(QtGui.QLabel(self.allDevices[i]), start_row + i, 0)
             grid.addWidget(
-                self.pxParameters['sta'+self.allDevices[i]], start_row+i, 1)
+                self.pxParameters['sta' + self.allDevices[i]], start_row + i, 1)
             grid.addWidget(
-                self.pxParameters['end'+self.allDevices[i]], start_row+i, 2)
+                self.pxParameters['end' + self.allDevices[i]], start_row + i, 2)
 
         grid.addWidget(self.graph, 8, 3, 5, 5)
 
@@ -149,18 +151,20 @@ class ScanWidget(Widget):
         self.scanButton.clicked.connect(controller.runScan)
         self.previewButton.clicked.connect(controller.previewScan)
 
+
 class GraphFrame(pg.GraphicsWindow):
     """Creates the plot that plots the preview of the pulses.
     Fcn update() updates the plot of "device" with signal "signal"."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Take params from model
-        #self.pxCycle = pxCycle
-        #devs = list(pxCycle.sigDict.keys())
+        # self.pxCycle = pxCycle
+        # devs = list(pxCycle.sigDict.keys())
         self.plot = self.addPlot(row=1, col=0)
         self.plot.setYRange(0, 1)
         self.plot.showGrid(x=False, y=False)
-        #self.plotSigDict = dict()
+        # self.plotSigDict = dict()
 #        for i in range(0, len(pxCycle.sigDict)):
 #            r = deviceInfo[i][2][0]
 #            g = deviceInfo[i][2][1]

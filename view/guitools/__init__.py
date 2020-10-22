@@ -4,10 +4,9 @@ Created on Fri Feb  6 13:20:02 2015
 
 @author: federico
 """
-import numpy as np
+from .TiffConverter import *
 from .filetools import *
 from .graphtools import *
-from .TiffConverter import *
 
 
 def bestLimits(arr):
@@ -15,8 +14,8 @@ def bestLimits(arr):
     # http://cmci.embl.de/documents/120206pyip_cooking/
     # python_imagej_cookbook#automatic_brightnesscontrast_button
     pixelCount = arr.size
-    limit = pixelCount/10
-    threshold = pixelCount/5000
+    limit = pixelCount / 10
+    threshold = pixelCount / 5000
     hist, bin_edges = np.histogram(arr, 256)
     i = 0
     found = False

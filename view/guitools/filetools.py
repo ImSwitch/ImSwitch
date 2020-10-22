@@ -5,18 +5,17 @@ Created on Fri Feb  6 13:20:02 2015
 @author: federico
 """
 
-import os
 import configparser
-from ast import literal_eval
 import glob
-
-from pyqtgraph.Qt import QtGui
+import os
+from ast import literal_eval
 
 from lantz import Q_
+from pyqtgraph.Qt import QtGui
+
 
 # Check for same name conflict
 def getUniqueName(name):
-
     name, ext = os.path.splitext(name)
 
     n = 1
@@ -52,7 +51,6 @@ def getFilenames(title, filetypes):
 
 
 def savePreset(main, filename=None):
-
     if filename is None:
         filename, okClicked = QtGui.QInputDialog.getText(None, 'Save preset',
                                                          'Save config file as...')
@@ -82,7 +80,6 @@ def savePreset(main, filename=None):
 
 
 def loadPreset(main, filename=None):
-
     tree = main.tree.p
     timings = tree.param('Timings')
 
@@ -119,7 +116,7 @@ def loadPreset(main, filename=None):
     timings.param(ftm).setValue(configCam.getboolean(ftm))
 
     csm = 'Cropped sensor mode'
-    if literal_eval(configCam[csm]) is not(None):
+    if literal_eval(configCam[csm]) is not None:
         main.cropLoaded = True
         timings.param(csm).param('Enable').setValue(configCam.getboolean(csm))
         main.cropLoaded = False

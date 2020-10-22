@@ -5,10 +5,9 @@ Created on Fri Feb  6 13:20:02 2015
 @author: federico
 """
 import numpy as np
-
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.ptime as ptime
+from pyqtgraph.Qt import QtCore, QtGui
 
 
 # taken from https://www.mrao.cam.ac.uk/~dag/CUBEHELIX/cubehelix.py
@@ -19,10 +18,11 @@ def cubehelix(gamma=1.0, s=0.5, r=-1.5, h=1.0):
             a = h * xg * (1 - xg) / 2
             phi = 2 * np.pi * (s / 3 + r * x)
             return xg + a * (p0 * np.cos(phi) + p1 * np.sin(phi))
+
         return color
 
     array = np.empty((256, 3))
-    abytes = np.arange(0, 1, 1/256.)
+    abytes = np.arange(0, 1, 1 / 256.)
     array[:, 0] = get_color_function(-0.14861, 1.78277)(abytes) * 255
     array[:, 1] = get_color_function(-0.29227, -0.90649)(abytes) * 255
     array[:, 2] = get_color_function(1.97294, 0.0)(abytes) * 255
@@ -62,16 +62,16 @@ class Grid():
         self.hide()
 
     def update(self, shape):
-        self.yline1.setPos(0.25*shape[0])
-        self.yline2.setPos(0.375*shape[0])
-        self.yline3.setPos(0.50*shape[0])
-        self.yline4.setPos(0.625*shape[0])
-        self.yline5.setPos(0.75*shape[0])
-        self.xline1.setPos(0.25*shape[1])
-        self.xline2.setPos(0.375*shape[1])
-        self.xline3.setPos(0.50*shape[1])
-        self.xline4.setPos(0.625*shape[1])
-        self.xline5.setPos(0.75*shape[1])
+        self.yline1.setPos(0.25 * shape[0])
+        self.yline2.setPos(0.375 * shape[0])
+        self.yline3.setPos(0.50 * shape[0])
+        self.yline4.setPos(0.625 * shape[0])
+        self.yline5.setPos(0.75 * shape[0])
+        self.xline1.setPos(0.25 * shape[1])
+        self.xline2.setPos(0.375 * shape[1])
+        self.xline3.setPos(0.50 * shape[1])
+        self.xline4.setPos(0.625 * shape[1])
+        self.xline5.setPos(0.75 * shape[1])
 
     def toggle(self):
         if self.showed:
@@ -121,11 +121,10 @@ class TwoColorGrid():
         self.rectT.setPen(pen)
         self.rectR = QtGui.QGraphicsRectItem(192, 266, 128, 128)
         self.rectR.setPen(pen)
-        self.yLine = pg.InfiniteLine(pos=0.5*self.shape[0], pen=pen2)
-        self.xLine = pg.InfiniteLine(pos=0.5*self.shape[1], pen=pen2, angle=0)
+        self.yLine = pg.InfiniteLine(pos=0.5 * self.shape[0], pen=pen2)
+        self.xLine = pg.InfiniteLine(pos=0.5 * self.shape[1], pen=pen2, angle=0)
         self.xLineT = pg.InfiniteLine(pos=182, pen=pen2, angle=0)
         self.xLineR = pg.InfiniteLine(pos=330, pen=pen2, angle=0)
-
 
     def toggle(self):
         if self.showed:
@@ -159,7 +158,7 @@ class Crosshair():
         self.showed = False
 
         self.vLine = pg.InfiniteLine(pos=0, angle=90, movable=False)
-        self.hLine = pg.InfiniteLine(pos=0, angle=0,  movable=False)
+        self.hLine = pg.InfiniteLine(pos=0, angle=0, movable=False)
         self.vb = viewBox
         self.vb.addItem(self.vLine, ignoreBounds=False)
         self.vb.addItem(self.hLine, ignoreBounds=False)
@@ -200,7 +199,6 @@ class ROI(pg.ROI):
 
     def __init__(self, shape, pos, handlePos, handleCenter, color, *args,
                  **kwargs):
-
         self.mainShape = shape
 
         pg.ROI.__init__(self, pos, size=shape, pen=color, *args, **kwargs)
@@ -231,7 +229,6 @@ class ROI(pg.ROI):
 class cropROI(pg.ROI):
 
     def __init__(self, shape, vb, *args, **kwargs):
-
         self.mainShape = shape
 
         pg.ROI.__init__(self, pos=(shape[0], shape[1]), size=(128, 128),
@@ -240,9 +237,9 @@ class cropROI(pg.ROI):
         self.addScaleHandle((0, 1), (1, 0))
 
 
-
 class SumpixelsGraph(pg.GraphicsWindow):
     """The graph window class"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -292,8 +289,10 @@ class SumpixelsGraph(pg.GraphicsWindow):
 
         self.ptr += 1
 
+
 class ProjectionGraph(pg.GraphicsWindow):
     """The graph window class"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

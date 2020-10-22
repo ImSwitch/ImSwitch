@@ -4,15 +4,18 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
-import numpy as np
-import view.guitools as guitools
-from pyqtgraph.Qt import QtCore
-import sys
-import subprocess
 import os
+import subprocess
+import sys
 import time
+
+import numpy as np
+from pyqtgraph.Qt import QtCore
+
+import view.guitools as guitools
 from controller.enums import RecMode
 from .basecontrollers import WidgetController, LiveUpdatedController
+
 
 class SettingsController(WidgetController):
     """ Linked to SettingsWidget."""
@@ -73,9 +76,9 @@ class SettingsController(WidgetController):
         Y0par = self.y0par.value()
 
         # Round to closest "divisable by 4" value.
-        hpos = binning*X0par
-        vpos = binning*Y0par
-        hsize = binning*width
+        hpos = binning * X0par
+        vpos = binning * Y0par
+        hsize = binning * width
         vsize = height
 
         hmodulus = 4
@@ -85,7 +88,9 @@ class SettingsController(WidgetController):
         vsize = int(vmodulus * np.ceil(vsize / vmodulus))
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
-        self._master.cameraHelper.changeParameter(lambda: self._master.cameraHelper.cropOrca(vpos, hpos, hsize, hsize))
+        self._master.cameraHelper.changeParameter(
+            lambda: self._master.cameraHelper.cropOrca(vpos, hpos, hsize, hsize)
+        )
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
         width, height = self._master.cameraHelper.shapes
@@ -106,7 +111,7 @@ class SettingsController(WidgetController):
         self.x0par.setValue(frameStart[0] + int(pos[0]))
         self.y0par.setValue(frameStart[1] + int(pos[1]))
 
-        self.widthPar.setValue(size[0])   # [0] is Width
+        self.widthPar.setValue(size[0])  # [0] is Width
         self.heightPar.setValue(size[1])  # [1] is Height
 
     def abortROI(self):
@@ -177,7 +182,16 @@ class SettingsController(WidgetController):
                 self.adjustFrame()
 
     def getCamAttrs(self):
-        return  {'Camera_pixel_size': self.umxpx.value(), 'Camera_model': self.model, 'Camera_binning': self.binPar.value(), 'FOV_mode': self.frameMode.value(), 'Camera_exposure_time': self.realExpPar.value(), 'Camera_ROI': [self.x0par.value(), self.y0par.value(), self.widthPar.value(), self.heightPar.value()] }
+        return {
+            'Camera_pixel_size': self.umxpx.value(),
+            'Camera_model': self.model,
+            'Camera_binning': self.binPar.value(),
+            'FOV_mode': self.frameMode.value(),
+            'Camera_exposure_time': self.realExpPar.value(),
+            'Camera_ROI': [self.x0par.value(), self.y0par.value(),
+                           self.widthPar.value(), self.heightPar.value()]
+        }
+
 
 class ViewController(WidgetController):
     """ Linked to ViewWidget."""
@@ -202,6 +216,7 @@ class ViewController(WidgetController):
 
     def closeEvent(self):
         self._master.cameraHelper.stopAcquisition()
+
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -231,7 +246,7 @@ class ImageController(LiveUpdatedController):
         """ Adjusts the viewbox to a new width and height. """
         self._widget.grid.update([width, height])
         self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
-                          yMin=-0.5, yMax=height - 0.5, minYRange=4)
+                                  yMin=-0.5, yMax=height - 0.5, minYRange=4)
         self._widget.vb.setAspectLocked()
 
     def getROIdata(self, image, roi):
@@ -241,7 +256,7 @@ class ImageController(LiveUpdatedController):
     def centerROI(self):
         """ Returns center of viewbox to center a ROI. """
         return (int(self._widget.vb.viewRect().center().x()),
-                         int(self._widget.vb.viewRect().center().y()))
+                int(self._widget.vb.viewRect().center().y()))
 
     def gridToggle(self):
         """ Shows or hides grid. """
@@ -254,12 +269,14 @@ class ImageController(LiveUpdatedController):
 
 class RecorderController(WidgetController):
     """ Linked to RecordingWidget. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recMode = RecMode.NotRecording
 
     def isRecording(self):
         return self._widget.recButton.isChecked()
+
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         try:
@@ -312,9 +329,15 @@ class RecorderController(WidgetController):
             scan = self._comm_channel.getScanAttrs()
             self.attrs.update(scan)
             if self.recMode == RecMode.SpecFrames:
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, frames=int(self._widget.numExpositionsEdit.text()))
+                self._master.recordingHelper.startRecording(
+                    self.recMode, self.savename, self.attrs,
+                    frames=int(self._widget.numExpositionsEdit.text())
+                )
             elif self.recMode == RecMode.SpecTime:
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, time=float(self._widget.timeToRec.text()))
+                self._master.recordingHelper.startRecording(
+                    self.recMode, self.savename, self.attrs,
+                    time=float(self._widget.timeToRec.text())
+                )
             elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.1)
@@ -336,7 +359,6 @@ class RecorderController(WidgetController):
         else:
             self._master.recordingHelper.endRecording()
 
-
     def scanDone(self):
         if self._widget.recButton.isChecked():
             if self.recMode == 3:
@@ -349,7 +371,7 @@ class RecorderController(WidgetController):
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self.timer = QtCore.QTimer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
-                    self.timer.start(int(float(self._widget.freqEdit.text())*1000))
+                    self.timer.start(int(float(self._widget.freqEdit.text()) * 1000))
                 else:
                     self._widget.recButton.setChecked(False)
                     self.lapseCurrent = 0
@@ -368,20 +390,25 @@ class RecorderController(WidgetController):
                 else:
                     self._widget.recButton.setChecked(False)
                     self.lapseCurrent = 0
-                    self._comm_channel.moveZstage(-self.lapseTotal*float(self._widget.stepSizeEdit.text()))
+                    self._comm_channel.moveZstage(
+                        -self.lapseTotal * float(self._widget.stepSizeEdit.text())
+                    )
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording()
 
     def nextLapse(self):
-        self._master.recordingHelper.startRecording(self.recMode, self.savename+'_'+str(self.lapseCurrent), self.attrs)
+        self._master.recordingHelper.startRecording(self.recMode,
+                                                    self.savename + '_' + str(self.lapseCurrent),
+                                                    self.attrs)
         time.sleep(0.3)
         self._comm_channel.prepareScan()
+
     def endRecording(self):
         self._widget.recButton.click()
         self._widget.currentFrame.setText('0 / ')
 
     def updateRecFrameNumber(self, f):
-        self._widget.currentFrame.setText(str(f) +  ' /')
+        self._widget.currentFrame.setText(str(f) + ' /')
 
     def updateRecTime(self, t):
         self._widget.currentTime.setText(str(t) + ' /')

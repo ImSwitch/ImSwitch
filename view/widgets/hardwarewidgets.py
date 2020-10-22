@@ -4,11 +4,13 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
-from pyqtgraph.Qt import QtGui, QtCore
-import pyqtgraph as pg
 import numpy as np
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+
 import view.guitools as guitools
 from .basewidgets import Widget
+
 
 class PositionerWidget(Widget):
     """ Widget in control of the piezzo movement. """
@@ -80,9 +82,12 @@ class LaserWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Create laser modules
-        actControl = LaserModule('<h3>405<h3>', 'mW', '405', color=(130, 0, 200), prange=(0, 200), tickInterval=5, singleStep=0.1, init_power = 10)
-        offControl = LaserModule('<h3>488<h3>', 'mW', '488', color=(0, 247, 255), prange=(0, 200), tickInterval=100, singleStep=10, init_power = 10)
-        excControl = LaserModule('<h3>473<h3>', 'V', '473', color=(0, 183, 255), prange=(0, 5), tickInterval=1, singleStep=0.1, init_power = 0.5)
+        actControl = LaserModule('<h3>405<h3>', 'mW', '405', color=(130, 0, 200),
+                                 prange=(0, 200), tickInterval=5, singleStep=0.1, init_power=10)
+        offControl = LaserModule('<h3>488<h3>', 'mW', '488', color=(0, 247, 255),
+                                 prange=(0, 200), tickInterval=100, singleStep=10, init_power=10)
+        excControl = LaserModule('<h3>473<h3>', 'V', '473', color=(0, 183, 255),
+                                 prange=(0, 5), tickInterval=1, singleStep=0.1, init_power=0.5)
         self.digModule = DigitalModule()
 
         self.laserModules = {'405': actControl, '488': offControl, '473': excControl}
@@ -102,8 +107,10 @@ class LaserWidget(Widget):
         self.laserModules['473'].registerListener(controller)
         self.digModule.registerListener(controller)
 
+
 class DigitalModule(QtGui.QFrame):
     """ Module from LaserWidget to handle digital modulation. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -116,7 +123,7 @@ class DigitalModule(QtGui.QFrame):
         ActPower = QtGui.QLineEdit('100')
         OffPower = QtGui.QLineEdit('100')
         ExcPower = QtGui.QLineEdit('0.5')
-        self.powers = {'405' : ActPower, '488' : OffPower, '473' : ExcPower}
+        self.powers = {'405': ActPower, '488': OffPower, '473': ExcPower}
         self.DigitalControlButton = QtGui.QPushButton('Enable')
         self.DigitalControlButton.setCheckable(True)
         style = "background-color: rgb{}".format((160, 160, 160))
@@ -161,13 +168,19 @@ class DigitalModule(QtGui.QFrame):
         self.powers['405'].textChanged.connect(lambda: controller.updateDigitalPowers(['405']))
         self.powers['488'].textChanged.connect(lambda: controller.updateDigitalPowers(['488']))
         self.powers['473'].textChanged.connect(lambda: controller.updateDigitalPowers(['473']))
-        self.DigitalControlButton.clicked.connect(lambda: controller.GlobalDigitalMod(['405', '473', '488']))
-        self.updateDigPowersButton.clicked.connect(lambda: controller.updateDigitalPowers(['405','473', '488']))
+        self.DigitalControlButton.clicked.connect(
+            lambda: controller.GlobalDigitalMod(['405', '473', '488'])
+        )
+        self.updateDigPowersButton.clicked.connect(
+            lambda: controller.updateDigitalPowers(['405', '473', '488'])
+        )
 
 
 class LaserModule(QtGui.QFrame):
     """ Module from LaserWidget to handle a single laser. """
-    def __init__(self, name,  units, laser, color, prange, tickInterval, singleStep, init_power,  *args, **kwargs):
+
+    def __init__(self, name, units, laser, color, prange, tickInterval, singleStep, init_power,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
@@ -227,10 +240,11 @@ class LaserModule(QtGui.QFrame):
 
     def registerListener(self, controller):
         """ Manage interactions with LaserController. """
-        if not self.laser=='473': controller.changeEdit(self.laser)
+        if not self.laser == '473': controller.changeEdit(self.laser)
         self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
         self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
         self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))
+
 
 class BeadRecWidget(Widget):
     """ Displays the FFT transform of the image. """
@@ -238,7 +252,7 @@ class BeadRecWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-            # Viewbox
+        # Viewbox
         self.cwidget = pg.GraphicsLayoutWidget()
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
@@ -248,7 +262,7 @@ class BeadRecWidget(Widget):
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1/256), guitools.cubehelix().astype(int))
+        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1 / 256), guitools.cubehelix().astype(int))
         self.hist.gradient.setColorMap(self.cubehelixCM)
         for tick in self.hist.gradient.ticks:
             tick.hide()

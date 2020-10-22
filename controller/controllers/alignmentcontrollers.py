@@ -5,9 +5,11 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import numpy as np
-import view.guitools as guitools
 import pyqtgraph as pg
+
+import view.guitools as guitools
 from .basecontrollers import WidgetController, LiveUpdatedController
+
 
 class ULensesController(WidgetController):
     """ Linked to ULensesWidget. """
@@ -20,10 +22,11 @@ class ULensesController(WidgetController):
         """ Updates plot with new parameters. """
         self.getParameters()
         size_x, size_y = self._master.cameraHelper.shapes
-        pattern_x = np.arange(self.x, size_x, self.up/self.px)
-        pattern_y = np.arange(self.y, size_y, self.up/self.px)
-        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1,2)
-        self._widget.ulensesPlot.setData(x = grid[:,0], y = grid[:,1], pen=pg.mkPen(None), brush='r', symbol='x')
+        pattern_x = np.arange(self.x, size_x, self.up / self.px)
+        pattern_y = np.arange(self.y, size_y, self.up / self.px)
+        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
+        self._widget.ulensesPlot.setData(x=grid[:, 0], y=grid[:, 1],
+                                         pen=pg.mkPen(None), brush='r', symbol='x')
         if self._widget.ulensesCheck.isChecked(): self._widget.show()
 
     def show(self):
@@ -51,7 +54,10 @@ class AlignXYController(LiveUpdatedController):
     def update(self):
         """ Update with new camera frame. """
         if self.active:
-            value = np.mean(self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI), self.axis)
+            value = np.mean(
+                self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI),
+                self.axis
+            )
             self._widget.graph.updateGraph(value)
 
     def addROI(self):
@@ -69,7 +75,7 @@ class AlignXYController(LiveUpdatedController):
             ROIcenter = self._comm_channel.centerROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
-                          ROIcenter[1] - 0.5 * ROIsize[1])
+                      ROIcenter[1] - 0.5 * ROIsize[1])
 
             self._widget.ROI.setPos(ROIpos)
             self._widget.ROI.setSize(ROIsize)
@@ -88,7 +94,8 @@ class AlignAverageController(LiveUpdatedController):
     def update(self):
         """ Update with new camera frame. """
         if self.active:
-            value = np.mean(self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI))
+            value = np.mean(
+                self._comm_channel.getROIdata(self._master.cameraHelper.image, self._widget.ROI))
             self._widget.graph.updateGraph(value)
 
     def addROI(self):
@@ -106,7 +113,7 @@ class AlignAverageController(LiveUpdatedController):
             ROIcenter = self._comm_channel.centerROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
-                          ROIcenter[1] - 0.5 * ROIsize[1])
+                      ROIcenter[1] - 0.5 * ROIsize[1])
 
             self._widget.ROI.setPos(ROIpos)
             self._widget.ROI.setSize(ROIsize)
@@ -161,7 +168,7 @@ class FFTController(LiveUpdatedController):
             if not self.init:
                 self._widget.vb.setAspectLocked()
                 self._widget.vb.setLimits(xMin=-0.5, xMax=self._widget.img.width(), minXRange=4,
-                              yMin=-0.5, yMax=self._widget.img.height(), minYRange=4)
+                                          yMin=-0.5, yMax=self._widget.img.height(), minYRange=4)
                 self._widget.hist.setLevels(*guitools.bestLimits(im))
                 self._widget.hist.vb.autoRange()
                 self.init = True
@@ -191,16 +198,16 @@ class FFTController(LiveUpdatedController):
             imgHeight = self._widget.img.height()
             self._widget.vb.setAspectLocked()
             self._widget.vb.setLimits(xMin=-0.5, xMax=imgWidth, minXRange=4,
-                      yMin=-0.5, yMax=imgHeight, minYRange=4)
-            self._widget.vline.setValue(0.5*imgWidth)
+                                      yMin=-0.5, yMax=imgHeight, minYRange=4)
+            self._widget.vline.setValue(0.5 * imgWidth)
             self._widget.hline.setAngle(0)
-            self._widget.hline.setValue(0.5*imgHeight)
-            self._widget.rvline.setValue((0.5+pos)*imgWidth)
-            self._widget.lvline.setValue((0.5-pos)*imgWidth)
+            self._widget.hline.setValue(0.5 * imgHeight)
+            self._widget.rvline.setValue((0.5 + pos) * imgWidth)
+            self._widget.lvline.setValue((0.5 - pos) * imgWidth)
             self._widget.dhline.setAngle(0)
-            self._widget.dhline.setValue((0.5-pos)*imgHeight)
+            self._widget.dhline.setValue((0.5 - pos) * imgHeight)
             self._widget.uhline.setAngle(0)
-            self._widget.uhline.setValue((0.5+pos)*imgHeight)
+            self._widget.uhline.setValue((0.5 + pos) * imgHeight)
             self._widget.vline.show()
             self._widget.hline.show()
             self._widget.rvline.show()

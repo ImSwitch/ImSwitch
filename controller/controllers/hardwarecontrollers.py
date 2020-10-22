@@ -6,23 +6,29 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import numpy as np
 from pyqtgraph.Qt import QtCore
+
 from .basecontrollers import WidgetController
+
 
 class PositionerController(WidgetController):
     """ Linked to PositionerWidget."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stagePos = [0, 0, 0]
         self.convFactors = [1.5870, 1.5907, 10]
         self.targets = ['Stage_X', 'Stage_Y', 'Stage_Z']
-        self.minVolt = [-10, -10, 0] # piezzoconcept
-        self.maxVolt = [10, 10, 10] # piezzoconcept
+        self.minVolt = [-10, -10, 0]  # piezzoconcept
+        self.maxVolt = [10, 10, 10]  # piezzoconcept
 
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
         self.stagePos[axis] += dist
-        self._master.nidaqHelper.setAnalog(self.targets[axis], self.stagePos[axis]/self.convFactors[axis], min_val=self.minVolt[axis], max_val=self.maxVolt[axis])
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
+        self._master.nidaqHelper.setAnalog(target=self.targets[axis],
+                                           voltage=self.stagePos[axis] / self.convFactors[axis],
+                                           min_val=self.minVolt[axis], max_val=self.maxVolt[axis])
+        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(
+            self.stagePos[axis])
 
         getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
 
@@ -34,13 +40,14 @@ class PositionerController(WidgetController):
         self._master.nidaqHelper.setAnalog(self.targets[1], 0)
         self._master.nidaqHelper.setAnalog(self.targets[2], 0)
 
+
 class LaserController(WidgetController):
     """ Linked to LaserWidget."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.digMod = False
-        self.aotfLasers = {'473' : False}
+        self.aotfLasers = {'473': False}
 
     def closeEvent(self):
         self._master.laserHelper.toggleLaser(False, '405')
@@ -61,7 +68,7 @@ class LaserController(WidgetController):
 
     def changeSlider(self, laser):
         """ Change power with slider magnitude. """
-        magnitude =  self._widget.laserModules[laser].slider.value()
+        magnitude = self._widget.laserModules[laser].slider.value()
         if laser in self.aotfLasers.keys():
             if not self.aotfLasers[laser]:
                 self._master.nidaqHelper.setAnalog(laser, magnitude, min_val=0, max_val=5)
@@ -69,7 +76,6 @@ class LaserController(WidgetController):
         else:
             self._master.laserHelper.changePower(magnitude, laser, self.digMod)
             self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
-
 
     def changeEdit(self, laser):
         """ Change power with edit magnitude. """
@@ -89,9 +95,15 @@ class LaserController(WidgetController):
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
                 if laser in self.aotfLasers.keys():
-                    self._master.nidaqHelper.setAnalog(laser, float(self._widget.digModule.powers[laser].text()), min_val=0, max_val=5)
+                    self._master.nidaqHelper.setAnalog(
+                        target=laser, voltage=float(self._widget.digModule.powers[laser].text()),
+                        min_val=0, max_val=5
+                    )
                 else:
-                    self._master.laserHelper.changePower(int(self._widget.digModule.powers[laser].text()), laser, self.digMod)
+                    self._master.laserHelper.changePower(
+                        power=int(self._widget.digModule.powers[laser].text()),
+                        laser=laser, dlg=self.digMod
+                    )
 
     def GlobalDigitalMod(self, lasers):
         """ Start digital modulation. """
@@ -99,17 +111,24 @@ class LaserController(WidgetController):
         for i in np.arange(len(lasers)):
             laser = lasers[i]
             if laser in self.aotfLasers.keys():
-                self._master.nidaqHelper.setAnalog(laser, float(self._widget.digModule.powers[laser].text()), min_val=0, max_val=5)
+                self._master.nidaqHelper.setAnalog(
+                    target=laser, voltage=float(self._widget.digModule.powers[laser].text()),
+                    min_val=0, max_val=5
+                )
                 self.aotfLasers[laser] = self.digMod
                 self._master.nidaqHelper.setDigital(laser, False)
             else:
-                self._master.laserHelper.digitalMod(self.digMod, int(self._widget.digModule.powers[laser].text()), laser)
+                self._master.laserHelper.digitalMod(
+                    digital=self.digMod, power=int(self._widget.digModule.powers[laser].text()),
+                    laser=laser
+                )
             if not self.digMod:
                 self.changeEdit(laser)
 
     def setDigitalButton(self, b):
         self._widget.digModule.DigitalControlButton.setChecked(b)
         self.GlobalDigitalMod([405, 488])
+
 
 class BeadController(WidgetController):
     def __init__(self, *args, **kwargs):
@@ -127,7 +146,7 @@ class BeadController(WidgetController):
             ROIcenter = self._comm_channel.centerROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
-                          ROIcenter[1] - 0.5 * ROIsize[1])
+                      ROIcenter[1] - 0.5 * ROIsize[1])
 
             self._widget.ROI.setPos(ROIpos)
             self._widget.ROI.setSize(ROIsize)
@@ -156,11 +175,13 @@ class BeadController(WidgetController):
             self.thread.wait()
 
     def update(self):
-         self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels = False)
+        self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels=False)
+
 
 class BeadWorker(QtCore.QObject):
     newChunk = QtCore.pyqtSignal()
     stop = QtCore.pyqtSignal()
+
     def __init__(self, controller, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__controller = controller
@@ -175,7 +196,7 @@ class BeadWorker(QtCore.QObject):
         y1 = int(y0 + size[1])
 
         dims = np.array(self.__controller.dims)
-        N = (dims[0] + 1)*(dims[1] + 1)
+        N = (dims[0] + 1) * (dims[1] + 1)
         self.__controller.recIm = np.zeros(N)
         i = 0
 

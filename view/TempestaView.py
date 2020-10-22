@@ -12,6 +12,7 @@ import numpy as np
 import os
 #import view.guitools as guitools
 from pyqtgraph.dockarea import Dock, DockArea
+import constants
 
 class TempestaView(QtGui.QMainWindow):
     
@@ -43,9 +44,7 @@ class TempestaView(QtGui.QMainWindow):
         
         # Presets
         self.presetsMenu = QtGui.QComboBox()
-        self.controlFolder = os.path.split(os.path.realpath(__file__))[0]
-        os.chdir(self.controlFolder)
-        self.presetDir = os.path.join(self.controlFolder, 'presets')
+        self.presetDir = os.path.join(constants.rootFolderPath, 'presets')
 
         if not os.path.exists(self.presetDir):
             os.makedirs(self.presetDir)

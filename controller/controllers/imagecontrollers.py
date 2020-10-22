@@ -11,6 +11,7 @@ import sys
 import subprocess
 import os
 import time
+from controller.enums import RecMode
 from .basecontrollers import WidgetController, LiveUpdatedController
 
 class SettingsController(WidgetController):
@@ -255,7 +256,7 @@ class RecorderController(WidgetController):
     """ Linked to RecordingWidget. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.recMode = 0
+        self.recMode = RecMode.NotRecording
 
     def isRecording(self):
         return self._widget.recButton.isChecked()
@@ -310,21 +311,21 @@ class RecorderController(WidgetController):
             self.attrs = self._comm_channel.getCamAttrs()
             scan = self._comm_channel.getScanAttrs()
             self.attrs.update(scan)
-            if self.recMode == 1:
+            if self.recMode == RecMode.SpecFrames:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, frames=int(self._widget.numExpositionsEdit.text()))
-            elif self.recMode == 2:
+            elif self.recMode == RecMode.SpecTime:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs, time=float(self._widget.timeToRec.text()))
-            elif self.recMode == 3:
+            elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.1)
                 self._comm_channel.prepareScan()
-            elif self.recMode == 4:
+            elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.1)
                 self._comm_channel.prepareScan()
-            elif self.recMode == 5:
+            elif self.recMode == RecMode.DimLapse:
                 self.lapseTotal = int(self._widget.totalSlices.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)

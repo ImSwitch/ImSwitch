@@ -24,8 +24,7 @@ class CameraHelper(QtCore.QObject):
         
         self.__cameras[0].setPropertyValue('readout_speed', 3)
         self.__cameras[0].setPropertyValue('trigger_global_exposure', 5)
-        self.__cameras[0].setPropertyValue(
-                'trigger_active', 2)
+        self.__cameras[0].setPropertyValue('trigger_active', 2)
         self.__cameras[0].setPropertyValue('trigger_polarity', 2)
         self.__cameras[0].setPropertyValue('exposure_time', 0.01)
         self.__cameras[0].setPropertyValue('trigger_source', 1)
@@ -91,7 +90,10 @@ class CameraHelper(QtCore.QObject):
         return self.getTimings()
         
     def getTimings(self):
-        return [self.__cameras[0].getPropertyValue('exposure_time')[0], self.__cameras[0].getPropertyValue('internal_frame_interval')[0], self.__cameras[0].getPropertyValue('timing_readout_time')[0], self.__cameras[0].getPropertyValue('internal_frame_rate')[0]]
+        return (self.__cameras[0].getPropertyValue('exposure_time')[0],
+                self.__cameras[0].getPropertyValue('internal_frame_interval')[0],
+                self.__cameras[0].getPropertyValue('timing_readout_time')[0],
+                self.__cameras[0].getPropertyValue('internal_frame_rate')[0])
 
                 
     def cropOrca(self, hpos, vpos, hsize, vsize):

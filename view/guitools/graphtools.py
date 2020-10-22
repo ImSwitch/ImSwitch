@@ -80,30 +80,23 @@ class Grid():
             self.show()
 
     def show(self):
-        self.yline1.show()
-        self.yline2.show()
-        self.yline3.show()
-        self.yline4.show()
-        self.yline5.show()
-        self.xline1.show()
-        self.xline2.show()
-        self.xline3.show()
-        self.xline4.show()
-        self.xline5.show()
-        self.showed = True
+        self.setVisible(True)
 
     def hide(self):
-        self.yline1.hide()
-        self.yline2.hide()
-        self.yline3.hide()
-        self.yline4.hide()
-        self.yline5.hide()
-        self.xline1.hide()
-        self.xline2.hide()
-        self.xline3.hide()
-        self.xline4.hide()
-        self.xline5.hide()
-        self.showed = False
+        self.setVisible(False)
+
+    def setVisible(self, visible):
+        self.yline1.setVisible(visible)
+        self.yline2.setVisible(visible)
+        self.yline3.setVisible(visible)
+        self.yline4.setVisible(visible)
+        self.yline5.setVisible(visible)
+        self.xline1.setVisible(visible)
+        self.xline2.setVisible(visible)
+        self.xline3.setVisible(visible)
+        self.xline4.setVisible(visible)
+        self.xline5.setVisible(visible)
+        self.showed = visible
 
 
 class TwoColorGrid():
@@ -133,22 +126,20 @@ class TwoColorGrid():
             self.show()
 
     def show(self):
-        self.vb.addItem(self.rectT)
-        self.vb.addItem(self.rectR)
-        self.vb.addItem(self.yLine)
-        self.vb.addItem(self.xLine)
-        self.vb.addItem(self.xLineR)
-        self.vb.addItem(self.xLineT)
-        self.showed = True
+        self.setVisible(True)
 
     def hide(self):
-        self.vb.removeItem(self.rectT)
-        self.vb.removeItem(self.rectR)
-        self.vb.removeItem(self.yLine)
-        self.vb.removeItem(self.xLine)
-        self.vb.removeItem(self.xLineR)
-        self.vb.removeItem(self.xLineT)
-        self.showed = False
+        self.setVisible(False)
+
+    def setVisible(self, visible):
+        func = self.vb.addItem if visible else self.vb.removeItem
+        func(self.rectT)
+        func(self.rectR)
+        func(self.yLine)
+        func(self.xLine)
+        func(self.xLineR)
+        func(self.xLineT)
+        self.showed = visible
 
 
 class Crosshair():

@@ -4,8 +4,8 @@ Created on Fri Mar 20 15:08:33 2020
 
 @author: _Xavi
 """
-import controller.controllers as controllers
-from controller.MasterController import MasterController
+from . import controllers
+from .MasterController import MasterController
 
 class TempestaController():
     

@@ -4,6 +4,8 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
+import os
+import constants
 #try:
 #    from TempestaErrors import InvalidChildClassError, IncompatibilityError
 #except ModuleNotFoundError:
@@ -17,7 +19,10 @@ class SignalDesignerFactory():
     that the new object is compatible with the parameters that will we 
     be sent to its make_signal method."""
     def __new__(cls , configKeyName):
-        config_dict = json.load(open('../config_files/config.json'))
+        configFilesDir = os.path.join(constants.rootFolderPath, 'config_files')
+        with open(os.path.join(configFilesDir, 'config.json')) as configFile:
+            config_dict = json.load(configFile)
+
         scanDesignerName = config_dict[configKeyName]
         
 #        SignalDesigner = super().__new__(cls, 'SignalDesigner.'+scanDesignerName)

@@ -82,28 +82,20 @@ def nFramesPerChunk(shape):
 
 
 def getFilenames(title, filetypes):
-    try:
-        root = Tk()
-        root.withdraw()
-        filenames = filedialog.askopenfilenames(title=title,
-                                                filetypes=filetypes)
-        root.destroy()
-        return root.tk.splitlist(filenames)
-    except OSError:
-        print("No files selected!")
+    filter = ';;'.join([f'{name} ({extension})' for name, extension in filetypes])
+
+    files, _ = QtGui.QFileDialog.getOpenFileNames(caption=title, filter=filter)
+    return files
 
 
 def savePreset(main, filename=None):
 
     if filename is None:
-        root = Tk()
-        root.withdraw()
-        filename = simpledialog.askstring(title='Save preset',
-                                          prompt='Save config file as...')
-        root.destroy()
+        filename, okClicked = QtGui.QInputDialog.getText(None, 'Save preset',
+                                                         'Save config file as...')
 
-    if filename is None:
-        return
+        if not okClicked:
+            return
 
     config = configparser.ConfigParser()
 

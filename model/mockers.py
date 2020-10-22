@@ -219,7 +219,7 @@ class MockHamamatsu(Driver):
         This will block waiting for new frames even if there new frames
         available when it is called.
 
-        @return [frames, [frame x size, frame y size]]'''
+        @return (frames, (frame x size, frame y size))'''
         frames = []
 
         for i in range(2):
@@ -227,11 +227,11 @@ class MockHamamatsu(Driver):
             hc_data = HMockCamData(self.frame_x * self.frame_y)
             frames.append(hc_data)
 
-        return [frames, [self.frame_x, self.frame_y]]
+        return frames, (self.frame_x, self.frame_y)
 
     def getLast(self):
         hc_data = HMockCamData(self.frame_x * self.frame_y)
-        return [hc_data, [self.frame_x, self.frame_y]]
+        return hc_data
 
     def getModelInfo(self):
         ''' Returns the model of the camera
@@ -276,7 +276,7 @@ class MockHamamatsu(Driver):
     #
     # @param property_name The name of the property (as a string).
     #
-    # @return [minimum value, maximum value]
+    # @return (minimum value, maximum value)
     #
     def getPropertyRange(self, property_name):
         pass
@@ -285,7 +285,7 @@ class MockHamamatsu(Driver):
     #
     # Return if a property is readable / writeable.
     #
-    # @return [True/False (readable), True/False (writeable)]
+    # @return (True/False (readable), True/False (writeable))
     #
     def getPropertyRW(self, property_name):
         pass
@@ -296,14 +296,14 @@ class MockHamamatsu(Driver):
     #
     # @param property_name The name of the property.
     #
-    # @return [the property value, the property type]
+    # @return (the property value, the property type)
     #
     def getPropertyValue(self, property_name):
 
         prop_value = self.properties[property_name]
         prop_type = property_name
 
-        return [prop_value, prop_type]
+        return prop_value, prop_type
 
     # isCameraProperty
     #

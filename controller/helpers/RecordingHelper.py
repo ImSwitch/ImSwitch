@@ -83,7 +83,7 @@ class RecordingWorker(QtCore.QObject):
         if self.recMode == RecMode.SpecFrames:
             frames = self.frames
             while it < frames:
-                newframes = self.__recordingHelper.cameraHelper.getChunk()
+                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
                 n = len(newframes)
                 if n > 0:
                     if (it + n) <= frames:
@@ -102,7 +102,7 @@ class RecordingWorker(QtCore.QObject):
             start = time.time()
             current = 0
             while current < self.time:
-                newframes = self.__recordingHelper.cameraHelper.getChunk()
+                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
                 n = len(newframes)
                 if n > 0:
                     d.resize(n + it, axis=0)
@@ -118,7 +118,7 @@ class RecordingWorker(QtCore.QObject):
 
         else:
             while self.__recordingHelper.record:
-                newframes = self.__recordingHelper.cameraHelper.getChunk()
+                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
                 n = len(newframes)
                 if n > 0:
                     d.resize(n + it, axis=0)

@@ -201,7 +201,7 @@ class BeadWorker(QtCore.QObject):
         i = 0
 
         while self.__controller.running:
-            newImages = self.__controller._master.cameraHelper.getChunk()
+            newImages, _ = self.__controller._master.cameraHelper.getChunk()
             n = len(newImages)
             if n > 0:
                 for j in range(0, n):

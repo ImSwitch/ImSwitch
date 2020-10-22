@@ -320,7 +320,7 @@ class HamamatsuCamera():
     # This will block waiting for new frames even if
     # there new frames available when it is called.
     #
-    # @return [frames, [frame x size, frame y size]]
+    # @return (frames, (frame x size, frame y size))
     #
     def getFrames(self):
         frames = []
@@ -349,7 +349,7 @@ class HamamatsuCamera():
 
             frames.append(hc_data)
 
-        return [frames, [self.frame_x, self.frame_y]]
+        return frames, (self.frame_x, self.frame_y)
 
     ## getModelInfo
     #
@@ -456,39 +456,26 @@ class HamamatsuCamera():
     #
     # @param property_name The name of the property (as a string).
     #
-    # @return [minimum value, maximum value]
+    # @return (minimum value, maximum value)
     #
     def getPropertyRange(self, property_name):
         prop_attr = self.getPropertyAttribute(property_name)
         temp = prop_attr.attribute & DCAMPROP_TYPE_MASK
         if (temp == DCAMPROP_TYPE_REAL):
-            return [float(prop_attr.valuemin), float(prop_attr.valuemax)]
+            return float(prop_attr.valuemin), float(prop_attr.valuemax)
         else:
-            return [int(prop_attr.valuemin), int(prop_attr.valuemax)]
+            return int(prop_attr.valuemin), int(prop_attr.valuemax)
 
     ## getPropertyRW
     #
     # Return if a property is readable / writeable.
     #
-    # @return [True/False (readable), True/False (writeable)]
+    # @return (True/False (readable), True/False (writeable))
     #
     def getPropertyRW(self, property_name):
         prop_attr = self.getPropertyAttribute(property_name)
-        rw = []
-
-        # Check if the property is readable.
-        if (prop_attr.attribute & DCAMPROP_ATTR_READABLE):
-            rw.append(True)
-        else:
-            rw.append(False)
-
-        # Check if the property is writeable.
-        if (prop_attr.attribute & DCAMPROP_ATTR_WRITABLE):
-            rw.append(True)
-        else:
-            rw.append(False)
-
-        return rw
+        return (bool(prop_attr.attribute & DCAMPROP_ATTR_READABLE), # Check if property is readable.
+                bool(prop_attr.attribute & DCAMPROP_ATTR_WRITABLE)) # Check if property is writable.
 
     ## getPropertyVale
     #
@@ -496,7 +483,7 @@ class HamamatsuCamera():
     #
     # @param property_name The name of the property.
     #
-    # @return [the property value, the property type]
+    # @return (the property value, the property type)
     #
     def getPropertyValue(self, property_name):
 
@@ -531,7 +518,7 @@ class HamamatsuCamera():
             prop_type = "NONE"
             prop_value = False
 
-        return [prop_value, prop_type]
+        return prop_value, prop_type
 
     ## isCameraProperty
     #
@@ -566,7 +553,7 @@ class HamamatsuCamera():
                                             None),
                              "dcam_wait")
             # Check how many new frames there are.
-            [b_index, f_count] = self.getAq_Info()
+            b_index, f_count = self.getAq_Info()
             # Check that we have not acquired more frames than we can store in our buffer.
             # Keep track of the maximum backlog.
             cur_frame_number = f_count
@@ -607,7 +594,7 @@ class HamamatsuCamera():
                                                    ctypes.byref(b_index),
                                                    ctypes.byref(f_count)),
                          "dcam_gettransferinfo")
-        return [b_index.value, f_count.value]
+        return b_index.value, f_count.value
     ## setPropertyValue
     #
     # Set the value of a property.
@@ -638,7 +625,7 @@ class HamamatsuCamera():
                 return False
 
         # Check that the property is within range.
-        [pv_min, pv_max] = self.getPropertyRange(property_name)
+        pv_min, pv_max = self.getPropertyRange(property_name)
         if (property_value < pv_min):
             print(" set property value", property_value, "is less than minimum of", pv_min, property_name, "setting to minimum")
             property_value = pv_min
@@ -767,23 +754,23 @@ class HamamatsuCameraMR(HamamatsuCamera):
     # FIXME: It does not always seem to block? The length of frames can
     #   be zero. Are frames getting dropped? Some sort of race condition?
     #
-    # @return [frames, [frame x size, frame y size]]
+    # @return (frames, (frame x size, frame y size))
     #
     def getFrames(self):
         frames = []
         for n in self.newFrames():
             im = self.hcam_data[n].getData()
             frames.append(np.reshape(im, (self.frame_x, self.frame_y)))
-        return frames
+        return frames, (self.frame_x, self.frame_y)
         
     def getLast(self):
-        [b_index, f_count] = self.getAq_Info()
+        b_index, f_count = self.getAq_Info()
         im = self.hcam_data[b_index].getData()
         return np.reshape(im, (self.frame_x, self.frame_y))
 
         
     def updateIndices(self):
-        [b_index, f_count] = self.getAq_Info()
+        b_index, f_count = self.getAq_Info()
         self.buffer_index = b_index
         self.last_frame_number = f_count
         
@@ -796,7 +783,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
         return frames
         
     def UpdateFrameNrBufferIdx(self):
-        [b_index, f_count] = self.getAq_Info()
+        b_index, f_count = self.getAq_Info()
         self.last_frame_number = f_count
         self.buffer_index = b_index
         
@@ -882,16 +869,16 @@ if __name__ == "__main__":
             print("Supported properties:")
             props = hcam.getProperties()
             for i, id_name in enumerate(sorted(props.keys())):
-                [p_value, p_type] = hcam.getPropertyValue(id_name)
-                p_rw = hcam.getPropertyRW(id_name)
+                p_value, p_type = hcam.getPropertyValue(id_name)
+                p_readable, p_writable = hcam.getPropertyRW(id_name)
                 read_write = ""
-                if (p_rw[0]):
+                if p_readable:
                     read_write += "read"
-                if (p_rw[1]):
+                if p_writable:
                     read_write += ", write"
                 print("  ", i, ")", id_name, " = ", p_value, " type is:", p_type, ",", read_write)
                 text_values = hcam.getPropertyText(id_name)
-                if (len(text_values) > 0):
+                if len(text_values) > 0:
                     print("          option / value")
                     for key in sorted(text_values, key = text_values.get):
                         print("         ", key, "/", text_values[key])
@@ -935,7 +922,7 @@ if __name__ == "__main__":
             hcam.startAcquisition()
             cnt = 1
             for i in range(300):
-                [frames, dims] = hcam.getFrames()
+                (frames, dims) = hcam.getFrames()
                 for aframe in frames:
                     print(cnt, aframe[0:5])
                     cnt += 1

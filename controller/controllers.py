@@ -883,20 +883,19 @@ class BeadWorker(QtCore.QObject):
         self.__controller = controller
 
     def run(self):
-        pos = self.__controller._widget.ROI.pos()
-        size = self.__controller._widget.ROI.size()
-        
-        x0 = int(pos[0])
-        y0 = int(pos[1])
-        x1 = int(x0 + size[0])
-        y1 = int(y0 + size[1])
-
         dims = np.array(self.__controller.dims)
         N = (dims[0] + 1)*(dims[1] + 1)
         self.__controller.recIm = np.zeros(N)      
         i = 0
         
         while self.__controller.running:
+            pos = self.__controller._widget.ROI.pos()
+            size = self.__controller._widget.ROI.size()
+            
+            x0 = int(pos[0])
+            y0 = int(pos[1])
+            x1 = int(x0 + size[0])
+            y1 = int(y0 + size[1])
             newImages = self.__controller._master.cameraHelper.getChunk()
             n = len(newImages)
             if n > 0:     
@@ -1033,7 +1032,6 @@ class ScanController(SuperScanController): # TODO
         self._master.nidaqHelper.runScan(self.signalDic)
        
     def scanDone(self):
-        print("scan done")
         if not self._widget.continuousCheck.isChecked():
             self.setScanButton(False)
             self._comm_channel.endScan()

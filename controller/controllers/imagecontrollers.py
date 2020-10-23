@@ -361,10 +361,10 @@ class RecorderController(WidgetController):
 
     def scanDone(self):
         if self._widget.recButton.isChecked():
-            if self.recMode == 3:
+            if self.recMode == RecMode.ScanOnce:
                 self._widget.recButton.setChecked(False)
                 self._master.recordingHelper.endRecording()
-            elif self.recMode == 4:
+            elif self.recMode == RecMode.ScanLapse:
                 if self.lapseCurrent < self.lapseTotal:
                     self.lapseCurrent += 1
                     self._master.recordingHelper.endRecording()
@@ -377,7 +377,7 @@ class RecorderController(WidgetController):
                     self.lapseCurrent = 0
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording()
-            elif self.recMode == 5:
+            elif self.recMode == RecMode.DimLapse:
                 if self.lapseCurrent < self.lapseTotal:
                     self.lapseCurrent += 1
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
@@ -420,7 +420,7 @@ class RecorderController(WidgetController):
         self._widget.totalSlices.setEnabled(False)
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(False)
-        self.recMode = 1
+        self.recMode = RecMode.SpecFrames
 
     def specTime(self):
         self._widget.numExpositionsEdit.setEnabled(False)
@@ -429,7 +429,7 @@ class RecorderController(WidgetController):
         self._widget.totalSlices.setEnabled(False)
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(False)
-        self.recMode = 2
+        self.recMode = RecMode.SpecTime
 
     def recScanOnce(self):
         self._widget.numExpositionsEdit.setEnabled(False)
@@ -438,7 +438,7 @@ class RecorderController(WidgetController):
         self._widget.totalSlices.setEnabled(False)
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(False)
-        self.recMode = 3
+        self.recMode = RecMode.ScanOnce
 
     def recScanLapse(self):
         self._widget.numExpositionsEdit.setEnabled(False)
@@ -447,7 +447,7 @@ class RecorderController(WidgetController):
         self._widget.totalSlices.setEnabled(False)
         self._widget.freqEdit.setEnabled(True)
         self._widget.stepSizeEdit.setEnabled(False)
-        self.recMode = 4
+        self.recMode = RecMode.ScanLapse
 
     def dimLapse(self):
         self._widget.totalSlices.setEnabled(True)
@@ -456,7 +456,7 @@ class RecorderController(WidgetController):
         self._widget.timeLapseEdit.setEnabled(False)
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(True)
-        self.recMode = 5
+        self.recMode = RecMode.DimLapse
 
     def untilStop(self):
         self._widget.numExpositionsEdit.setEnabled(False)
@@ -465,7 +465,7 @@ class RecorderController(WidgetController):
         self._widget.totalSlices.setEnabled(False)
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(False)
-        self.recMode = 6
+        self.recMode = RecMode.UntilStop
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

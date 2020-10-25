@@ -281,18 +281,17 @@ class RecorderController(WidgetController):
         """ Opens current folder in File Explorer. """
         try:
             if sys.platform == 'darwin':
-                subprocess.check_call(['open', '', self._widget.folderEdit.text()])
+                subprocess.check_call(['open', self._widget.folderEdit.text()])
             elif sys.platform == 'linux':
-                subprocess.check_call(
-                    ['xdg-open', '', self._widget.folderEdit.text()])
+                subprocess.check_call(['xdg-open', self._widget.folderEdit.text()])
             elif sys.platform == 'win32':
                 os.startfile(self._widget.folderEdit.text())
 
-        except FileNotFoundError:
+        except FileNotFoundError or subprocess.CalledProcessError:
             if sys.platform == 'darwin':
-                subprocess.check_call(['open', '', self._widget.dataDir])
+                subprocess.check_call(['open', self._widget.dataDir])
             elif sys.platform == 'linux':
-                subprocess.check_call(['gnome-open', '', self._widget.dataDir])
+                subprocess.check_call(['xdg-open', self._widget.dataDir])
             elif sys.platform == 'win32':
                 os.startfile(self._widget.dataDir)
 

@@ -14,6 +14,14 @@ from .basecontrollers import WidgetController, LiveUpdatedController
 class ULensesController(WidgetController):
     """ Linked to ULensesWidget. """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addPlot()
+
+        # Connect ULensesWidget signals
+        self._widget.ulensesButton.clicked.connect(self.updateGrid)
+        self._widget.ulensesCheck.stateChanged.connect(self.show)
+
     def addPlot(self):
         """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
         self._comm_channel.addItemTovb(self._widget.ulensesPlot)
@@ -50,6 +58,12 @@ class AlignXYController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.axis = 0
+        self.addROI()
+
+        # Connect AlignWidgetXY signals
+        self._widget.roiButton.clicked.connect(self.toggleROI)
+        self._widget.XButton.clicked.connect(lambda: self.setAxis(0))
+        self._widget.YButton.clicked.connect(lambda: self.setAxis(1))
 
     def update(self):
         """ Update with new camera frame. """
@@ -91,6 +105,13 @@ class AlignXYController(LiveUpdatedController):
 class AlignAverageController(LiveUpdatedController):
     """ Linked to AlignWidgetAverage."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addROI()
+
+        # Connect AlignWidgetAverage signals
+        self._widget.roiButton.clicked.connect(self.toggleROI)
+
     def update(self):
         """ Update with new camera frame. """
         if self.active:
@@ -126,6 +147,14 @@ class AlignAverageController(LiveUpdatedController):
 class AlignmentLineController(WidgetController):
     """ Linked to AlignmentLineWidget."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addLine()
+
+        # Connect AlignmentLineWidget signals
+        self._widget.alignmentLineMakerButton.clicked.connect(self.updateLine)
+        self._widget.alignmentCheck.stateChanged.connect(self.show)
+
     def addLine(self):
         """ Adds alignmentLine to ImageWidget viewbox through the CommunicationChannel. """
         self._comm_channel.addItemTovb(self._widget.alignmentLine)
@@ -145,7 +174,7 @@ class AlignmentLineController(WidgetController):
 
 
 class FFTController(LiveUpdatedController):
-    """ Linked to AlignmentLineWidget."""
+    """ Linked to FFTWidget."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -153,6 +182,12 @@ class FFTController(LiveUpdatedController):
         self.it = 0
         self.init = False
         self.show = False
+
+        # Connect FFTWidget signals
+        self._widget.showCheck.stateChanged.connect(self.showFFT)
+        self._widget.changePosButton.clicked.connect(self.changePos)
+        self._widget.linePos.textChanged.connect(self.changePos)
+        self._widget.lineRate.textChanged.connect(self.changeRate)
 
     def showFFT(self):
         """ Show or hide FFT. """

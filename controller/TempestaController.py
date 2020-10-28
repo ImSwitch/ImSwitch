@@ -14,11 +14,15 @@ class TempestaController():
         __model = model
         __view = view
 
+        # Connect view signals
+        __view.closing.connect(self.closeEvent)
+
+        # Init communication channel and master controller
         self.__comm_channel = CommunicationChannel(self)
         __masterController = MasterController(__model, self.__comm_channel)
 
         # List of Controllers for the GUI Widgets
-        
+        self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
         self.scanController = controllers.ScanController(self.__comm_channel, __masterController, __view.scanWidget)
         self.beadController = controllers.BeadController(self.__comm_channel, __masterController, __view.beadRecWidget)
         self.positionerController = controllers.PositionerController(self.__comm_channel, __masterController, __view.positionerWidget) 
@@ -30,10 +34,8 @@ class TempestaController():
         self.fftController = controllers.FFTController(self.__comm_channel, __masterController, __view.fftWidget)
         self.recorderController = controllers.RecorderController(self.__comm_channel, __masterController, __view.recordingWidget)
         self.viewController = controllers.ViewController(self.__comm_channel, __masterController, __view.viewWidget)
-        self.imageController = controllers.ImageController(self.__comm_channel, __masterController, __view.imageWidget)
         self.settingsController = controllers.SettingsController(self.__comm_channel, __masterController, __view.settingsWidget)
-        
-        
+
         #Check widget compatibility
         __masterController.scanHelper._parameterCompatibility(self.scanController.parameterDict)
 

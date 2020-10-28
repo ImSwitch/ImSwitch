@@ -15,7 +15,6 @@ from .basecontrollers import SuperScanController
 class ScanController(SuperScanController):  # TODO
     def __init__(self, comm_channel, master, widget):
         super().__init__(comm_channel, master, widget)
-        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
         self._stageParameterDict = {
             'Targets[3]': ['StageX', 'StageY', 'StageZ'],
             'Sizes[3]': [5, 5, 0],
@@ -32,6 +31,16 @@ class ScanController(SuperScanController):  # TODO
             'Sequence_time_seconds': 0.005,
             'Sample_rate': 100000
         }
+
+        # Connect NidaqHelper signals
+        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
+
+        # Connect ScanWidget signals
+        self._widget.saveScanBtn.clicked.connect(self.saveScan)
+        self._widget.loadScanBtn.clicked.connect(self.loadScan)
+        self._widget.scanButton.clicked.connect(self.runScan)
+        self._widget.previewButton.clicked.connect(self.previewScan)
+
         print('Init Scan Controller')
 
     @property

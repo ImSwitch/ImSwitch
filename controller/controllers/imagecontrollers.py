@@ -20,6 +20,16 @@ from .basecontrollers import WidgetController, LiveUpdatedController
 class SettingsController(WidgetController):
     """ Linked to SettingsWidget."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.addROI()
+        self.getParameters()
+        self.setExposure()
+        self.adjustFrame()
+
+        # Connect SettingsWidget signals
+        self._widget.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
+
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
         self._comm_channel.addItemTovb(self._widget.ROI)
@@ -196,6 +206,14 @@ class SettingsController(WidgetController):
 class ViewController(WidgetController):
     """ Linked to ViewWidget."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Connect ViewWidget signals
+        self._widget.gridButton.clicked.connect(self.gridToggle)
+        self._widget.crosshairButton.pressed.connect(self.crosshairToggle)
+        self._widget.liveviewButton.clicked.connect(self.liveview)
+
     def liveview(self):
         """ Start liveview and activate camera acquisition. """
         self._widget.crosshairButton.setEnabled(True)
@@ -220,6 +238,12 @@ class ViewController(WidgetController):
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Connect ImageWidget signals
+        self._widget.levelsButton.pressed.connect(self.autoLevels)
 
     def autoLevels(self, init=True):
         """ Set histogram levels automatically with current camera image."""
@@ -273,6 +297,19 @@ class RecorderController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.recMode = RecMode.NotRecording
+        self.untilStop()
+
+        # Connect RecordingWidget signals
+        self._widget.openFolderButton.clicked.connect(self.openFolder)
+        self._widget.specifyfile.clicked.connect(self.specFile)
+        self._widget.snapTIFFButton.clicked.connect(self.snap)
+        self._widget.recButton.clicked.connect(self.toggleREC)
+        self._widget.specifyFrames.clicked.connect(self.specFrames)
+        self._widget.specifyTime.clicked.connect(self.specTime)
+        self._widget.recScanOnceBtn.clicked.connect(self.recScanOnce)
+        self._widget.recScanLapseBtn.clicked.connect(self.recScanLapse)
+        self._widget.dimLapse.clicked.connect(self.dimLapse)
+        self._widget.untilSTOPbtn.clicked.connect(self.untilStop)
 
     def isRecording(self):
         return self._widget.recButton.isChecked()

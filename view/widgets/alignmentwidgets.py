@@ -41,12 +41,6 @@ class ULensesWidget(Widget):
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
 
-    def registerListener(self, controller):
-        """ Manage interactions with ULensesController. """
-        controller.addPlot()
-        self.ulensesButton.clicked.connect(controller.updateGrid)
-        self.ulensesCheck.stateChanged.connect(controller.show)
-
 
 class AlignWidgetXY(Widget):
     """ Alignment widget that shows the mean over an axis of a selected ROI."""
@@ -71,13 +65,6 @@ class AlignWidgetXY(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.XButton, 1, 1, 1, 1)
         grid.addWidget(self.YButton, 1, 2, 1, 1)
-
-    def registerListener(self, controller):
-        """ Manage interactions with AlignXYController. """
-        controller.addROI()
-        self.roiButton.clicked.connect(controller.toggleROI)
-        self.XButton.clicked.connect(lambda: controller.setAxis(0))
-        self.YButton.clicked.connect(lambda: controller.setAxis(1))
 
 
 class AlignWidgetAverage(Widget):
@@ -104,11 +91,6 @@ class AlignWidgetAverage(Widget):
         grid.addWidget(self.resetButton, 1, 1, 1, 1)
         grid.setRowMinimumHeight(0, 300)
 
-    def registerListener(self, controller):
-        """ Manage interactions with AlignAverageController. """
-        controller.addROI()
-        self.roiButton.clicked.connect(controller.toggleROI)
-
 
 class AlignmentLineWidget(Widget):
     """ Alignment widget that displays a line on top of the image in the viewbox."""
@@ -133,12 +115,6 @@ class AlignmentLineWidget(Widget):
         alignmentLayout.addWidget(self.angleEdit, 0, 1)
         alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
-
-    def registerListener(self, controller):
-        """ Manage interactions with AlignmentLineController. """
-        controller.addLine()
-        self.alignmentLineMakerButton.clicked.connect(controller.updateLine)
-        self.alignmentCheck.stateChanged.connect(controller.show)
 
 
 class FFTWidget(Widget):
@@ -197,10 +173,3 @@ class FFTWidget(Widget):
         grid.addWidget(self.labelRate, 2, 2, 1, 1)
         grid.addWidget(self.lineRate, 2, 3, 1, 1)
         grid.setRowMinimumHeight(0, 300)
-
-    def registerListener(self, controller):
-        """ Manage interactions with AlignmentLineController. """
-        self.showCheck.stateChanged.connect(controller.showFFT)
-        self.changePosButton.clicked.connect(controller.changePos)
-        self.linePos.textChanged.connect(controller.changePos)
-        self.lineRate.textChanged.connect(controller.changeRate)

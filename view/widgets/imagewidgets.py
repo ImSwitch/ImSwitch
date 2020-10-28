@@ -147,14 +147,6 @@ class SettingsWidget(Widget):
         cameraGrid.addWidget(cameraTitle, 0, 0)
         cameraGrid.addWidget(self.tree, 1, 0)
 
-    def registerListener(self, controller):
-        """ Manage interactions with SettingsController. """
-        controller.addROI()
-        controller.getParameters()
-        controller.setExposure()
-        controller.adjustFrame()
-        self.ROI.sigRegionChangeFinished.connect(controller.ROIchanged)
-
 
 class ViewWidget(Widget):
     """ View settings (liveview, grid, crosshair). """
@@ -190,12 +182,6 @@ class ViewWidget(Widget):
         self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
         self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
-
-    def registerListener(self, controller):
-        """ Manage interactions with ViewController. """
-        self.gridButton.clicked.connect(controller.gridToggle)
-        self.crosshairButton.pressed.connect(controller.crosshairToggle)
-        self.liveviewButton.clicked.connect(controller.liveview)
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
@@ -248,10 +234,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.yProfile.rotate(90)
         self.ci.layout.setColumnMaximumWidth(0, 40)
         yPlot.setYLink(self.vb)
-
-    def registerListener(self, controller):
-        """ Manage interactions with ImageController. """
-        self.levelsButton.pressed.connect(controller.autoLevels)
 
 
 class RecordingWidget(Widget):
@@ -361,16 +343,3 @@ class RecordingWidget(Widget):
         self.readyToRecord = False
         self.filenameEdit.setEnabled(False)
         self.untilSTOPbtn.setChecked(True)
-
-    def registerListener(self, controller):
-        controller.untilStop()
-        self.openFolderButton.clicked.connect(controller.openFolder)
-        self.specifyfile.clicked.connect(controller.specFile)
-        self.snapTIFFButton.clicked.connect(controller.snap)
-        self.recButton.clicked.connect(controller.toggleREC)
-        self.specifyFrames.clicked.connect(controller.specFrames)
-        self.specifyTime.clicked.connect(controller.specTime)
-        self.recScanOnceBtn.clicked.connect(controller.recScanOnce)
-        self.recScanLapseBtn.clicked.connect(controller.recScanLapse)
-        self.dimLapse.clicked.connect(controller.dimLapse)
-        self.untilSTOPbtn.clicked.connect(controller.untilStop)

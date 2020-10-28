@@ -21,6 +21,14 @@ class PositionerController(WidgetController):
         self.minVolt = [-10, -10, 0]  # piezzoconcept
         self.maxVolt = [10, 10, 10]  # piezzoconcept
 
+        # Connect PositionerWidget signals
+        self._widget.xUpButton.pressed.connect(lambda: self.move(0, float(self._widget.xStepEdit.text())))
+        self._widget.xDownButton.pressed.connect(lambda: self.move(0, -float(self._widget.xStepEdit.text())))
+        self._widget.yUpButton.pressed.connect(lambda: self.move(1, float(self._widget.yStepEdit.text())))
+        self._widget.yDownButton.pressed.connect(lambda: self.move(1, -float(self._widget.yStepEdit.text())))
+        self._widget.zUpButton.pressed.connect(lambda: self.move(2, float(self._widget.zStepEdit.text())))
+        self._widget.zDownButton.pressed.connect(lambda: self.move(2, -float(self._widget.zStepEdit.text())))
+
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
         self.stagePos[axis] += dist
@@ -48,6 +56,23 @@ class LaserController(WidgetController):
         super().__init__(*args, **kwargs)
         self.digMod = False
         self.aotfLasers = {'473': False}
+
+        # Connect LaserWidget signals
+        for laserModule in self._widget.laserModules.values():
+            if not laserModule.laser == '473': self.changeEdit(laserModule.laser)
+            laserModule.enableButton.toggled.connect(lambda: self.toggleLaser(laserModule.laser))
+            laserModule.slider.valueChanged[int].connect(lambda: self.changeSlider(laserModule.laser))
+            laserModule.setPointEdit.returnPressed.connect(lambda: self.changeEdit(laserModule.laser))
+
+        self._widget.digModule.powers['405'].textChanged.connect(lambda: self.updateDigitalPowers(['405']))
+        self._widget.digModule.powers['488'].textChanged.connect(lambda: self.updateDigitalPowers(['488']))
+        self._widget.digModule.powers['473'].textChanged.connect(lambda: self.updateDigitalPowers(['473']))
+        self._widget.digModule.DigitalControlButton.clicked.connect(
+            lambda: self.GlobalDigitalMod(['405', '473', '488'])
+        )
+        self._widget.digModule.updateDigPowersButton.clicked.connect(
+            lambda: self.updateDigitalPowers(['405', '473', '488'])
+        )
 
     def closeEvent(self):
         self._master.laserHelper.toggleLaser(False, '405')
@@ -134,6 +159,11 @@ class BeadController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.running = False
+        self.addROI()
+
+        # Connect BeadRecWidget signals
+        self._widget.roiButton.clicked.connect(self.toggleROI)
+        self._widget.runButton.clicked.connect(self.run)
 
     def toggleROI(self):
         """ Show or hide ROI."""

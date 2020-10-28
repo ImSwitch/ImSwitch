@@ -65,15 +65,6 @@ class PositionerWidget(Widget):
         layout.addWidget(self.zStepEdit, 3, 4)
         layout.addWidget(self.zStepUnit, 3, 5)
 
-    def registerListener(self, controller):
-        """ Manage interactions with PositionerController. """
-        self.xUpButton.pressed.connect(lambda: controller.move(0, float(self.xStepEdit.text())))
-        self.xDownButton.pressed.connect(lambda: controller.move(0, -float(self.xStepEdit.text())))
-        self.yUpButton.pressed.connect(lambda: controller.move(1, float(self.yStepEdit.text())))
-        self.yDownButton.pressed.connect(lambda: controller.move(1, -float(self.yStepEdit.text())))
-        self.zUpButton.pressed.connect(lambda: controller.move(2, float(self.zStepEdit.text())))
-        self.zDownButton.pressed.connect(lambda: controller.move(2, -float(self.zStepEdit.text())))
-
 
 class LaserWidget(Widget):
     """ Laser widget containing digital modulation and normal control. """
@@ -99,13 +90,6 @@ class LaserWidget(Widget):
         grid.addWidget(offControl, 0, 1, 4, 1)
         grid.addWidget(excControl, 0, 2, 4, 1)
         grid.addWidget(self.digModule, 4, 0, 2, 3)
-
-    def registerListener(self, controller):
-        """ Manage interactions with LaserController. """
-        self.laserModules['405'].registerListener(controller)
-        self.laserModules['488'].registerListener(controller)
-        self.laserModules['473'].registerListener(controller)
-        self.digModule.registerListener(controller)
 
 
 class DigitalModule(QtGui.QFrame):
@@ -162,18 +146,6 @@ class DigitalModule(QtGui.QFrame):
         grid.addWidget(offModFrame, 1, 1)
         grid.addWidget(excModFrame, 1, 2)
         grid.addWidget(self.DigitalControlButton, 2, 0, 1, 3)
-
-    def registerListener(self, controller):
-        """ Manage interactions with LaserController. """
-        self.powers['405'].textChanged.connect(lambda: controller.updateDigitalPowers(['405']))
-        self.powers['488'].textChanged.connect(lambda: controller.updateDigitalPowers(['488']))
-        self.powers['473'].textChanged.connect(lambda: controller.updateDigitalPowers(['473']))
-        self.DigitalControlButton.clicked.connect(
-            lambda: controller.GlobalDigitalMod(['405', '473', '488'])
-        )
-        self.updateDigPowersButton.clicked.connect(
-            lambda: controller.updateDigitalPowers(['405', '473', '488'])
-        )
 
 
 class LaserModule(QtGui.QFrame):
@@ -238,13 +210,6 @@ class LaserModule(QtGui.QFrame):
         self.grid.addWidget(powerFrame, 1, 0, 1, 2)
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
-    def registerListener(self, controller):
-        """ Manage interactions with LaserController. """
-        if not self.laser == '473': controller.changeEdit(self.laser)
-        self.enableButton.toggled.connect(lambda: controller.toggleLaser(self.laser))
-        self.slider.valueChanged[int].connect(lambda: controller.changeSlider(self.laser))
-        self.setPointEdit.returnPressed.connect(lambda: controller.changeEdit(self.laser))
-
 
 class BeadRecWidget(Widget):
     """ Displays the FFT transform of the image. """
@@ -283,8 +248,3 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
         grid.setRowMinimumHeight(0, 300)
-
-    def registerListener(self, controller):
-        controller.addROI()
-        self.roiButton.clicked.connect(controller.toggleROI)
-        self.runButton.clicked.connect(controller.run)

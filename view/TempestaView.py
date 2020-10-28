@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.console import ConsoleWidget
 # import view.guitools as guitools
 from pyqtgraph.dockarea import Dock, DockArea
@@ -18,6 +18,7 @@ import view.widgets as widgets
 
 
 class TempestaView(QtGui.QMainWindow):
+    closing = QtCore.pyqtSignal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -144,22 +145,6 @@ class TempestaView(QtGui.QMainWindow):
         self.imageWidget.ci.layout.setColumnFixedWidth(1, 1150)
         self.imageWidget.ci.layout.setRowFixedHeight(1, 1150)
 
-    def registerController(self, controller):
-        self.imageWidget.registerListener(controller.imageController)
-        self.scanWidget.registerListener(controller.scanController)
-        self.beadRecWidget.registerListener(controller.beadController)
-        self.positionerWidget.registerListener(controller.positionerController)
-        self.ulensesWidget.registerListener(controller.uLensesController)
-        self.alignWidgetXY.registerListener(controller.alignXYController)
-        self.alignWidgetAverage.registerListener(controller.alignAverageController)
-        self.alignmentLineWidget.registerListener(controller.alignmentLineController)
-        self.laserWidgets.registerListener(controller.laserController)
-        self.fftWidget.registerListener(controller.fftController)
-        self.recordingWidget.registerListener(controller.recorderController)
-        self.viewWidget.registerListener(controller.viewController)
-        self.settingsWidget.registerListener(controller.settingsController)
-        self.close = controller.closeEvent
-
     def closeEvent(self, event):
-        self.close()
+        self.closing.emit()
         event.accept()

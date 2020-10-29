@@ -44,7 +44,7 @@ def insertSuffix(filename, suffix, newExt=None):
 
 
 def getFilenames(title, filetypes):
-    filter = ';;'.join([f'{name} ({extension})' for name, extension in filetypes])
+    filter = ';;'.join(['{name} ({extension})' for name, extension in filetypes])
 
     files, _ = QtGui.QFileDialog.getOpenFileNames(caption=title, filter=filter)
     return files

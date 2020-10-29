@@ -63,8 +63,8 @@ class LinkedLaser:
         value = self.lasers[0].autostart
         for laser in self.lasers:
             if laser.autostart != value:
-                raise ValueError(f'Laser {laser.idn} autostart state is {laser.autostart} while'
-                                 f' laser {self.lasers[0]} autostart state is {value}')
+                raise ValueError('Laser {laser.idn} autostart state is {laser.autostart} while laser'
+                                 ' {self.lasers[0]} autostart state is {value}')
 
         return value
 
@@ -78,8 +78,8 @@ class LinkedLaser:
         value = self.lasers[0].enabled
         for laser in self.lasers:
             if laser.enabled != value:
-                raise ValueError(f'Laser {laser.idn} enabled state is {laser.enabled} while laser'
-                                 f' {self.lasers[0]} enabled state is {value}')
+                raise ValueError('Laser {laser.idn} enabled state is {laser.enabled} while laser'
+                                 ' {self.lasers[0]} enabled state is {value}')
 
         return value
 
@@ -106,8 +106,8 @@ class LinkedLaser:
         value = self.lasers[0].digital_mod
         for laser in self.lasers:
             if laser.digital_mod != value:
-                raise ValueError(f'Laser {laser.idn} digital_mod state is {laser.digital_mod} while'
-                                 f' laser {self.lasers[0]} digital_mod state is {value}')
+                raise ValueError('Laser {laser.idn} digital_mod state is {laser.digital_mod} while'
+                                 ' laser {self.lasers[0]} digital_mod state is {value}')
 
         return value
 

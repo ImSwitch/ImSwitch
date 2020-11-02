@@ -209,6 +209,9 @@ class FFTController(LiveUpdatedController):
         self._widget.linePos.textChanged.connect(self.changePos)
         self._widget.lineRate.textChanged.connect(self.changeRate)
 
+        self.changeRate()
+        self.showFFT()
+
     def showFFT(self):
         """ Show or hide FFT. """
         self.active = self._widget.showCheck.isChecked()

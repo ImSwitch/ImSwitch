@@ -128,7 +128,7 @@ class FFTWidget(Widget):
         self.showCheck.setCheckable = True
         self.changePosButton = QtGui.QPushButton('Period (pix)')
         self.linePos = QtGui.QLineEdit('4')
-        self.lineRate = QtGui.QLineEdit('10')
+        self.lineRate = QtGui.QLineEdit('0')
         self.labelRate = QtGui.QLabel('Update rate')
 
         # Vertical and horizontal lines

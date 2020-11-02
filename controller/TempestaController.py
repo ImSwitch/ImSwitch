@@ -5,6 +5,7 @@ Created on Fri Mar 20 15:08:33 2020
 @author: _Xavi
 """
 from . import controllers
+from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 
 
@@ -43,75 +44,3 @@ class TempestaController():
         self.positionerController.closeEvent()
         self.laserController.closeEvent()
         self.viewController.closeEvent()
-
-
-class CommunicationChannel():
-    # Communication Channel is a class that handles the communication between Master Controller and Widgets, or between Widgets 
-
-    def __init__(self, main):
-        self.__main = main
-
-    def updateImage(self, init=True):
-        # Called from Master Controller, it updates the Liveview and Liveview Updated Widgets
-        self.__main.imageController.update()
-        self.__main.fftController.update()
-        self.__main.alignXYController.update()
-        self.__main.alignAverageController.update()
-        if not init:
-            self.__main.imageController.autoLevels(init)
-
-    def adjustFrame(self, width, height):
-        self.__main.imageController.adjustFrame(width, height)
-
-    def gridToggle(self):
-        self.__main.imageController.gridToggle()
-
-    def crosshairToggle(self):
-        self.__main.imageController.crosshairToggle()
-
-    def addItemTovb(self, item, *args, **kwargs):
-        self.__main.imageController.addItemTovb(item, *args, **kwargs)
-
-    def removeItemFromvb(self, item):
-        self.__main.imageController.removeItemFromvb(item)
-
-    def getROIdata(self, image, ROI):
-        return self.__main.imageController.getROIdata(image, ROI)
-
-    def centerROI(self):
-        # Returns the center of the VB to align the ROI
-        return self.__main.imageController.centerROI()
-
-    def endRecording(self):
-        self.__main.recorderController.endRecording()
-
-    def updateRecFrameNumber(self, f):
-        self.__main.recorderController.updateRecFrameNumber(f)
-
-    def updateRecTime(self, t):
-        self.__main.recorderController.updateRecTime(t)
-
-    def getCamAttrs(self):
-        return self.__main.settingsController.getCamAttrs()
-
-    def getScanAttrs(self):
-        return self.__main.scanController.getScanAttrs()
-
-    def prepareScan(self):
-        # self.__main.settingsController.setTriggerParam('External "frame-trigger"')
-        # self.__main.laserController.setDigitalButton(True)
-        self.__main.scanController.setScanButton(True)
-
-    def endScan(self):
-        # self.__main.laserController.setDigitalButton(False)
-        self.__main.recorderController.scanDone()
-        # self.__main.settingsController.setTriggerParam('Internal trigger')
-
-    def getStartPos(self):
-        return self.__main.positionerController.getPos()
-
-    def moveZstage(self, step):
-        self.__main.positionerController.move(2, step)
-
-    def getDimsScan(self):
-        return self.__main.scanController.getDimsScan()

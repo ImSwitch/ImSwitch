@@ -217,10 +217,12 @@ class FFTController(LiveUpdatedController):
         self.active = self._widget.showCheck.isChecked()
         self.init = False
         if self.active:
+            self._widget.img.setOnlyRenderVisible(True, render=False)
             self.imageComputationThread.start()
         else:
             self.imageComputationThread.quit()
             self.imageComputationThread.wait()
+            self._widget.img.setOnlyRenderVisible(False, render=True)
 
     def update(self, im, init):
         """ Update with new camera frame. """

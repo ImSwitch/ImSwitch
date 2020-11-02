@@ -6,6 +6,7 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import numpy as np
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore
 
 import view.guitools as guitools
 from .basecontrollers import WidgetController, LiveUpdatedController
@@ -183,12 +184,21 @@ class AlignmentLineController(WidgetController):
 class FFTController(LiveUpdatedController):
     """ Linked to FFTWidget."""
 
+    imageReceived = QtCore.pyqtSignal(np.ndarray)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.updateRate = 10
         self.it = 0
         self.init = False
         self.show = False
+
+        # Prepare image computation worker
+        self.imageComputationWorker = self.FFTImageComputationWorker()
+        self.imageComputationWorker.fftImageComputed.connect(self.displayImage)
+        self.imageComputationThread = QtCore.QThread()
+        self.imageComputationWorker.moveToThread(self.imageComputationThread)
+        self.imageReceived.connect(self.imageComputationWorker.computeFFTImage)
 
         # Connect CommunicationChannel signals
         self._comm_channel.updateImage.connect(self.update)
@@ -203,22 +213,31 @@ class FFTController(LiveUpdatedController):
         """ Show or hide FFT. """
         self.active = self._widget.showCheck.isChecked()
         self.init = False
+        if self.active:
+            self.imageComputationThread.start()
+        else:
+            self.imageComputationThread.quit()
+            self.imageComputationThread.wait()
 
     def update(self, im, init):
         """ Update with new camera frame. """
         if self.active and (self.it == self.updateRate):
             self.it = 0
-            im = np.fft.fftshift(np.log10(abs(np.fft.fft2(self._master.cameraHelper.image))))
-            self._widget.img.setImage(im, autoLevels=False)
-            if not self.init:
-                self._widget.vb.setAspectLocked()
-                self._widget.vb.setLimits(xMin=-0.5, xMax=self._widget.img.width(), minXRange=4,
-                                          yMin=-0.5, yMax=self._widget.img.height(), minYRange=4)
-                self._widget.hist.setLevels(*guitools.bestLimits(im))
-                self._widget.hist.vb.autoRange()
-                self.init = True
+            self.imageComputationWorker.prepareForNewImage()
+            self.imageReceived.emit(im)
         elif self.active and (not (self.it == self.updateRate)):
             self.it += 1
+
+    def displayImage(self, im):
+        """ Displays the image in the view. """
+        self._widget.img.setImage(im, autoLevels=False)
+        if not self.init:
+            self._widget.vb.setAspectLocked()
+            self._widget.vb.setLimits(xMin=-0.5, xMax=self._widget.img.width(), minXRange=4,
+                                      yMin=-0.5, yMax=self._widget.img.height(), minYRange=4)
+            self._widget.hist.setLevels(*guitools.bestLimits(im))
+            self._widget.hist.vb.autoRange()
+            self.init = True
 
     def changeRate(self):
         """ Change update rate. """
@@ -259,3 +278,30 @@ class FFTController(LiveUpdatedController):
             self._widget.lvline.show()
             self._widget.uhline.show()
             self._widget.dhline.show()
+
+    class FFTImageComputationWorker(QtCore.QObject):
+        fftImageComputed = QtCore.pyqtSignal(np.ndarray)
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._numQueuedImages = 0
+            self._numQueuedImagesMutex = QtCore.QMutex()
+
+        def computeFFTImage(self, image):
+            """ Compute FFT of an image. """
+            try:
+                if self._numQueuedImages > 1:
+                    return  # Skip this frame in order to catch up
+
+                fftImage = np.fft.fftshift(np.log10(abs(np.fft.fft2(image))))
+                self.fftImageComputed.emit(fftImage)
+            finally:
+                self._numQueuedImagesMutex.lock()
+                self._numQueuedImages -= 1
+                self._numQueuedImagesMutex.unlock()
+
+        def prepareForNewImage(self):
+            """ Must always be called before the worker receives a new image. """
+            self._numQueuedImagesMutex.lock()
+            self._numQueuedImages += 1
+            self._numQueuedImagesMutex.unlock()

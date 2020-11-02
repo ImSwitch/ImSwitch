@@ -94,9 +94,9 @@ class RecordingWorker(QtCore.QObject):
                         d.resize(frames, axis=0)
                         d[it:frames, :, :] = np.array(newframes[0:frames - it])
                         it = frames
-                    self.__recordingHelper.comm_channel.updateRecFrameNumber(it)
-            self.__recordingHelper.comm_channel.updateRecFrameNumber(0)
-            self.__recordingHelper.comm_channel.endRecording()
+                    self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(it)
+            self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(0)
+            self.__recordingHelper.comm_channel.endRecording.emit()
             self.__recordingHelper.endRecording()
         elif self.recMode == RecMode.SpecTime:
             start = time.time()
@@ -108,12 +108,12 @@ class RecordingWorker(QtCore.QObject):
                     d.resize(n + it, axis=0)
                     d[it:it + n, :, :] = np.array(newframes)
                     it += n
-                    self.__recordingHelper.comm_channel.updateRecTime(
+                    self.__recordingHelper.comm_channel.updateRecTime.emit(
                         np.around(current, decimals=2)
                     )
                     current = time.time() - start
-            self.__recordingHelper.comm_channel.updateRecTime(0)
-            self.__recordingHelper.comm_channel.endRecording()
+            self.__recordingHelper.comm_channel.updateRecTime.emit(0)
+            self.__recordingHelper.comm_channel.endRecording.emit()
             self.__recordingHelper.endRecording()
 
         else:

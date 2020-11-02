@@ -35,6 +35,9 @@ class ScanController(SuperScanController):  # TODO
         # Connect NidaqHelper signals
         self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
 
+        # Connect CommunicationChannel signals
+        self._comm_channel.prepareScan.connect(lambda: self.setScanButton(True))
+
         # Connect ScanWidget signals
         self._widget.saveScanBtn.clicked.connect(self.saveScan)
         self._widget.loadScanBtn.clicked.connect(self.loadScan)
@@ -167,7 +170,7 @@ class ScanController(SuperScanController):  # TODO
         print("scan done")
         if not self._widget.continuousCheck.isChecked():
             self.setScanButton(False)
-            self._comm_channel.endScan()
+            self._comm_channel.endScan.emit()
         else:
             self._master.nidaqHelper.runScan(self.signalDic)
 

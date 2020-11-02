@@ -21,6 +21,9 @@ class PositionerController(WidgetController):
         self.minVolt = [-10, -10, 0]  # piezzoconcept
         self.maxVolt = [10, 10, 10]  # piezzoconcept
 
+        # Connect CommunicationChannel signals
+        self._comm_channel.moveZstage.connect(lambda step: self.move(2, step))
+
         # Connect PositionerWidget signals
         self._widget.xUpButton.pressed.connect(lambda: self.move(0, float(self._widget.xStepEdit.text())))
         self._widget.xDownButton.pressed.connect(lambda: self.move(0, -float(self._widget.xStepEdit.text())))
@@ -173,7 +176,7 @@ class BeadController(WidgetController):
             self._widget.roiButton.setText('Show ROI')
         else:
             ROIsize = (64, 64)
-            ROIcenter = self._comm_channel.centerROI()
+            ROIcenter = self._comm_channel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -186,7 +189,7 @@ class BeadController(WidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb(self._widget.ROI)
+        self._comm_channel.addItemTovb.emit(self._widget.ROI)
 
     def run(self):
         if not self.running:

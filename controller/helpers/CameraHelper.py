@@ -4,13 +4,14 @@ Created on Tue Apr  7 16:37:09 2020
 
 @author: _Xavi
 """
+import numpy as np
 from pyqtgraph.Qt import QtCore
 
 
 # import time
 
 class CameraHelper(QtCore.QObject):
-    updateImageSignal = QtCore.pyqtSignal()
+    updateImageSignal = QtCore.pyqtSignal(np.ndarray, bool)
 
     # CameraHelper deals with the Hamamatsu parameters and frame extraction
     def __init__(self, comm_channel, cameras, *args, **kwargs):
@@ -59,7 +60,7 @@ class CameraHelper(QtCore.QObject):
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
         self.__image = self.__cameras[0].getLast()
-        self.__comm_channel.updateImage(False)
+        self.__comm_channel.updateImage.emit(self.__image, False)
         self.__thread.start()
 
     def stopAcquisition(self):
@@ -80,7 +81,7 @@ class CameraHelper(QtCore.QObject):
 
     def updateLatestFrame(self):
         self.__image = self.__cameras[0].getLast()
-        self.updateImageSignal.emit()
+        self.updateImageSignal.emit(self.__image, True)
 
     def getChunk(self):
         return self.__cameras[0].getFrames()

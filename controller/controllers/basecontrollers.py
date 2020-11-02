@@ -37,7 +37,7 @@ class LiveUpdatedController(WidgetController):
         super().__init__(*args, **kwargs)
         self.active = False
 
-    def update(self):
+    def update(self, im, init):
         raise NotImplementedError
 
 

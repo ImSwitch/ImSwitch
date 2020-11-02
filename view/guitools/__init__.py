@@ -4,9 +4,10 @@ Created on Fri Feb  6 13:20:02 2015
 
 @author: federico
 """
-from .TiffConverter import *
 from .filetools import *
 from .graphtools import *
+from .OptimizedImageItem import *
+from .TiffConverter import *
 
 
 def bestLimits(arr):

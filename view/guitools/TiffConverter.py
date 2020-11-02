@@ -11,7 +11,7 @@ import h5py as hdf
 import tifffile as tiff
 from pyqtgraph.Qt import QtCore
 
-import view.guitools as guitools
+from view.guitools import filetools
 
 
 def fileSizeGB(shape):
@@ -44,7 +44,7 @@ class TiffConverter(QtCore.QObject):
     def run(self):
 
         if self.filenames is None:
-            self.filenames = guitools.getFilenames("Select HDF5 files",
+            self.filenames = filetools.getFilenames("Select HDF5 files",
                                                    [('HDF5 files', '*.hdf5')])
 
         else:
@@ -60,7 +60,7 @@ class TiffConverter(QtCore.QObject):
                     data = file[dataname]
                     filesize = fileSizeGB(data.shape)
                     filename = (os.path.splitext(filename)[0] + '_' + dataname)
-                    guitools.attrsToTxt(filename, [at for at in data.attrs.items()])
+                    filetools.attrsToTxt(filename, [at for at in data.attrs.items()])
 
                     if filesize < 2:
                         time.sleep(5)
@@ -71,14 +71,14 @@ class TiffConverter(QtCore.QObject):
                         i = 0
                         while i < filesize // 1.8:
                             suffix = '_part{}'.format(i)
-                            partName = guitools.insertSuffix(filename, suffix, '.tiff')
+                            partName = filetools.insertSuffix(filename, suffix, '.tiff')
                             tiff.imsave(partName, data[i * n:(i + 1) * n],
                                         description=dataname,
                                         software='Tormenta')
                             i += 1
                         if filesize % 2 > 0:
                             suffix = '_part{}'.format(i)
-                            partName = guitools.insertSuffix(filename, suffix, '.tiff')
+                            partName = filetools.insertSuffix(filename, suffix, '.tiff')
                             tiff.imsave(partName, data[i * n:],
                                         description=dataname,
                                         software='Tormenta')

@@ -5,6 +5,7 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 
+from pyqtgraph.Qt import QtCore
 from controller.TempestaErrors import InvalidChildClassError
 
 
@@ -18,11 +19,12 @@ class WidgetControllerFactory():
             return widgetController
 
 
-class WidgetController():
+class WidgetController(QtCore.QObject):
     """ Superclass for all WidgetControllers. 
             All WidgetControllers should have access to MasterController, CommunicationChannel and the linked Widget. """
 
-    def __init__(self, comm_channel, master, widget):
+    def __init__(self, comm_channel, master, widget, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Protected attributes, which should only be accessed from WidgetController and its subclasses
         self._master = master
         self._widget = widget

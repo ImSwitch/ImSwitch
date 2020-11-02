@@ -67,6 +67,7 @@ class CameraHelper(QtCore.QObject):
         self.__thread.quit()
         self.__thread.wait()
         self.__cameras[0].stopAcquisition()
+        self.__comm_channel.acquisitionStopped.emit()
 
     def changeParameter(self, function):
         """ This method is used to change those camera properties that need

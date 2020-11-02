@@ -244,6 +244,7 @@ class ImageController(LiveUpdatedController):
 
         # Connect CommunicationChannel signals
         self._comm_channel.updateImage.connect(self.update)
+        self._comm_channel.acquisitionStopped.connect(self.acquisitionStopped)
         self._comm_channel.adjustFrame.connect(self.adjustFrame)
         self._comm_channel.gridToggle.connect(self.gridToggle)
         self._comm_channel.crosshairToggle.connect(self.crosshairToggle)
@@ -275,10 +276,17 @@ class ImageController(LiveUpdatedController):
 
     def update(self, im, init):
         """ Update new image in the viewbox. """
+        if not init:
+            self._widget.img.setOnlyRenderVisible(True, render=False)
+
         self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
 
         if not init:
             self.autoLevels(init, im)
+
+    def acquisitionStopped(self):
+        """ Disable the onlyRenderVisible optimization for a smoother experience. """
+        self._widget.img.setOnlyRenderVisible(False, render=True)
 
     def adjustFrame(self, width, height):
         """ Adjusts the viewbox to a new width and height. """

@@ -43,7 +43,7 @@ class RecordingHelper():
         self.__recordingWorker.frames = frames
         self.__recordingWorker.time = time
         self.__cameraHelper.updateCameraIndices()
-        self.__thread.start()
+        self.__thread.start(QtCore.QThread.HighestPriority)
 
     def endRecording(self):
         self.__record = False

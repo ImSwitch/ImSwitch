@@ -59,7 +59,6 @@ class CameraHelper(QtCore.QObject):
 
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
-        sleep(0.3)
         self.__thread.start()
 
     def stopAcquisition(self):

@@ -254,16 +254,13 @@ class ImageController(LiveUpdatedController):
         # Connect ImageWidget signals
         self._widget.levelsButton.pressed.connect(self.autoLevels)
 
-    def autoLevels(self, init=True, im=None):
+    def autoLevels(self, im=None):
         """ Set histogram levels automatically with current camera image."""
-        if not init:
-            self._widget.levelsButton.setEnabled(True)
-
         if im is None:
             im = self._widget.img.image
 
         self._widget.hist.setLevels(*guitools.bestLimits(im))
-        self._widget.hist.vb.autoRange()
+        self._widget.hist.vb.setYRange(im.min(), im.max())
 
     def addItemTovb(self, item):
         """ Add item from communication channel to viewbox."""
@@ -278,11 +275,10 @@ class ImageController(LiveUpdatedController):
         """ Update new image in the viewbox. """
         if not init:
             self._widget.img.setOnlyRenderVisible(True, render=False)
+            self._widget.levelsButton.setEnabled(True)
+            self.autoLevels(im)
 
         self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
-
-        if not init:
-            self.autoLevels(init, im)
 
     def acquisitionStopped(self):
         """ Disable the onlyRenderVisible optimization for a smoother experience. """

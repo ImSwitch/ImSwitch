@@ -46,9 +46,9 @@ class RecordingHelper():
         self.__thread.start(QtCore.QThread.HighestPriority)
 
     def endRecording(self):
+        self.__record = False
         self.__thread.quit()
         self.__thread.wait()
-        self.__record = False
     
     def snap(self, savename, attrs):
         store_file = h5py.File(savename + '.hdf5', 'w', track_order=True)
@@ -80,48 +80,49 @@ class RecordingWorker(QtCore.QObject):
         umxpx = self.attrs['Camera_pixel_size']
         d.attrs["element_size_um"] = [1, umxpx, umxpx]
 
-        if self.recMode == RecMode.SpecFrames:
-            frames = self.frames
-            while it < frames:
-                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
-                n = len(newframes)
-                if n > 0:
-                    if (it + n) <= frames:
+        try:
+            if self.recMode == RecMode.SpecFrames:
+                frames = self.frames
+                while it < frames:
+                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
+                    n = len(newframes)
+                    if n > 0:
+                        if (it + n) <= frames:
+                            d.resize(n + it, axis=0)
+                            d[it:it + n, :, :] = np.array(newframes)
+                            it += n
+                        else:
+                            d.resize(frames, axis=0)
+                            d[it:frames, :, :] = np.array(newframes[0:frames - it])
+                            it = frames
+                        self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(it)
+                self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(0)
+                self.__recordingHelper.comm_channel.endRecording.emit()
+                self.__recordingHelper.endRecording()
+            elif self.recMode == RecMode.SpecTime:
+                start = time.time()
+                current = 0
+                while current < self.time:
+                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
+                    n = len(newframes)
+                    if n > 0:
                         d.resize(n + it, axis=0)
                         d[it:it + n, :, :] = np.array(newframes)
                         it += n
-                    else:
-                        d.resize(frames, axis=0)
-                        d[it:frames, :, :] = np.array(newframes[0:frames - it])
-                        it = frames
-                    self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(it)
-            self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(0)
-            self.__recordingHelper.comm_channel.endRecording.emit()
-            self.__recordingHelper.endRecording()
-        elif self.recMode == RecMode.SpecTime:
-            start = time.time()
-            current = 0
-            while current < self.time:
-                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
-                n = len(newframes)
-                if n > 0:
-                    d.resize(n + it, axis=0)
-                    d[it:it + n, :, :] = np.array(newframes)
-                    it += n
-                    self.__recordingHelper.comm_channel.updateRecTime.emit(
-                        np.around(current, decimals=2)
-                    )
-                    current = time.time() - start
-            self.__recordingHelper.comm_channel.updateRecTime.emit(0)
-            self.__recordingHelper.comm_channel.endRecording.emit()
-            self.__recordingHelper.endRecording()
-
-        else:
-            while self.__recordingHelper.record:
-                newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
-                n = len(newframes)
-                if n > 0:
-                    d.resize(n + it, axis=0)
-                    d[it:it + n, :, :] = np.array(newframes)
-                    it += n
+                        self.__recordingHelper.comm_channel.updateRecTime.emit(
+                            np.around(current, decimals=2)
+                        )
+                        current = time.time() - start
+                self.__recordingHelper.comm_channel.updateRecTime.emit(0)
+                self.__recordingHelper.comm_channel.endRecording.emit()
+                self.__recordingHelper.endRecording()
+            else:
+                while self.__recordingHelper.record:
+                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
+                    n = len(newframes)
+                    if n > 0:
+                        d.resize(n + it, axis=0)
+                        d[it:it + n, :, :] = np.array(newframes)
+                        it += n
+        finally:
             self.f.close()

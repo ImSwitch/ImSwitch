@@ -19,7 +19,8 @@ except ImportError:
 
 
 class OptimizedImageItem(pg.ImageItem):
-    imageReadyForARGB = QtCore.pyqtSignal(np.ndarray, object, object, np.ndarray, bool)
+    sigImageReadyForARGB = QtCore.Signal(np.ndarray, object, object, np.ndarray, bool)
+    sigImageDisplayed = QtCore.Signal()
 
     def __init__(self, *args, **kargs):
         self.shouldPaint = False
@@ -31,7 +32,7 @@ class OptimizedImageItem(pg.ImageItem):
         self.imageARGBWorker.argbProduced.connect(self.updateQImage)
         self.imageARGBThread = QtCore.QThread()
         self.imageARGBWorker.moveToThread(self.imageARGBThread)
-        self.imageReadyForARGB.connect(self.imageARGBWorker.produceARGB)
+        self.sigImageReadyForARGB.connect(self.imageARGBWorker.produceARGB)
         self.imageARGBThread.start()
 
     def setAutoDownsample(self, ads):
@@ -46,10 +47,12 @@ class OptimizedImageItem(pg.ImageItem):
     def setImage(self, image=None, autoLevels=None, **kargs):
         profile = debug.Profiler()
 
+        gotNewData = False
         if image is None:
             if self.image is None:
                 return
         else:
+            gotNewData = True
             shapeChanged = (self.image is None or image.shape != self.image.shape)
             image = image.view(np.ndarray)
             if self.image is None or image.dtype != self.image.dtype:
@@ -89,6 +92,9 @@ class OptimizedImageItem(pg.ImageItem):
         self.render()
 
         profile()
+
+        if gotNewData:
+            self.sigImageChanged.emit()
 
     def render(self):
         # Convert data to QImage for display.
@@ -175,7 +181,7 @@ class OptimizedImageItem(pg.ImageItem):
 
         # Send image to ARGB worker
         self.imageARGBWorker.prepareForNewImage()
-        self.imageReadyForARGB.emit(image, lut, levels, viewBounds, self.onlyRenderVisible)
+        self.sigImageReadyForARGB.emit(image, lut, levels, viewBounds, self.onlyRenderVisible)
 
     def paint(self, p, *args):
         profile = debug.Profiler()
@@ -211,7 +217,7 @@ class OptimizedImageItem(pg.ImageItem):
         qimage = fn.makeQImage(argb, alpha, transpose=False)
         self.qimage = qimage
         self.update()
-        self.sigImageChanged.emit()
+        self.sigImageDisplayed.emit()
 
     def viewTransformChanged(self):
         super().viewTransformChanged()

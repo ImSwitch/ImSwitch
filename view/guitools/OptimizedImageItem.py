@@ -166,7 +166,14 @@ class OptimizedImageItem(pg.ImageItem):
         if self.axisOrder == 'col-major':
             image = image.transpose((1, 0, 2)[:image.ndim])
 
-        viewBounds = np.array(self.getViewBox().viewRange()).clip(0, image.shape[0])
+        # Get bounds of view box
+        viewBounds = np.array(self.getViewBox().viewRange())
+        viewBounds[0][0] = max(viewBounds[0][0] - 1, 0)
+        viewBounds[0][1] = min(viewBounds[0][1] + 1, image.shape[0])
+        viewBounds[1][0] = max(viewBounds[1][0] - 1, 0)
+        viewBounds[1][1] = min(viewBounds[1][1] + 1, image.shape[1])
+
+        # Send image to ARGB worker
         self.imageARGBWorker.prepareForNewImage()
         self.imageReadyForARGB.emit(image, lut, levels, viewBounds, self.onlyRenderVisible)
 

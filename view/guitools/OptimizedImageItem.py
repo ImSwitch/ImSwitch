@@ -19,7 +19,7 @@ except ImportError:
 
 
 class OptimizedImageItem(pg.ImageItem):
-    imageReadyForARGB = QtCore.pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, bool)
+    imageReadyForARGB = QtCore.pyqtSignal(np.ndarray, object, object, np.ndarray, bool)
 
     def __init__(self, *args, **kargs):
         self.shouldPaint = False

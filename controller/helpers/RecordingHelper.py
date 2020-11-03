@@ -18,7 +18,11 @@ class RecordingHelper():
         self.__comm_channel = comm_channel
         self.__cameraHelper = cameraHelper
         self.__record = False
-
+        self.__recordingWorker = RecordingWorker(self)
+        self.__thread = QtCore.QThread()
+        self.__recordingWorker.moveToThread(self.__thread)
+        self.__thread.started.connect(self.__recordingWorker.run)
+        
     @property
     def record(self):
         return self.__record
@@ -32,11 +36,7 @@ class RecordingHelper():
         return self.__comm_channel
 
     def startRecording(self, recMode, savename, attrs, frames=None, time=None):
-        self.__record = True
-        self.__recordingWorker = RecordingWorker(self)
-        self.__thread = QtCore.QThread()
-        self.__recordingWorker.moveToThread(self.__thread)
-        self.__thread.started.connect(self.__recordingWorker.run)
+        self.__record = True    
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.attrs = attrs
@@ -46,10 +46,10 @@ class RecordingHelper():
         self.__thread.start(QtCore.QThread.HighestPriority)
 
     def endRecording(self):
-        self.__record = False
         self.__thread.quit()
         self.__thread.wait()
-
+        self.__record = False
+    
     def snap(self, savename, attrs):
         store_file = h5py.File(savename + '.hdf5', 'w', track_order=True)
         for key in attrs.keys():

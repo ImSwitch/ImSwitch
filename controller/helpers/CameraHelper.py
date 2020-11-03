@@ -6,7 +6,7 @@ Created on Tue Apr  7 16:37:09 2020
 """
 import numpy as np
 from pyqtgraph.Qt import QtCore
-
+from time import sleep
 
 # import time
 
@@ -59,8 +59,7 @@ class CameraHelper(QtCore.QObject):
 
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
-        self.__image = self.__cameras[0].getLast()
-        self.__comm_channel.updateImage.emit(self.__image, False)
+        sleep(0.3)
         self.__thread.start()
 
     def stopAcquisition(self):
@@ -80,9 +79,9 @@ class CameraHelper(QtCore.QObject):
             function()
             self.startAcquisition()
 
-    def updateLatestFrame(self):
+    def updateLatestFrame(self, init):
         self.__image = self.__cameras[0].getLast()
-        self.updateImageSignal.emit(self.__image, True)
+        self.updateImageSignal.emit(self.__image, init)
 
     def getChunk(self):
         return self.__cameras[0].getFrames()
@@ -154,9 +153,10 @@ class LVWorker(QtCore.QObject):
 
     def __init__(self, cameraHelper, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__cameraHelper = cameraHelper
+        self.__cameraHelper = cameraHelper   
 
     def run(self):
+        self.__cameraHelper.updateLatestFrame(False)
         self.vtimer = QtCore.QTimer()
-        self.vtimer.timeout.connect(self.__cameraHelper.updateLatestFrame)
+        self.vtimer.timeout.connect(lambda: self.__cameraHelper.updateLatestFrame(True))
         self.vtimer.start(100)

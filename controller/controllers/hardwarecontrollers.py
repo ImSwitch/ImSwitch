@@ -62,14 +62,16 @@ class LaserController(WidgetController):
 
         # Connect LaserWidget signals
         for laserModule in self._widget.laserModules.values():
-            if not laserModule.laser == '473': self.changeEdit(laserModule.laser)
-            laserModule.enableButton.toggled.connect(lambda: self.toggleLaser(laserModule.laser))
-            laserModule.slider.valueChanged[int].connect(lambda: self.changeSlider(laserModule.laser))
-            laserModule.setPointEdit.returnPressed.connect(lambda: self.changeEdit(laserModule.laser))
+            if laserModule.laser != '473': self.changeEdit(laserModule.laser)
+            laserModule.enableButton.toggled.connect(lambda _, laser=laserModule.laser: self.toggleLaser(laser))
+            laserModule.slider.valueChanged[int].connect(lambda _, laser=laserModule.laser: self.changeSlider(laser))
+            laserModule.setPointEdit.returnPressed.connect(lambda laser=laserModule.laser: self.changeEdit(laser))
 
-        self._widget.digModule.powers['405'].textChanged.connect(lambda: self.updateDigitalPowers(['405']))
-        self._widget.digModule.powers['488'].textChanged.connect(lambda: self.updateDigitalPowers(['488']))
-        self._widget.digModule.powers['473'].textChanged.connect(lambda: self.updateDigitalPowers(['473']))
+        for digModuleLaser in self._widget.digModule.powers.keys():
+            self._widget.digModule.powers[digModuleLaser].textChanged.connect(
+                lambda _, laser=digModuleLaser: self.updateDigitalPowers([laser])
+            )
+
         self._widget.digModule.DigitalControlButton.clicked.connect(
             lambda: self.GlobalDigitalMod(['405', '473', '488'])
         )

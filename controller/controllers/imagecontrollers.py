@@ -327,7 +327,7 @@ class RecorderController(WidgetController):
         self._widget.openFolderButton.clicked.connect(self.openFolder)
         self._widget.specifyfile.clicked.connect(self.specFile)
         self._widget.snapTIFFButton.clicked.connect(self.snap)
-        self._widget.recButton.clicked.connect(self.toggleREC)
+        self._widget.recButton.toggled.connect(self.toggleREC)
         self._widget.specifyFrames.clicked.connect(self.specFrames)
         self._widget.specifyTime.clicked.connect(self.specTime)
         self._widget.recScanOnceBtn.clicked.connect(self.recScanOnce)
@@ -376,9 +376,9 @@ class RecorderController(WidgetController):
         attrs = self._comm_channel.getCamAttrs()
         self._master.recordingHelper.snap(savename, attrs)
 
-    def toggleREC(self):
+    def toggleREC(self, checked):
         """ Start or end recording. """
-        if self._widget.recButton.isChecked():
+        if checked:
             folder = self._widget.folderEdit.text()
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -464,7 +464,7 @@ class RecorderController(WidgetController):
         self._comm_channel.prepareScan.emit()
 
     def endRecording(self):
-        self._widget.recButton.click()
+        self._widget.recButton.setChecked(False)
         self._widget.currentFrame.setText('0 / ')
 
     def updateRecFrameNumber(self, f):

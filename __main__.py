@@ -15,7 +15,7 @@ from view.TempestaView import TempestaView
 
 model = TempestaModel()
 app = QtGui.QApplication([])
-view = TempestaView()
+view = TempestaView(model.setupInfo.availableWidgets)
 controller = TempestaController(model, view)
 view.show()
 sys.exit(app.exec_())

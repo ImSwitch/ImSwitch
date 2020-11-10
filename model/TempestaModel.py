@@ -4,19 +4,33 @@ Created on Fri Mar 20 15:16:06 2020
 
 @author: _Xavi
 """
-from model import instruments
+import os
+
+import constants
+from model import config, instruments
 
 
-class TempestaModel():
-
+class TempestaModel:
     def __init__(self):
+        configFilesDir = os.path.join(constants.rootFolderPath, 'config_files')
+        with open(os.path.join(configFilesDir, 'setup.json')) as setupFile:
+            self.setupInfo = config.SetupInfo.from_json(setupFile.read(), infer_missing=True)
+
         self.cameras = instruments.Cameras(0)
-        cobolt = 'cobolt.cobolt0601.Cobolt0601_f2'
-        offlaser = instruments.LinkedLaserCheck(cobolt, ['COM4', 'COM7'])
-        actlaser = instruments.Laser(cobolt, 'COM10')
-        self.lasers = {'405': actlaser, '488': offlaser}
-        self.initLaser(self.lasers['405'])
-        self.initLaser(self.lasers['488'])
+
+        self.lasers = {}
+        for laserId, laserInfo in self.setupInfo.lasers.items():
+            if (laserInfo.digitalDriver is None or laserInfo.digitalPorts is None
+                    or len(laserInfo.digitalPorts) < 1):
+                continue
+
+            if len(laserInfo.digitalPorts) == 1:
+                laser = instruments.Laser(laserInfo.digitalDriver, laserInfo.digitalPorts)
+            else:
+                laser = instruments.LinkedLaserCheck(laserInfo.digitalDriver, laserInfo.digitalPorts)
+
+            self.initLaser(laser)
+            self.lasers[laserId] = laser
 
     def initLaser(self, laser):
         print(laser.idn)

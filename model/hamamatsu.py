@@ -135,7 +135,7 @@ n_cameras = temp.value
 # kept falling behind the camera and create_string_buffer() seemed to be the
 # bottleneck.
 #
-class HCamData():
+class HCamData:
 
     ## __init__
     #
@@ -187,7 +187,7 @@ class HCamData():
 # Storage for the data from the camera is allocated dynamically and
 # copied out of the camera buffers.
 #
-class HamamatsuCamera():
+class HamamatsuCamera:
 
 
     ## __init__

@@ -21,10 +21,10 @@ class ULensesWidget(Widget):
         # Graphical Elements
         self.ulensesButton = QtGui.QPushButton('uLenses')
         self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
-        self.xEdit = QtGui.QLineEdit('0')
-        self.yEdit = QtGui.QLineEdit('0')
-        self.pxEdit = QtGui.QLineEdit('157.5')
-        self.upEdit = QtGui.QLineEdit('1182')
+        self.xEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.xOffset)
+        self.yEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.yOffset)
+        self.pxEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.pixelSize)
+        self.upEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.periodicity)
         self.ulensesPlot = pg.ScatterPlotItem()
 
         # Add elements to GridLayout
@@ -89,7 +89,7 @@ class AlignWidgetAverage(Widget):
         grid.addWidget(self.graph, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.resetButton, 1, 1, 1, 1)
-        grid.setRowMinimumHeight(0, 300)
+        # grid.setRowMinimumHeight(0, 300)
 
 
 class AlignmentLineWidget(Widget):
@@ -99,7 +99,7 @@ class AlignmentLineWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.angleEdit = QtGui.QLineEdit('30')
+        self.angleEdit = QtGui.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
         self.angle = np.float(self.angleEdit.text())
         self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
@@ -172,4 +172,4 @@ class FFTWidget(Widget):
         grid.addWidget(self.linePos, 2, 1, 1, 1)
         grid.addWidget(self.labelRate, 2, 2, 1, 1)
         grid.addWidget(self.lineRate, 2, 3, 1, 1)
-        grid.setRowMinimumHeight(0, 300)
+        # grid.setRowMinimumHeight(0, 300)

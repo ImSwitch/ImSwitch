@@ -15,41 +15,49 @@ class PositionerController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.stagePos = [0, 0, 0]
-        self.convFactors = [1.5870, 1.5907, 10]
-        self.targets = ['Stage_X', 'Stage_Y', 'Stage_Z']
-        self.minVolt = [-10, -10, 0]  # piezzoconcept
-        self.maxVolt = [10, 10, 10]  # piezzoconcept
+        self._widget.initControls(self._setupInfo.stagePiezzos)
+
+        self.stagePos = {}
+        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
+            self.stagePos[stagePiezzoId] = 0
 
         # Connect CommunicationChannel signals
-        self._comm_channel.moveZstage.connect(lambda step: self.move(2, step))
+        self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
 
         # Connect PositionerWidget signals
-        self._widget.xUpButton.pressed.connect(lambda: self.move(0, float(self._widget.xStepEdit.text())))
-        self._widget.xDownButton.pressed.connect(lambda: self.move(0, -float(self._widget.xStepEdit.text())))
-        self._widget.yUpButton.pressed.connect(lambda: self.move(1, float(self._widget.yStepEdit.text())))
-        self._widget.yDownButton.pressed.connect(lambda: self.move(1, -float(self._widget.yStepEdit.text())))
-        self._widget.zUpButton.pressed.connect(lambda: self.move(2, float(self._widget.zStepEdit.text())))
-        self._widget.zDownButton.pressed.connect(lambda: self.move(2, -float(self._widget.zStepEdit.text())))
+        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
+            self._widget.pars['UpButton' + stagePiezzoId].pressed.connect(
+                lambda stagePiezzoId=stagePiezzoId: self.move(
+                    stagePiezzoId,
+                    float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+                )
+            )
+            self._widget.pars['DownButton' + stagePiezzoId].pressed.connect(
+                lambda stagePiezzoId=stagePiezzoId: self.move(
+                    stagePiezzoId,
+                    -float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+                )
+            )
 
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        self.stagePos[axis] += dist
-        self._master.nidaqHelper.setAnalog(target=self.targets[axis],
-                                           voltage=self.stagePos[axis] / self.convFactors[axis],
-                                           min_val=self.minVolt[axis], max_val=self.maxVolt[axis])
-        newText = "<strong>" + ['x', 'y', 'z'][axis] + " = {0:.2f} µm</strong>".format(
-            self.stagePos[axis])
 
-        getattr(self._widget, ['x', 'y', 'z'][axis] + "Label").setText(newText)
+        stagePiezzoInfo = self._setupInfo.stagePiezzos[axis]
+
+        self.stagePos[axis] += dist
+        self._master.nidaqHelper.setAnalog(target=axis,
+                                           voltage=self.stagePos[axis] / stagePiezzoInfo.conversionFactor,
+                                           min_val=stagePiezzoInfo.minVolt, max_val=stagePiezzoInfo.maxVolt)
+
+        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
+        self._widget.pars['Label' + axis].setText(newText)
 
     def getPos(self):
-        return {'X': self.stagePos[0], 'Y': self.stagePos[1], 'Z': self.stagePos[2]}
+        return self.stagePos
 
     def closeEvent(self):
-        self._master.nidaqHelper.setAnalog(self.targets[0], 0)
-        self._master.nidaqHelper.setAnalog(self.targets[1], 0)
-        self._master.nidaqHelper.setAnalog(self.targets[2], 0)
+        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
+            self._master.nidaqHelper.setAnalog(stagePiezzoId, 0)
 
 
 class LaserController(WidgetController):
@@ -57,12 +65,19 @@ class LaserController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._widget.initControls(self._setupInfo.lasers)
+
         self.digMod = False
-        self.aotfLasers = {'473': False}
+        self.aotfLasers = {}
+        for laserId, laserInfo in self._setupInfo.lasers.items():
+            if laserInfo.analogChannel is not None:
+                self.aotfLasers[laserId] = False
 
         # Connect LaserWidget signals
         for laserModule in self._widget.laserModules.values():
-            if laserModule.laser != '473': self.changeEdit(laserModule.laser)
+            if laserModule.laser not in self.aotfLasers:
+                self.changeEdit(laserModule.laser)
+
             laserModule.enableButton.toggled.connect(lambda _, laser=laserModule.laser: self.toggleLaser(laser))
             laserModule.slider.valueChanged[int].connect(lambda _, laser=laserModule.laser: self.changeSlider(laser))
             laserModule.setPointEdit.returnPressed.connect(lambda laser=laserModule.laser: self.changeEdit(laser))
@@ -73,19 +88,20 @@ class LaserController(WidgetController):
             )
 
         self._widget.digModule.DigitalControlButton.clicked.connect(
-            lambda: self.GlobalDigitalMod(['405', '473', '488'])
+            lambda: self.GlobalDigitalMod(list(self._widget.digModule.powers.keys()))
         )
         self._widget.digModule.updateDigPowersButton.clicked.connect(
-            lambda: self.updateDigitalPowers(['405', '473', '488'])
+            lambda: self.updateDigitalPowers(list(self._widget.digModule.powers.keys()))
         )
 
     def closeEvent(self):
-        self._master.laserHelper.toggleLaser(False, '405')
-        self._master.laserHelper.changePower(0, '405', False)
-        self._master.laserHelper.toggleLaser(False, '488')
-        self._master.laserHelper.changePower(0, '488', False)
-        self._master.nidaqHelper.setAnalog('473', 0, min_val=0, max_val=5)
-        self._master.nidaqHelper.setDigital('473', False)
+        for laserId, laserInfo in self._setupInfo.lasers.items():
+            if laserId in self.aotfLasers:
+                self.setAnalogLaserVoltage(laserId, 0)
+                self._master.nidaqHelper.setDigital(laserId, False)
+            else:
+                self._master.laserHelper.toggleLaser(False, laserId)
+                self._master.laserHelper.changePower(0, laserId, False)
 
     def toggleLaser(self, laser):
         """ Enable or disable laser (on/off)."""
@@ -101,7 +117,7 @@ class LaserController(WidgetController):
         magnitude = self._widget.laserModules[laser].slider.value()
         if laser in self.aotfLasers.keys():
             if not self.aotfLasers[laser]:
-                self._master.nidaqHelper.setAnalog(laser, magnitude, min_val=0, max_val=5)
+                self.setAnalogLaserVoltage(laser, magnitude)
                 self._widget.laserModules[laser].setPointEdit.setText(str(magnitude))
         else:
             self._master.laserHelper.changePower(magnitude, laser, self.digMod)
@@ -112,7 +128,7 @@ class LaserController(WidgetController):
         magnitude = float(self._widget.laserModules[laser].setPointEdit.text())
         if laser in self.aotfLasers.keys():
             if not self.aotfLasers[laser]:
-                self._master.nidaqHelper.setAnalog(laser, magnitude, min_val=0, max_val=5)
+                self.setAnalogLaserVoltage(laser, magnitude)
                 self._widget.laserModules[laser].slider.setValue(magnitude)
         else:
             self._master.laserHelper.changePower(magnitude, laser, self.digMod)
@@ -125,10 +141,7 @@ class LaserController(WidgetController):
             for i in np.arange(len(lasers)):
                 laser = lasers[i]
                 if laser in self.aotfLasers.keys():
-                    self._master.nidaqHelper.setAnalog(
-                        target=laser, voltage=float(self._widget.digModule.powers[laser].text()),
-                        min_val=0, max_val=5
-                    )
+                    self.setAnalogLaserVoltage(laser, float(self._widget.digModule.powers[laser].text()))
                 else:
                     self._master.laserHelper.changePower(
                         power=int(self._widget.digModule.powers[laser].text()),
@@ -141,10 +154,7 @@ class LaserController(WidgetController):
         for i in np.arange(len(lasers)):
             laser = lasers[i]
             if laser in self.aotfLasers.keys():
-                self._master.nidaqHelper.setAnalog(
-                    target=laser, voltage=float(self._widget.digModule.powers[laser].text()),
-                    min_val=0, max_val=5
-                )
+                self.setAnalogLaserVoltage(laser, float(self._widget.digModule.powers[laser].text()))
                 self.aotfLasers[laser] = self.digMod
                 self._master.nidaqHelper.setDigital(laser, False)
             else:
@@ -157,7 +167,16 @@ class LaserController(WidgetController):
 
     def setDigitalButton(self, b):
         self._widget.digModule.DigitalControlButton.setChecked(b)
-        self.GlobalDigitalMod([405, 488])
+        self.GlobalDigitalMod(
+            [laser for laser in self._setupInfo.lasers.keys() if laser not in self.aotfLasers]
+        )
+
+    def setAnalogLaserVoltage(self, laserId, voltage):
+        laserInfo = self._setupInfo.lasers[laserId]
+        self._master.nidaqHelper.setAnalog(
+            target=laserId, voltage=voltage,
+            min_val=laserInfo.valueRangeMin, max_val=laserInfo.valueRangeMax
+        )
 
 
 class BeadController(WidgetController):
@@ -178,7 +197,7 @@ class BeadController(WidgetController):
             self._widget.roiButton.setText('Show ROI')
         else:
             ROIsize = (64, 64)
-            ROIcenter = self._comm_channel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -191,11 +210,11 @@ class BeadController(WidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.ROI)
 
     def run(self):
         if not self.running:
-            self.dims = np.array(self._comm_channel.getDimsScan()).astype(int)
+            self.dims = np.array(self._commChannel.getDimsScan()).astype(int)
             self.running = True
             self.beadWorker = BeadWorker(self)
             self.beadWorker.newChunk.connect(self.update)

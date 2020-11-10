@@ -13,9 +13,9 @@ from pyqtgraph.Qt import QtCore
 from controller.enums import RecMode
 
 
-class RecordingHelper():
-    def __init__(self, comm_channel, cameraHelper):
-        self.__comm_channel = comm_channel
+class RecordingHelper:
+    def __init__(self, commChannel, cameraHelper):
+        self.__commChannel = commChannel
         self.__cameraHelper = cameraHelper
         self.__record = False
         self.__recordingWorker = RecordingWorker(self)
@@ -32,8 +32,8 @@ class RecordingHelper():
         return self.__cameraHelper
 
     @property
-    def comm_channel(self):
-        return self.__comm_channel
+    def commChannel(self):
+        return self.__commChannel
 
     def startRecording(self, recMode, savename, attrs, frames=None, time=None):
         self.__record = True    
@@ -43,7 +43,7 @@ class RecordingHelper():
         self.__recordingWorker.frames = frames
         self.__recordingWorker.time = time
         self.__cameraHelper.updateCameraIndices()
-        self.__thread.start(QtCore.QThread.HighestPriority)
+        self.__thread.start()
 
     def endRecording(self):
         self.__record = False
@@ -95,9 +95,9 @@ class RecordingWorker(QtCore.QObject):
                             d.resize(frames, axis=0)
                             d[it:frames, :, :] = np.array(newframes[0:frames - it])
                             it = frames
-                        self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(it)
-                self.__recordingHelper.comm_channel.updateRecFrameNumber.emit(0)
-                self.__recordingHelper.comm_channel.endRecording.emit()
+                        self.__recordingHelper.commChannel.updateRecFrameNumber.emit(it)
+                self.__recordingHelper.commChannel.updateRecFrameNumber.emit(0)
+                self.__recordingHelper.commChannel.endRecording.emit()
                 self.__recordingHelper.endRecording()
             elif self.recMode == RecMode.SpecTime:
                 start = time.time()
@@ -109,12 +109,12 @@ class RecordingWorker(QtCore.QObject):
                         d.resize(n + it, axis=0)
                         d[it:it + n, :, :] = np.array(newframes)
                         it += n
-                        self.__recordingHelper.comm_channel.updateRecTime.emit(
+                        self.__recordingHelper.commChannel.updateRecTime.emit(
                             np.around(current, decimals=2)
                         )
                         current = time.time() - start
-                self.__recordingHelper.comm_channel.updateRecTime.emit(0)
-                self.__recordingHelper.comm_channel.endRecording.emit()
+                self.__recordingHelper.commChannel.updateRecTime.emit(0)
+                self.__recordingHelper.commChannel.endRecording.emit()
                 self.__recordingHelper.endRecording()
             else:
                 while self.__recordingHelper.record:

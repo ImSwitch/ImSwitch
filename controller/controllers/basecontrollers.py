@@ -9,26 +9,33 @@ from pyqtgraph.Qt import QtCore
 from controller.TempestaErrors import InvalidChildClassError
 
 
-class WidgetControllerFactory():
+class WidgetControllerFactory:
     """Factory class for creating a WidgetController object. Factory checks
     that the new object is a valid WidgetController."""
 
-    def __new__(cls, className, *args):
-        widgetController = globals()[className](*args)
-        if widgetController.isValidChild():
-            return widgetController
+    def __init__(self, setupInfo, commChannel, masterController):
+        self._setupInfo = setupInfo
+        self._commChannel = commChannel
+        self._master = masterController
+
+    def createController(self, controllerClass, widget, *args, **kwargs):
+        return controllerClass(self._setupInfo, self._commChannel, self._master, widget,
+                               *args, **kwargs)
 
 
 class WidgetController(QtCore.QObject):
     """ Superclass for all WidgetControllers. 
             All WidgetControllers should have access to MasterController, CommunicationChannel and the linked Widget. """
 
-    def __init__(self, comm_channel, master, widget, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, setupInfo, commChannel, master, widget, *args, **kwargs):
         # Protected attributes, which should only be accessed from WidgetController and its subclasses
+        self._setupInfo = setupInfo
+        self._commChannel = commChannel
         self._master = master
         self._widget = widget
-        self._comm_channel = comm_channel
+
+        # Init superclass
+        super().__init__(*args, **kwargs)
 
 
 class LiveUpdatedController(WidgetController):
@@ -44,8 +51,8 @@ class LiveUpdatedController(WidgetController):
 
 
 class SuperScanController(WidgetController):
-    def __init__(self, comm_channel, master, widget):
-        super().__init__(comm_channel, master, widget)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # self._stageParameterDict = None
         # self._TTLParameterDict = None
         # Make non-overwritable functions

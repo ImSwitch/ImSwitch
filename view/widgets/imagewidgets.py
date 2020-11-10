@@ -20,9 +20,9 @@ class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the camera during imaging
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, roiInfos, cameraPreset, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO retrieve model from TempestaModel
+
         BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
                   "many pixels are to be read out and interpreted as a \n"
                   "single pixel value.")
@@ -30,12 +30,12 @@ class CamParamTree(ParameterTree):
         # Parameter tree for the camera configuration
         params = [{'name': 'Model', 'type': 'str', 'readonly': True},
                   {'name': 'Pixel size', 'type': 'float',
-                   'value': 0.119, 'readonly': False, 'suffix': ' µm'},
+                   'value': cameraPreset.pixelSize, 'readonly': False, 'suffix': 'µm'},
                   {'name': 'Image frame', 'type': 'group', 'children': [
-                      {'name': 'Binning', 'type': 'list',
+                      {'name': 'Binning', 'type': 'list', 'value': cameraPreset.binning,
                        'values': [1, 2, 4], 'tip': BinTip},
-                      {'name': 'Mode', 'type': 'list', 'values':
-                          ['Full chip', 'Custom']},
+                      {'name': 'Mode', 'type': 'list', 'value': cameraPreset.mode,
+                       'values': ['Full chip'] + list(roiInfos.keys()) + ['Custom']},
                       {'name': 'X0', 'type': 'int', 'value': 0,
                        'limits': (0, 2044)},
                       {'name': 'Y0', 'type': 'int', 'value': 0,
@@ -50,7 +50,7 @@ class CamParamTree(ParameterTree):
                        'align': 'right'}]},
                   {'name': 'Timings', 'type': 'group', 'children': [
                       {'name': 'Set exposure time', 'type': 'float',
-                       'value': 0.01, 'limits': (0, 9999),
+                       'value': cameraPreset.setExposureTime, 'limits': (0, 9999),
                        'siPrefix': True, 'suffix': 's'},
                       {'name': 'Real exposure time', 'type': 'float',
                        'value': 0, 'readonly': True, 'siPrefix': True,
@@ -66,6 +66,7 @@ class CamParamTree(ParameterTree):
                        'suffix': ' fps'}]},
                   {'name': 'Acquisition mode', 'type': 'group', 'children': [
                       {'name': 'Trigger source', 'type': 'list',
+                       'value': cameraPreset.acquisitionMode,
                        'values': ['Internal trigger',
                                   'External "Start-trigger"',
                                   'External "frame-trigger"'],
@@ -136,16 +137,18 @@ class SettingsWidget(Widget):
         # Graphical elements
         cameraTitle = QtGui.QLabel('<h2><strong>Camera settings</strong></h2>')
         cameraTitle.setTextFormat(QtCore.Qt.RichText)
-        self.tree = CamParamTree()
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
 
         # Add elements to GridLayout
-        cameraGrid = QtGui.QGridLayout()
-        self.setLayout(cameraGrid)
-        cameraGrid.addWidget(cameraTitle, 0, 0)
-        cameraGrid.addWidget(self.tree, 1, 0)
+        self.grid = QtGui.QGridLayout()
+        self.setLayout(self.grid)
+        self.grid.addWidget(cameraTitle, 0, 0)
+
+    def initControls(self, roiInfos):
+        self.tree = CamParamTree(roiInfos, self._defaultPreset.camera)
+        self.grid.addWidget(self.tree, 1, 0)
 
 
 class ViewWidget(Widget):
@@ -248,8 +251,12 @@ class RecordingWidget(Widget):
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
         # Folder and filename fields
-        self.dataDir = r"D:\Data"
-        self.initialDir = os.path.join(self.dataDir, time.strftime('%Y-%m-%d'))
+        baseOutputFolder = self._defaultPreset.recording.outputFolder
+        if self._defaultPreset.recording.includeDateInOutputFolder:
+            self.initialDir = os.path.join(baseOutputFolder, time.strftime('%Y-%m-%d'))
+        else:
+            self.initialDir = baseOutputFolder
+
         self.folderEdit = QtGui.QLineEdit(self.initialDir)
         self.openFolderButton = QtGui.QPushButton('Open')
         self.specifyfile = QtGui.QCheckBox('Specify file name')
@@ -308,9 +315,9 @@ class RecordingWidget(Widget):
 
         recGrid.addWidget(recTitle, 0, 0, 1, 3)
         recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
-        recGrid.addWidget(self.folderEdit, 2, 1, 1, 2)
-        recGrid.addWidget(self.openFolderButton, 2, 3)
-        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 2)
+        recGrid.addWidget(self.folderEdit, 2, 1, 1, 3)
+        recGrid.addWidget(self.openFolderButton, 2, 4)
+        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 3)
 
         recGrid.addWidget(self.specifyfile, 3, 0)
 

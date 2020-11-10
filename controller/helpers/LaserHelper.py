@@ -7,9 +7,10 @@ Created on Tue Mar 24 16:41:57 2020
 from lantz import Q_
 
 
-class LaserHelper():
-    def __init__(self, lasers):
+class LaserHelper:
+    def __init__(self, lasers, laserInfos):
         self.__lasers = lasers
+        self.laserInfos = laserInfos
 
     def toggleLaser(self, enable, laser):
         self.__lasers[laser].enabled = enable

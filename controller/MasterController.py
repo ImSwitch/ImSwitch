@@ -11,14 +11,14 @@ from .helpers.RecordingHelper import RecordingHelper
 from .helpers.ScanHelper import ScanHelper
 
 
-class MasterController():
+class MasterController:
     # This class will handle the communication between software and hardware, using the Helpers for each hardware set.
-    def __init__(self, model, comm_channel):
+    def __init__(self, model, commChannel):
         print('init master controller')
         self.__model = model
-        self.__comm_channel = comm_channel
-        self.cameraHelper = CameraHelper(self.__comm_channel, self.__model.cameras)
-        self.recordingHelper = RecordingHelper(self.__comm_channel, self.cameraHelper)
-        self.nidaqHelper = NidaqHelper()
-        self.scanHelper = ScanHelper()  # Make sure compatibility
-        self.laserHelper = LaserHelper(self.__model.lasers)
+        self.__commChannel = commChannel
+        self.cameraHelper = CameraHelper(self.__commChannel, self.__model.cameras)
+        self.recordingHelper = RecordingHelper(self.__commChannel, self.cameraHelper)
+        self.nidaqHelper = NidaqHelper(self.__model.setupInfo)
+        self.scanHelper = ScanHelper(self.__model.setupInfo)  # Make sure compatibility
+        self.laserHelper = LaserHelper(self.__model.lasers, self.__model.setupInfo.lasers)

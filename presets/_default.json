@@ -1,0 +1,69 @@
+{
+  "laserControl": {
+    "lasers": {
+      "405": {
+        "value": "10"
+      },
+      "488": {
+        "value": "10"
+      },
+      "473": {
+        "value": "0.5"
+      }
+    }
+  },
+  "scan": {
+    "stagePiezzos": {
+      "X": {
+        "size": "2",
+        "stepSize": "0.1"
+      },
+      "Y": {
+        "size": "2",
+        "stepSize": "0.1"
+      },
+      "Z": {
+        "size": "10",
+        "stepSize": "10"
+      }
+    },
+    "pulses": {
+      "405": {
+        "start": "0",
+        "end": "10"
+      },
+      "488": {
+        "start": "0",
+        "end": "10"
+      },
+      "473": {
+        "start": "0",
+        "end": "10"
+      },
+      "CAM": {
+        "start": "0",
+        "end": "10"
+      }
+    },
+    "dwellTime": "10"
+  },
+  "uLenses": {
+    "pixelSize": "157.5",
+    "periodicity": "1182"
+  },
+  "alignmentLine": {
+    "lineAngle": "30"
+  },
+  "camera": {
+    "pixelSize": 0.119,
+    "binning": 1,
+    "setExposureTime": 0.01
+  },
+  "recording": {
+    "outputFolder": "D:\\Data",
+    "includeDateInOutputFolder": true
+  },
+  "miscOptions": {
+    "lasersAndAlignmentTogether": false
+  }
+}

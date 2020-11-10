@@ -29,7 +29,7 @@ def cubehelix(gamma=1.0, s=0.5, r=-1.5, h=1.0):
     return array
 
 
-class Grid():
+class Grid:
 
     def __init__(self, viewBox):
 
@@ -99,7 +99,7 @@ class Grid():
         self.showed = visible
 
 
-class TwoColorGrid():
+class TwoColorGrid:
 
     def __init__(self, viewBox, shape=(512, 512)):
 
@@ -142,7 +142,7 @@ class TwoColorGrid():
         self.showed = visible
 
 
-class Crosshair():
+class Crosshair:
 
     def __init__(self, viewBox):
 

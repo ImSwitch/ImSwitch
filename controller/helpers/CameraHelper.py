@@ -14,10 +14,10 @@ class CameraHelper(QtCore.QObject):
     updateImageSignal = QtCore.pyqtSignal(np.ndarray, bool)
 
     # CameraHelper deals with the Hamamatsu parameters and frame extraction
-    def __init__(self, comm_channel, cameras, *args, **kwargs):
+    def __init__(self, commChannel, cameras, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__cameras = cameras
-        self.__comm_channel = comm_channel
+        self.__commChannel = commChannel
 
         # A timer will collect the new frame and update it through the communication channel
         self.__lvWorker = LVWorker(self)
@@ -65,7 +65,7 @@ class CameraHelper(QtCore.QObject):
         self.__thread.quit()
         self.__thread.wait()
         self.__cameras[0].stopAcquisition()
-        self.__comm_channel.acquisitionStopped.emit()
+        self.__commChannel.acquisitionStopped.emit()
 
     def changeParameter(self, function):
         """ This method is used to change those camera properties that need

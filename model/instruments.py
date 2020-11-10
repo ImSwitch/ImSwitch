@@ -12,27 +12,20 @@ from model import mockers
 
 
 class Laser:
-
     def __new__(cls, iName, *args):
         try:
-            pName, driverName = iName.rsplit('.', 1)
-            package = importlib.import_module('lantz.drivers.legacy.' + pName)
-            driver = getattr(package, driverName)
+            driver = getDriver(iName)
             laser = driver(*args)
             laser.initialize()
             return laser
-
         except:
             return mockers.MockLaser()
 
 
 class LinkedLaserCheck:
-
     def __new__(cls, iName, ports):
         try:
-            pName, driverName = iName.rsplit('.', 1)
-            package = importlib.import_module('lantz.drivers.legacy.' + pName)
-            driver = getattr(package, driverName)
+            driver = getDriver(iName)
 
             lasers = []
             for port in ports:
@@ -41,13 +34,11 @@ class LinkedLaserCheck:
                 lasers = lasers.append(laser)
 
             return LinkedLaser(lasers)
-
         except:
             return mockers.MockLaser()
 
 
 class LinkedLaser:
-
     def __init__(self, lasers):
         if len(lasers) < 1:
             raise ValueError('LinkedLaser requires at least one laser, none passed')
@@ -173,3 +164,20 @@ class Cameras:
         except:
             print('Initializing Mock Hamamatsu')
             return [mockers.MockHamamatsu()]
+
+
+def getDriver(iName):
+    pName, driverName = iName.rsplit('.', 1)
+
+    try:
+        # Try our included drivers first
+        package = importlib.import_module('model.drivers.' + pName)
+        driver = getattr(package, driverName)
+    except ModuleNotFoundError or AttributeError:
+        # If that fails, try to load the driver from lantz
+        package = importlib.import_module('lantz.drivers.' + pName)
+        driver = getattr(package, driverName)
+
+    return driver
+
+

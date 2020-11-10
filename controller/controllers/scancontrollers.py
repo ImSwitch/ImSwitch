@@ -144,7 +144,8 @@ class ScanController(SuperScanController):
     def runScan(self):
         self.getParameters()
         self.signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict,
-                                                                self._TTLParameterDict)
+                                                                self._TTLParameterDict,
+                                                                self._setupInfo)
         self._master.nidaqHelper.runScan(self.signalDic)
 
     def scanDone(self):

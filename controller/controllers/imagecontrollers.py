@@ -105,7 +105,7 @@ class SettingsController(WidgetController):
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
         self._master.cameraHelper.changeParameter(
-            lambda: self._master.cameraHelper.cropOrca(vpos, hpos, hsize, hsize)
+            lambda: self._master.cameraHelper.cropOrca(hpos, vpos, hsize, hsize)
         )
 
         # Final shape values might differ from the user-specified one because of camera limitation x128

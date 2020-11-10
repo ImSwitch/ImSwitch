@@ -60,11 +60,12 @@ class ScanHelper(SuperScanHelper):
         # if not syncExpected == syncIncoming:
         #     raise IncompatibilityError('Incompatible sync parameters')
 
-    def make_full_scan(self, stageScanParameters, TTLParameters):
+    def make_full_scan(self, stageScanParameters, TTLParameters, setupInfo):
         stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(stageScanParameters,
+                                                                               setupInfo,
                                                                                returnFrames=True)
 
-        TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters)
+        TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
         # Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * TTLParameters['Sample_rate']
         if not TTLZeroPadSamples.is_integer():

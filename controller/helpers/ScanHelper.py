@@ -11,7 +11,7 @@ from controller.SignalDesigner import SignalDesignerFactory
 from controller.TempestaErrors import IncompatibilityError
 
 
-class ScanHelperFactory():
+class ScanHelperFactory:
     """Factory class for creating a ScanHelper object. Factory checks
     that the new object is a valid ScanHelper."""
 
@@ -21,7 +21,7 @@ class ScanHelperFactory():
             return scanHelper
 
 
-class SuperScanHelper():
+class SuperScanHelper:
     def __init__(self):
         self.isValidScanHelper = self.__isValidScanHelper
         self.isValidChild = self.isValidScanHelper
@@ -34,10 +34,10 @@ class SuperScanHelper():
 
 
 class ScanHelper(SuperScanHelper):
-    def __init__(self):
+    def __init__(self, setupInfo):
         super().__init__()
-        self.__stageScanDesigner = SignalDesignerFactory('stageScanDesigner')
-        self.__TTLCycleDesigner = SignalDesignerFactory('TTLCycleDesigner')
+        self.__stageScanDesigner = SignalDesignerFactory(setupInfo, 'stageScanDesigner')
+        self.__TTLCycleDesigner = SignalDesignerFactory(setupInfo, 'TTLCycleDesigner')
 
         self._expectedSyncParameters = []
 
@@ -61,17 +61,14 @@ class ScanHelper(SuperScanHelper):
         #     raise IncompatibilityError('Incompatible sync parameters')
 
     def make_full_scan(self, stageScanParameters, TTLParameters):
-        stageScanSignalsDict, positions = \
-            self.__stageScanDesigner.make_signal(stageScanParameters,
-                                                 returnFrames=True)
+        stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(stageScanParameters,
+                                                                               returnFrames=True)
 
-        TTLCycleSignalsDict = \
-            self.__TTLCycleDesigner.make_signal(TTLParameters)
+        TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters)
         # Calculate samples to zero pad TTL signals with
-        TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * \
-                            TTLParameters['Sample_rate']
+        TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * TTLParameters['Sample_rate']
         if not TTLZeroPadSamples.is_integer():
-            print('WARNING: Non-integer number of return sampels, rounding up')
+            print('WARNING: Non-integer number of return samples, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
         # Tile and pad TTL signals according to sync parameters
         for target, signal in TTLCycleSignalsDict.items():
@@ -89,10 +86,10 @@ if __name__ == '__main__':
     print('Running main')
     import matplotlib.pyplot as plt
 
-    Stageparameters = {'Targets[3]': ['Stage_X', 'Stage_Y', 'Stage_Z'],
-                       'Sizes[3]': [5, 5, 5],
-                       'Step_sizes[3]': [1, 1, 1],
-                       'Start[3]': [0, 0, 0],
+    Stageparameters = {'Targets[x]': ['Stage_X', 'Stage_Y', 'Stage_Z'],
+                       'Sizes[x]': [5, 5, 5],
+                       'Step_sizes[x]': [1, 1, 1],
+                       'Start[x]': [0, 0, 0],
                        'Sequence_time_seconds': 0.005,
                        'Sample_rate': 100000,
                        'Return_time_seconds': 0.001}
@@ -113,9 +110,9 @@ if __name__ == '__main__':
     plt.plot(fullsig['TTLCycleSignalsDict']['405'])
 
     """
-    parameters = {'Targets[3]': ['StageX', 'StageY', 'StageZ'], \
-                  'Sizes[3]':[5,5,5], \
-                  'Step_sizes[3]': [1,1,1], \
+    parameters = {'Targets[x]': ['StageX', 'StageY', 'StageZ'], \
+                  'Sizes[x]':[5,5,5], \
+                  'Step_sizes[x]': [1,1,1], \
                   'Sequence_time_seconds': 0.005, \
                   'Sample_rate': 100000, \
                   'Return_time_seconds': 0.001}

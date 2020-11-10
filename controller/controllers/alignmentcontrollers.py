@@ -25,7 +25,7 @@ class ULensesController(WidgetController):
 
     def addPlot(self):
         """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.ulensesPlot)
+        self._commChannel.addItemTovb.emit(self._widget.ulensesPlot)
 
     def updateGrid(self):
         """ Updates plot with new parameters. """
@@ -62,7 +62,7 @@ class AlignXYController(LiveUpdatedController):
         self.addROI()
 
         # Connect CommunicationChannel signals
-        self._comm_channel.updateImage.connect(self.update)
+        self._commChannel.updateImage.connect(self.update)
 
         # Connect AlignWidgetXY signals
         self._widget.roiButton.clicked.connect(self.toggleROI)
@@ -73,14 +73,14 @@ class AlignXYController(LiveUpdatedController):
         """ Update with new camera frame. """
         if self.active:
             value = np.mean(
-                self._comm_channel.getROIdata(im, self._widget.ROI),
+                self._commChannel.getROIdata(im, self._widget.ROI),
                 self.axis
             )
             self._widget.graph.updateGraph(value)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.ROI)
 
     def toggleROI(self):
         """ Show or hide ROI."""
@@ -90,7 +90,7 @@ class AlignXYController(LiveUpdatedController):
             self._widget.roiButton.setText('Show ROI')
         else:
             ROIsize = (64, 64)
-            ROIcenter = self._comm_channel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -114,7 +114,7 @@ class AlignAverageController(LiveUpdatedController):
         self.addROI()
 
         # Connect CommunicationChannel signals
-        self._comm_channel.updateImage.connect(self.update)
+        self._commChannel.updateImage.connect(self.update)
 
         # Connect AlignWidgetAverage signals
         self._widget.roiButton.clicked.connect(self.toggleROI)
@@ -123,13 +123,13 @@ class AlignAverageController(LiveUpdatedController):
         """ Update with new camera frame. """
         if self.active:
             value = np.mean(
-                self._comm_channel.getROIdata(im, self._widget.ROI)
+                self._commChannel.getROIdata(im, self._widget.ROI)
             )
             self._widget.graph.updateGraph(value)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.ROI)
 
     def toggleROI(self):
         """ Show or hide ROI."""
@@ -139,7 +139,7 @@ class AlignAverageController(LiveUpdatedController):
             self._widget.roiButton.setText('Show ROI')
         else:
             ROIsize = (64, 64)
-            ROIcenter = self._comm_channel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -165,7 +165,7 @@ class AlignmentLineController(WidgetController):
 
     def addLine(self):
         """ Adds alignmentLine to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.alignmentLine)
+        self._commChannel.addItemTovb.emit(self._widget.alignmentLine)
 
     def updateLine(self):
         """ Updates line with new parameters. """
@@ -201,7 +201,7 @@ class FFTController(LiveUpdatedController):
         self.imageReceived.connect(self.imageComputationWorker.computeFFTImage)
 
         # Connect CommunicationChannel signals
-        self._comm_channel.updateImage.connect(self.update)
+        self._commChannel.updateImage.connect(self.update)
 
         # Connect FFTWidget signals
         self._widget.showCheck.stateChanged.connect(self.showFFT)

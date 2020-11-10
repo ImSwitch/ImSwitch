@@ -22,17 +22,23 @@ class SettingsController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._widget.initControls(self._setupInfo.rois)
+
+        self.fullChipFrameStart = self._master.cameraHelper.frameStart
+        self.fullChipShape = self._master.cameraHelper.shapes
+
         self.addROI()
         self.getParameters()
         self.setExposure()
         self.adjustFrame()
+        self.updateFrame()
 
         # Connect SettingsWidget signals
         self._widget.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._comm_channel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.ROI)
 
     def toggleROI(self, b):
         """ Show or hide ROI. """
@@ -104,7 +110,7 @@ class SettingsController(WidgetController):
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
         width, height = self._master.cameraHelper.shapes
-        self._comm_channel.adjustFrame.emit(width, height)
+        self._commChannel.adjustFrame.emit(width, height)
         self._widget.ROI.hide()
         frameStart = self._master.cameraHelper.frameStart
         self.x0par.setValue(frameStart[0])
@@ -126,7 +132,7 @@ class SettingsController(WidgetController):
 
     def abortROI(self):
         """ Cancel and reset parameters of the ROI. """
-        self._widget.toggleROI(False)
+        self.toggleROI(False)
         frameStart = self._master.cameraHelper.frameStart
         shapes = self._master.cameraHelper.shapes
         self.x0par.setValue(frameStart[0])
@@ -157,7 +163,7 @@ class SettingsController(WidgetController):
         """ Update a new binning to the camera. """
         self._master.cameraHelper.setBinning(self.binPar.value())
 
-    def updateFrame(self, controller):
+    def updateFrame(self, _=None):
         """ Change the image frame size and position in the sensor. """
         if self.frameMode.value() == 'Custom':
             self.x0par.setWritable(True)
@@ -166,7 +172,7 @@ class SettingsController(WidgetController):
             self.heightPar.setWritable(True)
 
             ROIsize = (64, 64)
-            ROIcenter = self._comm_channel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -182,14 +188,19 @@ class SettingsController(WidgetController):
             self.widthPar.setWritable(False)
             self.heightPar.setWritable(False)
 
-            # Change this to config File.
             if self.frameMode.value() == 'Full chip':
-                self.x0par.setValue(0)
-                self.y0par.setValue(0)
-                self.widthPar.setValue(2048)
-                self.heightPar.setValue(2048)
+                self.x0par.setValue(self.fullChipFrameStart[0])
+                self.y0par.setValue(self.fullChipFrameStart[1])
+                self.widthPar.setValue(self.fullChipShape[0])
+                self.heightPar.setValue(self.fullChipShape[1])
+            else:
+                roiInfo = self._setupInfo.rois[self.frameMode.value()]
+                self.x0par.setValue(roiInfo.x)
+                self.y0par.setValue(roiInfo.y)
+                self.widthPar.setValue(roiInfo.w)
+                self.heightPar.setValue(roiInfo.h)
 
-                self.adjustFrame()
+            self.adjustFrame()
 
     def getCamAttrs(self):
         return {
@@ -211,7 +222,7 @@ class ViewController(WidgetController):
 
         # Connect ViewWidget signals
         self._widget.gridButton.clicked.connect(self.gridToggle)
-        self._widget.crosshairButton.pressed.connect(self.crosshairToggle)
+        self._widget.crosshairButton.clicked.connect(self.crosshairToggle)
         self._widget.liveviewButton.clicked.connect(self.liveview)
 
     def liveview(self):
@@ -220,17 +231,17 @@ class ViewController(WidgetController):
         self._widget.gridButton.setEnabled(True)
         if self._widget.liveviewButton.isChecked():
             self._master.cameraHelper.startAcquisition()
-            self._master.cameraHelper.updateImageSignal.connect(self._comm_channel.updateImage)
+            self._master.cameraHelper.updateImageSignal.connect(self._commChannel.updateImage)
         else:
             self._master.cameraHelper.stopAcquisition()
 
     def gridToggle(self):
         """ Connect with grid toggle from Image Widget through communication channel. """
-        self._comm_channel.gridToggle.emit()
+        self._commChannel.gridToggle.emit()
 
     def crosshairToggle(self):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
-        self._comm_channel.crosshairToggle.emit()
+        self._commChannel.crosshairToggle.emit()
 
     def closeEvent(self):
         self._master.cameraHelper.stopAcquisition()
@@ -243,13 +254,13 @@ class ImageController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
 
         # Connect CommunicationChannel signals
-        self._comm_channel.updateImage.connect(self.update)
-        self._comm_channel.acquisitionStopped.connect(self.acquisitionStopped)
-        self._comm_channel.adjustFrame.connect(self.adjustFrame)
-        self._comm_channel.gridToggle.connect(self.gridToggle)
-        self._comm_channel.crosshairToggle.connect(self.crosshairToggle)
-        self._comm_channel.addItemTovb.connect(self.addItemTovb)
-        self._comm_channel.removeItemFromvb.connect(self.removeItemFromvb)
+        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.acquisitionStopped.connect(self.acquisitionStopped)
+        self._commChannel.adjustFrame.connect(self.adjustFrame)
+        self._commChannel.gridToggle.connect(self.gridToggle)
+        self._commChannel.crosshairToggle.connect(self.crosshairToggle)
+        self._commChannel.addItemTovb.connect(self.addItemTovb)
+        self._commChannel.removeItemFromvb.connect(self.removeItemFromvb)
 
         # Connect ImageWidget signals
         self._widget.levelsButton.pressed.connect(self.autoLevels)
@@ -287,9 +298,10 @@ class ImageController(LiveUpdatedController):
     def adjustFrame(self, width, height):
         """ Adjusts the viewbox to a new width and height. """
         self._widget.grid.update([width, height])
-        self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
-                                  yMin=-0.5, yMax=height - 0.5, minYRange=4)
+        # self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
+        #                           yMin=-0.5, yMax=height - 0.5, minYRange=4)
         self._widget.vb.setAspectLocked()
+        self._widget.img.render()
 
     def getROIdata(self, image, roi):
         """ Returns the cropped image within the ROI. """
@@ -318,10 +330,10 @@ class RecorderController(WidgetController):
         self.untilStop()
 
         # Connect CommunicationChannel signals
-        self._comm_channel.endRecording.connect(self.endRecording)
-        self._comm_channel.updateRecFrameNumber.connect(self.updateRecFrameNumber)
-        self._comm_channel.updateRecTime.connect(self.updateRecTime)
-        self._comm_channel.endScan.connect(self.scanDone)
+        self._commChannel.endRecording.connect(self.endRecording)
+        self._commChannel.updateRecFrameNumber.connect(self.updateRecFrameNumber)
+        self._commChannel.updateRecTime.connect(self.updateRecTime)
+        self._commChannel.endScan.connect(self.scanDone)
 
         # Connect RecordingWidget signals
         self._widget.openFolderButton.clicked.connect(self.openFolder)
@@ -373,7 +385,7 @@ class RecorderController(WidgetController):
         time.sleep(0.01)
         name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
-        attrs = self._comm_channel.getCamAttrs()
+        attrs = self._commChannel.getCamAttrs()
         self._master.recordingHelper.snap(savename, attrs)
 
     def toggleREC(self, checked):
@@ -385,8 +397,8 @@ class RecorderController(WidgetController):
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
-            self.attrs = self._comm_channel.getCamAttrs()
-            scan = self._comm_channel.getScanAttrs()
+            self.attrs = self._commChannel.getCamAttrs()
+            scan = self._commChannel.getScanAttrs()
             self.attrs.update(scan)
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingHelper.startRecording(
@@ -401,19 +413,19 @@ class RecorderController(WidgetController):
             elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.1)
-                self._comm_channel.prepareScan.emit()
+                self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.1)
-                self._comm_channel.prepareScan.emit()
+                self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.DimLapse:
                 self.lapseTotal = int(self._widget.totalSlices.text())
                 self.lapseCurrent = 0
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
                 time.sleep(0.3)
-                self._comm_channel.prepareScan.emit()
+                self._commChannel.prepareScan.emit()
             else:
                 self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
         else:
@@ -443,14 +455,14 @@ class RecorderController(WidgetController):
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingHelper.endRecording()
                     time.sleep(0.3)
-                    self._comm_channel.moveZstage.emit(float(self._widget.stepSizeEdit.text()))
+                    self._commChannel.moveZstage.emit(float(self._widget.stepSizeEdit.text()))
                     self.timer = QtCore.QTimer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(1000)
                 else:
                     self._widget.recButton.setChecked(False)
                     self.lapseCurrent = 0
-                    self._comm_channel.moveZstage.emit(
+                    self._commChannel.moveZstage.emit(
                         -self.lapseTotal * float(self._widget.stepSizeEdit.text())
                     )
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
@@ -461,7 +473,7 @@ class RecorderController(WidgetController):
                                                     self.savename + '_' + str(self.lapseCurrent),
                                                     self.attrs)
         time.sleep(0.3)
-        self._comm_channel.prepareScan.emit()
+        self._commChannel.prepareScan.emit()
 
     def endRecording(self):
         self._widget.recButton.setChecked(False)

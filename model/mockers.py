@@ -105,7 +105,7 @@ class MockLaser(Driver):
         return 0
 
 
-class HMockCamData():
+class HMockCamData:
 
     # __init__
     #
@@ -225,7 +225,7 @@ class MockHamamatsu(Driver):
         for i in range(2):
             # Create storage
             hc_data = HMockCamData(self.frame_x * self.frame_y)
-            frames.append(hc_data)
+            frames.append(np.reshape(hc_data.np_array, (self.frame_x, self.frame_y)))
 
         return frames, (self.frame_x, self.frame_y)
 
@@ -395,6 +395,9 @@ class MockHamamatsu(Driver):
     # Stop data acquisition.
     #
     def stopAcquisition(self):
+        pass
+
+    def updateIndices(self):
         pass
 
     # shutdown

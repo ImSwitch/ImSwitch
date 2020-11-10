@@ -15,27 +15,17 @@ from controller.TempestaErrors import NidaqHelperError
 class NidaqHelper(QtCore.QObject):
     scanDoneSignal = QtCore.pyqtSignal()
 
-    def __init__(self, deviceInfo=None, *args, **kwargs):
+    def __init__(self, setupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.busy = False
-        if deviceInfo is None:
-            self.__deviceInfo = {'405': {'AOChan': None, 'DOLine': 0},
-                                 '488': {'AOChan': None, 'DOLine': 1},
-                                 '473': {'AOChan': 3, 'DOLine': 2},
-                                 'CAM': {'AOChan': None, 'DOLine': 3},
-                                 'Stage_X': {'AOChan': 0, 'DOLine': None},
-                                 'Stage_Y': {'AOChan': 1, 'DOLine': None},
-                                 'Stage_Z': {'AOChan': 2, 'DOLine': None}}
-
-        else:
-            self.__deviceInfo = deviceInfo
+        self.__setupInfo = setupInfo
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []
-        for target in [*self.__deviceInfo]:
-            value = self.__deviceInfo[target][sortingKey]
+        for targetId, targetInfo in self.__setupInfo.getAllDevices().items():
+            value = getattr(targetInfo, sortingKey)
             if value is not None:
-                pair = [target, value]
+                pair = [targetId, value]
                 targetPairs.append(pair)
         targetPairs.sort(key=operator.itemgetter(1))
         return targetPairs
@@ -71,12 +61,12 @@ class NidaqHelper(QtCore.QObject):
     def setDigital(self, target, enable):
         """ Function to set the digital line to a specific target
         to either "high" or "low" voltage """
-        if self.__deviceInfo[target]['DOLine'] is None:
+        line = self.__setupInfo.getDevice(target).digitalLine
+        if line is None:
             raise NidaqHelperError('Target has no digital output assigned to it')
         else:
             if not self.busy:
                 self.busy = True
-                line = self.__deviceInfo[target]['DOLine']
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
 
                 dotask = self.__createLineDOTask('setDigitalTask',
@@ -98,12 +88,12 @@ class NidaqHelper(QtCore.QObject):
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
         to a certain voltage """
-        if self.__deviceInfo[target]['AOChan'] is None:
+        channel = self.__setupInfo.getDevice(target).analogChannel
+        if channel is None:
             raise NidaqHelperError('Target has no analog output assigned to it')
         else:
             if not self.busy:
                 self.busy = True
-                channel = self.__deviceInfo[target]['AOChan']
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
 
                 aotask = self.__createChanAOTask('setAnalogTask',
@@ -131,7 +121,7 @@ class NidaqHelper(QtCore.QObject):
             self.signalSent = False
             stageDic = signalDic['stageScanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
-            AOTargetChanPairs = self.__makeSortedTargets('AOChan')
+            AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
 
             AOsignals = []
             AOchannels = []
@@ -145,7 +135,7 @@ class NidaqHelper(QtCore.QObject):
                 except:
                     pass
 
-            DOTargetChanPairs = self.__makeSortedTargets('DOLine')
+            DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
 
             DOsignals = []
             DOlines = []

@@ -16,19 +16,13 @@ import constants
 from controller.TempestaErrors import InvalidChildClassError
 
 
-# import matplotlib.pyplot as plt
-
-class SignalDesignerFactory():
+class SignalDesignerFactory:
     """Factory class for creating a SignalDesigner object. Factory checks
     that the new object is compatible with the parameters that will we 
     be sent to its make_signal method."""
 
-    def __new__(cls, configKeyName):
-        configFilesDir = os.path.join(constants.rootFolderPath, 'config_files')
-        with open(os.path.join(configFilesDir, 'config.json')) as configFile:
-            config_dict = json.load(configFile)
-
-        scanDesignerName = config_dict[configKeyName]
+    def __new__(cls, setupInfo, configKeyName):
+        scanDesignerName = getattr(setupInfo.designers, configKeyName)
 
         #        SignalDesigner = super().__new__(cls, 'SignalDesigner.'+scanDesignerName)
         signalDesigner = globals()[scanDesignerName]()
@@ -36,7 +30,7 @@ class SignalDesignerFactory():
             return signalDesigner
 
 
-class SignalDesigner():
+class SignalDesigner:
     """Parent class for any type of SignaDesigner. Any child should define
     self._expected_parameters and its own make_signal method."""
 
@@ -84,10 +78,10 @@ class BetaStageScanDesigner(SignalDesigner):
         super().__init__(*args, **kwargs)
         self.convFactors = {'X': 1.5870, 'Y': 1.5907, 'Z': 10}
 
-        self._expectedParameters = ['Targets[3]',
-                                    'Sizes[3]',
-                                    'Step_sizes[3]',
-                                    'Start[3]',
+        self._expectedParameters = ['Targets[x]',
+                                    'Sizes[x]',
+                                    'Step_sizes[x]',
+                                    'Start[x]',
                                     'Sequence_time_seconds',
                                     'Sample_rate',
                                     'Return_time_seconds']
@@ -97,38 +91,32 @@ class BetaStageScanDesigner(SignalDesigner):
         if not self.parameterCompatibility(parameter_dict):
             print([*parameter_dict])
             print(self._expectedParameters)
-            print(
-                'Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
+            print('Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
             return None
 
         # Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
-            [(parameter_dict['Sizes[3]'][i] / self.convFactors[
-                parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
+            [(parameter_dict['Sizes[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
 
         # Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
-            [(parameter_dict['Step_sizes[3]'][i] / self.convFactors[
-                parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
+            [(parameter_dict['Step_sizes[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
 
         # Retrive starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
-            [(parameter_dict['Start[3]'][i] / self.convFactors[
-                parameter_dict['Targets[3]'][i].split('_')[1]]) for i in range(3)]
+            [(parameter_dict['Start[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
 
         fast_axis_positions = 1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
-        sequenceSamples = \
-            parameter_dict['Sequence_time_seconds'] * parameter_dict['Sample_rate']
-        returnSamples = \
-            parameter_dict['Return_time_seconds'] * parameter_dict['Sample_rate']
+        sequenceSamples = parameter_dict['Sequence_time_seconds'] * parameter_dict['Sample_rate']
+        returnSamples = parameter_dict['Return_time_seconds'] * parameter_dict['Sample_rate']
         if not sequenceSamples.is_integer():
-            print('WARNING: Non-integer number of sequence sampels, rounding up')
+            print('WARNING: Non-integer number of sequence samples, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
-            print('WARNING: Non-integer number of return sampels, rounding up')
+            print('WARNING: Non-integer number of return samples, rounding up')
         returnSamples = np.int(np.ceil(returnSamples))
 
         # Make fast axis signal
@@ -145,17 +133,13 @@ class BetaStageScanDesigner(SignalDesigner):
         colValues = self.__makeRamp(middle_axis_start, middle_axis_size, middle_axis_positions)
         fullSquareSignal = np.zeros(colSamples)
         for s in range(middle_axis_positions):
-            fullSquareSignal[s * lineSamples: \
-                             s * lineSamples + rampSamples] = \
-                colValues[s]
+            fullSquareSignal[s * lineSamples: s * lineSamples + rampSamples] = colValues[s]
 
             try:
-                fullSquareSignal[s * lineSamples + rampSamples: \
-                                 (s + 1) * lineSamples] = \
+                fullSquareSignal[s * lineSamples + rampSamples:(s + 1) * lineSamples] = \
                     self.__smoothRamp(colValues[s], colValues[s + 1], returnSamples)
             except IndexError:
-                fullSquareSignal[s * lineSamples + rampSamples: \
-                                 (s + 1) * lineSamples] = \
+                fullSquareSignal[s * lineSamples + rampSamples:(s + 1) * lineSamples] = \
                     self.__smoothRamp(colValues[s], middle_axis_start, returnSamples)
 
         middleAxisSignal = np.tile(fullSquareSignal, slow_axis_positions)
@@ -165,23 +149,19 @@ class BetaStageScanDesigner(SignalDesigner):
         sliceValues = self.__makeRamp(slow_axis_start, slow_axis_size, slow_axis_positions)
         fullCubeSignal = np.zeros(sliceSamples)
         for s in range(slow_axis_positions):
-            fullCubeSignal[s * colSamples: \
-                           (s + 1) * colSamples - returnSamples] = \
-                sliceValues[s]
+            fullCubeSignal[s * colSamples:(s + 1) * colSamples - returnSamples] = sliceValues[s]
 
             try:
-                fullCubeSignal[(s + 1) * colSamples - returnSamples: \
-                               (s + 1) * colSamples] = \
+                fullCubeSignal[(s + 1) * colSamples - returnSamples:(s + 1) * colSamples] = \
                     self.__smoothRamp(sliceValues[s], sliceValues[s + 1], returnSamples)
             except IndexError:
-                fullCubeSignal[(s + 1) * colSamples - returnSamples: \
-                               (s + 1) * colSamples] = \
+                fullCubeSignal[(s + 1) * colSamples - returnSamples:(s + 1) * colSamples] = \
                     self.__smoothRamp(sliceValues[s], slow_axis_start, returnSamples)
         slowAxisSignal = fullCubeSignal
 
-        sig_dict = {parameter_dict['Targets[3]'][0]: fastAxisSignal,
-                    parameter_dict['Targets[3]'][1]: middleAxisSignal,
-                    parameter_dict['Targets[3]'][2]: slowAxisSignal}
+        sig_dict = {parameter_dict['Targets[x]'][0]: fastAxisSignal,
+                    parameter_dict['Targets[x]'][1]: middleAxisSignal,
+                    parameter_dict['Targets[x]'][2]: slowAxisSignal}
 
         if not returnFrames:
             return sig_dict
@@ -221,7 +201,7 @@ class BetaTTLCycleDesigner(SignalDesigner):
         sampleRate = parameter_dict['Sample_rate']
         cycleSamples = parameter_dict['Sequence_time_seconds'] * sampleRate
         if not cycleSamples.is_integer():
-            print('WARNIGN: Non-integer number of sequence sampels, rounding up')
+            print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
         signalDict = {}
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')

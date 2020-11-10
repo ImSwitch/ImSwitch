@@ -1,0 +1,94 @@
+{
+  "cameras": {
+    "CAM": {
+      "digitalLine": 3
+    }
+  },
+  "lasers": {
+    "405": {
+      "analogChannel": null,
+      "digitalLine": 0,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM10"],
+      "color": "#8200C8",
+      "valueRangeMin": 0,
+      "valueRangeMax": 200,
+      "valueRangeStep": 1
+    },
+    "488": {
+      "analogChannel": null,
+      "digitalLine": 1,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM4", "COM7"],
+      "color": "#00F7FF",
+      "valueRangeMin": 0,
+      "valueRangeMax": 200,
+      "valueRangeStep": 1
+    },
+    "473": {
+      "analogChannel": 3,
+      "digitalLine": 2,
+      "digitalDriver": null,
+      "digitalPorts": null,
+      "color": "#00B7FF",
+      "valueRangeMin": 0,
+      "valueRangeMax": 5,
+      "valueRangeStep": 1
+    }
+  },
+  "stagePiezzos": {
+    "X": {
+      "analogChannel": 0,
+      "conversionFactor": 1.5870,
+      "minVolt": -10,
+      "maxVolt": 10
+    },
+    "Y": {
+      "analogChannel": 1,
+      "conversionFactor": 1.5870,
+      "minVolt": -10,
+      "maxVolt": 10
+    },
+    "Z": {
+      "analogChannel": 2,
+      "conversionFactor": 10.0,
+      "minVolt": 0,
+      "maxVolt": 10
+    }
+  },
+  "scan": {
+    "stage": {
+      "sampleRate": 100000,
+      "returnTime": 0.01
+    },
+    "ttl": {
+      "sampleRate": 100000
+    }
+  },
+  "rois": {
+    "Test 1": {
+      "x": 25,
+      "y": 25,
+      "w": 150,
+      "h": 150
+    },
+    "Test 2": {
+      "x": 256,
+      "y": 256,
+      "w": 256,
+      "h": 256
+    }
+  },
+  "availableWidgets": {
+    "AlignWidgetXY": true,
+    "AlignWidgetAverage": true,
+    "AlignmentLineWidget": true,
+    "BeadRecWidget": true,
+    "FFTWidget": true,
+    "ULensesWidget": true
+  },
+  "designers": {
+    "stageScanDesigner": "BetaStageScanDesigner",
+    "TTLCycleDesigner": "BetaTTLCycleDesigner"
+  }
+}

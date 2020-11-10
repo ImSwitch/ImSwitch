@@ -59,13 +59,13 @@ class SignalDesigner:
         else:
             return True
 
-    def make_signal(self, parameter_dict):
+    def make_signal(self, parameterDict, setupInfo):
         """ Method to be defined by child. Should return a dictionary with 
         {'target': signal} pairs. """
         raise NotImplementedError("Method not implemented in child")
 
     def __parameterCompatibility(self, parameterDict):
-        """ Method to check the compatibility of parameter 'parameter_dict'
+        """ Method to check the compatibility of parameter 'parameterDict'
         and the expected parameters of the object. """
         expected = set(self._expectedParameters)
         incoming = set([*parameterDict])
@@ -76,7 +76,6 @@ class SignalDesigner:
 class BetaStageScanDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.convFactors = {'X': 1.5870, 'Y': 1.5907, 'Z': 10}
 
         self._expectedParameters = ['Targets[x]',
                                     'Sizes[x]',
@@ -86,32 +85,34 @@ class BetaStageScanDesigner(SignalDesigner):
                                     'Sample_rate',
                                     'Return_time_seconds']
 
-    def make_signal(self, parameter_dict, returnFrames=False):
+    def make_signal(self, parameterDict, setupInfo, returnFrames=False):
 
-        if not self.parameterCompatibility(parameter_dict):
-            print([*parameter_dict])
+        if not self.parameterCompatibility(parameterDict):
+            print([*parameterDict])
             print(self._expectedParameters)
             print('Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
             return None
 
+        convFactors = [stagePiezzo.conversionFactor for stagePiezzo in setupInfo.stagePiezzos.values()]
+
         # Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
-            [(parameter_dict['Sizes[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
+            [(parameterDict['Sizes[x]'][i] / convFactors[i]) for i in range(3)]
 
         # Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
-            [(parameter_dict['Step_sizes[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
+            [(parameterDict['Step_sizes[x]'][i] / convFactors[i]) for i in range(3)]
 
         # Retrive starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
-            [(parameter_dict['Start[x]'][i] / self.convFactors[parameter_dict['Targets[x]'][i]]) for i in range(3)]
+            [(parameterDict['Start[x]'][i] / convFactors[i]) for i in range(3)]
 
         fast_axis_positions = 1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
-        sequenceSamples = parameter_dict['Sequence_time_seconds'] * parameter_dict['Sample_rate']
-        returnSamples = parameter_dict['Return_time_seconds'] * parameter_dict['Sample_rate']
+        sequenceSamples = parameterDict['Sequence_time_seconds'] * parameterDict['Sample_rate']
+        returnSamples = parameterDict['Return_time_seconds'] * parameterDict['Sample_rate']
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
@@ -159,9 +160,9 @@ class BetaStageScanDesigner(SignalDesigner):
                     self.__smoothRamp(sliceValues[s], slow_axis_start, returnSamples)
         slowAxisSignal = fullCubeSignal
 
-        sig_dict = {parameter_dict['Targets[x]'][0]: fastAxisSignal,
-                    parameter_dict['Targets[x]'][1]: middleAxisSignal,
-                    parameter_dict['Targets[x]'][2]: slowAxisSignal}
+        sig_dict = {parameterDict['Targets[x]'][0]: fastAxisSignal,
+                    parameterDict['Targets[x]'][1]: middleAxisSignal,
+                    parameterDict['Targets[x]'][2]: slowAxisSignal}
 
         if not returnFrames:
             return sig_dict
@@ -190,16 +191,16 @@ class BetaTTLCycleDesigner(SignalDesigner):
                                     'Sequence_time_seconds',
                                     'Sample_rate']
 
-    def make_signal(self, parameter_dict):
+    def make_signal(self, parameterDict, setupInfo):
 
-        if not self.parameterCompatibility(parameter_dict):
+        if not self.parameterCompatibility(parameterDict):
             print('TTL parameters seem incompatible, this error should not be \
                   since this should be checked at program start-up')
             return None
 
-        targets = parameter_dict['Targets[x]']
-        sampleRate = parameter_dict['Sample_rate']
-        cycleSamples = parameter_dict['Sequence_time_seconds'] * sampleRate
+        targets = parameterDict['Targets[x]']
+        sampleRate = parameterDict['Sample_rate']
+        cycleSamples = parameterDict['Sequence_time_seconds'] * sampleRate
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
@@ -207,9 +208,9 @@ class BetaTTLCycleDesigner(SignalDesigner):
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
-            for j, start in enumerate(parameter_dict['TTLStarts[x,y]'][i]):
+            for j, start in enumerate(parameterDict['TTLStarts[x,y]'][i]):
                 startSamp = np.int(np.round(start * sampleRate))
-                endSamp = np.int(np.round(parameter_dict['TTLEnds[x,y]'][i][j] * sampleRate))
+                endSamp = np.int(np.round(parameterDict['TTLEnds[x,y]'][i][j] * sampleRate))
                 tmpSigArr[startSamp:endSamp] = True
 
             signalDict[target] = np.copy(tmpSigArr)

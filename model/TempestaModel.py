@@ -25,7 +25,7 @@ class TempestaModel:
                 continue
 
             if len(laserInfo.digitalPorts) == 1:
-                laser = instruments.Laser(laserInfo.digitalDriver, laserInfo.digitalPorts)
+                laser = instruments.Laser(laserInfo.digitalDriver, laserInfo.digitalPorts[0])
             else:
                 laser = instruments.LinkedLaserCheck(laserInfo.digitalDriver, laserInfo.digitalPorts)
 

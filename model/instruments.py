@@ -32,7 +32,6 @@ class LinkedLaserCheck:
                 laser = driver(port)
                 laser.initialize()
                 lasers.append(laser)
-
             return LinkedLaser(lasers)
         except:
             return mockers.MockLaser()
@@ -47,7 +46,7 @@ class LinkedLaser:
 
     @property
     def idn(self):
-        return 'Linked Lasers ' + ' '.join([laser.idn for laser in self.lasers])
+        return 'Linked Lasers ' + ' '.join([str(laser.idn) for laser in self.lasers])
 
     @property
     def autostart(self):

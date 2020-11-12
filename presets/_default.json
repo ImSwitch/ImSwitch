@@ -55,7 +55,7 @@
     "lineAngle": "30"
   },
   "camera": {
-    "pixelSize": 0.119,
+    "pixelSize": 0.1,
     "binning": 1,
     "setExposureTime": 0.01
   },

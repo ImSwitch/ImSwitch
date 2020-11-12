@@ -3,7 +3,7 @@ dataclasses-json~=0.5.2
 h5py~=2.10.0
 lantzdev[qt]~=0.5.2
 nidaqmx~=0.5.7
-numpy~=1.19.2
+numpy==1.19.3
 PyQt5~=5.15.1
 pyqtgraph==0.11.0
 tifffile

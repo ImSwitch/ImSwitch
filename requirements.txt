@@ -6,4 +6,4 @@ nidaqmx~=0.5.7
 numpy~=1.19.2
 PyQt5~=5.15.1
 pyqtgraph==0.11.0
-tifffile~=2020.10.1
+tifffile

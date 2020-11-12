@@ -31,7 +31,7 @@ class LinkedLaserCheck:
             for port in ports:
                 laser = driver(port)
                 laser.initialize()
-                lasers = lasers.append(laser)
+                lasers.append(laser)
 
             return LinkedLaser(lasers)
         except:

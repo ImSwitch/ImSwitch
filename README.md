@@ -1,4 +1,4 @@
-# Tempesta-v2.0
+# ImSwitch
  
 This is a new version of the control software Tempesta from TestaLab (www.testalab.org). The new version uses the same principles and code as before, but making substantial structural changes.
 
@@ -12,7 +12,7 @@ The v2.0 addresses some problems detected from the previous version:
  - GUI and functionality are mixed up.
  - Non-efficent threading.
  
-The main characteristics of Tempesta v2.0 are:
+The main characteristics of ImSwitch are:
 - It is based in the Model-View-Controller, a design pattern that separates GUI (view) from functionality (model), and uses an interface to interact with the user (controller). This makes the code modular, efficient and robust.
 
 - Another focus of this version is to use inheritance to separate a general class from different implementations, very useful to create different versions of the same device for different optical setups. 

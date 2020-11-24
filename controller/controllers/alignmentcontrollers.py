@@ -30,7 +30,7 @@ class ULensesController(WidgetController):
     def updateGrid(self):
         """ Updates plot with new parameters. """
         self.getParameters()
-        size_x, size_y = self._master.cameraHelper.shapes
+        size_x, size_y = self._master.cameraHelper.execOnCurrent(lambda c: c.shape)
         pattern_x = np.arange(self.x, size_x, self.up / self.px)
         pattern_y = np.arange(self.y, size_y, self.up / self.px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
@@ -208,6 +208,7 @@ class FFTController(LiveUpdatedController):
         self._widget.changePosButton.clicked.connect(self.changePos)
         self._widget.linePos.textChanged.connect(self.changePos)
         self._widget.lineRate.textChanged.connect(self.changeRate)
+        self._widget.vb.sigResized.connect(self.adjustFrame)
 
         self.changeRate()
         self.showFFT()
@@ -237,12 +238,17 @@ class FFTController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.img.setImage(im, autoLevels=False)
         if not self.init:
-            self._widget.vb.setAspectLocked()
-            self._widget.vb.setLimits(xMin=-0.5, xMax=self._widget.img.width(), minXRange=4,
-                                      yMin=-0.5, yMax=self._widget.img.height(), minYRange=4)
-            self._widget.hist.setLevels(*guitools.bestLimits(im))
+            self.adjustFrame()
+            self._widget.hist.setLevels(*guitools.bestLevels(im))
             self._widget.hist.vb.autoRange()
             self.init = True
+
+    def adjustFrame(self):
+        width, height = self._widget.img.width(), self._widget.img.height()
+        if width is None or height is None:
+            return
+
+        guitools.setBestImageLimits(self._widget.vb, width, height)
 
     def changeRate(self):
         """ Change update rate. """
@@ -265,9 +271,9 @@ class FFTController(LiveUpdatedController):
             pos = float(1 / pos)
             imgWidth = self._widget.img.width()
             imgHeight = self._widget.img.height()
-            self._widget.vb.setAspectLocked()
-            self._widget.vb.setLimits(xMin=-0.5, xMax=imgWidth, minXRange=4,
-                                      yMin=-0.5, yMax=imgHeight, minYRange=4)
+            # self._widget.vb.setAspectLocked()
+            # self._widget.vb.setLimits(xMin=-0.5, xMax=imgWidth, minXRange=4,
+            #                           yMin=-0.5, yMax=imgHeight, minYRange=4)
             self._widget.vline.setValue(0.5 * imgWidth)
             self._widget.hline.setAngle(0)
             self._widget.hline.setValue(0.5 * imgHeight)

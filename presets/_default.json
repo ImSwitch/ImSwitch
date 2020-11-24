@@ -57,13 +57,15 @@
   "camera": {
     "pixelSize": 0.1,
     "binning": 1,
-    "setExposureTime": 0.01
+    "mode": "Full chip",
+    "setExposureTime": 0.01,
+    "acquisitionMode": "Internal trigger"
   },
   "recording": {
     "outputFolder": "D:\\Data",
     "includeDateInOutputFolder": true
   },
   "miscOptions": {
-    "lasersAndAlignmentTogether": false
+    "lasersAndAlignmentTogether": true
   }
 }

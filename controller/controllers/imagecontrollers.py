@@ -13,7 +13,7 @@ import numpy as np
 from pyqtgraph.Qt import QtCore
 
 import view.guitools as guitools
-from controller.enums import RecMode
+from controller.helpers.RecordingHelper import RecMode
 from .basecontrollers import WidgetController, LiveUpdatedController
 
 
@@ -24,14 +24,16 @@ class SettingsController(WidgetController):
         super().__init__(*args, **kwargs)
         self._widget.initControls(self._setupInfo.rois)
 
-        self.fullChipFrameStart = self._master.cameraHelper.frameStart
-        self.fullChipShape = self._master.cameraHelper.shapes
-
         self.addROI()
         self.getParameters()
+        self.setBinning()
         self.setExposure()
+        self.changeTriggerSource()
         self.adjustFrame()
         self.updateFrame()
+
+        # Connect CommunicationChannel signals
+        self._commChannel.cameraSwitched.connect(self.cameraSwitched)
 
         # Connect SettingsWidget signals
         self._widget.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
@@ -49,8 +51,7 @@ class SettingsController(WidgetController):
 
     def getParameters(self):
         """ Take parameters from the camera Tree map. """
-        self.model = self._master.cameraHelper.model
-        self._widget.tree.p.param('Model').setValue(self.model)
+        self.modelPar = self._widget.tree.p.param('Model')
         self.umxpx = self._widget.tree.p.param('Pixel size')
         framePar = self._widget.tree.p.param('Image frame')
         self.binPar = framePar.param('Binning')
@@ -62,6 +63,7 @@ class SettingsController(WidgetController):
         self.applyParam = framePar.param('Apply')
         self.newROIParam = framePar.param('New ROI')
         self.abortROIParam = framePar.param('Abort ROI')
+        self.allCamerasFrameParam = framePar.param('Update all cameras')
 
         timingsPar = self._widget.tree.p.param('Timings')
         self.effFRPar = timingsPar.param('Internal frame rate')
@@ -77,14 +79,20 @@ class SettingsController(WidgetController):
         self.applyParam.sigStateChanged.connect(self.adjustFrame)
         self.newROIParam.sigStateChanged.connect(self.updateFrame)
         self.abortROIParam.sigStateChanged.connect(self.abortROI)
+        self.allCamerasFrameParam.sigStateChanged.connect(self.adjustFrame)
         self.trigsourceparam.sigValueChanged.connect(self.changeTriggerSource)
         self.expPar.sigValueChanged.connect(self.setExposure)
         self.binPar.sigValueChanged.connect(self.setBinning)
         self.frameMode.sigValueChanged.connect(self.updateFrame)
         self.expPar.sigValueChanged.connect(self.setExposure)
 
-    def adjustFrame(self):
+    def adjustFrame(self, *, camera=None):
         """ Crop camera and adjust frame. """
+
+        if camera is None:
+            self.getCameraHelperFrameExecFunc()(lambda c: self.adjustFrame(camera=c))
+            return
+
         binning = self.binPar.value()
         width = self.widthPar.value()
         height = self.heightPar.value()
@@ -104,24 +112,25 @@ class SettingsController(WidgetController):
         vsize = int(vmodulus * np.ceil(vsize / vmodulus))
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
-        self._master.cameraHelper.changeParameter(
-            lambda: self._master.cameraHelper.cropOrca(hpos, vpos, hsize, vsize)
-        )
+        camera.changeParameter(lambda: camera.cropOrca(hpos, vpos, hsize, vsize))
+
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
-        width, height = self._master.cameraHelper.shapes
+        width, height = camera.shape
         self._commChannel.adjustFrame.emit(width, height)
         self._widget.ROI.hide()
-        frameStart = self._master.cameraHelper.frameStart
+        frameStart = camera.frameStart
         self.x0par.setValue(frameStart[0])
         self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(width)
         self.heightPar.setValue(height)
-        self.updateTimings(*self._master.cameraHelper.getTimings())
+
+        if camera == self._master.cameraHelper.getCurrentCameraName():
+            self.updateParamsFromCamera()
 
     def ROIchanged(self):
         """ Update parameters according to ROI. """
-        frameStart = self._master.cameraHelper.frameStart
+        frameStart = self._master.cameraHelper.execOnCurrent(lambda c: c.frameStart)
         pos = self._widget.ROI.pos()
         size = self._widget.ROI.size()
         self.x0par.setValue(frameStart[0] + int(pos[0]))
@@ -133,35 +142,55 @@ class SettingsController(WidgetController):
     def abortROI(self):
         """ Cancel and reset parameters of the ROI. """
         self.toggleROI(False)
-        frameStart = self._master.cameraHelper.frameStart
-        shapes = self._master.cameraHelper.shapes
+        frameStart = self._master.cameraHelper.execOnCurrent(lambda c: c.frameStart)
+        shapes = self._master.cameraHelper.execOnCurrent(lambda c: c.shape)
         self.x0par.setValue(frameStart[0])
         self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(shapes[0])
         self.heightPar.setValue(shapes[1])
 
+    def setBinning(self):
+        """ Update a new binning to the camera. """
+        self.getCameraHelperFrameExecFunc()(
+            lambda c: c.setBinning(self.binPar.value())
+        )
+
     def changeTriggerSource(self):
         """ Change trigger (Internal or External). """
-        self._master.cameraHelper.changeTriggerSource(self.trigsourceparam.value())
+        self.getCameraHelperFrameExecFunc()(
+            lambda c: c.changeTriggerSource(self.trigsourceparam.value())
+        )
 
-    def setTriggerParam(self, source):
-        self.trigsourceparam.setValue(source)
+    def setExposure(self):
+        """ Update a new exposure time to the camera. """
+        self._master.cameraHelper.execOnCurrent(
+            lambda c: c.setExposure(self.expPar.value())
+        )
+        self.updateParamsFromCamera()
 
-    def updateTimings(self, realExpParValue, frameIntValue, readoutParValue, effFRParValue):
+    def updateParamsFromCamera(self):
         """ Update the real exposure times from the camera. """
+
+        currentCamera = self._master.cameraHelper.getCurrentCamera()
+
+        # Timings
+        realExpParValue, frameIntValue, readoutParValue, effFRParValue = currentCamera.getTimings()
         self.realExpPar.setValue(realExpParValue)
         self.frameInt.setValue(frameIntValue)
         self.readoutPar.setValue(readoutParValue)
         self.effFRPar.setValue(effFRParValue)
 
-    def setExposure(self):
-        """ Update a new exposure time to the camera. """
-        params = self._master.cameraHelper.setExposure(self.expPar.value())
-        self.updateTimings(*params)
+        # Frame
+        self.binPar.setValue(currentCamera.binning)
+        frameStart = currentCamera.frameStart
+        shape = currentCamera.shape
+        self.x0par.setValue(frameStart[0])
+        self.y0par.setValue(frameStart[1])
+        self.widthPar.setValue(shape[0])
+        self.heightPar.setValue(shape[1])
 
-    def setBinning(self):
-        """ Update a new binning to the camera. """
-        self._master.cameraHelper.setBinning(self.binPar.value())
+        # Model
+        self.modelPar.setValue(currentCamera.model)
 
     def updateFrame(self, _=None):
         """ Change the image frame size and position in the sensor. """
@@ -189,10 +218,11 @@ class SettingsController(WidgetController):
             self.heightPar.setWritable(False)
 
             if self.frameMode.value() == 'Full chip':
-                self.x0par.setValue(self.fullChipFrameStart[0])
-                self.y0par.setValue(self.fullChipFrameStart[1])
-                self.widthPar.setValue(self.fullChipShape[0])
-                self.heightPar.setValue(self.fullChipShape[1])
+                fullChipShape = self._master.cameraHelper.execOnCurrent(lambda c: c.fullShape)
+                self.x0par.setValue(0)
+                self.y0par.setValue(0)
+                self.widthPar.setValue(fullChipShape[0])
+                self.heightPar.setValue(fullChipShape[1])
             else:
                 roiInfo = self._setupInfo.rois[self.frameMode.value()]
                 self.x0par.setValue(roiInfo.x)
@@ -202,16 +232,25 @@ class SettingsController(WidgetController):
 
             self.adjustFrame()
 
+    def cameraSwitched(self):
+        self.updateParamsFromCamera()
+        self._master.cameraHelper.execOnCurrent(
+            lambda c: self.adjustFrame(camera=c)
+        )
+
     def getCamAttrs(self):
-        return {
-            'Camera_pixel_size': self.umxpx.value(),
-            'Camera_model': self.model,
-            'Camera_binning': self.binPar.value(),
-            'FOV_mode': self.frameMode.value(),
-            'Camera_exposure_time': self.realExpPar.value(),
-            'Camera_ROI': [self.x0par.value(), self.y0par.value(),
-                           self.widthPar.value(), self.heightPar.value()]
-        }
+        return self._master.cameraHelper.execOnAll(lambda c: {
+            'Camera_pixel_size': self.umxpx.value(),  # TODO
+            'Camera_model': c.model,
+            'Camera_binning': c.binning,
+            'Camera_exposure_time': c.getTimings()[0],
+            'Camera_ROI': [*c.frameStart, *c.shape]
+        })
+
+    def getCameraHelperFrameExecFunc(self):
+        cameraHelper = self._master.cameraHelper
+        return (cameraHelper.execOnAll if self.allCamerasFrameParam.value()
+                else cameraHelper.execOnCurrent)
 
 
 class ViewController(WidgetController):
@@ -219,11 +258,14 @@ class ViewController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
 
         # Connect ViewWidget signals
         self._widget.gridButton.clicked.connect(self.gridToggle)
         self._widget.crosshairButton.clicked.connect(self.crosshairToggle)
         self._widget.liveviewButton.clicked.connect(self.liveview)
+        self._widget.cameraList.currentIndexChanged.connect(self.cameraSwitch)
+        self._widget.nextCameraButton.clicked.connect(self.cameraNext)
 
     def liveview(self):
         """ Start liveview and activate camera acquisition. """
@@ -243,6 +285,17 @@ class ViewController(WidgetController):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
         self._commChannel.crosshairToggle.emit()
 
+    def cameraSwitch(self, listIndex):
+        """ Changes the current camera to the selected camera. """
+        cameraName = self._widget.cameraList.itemData(listIndex)
+        self._master.cameraHelper.setCurrentCamera(cameraName)
+
+    def cameraNext(self):
+        """ Changes the current camera to the next camera. """
+        self._widget.cameraList.setCurrentIndex(
+            (self._widget.cameraList.currentIndex() + 1) % self._widget.cameraList.count()
+        )
+
     def closeEvent(self):
         self._master.cameraHelper.stopAcquisition()
 
@@ -252,6 +305,10 @@ class ImageController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._lastWidth, self._lastHeight = self._master.cameraHelper.execOnCurrent(
+            lambda c: c.shape
+        )
+        self._savedLevels = {}
 
         # Connect CommunicationChannel signals
         self._commChannel.updateImage.connect(self.update)
@@ -261,16 +318,19 @@ class ImageController(LiveUpdatedController):
         self._commChannel.crosshairToggle.connect(self.crosshairToggle)
         self._commChannel.addItemTovb.connect(self.addItemTovb)
         self._commChannel.removeItemFromvb.connect(self.removeItemFromvb)
+        self._commChannel.cameraSwitched.connect(self.restoreSavedLevels)
 
         # Connect ImageWidget signals
         self._widget.levelsButton.pressed.connect(self.autoLevels)
+        self._widget.vb.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
+        self._widget.hist.sigLevelsChanged.connect(self.updateSavedLevels)
 
     def autoLevels(self, im=None):
         """ Set histogram levels automatically with current camera image."""
         if im is None:
             im = self._widget.img.image
 
-        self._widget.hist.setLevels(*guitools.bestLimits(im))
+        self._widget.hist.setLevels(*guitools.bestLevels(im))
         self._widget.hist.vb.setYRange(im.min(), im.max())
 
     def addItemTovb(self, item):
@@ -291,6 +351,9 @@ class ImageController(LiveUpdatedController):
 
         self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
 
+        if not init:
+            self.adjustFrame(self._lastWidth, self._lastHeight)
+
     def acquisitionStopped(self):
         """ Disable the onlyRenderVisible optimization for a smoother experience. """
         self._widget.img.setOnlyRenderVisible(False, render=True)
@@ -298,10 +361,11 @@ class ImageController(LiveUpdatedController):
     def adjustFrame(self, width, height):
         """ Adjusts the viewbox to a new width and height. """
         self._widget.grid.update([width, height])
-        # self._widget.vb.setLimits(xMin=-0.5, xMax=width - 0.5, minXRange=4,
-        #                           yMin=-0.5, yMax=height - 0.5, minYRange=4)
-        self._widget.vb.setAspectLocked()
+        guitools.setBestImageLimits(self._widget.vb, width, height)
         self._widget.img.render()
+
+        self._lastWidth = width
+        self._lastHeight = height
 
     def getROIdata(self, image, roi):
         """ Returns the cropped image within the ROI. """
@@ -320,12 +384,23 @@ class ImageController(LiveUpdatedController):
         """ Shows or hides crosshair. """
         self._widget.crosshair.toggle()
 
+    def updateSavedLevels(self):
+        cameraName = self._master.cameraHelper.getCurrentCameraName()
+        self._savedLevels[cameraName] = self._widget.hist.getLevels()
+
+    def restoreSavedLevels(self, cameraName):
+        """ Updates image levels from saved levels for camera that is switched to. """
+        if cameraName in self._savedLevels:
+            self._widget.hist.setLevels(*self._savedLevels[cameraName])
+
 
 class RecorderController(WidgetController):
     """ Linked to RecordingWidget. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
+
         self.recMode = RecMode.NotRecording
         self.untilStop()
 
@@ -336,6 +411,7 @@ class RecorderController(WidgetController):
         self._commChannel.endScan.connect(self.scanDone)
 
         # Connect RecordingWidget signals
+        self._widget.cameraList.currentIndexChanged.connect(self.setCamerasToCapture)
         self._widget.openFolderButton.clicked.connect(self.openFolder)
         self._widget.specifyfile.clicked.connect(self.specFile)
         self._widget.snapTIFFButton.clicked.connect(self.snap)
@@ -379,6 +455,7 @@ class RecorderController(WidgetController):
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
+        cameraNames = self.getCamerasToCapture()
         folder = self._widget.folderEdit.text()
         if not os.path.exists(folder):
             os.mkdir(folder)
@@ -386,48 +463,52 @@ class RecorderController(WidgetController):
         name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
         attrs = self._commChannel.getCamAttrs()
-        self._master.recordingHelper.snap(savename, attrs)
+        self._master.recordingHelper.snap(cameraNames, savename, attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """
         if checked:
+            # self._widget.cameraList.setEnabled(False)
+
             folder = self._widget.folderEdit.text()
             if not os.path.exists(folder):
                 os.mkdir(folder)
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
+
             self.attrs = self._commChannel.getCamAttrs()
             scan = self._commChannel.getScanAttrs()
             self.attrs.update(scan)
+
+            recordingArgs = self.getCamerasToCapture(), self.recMode, self.savename, self.attrs
+
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingHelper.startRecording(
-                    self.recMode, self.savename, self.attrs,
-                    frames=int(self._widget.numExpositionsEdit.text())
+                    *recordingArgs, frames=int(self._widget.numExpositionsEdit.text())
                 )
             elif self.recMode == RecMode.SpecTime:
                 self._master.recordingHelper.startRecording(
-                    self.recMode, self.savename, self.attrs,
-                    time=float(self._widget.timeToRec.text())
+                    *recordingArgs, time=float(self._widget.timeToRec.text())
                 )
             elif self.recMode == RecMode.ScanOnce:
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._master.recordingHelper.startRecording(*recordingArgs)
                 time.sleep(0.1)
                 self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
                 self.lapseCurrent = 0
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._master.recordingHelper.startRecording(*recordingArgs)
                 time.sleep(0.1)
                 self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.DimLapse:
                 self.lapseTotal = int(self._widget.totalSlices.text())
                 self.lapseCurrent = 0
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._master.recordingHelper.startRecording(*recordingArgs)
                 time.sleep(0.3)
                 self._commChannel.prepareScan.emit()
             else:
-                self._master.recordingHelper.startRecording(self.recMode, self.savename, self.attrs)
+                self._master.recordingHelper.startRecording(*recordingArgs)
         else:
             self._master.recordingHelper.endRecording()
 
@@ -469,14 +550,15 @@ class RecorderController(WidgetController):
                     self._master.recordingHelper.endRecording()
 
     def nextLapse(self):
-        self._master.recordingHelper.startRecording(self.recMode,
-                                                    self.savename + '_' + str(self.lapseCurrent),
-                                                    self.attrs)
+        fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+        self._master.recordingHelper.startRecording(self.recMode, fileName, self.attrs)
+
         time.sleep(0.3)
         self._commChannel.prepareScan.emit()
 
     def endRecording(self):
         self._widget.recButton.setChecked(False)
+        # self._widget.cameraList.setEnabled(True)
         self._widget.currentFrame.setText('0 / ')
 
     def updateRecFrameNumber(self, f):
@@ -538,6 +620,26 @@ class RecorderController(WidgetController):
         self._widget.freqEdit.setEnabled(False)
         self._widget.stepSizeEdit.setEnabled(False)
         self.recMode = RecMode.UntilStop
+
+    def setCamerasToCapture(self):
+        cameraListData = self._widget.cameraList.itemData(self._widget.cameraList.currentIndex())
+        if cameraListData == -2:  # All cameras
+            # When recording all cameras, the SpecFrames mode isn't supported
+            if self.recMode == RecMode.SpecFrames:
+                self._widget.untilSTOPbtn.setChecked(True)
+            self._widget.specifyFrames.setEnabled(False)
+        else:
+            self._widget.specifyFrames.setEnabled(True)
+
+    def getCamerasToCapture(self):
+        """ Returns a list of which cameras the user has selected to be captured. """
+        cameraListData = self._widget.cameraList.itemData(self._widget.cameraList.currentIndex())
+        if cameraListData == -1:  # Current camera at start
+            return [self._master.cameraHelper.getCurrentCameraName()]
+        elif cameraListData == -2:  # All cameras
+            return list(self._setupInfo.cameras.keys())
+        else:  # A specific camera
+            return [cameraListData]
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

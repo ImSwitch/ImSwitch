@@ -7,7 +7,7 @@ Created on Sun Mar 22 10:40:53 2020
 import traceback
 import weakref
 from pyqtgraph.Qt import QtCore
-from controller.TempestaErrors import InvalidChildClassError
+from controller.errors import InvalidChildClassError
 from controller.presets import Preset
 
 

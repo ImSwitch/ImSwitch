@@ -13,24 +13,33 @@ from model import config, instruments
 class TempestaModel:
     def __init__(self):
         configFilesDir = os.path.join(constants.rootFolderPath, 'config_files')
-        with open(os.path.join(configFilesDir, 'setup.json')) as setupFile:
+
+        with open(os.path.join(configFilesDir, 'options.json')) as optionsFile:
+            self.options = config.Options.from_json(optionsFile.read(), infer_missing=True)
+
+        with open(os.path.join(configFilesDir, self.options.setupFileName)) as setupFile:
             self.setupInfo = config.SetupInfo.from_json(setupFile.read(), infer_missing=True)
 
-        self.cameras = instruments.Cameras(0)
+        self.cameras = {}
+        for cameraName, cameraInfo in self.setupInfo.cameras.items():
+            camera = instruments.Camera(cameraInfo.id)
+            self.initCamera(camera, cameraInfo)
+            self.cameras[cameraName] = camera
 
         self.lasers = {}
-        for laserId, laserInfo in self.setupInfo.lasers.items():
+        for laserName, laserInfo in self.setupInfo.lasers.items():
             if (laserInfo.digitalDriver is None or laserInfo.digitalPorts is None
                     or len(laserInfo.digitalPorts) < 1):
                 continue
 
-            if len(laserInfo.digitalPorts) == 1:
-                laser = instruments.Laser(laserInfo.digitalDriver, laserInfo.digitalPorts[0])
-            else:
-                laser = instruments.LinkedLaserCheck(laserInfo.digitalDriver, laserInfo.digitalPorts)
+            laser = instruments.FullDigitalLaser(laserInfo.digitalDriver, laserInfo.digitalPorts)
 
             self.initLaser(laser)
-            self.lasers[laserId] = laser
+            self.lasers[laserName] = laser
+
+    def initCamera(self, camera, cameraInfo):
+        for propertyName, propertyValue in cameraInfo.properties.items():
+            camera.setPropertyValue(propertyName, propertyValue)
 
     def initLaser(self, laser):
         print(laser.idn)

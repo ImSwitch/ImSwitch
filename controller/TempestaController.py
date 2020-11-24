@@ -7,55 +7,62 @@ Created on Fri Mar 20 15:08:33 2020
 from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
+from .presets import Preset
 
 
 class TempestaController:
     def __init__(self, model, view):
-        __model = model
-        __view = view
+        self.__model = model
+        self.__view = view
+
+        defaultPreset = Preset.getDefault(self.__view.presetDir)
 
         # Connect view signals
-        __view.closing.connect(self.closeEvent)
+        self.__view.loadPresetButton.pressed.connect(self.loadPreset)
+        self.__view.closing.connect(self.closeEvent)
 
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self)
-        __masterController = MasterController(__model, self.__commChannel)
+        __masterController = MasterController(self.__model, self.__commChannel)
 
         # List of Controllers for the GUI Widgets
-        factory = controllers.WidgetControllerFactory(
-            model.setupInfo, self.__commChannel, __masterController
+        self.__factory = controllers.WidgetControllerFactory(
+            model.setupInfo, defaultPreset, self.__commChannel, __masterController
         )
 
-        self.imageController = factory.createController(controllers.ImageController, __view.imageWidget)
-        self.positionerController = factory.createController(controllers.PositionerController, __view.positionerWidget)
-        self.scanController = factory.createController(controllers.ScanController, __view.scanWidget)
-        self.laserController = factory.createController(controllers.LaserController, __view.laserWidgets)
-        self.recorderController = factory.createController(controllers.RecorderController, __view.recordingWidget)
-        self.viewController = factory.createController(controllers.ViewController, __view.viewWidget)
-        self.settingsController = factory.createController(controllers.SettingsController, __view.settingsWidget)
+        self.imageController = self.__factory.createController(controllers.ImageController, self.__view.imageWidget)
+        self.positionerController = self.__factory.createController(controllers.PositionerController, self.__view.positionerWidget)
+        self.scanController = self.__factory.createController(controllers.ScanController, self.__view.scanWidget)
+        self.laserController = self.__factory.createController(controllers.LaserController, self.__view.laserWidgets)
+        self.recorderController = self.__factory.createController(controllers.RecorderController, self.__view.recordingWidget)
+        self.viewController = self.__factory.createController(controllers.ViewController, self.__view.viewWidget)
+        self.settingsController = self.__factory.createController(controllers.SettingsController, self.__view.settingsWidget)
 
         if model.setupInfo.availableWidgets.BeadRecWidget:
-            self.beadController = factory.createController(controllers.BeadController, __view.beadRecWidget)
+            self.beadController = self.__factory.createController(controllers.BeadController, self.__view.beadRecWidget)
 
         if model.setupInfo.availableWidgets.ULensesWidget:
-            self.uLensesController = factory.createController(controllers.ULensesController, __view.ulensesWidget)
+            self.uLensesController = self.__factory.createController(controllers.ULensesController, self.__view.ulensesWidget)
 
         if model.setupInfo.availableWidgets.AlignWidgetXY:
-            self.alignXYController = factory.createController(controllers.AlignXYController, __view.alignWidgetXY)
+            self.alignXYController = self.__factory.createController(controllers.AlignXYController, self.__view.alignWidgetXY)
 
         if model.setupInfo.availableWidgets.AlignWidgetAverage:
-            self.alignAverageController = factory.createController(controllers.AlignAverageController, __view.alignWidgetAverage)
+            self.alignAverageController = self.__factory.createController(controllers.AlignAverageController, self.__view.alignWidgetAverage)
 
         if model.setupInfo.availableWidgets.AlignmentLineWidget:
-            self.alignmentLineController = factory.createController(controllers.AlignmentLineController, __view.alignmentLineWidget)
+            self.alignmentLineController = self.__factory.createController(controllers.AlignmentLineController, self.__view.alignmentLineWidget)
 
         if model.setupInfo.availableWidgets.FFTWidget:
-            self.fftController = factory.createController(controllers.FFTController, __view.fftWidget)
+            self.fftController = self.__factory.createController(controllers.FFTController, self.__view.fftWidget)
 
         # Check widget compatibility
         __masterController.scanHelper._parameterCompatibility(self.scanController.parameterDict)
 
+    def loadPreset(self):
+        self.__factory.loadPresetForAllCreatedControllers(
+            self.__view.presetDir, self.__view.presetsMenu.currentText()
+        )
+
     def closeEvent(self):
-        self.positionerController.closeEvent()
-        self.laserController.closeEvent()
-        self.viewController.closeEvent()
+        self.__factory.closeAllCreatedControllers()

@@ -7,6 +7,7 @@ Created on Sun Mar 22 10:40:53 2020
 import configparser
 
 import numpy as np
+import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 
 from .basecontrollers import SuperScanController
@@ -25,6 +26,7 @@ class ScanController(SuperScanController):
             'Sample_rate': self._setupInfo.scan.ttl.sampleRate
         }
         self.getParameters()
+        self.plotSignalGraph()
 
         # Connect NidaqHelper signals
         self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
@@ -37,6 +39,9 @@ class ScanController(SuperScanController):
         self._widget.loadScanBtn.clicked.connect(self.loadScan)
         self._widget.scanButton.clicked.connect(self.runScan)
         self._widget.previewButton.clicked.connect(self.previewScan)
+        for deviceName in self._setupInfo.getTTLDevices():
+            self._widget.pxParameters['sta' + deviceName].textChanged.connect(self.plotSignalGraph)
+            self._widget.pxParameters['end' + deviceName].textChanged.connect(self.plotSignalGraph)
 
         print('Init Scan Controller')
 
@@ -107,7 +112,6 @@ class ScanController(SuperScanController):
 
         self.setParameters()
         # self._widget.updateScan(self._widget.allDevices)
-        # self._widget.graph.update()
 
     def setParameters(self):
         for i in range(len(self._setupInfo.stagePiezzos)):
@@ -125,12 +129,12 @@ class ScanController(SuperScanController):
             )
 
         for i in range(len(self._TTLParameterDict['Targets[x]'])):
-            deviceId = self._TTLParameterDict['Targets[x]'][i]
+            deviceName = self._TTLParameterDict['Targets[x]'][i]
 
-            self._widget.pxParameters['sta' + deviceId].setText(
+            self._widget.pxParameters['sta' + deviceName].setText(
                 str(round(1000 * self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3))
             )
-            self._widget.pxParameters['end' + deviceId].setText(
+            self._widget.pxParameters['end' + deviceName].setText(
                 str(round(1000 * self._TTLParameterDict['TTLEnds[x,y]'][i][0], 3))
             )
 
@@ -143,9 +147,10 @@ class ScanController(SuperScanController):
 
     def runScan(self):
         self.getParameters()
-        self.signalDic = self._master.scanHelper.make_full_scan(self._stageParameterDict,
-                                                                self._TTLParameterDict,
-                                                                self._setupInfo)
+        self.signalDic = self._master.scanHelper.makeFullScan(
+            self._stageParameterDict, self._TTLParameterDict, self._setupInfo,
+            staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
+        )
         self._master.nidaqHelper.runScan(self.signalDic)
 
     def scanDone(self):
@@ -175,15 +180,17 @@ class ScanController(SuperScanController):
         self._TTLParameterDict['Targets[x]'] = []
         self._TTLParameterDict['TTLStarts[x,y]'] = []
         self._TTLParameterDict['TTLEnds[x,y]'] = []
-        for deviceId, deviceInfo in self._setupInfo.getTTLDevices().items():
-            self._TTLParameterDict['Targets[x]'].append(deviceId)
+        for deviceName, deviceInfo in self._setupInfo.getTTLDevices().items():
+            self._TTLParameterDict['Targets[x]'].append(deviceName)
 
+            deviceStarts = self._widget.pxParameters['sta' + deviceName].text().split(',')
             self._TTLParameterDict['TTLStarts[x,y]'].append([
-                float(self._widget.pxParameters['sta' + deviceId].text()) / 1000
+                float(deviceStart) / 1000 for deviceStart in deviceStarts if deviceStart
             ])
 
+            deviceEnds = self._widget.pxParameters['end' + deviceName].text().split(',')
             self._TTLParameterDict['TTLEnds[x,y]'].append([
-                float(self._widget.pxParameters['end' + deviceId].text()) / 1000
+                float(deviceEnd) / 1000 for deviceEnd in deviceEnds if deviceEnd
             ])
 
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
@@ -192,3 +199,20 @@ class ScanController(SuperScanController):
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)
         if b: self.runScan()
+
+    def plotSignalGraph(self):
+        self.getParameters()
+        TTLCycleSignalsDict = self._master.scanHelper.getTTLCycleSignalsDict(self._TTLParameterDict,
+                                                                             self._setupInfo)
+
+        self._widget.graph.plot.clear()
+        for deviceName, signal in TTLCycleSignalsDict.items():
+            isLaser = deviceName in self._setupInfo.lasers
+
+            self._widget.graph.plot.plot(
+                np.linspace(0, self._TTLParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal)),
+                signal.astype(np.uint8),
+                pen=pg.mkPen(self._setupInfo.lasers[deviceName].color if isLaser else '#ffffff')
+            )
+
+        self._widget.graph.plot.setYRange(-0.1, 1.1)

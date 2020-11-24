@@ -66,6 +66,7 @@ class ScanWidget(Widget):
 
         self.sampleRate = 10000
         self.graph = GraphFrame()
+        self.graph.setEnabled(False)
         self.graph.plot.getAxis('bottom').setScale(1000 / self.sampleRate)
         self.graph.setFixedHeight(100)
 
@@ -128,33 +129,21 @@ class ScanWidget(Widget):
         currentRow += 1
 
         pulsePresets = self._defaultPreset.scan.pulses
-        for deviceId in TTLDeviceInfos.keys():
-            pulsePreset = (pulsePresets[deviceId] if deviceId in pulsePresets
+        for deviceName in TTLDeviceInfos.keys():
+            pulsePreset = (pulsePresets[deviceName] if deviceName in pulsePresets
                            else guitools.ScanPresetTTL())
 
-            self.grid.addWidget(QtGui.QLabel(deviceId), currentRow, 0)
-            self.pxParameters['sta' + deviceId] = QtGui.QLineEdit(pulsePreset.start)
-            self.pxParameters['end' + deviceId] = QtGui.QLineEdit(pulsePreset.end)
-            self.grid.addWidget(self.pxParameters['sta' + deviceId], currentRow, 1)
-            self.grid.addWidget(self.pxParameters['end' + deviceId], currentRow, 2)
+            self.grid.addWidget(QtGui.QLabel(deviceName), currentRow, 0)
+            self.pxParameters['sta' + deviceName] = QtGui.QLineEdit(pulsePreset.start)
+            self.pxParameters['end' + deviceName] = QtGui.QLineEdit(pulsePreset.end)
+            self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
+            self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1
 
 
 class GraphFrame(pg.GraphicsWindow):
-    """Creates the plot that plots the preview of the pulses.
-    Fcn update() updates the plot of "device" with signal "signal"."""
+    """Creates the plot that plots the preview of the pulses."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Take params from model
-        # self.pxCycle = pxCycle
-        # devs = list(pxCycle.sigDict.keys())
         self.plot = self.addPlot(row=1, col=0)
-        self.plot.setYRange(0, 1)
-        self.plot.showGrid(x=False, y=False)
-        # self.plotSigDict = dict()
-#        for i in range(0, len(pxCycle.sigDict)):
-#            r = deviceInfo[i][2][0]
-#            g = deviceInfo[i][2][1]
-#            b = deviceInfo[i][2][2]
-#            self.plotSigDict[devs[i]] = self.plot.plot(pen=pg.mkPen(r, g, b))

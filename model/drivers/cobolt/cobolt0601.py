@@ -2,6 +2,12 @@ from lantz import Feat
 from lantz.drivers.cobolt.cobolt0601 import Cobolt0601
 
 
+try:
+    del Cobolt0601.DEFAULTS['ASRL']['bytesize']
+except KeyError:
+    pass
+
+
 class Cobolt0601_f2(Cobolt0601):
     """Driver for any Cobolt 06-01 Series laser, new firmware.
     """

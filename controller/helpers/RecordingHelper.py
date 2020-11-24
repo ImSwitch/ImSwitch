@@ -4,13 +4,12 @@ Created on Tue Apr 14 15:17:52 2020
 
 @author: Testa4
 """
+import enum
 import time
 
 import h5py
 import numpy as np
 from pyqtgraph.Qt import QtCore
-
-from controller.enums import RecMode
 
 
 class RecordingHelper:
@@ -35,14 +34,15 @@ class RecordingHelper:
     def commChannel(self):
         return self.__commChannel
 
-    def startRecording(self, recMode, savename, attrs, frames=None, time=None):
+    def startRecording(self, cameraNames, recMode, savename, attrs, frames=None, time=None):
         self.__record = True    
+        self.__recordingWorker.cameraNames = cameraNames
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.frames = frames
         self.__recordingWorker.time = time
-        self.__cameraHelper.updateCameraIndices()
+        self.__cameraHelper.execOnAll(lambda c: c.updateCameraIndices())
         self.__thread.start()
 
     def endRecording(self):
@@ -50,16 +50,23 @@ class RecordingHelper:
         self.__thread.quit()
         self.__thread.wait()
     
-    def snap(self, savename, attrs):
-        store_file = h5py.File(savename + '.hdf5', 'w', track_order=True)
-        for key in attrs.keys():
-            store_file.attrs[key] = attrs[key]
-        size = self.__cameraHelper.shapes
-        d = store_file.create_dataset('data', (size[0], size[1]), dtype='i2')
-        umxpx = attrs['Camera_pixel_size']
-        d.attrs["element_size_um"] = [1, umxpx, umxpx]
-        d[:, :] = self.__cameraHelper.image
-        store_file.close()
+    def snap(self, cameraNames, savename, attrs):
+        for cameraName in cameraNames:
+            file = h5py.File(f'{savename}_{cameraName}.hdf5', 'w', track_order=True)
+
+            shape = self.__cameraHelper.execOn(cameraName, lambda c: c.shape)
+
+            dataset = file.create_dataset('data', (shape[0], shape[1]), dtype='i2')
+
+            for key, value in attrs[cameraName].items():
+                file.attrs[key] = value
+
+            umxpx = attrs[cameraName]['Camera_pixel_size']
+            dataset.attrs["element_size_um"] = [1, umxpx, umxpx]
+
+            dataset[:, :] = self.__cameraHelper.execOn(cameraName, lambda c: c.image)
+
+            file.close()
 
 
 class RecordingWorker(QtCore.QObject):
@@ -68,32 +75,53 @@ class RecordingWorker(QtCore.QObject):
         self.__recordingHelper = recordingHelper
 
     def run(self):
-        self.running = True
         it = 0
-        size = self.__recordingHelper.cameraHelper.shapes
 
-        self.f = h5py.File(self.savename + '.hdf5', 'w')
-        d = self.f.create_dataset('data', (1, size[0], size[1]), maxshape=(None, size[0], size[1]),
-                                  dtype='i2')
-        for key in self.attrs.keys():
-            self.f.attrs[key] = self.attrs[key]
-        umxpx = self.attrs['Camera_pixel_size']
-        d.attrs["element_size_um"] = [1, umxpx, umxpx]
+        files = {cameraName: h5py.File(f'{self.savename}_{cameraName}.hdf5', 'w')
+                 for cameraName in self.cameraNames}
+
+        shapes = {cameraName: self.__recordingHelper.cameraHelper.execOn(cameraName,
+                                                                         lambda c: c.shape)
+                  for cameraName in self.cameraNames}
+
+        datasets = {}
+        for cameraName in self.cameraNames:
+            datasets[cameraName] = files[cameraName].create_dataset(
+                'data', (1, shapes[cameraName][0], shapes[cameraName][1]),
+                maxshape=(None, shapes[cameraName][0], shapes[cameraName][1]),
+                dtype='i2'
+            )
+
+        for cameraName in self.cameraNames:
+            for key, value in self.attrs[cameraName].items():
+                files[cameraName].attrs[key] = value
+
+            umxpx = self.attrs[cameraName]['Camera_pixel_size']
+            datasets[cameraName].attrs["element_size_um"] = [1, umxpx, umxpx]
 
         try:
             if self.recMode == RecMode.SpecFrames:
+                if len(self.cameraNames) > 1:
+                    self.__recordingHelper.commChannel.endRecording.emit()
+                    self.__recordingHelper.endRecording()
+                    raise ValueError('Only one camera can be recorded in SpecFrames mode')
+
+                cameraName = self.cameraNames[0]
                 frames = self.frames
                 while self.__recordingHelper.record and it < frames:
-                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
+                    newframes, _ = self.__recordingHelper.cameraHelper.execOn(
+                        cameraName, lambda c: c.getChunk()
+                    )
                     n = len(newframes)
                     if n > 0:
+                        dataset = datasets[cameraName]
                         if (it + n) <= frames:
-                            d.resize(n + it, axis=0)
-                            d[it:it + n, :, :] = np.array(newframes)
+                            dataset.resize(n + it, axis=0)
+                            dataset[it:it + n, :, :] = np.array(newframes)
                             it += n
                         else:
-                            d.resize(frames, axis=0)
-                            d[it:frames, :, :] = np.array(newframes[0:frames - it])
+                            dataset.resize(frames, axis=0)
+                            dataset[it:frames, :, :] = np.array(newframes[0:frames - it])
                             it = frames
                         self.__recordingHelper.commChannel.updateRecFrameNumber.emit(it)
                 self.__recordingHelper.commChannel.updateRecFrameNumber.emit(0)
@@ -103,26 +131,44 @@ class RecordingWorker(QtCore.QObject):
                 start = time.time()
                 current = 0
                 while self.__recordingHelper.record and current < self.time:
-                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
-                    n = len(newframes)
-                    if n > 0:
-                        d.resize(n + it, axis=0)
-                        d[it:it + n, :, :] = np.array(newframes)
-                        it += n
-                        self.__recordingHelper.commChannel.updateRecTime.emit(
-                            np.around(current, decimals=2)
+                    for cameraName in self.cameraNames:
+                        newframes, _ = self.__recordingHelper.cameraHelper.execOn(
+                            cameraName, lambda c: c.getChunk()
                         )
-                        current = time.time() - start
+                        n = len(newframes)
+                        if n > 0:
+                            dataset = datasets[cameraName]
+                            dataset.resize(n + it, axis=0)
+                            dataset[it:it + n, :, :] = np.array(newframes)
+                            it += n
+                            self.__recordingHelper.commChannel.updateRecTime.emit(
+                                np.around(current, decimals=2)
+                            )
+                            current = time.time() - start
                 self.__recordingHelper.commChannel.updateRecTime.emit(0)
                 self.__recordingHelper.commChannel.endRecording.emit()
                 self.__recordingHelper.endRecording()
             else:
                 while self.__recordingHelper.record:
-                    newframes, _ = self.__recordingHelper.cameraHelper.getChunk()
-                    n = len(newframes)
-                    if n > 0:
-                        d.resize(n + it, axis=0)
-                        d[it:it + n, :, :] = np.array(newframes)
-                        it += n
+                    for cameraName in self.cameraNames:
+                        newframes, _ = self.__recordingHelper.cameraHelper.execOn(
+                            cameraName, lambda c: c.getChunk()
+                        )
+                        n = len(newframes)
+                        if n > 0:
+                            dataset = datasets[cameraName]
+                            dataset.resize(n + it, axis=0)
+                            dataset[it:it + n, :, :] = np.array(newframes)
+                            it += n
         finally:
-            self.f.close()
+            [file.close() for file in files.values()]
+
+
+class RecMode(enum.Enum):
+    NotRecording = 0
+    SpecFrames = 1
+    SpecTime = 2
+    ScanOnce = 3
+    ScanLapse = 4
+    DimLapse = 5
+    UntilStop = 6

@@ -11,20 +11,12 @@ import numpy as np
 from model import mockers
 
 
-class Laser:
-    def __new__(cls, iName, *args):
-        try:
-            driver = getDriver(iName)
-            laser = driver(*args)
-            laser.initialize()
-            return laser
-        except:
-            return mockers.MockLaser()
-
-
-class LinkedLaserCheck:
+class FullDigitalLaser:
     def __new__(cls, iName, ports):
         try:
+            if len(ports) < 1:
+                raise ValueError('FullDigitalLaser requires at least one port, none passed')
+
             driver = getDriver(iName)
 
             lasers = []
@@ -32,15 +24,16 @@ class LinkedLaserCheck:
                 laser = driver(port)
                 laser.initialize()
                 lasers.append(laser)
-            return LinkedLaser(lasers)
+
+            return lasers[0] if len(ports) == 1 else LinkedFullDigitalLaser(lasers)
         except:
             return mockers.MockLaser()
 
 
-class LinkedLaser:
+class LinkedFullDigitalLaser:
     def __init__(self, lasers):
         if len(lasers) < 1:
-            raise ValueError('LinkedLaser requires at least one laser, none passed')
+            raise ValueError('LinkedFullDigitalLaser requires at least one laser, none passed')
 
         self.lasers = lasers
 
@@ -138,7 +131,7 @@ class LinkedLaser:
             laser.finalize()
 
 
-class Cameras:
+class Camera:
     """ Buffer class for testing whether the camera is connected. If it's not,
     it returns a dummy class for program testing. """
     # TODO:
@@ -150,19 +143,16 @@ class Cameras:
     Although I believe that design is more suitable for funcions that are 
     called alot or environments that are used alot."""
 
-    def __new__(cls, *args, **kwargs):
-        cameras = []
+    def __new__(cls, cameraId):
         try:
             import model.hamamatsu as hm
-            for i in np.arange(hm.n_cameras):
-                print('Trying to import camera', i)
-                cameras.append(hm.HamamatsuCameraMR(i))
-                print('Initialized Hamamatsu Camera Object, model: ', cameras[i].camera_model)
-            return cameras
-
+            print('Trying to import camera', cameraId)
+            camera = hm.HamamatsuCameraMR(cameraId)
+            print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
+            return camera
         except:
             print('Initializing Mock Hamamatsu')
-            return [mockers.MockHamamatsu()]
+            return mockers.MockHamamatsu()
 
 
 def getDriver(iName):

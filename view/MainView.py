@@ -18,17 +18,16 @@ import view.guitools as guitools
 import view.widgets as widgets
 
 
-class TempestaView(QtGui.QMainWindow):
+class MainView(QtGui.QMainWindow):
     closing = QtCore.pyqtSignal()
 
     def __init__(self, availableWidgetsInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.presetDir = os.path.join(constants.rootFolderPath, 'presets')
-        with open(os.path.join(self.presetDir, '_default.json')) as defaultPresetFile:
-            defaultPreset = guitools.Preset.from_json(defaultPresetFile.read())
+        defaultPreset = guitools.Preset.getDefault(self.presetDir)
 
-        factory = widgets.WidgetFactory(defaultPreset)
+        self.factory = widgets.WidgetFactory(defaultPreset)
 
         # Think what is self. and what is not !
 
@@ -39,7 +38,7 @@ class TempestaView(QtGui.QMainWindow):
         # TODO
 
         # Window
-        self.setWindowTitle('Tempesta 2.0')
+        self.setWindowTitle('ImSwitch')
         self.cwidget = QtGui.QWidget()
         self.setCentralWidget(self.cwidget)
 
@@ -56,15 +55,9 @@ class TempestaView(QtGui.QMainWindow):
         # Presets
         self.presetsMenu = QtGui.QComboBox()
 
-        if not os.path.exists(self.presetDir):
-            os.makedirs(self.presetDir)
-
-        # TODO
-        # for preset in os.listdir(self.presetDir):
-        #     self.presetsMenu.addItem(preset)
+        for preset in sorted(os.listdir(self.presetDir)):
+            self.presetsMenu.addItem(preset)
         self.loadPresetButton = QtGui.QPushButton('Load preset')
-        # def loadPresetFunction(): return guitools.loadPreset(self)
-        # self.loadPresetButton.pressed.connect(loadPresetFunction)
 
         presetPickerContainer = QtGui.QHBoxLayout()
         presetPickerContainer.addWidget(self.presetsMenu, 1)
@@ -76,14 +69,14 @@ class TempestaView(QtGui.QMainWindow):
 
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
-        self.laserWidgets = factory.createWidget(widgets.LaserWidget)
+        self.laserWidgets = self.factory.createWidget(widgets.LaserWidget)
         laserDock.addWidget(self.laserWidgets)
         self.illumDockArea.addDock(laserDock)
 
         # FFT dock
         if availableWidgetsInfo.FFTWidget:
             FFTDock = Dock("FFT Tool", size=(1, 1))
-            self.fftWidget = factory.createWidget(widgets.FFTWidget)
+            self.fftWidget = self.factory.createWidget(widgets.FFTWidget)
             FFTDock.addWidget(self.fftWidget)
             self.illumDockArea.addDock(FFTDock, 'below', laserDock)
 
@@ -102,22 +95,22 @@ class TempestaView(QtGui.QMainWindow):
 
         # Line Alignment Tool
         if availableWidgetsInfo.AlignmentLineWidget:
-            self.alignmentLineWidget = factory.createWidget(widgets.AlignmentLineWidget)
+            self.alignmentLineWidget = self.factory.createWidget(widgets.AlignmentLineWidget)
             addAlignmentDock("Alignment Tool", self.alignmentLineWidget)
 
         # Z align widget
         if availableWidgetsInfo.AlignWidgetAverage:
-            self.alignWidgetAverage = factory.createWidget(widgets.AlignWidgetAverage)
+            self.alignWidgetAverage = self.factory.createWidget(widgets.AlignWidgetAverage)
             addAlignmentDock("Axial Alignment Tool", self.alignWidgetAverage)
 
         # Rotational align widget
         if availableWidgetsInfo.AlignWidgetXY:
-            self.alignWidgetXY = factory.createWidget(widgets.AlignWidgetXY)
+            self.alignWidgetXY = self.factory.createWidget(widgets.AlignWidgetXY)
             addAlignmentDock("Rotational Alignment Tool", self.alignWidgetXY)
 
         # ulenses Alignment Tool
         if availableWidgetsInfo.AlignWidgetXY:
-            self.ulensesWidget = factory.createWidget(widgets.ULensesWidget)
+            self.ulensesWidget = self.factory.createWidget(widgets.ULensesWidget)
             addAlignmentDock("uLenses Tool", self.ulensesWidget)
 
         try:
@@ -131,19 +124,19 @@ class TempestaView(QtGui.QMainWindow):
         dockArea = DockArea()
 
         scanDock = Dock('Scan', size=(1, 1))
-        self.scanWidget = factory.createWidget(widgets.ScanWidget)
+        self.scanWidget = self.factory.createWidget(widgets.ScanWidget)
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock)
 
         if availableWidgetsInfo.BeadRecWidget:
             beadDock = Dock('Bead Rec', size=(1, 1))
-            self.beadRecWidget = factory.createWidget(widgets.BeadRecWidget)
+            self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)
             beadDock.addWidget(self.beadRecWidget)
             dockArea.addDock(beadDock)
 
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
-        self.positionerWidget = factory.createWidget(widgets.PositionerWidget)
+        self.positionerWidget = self.factory.createWidget(widgets.PositionerWidget)
         piezoDock.addWidget(self.positionerWidget)
         if alignmentDockLocation is not None:
             dockArea.addDock(piezoDock, 'bottom', alignmentDockLocation)
@@ -153,17 +146,17 @@ class TempestaView(QtGui.QMainWindow):
         rightContainer.addWidget(dockArea)
 
         # Add other widgets
-        self.imageWidget = factory.createWidget(widgets.ImageWidget)
+        self.imageWidget = self.factory.createWidget(widgets.ImageWidget)
         self.imageWidget.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         middleContainer.addWidget(self.imageWidget)
 
-        self.settingsWidget = factory.createWidget(widgets.SettingsWidget)
+        self.settingsWidget = self.factory.createWidget(widgets.SettingsWidget)
         leftContainer.addWidget(self.settingsWidget, 1)
 
-        self.viewWidget = factory.createWidget(widgets.ViewWidget)
+        self.viewWidget = self.factory.createWidget(widgets.ViewWidget)
         leftContainer.addWidget(self.viewWidget)
 
-        self.recordingWidget = factory.createWidget(widgets.RecordingWidget)
+        self.recordingWidget = self.factory.createWidget(widgets.RecordingWidget)
         leftContainer.addWidget(self.recordingWidget)
 
         console = ConsoleWidget(namespace={'pg': pg, 'np': np})

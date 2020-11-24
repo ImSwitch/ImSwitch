@@ -9,7 +9,7 @@ import nidaqmx
 import numpy as np
 from pyqtgraph.Qt import QtCore
 
-from controller.TempestaErrors import NidaqHelperError
+from controller.errors import NidaqHelperError
 
 
 class NidaqHelper(QtCore.QObject):

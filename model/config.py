@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
@@ -18,14 +18,33 @@ class DeviceInfo:
 
 
 @dataclass(frozen=True)
+class CameraInfo(DeviceInfo):
+    id: int  # index in camera list
+    properties: Dict[str, Any]
+
+
+@dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
     digitalDriver: Optional[str]  # null if the laser is analog
     digitalPorts: Optional[List[str]]  # null if the laser is analog
     color: str  # hex code
 
-    valueRangeMin: int  # mW if digital, V if analog
-    valueRangeMax: int  # mW if digital, V if analog
-    valueRangeStep: int  # mW if digital, V if analog
+    valueRangeMin: Optional[int]  # mW if digital, V if analog, null if binary
+    valueRangeMax: Optional[int]  # mW if digital, V if analog, null if binary
+    valueRangeStep: Optional[int]  # mW if digital, V if analog, null if binary
+
+    def getUnit(self):
+        return 'mW' if self.digitalDriver is not None else 'V'
+
+    def isFullDigital(self):
+        return (self.digitalDriver is not None and self.digitalPorts is not None
+                and len(self.digitalPorts) > 0)
+
+    def isAotf(self):
+        return not self.isFullDigital() and self.analogChannel is not None
+
+    def isBinary(self):
+        return not self.isFullDigital() and not self.isAotf()
 
 
 @dataclass(frozen=True)
@@ -71,8 +90,8 @@ class DesignersInfo:
 @dataclass_json
 @dataclass(frozen=True)
 class SetupInfo:
-    cameras: Dict[str, DeviceInfo]  # map from device ID to DeviceInfo
-                                    # NOTE: Only 1 camera is currently supported!
+    cameras: Dict[str, CameraInfo]  # map from device ID to CameraInfo
+
     lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
     stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
     scan: ScanInfo
@@ -82,9 +101,9 @@ class SetupInfo:
     availableWidgets: AvailableWidgetsInfo  # which widgets are available
     designers: DesignersInfo
 
-    def getDevice(self, deviceId):
+    def getDevice(self, deviceName):
         """ Returns the DeviceInfo for a specific device. """
-        return self.getAllDevices()[deviceId]
+        return self.getAllDevices()[deviceName]
 
     def getTTLDevices(self):
         devices = {}
@@ -101,3 +120,7 @@ class SetupInfo:
         return devices
 
 
+@dataclass_json
+@dataclass(frozen=True)
+class Options:
+    setupFileName: str  # file that contains SetupInfo

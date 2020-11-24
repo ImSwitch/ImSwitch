@@ -113,8 +113,8 @@ class HMockCamData:
     #
     # @param size The size of the data object in bytes.
     #
-    def __init__(self, size):
-        self.np_array = np.random.randint(1, 65536, int(size))
+    def __init__(self, size, max_value):
+        self.np_array = np.random.randint(1, max_value, int(size))
         self.size = size
 
     # __getitem__
@@ -165,6 +165,7 @@ class MockHamamatsu(Driver):
         self.max_backlog = 0
         self.number_image_buffers = 0
         self.hcam_data = []
+        self.max_value_for_mock_data = np.random.randint(65536)
 
         self.s = Q_(1, 's')
 
@@ -224,13 +225,13 @@ class MockHamamatsu(Driver):
 
         for i in range(2):
             # Create storage
-            hc_data = HMockCamData(self.frame_x * self.frame_y)
+            hc_data = HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
             frames.append(np.reshape(hc_data.np_array, (self.frame_x, self.frame_y)))
 
         return frames, (self.frame_x, self.frame_y)
 
     def getLast(self):
-        hc_data = HMockCamData(self.frame_x * self.frame_y)
+        hc_data = HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
         return np.reshape(hc_data.np_array, (self.frame_x, self.frame_y))
 
     def getModelInfo(self):
@@ -387,7 +388,7 @@ class MockHamamatsu(Driver):
         n_buffers = int((2.0 * 1024 * 1024 * 1024) / self.frame_bytes)
         self.number_image_buffers = n_buffers
 
-        self.hcam_data = [HMockCamData(self.frame_x * self.frame_y)
+        self.hcam_data = [HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
                           for i in range(1, 2)]
 
     # stopAcquisition

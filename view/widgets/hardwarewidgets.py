@@ -22,18 +22,12 @@ class PositionerWidget(Widget):
         self.setLayout(self.grid)
 
     def initControls(self, stagePiezzoInfos):
-        stagePiezzoPresets = self._defaultPreset.positioner.stagePiezzos
         for index, (stagePiezzoId, stagePiezzoInfo) in enumerate(stagePiezzoInfos.items()):
-            stagePiezzoPreset = (
-                stagePiezzoPresets[stagePiezzoId] if stagePiezzoId in stagePiezzoPresets
-                else guitools.PositionerPresetStagePiezzo()
-            )
-
             self.pars['Label' + stagePiezzoId] = QtGui.QLabel("<strong>{} = {:.2f} µm</strong>".format(stagePiezzoId, 0))
             self.pars['Label' + stagePiezzoId].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + stagePiezzoId] = QtGui.QPushButton("+")
             self.pars['DownButton' + stagePiezzoId] = QtGui.QPushButton("-")
-            self.pars['StepEdit' + stagePiezzoId] = QtGui.QLineEdit(stagePiezzoPreset.stepSize)
+            self.pars['StepEdit' + stagePiezzoId] = QtGui.QLineEdit("0")
             self.pars['StepUnit' + stagePiezzoId] = QtGui.QLabel(" µm")
 
             self.grid.addWidget(self.pars['Label' + stagePiezzoId], index, 0)
@@ -57,24 +51,18 @@ class LaserWidget(Widget):
 
     def initControls(self, laserInfos):
         self.laserModules = {}
-
-        laserPresets = self._defaultPreset.laserControl.lasers
-        for index, (laserId, laserInfo) in enumerate(laserInfos.items()):
-            laserPreset = (laserPresets[laserId] if laserId in laserPresets
-                           else guitools.LaserControlPreset())
-
-            units = 'mW' if laserInfo.digitalDriver is not None else 'V'  # TODO
-            control = LaserModule(name='<h3>{}<h3>'.format(laserId), units=units,
-                                  laser=laserId, color=laserInfo.color,
+        for index, (laserName, laserInfo) in enumerate(laserInfos.items()):
+            control = LaserModule(name='<h3>{}<h3>'.format(laserName), units=laserInfo.getUnit(),
+                                  laser=laserName, color=laserInfo.color,
                                   prange=(laserInfo.valueRangeMin, laserInfo.valueRangeMax),
                                   tickInterval=5, singleStep=laserInfo.valueRangeStep,
-                                  init_power=laserPreset.value)
+                                  init_power=laserInfo.valueRangeMin, isBinary=laserInfo.isBinary())
 
-            self.laserModules[laserId] = control
+            self.laserModules[laserName] = control
             self.grid.addWidget(control, 0, index, 4, 1)
 
         self.digModule = DigitalModule()
-        self.digModule.initControls(laserInfos, laserPresets)
+        self.digModule.initControls(laserInfos)
         self.grid.addWidget(self.digModule, 4, 0, 2, -1)
 
 
@@ -101,15 +89,12 @@ class DigitalModule(QtGui.QFrame):
         self.updateDigPowersButton = QtGui.QPushButton('Update powers')
         self.grid.addWidget(self.DigitalControlButton, 2, 0, 1, -1)
 
-    def initControls(self, laserInfos, laserPresets):
+    def initControls(self, laserInfos):
         self.powers = {}
 
-        for index, (laserId, laserInfo) in enumerate(laserInfos.items()):
-            laserPreset = (laserPresets[laserId] if laserId in laserPresets
-                           else guitools.LaserControlPreset())
-
-            power = QtGui.QLineEdit(laserPreset.value)
-            unit = QtGui.QLabel('mW' if laserInfo.digitalDriver is not None else 'V')  # TODO
+        for index, (laserName, laserInfo) in enumerate(laserInfos.items()):
+            power = QtGui.QLineEdit(str(laserInfo.valueRangeMin))
+            unit = QtGui.QLabel(laserInfo.getUnit())
             unit.setFixedWidth(20)
             modFrame = QtGui.QFrame()
             modGrid = QtGui.QGridLayout()
@@ -117,42 +102,54 @@ class DigitalModule(QtGui.QFrame):
             modGrid.addWidget(power, 0, 0)
             modGrid.addWidget(unit, 0, 1)
 
-            self.powers[laserId] = power
-            self.grid.addWidget(modFrame, 1, index)
+            self.powers[laserName] = power
+            self.grid.addWidget(modFrame, 1, index, 1, 1)
+            if laserInfo.isBinary():
+                sizePolicy = modFrame.sizePolicy()
+                sizePolicy.setRetainSizeWhenHidden(True)
+                modFrame.setSizePolicy(sizePolicy)
+                modFrame.hide()
 
 
 class LaserModule(QtGui.QFrame):
     """ Module from LaserWidget to handle a single laser. """
 
     def __init__(self, name, units, laser, color, prange, tickInterval, singleStep, init_power,
-                 *args, **kwargs):
+                 isBinary, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
         self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
         self.laser = laser
+
         self.name = QtGui.QLabel(name)
         self.name.setTextFormat(QtCore.Qt.RichText)
         self.name.setAlignment(QtCore.Qt.AlignCenter)
         self.name.setStyleSheet("font-size:16px")
         self.name.setFixedHeight(40)
+
         self.setPointLabel = QtGui.QLabel('Setpoint')
-        self.setPointEdit = QtGui.QLineEdit(init_power)
+        self.setPointEdit = QtGui.QLineEdit(str(init_power))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
+
         self.powerLabel = QtGui.QLabel('Power')
-        self.powerIndicator = QtGui.QLabel(init_power)
+        self.powerIndicator = QtGui.QLabel(str(init_power))
         self.powerIndicator.setFixedWidth(50)
         self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
+
         self.maxpower = QtGui.QLabel(str(prange[1]))
         self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
+
         self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.slider.setMinimum(prange[0])
-        self.slider.setMaximum(prange[1])
-        self.slider.setTickInterval(tickInterval)
-        self.slider.setSingleStep(singleStep)
-        self.slider.setValue(0)
+        if not isBinary:
+            self.slider.setMinimum(prange[0])
+            self.slider.setMaximum(prange[1])
+            self.slider.setTickInterval(tickInterval)
+            self.slider.setSingleStep(singleStep)
+            self.slider.setValue(0)
+
         self.minpower = QtGui.QLabel(str(prange[0]))
         self.minpower.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -160,6 +157,7 @@ class LaserModule(QtGui.QFrame):
         self.powerGrid = QtGui.QGridLayout()
         powerFrame.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Plain)
         powerFrame.setLayout(self.powerGrid)
+
         self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
         self.powerGrid.addWidget(self.setPointEdit, 2, 0)
         self.powerGrid.addWidget(QtGui.QLabel(units), 2, 1)
@@ -180,6 +178,11 @@ class LaserModule(QtGui.QFrame):
         self.setLayout(self.grid)
         self.grid.addWidget(self.name, 0, 0, 1, 2)
         self.grid.addWidget(powerFrame, 1, 0, 1, 2)
+        if isBinary:
+            sizePolicy = powerFrame.sizePolicy()
+            sizePolicy.setRetainSizeWhenHidden(True)
+            powerFrame.setSizePolicy(sizePolicy)
+            powerFrame.hide()
         self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
 
 
@@ -207,8 +210,7 @@ class BeadRecWidget(Widget):
 
         self.roiButton = QtGui.QPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-        self.runButton = QtGui.QPushButton('Run')
-        self.runButton.setCheckable(True)
+        self.runButton = QtGui.QCheckBox('Run')
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)

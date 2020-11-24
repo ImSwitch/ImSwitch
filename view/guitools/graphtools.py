@@ -29,6 +29,59 @@ def cubehelix(gamma=1.0, s=0.5, r=-1.5, h=1.0):
     return array
 
 
+def bestLevels(arr):
+    # Best cmin, cmax algorithm taken from ImageJ routine:
+    # http://cmci.embl.de/documents/120206pyip_cooking/
+    # python_imagej_cookbook#automatic_brightnesscontrast_button
+    pixelCount = arr.size
+    limit = pixelCount / 10
+    threshold = pixelCount / 5000
+    hist, bin_edges = np.histogram(arr, 256)
+    i = 0
+    found = False
+    count = 0
+    while True:
+        i += 1
+        count = hist[i]
+        if count > limit:
+            count = 0
+        found = count > threshold
+        if found or i >= 255:
+            break
+    hmin = i
+
+    i = 256
+    while True:
+        i -= 1
+        count = hist[i]
+        if count > limit:
+            count = 0
+        found = count > threshold
+        if found or i < 1:
+            break
+    hmax = i
+
+    return bin_edges[hmin], bin_edges[hmax]
+
+
+def setBestImageLimits(viewBox, width, height):
+    viewBox.setAspectLocked()
+    viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
+    viewBox.autoRange(padding=0)
+    viewBounds = viewBox.viewRange()
+    if viewBounds[0][1] >= viewBounds[1][1]:
+        viewBox.setLimits(yMin=-0.5, yMax=height - 0.5)
+        viewBox.autoRange(padding=0)
+        viewBounds = viewBox.viewRange()
+        viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1])
+    else:
+        viewBox.setLimits(xMin=-0.5, xMax=width - 0.5)
+        viewBox.autoRange(padding=0)
+        viewBounds = viewBox.viewRange()
+        viewBox.setLimits(yMin=viewBounds[1][0], yMax=viewBounds[1][1])
+
+
+
 class Grid:
 
     def __init__(self, viewBox):

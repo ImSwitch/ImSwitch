@@ -60,24 +60,33 @@ class ScanHelper(SuperScanHelper):
         # if not syncExpected == syncIncoming:
         #     raise IncompatibilityError('Incompatible sync parameters')
 
-    def make_full_scan(self, stageScanParameters, TTLParameters, setupInfo):
-        stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(stageScanParameters,
-                                                                               setupInfo,
-                                                                               returnFrames=True)
+    def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
+        return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
 
-        TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
+    def makeFullScan(self, stageScanParameters, TTLParameters, setupInfo, staticPositioner=False):
+        TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, setupInfo)
+
         # Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * TTLParameters['Sample_rate']
         if not TTLZeroPadSamples.is_integer():
             print('WARNING: Non-integer number of return samples, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
-        # Tile and pad TTL signals according to sync parameters
-        for target, signal in TTLCycleSignalsDict.items():
-            signal = np.tile(signal, positions[0])
-            signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype='bool'))
-            signal = np.tile(signal, positions[1] * positions[2])
 
-            TTLCycleSignalsDict[target] = signal
+        if not staticPositioner:
+            stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(
+                stageScanParameters, setupInfo, returnFrames=True
+            )
+
+            # Tile and pad TTL signals according to sync parameters
+            for target, signal in TTLCycleSignalsDict.items():
+                signal = np.tile(signal, positions[0])
+                signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype='bool'))
+                signal = np.tile(signal, positions[1] * positions[2])
+
+                TTLCycleSignalsDict[target] = signal
+        else:
+            stageScanSignalsDict = {}
+
         return {'stageScanSignalsDict': stageScanSignalsDict,
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 
@@ -102,7 +111,7 @@ if __name__ == '__main__':
 
     SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
     sh = ScanHelperFactory('ScanHelper')
-    fullsig = sh.make_full_scan(Stageparameters, TTLparameters)
+    fullsig = sh.makeFullScan(Stageparameters, TTLparameters)
     plt.plot(fullsig['stageScanSignalsDict']['Stage_X'])
     plt.plot(fullsig['stageScanSignalsDict']['Stage_Y'])
     plt.plot(fullsig['stageScanSignalsDict']['Stage_Z'])

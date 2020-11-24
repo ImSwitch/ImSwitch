@@ -1,7 +1,20 @@
 {
   "cameras": {
     "CAM": {
-      "digitalLine": 3
+      "digitalLine": 3,
+      "id": 0,
+      "properties": {
+        "readout_speed": 3,
+        "trigger_global_exposure": 5,
+        "trigger_active": 2,
+        "trigger_polarity": 2,
+        "exposure_time": 0.01,
+        "trigger_source": 1,
+        "subarray_hpos": 0,
+        "subarray_vpos": 0,
+        "subarray_hsize": 2048,
+        "subarray_vsize": 2048
+      }
     }
   },
   "lasers": {

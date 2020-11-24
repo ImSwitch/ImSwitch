@@ -6,7 +6,7 @@ Created on Tue Apr  7 16:37:09 2020
 """
 import numpy as np
 from pyqtgraph.Qt import QtCore
-
+from time import sleep
 
 class SingleCameraHelper(QtCore.QObject):
     """SingleCameraHelper deals with the Hamamatsu parameters and frame extraction
@@ -52,7 +52,7 @@ class SingleCameraHelper(QtCore.QObject):
 
     def _startAcquisition(self):
         self.__camera.startAcquisition()
-		sleep(0.3)
+        sleep(0.3)
 
     def _stopAcquisition(self):
         self.__camera.stopAcquisition()
@@ -97,7 +97,7 @@ class SingleCameraHelper(QtCore.QObject):
         # This should be the only place where self.frameStart is changed
         self.__frameStart = (vpos, hpos)
         # Only place self.shapes is changed
-        self.__shapes = (vsize, hsize)
+        self.__shape = (vsize, hsize)
 
     def changeTriggerSource(self, source):
         if source == 'Internal trigger':

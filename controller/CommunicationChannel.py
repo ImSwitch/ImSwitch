@@ -12,8 +12,6 @@ class CommunicationChannel(QtCore.QObject):
     """
     Communication Channel is a class that handles the communication between Master Controller
     and Widgets, or between Widgets.
-
-    TODO: This way of doing things may not be optimal.
     """
 
     updateImage = QtCore.pyqtSignal(np.ndarray, bool)  # (image, init)
@@ -21,6 +19,8 @@ class CommunicationChannel(QtCore.QObject):
     acquisitionStopped = QtCore.pyqtSignal()
 
     adjustFrame = QtCore.pyqtSignal(int, int)  # (width, height)
+
+    cameraSwitched = QtCore.pyqtSignal(str)  # (cameraName)
 
     gridToggle = QtCore.pyqtSignal()
 
@@ -59,8 +59,8 @@ class CommunicationChannel(QtCore.QObject):
     def getScanAttrs(self):
         return self.__main.scanController.getScanAttrs()
 
-    def getStartPos(self):
-        return self.__main.positionerController.getPos()
-
     def getDimsScan(self):
         return self.__main.scanController.getDimsScan()
+
+    def getStartPos(self):
+        return self.__main.positionerController.getPos()

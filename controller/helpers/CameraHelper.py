@@ -59,6 +59,7 @@ class CameraHelper(QtCore.QObject):
 
     def startAcquisition(self):
         self.__cameras[0].startAcquisition()
+        sleep(0.3)
         self.__thread.start()
 
     def stopAcquisition(self):
@@ -112,9 +113,9 @@ class CameraHelper(QtCore.QObject):
             self.__cameras[0].setPropertyValue('subarray_hpos', hpos)
 
         # This should be the only place where self.frameStart is changed
-        self.__frameStart = (hpos, vpos)
+        self.__frameStart = (vpos, hpos)
         # Only place self.shapes is changed
-        self.__shapes = (hsize, vsize)
+        self.__shapes = (vsize, hsize)
 
     def changeTriggerSource(self, source):
         if source == 'Internal trigger':

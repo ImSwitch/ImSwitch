@@ -9,13 +9,13 @@ import sys
 
 from pyqtgraph.Qt import QtGui
 
-from controller.TempestaController import TempestaController
-from model.TempestaModel import TempestaModel
-from view.TempestaView import TempestaView
+from controller.MainController import MainController
+from model.MainModel import MainModel
+from view.MainView import MainView
 
-model = TempestaModel()
+model = MainModel()
 app = QtGui.QApplication([])
-view = TempestaView(model.setupInfo.availableWidgets)
-controller = TempestaController(model, view)
+view = MainView(model.setupInfo.availableWidgets)
+controller = MainController(model, view)
 view.show()
 sys.exit(app.exec_())

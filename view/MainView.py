@@ -18,7 +18,7 @@ import view.guitools as guitools
 import view.widgets as widgets
 
 
-class TempestaView(QtGui.QMainWindow):
+class MainView(QtGui.QMainWindow):
     closing = QtCore.pyqtSignal()
 
     def __init__(self, availableWidgetsInfo, *args, **kwargs):
@@ -38,7 +38,7 @@ class TempestaView(QtGui.QMainWindow):
         # TODO
 
         # Window
-        self.setWindowTitle('Tempesta 2.0')
+        self.setWindowTitle('ImSwitch')
         self.cwidget = QtGui.QWidget()
         self.setCentralWidget(self.cwidget)
 

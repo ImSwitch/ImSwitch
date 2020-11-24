@@ -198,6 +198,9 @@ class ViewWidget(Widget):
         self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
 
     def initControls(self, cameraModels):
+        if len(cameraModels) <= 1:
+            self.nextCameraButton.hide()
+
         for cameraName, cameraModel in cameraModels.items():
             self.cameraList.addItem(f'{cameraModel} ({cameraName})', cameraName)
 

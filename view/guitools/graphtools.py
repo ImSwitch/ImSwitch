@@ -67,19 +67,11 @@ def bestLevels(arr):
 def setBestImageLimits(viewBox, width, height):
     viewBox.setAspectLocked()
     viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
-    viewBox.autoRange(padding=0)
-    viewBounds = viewBox.viewRange()
-    if viewBounds[0][1] >= viewBounds[1][1]:
-        viewBox.setLimits(yMin=-0.5, yMax=height - 0.5)
-        viewBox.autoRange(padding=0)
-        viewBounds = viewBox.viewRange()
-        viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1])
-    else:
-        viewBox.setLimits(xMin=-0.5, xMax=width - 0.5)
-        viewBox.autoRange(padding=0)
-        viewBounds = viewBox.viewRange()
-        viewBox.setLimits(yMin=viewBounds[1][0], yMax=viewBounds[1][1])
 
+    viewBox.setRange(xRange=(-0.5, width - 0.5), yRange=(-0.5, height - 0.5), padding=0)
+    viewBounds = viewBox.viewRange()
+    viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1],
+                      yMin=viewBounds[1][0], yMax=viewBounds[1][1])
 
 
 class Grid:

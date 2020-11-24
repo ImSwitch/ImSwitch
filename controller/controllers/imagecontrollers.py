@@ -92,10 +92,10 @@ class SettingsController(WidgetController):
         Y0par = self.y0par.value()
 
         # Round to closest "divisable by 4" value.
-        hpos = binning * X0par
-        vpos = binning * Y0par
-        hsize = binning * width
-        vsize = height
+        hpos = binning * Y0par
+        vpos = binning * X0par
+        hsize = binning * height
+        vsize = width
 
         hmodulus = 4
         vmodulus = 4
@@ -105,7 +105,7 @@ class SettingsController(WidgetController):
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
         self._master.cameraHelper.changeParameter(
-            lambda: self._master.cameraHelper.cropOrca(hpos, vpos, hsize, hsize)
+            lambda: self._master.cameraHelper.cropOrca(hpos, vpos, hsize, vsize)
         )
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
@@ -285,7 +285,7 @@ class ImageController(LiveUpdatedController):
     def update(self, im, init):
         """ Update new image in the viewbox. """
         if not init:
-            self._widget.img.setOnlyRenderVisible(True, render=False)
+            #self._widget.img.setOnlyRenderVisible(True, render=False)
             self._widget.levelsButton.setEnabled(True)
             self.autoLevels(im)
 

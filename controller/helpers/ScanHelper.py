@@ -8,7 +8,7 @@ Created on Tue Apr  7 17:00:05 2020
 import numpy as np
 
 from controller.SignalDesigner import SignalDesignerFactory
-from controller.TempestaErrors import IncompatibilityError
+from controller.errors import IncompatibilityError
 
 
 class ScanHelperFactory:

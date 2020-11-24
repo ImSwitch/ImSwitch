@@ -11,9 +11,9 @@ import numpy as np
 
 import constants
 # try:
-#    from TempestaErrors import InvalidChildClassError, IncompatibilityError
+#    from errors import InvalidChildClassError, IncompatibilityError
 # except ModuleNotFoundError:
-from controller.TempestaErrors import InvalidChildClassError
+from controller.errors import InvalidChildClassError
 
 
 class SignalDesignerFactory:

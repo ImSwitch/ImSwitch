@@ -10,7 +10,7 @@ import constants
 from model import config, instruments
 
 
-class TempestaModel:
+class MainModel:
     def __init__(self):
         configFilesDir = os.path.join(constants.rootFolderPath, 'config_files')
 

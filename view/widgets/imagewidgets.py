@@ -46,8 +46,9 @@ class CamParamTree(ParameterTree):
                        'limits': (1, 2048)},
                       {'name': 'Apply', 'type': 'action'},
                       {'name': 'New ROI', 'type': 'action'},
-                      {'name': 'Abort ROI', 'type': 'action',
-                       'align': 'right'}]},
+                      {'name': 'Abort ROI', 'type': 'action', 'align': 'right'},
+                      {'name': 'Update all cameras', 'type': 'bool', 'value': True}
+                  ]},
                   {'name': 'Timings', 'type': 'group', 'children': [
                       {'name': 'Set exposure time', 'type': 'float',
                        'value': cameraPreset.setExposureTime, 'limits': (0, 9999),
@@ -142,13 +143,13 @@ class SettingsWidget(Widget):
                                 translateSnap=True)
 
         # Add elements to GridLayout
-        self.grid = QtGui.QGridLayout()
-        self.setLayout(self.grid)
-        self.grid.addWidget(cameraTitle, 0, 0)
+        self.layout = QtGui.QVBoxLayout()
+        self.setLayout(self.layout)
+        self.layout.addWidget(cameraTitle)
 
     def initControls(self, roiInfos):
         self.tree = CamParamTree(roiInfos, self._defaultPreset.camera)
-        self.grid.addWidget(self.tree, 1, 0)
+        self.layout.addWidget(self.tree)
 
 
 class ViewWidget(Widget):
@@ -179,12 +180,26 @@ class ViewWidget(Widget):
                                           QtGui.QSizePolicy.Expanding)
         self.liveviewButton.setEnabled(True)
 
+        # Camera list
+        self.cameraListBox = QtGui.QHBoxLayout()
+        self.cameraListLabel = QtGui.QLabel('Current camera:')
+        self.cameraList = QtGui.QComboBox()
+        self.nextCameraButton = QtGui.QPushButton('Next Camera')
+        self.cameraListBox.addWidget(self.cameraListLabel)
+        self.cameraListBox.addWidget(self.cameraList, 1)
+        self.cameraListBox.addWidget(self.nextCameraButton)
+
         # Add elements to GridLayout
         self.viewCtrlLayout = QtGui.QGridLayout()
         self.setLayout(self.viewCtrlLayout)
-        self.viewCtrlLayout.addWidget(self.liveviewButton, 0, 0, 1, 2)
-        self.viewCtrlLayout.addWidget(self.gridButton, 1, 0)
-        self.viewCtrlLayout.addWidget(self.crosshairButton, 1, 1)
+        self.viewCtrlLayout.addLayout(self.cameraListBox, 0, 0, 1, 2)
+        self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 2)
+        self.viewCtrlLayout.addWidget(self.gridButton, 2, 0)
+        self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
+
+    def initControls(self, cameraModels):
+        for cameraName, cameraModel in cameraModels.items():
+            self.cameraList.addItem(f'{cameraModel} ({cameraName})', cameraName)
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
@@ -250,6 +265,9 @@ class RecordingWidget(Widget):
         recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
+        # Camera list
+        self.cameraList = QtGui.QComboBox()
+
         # Folder and filename fields
         baseOutputFolder = self._defaultPreset.recording.outputFolder
         if self._defaultPreset.recording.includeDateInOutputFolder:
@@ -314,6 +332,8 @@ class RecordingWidget(Widget):
         self.setLayout(recGrid)
 
         recGrid.addWidget(recTitle, 0, 0, 1, 3)
+        recGrid.addWidget(QtGui.QLabel('Camera to capture'), 1, 0)
+        recGrid.addWidget(self.cameraList, 1, 1, 1, 4)
         recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
         recGrid.addWidget(self.folderEdit, 2, 1, 1, 3)
         recGrid.addWidget(self.openFolderButton, 2, 4)
@@ -343,10 +363,17 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, 5)
         recGrid.addWidget(buttonWidget, 11, 0, 1, 0)
 
-        recGrid.setColumnMinimumWidth(0, 70)
-
         # Initial condition of fields and checkboxes.
         self.writable = True
         self.readyToRecord = False
         self.filenameEdit.setEnabled(False)
         self.untilSTOPbtn.setChecked(True)
+
+    def initControls(self, cameraModels):
+        if len(cameraModels) > 1:
+            self.cameraList.addItem('Current camera at start', -1)
+            self.cameraList.addItem('All cameras', -2)
+
+        for cameraName, cameraModel in cameraModels.items():
+            self.cameraList.addItem(f'{cameraModel} ({cameraName})', cameraName)
+

@@ -21,4 +21,5 @@ class MasterController:
         self.recordingHelper = RecordingHelper(self.__commChannel, self.cameraHelper)
         self.nidaqHelper = NidaqHelper(self.__model.setupInfo)
         self.scanHelper = ScanHelper(self.__model.setupInfo)  # Make sure compatibility
-        self.laserHelper = LaserHelper(self.__model.lasers, self.__model.setupInfo.lasers)
+        self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
+                                       self.nidaqHelper)

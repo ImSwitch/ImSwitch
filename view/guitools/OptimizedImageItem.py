@@ -29,7 +29,7 @@ class OptimizedImageItem(pg.ImageItem):
 
         # Prepare image computation worker
         self.imageARGBWorker = ImageARGBWorker()
-        self.imageARGBWorker.argbProduced.connect(self.updateQImage)
+        self.imageARGBWorker.qimageProduced.connect(self.updateQImage)
         self.imageARGBThread = QtCore.QThread()
         self.imageARGBWorker.moveToThread(self.imageARGBThread)
         self.sigImageReadyForARGB.connect(self.imageARGBWorker.produceARGB)
@@ -213,8 +213,7 @@ class OptimizedImageItem(pg.ImageItem):
     def getPixmap(self):
         return QtGui.QPixmap.fromImage(self.qimage)
 
-    def updateQImage(self, argb, alpha):
-        qimage = fn.makeQImage(argb, alpha, transpose=False)
+    def updateQImage(self, qimage):
         self.qimage = qimage
         self.update()
         self.sigImageDisplayed.emit()
@@ -226,7 +225,7 @@ class OptimizedImageItem(pg.ImageItem):
 
 
 class ImageARGBWorker(QtCore.QObject):
-    argbProduced = QtCore.pyqtSignal(np.ndarray, bool)
+    qimageProduced = QtCore.pyqtSignal(object)  # QtGui.QImage as type causes crash for some reason
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -254,7 +253,8 @@ class ImageARGBWorker(QtCore.QObject):
             else:
                 argbFull = argb
 
-            self.argbProduced.emit(argbFull, alpha)
+            qimage = fn.makeQImage(argbFull, alpha, transpose=False)
+            self.qimageProduced.emit(qimage)
         finally:
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages -= 1

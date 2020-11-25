@@ -117,11 +117,11 @@ class RecordingWorker(QtCore.QObject):
                         dataset = datasets[cameraName]
                         if (it + n) <= frames:
                             dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = np.array(newframes)
+                            dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
                             it += n
                         else:
                             dataset.resize(frames, axis=0)
-                            dataset[it:frames, :, :] = np.array(newframes[0:frames - it])
+                            dataset[it:frames, :, :] = np.reshape(newframes[0:frames - it], [frames-it, shapes[cameraName][0], shapes[cameraName][1]])
                             it = frames
                         self.__recordingHelper.commChannel.updateRecFrameNumber.emit(it)
                 self.__recordingHelper.commChannel.updateRecFrameNumber.emit(0)
@@ -139,7 +139,7 @@ class RecordingWorker(QtCore.QObject):
                         if n > 0:
                             dataset = datasets[cameraName]
                             dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = np.array(newframes)
+                            dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
                             it += n
                             self.__recordingHelper.commChannel.updateRecTime.emit(
                                 np.around(current, decimals=2)
@@ -158,7 +158,7 @@ class RecordingWorker(QtCore.QObject):
                         if n > 0:
                             dataset = datasets[cameraName]
                             dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = np.array(newframes)
+                            dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
                             it += n
         finally:
             [file.close() for file in files.values()]

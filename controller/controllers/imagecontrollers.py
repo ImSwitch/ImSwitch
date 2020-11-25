@@ -119,11 +119,6 @@ class SettingsController(WidgetController):
         width, height = camera.shape
         self._commChannel.adjustFrame.emit(width, height)
         self._widget.ROI.hide()
-        frameStart = camera.frameStart
-        self.x0par.setValue(frameStart[0])
-        self.y0par.setValue(frameStart[1])
-        self.widthPar.setValue(width)
-        self.heightPar.setValue(height)
 
         if camera == self._master.cameraHelper.getCurrentCameraName():
             self.updateParamsFromCamera()

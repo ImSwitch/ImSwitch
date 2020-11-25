@@ -343,7 +343,7 @@ class ImageController(LiveUpdatedController):
     def update(self, im, init):
         """ Update new image in the viewbox. """
         if not init:
-            #self._widget.img.setOnlyRenderVisible(True, render=False)
+            self._widget.img.setOnlyRenderVisible(True, render=False)
             self._widget.levelsButton.setEnabled(True)
             self.autoLevels(im)
 
@@ -360,7 +360,7 @@ class ImageController(LiveUpdatedController):
         """ Adjusts the viewbox to a new width and height. """
         self._widget.grid.update([width, height])
         guitools.setBestImageLimits(self._widget.vb, width, height)
-        #self._widget.img.render()
+        self._widget.img.render()
 
         self._lastWidth = width
         self._lastHeight = height

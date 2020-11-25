@@ -25,8 +25,8 @@ class PositionerWidget(Widget):
         for index, (stagePiezzoId, stagePiezzoInfo) in enumerate(stagePiezzoInfos.items()):
             self.pars['Label' + stagePiezzoId] = QtGui.QLabel("<strong>{} = {:.2f} µm</strong>".format(stagePiezzoId, 0))
             self.pars['Label' + stagePiezzoId].setTextFormat(QtCore.Qt.RichText)
-            self.pars['UpButton' + stagePiezzoId] = QtGui.QPushButton("+")
-            self.pars['DownButton' + stagePiezzoId] = QtGui.QPushButton("-")
+            self.pars['UpButton' + stagePiezzoId] = guitools.BetterPushButton("+")
+            self.pars['DownButton' + stagePiezzoId] = guitools.BetterPushButton("-")
             self.pars['StepEdit' + stagePiezzoId] = QtGui.QLineEdit("0")
             self.pars['StepUnit' + stagePiezzoId] = QtGui.QLabel(" µm")
 
@@ -81,12 +81,11 @@ class DigitalModule(QtGui.QFrame):
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size:12px")
         title.setFixedHeight(20)
-        self.grid.addWidget(title, 0, 0)
+        self.grid.addWidget(title, 0, 0, 1, -1)
 
-        self.DigitalControlButton = QtGui.QPushButton('Enable')
+        self.DigitalControlButton = guitools.BetterPushButton('Enable')
         self.DigitalControlButton.setCheckable(True)
-        self.DigitalControlButton.setStyleSheet("background-color: #A0A0A0")
-        self.updateDigPowersButton = QtGui.QPushButton('Update powers')
+        self.updateDigPowersButton = guitools.BetterPushButton('Update powers')
         self.grid.addWidget(self.DigitalControlButton, 2, 0, 1, -1)
 
     def initControls(self, laserInfos):
@@ -125,7 +124,7 @@ class LaserModule(QtGui.QFrame):
         self.name = QtGui.QLabel(name)
         self.name.setTextFormat(QtCore.Qt.RichText)
         self.name.setAlignment(QtCore.Qt.AlignCenter)
-        self.name.setStyleSheet("font-size:16px")
+        self.name.setStyleSheet(f'font-size:16px; border-bottom: 4px solid {color}')
         self.name.setFixedHeight(40)
 
         self.setPointLabel = QtGui.QLabel('Setpoint')
@@ -168,9 +167,7 @@ class LaserModule(QtGui.QFrame):
         self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
         self.powerGrid.addWidget(self.minpower, 9, 3)
 
-        self.enableButton = QtGui.QPushButton('ON')
-        style = "background-color: {}".format(color)
-        self.enableButton.setStyleSheet(style)
+        self.enableButton = guitools.BetterPushButton('ON')
         self.enableButton.setCheckable(True)
 
         # Add elements to GridLayout
@@ -208,7 +205,7 @@ class BeadRecWidget(Widget):
             tick.hide()
         self.cwidget.addItem(self.hist, row=1, col=2)
 
-        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtGui.QCheckBox('Run')
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),

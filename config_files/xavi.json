@@ -12,8 +12,8 @@
         "trigger_source": 1,
         "subarray_hpos": 0,
         "subarray_vpos": 0,
-        "subarray_hsize": 2048,
-        "subarray_vsize": 2048
+        "subarray_hsize": 2304,
+        "subarray_vsize": 2304
       }
     }
   },

@@ -39,6 +39,7 @@ class ScanController(SuperScanController):
         self._widget.loadScanBtn.clicked.connect(self.loadScan)
         self._widget.scanButton.clicked.connect(self.runScan)
         self._widget.previewButton.clicked.connect(self.previewScan)
+        self._widget.seqTimePar.textChanged.connect(self.plotSignalGraph)
         for deviceName in self._setupInfo.getTTLDevices():
             self._widget.pxParameters['sta' + deviceName].textChanged.connect(self.plotSignalGraph)
             self._widget.pxParameters['end' + deviceName].textChanged.connect(self.plotSignalGraph)

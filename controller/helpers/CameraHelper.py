@@ -92,14 +92,14 @@ class SingleCameraHelper(QtCore.QObject):
 
         def cropAction():
             self.__camera.setPropertyValue('subarray_vpos', 0)
-    		self.__camera.setPropertyValue('subarray_hpos', 0)
-    		self.__camera.setPropertyValue('subarray_vsize', 2304)
-    		self.__camera.setPropertyValue('subarray_hsize', 2304)
-    			
-    		self.__camera.setPropertyValue('subarray_vsize', vsize)
-    		self.__camera.setPropertyValue('subarray_hsize', hsize)
-    		self.__camera.setPropertyValue('subarray_vpos', vpos)
-    		self.__camera.setPropertyValue('subarray_hpos', hpos)
+            self.__camera.setPropertyValue('subarray_hpos', 0)
+            self.__camera.setPropertyValue('subarray_vsize', 2304)
+            self.__camera.setPropertyValue('subarray_hsize', 2304)
+            			
+            self.__camera.setPropertyValue('subarray_vsize', vsize)
+            self.__camera.setPropertyValue('subarray_hsize', hsize)
+            self.__camera.setPropertyValue('subarray_vpos', vpos)
+            self.__camera.setPropertyValue('subarray_hpos', hpos)
 
         self.changeParameter(cropAction)
 

@@ -19,4 +19,5 @@ class BetterPushButton(QtGui.QPushButton):
 
         fontMetrics = QtGui.QFontMetrics(self.font())
         textWidth = fontMetrics.width(text)
-        self.setStyleSheet(f'min-width: {textWidth + 8}px')
+        minWidth = max(20, textWidth + 8)
+        self.setStyleSheet(f'min-width: {minWidth}px')

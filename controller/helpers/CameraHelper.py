@@ -87,12 +87,16 @@ class SingleCameraHelper(QtCore.QObject):
                 self.__camera.getPropertyValue('timing_readout_time')[0],
                 self.__camera.getPropertyValue('internal_frame_rate')[0])
 
-    def cropOrca(self, hpos, vpos, hsize, vsize):
-        """Method to crop the frame read out by Orcaflash. """
-        self.__camera.setPropertyValue('subarray_vpos', vpos)
-        self.__camera.setPropertyValue('subarray_hpos', hpos)
-        self.__camera.setPropertyValue('subarray_vsize', vsize)
-        self.__camera.setPropertyValue('subarray_hsize', hsize)
+    def crop(self, hpos, vpos, hsize, vsize):
+        """Method to crop the frame read out by the camera. """
+
+        def cropAction():
+            self.__camera.setPropertyValue('subarray_vpos', vpos)
+            self.__camera.setPropertyValue('subarray_hpos', hpos)
+            self.__camera.setPropertyValue('subarray_vsize', vsize)
+            self.__camera.setPropertyValue('subarray_hsize', hsize)
+
+        self.changeParameter(cropAction)
 
         # This should be the only place where self.frameStart is changed
         self.__frameStart = (vpos, hpos)

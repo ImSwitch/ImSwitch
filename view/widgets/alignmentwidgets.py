@@ -19,7 +19,7 @@ class ULensesWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical Elements
-        self.ulensesButton = QtGui.QPushButton('uLenses')
+        self.ulensesButton = guitools.BetterPushButton('uLenses')
         self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
         self.xEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.xOffset)
         self.yEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.yOffset)
@@ -49,7 +49,7 @@ class AlignWidgetXY(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.XButton = QtGui.QRadioButton('X dimension')
         self.YButton = QtGui.QRadioButton('Y dimension')
@@ -74,9 +74,9 @@ class AlignWidgetAverage(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.roiButton = QtGui.QPushButton('Show ROI')
+        self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-        self.resetButton = QtGui.QPushButton('Reset graph')
+        self.resetButton = guitools.BetterPushButton('Reset graph')
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
                                 scaleSnap=True, translateSnap=True)
@@ -102,7 +102,7 @@ class AlignmentLineWidget(Widget):
         self.angleEdit = QtGui.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
         self.angle = np.float(self.angleEdit.text())
         self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
-        self.alignmentLineMakerButton = QtGui.QPushButton('Alignment Line')
+        self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
         pen = pg.mkPen(color=(255, 255, 0), width=0.5,
                        style=QtCore.Qt.SolidLine, antialias=True)
         self.alignmentLine = pg.InfiniteLine(
@@ -126,7 +126,7 @@ class FFTWidget(Widget):
         # Graphical elements
         self.showCheck = QtGui.QCheckBox('Show FFT')
         self.showCheck.setCheckable = True
-        self.changePosButton = QtGui.QPushButton('Period (pix)')
+        self.changePosButton = guitools.BetterPushButton('Period (pix)')
         self.linePos = QtGui.QLineEdit('4')
         self.lineRate = QtGui.QLineEdit('0')
         self.labelRate = QtGui.QLabel('Update rate')

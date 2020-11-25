@@ -35,8 +35,8 @@ class ScanWidget(Widget):
             "You need to be in digital laser modulation and external "
             "frame-trigger acquisition mode")
 
-        self.saveScanBtn = QtGui.QPushButton('Save Scan')
-        self.loadScanBtn = QtGui.QPushButton('Load Scan')
+        self.saveScanBtn = guitools.BetterPushButton('Save Scan')
+        self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
         self.sampleRateEdit = QtGui.QLineEdit()
 
@@ -55,10 +55,10 @@ class ScanWidget(Widget):
         self.scanRadio = QtGui.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
         self.contLaserPulsesRadio = QtGui.QRadioButton('Cont. Laser Pulses')
-        self.scanButton = QtGui.QPushButton('Scan')
+        self.scanButton = guitools.BetterPushButton('Scan')
         self.scanning = False
 
-        self.previewButton = QtGui.QPushButton('Plot scan path')
+        self.previewButton = guitools.BetterPushButton('Plot scan path')
         self.previewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                          QtGui.QSizePolicy.Expanding)
 

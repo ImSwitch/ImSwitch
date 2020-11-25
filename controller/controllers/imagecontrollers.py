@@ -112,8 +112,7 @@ class SettingsController(WidgetController):
         vsize = int(vmodulus * np.ceil(vsize / vmodulus))
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
-        camera.changeParameter(lambda: camera.cropOrca(hpos, vpos, hsize, vsize))
-
+        camera.crop(hpos, vpos, hsize, vsize)
 
         # Final shape values might differ from the user-specified one because of camera limitation x128
         width, height = camera.shape

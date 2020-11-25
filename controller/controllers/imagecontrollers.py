@@ -194,12 +194,20 @@ class SettingsController(WidgetController):
 
     def updateFrame(self, _=None):
         """ Change the image frame size and position in the sensor. """
-        if self.frameMode.value() == 'Custom':
-            self.x0par.setWritable(True)
-            self.y0par.setWritable(True)
-            self.widthPar.setWritable(True)
-            self.heightPar.setWritable(True)
 
+        customFrame = self.frameMode.value() == 'Custom'
+        
+        self.x0par.setWritable(customFrame)
+        self.y0par.setWritable(customFrame)
+        self.widthPar.setWritable(customFrame)
+        self.heightPar.setWritable(customFrame)
+        # Call .show() to prevent alignment issues
+        self.x0par.show()
+        self.y0par.show()
+        self.widthPar.show()
+        self.heightPar.show()
+
+        if customFrame:
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 
@@ -212,11 +220,6 @@ class SettingsController(WidgetController):
             self.ROIchanged()
 
         else:
-            self.x0par.setWritable(False)
-            self.y0par.setWritable(False)
-            self.widthPar.setWritable(False)
-            self.heightPar.setWritable(False)
-
             if self.frameMode.value() == 'Full chip':
                 fullChipShape = self._master.cameraHelper.execOnCurrent(lambda c: c.fullShape)
                 self.x0par.setValue(0)

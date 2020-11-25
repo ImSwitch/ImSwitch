@@ -46,7 +46,7 @@ class CamParamTree(ParameterTree):
                        'limits': (1, 2048)},
                       {'name': 'Apply', 'type': 'action'},
                       {'name': 'New ROI', 'type': 'action'},
-                      {'name': 'Abort ROI', 'type': 'action', 'align': 'right'},
+                      {'name': 'Abort ROI', 'type': 'action'},
                       {'name': 'Update all cameras', 'type': 'bool', 'value': True}
                   ]},
                   {'name': 'Timings', 'type': 'group', 'children': [
@@ -74,6 +74,7 @@ class CamParamTree(ParameterTree):
                        'siPrefix': True, 'suffix': 's'}]}]
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
+        self.setStyleSheet('QTreeView::item, QAbstractSpinBox, QComboBox { padding-top: 0; padding-bottom: 0; border: none }')
         self._writable = True
 
     def enableCropMode(self):
@@ -160,20 +161,20 @@ class ViewWidget(Widget):
 
         # Graphical elements
         # Grid
-        self.gridButton = QtGui.QPushButton('Grid')
+        self.gridButton = guitools.BetterPushButton('Grid')
         self.gridButton.setCheckable(True)
         self.gridButton.setEnabled(False)
         self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                       QtGui.QSizePolicy.Expanding)
 
         # Crosshair
-        self.crosshairButton = QtGui.QPushButton('Crosshair')
+        self.crosshairButton = guitools.BetterPushButton('Crosshair')
         self.crosshairButton.setCheckable(True)
         self.crosshairButton.setEnabled(False)
         self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                            QtGui.QSizePolicy.Expanding)
         # liveview
-        self.liveviewButton = QtGui.QPushButton('LIVEVIEW')
+        self.liveviewButton = guitools.BetterPushButton('LIVEVIEW')
         self.liveviewButton.setStyleSheet("font-size:20px")
         self.liveviewButton.setCheckable(True)
         self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
@@ -184,7 +185,7 @@ class ViewWidget(Widget):
         self.cameraListBox = QtGui.QHBoxLayout()
         self.cameraListLabel = QtGui.QLabel('Current camera:')
         self.cameraList = QtGui.QComboBox()
-        self.nextCameraButton = QtGui.QPushButton('Next Camera')
+        self.nextCameraButton = guitools.BetterPushButton('Next Camera')
         self.cameraListBox.addWidget(self.cameraListLabel)
         self.cameraListBox.addWidget(self.cameraList, 1)
         self.cameraListBox.addWidget(self.nextCameraButton)
@@ -212,7 +213,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.levelsButton = QtGui.QPushButton('Update Levels')
+        self.levelsButton = guitools.BetterPushButton('Update Levels')
         self.levelsButton.setEnabled(False)
         self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                         QtGui.QSizePolicy.Expanding)
@@ -279,16 +280,16 @@ class RecordingWidget(Widget):
             self.initialDir = baseOutputFolder
 
         self.folderEdit = QtGui.QLineEdit(self.initialDir)
-        self.openFolderButton = QtGui.QPushButton('Open')
+        self.openFolderButton = guitools.BetterPushButton('Open')
         self.specifyfile = QtGui.QCheckBox('Specify file name')
         self.filenameEdit = QtGui.QLineEdit('Current time')
 
         # Snap and recording buttons
-        self.snapTIFFButton = QtGui.QPushButton('Snap')
+        self.snapTIFFButton = guitools.BetterPushButton('Snap')
         self.snapTIFFButton.setStyleSheet("font-size:16px")
         self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                           QtGui.QSizePolicy.Expanding)
-        self.recButton = QtGui.QPushButton('REC')
+        self.recButton = guitools.BetterPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
         self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,

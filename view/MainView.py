@@ -24,9 +24,21 @@ class MainView(QtGui.QMainWindow):
     def __init__(self, availableWidgetsInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Style overrides
+        self.setStyleSheet('''
+            QPushButton { min-width: 20px }
+            QPushButton:checked { background-color: #29353D; border: 2px solid #1464A0 }
+            
+            QLabel { background-color: transparent; }
+            
+            DockLabel { padding: 0 }
+        ''')
+
+        # Preset controls
         self.presetDir = os.path.join(constants.rootFolderPath, 'presets')
         defaultPreset = guitools.Preset.getDefault(self.presetDir)
 
+        # Widget factory
         self.factory = widgets.WidgetFactory(defaultPreset)
 
         # Think what is self. and what is not !
@@ -57,7 +69,7 @@ class MainView(QtGui.QMainWindow):
 
         for preset in sorted(os.listdir(self.presetDir)):
             self.presetsMenu.addItem(preset)
-        self.loadPresetButton = QtGui.QPushButton('Load preset')
+        self.loadPresetButton = guitools.BetterPushButton('Load preset')
 
         presetPickerContainer = QtGui.QHBoxLayout()
         presetPickerContainer.addWidget(self.presetsMenu, 1)

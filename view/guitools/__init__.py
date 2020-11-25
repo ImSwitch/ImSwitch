@@ -8,5 +8,6 @@ from .filetools import *
 from .graphtools import *
 from .preset import *
 from .texttools import *
+from .BetterPushButton import *
 from .OptimizedImageItem import *
 from .TiffConverter import *

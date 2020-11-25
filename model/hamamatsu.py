@@ -763,11 +763,13 @@ class HamamatsuCameraMR(HamamatsuCamera):
             frames.append(np.reshape(im, (self.frame_x, self.frame_y)))
         return frames, (self.frame_x, self.frame_y)
         
-    def getLast(self):
+    def getLast(self, transpose=False):
         b_index, f_count = self.getAq_Info()
         im = self.hcam_data[b_index].getData()
-        return np.reshape(im.T, (self.frame_y, self.frame_x))
-
+        if transpose:
+            return np.reshape(im.T, (self.frame_y, self.frame_x))
+        else:
+            return np.reshape(im, (self.frame_x, self.frame_y))
         
     def updateIndices(self):
         b_index, f_count = self.getAq_Info()

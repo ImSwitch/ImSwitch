@@ -477,11 +477,12 @@ class RecorderController(WidgetController):
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
 
+            self.camerasBeingCaptured = self.getCamerasToCapture()
             self.attrs = self._commChannel.getCamAttrs()
             scan = self._commChannel.getScanAttrs()
             self.attrs.update(scan)
 
-            recordingArgs = self.getCamerasToCapture(), self.recMode, self.savename, self.attrs
+            recordingArgs = self.camerasBeingCaptured, self.recMode, self.savename, self.attrs
 
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingHelper.startRecording(
@@ -551,7 +552,9 @@ class RecorderController(WidgetController):
 
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-        self._master.recordingHelper.startRecording(self.recMode, fileName, self.attrs)
+        self._master.recordingHelper.startRecording(
+            self.camerasBeingCaptured, self.recMode, fileName, self.attrs
+        )
 
         time.sleep(0.3)
         self._commChannel.prepareScan.emit()

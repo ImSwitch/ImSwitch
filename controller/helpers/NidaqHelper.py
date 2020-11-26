@@ -100,7 +100,7 @@ class NidaqHelper(QtCore.QObject):
                                                  channel,
                                                  acquisitionTypeFinite,
                                                  '100kHzTimebase',
-                                                 100000, min_val, max_val)
+                                                 100000, min_val, max_val, 1)
 
                 signal = np.array([voltage])
                 try:

@@ -40,7 +40,7 @@ class CommunicationChannel(QtCore.QObject):
 
     endScan = QtCore.pyqtSignal()
 
-    moveZstage = QtCore.pyqtSignal(int)  # (step)
+    moveZstage = QtCore.pyqtSignal(float)  # (step)
 
     def __init__(self, main, *args, **kwargs):
         super().__init__(*args, **kwargs)

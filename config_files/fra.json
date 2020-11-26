@@ -34,9 +34,9 @@
     }
   },
   "lasers": {
-    "488 (Exc)": {
+    "488 (OFF)": {
       "analogChannel": null,
-      "digitalLine": 1,
+      "digitalLine": 3,
       "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
       "digitalPorts": ["COM12"],
       "color": "#00f7ff",
@@ -44,9 +44,9 @@
       "valueRangeMax": 200,
       "valueRangeStep": 1
     },
-    "488 (OFF)": {
+    "488 (EXC)": {
       "analogChannel": null,
-      "digitalLine": 3,
+      "digitalLine": 1,
       "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
       "digitalPorts": ["COM4"],
       "color": "#00f7ff",
@@ -64,39 +64,19 @@
       "valueRangeMax": 200,
       "valueRangeStep": 1
     },
-    "355": {
-      "analogChannel": null,
-      "digitalLine": 8,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM10"],
-      "color": "#610061",
-      "valueRangeMin": 0,
-      "valueRangeMax": 20,
-      "valueRangeStep": 1
-    },
-    "561": {
-      "analogChannel": null,
-      "digitalLine": 6,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM5"],
-      "color": "#c6ff00",
-      "valueRangeMin": 0,
-      "valueRangeMax": 200,
-      "valueRangeStep": 1
-    },
-    "TiSa": {
+    "590 (EXC)": {
       "analogChannel": 3,
       "digitalLine": 0,
       "digitalDriver": null,
       "digitalPorts": null,
-      "color": "#c80000",
+      "color": "#ffa500",
       "valueRangeMin": 0,
-      "valueRangeMax": 10,
+      "valueRangeMax": 1,
       "valueRangeStep": 1
     },
-    "TTL": {
+    "590 (OFF)": {
       "analogChannel": null,
-      "digitalLine": 7,
+      "digitalLine": 6,
       "digitalDriver": null,
       "digitalPorts": null,
       "color": "#ffc0cb",
@@ -108,19 +88,19 @@
   "stagePiezzos": {
     "X": {
       "analogChannel": 0,
-      "conversionFactor": 1.5870,
-      "minVolt": -10,
+      "conversionFactor": 1.75,
+      "minVolt": 0,
       "maxVolt": 10
     },
     "Y": {
       "analogChannel": 1,
-      "conversionFactor": 1.5870,
-      "minVolt": -10,
+      "conversionFactor": 1.75,
+      "minVolt": 0,
       "maxVolt": 10
     },
     "Z": {
       "analogChannel": 2,
-      "conversionFactor": 10.0,
+      "conversionFactor": 1.75,
       "minVolt": 0,
       "maxVolt": 10
     }
@@ -135,11 +115,11 @@
     }
   },
   "rois": {
-    "Imaging": {
-      "x": 428,
-      "y": 408,
-      "w": 1304,
-      "h": 1304
+    "Imaging_green": {
+      "x": 283,
+      "y": 1011,
+      "w": 564,
+      "h": 564
     },
     "Test 2": {
       "x": 256,

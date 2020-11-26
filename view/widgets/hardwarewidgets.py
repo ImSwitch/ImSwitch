@@ -53,7 +53,7 @@ class LaserWidget(Widget):
         self.laserModules = {}
         for index, (laserName, laserInfo) in enumerate(laserInfos.items()):
             control = LaserModule(name='<h3>{}<h3>'.format(laserName), units=laserInfo.getUnit(),
-                                  laser=laserName, color=laserInfo.color,
+                                  laser=laserName, wavelength=laserInfo.wavelength,
                                   prange=(laserInfo.valueRangeMin, laserInfo.valueRangeMax),
                                   tickInterval=5, singleStep=laserInfo.valueRangeStep,
                                   init_power=laserInfo.valueRangeMin, isBinary=laserInfo.isBinary())
@@ -113,7 +113,7 @@ class DigitalModule(QtGui.QFrame):
 class LaserModule(QtGui.QFrame):
     """ Module from LaserWidget to handle a single laser. """
 
-    def __init__(self, name, units, laser, color, prange, tickInterval, singleStep, init_power,
+    def __init__(self, name, units, laser, wavelength, prange, tickInterval, singleStep, init_power,
                  isBinary, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -124,6 +124,7 @@ class LaserModule(QtGui.QFrame):
         self.name = QtGui.QLabel(name)
         self.name.setTextFormat(QtCore.Qt.RichText)
         self.name.setAlignment(QtCore.Qt.AlignCenter)
+        color = guitools.color_utils.wavelength_to_hex(wavelength)
         self.name.setStyleSheet(f'font-size:16px; border-bottom: 4px solid {color}')
         self.name.setFixedHeight(40)
 

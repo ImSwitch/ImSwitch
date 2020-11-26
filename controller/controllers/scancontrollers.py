@@ -11,7 +11,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 
 from .basecontrollers import SuperScanController
-
+import view.guitools as guitools
 
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
@@ -225,8 +225,8 @@ class ScanController(SuperScanController):
 
             self._widget.graph.plot.plot(
                 np.linspace(0, self._TTLParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal)),
-                signal.astype(np.uint8),
-                pen=pg.mkPen(self._setupInfo.lasers[deviceName].color if isLaser else '#ffffff')
+                signal.astype(np.uint8),        
+                pen=pg.mkPen(guitools.color_utils.wavelength_to_hex(self._setupInfo.lasers[deviceName].wavelength) if isLaser else '#ffffff')
             )
 
         self._widget.graph.plot.setYRange(-0.1, 1.1)

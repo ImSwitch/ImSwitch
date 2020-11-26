@@ -11,3 +11,4 @@ from .texttools import *
 from .BetterPushButton import *
 from .OptimizedImageItem import *
 from .TiffConverter import *
+from .color_utils import *

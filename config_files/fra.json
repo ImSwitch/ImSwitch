@@ -39,7 +39,7 @@
       "digitalLine": 3,
       "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
       "digitalPorts": ["COM12"],
-      "color": "#00f7ff",
+      "wavelength": 488,
       "valueRangeMin": 0,
       "valueRangeMax": 200,
       "valueRangeStep": 1
@@ -49,7 +49,7 @@
       "digitalLine": 1,
       "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
       "digitalPorts": ["COM4"],
-      "color": "#00f7ff",
+      "wavelength": 488,
       "valueRangeMin": 0,
       "valueRangeMax": 200,
       "valueRangeStep": 1
@@ -59,27 +59,27 @@
       "digitalLine": 2,
       "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
       "digitalPorts": ["COM11"],
-      "color": "#4900bc",
+      "wavelength": 405,
       "valueRangeMin": 0,
       "valueRangeMax": 200,
       "valueRangeStep": 1
     },
-    "590 (EXC)": {
+    "592 (EXC)": {
       "analogChannel": 3,
       "digitalLine": 0,
       "digitalDriver": null,
       "digitalPorts": null,
-      "color": "#ffa500",
+      "wavelength": 592,
       "valueRangeMin": 0,
       "valueRangeMax": 1,
       "valueRangeStep": 1
     },
-    "590 (OFF)": {
+    "592 (OFF)": {
       "analogChannel": null,
       "digitalLine": 6,
       "digitalDriver": null,
       "digitalPorts": null,
-      "color": "#ffc0cb",
+      "wavelength": 592,
       "valueRangeMin": null,
       "valueRangeMax": null,
       "valueRangeStep": null

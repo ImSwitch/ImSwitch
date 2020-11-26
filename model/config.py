@@ -27,7 +27,7 @@ class CameraInfo(DeviceInfo):
 class LaserInfo(DeviceInfo):
     digitalDriver: Optional[str]  # null if the laser is analog
     digitalPorts: Optional[List[str]]  # null if the laser is analog
-    color: str  # hex code
+    wavelength: str  # hex code
 
     valueRangeMin: Optional[int]  # mW if digital, V if analog, null if binary
     valueRangeMax: Optional[int]  # mW if digital, V if analog, null if binary

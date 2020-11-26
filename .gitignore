@@ -61,3 +61,4 @@ target/
 
 # PyCharm
 .idea/
+config_files/options.json

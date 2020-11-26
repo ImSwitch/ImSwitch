@@ -151,7 +151,9 @@ class SettingsController(WidgetController):
 
     def changeTriggerSource(self):
         """ Change trigger (Internal or External). """
-        self.getCameraHelperFrameExecFunc()(
+        # TODO: Figure out if it should be changed which cameras this executes on,
+        #       or if the param perhaps should be moved somewhere else in the UI
+        self._master.cameraHelper.execOnAll(
             lambda c: c.changeTriggerSource(self.trigsourceparam.value())
         )
 

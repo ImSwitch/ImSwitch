@@ -1,7 +1,7 @@
 {
   "cameras": {
-    "CAM1": {
-      "digitalLine": 4,
+    "Red": {
+      "digitalLine": 5,
       "id": 0,
       "properties": {
         "readout_speed": 3,
@@ -16,8 +16,8 @@
         "subarray_vsize": 2048
       }
     },
-    "CAM2": {
-      "digitalLine": 5,
+    "Green": {
+      "digitalLine": 4,
       "id": 1,
       "properties": {
         "readout_speed": 3,

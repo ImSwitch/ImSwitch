@@ -100,9 +100,9 @@ class NidaqHelper(QtCore.QObject):
                                                  channel,
                                                  acquisitionTypeFinite,
                                                  '100kHzTimebase',
-                                                 100000, min_val, max_val, 1)
+                                                 100000, min_val, max_val, 2)
 
-                signal = np.array([voltage])
+                signal = voltage*np.ones(2, dtype=np.float)
                 try:
                     aotask.write(signal, auto_start=True)
                 except:

@@ -25,6 +25,8 @@ class ScanController(SuperScanController):
         self._TTLParameterDict = {
             'Sample_rate': self._setupInfo.scan.ttl.sampleRate
         }
+        self._settingParameters = False
+
         self.getParameters()
         self.plotSignalGraph()
 
@@ -115,33 +117,38 @@ class ScanController(SuperScanController):
         # self._widget.updateScan(self._widget.allDevices)
 
     def setParameters(self):
-        for i in range(len(self._setupInfo.stagePiezzos)):
-            stagePiezzoId = self._stageParameterDict['Targets[x]'][i]
+        self._settingParameters = True
+        try:
+            for i in range(len(self._setupInfo.stagePiezzos)):
+                stagePiezzoId = self._stageParameterDict['Targets[x]'][i]
 
-            scanDimPar = self._widget.scanPar['scanDim' + str(i)]
-            scanDimPar.setCurrentIndex(scanDimPar.findText(stagePiezzoId))
+                scanDimPar = self._widget.scanPar['scanDim' + str(i)]
+                scanDimPar.setCurrentIndex(scanDimPar.findText(stagePiezzoId))
 
-            self._widget.scanPar['size' + stagePiezzoId].setText(
-                str(round(self._stageParameterDict['Sizes[x]'][i], 3))
+                self._widget.scanPar['size' + stagePiezzoId].setText(
+                    str(round(self._stageParameterDict['Sizes[x]'][i], 3))
+                )
+
+                self._widget.scanPar['stepSize' + stagePiezzoId].setText(
+                    str(round(self._stageParameterDict['Step_sizes[x]'][i], 3))
+                )
+
+            for i in range(len(self._TTLParameterDict['Targets[x]'])):
+                deviceName = self._TTLParameterDict['Targets[x]'][i]
+
+                self._widget.pxParameters['sta' + deviceName].setText(
+                    str(round(1000 * self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3))
+                )
+                self._widget.pxParameters['end' + deviceName].setText(
+                    str(round(1000 * self._TTLParameterDict['TTLEnds[x,y]'][i][0], 3))
+                )
+
+            self._widget.seqTimePar.setText(
+                str(round(float(1000 * self._TTLParameterDict['Sequence_time_seconds']), 3))
             )
-
-            self._widget.scanPar['stepSize' + stagePiezzoId].setText(
-                str(round(self._stageParameterDict['Step_sizes[x]'][i], 3))
-            )
-
-        for i in range(len(self._TTLParameterDict['Targets[x]'])):
-            deviceName = self._TTLParameterDict['Targets[x]'][i]
-
-            self._widget.pxParameters['sta' + deviceName].setText(
-                str(round(1000 * self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3))
-            )
-            self._widget.pxParameters['end' + deviceName].setText(
-                str(round(1000 * self._TTLParameterDict['TTLEnds[x,y]'][i][0], 3))
-            )
-
-        self._widget.seqTimePar.setText(
-            str(round(float(1000 * self._TTLParameterDict['Sequence_time_seconds']), 3))
-        )
+        finally:
+            self._settingParameters = False
+            self.plotSignalGraph()
 
     def previewScan(self):
         print('previewScan')
@@ -163,6 +170,9 @@ class ScanController(SuperScanController):
             self._master.nidaqHelper.runScan(self.signalDic)
 
     def getParameters(self):
+        if self._settingParameters:
+            return
+
         self._stageParameterDict['Targets[x]'] = []
         self._stageParameterDict['Sizes[x]'] = []
         self._stageParameterDict['Step_sizes[x]'] = []
@@ -202,6 +212,9 @@ class ScanController(SuperScanController):
         if b: self.runScan()
 
     def plotSignalGraph(self):
+        if self._settingParameters:
+            return
+
         self.getParameters()
         TTLCycleSignalsDict = self._master.scanHelper.getTTLCycleSignalsDict(self._TTLParameterDict,
                                                                              self._setupInfo)

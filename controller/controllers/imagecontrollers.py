@@ -169,6 +169,7 @@ class SettingsController(WidgetController):
 
         # Timings
         realExpParValue, frameIntValue, readoutParValue, effFRParValue = currentCamera.getTimings()
+        self.expPar.setValue(realExpParValue)
         self.realExpPar.setValue(realExpParValue)
         self.frameInt.setValue(frameIntValue)
         self.readoutPar.setValue(readoutParValue)

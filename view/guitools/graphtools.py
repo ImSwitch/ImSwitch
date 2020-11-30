@@ -10,25 +10,6 @@ import pyqtgraph.ptime as ptime
 from pyqtgraph.Qt import QtCore, QtGui
 
 
-# taken from https://www.mrao.cam.ac.uk/~dag/CUBEHELIX/cubehelix.py
-def cubehelix(gamma=1.0, s=0.5, r=-1.5, h=1.0):
-    def get_color_function(p0, p1):
-        def color(x):
-            xg = x ** gamma
-            a = h * xg * (1 - xg) / 2
-            phi = 2 * np.pi * (s / 3 + r * x)
-            return xg + a * (p0 * np.cos(phi) + p1 * np.sin(phi))
-
-        return color
-
-    array = np.empty((256, 3))
-    abytes = np.arange(0, 1, 1 / 256.)
-    array[:, 0] = get_color_function(-0.14861, 1.78277)(abytes) * 255
-    array[:, 1] = get_color_function(-0.29227, -0.90649)(abytes) * 255
-    array[:, 2] = get_color_function(1.97294, 0.0)(abytes) * 255
-    return array
-
-
 def bestLevels(arr):
     # Best cmin, cmax algorithm taken from ImageJ routine:
     # http://cmci.embl.de/documents/120206pyip_cooking/

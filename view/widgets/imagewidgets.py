@@ -47,7 +47,7 @@ class CamParamTree(ParameterTree):
                       {'name': 'Apply', 'type': 'action'},
                       {'name': 'New ROI', 'type': 'action'},
                       {'name': 'Abort ROI', 'type': 'action'},
-                      {'name': 'Update all cameras', 'type': 'bool', 'value': True}
+                      {'name': 'Update all cameras', 'type': 'bool', 'value': False}
                   ]},
                   {'name': 'Timings', 'type': 'group', 'children': [
                       {'name': 'Set exposure time', 'type': 'float',

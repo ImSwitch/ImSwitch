@@ -149,8 +149,7 @@ class FFTWidget(Widget):
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1 / 256), guitools.cubehelix().astype(int))
-        self.hist.gradient.setColorMap(self.cubehelixCM)
+        self.hist.gradient.loadPreset('greyclip')
         for tick in self.hist.gradient.ticks:
             tick.hide()
         self.cwidget.addItem(self.hist, row=1, col=2)

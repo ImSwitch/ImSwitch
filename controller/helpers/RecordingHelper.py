@@ -75,8 +75,6 @@ class RecordingWorker(QtCore.QObject):
         self.__recordingHelper = recordingHelper
 
     def run(self):
-        it = 0
-
         files = {cameraName: h5py.File(f'{self.savename}_{cameraName}.hdf5', 'w')
                  for cameraName in self.cameraNames}
 
@@ -84,15 +82,17 @@ class RecordingWorker(QtCore.QObject):
                                                                          lambda c: c.shape)
                   for cameraName in self.cameraNames}
 
+        currentFrame = {}
         datasets = {}
         for cameraName in self.cameraNames:
+            currentFrame[cameraName] = 0
+
             datasets[cameraName] = files[cameraName].create_dataset(
                 'data', (1, shapes[cameraName][0], shapes[cameraName][1]),
                 maxshape=(None, shapes[cameraName][0], shapes[cameraName][1]),
                 dtype='i2'
             )
 
-        for cameraName in self.cameraNames:
             for key, value in self.attrs[cameraName].items():
                 files[cameraName].attrs[key] = value
 
@@ -108,43 +108,45 @@ class RecordingWorker(QtCore.QObject):
 
                 cameraName = self.cameraNames[0]
                 frames = self.frames
-                while self.__recordingHelper.record and it < frames:
+                while self.__recordingHelper.record and currentFrame[cameraName] < frames:
                     newframes, _ = self.__recordingHelper.cameraHelper.execOn(
                         cameraName, lambda c: c.getChunk()
                     )
                     n = len(newframes)
                     if n > 0:
+                        it = currentFrame[cameraName]
                         dataset = datasets[cameraName]
                         if (it + n) <= frames:
                             dataset.resize(n + it, axis=0)
                             dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
-                            it += n
+                            currentFrame[cameraName] += n
                         else:
                             dataset.resize(frames, axis=0)
                             dataset[it:frames, :, :] = np.reshape(newframes[0:frames - it], [frames-it, shapes[cameraName][0], shapes[cameraName][1]])
-                            it = frames
+                            currentFrame[cameraName] = frames
                         self.__recordingHelper.commChannel.updateRecFrameNumber.emit(it)
                 self.__recordingHelper.commChannel.updateRecFrameNumber.emit(0)
                 self.__recordingHelper.commChannel.endRecording.emit()
                 self.__recordingHelper.endRecording()
             elif self.recMode == RecMode.SpecTime:
                 start = time.time()
-                current = 0
-                while self.__recordingHelper.record and current < self.time:
+                currentRecTime = 0
+                while self.__recordingHelper.record and currentRecTime < self.time:
                     for cameraName in self.cameraNames:
                         newframes, _ = self.__recordingHelper.cameraHelper.execOn(
                             cameraName, lambda c: c.getChunk()
                         )
                         n = len(newframes)
                         if n > 0:
+                            it = currentFrame[cameraName]
                             dataset = datasets[cameraName]
                             dataset.resize(n + it, axis=0)
                             dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
-                            it += n
+                            currentFrame[cameraName] += n
                             self.__recordingHelper.commChannel.updateRecTime.emit(
-                                np.around(current, decimals=2)
+                                np.around(currentRecTime, decimals=2)
                             )
-                            current = time.time() - start
+                            currentRecTime = time.time() - start
                 self.__recordingHelper.commChannel.updateRecTime.emit(0)
                 self.__recordingHelper.commChannel.endRecording.emit()
                 self.__recordingHelper.endRecording()
@@ -156,10 +158,11 @@ class RecordingWorker(QtCore.QObject):
                         )
                         n = len(newframes)
                         if n > 0:
+                            it = currentFrame[cameraName]
                             dataset = datasets[cameraName]
                             dataset.resize(n + it, axis=0)
                             dataset[it:it + n, :, :] = np.reshape(newframes, [n, shapes[cameraName][0], shapes[cameraName][1]])
-                            it += n
+                            currentFrame[cameraName] += n
         finally:
             [file.close() for file in files.values()]
 

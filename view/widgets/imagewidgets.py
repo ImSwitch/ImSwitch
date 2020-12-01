@@ -47,7 +47,7 @@ class CamParamTree(ParameterTree):
                       {'name': 'Apply', 'type': 'action'},
                       {'name': 'New ROI', 'type': 'action'},
                       {'name': 'Abort ROI', 'type': 'action'},
-                      {'name': 'Update all cameras', 'type': 'bool', 'value': True}
+                      {'name': 'Update all cameras', 'type': 'bool', 'value': False}
                   ]},
                   {'name': 'Timings', 'type': 'group', 'children': [
                       {'name': 'Set exposure time', 'type': 'float',
@@ -231,9 +231,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
         self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.cubehelixCM = pg.ColorMap(np.arange(0, 1, 1 / 256),
-                                       guitools.cubehelix().astype(int))
-        self.hist.gradient.setColorMap(self.cubehelixCM)
+        self.hist.gradient.loadPreset('greyclip')
         self.grid = guitools.Grid(self.vb)
         self.crosshair = guitools.Crosshair(self.vb)
         for tick in self.hist.gradient.ticks:

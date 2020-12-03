@@ -26,12 +26,8 @@ class SettingsController(WidgetController):
         self._widget.initControls(self._setupInfo.rois)
 
         self.addROI()
-<<<<<<< HEAD
         self.initParameters()
         self.updateParamsFromCamera()
-=======
-        self.getParameters()
->>>>>>> parent of 88b3b54... Store pixel size separately for each camera
         self.setBinning()
         self.setExposure()
         self.changeTriggerSource()
@@ -321,15 +317,11 @@ class SettingsController(WidgetController):
 
             self.adjustFrame()
 
-<<<<<<< HEAD
         self.updateFrameActionButtons()
 
     def cameraSwitched(self, _, oldCameraName):
         """ Called when the user switches to another camera. """
         self.saveNonCameraHelperParamValues(oldCameraName)
-=======
-    def cameraSwitched(self):
->>>>>>> parent of 88b3b54... Store pixel size separately for each camera
         self.updateParamsFromCamera()
         self._master.cameraHelper.execOnCurrent(
             lambda c: self.adjustFrame(camera=c)

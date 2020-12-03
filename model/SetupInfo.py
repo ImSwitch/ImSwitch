@@ -1,14 +1,6 @@
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
+from dataclasses_json import dataclass_json, Undefined, CatchAll
 from typing import Any, Dict, List, Optional
-
-
-@dataclass(frozen=True)
-class ROIInfo:
-    x: int  # pixels
-    y: int  # pixels
-    w: int  # pixels
-    h: int  # pixels
 
 
 @dataclass(frozen=True)
@@ -72,22 +64,12 @@ class ScanInfo:
 
 
 @dataclass(frozen=True)
-class AvailableWidgetsInfo:
-    AlignWidgetXY: bool = True
-    AlignWidgetAverage: bool = True
-    AlignmentLineWidget: bool = True
-    BeadRecWidget: bool = True
-    FFTWidget: bool = True
-    ULensesWidget: bool = True
-
-
-@dataclass(frozen=True)
 class DesignersInfo:
     stageScanDesigner: str  # name of the stage scan designer class to use
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
 
 
-@dataclass_json
+@dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
     cameras: Dict[str, CameraInfo]  # map from device ID to CameraInfo
@@ -96,10 +78,9 @@ class SetupInfo:
     stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
     scan: ScanInfo
 
-    rois: Dict[str, ROIInfo]  # additional ROIs available to select in camera settings
-
-    availableWidgets: AvailableWidgetsInfo  # which widgets are available
     designers: DesignersInfo
+
+    _catchAll: CatchAll = None
 
     def getDevice(self, deviceName):
         """ Returns the DeviceInfo for a specific device. """
@@ -118,9 +99,3 @@ class SetupInfo:
             devices.update(deviceInfos)
 
         return devices
-
-
-@dataclass_json
-@dataclass(frozen=True)
-class Options:
-    setupFileName: str  # file that contains SetupInfo

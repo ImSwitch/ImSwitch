@@ -401,7 +401,6 @@ class RecorderController(WidgetController):
         super().__init__(*args, **kwargs)
         self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
 
-        self.recMode = RecMode.NotRecording
         self.lapseCurrent = 0
         self.lapseTotal = 0
         self.untilStop()

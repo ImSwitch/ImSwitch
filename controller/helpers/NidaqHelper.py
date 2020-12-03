@@ -149,32 +149,38 @@ class NidaqHelper(QtCore.QObject):
                 except:
                     pass
 
-            sampsInScan = len(AOsignals[0])
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-            self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels, acquisitionTypeFinite,
-                                                  r'100kHzTimebase', 100000, min_val=-10,
-                                                  max_val=10, sampsInScan=sampsInScan)
 
-            self.doTask = self.__createLineDOTask('ScanDOTask', DOlines, acquisitionTypeFinite,
-                                                  r'ao/SampleClock', 100000,
-                                                  sampsInScan=sampsInScan)
+            if len(AOsignals) > 0:
+                sampsInScan = len(AOsignals[0])
+                self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
+                                                      acquisitionTypeFinite, r'100kHzTimebase',
+                                                      100000, min_val=-10, max_val=10,
+                                                      sampsInScan=sampsInScan)
+                self.aoTask.write(np.array(AOsignals), auto_start=False)
 
-            self.aoTask.write(np.array(AOsignals), auto_start=False)
-            self.doTask.write(np.array(DOsignals), auto_start=False)
+                self.aoTaskWaiter = WaitThread()
+                self.aoTaskWaiter.connect(self.aoTask)
+                self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
 
-            self.aoTaskWaiter = WaitThread()
-            self.aoTaskWaiter.connect(self.aoTask)
-            self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+            if len(DOsignals) > 0:
+                sampsInScan = len(DOsignals[0])
+                self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
+                                                      acquisitionTypeFinite, r'ao/SampleClock',
+                                                      100000, sampsInScan=sampsInScan)
+                self.doTask.write(np.array(DOsignals), auto_start=False)
 
-            self.doTaskWaiter = WaitThread()
-            self.doTaskWaiter.connect(self.doTask)
-            self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
+                self.doTaskWaiter = WaitThread()
+                self.doTaskWaiter.connect(self.doTask)
+                self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
 
-            self.doTask.start()
-            self.aoTask.start()
+            if len(AOsignals) > 0:
+                self.aoTask.start()
+                self.aoTaskWaiter.start()
 
-            self.doTaskWaiter.start()
-            self.aoTaskWaiter.start()
+            if len(DOsignals) > 0:
+                self.doTask.start()
+                self.doTaskWaiter.start()
 
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:

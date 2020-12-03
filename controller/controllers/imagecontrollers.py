@@ -346,13 +346,13 @@ class SettingsController(WidgetController):
 
         return self._master.cameraHelper.execOnAll(
             lambda c: {
-                'Camera_model': c.model,
-                'Camera_binning': c.binning,
-                'Camera_exposure_time': c.getTimings()[0],
-                'Camera_ROI': [*c.frameStart, *c.shape]
-            }.update(
-                self.nonCameraHelpersParamValues[c.name]
-            )
+                **{
+                    'Camera_model': c.model,
+                    'Camera_binning': c.binning,
+                    'Camera_exposure_time': c.getTimings()[0],
+                    'Camera_ROI': [*c.frameStart, *c.shape]
+                },
+                **self.nonCameraHelpersParamValues[c.name]}
         )
 
     def getCameraHelperFrameExecFunc(self):

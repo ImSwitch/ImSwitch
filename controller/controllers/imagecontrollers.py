@@ -24,8 +24,15 @@ class SettingsController(WidgetController):
         super().__init__(*args, **kwargs)
         self._widget.initControls(self._setupInfo.rois)
 
+        self.nonCameraHelpersParamValues = {
+            camera: {
+                'Camera_pixel_size': 0.1
+            } for camera in self._setupInfo.cameras
+        }
+
         self.addROI()
         self.getParameters()
+        self.updateParamsFromCamera()
         self.setBinning()
         self.setExposure()
         self.changeTriggerSource()
@@ -168,6 +175,7 @@ class SettingsController(WidgetController):
         """ Update the real exposure times from the camera. """
 
         currentCamera = self._master.cameraHelper.getCurrentCamera()
+        currentNonCameraHelperParamValues = self.nonCameraHelpersParamValues[currentCamera.name]
 
         # Timings
         realExpParValue, frameIntValue, readoutParValue, effFRParValue = currentCamera.getTimings()
@@ -188,6 +196,9 @@ class SettingsController(WidgetController):
 
         # Model
         self.modelPar.setValue(currentCamera.model)
+
+        # Pixel size
+        self.umxpx.setValue(currentNonCameraHelperParamValues['Camera_pixel_size'])
 
     def updateFrame(self, _=None):
         """ Change the image frame size and position in the sensor. """
@@ -232,22 +243,35 @@ class SettingsController(WidgetController):
 
             self.adjustFrame()
 
-    def cameraSwitched(self):
+    def cameraSwitched(self, _, oldCameraName):
+        """ Called when the user switches to another camera. """
+        self.saveNonCameraHelperParamValues(oldCameraName)
         self.updateParamsFromCamera()
         self._master.cameraHelper.execOnCurrent(
             lambda c: self.adjustFrame(camera=c)
         )
 
+    def saveNonCameraHelperParamValues(self, cameraName):
+        """ Saves current param values that are not linked to CameraHelper. """
+        self.nonCameraHelpersParamValues[cameraName]['Camera_pixel_size'] = self.umxpx.value()
+
     def getCamAttrs(self):
-        return self._master.cameraHelper.execOnAll(lambda c: {
-            'Camera_pixel_size': self.umxpx.value(),  # TODO
-            'Camera_model': c.model,
-            'Camera_binning': c.binning,
-            'Camera_exposure_time': c.getTimings()[0],
-            'Camera_ROI': [*c.frameStart, *c.shape]
-        })
+        self.saveNonCameraHelperParamValues(self._master.cameraHelper.getCurrentCameraName())
+
+        return self._master.cameraHelper.execOnAll(
+            lambda c: {
+                'Camera_model': c.model,
+                'Camera_binning': c.binning,
+                'Camera_exposure_time': c.getTimings()[0],
+                'Camera_ROI': [*c.frameStart, *c.shape]
+            }.update(
+                self.nonCameraHelpersParamValues[c.name]
+            )
+        )
 
     def getCameraHelperFrameExecFunc(self):
+        """ Returns the camera helper exec function that should be used for
+        frame-related changes. """
         cameraHelper = self._master.cameraHelper
         return (cameraHelper.execOnAll if self.allCamerasFrameParam.value()
                 else cameraHelper.execOnCurrent)
@@ -388,10 +412,10 @@ class ImageController(LiveUpdatedController):
         cameraName = self._master.cameraHelper.getCurrentCameraName()
         self._savedLevels[cameraName] = self._widget.hist.getLevels()
 
-    def restoreSavedLevels(self, cameraName):
+    def restoreSavedLevels(self, newCameraName):
         """ Updates image levels from saved levels for camera that is switched to. """
-        if cameraName in self._savedLevels:
-            self._widget.hist.setLevels(*self._savedLevels[cameraName])
+        if newCameraName in self._savedLevels:
+            self._widget.hist.setLevels(*self._savedLevels[newCameraName])
 
 
 class RecorderController(WidgetController):

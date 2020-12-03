@@ -168,7 +168,6 @@ class RecordingWorker(QtCore.QObject):
 
 
 class RecMode(enum.Enum):
-    NotRecording = 0
     SpecFrames = 1
     SpecTime = 2
     ScanOnce = 3

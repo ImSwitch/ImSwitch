@@ -17,8 +17,11 @@ class NidaqHelper(QtCore.QObject):
 
     def __init__(self, setupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.busy = False
         self.__setupInfo = setupInfo
+
+        self.busy = False
+        self.aoTaskWaiter = WaitThread()
+        self.doTaskWaiter = WaitThread()
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []
@@ -149,6 +152,10 @@ class NidaqHelper(QtCore.QObject):
                 except:
                     pass
 
+            if len(AOsignals) < 1 and len(DOsignals) < 1:
+                self.busy = False
+                return
+
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
 
             if len(AOsignals) > 0:
@@ -159,7 +166,6 @@ class NidaqHelper(QtCore.QObject):
                                                       sampsInScan=sampsInScan)
                 self.aoTask.write(np.array(AOsignals), auto_start=False)
 
-                self.aoTaskWaiter = WaitThread()
                 self.aoTaskWaiter.connect(self.aoTask)
                 self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
 
@@ -170,17 +176,17 @@ class NidaqHelper(QtCore.QObject):
                                                       100000, sampsInScan=sampsInScan)
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
-                self.doTaskWaiter = WaitThread()
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
 
             if len(AOsignals) > 0:
                 self.aoTask.start()
-                self.aoTaskWaiter.start()
 
             if len(DOsignals) > 0:
                 self.doTask.start()
-                self.doTaskWaiter.start()
+
+            self.aoTaskWaiter.start()
+            self.doTaskWaiter.start()
 
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
@@ -195,6 +201,11 @@ class NidaqHelper(QtCore.QObject):
 class WaitThread(QtCore.QThread):
     waitdoneSignal = QtCore.pyqtSignal()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task = None
+        self.running = False
+
     def connect(self, task):
         self.task = task
         self.running = True
@@ -203,10 +214,13 @@ class WaitThread(QtCore.QThread):
         if self.running:
             self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
             self.close()
+        else:
+            self.quit()
 
     def close(self):
         self.running = False
-        self.task.stop()
-        self.task.close()
+        if self.task is not None:
+            self.task.stop()
+            self.task.close()
         self.waitdoneSignal.emit()
         self.quit()

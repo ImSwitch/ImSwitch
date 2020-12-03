@@ -270,10 +270,13 @@ class SettingsController(WidgetController):
         self.binPar.setValue(currentCamera.binning)
         frameStart = currentCamera.frameStart
         shape = currentCamera.shape
+        fullShape = currentCamera.fullShape
         self.x0par.setValue(frameStart[0])
         self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(shape[0])
+        self.widthPar.setLimits((1, fullShape[0]))
         self.heightPar.setValue(shape[1])
+        self.heightPar.setLimits((1, fullShape[1]))
 
         # Model
         self.modelPar.setValue(currentCamera.model)

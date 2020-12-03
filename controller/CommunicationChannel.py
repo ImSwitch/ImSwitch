@@ -20,7 +20,7 @@ class CommunicationChannel(QtCore.QObject):
 
     adjustFrame = QtCore.pyqtSignal(int, int)  # (width, height)
 
-    cameraSwitched = QtCore.pyqtSignal(str, str)  # (newCameraName, oldCameraName)
+    cameraSwitched = QtCore.pyqtSignal(str)  # (cameraName)
 
     gridToggle = QtCore.pyqtSignal()
 

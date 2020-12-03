@@ -29,24 +29,24 @@ class CamParamTree(ParameterTree):
 
         # Parameter tree for the camera configuration
         params = [{'name': 'Model', 'type': 'str', 'readonly': True},
-                  {'name': 'Pixel size', 'type': 'float',
-                   'value': cameraPreset.pixelSize, 'readonly': False, 'suffix': 'µm'},
+                  {'name': 'Pixel size', 'type': 'float', 'value': cameraPreset.pixelSize,
+                   'readonly': False, 'suffix': 'µm'},
                   {'name': 'Image frame', 'type': 'group', 'children': [
                       {'name': 'Binning', 'type': 'list', 'value': cameraPreset.binning,
                        'values': [1, 2, 4], 'tip': BinTip},
                       {'name': 'Mode', 'type': 'list', 'value': cameraPreset.mode,
                        'values': ['Full chip'] + list(roiInfos.keys()) + ['Custom']},
-                      {'name': 'X0', 'type': 'int', 'value': 0,
-                       'limits': (0, 2044)},
-                      {'name': 'Y0', 'type': 'int', 'value': 0,
-                       'limits': (0, 2044)},
-                      {'name': 'Width', 'type': 'int', 'value': 2304,
-                       'limits': (1, 2048)},
-                      {'name': 'Height', 'type': 'int', 'value': 2304,
-                       'limits': (1, 2048)},
-                      {'name': 'Apply', 'type': 'action'},
-                      {'name': 'New ROI', 'type': 'action'},
-                      {'name': 'Abort ROI', 'type': 'action'},
+                      {'name': 'X0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
+                      {'name': 'Y0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
+                      {'name': 'Width', 'type': 'int', 'value': 1, 'limits': (1, 65535)},
+                      {'name': 'Height', 'type': 'int', 'value': 1, 'limits': (1, 65535)},
+                      {'name': 'Apply', 'type': 'action', 'title': 'Apply'},
+                      {'name': 'New ROI', 'type': 'action', 'title': 'New ROI'},
+                      {'name': 'Abort ROI', 'type': 'action', 'title': 'Abort ROI'},
+                      {'name': 'Save mode', 'type': 'action',
+                       'title': 'Save current parameters as mode'},
+                      {'name': 'Delete mode', 'type': 'action',
+                       'title': 'Remove current mode from list'},
                       {'name': 'Update all cameras', 'type': 'bool', 'value': False}
                   ]},
                   {'name': 'Timings', 'type': 'group', 'children': [
@@ -54,17 +54,13 @@ class CamParamTree(ParameterTree):
                        'value': cameraPreset.setExposureTime, 'limits': (0, 9999),
                        'siPrefix': True, 'suffix': 's'},
                       {'name': 'Real exposure time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': ' s'},
+                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': ' s'},
                       {'name': 'Internal frame interval', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': ' s'},
+                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': ' s'},
                       {'name': 'Readout time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True,
-                       'suffix': 's'},
+                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': 's'},
                       {'name': 'Internal frame rate', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': False,
-                       'suffix': ' fps'}]},
+                       'value': 0, 'readonly': True, 'siPrefix': False, 'suffix': ' fps'}]},
                   {'name': 'Acquisition mode', 'type': 'group', 'children': [
                       {'name': 'Trigger source', 'type': 'list',
                        'value': cameraPreset.acquisitionMode,
@@ -72,6 +68,7 @@ class CamParamTree(ParameterTree):
                                   'External "Start-trigger"',
                                   'External "frame-trigger"'],
                        'siPrefix': True, 'suffix': 's'}]}]
+
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
         self.setStyleSheet('QTreeView::item, QAbstractSpinBox, QComboBox { padding-top: 0; padding-bottom: 0; border: none }')

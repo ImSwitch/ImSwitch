@@ -14,10 +14,9 @@ class SingleCameraHelper(QtCore.QObject):
 
     updateImageSignal = QtCore.pyqtSignal(np.ndarray, bool)
 
-    def __init__(self, camera, name, *args, **kwargs):
+    def __init__(self, camera, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__camera = camera
-        self.__name = name
 
         self.__frameStart = (0, 0)
         self.__binning = 1
@@ -26,10 +25,6 @@ class SingleCameraHelper(QtCore.QObject):
         self.__fullShape = self.__shape
         self.__image = np.array([])
         self.__model = self.__camera.camera_model.decode("utf-8")
-
-    @property
-    def name(self):
-        return self.__name
 
     @property
     def model(self):
@@ -159,7 +154,7 @@ class CameraHelper(QtCore.QObject):
         self.__singleCameraHelpers = {}
         self.__currentCameraName = None
         for cameraName, camera in cameras.items():
-            self.__singleCameraHelpers[cameraName] = SingleCameraHelper(camera, cameraName)
+            self.__singleCameraHelpers[cameraName] = SingleCameraHelper(camera)
 
             self.__singleCameraHelpers[cameraName].updateImageSignal.connect(
                 lambda image, init, cameraName=cameraName: self.updateImageSignal.emit(
@@ -183,9 +178,8 @@ class CameraHelper(QtCore.QObject):
         return self.__singleCameraHelpers[self.__currentCameraName]
 
     def setCurrentCamera(self, cameraName):
-        oldCameraName = self.__currentCameraName
         self.__currentCameraName = cameraName
-        self.__commChannel.cameraSwitched.emit(cameraName, oldCameraName)
+        self.__commChannel.cameraSwitched.emit(cameraName)
         self.execOnCurrent(lambda c: c.updateLatestFrame(True))
 
     def execOn(self, cameraName, func):

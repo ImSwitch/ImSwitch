@@ -402,6 +402,8 @@ class RecorderController(WidgetController):
         self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
 
         self.recMode = RecMode.NotRecording
+        self.lapseCurrent = 0
+        self.lapseTotal = 0
         self.untilStop()
 
         # Connect CommunicationChannel signals
@@ -499,15 +501,11 @@ class RecorderController(WidgetController):
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = int(self._widget.timeLapseEdit.text())
                 self.lapseCurrent = 0
-                self._master.recordingHelper.startRecording(*recordingArgs)
-                time.sleep(0.1)
-                self._commChannel.prepareScan.emit()
+                self.nextLapse()
             elif self.recMode == RecMode.DimLapse:
                 self.lapseTotal = int(self._widget.totalSlices.text())
                 self.lapseCurrent = 0
-                self._master.recordingHelper.startRecording(*recordingArgs)
-                time.sleep(0.3)
-                self._commChannel.prepareScan.emit()
+                self.nextLapse()
             else:
                 self._master.recordingHelper.startRecording(*recordingArgs)
         else:

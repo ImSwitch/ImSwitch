@@ -12,6 +12,7 @@ import time
 import numpy as np
 from pyqtgraph.Qt import QtCore
 
+import configfileutils
 import view.guitools as guitools
 from controller.helpers.RecordingHelper import RecMode
 from .basecontrollers import WidgetController, LiveUpdatedController
@@ -31,13 +32,14 @@ class SettingsController(WidgetController):
         }
 
         self.addROI()
-        self.getParameters()
+        self.initParameters()
         self.updateParamsFromCamera()
         self.setBinning()
         self.setExposure()
         self.changeTriggerSource()
         self.adjustFrame()
         self.updateFrame()
+        self.updateFrameActionButtons()
 
         # Connect CommunicationChannel signals
         self._commChannel.cameraSwitched.connect(self.cameraSwitched)
@@ -56,7 +58,7 @@ class SettingsController(WidgetController):
         else:
             self._widget.ROI.hide()
 
-    def getParameters(self):
+    def initParameters(self):
         """ Take parameters from the camera Tree map. """
         self.modelPar = self._widget.tree.p.param('Model')
         self.umxpx = self._widget.tree.p.param('Pixel size')
@@ -70,6 +72,8 @@ class SettingsController(WidgetController):
         self.applyParam = framePar.param('Apply')
         self.newROIParam = framePar.param('New ROI')
         self.abortROIParam = framePar.param('Abort ROI')
+        self.saveModeParam = framePar.param('Save mode')
+        self.deleteModeParam = framePar.param('Delete mode')
         self.allCamerasFrameParam = framePar.param('Update all cameras')
 
         timingsPar = self._widget.tree.p.param('Timings')
@@ -83,10 +87,12 @@ class SettingsController(WidgetController):
         acquisParam = self._widget.tree.p.param('Acquisition mode')
         self.trigsourceparam = acquisParam.param('Trigger source')
 
-        self.applyParam.sigStateChanged.connect(self.adjustFrame)
-        self.newROIParam.sigStateChanged.connect(self.updateFrame)
-        self.abortROIParam.sigStateChanged.connect(self.abortROI)
-        self.allCamerasFrameParam.sigStateChanged.connect(self.adjustFrame)
+        self.applyParam.sigActivated.connect(self.adjustFrame)
+        self.newROIParam.sigActivated.connect(self.updateFrame)
+        self.abortROIParam.sigActivated.connect(self.abortROI)
+        self.saveModeParam.sigActivated.connect(self.saveMode)
+        self.deleteModeParam.sigActivated.connect(self.deleteMode)
+        self.allCamerasFrameParam.sigValueChanged.connect(self.adjustFrame)
         self.trigsourceparam.sigValueChanged.connect(self.changeTriggerSource)
         self.expPar.sigValueChanged.connect(self.setExposure)
         self.binPar.sigValueChanged.connect(self.setBinning)
@@ -134,11 +140,29 @@ class SettingsController(WidgetController):
         frameStart = self._master.cameraHelper.execOnCurrent(lambda c: c.frameStart)
         pos = self._widget.ROI.pos()
         size = self._widget.ROI.size()
+
         self.x0par.setValue(frameStart[0] + int(pos[0]))
         self.y0par.setValue(frameStart[1] + int(pos[1]))
-
         self.widthPar.setValue(size[0])  # [0] is Width
         self.heightPar.setValue(size[1])  # [1] is Height
+
+    def updateFrameActionButtons(self):
+        """ Shows the frame-related buttons appropriate for the current frame
+        mode, and hides the others. """
+
+        self.applyParam.hide()
+        self.newROIParam.hide()
+        self.abortROIParam.hide()
+        self.saveModeParam.hide()
+        self.deleteModeParam.hide()
+
+        if self.frameMode.value() == 'Custom':
+            self.applyParam.show()
+            self.newROIParam.show()
+            self.abortROIParam.show()
+            self.saveModeParam.show()
+        elif self.frameMode.value() != 'Full chip':
+            self.deleteModeParam.show()
 
     def abortROI(self):
         """ Cancel and reset parameters of the ROI. """
@@ -149,6 +173,63 @@ class SettingsController(WidgetController):
         self.y0par.setValue(frameStart[1])
         self.widthPar.setValue(shapes[0])
         self.heightPar.setValue(shapes[1])
+
+    def saveMode(self):
+        """ Save the current frame mode parameters to the mode list. """
+
+        x0, y0, width, height = (self.x0par.value(), self.y0par.value(),
+                                 self.widthPar.value(), self.heightPar.value())
+
+        name = guitools.askForTextInput(
+            self._widget,
+            'Add frame mode',
+            f'Enter a name for this mode:\n(X0: {x0}; Y0: {y0}; Width: {width}; Height: {height})')
+
+        if not name:  # No name provided
+            return
+
+        add = True
+        alreadyExists = False
+        if name in self._setupInfo.rois:
+            alreadyExists = True
+            add = guitools.askYesNoQuestion(
+                self._widget,
+                'Frame mode already exists',
+                f'A frame mode with the name "{name}" already exists. Do you want to overwrite it"?'
+            )
+
+        if add:
+            if not alreadyExists:
+                # Add in GUI
+                newModeItems = self.frameMode.opts['limits'].copy()
+                newModeItems.insert(len(newModeItems) - 1, name)
+                self.frameMode.setLimits(newModeItems)
+
+            # Add to setup info
+            self._setupInfo.setROI(name, x0, y0, width, height)
+            configfileutils.saveSetupInfo(self._setupInfo)
+
+    def deleteMode(self):
+        """ Delete the current frame mode from the mode list (if it's a saved
+        custom ROI). """
+
+        modeToDelete = self.frameMode.value()
+
+        confirmationResult = guitools.askYesNoQuestion(
+            self._widget,
+            'Delete frame mode?',
+            f'Are you sure you want to delete the mode "{modeToDelete}"?'
+        )
+
+        if confirmationResult:
+            # Remove in GUI
+            newModeItems = self.frameMode.opts['limits'].copy()
+            newModeItems = [value for value in newModeItems if value != modeToDelete]
+            self.frameMode.setLimits(newModeItems)
+
+            # Remove from setup info
+            self._setupInfo.removeROI(modeToDelete)
+            configfileutils.saveSetupInfo(self._setupInfo)
 
     def setBinning(self):
         """ Update a new binning to the camera. """
@@ -242,6 +323,8 @@ class SettingsController(WidgetController):
                 self.heightPar.setValue(roiInfo.h)
 
             self.adjustFrame()
+
+        self.updateFrameActionButtons()
 
     def cameraSwitched(self, _, oldCameraName):
         """ Called when the user switches to another camera. """

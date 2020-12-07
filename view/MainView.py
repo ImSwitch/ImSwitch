@@ -79,21 +79,21 @@ class MainView(QtGui.QMainWindow):
         presetPickerContainer.addWidget(self.loadPresetButton)
         leftContainer.addLayout(presetPickerContainer)
 
-        # Alignment area
-        self.illumDockArea = DockArea()
+        # Dock area
+        dockArea = DockArea()
 
         # Laser dock
         laserDock = Dock("Laser Control", size=(300, 1))
         self.laserWidgets = self.factory.createWidget(widgets.LaserWidget)
         laserDock.addWidget(self.laserWidgets)
-        self.illumDockArea.addDock(laserDock)
+        dockArea.addDock(laserDock)
 
         # FFT dock
         if availableWidgetsInfo.FFTWidget:
             FFTDock = Dock("FFT Tool", size=(1, 1))
             self.fftWidget = self.factory.createWidget(widgets.FFTWidget)
             FFTDock.addWidget(self.fftWidget)
-            self.illumDockArea.addDock(FFTDock, 'below', laserDock)
+            dockArea.addDock(FFTDock, 'below', laserDock)
 
         alignmentDockLocation = (
             laserDock if widgetLayoutInfo.lasersAndAlignmentInSingleDock else None
@@ -103,9 +103,9 @@ class MainView(QtGui.QMainWindow):
             nonlocal alignmentDockLocation
             alignmentDock = Dock(name, size=(1, 1))
             alignmentDock.addWidget(alignmentWidget)
-            self.illumDockArea.addDock(alignmentDock,
-                                       'right' if alignmentDockLocation is None else 'above',
-                                       alignmentDockLocation)
+            dockArea.addDock(alignmentDock,
+                             'right' if alignmentDockLocation is None else 'above',
+                             alignmentDockLocation)
             alignmentDockLocation = alignmentDock
 
         # Line Alignment Tool
@@ -133,10 +133,14 @@ class MainView(QtGui.QMainWindow):
         except AttributeError:  # raised when laser dock has no siblings
             pass
 
-        rightContainer.addWidget(self.illumDockArea, 1)
-
-        # Dock Area
-        dockArea = DockArea()
+        # Piezo positioner
+        piezoDock = Dock('Piezo positioner', size=(1, 1))
+        self.positionerWidget = self.factory.createWidget(widgets.PositionerWidget)
+        piezoDock.addWidget(self.positionerWidget)
+        if alignmentDockLocation is not None:
+            dockArea.addDock(piezoDock, 'bottom', alignmentDockLocation)
+        else:
+            dockArea.addDock(piezoDock, 'right', laserDock)
 
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = self.factory.createWidget(widgets.ScanWidget)
@@ -148,15 +152,6 @@ class MainView(QtGui.QMainWindow):
             self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)
             beadDock.addWidget(self.beadRecWidget)
             dockArea.addDock(beadDock)
-
-        # Piezo positioner
-        piezoDock = Dock('Piezo positioner', size=(1, 1))
-        self.positionerWidget = self.factory.createWidget(widgets.PositionerWidget)
-        piezoDock.addWidget(self.positionerWidget)
-        if alignmentDockLocation is not None:
-            dockArea.addDock(piezoDock, 'bottom', alignmentDockLocation)
-        else:
-            dockArea.addDock(piezoDock, 'right', laserDock)
 
         rightContainer.addWidget(dockArea)
 

@@ -40,8 +40,8 @@ class ScanController(SuperScanController):
         self._widget.saveScanBtn.clicked.connect(self.saveScan)
         self._widget.loadScanBtn.clicked.connect(self.loadScan)
         self._widget.scanButton.clicked.connect(self.runScan)
-        self._widget.previewButton.clicked.connect(self.previewScan)
         self._widget.seqTimePar.textChanged.connect(self.plotSignalGraph)
+        self._widget.contLaserPulsesRadio.toggled.connect(self.setContLaserPulses)
         for deviceName in self._setupInfo.getTTLDevices():
             self._widget.pxParameters['sta' + deviceName].textChanged.connect(self.plotSignalGraph)
             self._widget.pxParameters['end' + deviceName].textChanged.connect(self.plotSignalGraph)
@@ -150,9 +150,6 @@ class ScanController(SuperScanController):
             self._settingParameters = False
             self.plotSignalGraph()
 
-    def previewScan(self):
-        print('previewScan')
-
     def runScan(self):
         self.getParameters()
         self.signalDic = self._master.scanHelper.makeFullScan(
@@ -206,6 +203,13 @@ class ScanController(SuperScanController):
 
         self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
+
+    def setContLaserPulses(self, isContLaserPulses):
+        for i in range(len(self._setupInfo.stagePiezzos)):
+            stagePiezzoId = self._widget.scanPar['scanDim' + str(i)].currentText()
+            self._widget.scanPar['scanDim' + str(i)].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['size' + stagePiezzoId].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['stepSize' + stagePiezzoId].setEnabled(not isContLaserPulses)
 
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)

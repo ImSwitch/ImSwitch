@@ -55,12 +55,9 @@ class ScanWidget(Widget):
         self.scanRadio = QtGui.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
         self.contLaserPulsesRadio = QtGui.QRadioButton('Cont. Laser Pulses')
-        self.scanButton = guitools.BetterPushButton('Scan')
-        self.scanning = False
 
-        self.previewButton = guitools.BetterPushButton('Plot scan path')
-        self.previewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                         QtGui.QSizePolicy.Expanding)
+        self.scanButton = guitools.BetterPushButton('Scan', 96)
+        self.scanButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
 
         self.continuousCheck = QtGui.QCheckBox('Repeat')
 
@@ -73,18 +70,18 @@ class ScanWidget(Widget):
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
 
-        self.grid.addWidget(self.loadScanBtn, 0, 0)
-        self.grid.addWidget(self.saveScanBtn, 0, 1)
-        self.grid.addWidget(self.scanRadio, 0, 2)
-        self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)  #
-        self.grid.addWidget(self.scanButton, 0, 4, 1, 2)
-        self.grid.addWidget(self.continuousCheck, 0, 6)
-
     def initControls(self, stagePiezzoInfos, TTLDeviceInfos):
         self.scanDims = list(stagePiezzoInfos.keys())
 
+        self.grid.addWidget(self.loadScanBtn, 0, 0)
+        self.grid.addWidget(self.saveScanBtn, 0, 1)
+        self.grid.addWidget(self.scanRadio, 0, 2)
+        self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)
+        self.grid.addItem(QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum), 0, 6)
+        self.grid.addWidget(self.scanButton, 1, 7, len(stagePiezzoInfos), 1)
+        self.grid.addWidget(self.continuousCheck, 0, 7)
+
         currentRow = 1
-        self.grid.addWidget(self.previewButton, 1, 6, len(stagePiezzoInfos), 2)
 
         stagePiezzoPresets = self._defaultPreset.scan.stagePiezzos
         for index, (stagePiezzoId, stagePiezzoInfo) in enumerate(stagePiezzoInfos.items()):

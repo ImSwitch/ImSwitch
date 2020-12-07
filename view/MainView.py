@@ -21,8 +21,11 @@ import view.widgets as widgets
 class MainView(QtGui.QMainWindow):
     closing = QtCore.pyqtSignal()
 
-    def __init__(self, availableWidgetsInfo, *args, **kwargs):
+    def __init__(self, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        availableWidgetsInfo = viewSetupInfo.availableWidgets
+        widgetLayoutInfo = viewSetupInfo.widgetLayout
 
         # Style overrides
         self.setStyleSheet('''
@@ -93,7 +96,7 @@ class MainView(QtGui.QMainWindow):
             self.illumDockArea.addDock(FFTDock, 'below', laserDock)
 
         alignmentDockLocation = (
-            laserDock if defaultPreset.miscOptions.lasersAndAlignmentTogether else None
+            laserDock if widgetLayoutInfo.lasersAndAlignmentInSingleDock else None
         )
 
         def addAlignmentDock(name, alignmentWidget):

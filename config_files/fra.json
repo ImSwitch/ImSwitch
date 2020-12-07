@@ -145,5 +145,8 @@
   "designers": {
     "stageScanDesigner": "BetaStageScanDesigner",
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
+  },
+  "widgetLayout": {
+    "lasersAndAlignmentInSingleDock": true
   }
 }

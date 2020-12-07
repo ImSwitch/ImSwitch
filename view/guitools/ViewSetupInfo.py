@@ -13,7 +13,7 @@ class ROIInfo:
 
 
 @dataclass(frozen=True)
-class AvailableWidgetsInfo:
+class WidgetAvailabilityInfo:
     AlignWidgetXY: bool = True
     AlignWidgetAverage: bool = True
     AlignmentLineWidget: bool = True
@@ -23,12 +23,21 @@ class AvailableWidgetsInfo:
 
 
 @dataclass(frozen=True)
+class WidgetLayoutInfo:
+    lasersAndAlignmentInSingleDock: bool = False
+
+
+@dataclass(frozen=True)
 class ViewSetupInfo(SetupInfo):
     # additional ROIs available to select in camera settings
     rois: Dict[str, ROIInfo] = field(default_factory=list)
 
     # which widgets are available
-    availableWidgets: AvailableWidgetsInfo = field(default_factory=AvailableWidgetsInfo)
+    availableWidgets: WidgetAvailabilityInfo = field(default_factory=WidgetAvailabilityInfo)
+
+    # widget layout
+    widgetLayout: WidgetLayoutInfo = field(default_factory=WidgetLayoutInfo)
+
 
     def setROI(self, name, x, y, width, height):
         self.rois[name] = ROIInfo(x=x, y=y, w=width, h=height)

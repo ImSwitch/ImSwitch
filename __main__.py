@@ -20,7 +20,7 @@ from view.guitools import ViewSetupInfo
 model = MainModel(configfileutils.loadSetupInfo(ViewSetupInfo))
 app = QtGui.QApplication([])
 app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB')))
-view = MainView(model.setupInfo.availableWidgets)
+view = MainView(model.setupInfo)
 controller = MainController(model, view)
 view.show()
 sys.exit(app.exec_())

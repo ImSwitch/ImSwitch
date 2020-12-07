@@ -383,7 +383,6 @@ class ViewController(WidgetController):
         self._widget.gridButton.setEnabled(True)
         if self._widget.liveviewButton.isChecked():
             self._master.cameraHelper.startAcquisition()
-            self._master.cameraHelper.updateImageSignal.connect(self._commChannel.updateImage)
         else:
             self._master.cameraHelper.stopAcquisition()
 

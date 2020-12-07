@@ -17,9 +17,14 @@ class MasterController:
         print('init master controller')
         self.__model = model
         self.__commChannel = commChannel
+
+        # Init helpers
         self.cameraHelper = CameraHelper(self.__commChannel, self.__model.cameras)
         self.recordingHelper = RecordingHelper(self.__commChannel, self.cameraHelper)
         self.nidaqHelper = NidaqHelper(self.__model.setupInfo)
         self.scanHelper = ScanHelper(self.__model.setupInfo)  # Make sure compatibility
         self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
                                        self.nidaqHelper)
+
+        # Connect signals
+        self.cameraHelper.updateImageSignal.connect(self.__commChannel.updateImage)

@@ -199,6 +199,7 @@ class FFTController(LiveUpdatedController):
         self.imageComputationThread = QtCore.QThread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.imageReceived.connect(self.imageComputationWorker.computeFFTImage)
+        self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
         self._commChannel.updateImage.connect(self.update)
@@ -217,13 +218,7 @@ class FFTController(LiveUpdatedController):
         """ Show or hide FFT. """
         self.active = self._widget.showCheck.isChecked()
         self.init = False
-        if self.active:
-            self._widget.img.setOnlyRenderVisible(True, render=False)
-            self.imageComputationThread.start()
-        else:
-            self.imageComputationThread.quit()
-            self.imageComputationThread.wait()
-            self._widget.img.setOnlyRenderVisible(False, render=True)
+        self._widget.img.setOnlyRenderVisible(self.active, render=False)
 
     def update(self, im, init):
         """ Update with new camera frame. """

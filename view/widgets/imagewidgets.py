@@ -71,8 +71,19 @@ class CamParamTree(ParameterTree):
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
-        self.setStyleSheet('QTreeView::item, QAbstractSpinBox, QComboBox { padding-top: 0; padding-bottom: 0; border: none }')
         self._writable = True
+
+        self.setStyleSheet('''
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
+        
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        ''')
 
     def enableCropMode(self):
         value = self.frameTransferParam.value()

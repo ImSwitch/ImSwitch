@@ -231,8 +231,10 @@ class FFTController(LiveUpdatedController):
 
     def displayImage(self, im):
         """ Displays the image in the view. """
+        shapeChanged = self._widget.img.image is None or im.shape != self._widget.img.image.shape
         self._widget.img.setImage(im, autoLevels=False)
-        if not self.init:
+
+        if shapeChanged or not self.init:
             self.adjustFrame()
             self._widget.hist.setLevels(*guitools.bestLevels(im))
             self._widget.hist.vb.autoRange()

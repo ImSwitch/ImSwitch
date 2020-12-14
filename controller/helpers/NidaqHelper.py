@@ -157,7 +157,7 @@ class NidaqHelper(QtCore.QObject):
                 return
 
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-
+            clockDO = r'100kHzTimebase'
             if len(AOsignals) > 0:
                 sampsInScan = len(AOsignals[0])
                 self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
@@ -168,11 +168,12 @@ class NidaqHelper(QtCore.QObject):
 
                 self.aoTaskWaiter.connect(self.aoTask)
                 self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+                clockDO = r'ao/SampleClock'
 
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
-                                                      acquisitionTypeFinite, r'ao/SampleClock',
+                                                      acquisitionTypeFinite, clockDO ,
                                                       100000, sampsInScan=sampsInScan)
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 

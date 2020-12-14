@@ -188,15 +188,8 @@ class NidaqHelper(QtCore.QObject):
                 self.aoTaskWaiter.start()
   
     def taskDone(self):
-        print("do running =")
-        print(self.doTaskWaiter.running)
-        print("ao running =")
-        print(self.aoTaskWaiter.running)
-        print("signalSent =")
-        print(self.signalSent)
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
             self.busy = False
-            print("task done inside if")
             self.signalSent = True
             self.scanDoneSignal.emit()
 

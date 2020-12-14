@@ -160,10 +160,11 @@ class ScanController(SuperScanController):
 
     def scanDone(self):
         print("scan done")
-        if not self._widget.continuousCheck.isChecked():
+        if not self._widget.contLaserPulsesRadio.isChecked():
             self.setScanButton(False)
             self._commChannel.endScan.emit()
         else:
+            print("Scan Done Static")
             self._master.nidaqHelper.runScan(self.signalDic)
 
     def getParameters(self):

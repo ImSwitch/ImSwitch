@@ -9,7 +9,7 @@ import os
 import sys
 
 from pyqtgraph.Qt import QtGui
-import qdarkstyle
+import imcommon.view.stylesheet
 
 import configfileutils
 from controller.MainController import MainController
@@ -17,9 +17,11 @@ from model.MainModel import MainModel
 from view.MainView import MainView
 from view.guitools import ViewSetupInfo
 
+os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
+
 model = MainModel(configfileutils.loadSetupInfo(ViewSetupInfo))
 app = QtGui.QApplication([])
-app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB')))
+app.setStyleSheet(imcommon.view.stylesheet.getBaseStyleSheet())
 view = MainView(model.setupInfo)
 controller = MainController(model, view)
 view.show()

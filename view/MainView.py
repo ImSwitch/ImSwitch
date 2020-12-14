@@ -11,11 +11,12 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.console import ConsoleWidget
 # import view.guitools as guitools
-from pyqtgraph.dockarea import Dock, DockArea
+from pyqtgraph.dockarea import Dock, DockArea, Container
 
 import constants
 import view.guitools as guitools
 import view.widgets as widgets
+from imreconstruct.Reconstruction_widget import ReconWid
 
 
 class MainView(QtGui.QMainWindow):
@@ -26,16 +27,6 @@ class MainView(QtGui.QMainWindow):
 
         availableWidgetsInfo = viewSetupInfo.availableWidgets
         widgetLayoutInfo = viewSetupInfo.widgetLayout
-
-        # Style overrides
-        self.setStyleSheet('''
-            QPushButton { min-width: 20px }
-            QPushButton:checked { background-color: #29353D; border: 2px solid #1464A0 }
-            
-            QLabel { background-color: transparent; }
-            
-            DockLabel { padding: 0 }
-        ''')
 
         # Preset controls
         self.presetDir = os.path.join(constants.rootFolderPath, 'presets')
@@ -54,11 +45,13 @@ class MainView(QtGui.QMainWindow):
 
         # Window
         self.setWindowTitle('ImSwitch')
-        self.cwidget = QtGui.QWidget()
-        self.setCentralWidget(self.cwidget)
+        self.moduleTabs = QtGui.QTabWidget()
+        self.moduleTabs.setTabPosition(QtGui.QTabWidget.TabPosition.West)
+        self.setCentralWidget(self.moduleTabs)
 
+        self.mainWidget = QtGui.QWidget()
         layout = QtGui.QHBoxLayout()
-        self.cwidget.setLayout(layout)
+        self.mainWidget.setLayout(layout)
 
         leftContainer = QtGui.QVBoxLayout()
         leftContainer.setContentsMargins(0, 0, 0, 0)
@@ -177,6 +170,13 @@ class MainView(QtGui.QMainWindow):
         layout.addLayout(leftContainer, 1)
         layout.addLayout(middleContainer, 10)
         layout.addLayout(rightContainer, 1)
+
+        # Add tabs
+        self.moduleTabs.addTab(self.mainWidget, 'Camera Interface')
+        self.moduleTabs.addTab(ReconWid(), 'Image Reconstruction')
+
+        # Maximize window
+        self.showMaximized()
 
     def closeEvent(self, event):
         self.closing.emit()

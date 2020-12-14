@@ -4,14 +4,14 @@ Return_time_seconds = 0.01
 Targets[x] = ['X', 'Y', 'Z']
 Sizes[x] = [0.918, 0.918, 0.0]
 Step_sizes[x] = [0.035, 0.035, 10.0]
-Start[x] = [0, 0, 1.9999999999999998]
+Start[x] = [0, 0, 0]
 Sequence_time_seconds = 0.011
 
 [TTLParameterDict]
 Sample_rate = 100000
 Targets[x] = ['405', '488', '473', 'CAM']
-TTLStarts[x,y] = [[0.0005], [0.0011], [0.0037], [0.0037]]
-TTLEnds[x,y] = [[0.001], [0.0036], [0.0047], [0.0047]]
+TTLStarts[x,y] = [[0.0005], [0.0011], [0.004200000000000001], [0.004200000000000001]]
+TTLEnds[x,y] = [[0.001], [0.0040999999999999995], [0.0052], [0.0052]]
 Sequence_time_seconds = 0.011
 
 [Modes]

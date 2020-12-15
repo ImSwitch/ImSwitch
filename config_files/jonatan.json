@@ -1,0 +1,154 @@
+{
+  "cameras": {
+    "CAM": {
+      "digitalLine": 3,
+      "id": 0,
+      "properties": {
+        "readout_speed": 3,
+        "trigger_global_exposure": 5,
+        "trigger_active": 2,
+        "trigger_polarity": 2,
+        "exposure_time": 0.01,
+        "trigger_source": 1,
+        "subarray_hpos": 0,
+        "subarray_vpos": 0,
+        "subarray_hsize": 512,
+        "subarray_vsize": 512
+      }
+    }
+  },
+  "lasers": {
+    "510": {
+      "analogChannel": null,
+      "digitalLine": 0,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM11"],
+      "wavelength": 510,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1000,
+      "valueRangeStep": 1
+    },
+    "561": {
+      "analogChannel": null,
+      "digitalLine": 1,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM12"],
+      "wavelength": 561,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
+    },
+    "561AOTF": {
+      "analogChannel": null,
+      "digitalLine": 2,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM13"],
+      "wavelength": 561,
+      "valueRangeMin": 0,
+      "valueRangeMax": 23,
+      "valueRangeStep": 0.5
+    },
+    "640": {
+      "analogChannel": null,
+      "digitalLine": 3,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM14"],
+      "wavelength": 640,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
+    },
+    "640AOTF": {
+      "analogChannel": null,
+      "digitalLine": 4,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM15"],
+      "wavelength": 640,
+      "valueRangeMin": 0,
+      "valueRangeMax": 200,
+      "valueRangeStep": 1
+    },
+    "775": {
+      "analogChannel": null,
+      "digitalLine": 5,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM16"],
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 3000,
+      "valueRangeStep": 1
+    },
+    "775AOM": {
+      "analogChannel": 3,
+      "digitalLine": 1,
+      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+      "digitalPorts": ["COM17"],
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
+    }
+  },
+  "stagePiezzos": {
+    "X": {
+      "analogChannel": 0,
+      "conversionFactor": 1.5870,
+      "minVolt": -10,
+      "maxVolt": 10
+    },
+    "Y": {
+      "analogChannel": 1,
+      "conversionFactor": 1.5870,
+      "minVolt": -10,
+      "maxVolt": 10
+    },
+    "Z": {
+      "analogChannel": 2,
+      "conversionFactor": 10.0,
+      "minVolt": 0,
+      "maxVolt": 10
+    }
+  },
+  "scan": {
+    "stage": {
+      "sampleRate": 100000,
+      "returnTime": 0.01
+    },
+    "ttl": {
+      "sampleRate": 100000
+    }
+  },
+  "rois": {
+    "Fast scan": {
+      "x": 256,
+      "y": 256,
+      "w": 200,
+      "h": 200
+    },
+    "Imaging": {
+      "x": 256,
+      "y": 256,
+      "w": 512,
+      "h": 512
+    }
+  },
+  "availableWidgets": {
+    "AlignWidgetXY": false,
+    "AlignWidgetAverage": false,
+    "AlignmentLineWidget": false,
+    "BeadRecWidget": false,
+    "FFTWidget": false,
+    "ULensesWidget": false,
+    "SLMWidget": true
+  },
+  "designers": {
+    "stageScanDesigner": "BetaStageScanDesigner",
+    "TTLCycleDesigner": "BetaTTLCycleDesigner"
+  },
+  "slms": {
+    "slm": {
+      "width": 600,
+      "height": 792
+    }
+  }
+}

@@ -62,3 +62,6 @@ target/
 # PyCharm
 .idea/
 config_files/options.json
+dlls/cudart64_90.dll
+dlls/GPU_acc_recon.dll
+dlls/opencv_core340.dll

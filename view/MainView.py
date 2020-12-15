@@ -147,6 +147,12 @@ class MainView(QtGui.QMainWindow):
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock)
 
+        # SLM widget dock
+        slmDock = Dock('SLM', size=(1, 1))
+        self.slmWidget = self.factory.createWidget(widgets.SLMWidget)
+        slmDock.addWidget(self.slmWidget)
+        dockArea.addDock(slmDock, 'above', scanDock)
+
         if availableWidgetsInfo.BeadRecWidget:
             beadDock = Dock('Bead Rec', size=(1, 1))
             self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)

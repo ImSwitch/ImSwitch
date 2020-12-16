@@ -37,6 +37,7 @@ class MainController:
         self.recorderController = self.__factory.createController(controllers.RecorderController, self.__view.recordingWidget)
         self.viewController = self.__factory.createController(controllers.ViewController, self.__view.viewWidget)
         self.settingsController = self.__factory.createController(controllers.SettingsController, self.__view.settingsWidget)
+        self.slmController = self.__factory.createController(controllers.SLMController, self.__view.slmWidget)
 
         if model.setupInfo.availableWidgets.BeadRecWidget:
             self.beadController = self.__factory.createController(controllers.BeadController, self.__view.beadRecWidget)

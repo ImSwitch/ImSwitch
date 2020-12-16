@@ -140,8 +140,9 @@ class MainView(QtGui.QMainWindow):
         if alignmentDockLocation is not None:
             dockArea.addDock(piezoDock, 'bottom', alignmentDockLocation)
         else:
-            dockArea.addDock(piezoDock, 'right', laserDock)
+            dockArea.addDock(piezoDock, 'bottom', laserDock)
 
+        # Scan widget dock
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = self.factory.createWidget(widgets.ScanWidget)
         scanDock.addWidget(self.scanWidget)

@@ -11,6 +11,101 @@ import controller.presets as presets
 from .basecontrollers import WidgetController
 
 
+class SLMController(WidgetController):
+    ''' Linked to SLMWidget. '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._widget.initControls()
+        self.loadPreset(self._defaultPreset)
+
+        # list all the buttons I want to connect to, and create functions with mock output for now
+        # Connect SLMWidget buttons
+        self._widget.controlPanel.upButton.clicked.connect(lambda: self.moveMask('up'))  # change 'up' to (x,y)=(0,1)
+        self._widget.controlPanel.downButton.clicked.connect(lambda: self.moveMask('down'))  # change 'down' to (x,y)=(0,-1)
+        self._widget.controlPanel.leftButton.clicked.connect(lambda: self.moveMask('left'))  # change 'left' to (x,y)=(-1,0)
+        self._widget.controlPanel.rightButton.clicked.connect(lambda: self.moveMask('right'))  # change 'right' to (x,y)=(1,0)
+
+        self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
+        self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
+
+        self._widget.controlPanel.blackButton.clicked.connect(self.setBlack)
+        self._widget.controlPanel.gaussiansButton.clicked.connect(self.setGauss)
+        
+        self._widget.controlPanel.halfButton.clicked.connect(self.setHalf)
+        self._widget.controlPanel.quadrantButton.clicked.connect(self.setQuad)
+        self._widget.controlPanel.hexButton.clicked.connect(self.setHex)
+        self._widget.controlPanel.splitbullButton.clicked.connect(self.setSplit)
+
+        # Connect SLMWidget parameter tree updates
+        self.applySlmParam = self._widget.slmParameterTree.p.param('Apply')
+        self.applySlmParam.sigStateChanged.connect(self.applySlm)
+        self.applyAberParam = self._widget.aberParameterTree.p.param('Apply')
+        self.applyAberParam.sigStateChanged.connect(self.applyAber)
+
+    # Button pressed functions
+    def moveMask(self, direction):
+        amount = self._widget.controlPanel.incrementSpinBox.value()
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        print(f'Move {mask} phase mask {amount} pixels {direction}.')
+
+    def saveParams(self):
+        obj = self._widget.controlPanel.objlensComboBox.currentText()
+        if(obj=='No objective'):
+            print('You have to choose an objective from the drop down menu.')
+        else:
+            print(f'Save SLM parameters for {obj} objective.')
+
+    def loadParams(self):
+        obj = self._widget.controlPanel.objlensComboBox.currentText()
+        if(obj=='No objective'):
+            print('You have to choose an objective from the drop down menu.')
+        else:
+            print(f'Load SLM parameters for {obj} objective.')
+
+    def setBlack(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        print(f'Set {mask} phase mask to all black.')
+
+    def setGauss(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        print(f'Set {mask} phase mask to a Gaussian.')
+
+    def setHalf(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
+        print(f'Set {mask} phase mask to half pattern, rotated {rot_ang} rad.')
+
+    def setQuad(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
+        print(f'Set {mask} phase mask to quad pattern, rotated {rot_ang} rad.')
+
+    def setHex(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
+        print(f'Set {mask} phase mask to hex pattern, rotated {rot_ang} rad.')
+
+    def setSplit(self):
+        mask = self._widget.controlPanel.maskComboBox.currentText()
+        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
+        print(f'Set {mask} phase mask to split bullseye pattern, rotated {rot_ang} rad.')
+
+    def applySlm(self):
+        print('Apply changes to general slm mask parameters.')
+        
+    def applyAber(self):
+        print('Apply changes to aberration correction masks.')
+
+    def updateSLM(self):
+        # WRITE FUNCTION HERE TO CALL THE MODEL, OR MOVE THIS TO THE SLM HELPER IF THAT IS WHERE WE SHOULD COMMUNICATE WITH THE MODEL FROM!
+        pass
+    
+    # Parameter tree apply pressed functions
+
+    def loadPreset(self, preset):
+        print('Loaded default SLM settings.')
+
+
 class PositionerController(WidgetController):
     """ Linked to PositionerWidget."""
 

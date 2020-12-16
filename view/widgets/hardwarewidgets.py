@@ -219,3 +219,195 @@ class BeadRecWidget(Widget):
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
         grid.addWidget(self.runButton, 1, 1, 1, 1)
         # grid.setRowMinimumHeight(0, 300)
+
+
+class SLMWidget(Widget):
+    ''' Widget containing slm interface.
+            This class uses the classes (((MultipleScanWidget and IllumImageWidget)))'''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.slmFrame = pg.GraphicsLayoutWidget()
+        self.slmFrame.vb = self.slmFrame.addViewBox(row=1, col=1)
+        self.slmFrame.img = pg.ImageItem()
+        self.slmFrame.setAspectLocked(True)
+
+        self.slmParameterTree = pg.parametertree.ParameterTree()
+        self.generalparams = [
+                  {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1, 'suffix': 'px'},
+                  {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (0.001, 10**6), 'step': 0.5, 'suffix': 'px'},
+                  {'name': 'angle', 'type': 'float', 'value': 0.15, 'limits': (0, 0.3), 'step': 0.01, 'suffix': 'rad'},
+                  {'name': 'wavelength', 'type': 'float', 'value': 775, 'limits': (0, 1200), 'step': 1, 'suffix': 'nm'},
+                  {'name': 'helix rotation', 'type': 'bool', 'value': True},
+                  {'name': 'Apply', 'type': 'action'}
+                  ]
+        self.slmParameterTree.setStyleSheet('''
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
+        
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        ''')
+        self.slmParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group', children=self.generalparams)
+        self.slmParameterTree.setParameters(self.slmParameterTree.p, showTop=False)
+        self.slmParameterTree._writable = True
+
+        self.aberParameterTree = pg.parametertree.ParameterTree()
+        aberlim = 2
+        self.aberparams = [{'name': 'Donut', 'type': 'group', 'children': [
+                    {'name': 'D Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Vertical coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Horizontal coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Vertical astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'D Oblique astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01}
+                 ]},
+                  {'name': 'Top hat', 'type': 'group', 'children': [
+                    {'name': 'TH Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Vertical coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Horizontal coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Vertical astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
+                    {'name': 'TH Oblique astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01}
+                  ]},
+                  {'name': 'Apply', 'type': 'action'}
+                  ] 
+        self.aberParameterTree.setStyleSheet('''
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
+        
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        ''')
+        self.aberParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group', children=self.aberparams)
+        self.aberParameterTree.setParameters(self.aberParameterTree.p, showTop=False)
+        self.aberParameterTree._writable = True
+
+        self.paramtreeDockArea = pg.dockarea.DockArea()
+        pmtreeDock = pg.dockarea.Dock('Phase mask parameters', size=(1, 1))
+        pmtreeDock.addWidget(self.slmParameterTree)
+        self.paramtreeDockArea.addDock(pmtreeDock)
+        abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
+        abertreeDock.addWidget(self.aberParameterTree)
+        self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
+
+        # Control panel with most buttons
+        self.controlPanel = QtGui.QFrame()
+        self.controlPanel.choiceInterfaceLayout = QtGui.QGridLayout()
+        self.controlPanel.choiceInterface = QtGui.QWidget()
+        self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
+
+        # Choose which mask to modify
+        self.controlPanel.maskComboBox = QtGui.QComboBox()
+        self.controlPanel.maskComboBox.addItem("Donut")
+        self.controlPanel.maskComboBox.addItem("Top hat")
+        self.controlPanel.choiceInterfaceLayout.addWidget(QtGui.QLabel('Select mask:'), 0, 0)
+        self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.maskComboBox, 0, 1)
+
+        # Choose which objective is in use
+        self.controlPanel.objlensComboBox = QtGui.QComboBox()
+        self.controlPanel.objlensComboBox.addItem("No objective")
+        self.controlPanel.objlensComboBox.addItem("Oil")
+        self.controlPanel.objlensComboBox.addItem("Glycerol")
+        self.controlPanel.choiceInterfaceLayout.addWidget(QtGui.QLabel('Select objective:'), 1, 0)
+        self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
+
+        # Phase mask moving buttons
+        self.controlPanel.__arrowButtons = []
+        self.controlPanel.upButton = guitools.BetterPushButton('Up (YZ)')
+        self.controlPanel.__arrowButtons.append(self.controlPanel.upButton)
+        self.controlPanel.downButton = guitools.BetterPushButton('Down (YZ)')
+        self.controlPanel.__arrowButtons.append(self.controlPanel.downButton)
+        self.controlPanel.leftButton = guitools.BetterPushButton('Left (XZ)')
+        self.controlPanel.__arrowButtons.append(self.controlPanel.leftButton)
+        self.controlPanel.rightButton = guitools.BetterPushButton('Right (XZ)')
+        self.controlPanel.__arrowButtons.append(self.controlPanel.rightButton)
+
+        for button in self.controlPanel.__arrowButtons:
+            button.setCheckable(False)
+            button.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                 QtGui.QSizePolicy.Expanding)                   
+            button.setFixedSize(self.controlPanel.upButton.sizeHint())
+
+        # Interface to change the amount of displacement induced by the arrows
+        self.controlPanel.incrementInterface = QtGui.QWidget()
+        self.controlPanel.incrementInterfaceLayout = QtGui.QVBoxLayout()
+        self.controlPanel.incrementInterface.setLayout(self.controlPanel.incrementInterfaceLayout)
+        self.controlPanel.incrementlabel = QtGui.QLabel("Step (px)")
+        self.controlPanel.incrementSpinBox = QtGui.QSpinBox()
+        self.controlPanel.incrementSpinBox.setRange(1, 50)
+        self.controlPanel.incrementSpinBox.setValue(1)
+        self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementlabel)
+        self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementSpinBox)
+
+        # Interface to change the rotation angle of phase pattern
+        self.controlPanel.rotationInterface = QtGui.QWidget()
+        self.controlPanel.rotationInterfaceLayout = QtGui.QVBoxLayout()
+        self.controlPanel.rotationInterface.setLayout(self.controlPanel.rotationInterfaceLayout)
+        self.controlPanel.rotationLabel = QtGui.QLabel('Pattern angle [rad]')
+        self.controlPanel.rotationEdit = QtGui.QLineEdit('0')
+        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationLabel)
+        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationEdit)
+
+        # Buttons for saving, loading, and controlling the various phase patterns
+        self.controlPanel.saveButton = guitools.BetterPushButton("Save")
+        self.controlPanel.loadButton = guitools.BetterPushButton("Load")
+
+        self.controlPanel.blackButton = guitools.BetterPushButton("Black frame")
+        self.controlPanel.gaussiansButton = guitools.BetterPushButton("Gaussians")
+
+        self.controlPanel.halfButton = guitools.BetterPushButton("Half pattern")
+        self.controlPanel.quadrantButton = guitools.BetterPushButton("Quad pattern")
+        self.controlPanel.hexButton = guitools.BetterPushButton("Hex pattern")
+        self.controlPanel.splitbullButton = guitools.BetterPushButton("Split pattern")
+
+        # Defining layout
+        self.controlPanel.arrowsFrame = QtGui.QFrame()
+        self.controlPanel.arrowsLayout = QtGui.QGridLayout()
+        self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
+
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.upButton, 0, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.leftButton, 1, 0)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.incrementInterface, 1, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rightButton, 1, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.downButton, 2, 1)
+
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
+
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 3, 0)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussiansButton, 3, 1)
+
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 4, 0)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 4, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 5, 0)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 5, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rotationInterface, 4, 2, 2, 1)
+
+        # Definition of the box layout:
+        self.controlPanel.boxLayout = QtGui.QVBoxLayout()
+        self.controlPanel.setLayout(self.controlPanel.boxLayout)
+
+        self.controlPanel.boxLayout.addWidget(self.controlPanel.choiceInterface)
+        self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
+
+        self.grid = QtGui.QGridLayout()
+        self.setLayout(self.grid)
+
+    def initControls(self):
+        self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
+        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
+        self.grid.addWidget(self.controlPanel, 1, 1, 1, 1)

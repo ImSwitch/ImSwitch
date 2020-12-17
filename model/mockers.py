@@ -230,12 +230,9 @@ class MockHamamatsu(Driver):
 
         return frames, (self.frame_x, self.frame_y)
 
-    def getLast(self, transpose=False):
+    def getLast(self):
         hc_data = HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
-        if transpose:
-            return np.reshape(hc_data.np_array.T, (self.frame_y, self.frame_x))
-        else:
-            return np.reshape(hc_data.np_array, (self.frame_x, self.frame_y))
+        return np.reshape(hc_data.np_array, (self.frame_x, self.frame_y))
 
     def getModelInfo(self):
         ''' Returns the model of the camera

@@ -73,7 +73,7 @@ class SingleCameraHelper(QtCore.QObject):
             self._startAcquisition()
 
     def updateLatestFrame(self, init):
-        self.__image = self.__camera.getLast(transpose=True)
+        self.__image = self.__camera.getLast()
         self.updateImageSignal.emit(self.__image, init)
 
     def getChunk(self):

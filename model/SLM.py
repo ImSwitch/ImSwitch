@@ -34,22 +34,28 @@ class SLMdisplay:
     def getSize(self):
         return self.vt.frame._resX, self.vt.frame._resY
 
-    def updateArray(self, array):
+    def updateArray(self, mask):
         """
         Update the SLM monitor with the supplied array.
         Note that the array is not the same size as the SLM resolution,
         the image will be deformed to fit the screen.
         """
-        #create a wx.Image from the array
-        h,w = array.shape[0], array.shape[1]
+        self.array = mask.image()
 
-        if len(array.shape) == 2:
-            bw_array = array.copy()
+        # Padding: Like they do in the software
+        pad = np.zeros((600, 8), dtype=np.uint8)
+        self.array = np.append(self.array, pad, 1)
+
+        #create a wx.Image from the array
+        h,w = self.array.shape[0], self.array.shape[1]
+
+        if len(self.array.shape) == 2:
+            bw_array = self.array.copy()
             bw_array.shape = h, w, 1
             color_array = np.concatenate((bw_array,bw_array,bw_array), axis=2)
             data = color_array.tostring()
         else :      
-            data = array.tostring()   
+            data = self.array.tostring()   
         img = wx.ImageFromBuffer(width=w, height=h, dataBuffer=data)
         # Create the event
         event = ImageEvent()

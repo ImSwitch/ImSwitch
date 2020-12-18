@@ -9,10 +9,11 @@ from pyqtgraph.Qt import QtCore
 
 import controller.presets as presets
 from .basecontrollers import WidgetController
+from controller.helpers.SLMHelper import MaskMode, MaskChoice
 
 
 class SLMController(WidgetController):
-    ''' Linked to SLMWidget. '''
+    """Linked to SLMWidget."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._widget.initControls()
@@ -28,13 +29,13 @@ class SLMController(WidgetController):
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
 
-        self._widget.controlPanel.blackButton.clicked.connect(self.setBlack)
-        self._widget.controlPanel.gaussiansButton.clicked.connect(self.setGauss)
+        self._widget.controlPanel.blackButton.clicked.connect(lambda: self.setMask(MaskMode.Black))
+        self._widget.controlPanel.gaussiansButton.clicked.connect(lambda: self.setMask(MaskMode.Gauss))
         
-        self._widget.controlPanel.halfButton.clicked.connect(self.setHalf)
-        self._widget.controlPanel.quadrantButton.clicked.connect(self.setQuad)
-        self._widget.controlPanel.hexButton.clicked.connect(self.setHex)
-        self._widget.controlPanel.splitbullButton.clicked.connect(self.setSplit)
+        self._widget.controlPanel.halfButton.clicked.connect(lambda: self.setMask(MaskMode.Half))
+        self._widget.controlPanel.quadrantButton.clicked.connect(lambda: self.setMask(MaskMode.Quad))
+        self._widget.controlPanel.hexButton.clicked.connect(lambda: self.setMask(MaskMode.Hex))
+        self._widget.controlPanel.splitbullButton.clicked.connect(lambda: self.setMask(MaskMode.Split))
 
         # Connect SLMWidget parameter tree updates
         self.applySlmParam = self._widget.slmParameterTree.p.param('Apply')
@@ -45,7 +46,7 @@ class SLMController(WidgetController):
     # Button pressed functions
     def moveMask(self, direction):
         amount = self._widget.controlPanel.incrementSpinBox.value()
-        mask = self._widget.controlPanel.maskComboBox.currentText()
+        mask = self._widget.controlPanel.maskComboBox.currentIndex()
         print(f'Move {mask} phase mask {amount} pixels {direction}.')
 
     def saveParams(self):
@@ -62,33 +63,12 @@ class SLMController(WidgetController):
         else:
             print(f'Load SLM parameters for {obj} objective.')
 
-    def setBlack(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        print(f'Set {mask} phase mask to all black.')
-
-    def setGauss(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        print(f'Set {mask} phase mask to a Gaussian.')
-
-    def setHalf(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
-        print(f'Set {mask} phase mask to half pattern, rotated {rot_ang} rad.')
-
-    def setQuad(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
-        print(f'Set {mask} phase mask to quad pattern, rotated {rot_ang} rad.')
-
-    def setHex(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
-        print(f'Set {mask} phase mask to hex pattern, rotated {rot_ang} rad.')
-
-    def setSplit(self):
-        mask = self._widget.controlPanel.maskComboBox.currentText()
-        rot_ang = np.float(self._widget.controlPanel.rotationEdit.text())
-        print(f'Set {mask} phase mask to split bullseye pattern, rotated {rot_ang} rad.')
+    def setMask(self, maskMode):
+        mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
+        angle = np.float(self._widget.controlPanel.rotationEdit.text())
+        image = self._master.slmHelper.setMask(mask, angle, maskMode)
+        print("Updated image on SLM")
+        self.updateDisplayImage(image)
 
     def applySlm(self):
         print('Apply changes to general slm mask parameters.')
@@ -96,9 +76,10 @@ class SLMController(WidgetController):
     def applyAber(self):
         print('Apply changes to aberration correction masks.')
 
-    def updateSLM(self):
-        # WRITE FUNCTION HERE TO CALL THE MODEL, OR MOVE THIS TO THE SLM HELPER IF THAT IS WHERE WE SHOULD COMMUNICATE WITH THE MODEL FROM!
-        pass
+    def updateDisplayImage(self, image):
+        image = np.fliplr(image.transpose())
+        self._widget.slmFrame.img.setImage(image, autoLevels=False, autoDownsample=False)
+        print("Updated displayed image")
     
     # Parameter tree apply pressed functions
 

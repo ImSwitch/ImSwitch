@@ -64,6 +64,15 @@ class ScanInfo:
 
 
 @dataclass(frozen=True)
+class SLMInfo:
+    width: int
+    height: int
+    wavelength: int
+    pixelsize: float
+    correctionPatternsDir: str
+
+
+@dataclass(frozen=True)
 class DesignersInfo:
     stageScanDesigner: str  # name of the stage scan designer class to use
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
@@ -77,6 +86,7 @@ class SetupInfo:
     lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
     stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
     scan: ScanInfo
+    slm: SLMInfo
 
     designers: DesignersInfo
 

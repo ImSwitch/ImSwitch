@@ -145,10 +145,11 @@
     "stageScanDesigner": "BetaStageScanDesigner",
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
   },
-  "slms": {
-    "slm": {
-      "width": 600,
-      "height": 792
-    }
+  "slm": {
+    "width": 792,
+    "height": 600,
+    "wavelength": 775,
+    "pixelsize": 0.02,
+    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   }
 }

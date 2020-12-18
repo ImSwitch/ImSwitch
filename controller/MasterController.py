@@ -9,6 +9,7 @@ from .helpers.LaserHelper import LaserHelper
 from .helpers.NidaqHelper import NidaqHelper
 from .helpers.RecordingHelper import RecordingHelper
 from .helpers.ScanHelper import ScanHelper
+from .helpers.SLMHelper import SLMHelper
 
 
 class MasterController:
@@ -25,6 +26,7 @@ class MasterController:
         self.scanHelper = ScanHelper(self.__model.setupInfo)  # Make sure compatibility
         self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
                                        self.nidaqHelper)
+        self.slmHelper = SLMHelper(self.__model.setupInfo.slm, self.__model.slm)
 
         # Connect signals
         self.cameraHelper.updateImageSignal.connect(self.__commChannel.updateImage)

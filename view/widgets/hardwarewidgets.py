@@ -7,7 +7,7 @@ Created on Fri Mar 20 17:08:54 2020
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
-
+from controller.helpers.SLMHelper import MaskMode
 import view.guitools as guitools
 from .basewidgets import Widget
 
@@ -312,8 +312,8 @@ class SLMWidget(Widget):
 
         # Choose which mask to modify
         self.controlPanel.maskComboBox = QtGui.QComboBox()
-        self.controlPanel.maskComboBox.addItem("Donut")
-        self.controlPanel.maskComboBox.addItem("Top hat")
+        self.controlPanel.maskComboBox.addItem("Donut (left)")
+        self.controlPanel.maskComboBox.addItem("Top hat (right)")
         self.controlPanel.choiceInterfaceLayout.addWidget(QtGui.QLabel('Select mask:'), 0, 0)
         self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.maskComboBox, 0, 1)
 
@@ -326,17 +326,17 @@ class SLMWidget(Widget):
         self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
 
         # Phase mask moving buttons
-        self.controlPanel.__arrowButtons = []
+        self.controlPanel.arrowButtons = []
         self.controlPanel.upButton = guitools.BetterPushButton('Up (YZ)')
-        self.controlPanel.__arrowButtons.append(self.controlPanel.upButton)
+        self.controlPanel.arrowButtons.append(self.controlPanel.upButton)
         self.controlPanel.downButton = guitools.BetterPushButton('Down (YZ)')
-        self.controlPanel.__arrowButtons.append(self.controlPanel.downButton)
+        self.controlPanel.arrowButtons.append(self.controlPanel.downButton)
         self.controlPanel.leftButton = guitools.BetterPushButton('Left (XZ)')
-        self.controlPanel.__arrowButtons.append(self.controlPanel.leftButton)
+        self.controlPanel.arrowButtons.append(self.controlPanel.leftButton)
         self.controlPanel.rightButton = guitools.BetterPushButton('Right (XZ)')
-        self.controlPanel.__arrowButtons.append(self.controlPanel.rightButton)
+        self.controlPanel.arrowButtons.append(self.controlPanel.rightButton)
 
-        for button in self.controlPanel.__arrowButtons:
+        for button in self.controlPanel.arrowButtons:
             button.setCheckable(False)
             button.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                  QtGui.QSizePolicy.Expanding)                   

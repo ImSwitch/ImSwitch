@@ -239,13 +239,14 @@ class SettingsController(WidgetController):
             )
 
         if add:
+            # Add in GUI
             if not alreadyExists:
-                # Add in GUI
-                newModeItems = currentParams.frameMode.opts['limits'].copy()
-                newModeItems.insert(len(newModeItems) - 1, name)
-                currentParams.frameMode.setLimits(newModeItems)
+                for params in self.allParams.values():
+                    newModeItems = params.frameMode.opts['limits'].copy()
+                    newModeItems.insert(len(newModeItems) - 1, name)
+                    params.frameMode.setLimits(newModeItems)
 
-            # Add to setup info
+            # Set in setup info
             self._setupInfo.setROI(name, x0, y0, width, height)
             configfileutils.saveSetupInfo(self._setupInfo)
 
@@ -264,9 +265,10 @@ class SettingsController(WidgetController):
 
         if confirmationResult:
             # Remove in GUI
-            newModeItems = currentParams.frameMode.opts['limits'].copy()
-            newModeItems = [value for value in newModeItems if value != modeToDelete]
-            currentParams.frameMode.setLimits(newModeItems)
+            for params in self.allParams.values():
+                newModeItems = params.frameMode.opts['limits'].copy()
+                newModeItems = [value for value in newModeItems if value != modeToDelete]
+                params.frameMode.setLimits(newModeItems)
 
             # Remove from setup info
             self._setupInfo.removeROI(modeToDelete)

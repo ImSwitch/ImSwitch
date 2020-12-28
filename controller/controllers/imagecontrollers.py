@@ -8,14 +8,34 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
-from pyqtgraph.Qt import QtCore
+from framework import Timer
 
 import configfileutils
 import view.guitools as guitools
-from controller.helpers.RecordingHelper import RecMode
+from model.managers.RecordingManager import RecMode
 from .basecontrollers import WidgetController, LiveUpdatedController
+
+
+@dataclass
+class SettingsControllerParams:
+    model: Any
+    umxpx: Any
+    binning: Any
+    frameMode: Any
+    x0: Any
+    y0: Any
+    width: Any
+    height: Any
+    applyROI: Any
+    newROI: Any
+    abortROI: Any
+    saveMode: Any
+    deleteMode: Any
+    allDetectorsFrame: Any
 
 
 class SettingsController(WidgetController):
@@ -23,26 +43,28 @@ class SettingsController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.rois)
+        self.allParams = {}
 
-        self.nonCameraHelpersParamValues = {
-            camera: {
-                'Camera_pixel_size': 0.1
-            } for camera in self._setupInfo.cameras
-        }
+        if not self._master.detectorsManager.hasDetectors():
+            return
+
+        self._widget.initControls(
+            self._setupInfo.rois,
+            self._master.detectorsManager.execOnAll(
+                lambda c: (c.parameters, c.supportedBinnings)
+            )
+        )
 
         self.addROI()
         self.initParameters()
-        self.updateParamsFromCamera()
-        self.setBinning()
-        self.setExposure()
-        self.changeTriggerSource()
-        self.adjustFrame()
-        self.updateFrame()
-        self.updateFrameActionButtons()
+        execOnAll = self._master.detectorsManager.execOnAll
+        execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)))
+        execOnAll(lambda c: (self.adjustFrame(detector=c)))
+        execOnAll(lambda c: (self.updateFrame(detector=c)))
+        execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)))
 
         # Connect CommunicationChannel signals
-        self._commChannel.cameraSwitched.connect(self.cameraSwitched)
+        self._commChannel.detectorSwitched.connect(self.detectorSwitched)
 
         # Connect SettingsWidget signals
         self._widget.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
@@ -59,62 +81,70 @@ class SettingsController(WidgetController):
             self._widget.ROI.hide()
 
     def initParameters(self):
-        """ Take parameters from the camera Tree map. """
-        self.modelPar = self._widget.tree.p.param('Model')
-        self.umxpx = self._widget.tree.p.param('Pixel size')
-        framePar = self._widget.tree.p.param('Image frame')
-        self.binPar = framePar.param('Binning')
-        self.frameMode = framePar.param('Mode')
-        self.x0par = framePar.param('X0')
-        self.y0par = framePar.param('Y0')
-        self.widthPar = framePar.param('Width')
-        self.heightPar = framePar.param('Height')
-        self.applyParam = framePar.param('Apply')
-        self.newROIParam = framePar.param('New ROI')
-        self.abortROIParam = framePar.param('Abort ROI')
-        self.saveModeParam = framePar.param('Save mode')
-        self.deleteModeParam = framePar.param('Delete mode')
-        self.allCamerasFrameParam = framePar.param('Update all cameras')
+        """ Take parameters from the detector Tree map. """
+        for detectorName in self._master.detectorsManager.getAllDetectorNames():
+            detectorTree = self._widget.trees[detectorName]
+            framePar = detectorTree.p.param('Image frame')
+            self.allParams[detectorName] = SettingsControllerParams(
+                model=detectorTree.p.param('Model'),
+                umxpx=detectorTree.p.param('Pixel size'),
+                binning=framePar.param('Binning'),
+                frameMode=framePar.param('Mode'),
+                x0=framePar.param('X0'),
+                y0=framePar.param('Y0'),
+                width=framePar.param('Width'),
+                height=framePar.param('Height'),
+                applyROI=framePar.param('Apply'),
+                newROI=framePar.param('New ROI'),
+                abortROI=framePar.param('Abort ROI'),
+                saveMode=framePar.param('Save mode'),
+                deleteMode=framePar.param('Delete mode'),
+                allDetectorsFrame=framePar.param('Update all detectors')
+            )
 
-        timingsPar = self._widget.tree.p.param('Timings')
-        self.effFRPar = timingsPar.param('Internal frame rate')
-        self.expPar = timingsPar.param('Set exposure time')
-        self.readoutPar = timingsPar.param('Readout time')
-        self.realExpPar = timingsPar.param('Real exposure time')
-        self.frameInt = timingsPar.param('Internal frame interval')
-        self.realExpPar.setOpts(decimals=5)
+            params = self.allParams[detectorName]
+            params.binning.sigValueChanged.connect(self.setBinning)
+            params.frameMode.sigValueChanged.connect(self.updateFrame)
+            params.applyROI.sigActivated.connect(self.adjustFrame)
+            params.newROI.sigActivated.connect(self.updateFrame)
+            params.abortROI.sigActivated.connect(self.abortROI)
+            params.saveMode.sigActivated.connect(self.saveMode)
+            params.deleteMode.sigActivated.connect(self.deleteMode)
 
-        acquisParam = self._widget.tree.p.param('Acquisition mode')
-        self.trigsourceparam = acquisParam.param('Trigger source')
+            syncFrameParamsWithoutUpdates = lambda: self.syncFrameParams(False, False)
+            params.x0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+            params.y0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+            params.width.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+            params.height.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+            params.allDetectorsFrame.sigValueChanged.connect(self.syncFrameParams)
 
-        self.applyParam.sigActivated.connect(self.adjustFrame)
-        self.newROIParam.sigActivated.connect(self.updateFrame)
-        self.abortROIParam.sigActivated.connect(self.abortROI)
-        self.saveModeParam.sigActivated.connect(self.saveMode)
-        self.deleteModeParam.sigActivated.connect(self.deleteMode)
-        self.allCamerasFrameParam.sigValueChanged.connect(self.adjustFrame)
-        self.trigsourceparam.sigValueChanged.connect(self.changeTriggerSource)
-        self.expPar.sigValueChanged.connect(self.setExposure)
-        self.binPar.sigValueChanged.connect(self.setBinning)
-        self.frameMode.sigValueChanged.connect(self.updateFrame)
-        self.expPar.sigValueChanged.connect(self.setExposure)
+        detectorsParameters = self._master.detectorsManager.execOnAll(lambda c: c.parameters)
+        for detectorName, detectorParameters in detectorsParameters.items():
+            for parameterName, parameter in detectorParameters.items():
+                paramInWidget = self._widget.trees[detectorName].p.param(parameter.group).param(parameterName)
+                paramInWidget.sigValueChanged.connect(
+                    lambda _, value, detectorName=detectorName, parameterName=parameterName:
+                        self.setDetectorParameter(detectorName, parameterName, value)
+                )
 
-    def adjustFrame(self, *, camera=None):
-        """ Crop camera and adjust frame. """
+    def adjustFrame(self, *, detector=None):
+        """ Crop detector and adjust frame. """
 
-        if camera is None:
-            self.getCameraHelperFrameExecFunc()(lambda c: self.adjustFrame(camera=c))
+        if detector is None:
+            self.getDetectorManagerFrameExecFunc()(lambda c: self.adjustFrame(detector=c))
             return
 
-        binning = self.binPar.value()
-        width = self.widthPar.value()
-        height = self.heightPar.value()
-        X0par = self.x0par.value()
-        Y0par = self.y0par.value()
+        # Adjust frame
+        params = self.allParams[detector.name]
+        binning = int(params.binning.value())
+        width = params.width.value()
+        height = params.height.value()
+        x0 = params.x0.value()
+        y0 = params.y0.value()
 
         # Round to closest "divisable by 4" value.
-        hpos = binning * Y0par
-        vpos = binning * X0par
+        hpos = binning * y0
+        vpos = binning * x0
         hsize = binning * height
         vsize = binning * width
 
@@ -125,60 +155,70 @@ class SettingsController(WidgetController):
         vsize = int(vmodulus * np.ceil(vsize / vmodulus))
         hsize = int(hmodulus * np.ceil(hsize / hmodulus))
 
-        camera.crop(hpos, vpos, hsize, vsize)
+        detector.crop(hpos, vpos, hsize, vsize)
 
-        # Final shape values might differ from the user-specified one because of camera limitation x128
-        width, height = camera.shape
-        self._commChannel.adjustFrame.emit(width, height)
-        self._widget.ROI.hide()
+        # Final shape values might differ from the user-specified one because of detector limitation x128
+        width, height = detector.shape
+        if detector.name == self._master.detectorsManager.getCurrentDetectorName():
+            self._commChannel.adjustFrame.emit(width, height)
+            self._widget.ROI.hide()
 
-        if camera == self._master.cameraHelper.getCurrentCameraName():
-            self.updateParamsFromCamera()
+        self.updateParamsFromDetector(detector=detector)
 
     def ROIchanged(self):
         """ Update parameters according to ROI. """
-        frameStart = self._master.cameraHelper.execOnCurrent(lambda c: c.frameStart)
+        frameStart = self._master.detectorsManager.execOnCurrent(lambda c: c.frameStart)
         pos = self._widget.ROI.pos()
         size = self._widget.ROI.size()
 
-        self.x0par.setValue(frameStart[0] + int(pos[0]))
-        self.y0par.setValue(frameStart[1] + int(pos[1]))
-        self.widthPar.setValue(size[0])  # [0] is Width
-        self.heightPar.setValue(size[1])  # [1] is Height
+        currentParams = self.getCurrentParams()
+        currentParams.x0.setValue(frameStart[0] + int(pos[0]))
+        currentParams.y0.setValue(frameStart[1] + int(pos[1]))
+        currentParams.width.setValue(size[0])  # [0] is Width
+        currentParams.height.setValue(size[1])  # [1] is Height
 
-    def updateFrameActionButtons(self):
+    def updateFrameActionButtons(self, *, detector=None):
         """ Shows the frame-related buttons appropriate for the current frame
         mode, and hides the others. """
 
-        self.applyParam.hide()
-        self.newROIParam.hide()
-        self.abortROIParam.hide()
-        self.saveModeParam.hide()
-        self.deleteModeParam.hide()
+        if detector is None:
+            self.getDetectorManagerFrameExecFunc()(lambda c: self.updateFrameActionButtons(detector=c))
+            return
 
-        if self.frameMode.value() == 'Custom':
-            self.applyParam.show()
-            self.newROIParam.show()
-            self.abortROIParam.show()
-            self.saveModeParam.show()
-        elif self.frameMode.value() != 'Full chip':
-            self.deleteModeParam.show()
+        params = self.allParams[detector.name]
+
+        params.applyROI.hide()
+        params.newROI.hide()
+        params.abortROI.hide()
+        params.saveMode.hide()
+        params.deleteMode.hide()
+
+        if params.frameMode.value() == 'Custom':
+            params.applyROI.show()
+            params.newROI.show()
+            params.abortROI.show()
+            params.saveMode.show()
+        elif params.frameMode.value() != 'Full chip':
+            params.deleteMode.show()
 
     def abortROI(self):
         """ Cancel and reset parameters of the ROI. """
         self.toggleROI(False)
-        frameStart = self._master.cameraHelper.execOnCurrent(lambda c: c.frameStart)
-        shapes = self._master.cameraHelper.execOnCurrent(lambda c: c.shape)
-        self.x0par.setValue(frameStart[0])
-        self.y0par.setValue(frameStart[1])
-        self.widthPar.setValue(shapes[0])
-        self.heightPar.setValue(shapes[1])
+        frameStart = self._master.detectorsManager.execOnCurrent(lambda c: c.frameStart)
+        shapes = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
+
+        currentParams = self.getCurrentParams()
+        currentParams.x0.setValue(frameStart[0])
+        currentParams.y0.setValue(frameStart[1])
+        currentParams.width.setValue(shapes[0])
+        currentParams.height.setValue(shapes[1])
 
     def saveMode(self):
         """ Save the current frame mode parameters to the mode list. """
 
-        x0, y0, width, height = (self.x0par.value(), self.y0par.value(),
-                                 self.widthPar.value(), self.heightPar.value())
+        currentParams = self.getCurrentParams()
+        x0, y0, width, height = (currentParams.x0.value(), currentParams.y0.value(),
+                                 currentParams.width.value(), currentParams.height.value())
 
         name = guitools.askForTextInput(
             self._widget,
@@ -201,9 +241,9 @@ class SettingsController(WidgetController):
         if add:
             if not alreadyExists:
                 # Add in GUI
-                newModeItems = self.frameMode.opts['limits'].copy()
+                newModeItems = currentParams.frameMode.opts['limits'].copy()
                 newModeItems.insert(len(newModeItems) - 1, name)
-                self.frameMode.setLimits(newModeItems)
+                currentParams.frameMode.setLimits(newModeItems)
 
             # Add to setup info
             self._setupInfo.setROI(name, x0, y0, width, height)
@@ -213,7 +253,8 @@ class SettingsController(WidgetController):
         """ Delete the current frame mode from the mode list (if it's a saved
         custom ROI). """
 
-        modeToDelete = self.frameMode.value()
+        currentParams = self.getCurrentParams()
+        modeToDelete = currentParams.frameMode.value()
 
         confirmationResult = guitools.askYesNoQuestion(
             self._widget,
@@ -223,81 +264,79 @@ class SettingsController(WidgetController):
 
         if confirmationResult:
             # Remove in GUI
-            newModeItems = self.frameMode.opts['limits'].copy()
+            newModeItems = currentParams.frameMode.opts['limits'].copy()
             newModeItems = [value for value in newModeItems if value != modeToDelete]
-            self.frameMode.setLimits(newModeItems)
+            currentParams.frameMode.setLimits(newModeItems)
 
             # Remove from setup info
             self._setupInfo.removeROI(modeToDelete)
             configfileutils.saveSetupInfo(self._setupInfo)
 
     def setBinning(self):
-        """ Update a new binning to the camera. """
-        self.getCameraHelperFrameExecFunc()(
-            lambda c: c.setBinning(self.binPar.value())
+        """ Update a new binning to the detector. """
+        self.getDetectorManagerFrameExecFunc()(
+            lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
         )
 
-    def changeTriggerSource(self):
-        """ Change trigger (Internal or External). """
-        # TODO: Figure out if it should be changed which cameras this executes on,
-        #       or if the param perhaps should be moved somewhere else in the UI
-        self._master.cameraHelper.execOnAll(
-            lambda c: c.changeTriggerSource(self.trigsourceparam.value())
+    def setDetectorParameter(self, detectorName, parameterName, value):
+        """ Update a new exposure time to the detector. """
+
+        if parameterName in ['Trigger source'] and self.getCurrentParams().allDetectorsFrame.value():
+            # Special case for certain parameters that will follow the "update all detectors" option
+            execFunc = self._master.detectorsManager.execOnAll
+        else:
+            execFunc = lambda f: self._master.detectorsManager.execOn(detectorName, f)
+
+        execFunc(
+            lambda c: (c.setParameter(parameterName, value) and
+                       self.updateParamsFromDetector(detector=c))
         )
 
-    def setExposure(self):
-        """ Update a new exposure time to the camera. """
-        self._master.cameraHelper.execOnCurrent(
-            lambda c: c.setExposure(self.expPar.value())
-        )
-        self.updateParamsFromCamera()
+    def updateParamsFromDetector(self, *, detector):
+        """ Update the parameter values from the detector. """
 
-    def updateParamsFromCamera(self):
-        """ Update the real exposure times from the camera. """
+        params = self.allParams[detector.name]
 
-        currentCamera = self._master.cameraHelper.getCurrentCamera()
-        currentNonCameraHelperParamValues = self.nonCameraHelpersParamValues[currentCamera.name]
-
-        # Timings
-        realExpParValue, frameIntValue, readoutParValue, effFRParValue = currentCamera.getTimings()
-        self.expPar.setValue(realExpParValue)
-        self.realExpPar.setValue(realExpParValue)
-        self.frameInt.setValue(frameIntValue)
-        self.readoutPar.setValue(readoutParValue)
-        self.effFRPar.setValue(effFRParValue)
+        # Detector parameters
+        for parameterName, parameter in detector.parameters.items():
+            paramInWidget = self._widget.trees[detector.name].p.param(parameter.group).param(parameterName)
+            paramInWidget.setValue(parameter.value)
 
         # Frame
-        self.binPar.setValue(currentCamera.binning)
-        frameStart = currentCamera.frameStart
-        shape = currentCamera.shape
-        fullShape = currentCamera.fullShape
-        self.x0par.setValue(frameStart[0])
-        self.y0par.setValue(frameStart[1])
-        self.widthPar.setValue(shape[0])
-        self.widthPar.setLimits((1, fullShape[0]))
-        self.heightPar.setValue(shape[1])
-        self.heightPar.setLimits((1, fullShape[1]))
+        params.binning.setValue(detector.binning)
+        frameStart = detector.frameStart
+        shape = detector.shape
+        fullShape = detector.fullShape
+        params.x0.setValue(frameStart[0])
+        params.y0.setValue(frameStart[1])
+        params.width.setValue(shape[0])
+        params.width.setLimits((1, fullShape[0]))
+        params.height.setValue(shape[1])
+        params.height.setLimits((1, fullShape[1]))
 
         # Model
-        self.modelPar.setValue(currentCamera.model)
+        params.model.setValue(detector.model)
 
-        # Pixel size
-        self.umxpx.setValue(currentNonCameraHelperParamValues['Camera_pixel_size'])
-
-    def updateFrame(self, _=None):
+    def updateFrame(self, *, detector=None):
         """ Change the image frame size and position in the sensor. """
 
-        customFrame = self.frameMode.value() == 'Custom'
-        
-        self.x0par.setWritable(customFrame)
-        self.y0par.setWritable(customFrame)
-        self.widthPar.setWritable(customFrame)
-        self.heightPar.setWritable(customFrame)
-        # Call .show() to prevent alignment issues
-        self.x0par.show()
-        self.y0par.show()
-        self.widthPar.show()
-        self.heightPar.show()
+        if detector is None:
+            self.getDetectorManagerFrameExecFunc()(lambda c: self.updateFrame(detector=c))
+            return
+
+        params = self.allParams[detector.name]
+        frameMode = self.getCurrentParams().frameMode.value()
+        customFrame = frameMode == 'Custom'
+
+        params.x0.setWritable(customFrame)
+        params.y0.setWritable(customFrame)
+        params.width.setWritable(customFrame)
+        params.height.setWritable(customFrame)
+        # Call .show() to prevent view alignment issues
+        params.x0.show()
+        params.y0.show()
+        params.width.show()
+        params.height.show()
 
         if customFrame:
             ROIsize = (64, 64)
@@ -312,56 +351,72 @@ class SettingsController(WidgetController):
             self.ROIchanged()
 
         else:
-            if self.frameMode.value() == 'Full chip':
-                fullChipShape = self._master.cameraHelper.execOnCurrent(lambda c: c.fullShape)
-                self.x0par.setValue(0)
-                self.y0par.setValue(0)
-                self.widthPar.setValue(fullChipShape[0])
-                self.heightPar.setValue(fullChipShape[1])
+            if frameMode == 'Full chip':
+                fullChipShape = detector.fullShape
+                params.x0.setValue(0)
+                params.y0.setValue(0)
+                params.width.setValue(fullChipShape[0])
+                params.height.setValue(fullChipShape[1])
             else:
-                roiInfo = self._setupInfo.rois[self.frameMode.value()]
-                self.x0par.setValue(roiInfo.x)
-                self.y0par.setValue(roiInfo.y)
-                self.widthPar.setValue(roiInfo.w)
-                self.heightPar.setValue(roiInfo.h)
+                roiInfo = self._setupInfo.rois[frameMode]
+                params.x0.setValue(roiInfo.x)
+                params.y0.setValue(roiInfo.y)
+                params.width.setValue(roiInfo.w)
+                params.height.setValue(roiInfo.h)
 
-            self.adjustFrame()
+            self.adjustFrame(detector=detector)
 
-        self.updateFrameActionButtons()
+        self.syncFrameParams(doAdjustFrame=False)
 
-    def cameraSwitched(self, _, oldCameraName):
-        """ Called when the user switches to another camera. """
-        self.saveNonCameraHelperParamValues(oldCameraName)
-        self.updateParamsFromCamera()
-        self._master.cameraHelper.execOnCurrent(
-            lambda c: self.adjustFrame(camera=c)
+    def detectorSwitched(self, newDetectorName, _):
+        """ Called when the user switches to another detector. """
+        self._widget.setDisplayedDetector(newDetectorName)
+        self._master.detectorsManager.execOn(
+            newDetectorName, lambda c: self._commChannel.adjustFrame.emit(*c.shape)
         )
 
-    def saveNonCameraHelperParamValues(self, cameraName):
-        """ Saves current param values that are not linked to CameraHelper. """
-        self.nonCameraHelpersParamValues[cameraName]['Camera_pixel_size'] = self.umxpx.value()
-
     def getCamAttrs(self):
-        self.saveNonCameraHelperParamValues(self._master.cameraHelper.getCurrentCameraName())
-
-        return self._master.cameraHelper.execOnAll(
+        return self._master.detectorsManager.execOnAll(
             lambda c: {
                 **{
-                    'Camera_model': c.model,
-                    'Camera_binning': c.binning,
-                    'Camera_exposure_time': c.getTimings()[0],
-                    'Camera_ROI': [*c.frameStart, *c.shape]
+                    'Detector:Pixel size': c.pixelSize,
+                    'Detector:Model': c.model,
+                    'Detector:Binning': c.binning,
+                    'Detector:ROI': [*c.frameStart, *c.shape]
                 },
-                **self.nonCameraHelpersParamValues[c.name]
+                **{f'DetectorParam:{k}': v.value for k, v in c.parameters.items()}
             }
         )
 
-    def getCameraHelperFrameExecFunc(self):
-        """ Returns the camera helper exec function that should be used for
+    def syncFrameParams(self, doAdjustFrame=True, doUpdateFrameActionButtons=True):
+        currentParams = self.getCurrentParams()
+        shouldSync = currentParams.allDetectorsFrame.value()
+
+        for params in self.allParams.values():
+            params.allDetectorsFrame.setValue(shouldSync)
+            if shouldSync:
+                params.frameMode.setValue(currentParams.frameMode.value())
+                params.x0.setValue(currentParams.x0.value())
+                params.y0.setValue(currentParams.y0.value())
+                params.width.setValue(currentParams.width.value())
+                params.height.setValue(currentParams.height.value())
+
+        if shouldSync and doAdjustFrame:
+            self.adjustFrame()
+
+        if doUpdateFrameActionButtons:
+            self.updateFrameActionButtons()
+
+    def getCurrentParams(self):
+        return self.allParams[self._master.detectorsManager.getCurrentDetectorName()]
+
+    def getDetectorManagerFrameExecFunc(self):
+        """ Returns the detector manager exec function that should be used for
         frame-related changes. """
-        cameraHelper = self._master.cameraHelper
-        return (cameraHelper.execOnAll if self.allCamerasFrameParam.value()
-                else cameraHelper.execOnCurrent)
+        currentParams = self.getCurrentParams()
+        detectorsManager = self._master.detectorsManager
+        return (detectorsManager.execOnAll if currentParams.allDetectorsFrame.value()
+                else detectorsManager.execOnCurrent)
 
 
 class ViewController(WidgetController):
@@ -369,23 +424,23 @@ class ViewController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
+        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
 
         # Connect ViewWidget signals
         self._widget.gridButton.clicked.connect(self.gridToggle)
         self._widget.crosshairButton.clicked.connect(self.crosshairToggle)
         self._widget.liveviewButton.clicked.connect(self.liveview)
-        self._widget.cameraList.currentIndexChanged.connect(self.cameraSwitch)
-        self._widget.nextCameraButton.clicked.connect(self.cameraNext)
+        self._widget.detectorList.currentIndexChanged.connect(self.detectorSwitch)
+        self._widget.nextDetectorButton.clicked.connect(self.detectorNext)
 
     def liveview(self):
-        """ Start liveview and activate camera acquisition. """
+        """ Start liveview and activate detector acquisition. """
         self._widget.crosshairButton.setEnabled(True)
         self._widget.gridButton.setEnabled(True)
         if self._widget.liveviewButton.isChecked():
-            self._master.cameraHelper.startAcquisition()
+            self._master.detectorsManager.startAcquisition()
         else:
-            self._master.cameraHelper.stopAcquisition()
+            self._master.detectorsManager.stopAcquisition()
 
     def gridToggle(self):
         """ Connect with grid toggle from Image Widget through communication channel. """
@@ -395,19 +450,19 @@ class ViewController(WidgetController):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
         self._commChannel.crosshairToggle.emit()
 
-    def cameraSwitch(self, listIndex):
-        """ Changes the current camera to the selected camera. """
-        cameraName = self._widget.cameraList.itemData(listIndex)
-        self._master.cameraHelper.setCurrentCamera(cameraName)
+    def detectorSwitch(self, listIndex):
+        """ Changes the current detector to the selected detector. """
+        detectorName = self._widget.detectorList.itemData(listIndex)
+        self._master.detectorsManager.setCurrentDetector(detectorName)
 
-    def cameraNext(self):
-        """ Changes the current camera to the next camera. """
-        self._widget.cameraList.setCurrentIndex(
-            (self._widget.cameraList.currentIndex() + 1) % self._widget.cameraList.count()
+    def detectorNext(self):
+        """ Changes the current detector to the next detector. """
+        self._widget.detectorList.setCurrentIndex(
+            (self._widget.detectorList.currentIndex() + 1) % self._widget.detectorList.count()
         )
 
     def closeEvent(self):
-        self._master.cameraHelper.stopAcquisition()
+        self._master.detectorsManager.stopAcquisition()
 
 
 class ImageController(LiveUpdatedController):
@@ -415,7 +470,11 @@ class ImageController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._lastWidth, self._lastHeight = self._master.cameraHelper.execOnCurrent(
+
+        if not self._master.detectorsManager.hasDetectors():
+            return
+
+        self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(
             lambda c: c.shape
         )
         self._savedLevels = {}
@@ -428,7 +487,7 @@ class ImageController(LiveUpdatedController):
         self._commChannel.crosshairToggle.connect(self.crosshairToggle)
         self._commChannel.addItemTovb.connect(self.addItemTovb)
         self._commChannel.removeItemFromvb.connect(self.removeItemFromvb)
-        self._commChannel.cameraSwitched.connect(self.restoreSavedLevels)
+        self._commChannel.detectorSwitched.connect(self.restoreSavedLevels)
 
         # Connect ImageWidget signals
         self._widget.levelsButton.pressed.connect(self.autoLevels)
@@ -436,7 +495,7 @@ class ImageController(LiveUpdatedController):
         self._widget.hist.sigLevelsChanged.connect(self.updateSavedLevels)
 
     def autoLevels(self, im=None):
-        """ Set histogram levels automatically with current camera image."""
+        """ Set histogram levels automatically with current detector image."""
         if im is None:
             im = self._widget.img.image
 
@@ -495,13 +554,13 @@ class ImageController(LiveUpdatedController):
         self._widget.crosshair.toggle()
 
     def updateSavedLevels(self):
-        cameraName = self._master.cameraHelper.getCurrentCameraName()
-        self._savedLevels[cameraName] = self._widget.hist.getLevels()
+        detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        self._savedLevels[detectorName] = self._widget.hist.getLevels()
 
-    def restoreSavedLevels(self, newCameraName):
-        """ Updates image levels from saved levels for camera that is switched to. """
-        if newCameraName in self._savedLevels:
-            self._widget.hist.setLevels(*self._savedLevels[newCameraName])
+    def restoreSavedLevels(self, newDetectorName):
+        """ Updates image levels from saved levels for detector that is switched to. """
+        if newDetectorName in self._savedLevels:
+            self._widget.hist.setLevels(*self._savedLevels[newDetectorName])
 
 
 class RecorderController(WidgetController):
@@ -509,7 +568,7 @@ class RecorderController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.cameraHelper.execOnAll(lambda c: c.model))
+        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
 
         self.lapseCurrent = 0
         self.lapseTotal = 0
@@ -517,12 +576,12 @@ class RecorderController(WidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.endRecording.connect(self.endRecording)
-        self._commChannel.updateRecFrameNumber.connect(self.updateRecFrameNumber)
+        self._commChannel.updateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.updateRecTime.connect(self.updateRecTime)
         self._commChannel.endScan.connect(self.scanDone)
 
         # Connect RecordingWidget signals
-        self._widget.cameraList.currentIndexChanged.connect(self.setCamerasToCapture)
+        self._widget.detectorList.currentIndexChanged.connect(self.setDetectorsToCapture)
         self._widget.openFolderButton.clicked.connect(self.openFolder)
         self._widget.specifyfile.clicked.connect(self.specFile)
         self._widget.snapTIFFButton.clicked.connect(self.snap)
@@ -566,7 +625,7 @@ class RecorderController(WidgetController):
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
-        cameraNames = self.getCamerasToCapture()
+        detectorNames = self.getDetectorsToCapture()
         folder = self._widget.folderEdit.text()
         if not os.path.exists(folder):
             os.mkdir(folder)
@@ -574,12 +633,12 @@ class RecorderController(WidgetController):
         name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
         attrs = self._commChannel.getCamAttrs()
-        self._master.recordingHelper.snap(cameraNames, savename, attrs)
+        self._master.recordingManager.snap(detectorNames, savename, attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """
         if checked:
-            # self._widget.cameraList.setEnabled(False)
+            # self._widget.detectorList.setEnabled(False)
 
             folder = self._widget.folderEdit.text()
             if not os.path.exists(folder):
@@ -588,23 +647,23 @@ class RecorderController(WidgetController):
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
 
-            self.camerasBeingCaptured = self.getCamerasToCapture()
+            self.detectorsBeingCaptured = self.getDetectorsToCapture()
             self.attrs = self._commChannel.getCamAttrs()
             scan = self._commChannel.getScanAttrs()
             self.attrs.update(scan)
 
-            recordingArgs = self.camerasBeingCaptured, self.recMode, self.savename, self.attrs
+            recordingArgs = self.detectorsBeingCaptured, self.recMode, self.savename, self.attrs
 
             if self.recMode == RecMode.SpecFrames:
-                self._master.recordingHelper.startRecording(
+                self._master.recordingManager.startRecording(
                     *recordingArgs, frames=int(self._widget.numExpositionsEdit.text())
                 )
             elif self.recMode == RecMode.SpecTime:
-                self._master.recordingHelper.startRecording(
+                self._master.recordingManager.startRecording(
                     *recordingArgs, time=float(self._widget.timeToRec.text())
                 )
             elif self.recMode == RecMode.ScanOnce:
-                self._master.recordingHelper.startRecording(*recordingArgs)
+                self._master.recordingManager.startRecording(*recordingArgs)
                 time.sleep(0.1)
                 self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
@@ -616,36 +675,36 @@ class RecorderController(WidgetController):
                 self.lapseCurrent = 0
                 self.nextLapse()
             else:
-                self._master.recordingHelper.startRecording(*recordingArgs)
+                self._master.recordingManager.startRecording(*recordingArgs)
         else:
-            self._master.recordingHelper.endRecording()
+            self._master.recordingManager.endRecording()
 
     def scanDone(self):
         if self._widget.recButton.isChecked():
             if self.recMode == RecMode.ScanOnce:
                 self._widget.recButton.setChecked(False)
-                self._master.recordingHelper.endRecording()
+                self._master.recordingManager.endRecording()
             elif self.recMode == RecMode.ScanLapse:
+                self.lapseCurrent += 1
                 if self.lapseCurrent < self.lapseTotal:
-                    self.lapseCurrent += 1
-                    self._master.recordingHelper.endRecording()
+                    self._master.recordingManager.endRecording(emitSignal=False)
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
-                    self.timer = QtCore.QTimer(singleShot=True)
+                    self.timer = Timer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(int(float(self._widget.freqEdit.text()) * 1000))
                 else:
                     self._widget.recButton.setChecked(False)
                     self.lapseCurrent = 0
                     self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
-                    self._master.recordingHelper.endRecording()
+                    self._master.recordingManager.endRecording()
             elif self.recMode == RecMode.DimLapse:
+                self.lapseCurrent += 1
                 if self.lapseCurrent < self.lapseTotal:
-                    self.lapseCurrent += 1
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
-                    self._master.recordingHelper.endRecording()
+                    self._master.recordingManager.endRecording(emitSignal=False)
                     time.sleep(0.3)
                     self._commChannel.moveZstage.emit(float(self._widget.stepSizeEdit.text()))
-                    self.timer = QtCore.QTimer(singleShot=True)
+                    self.timer = Timer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(1000)
                 else:
@@ -655,12 +714,12 @@ class RecorderController(WidgetController):
                         -self.lapseTotal * float(self._widget.stepSizeEdit.text())
                     )
                     self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
-                    self._master.recordingHelper.endRecording()
+                    self._master.recordingManager.endRecording()
 
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-        self._master.recordingHelper.startRecording(
-            self.camerasBeingCaptured, self.recMode, fileName, self.attrs
+        self._master.recordingManager.startRecording(
+            self.detectorsBeingCaptured, self.recMode, fileName, self.attrs
         )
 
         time.sleep(0.3)
@@ -668,10 +727,10 @@ class RecorderController(WidgetController):
 
     def endRecording(self):
         self._widget.recButton.setChecked(False)
-        # self._widget.cameraList.setEnabled(True)
+        # self._widget.detectorList.setEnabled(True)
         self._widget.currentFrame.setText('0 / ')
 
-    def updateRecFrameNumber(self, f):
+    def updateRecFrameNum(self, f):
         self._widget.currentFrame.setText(str(f) + ' /')
 
     def updateRecTime(self, t):
@@ -731,25 +790,25 @@ class RecorderController(WidgetController):
         self._widget.stepSizeEdit.setEnabled(False)
         self.recMode = RecMode.UntilStop
 
-    def setCamerasToCapture(self):
-        cameraListData = self._widget.cameraList.itemData(self._widget.cameraList.currentIndex())
-        if cameraListData == -2:  # All cameras
-            # When recording all cameras, the SpecFrames mode isn't supported
+    def setDetectorsToCapture(self):
+        detectorListData = self._widget.detectorList.itemData(self._widget.detectorList.currentIndex())
+        if detectorListData == -2:  # All detectors
+            # When recording all detectors, the SpecFrames mode isn't supported
             if self.recMode == RecMode.SpecFrames:
                 self._widget.untilSTOPbtn.setChecked(True)
             self._widget.specifyFrames.setEnabled(False)
         else:
             self._widget.specifyFrames.setEnabled(True)
 
-    def getCamerasToCapture(self):
-        """ Returns a list of which cameras the user has selected to be captured. """
-        cameraListData = self._widget.cameraList.itemData(self._widget.cameraList.currentIndex())
-        if cameraListData == -1:  # Current camera at start
-            return [self._master.cameraHelper.getCurrentCameraName()]
-        elif cameraListData == -2:  # All cameras
-            return list(self._setupInfo.cameras.keys())
-        else:  # A specific camera
-            return [cameraListData]
+    def getDetectorsToCapture(self):
+        """ Returns a list of which detectors the user has selected to be captured. """
+        detectorListData = self._widget.detectorList.itemData(self._widget.detectorList.currentIndex())
+        if detectorListData == -1:  # Current detector at start
+            return [self._master.detectorsManager.getCurrentDetectorName()]
+        elif detectorListData == -2:  # All detectors
+            return list(self._setupInfo.detectors.keys())
+        else:  # A specific detector
+            return [detectorListData]
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

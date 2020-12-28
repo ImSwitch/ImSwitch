@@ -191,6 +191,21 @@ class MainView(QtGui.QMainWindow):
         scanDock.container().setStretch(1, 1)
         self.imageDock.setStretch(100, 100)
 
+    def setDetectorRelatedDocksVisible(self, visible):
+        self._catchingSetVisible(self.imageDock, visible)
+        self._catchingSetVisible(self.recordingDock, visible)
+        self._catchingSetVisible(self.imageControlsDock, visible)
+        self._catchingSetVisible(self.beadDock, visible)
+
+        if not visible:
+            self.showNormal()
+
     def closeEvent(self, event):
         self.closing.emit()
         event.accept()
+
+    def _catchingSetVisible(self, widget, visible):
+        try:
+            widget.setVisible(visible)
+        except AttributeError:
+            pass

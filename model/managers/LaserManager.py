@@ -6,25 +6,44 @@ Created on Tue Mar 24 16:41:57 2020
 """
 from lantz import Q_
 
+from model import FullDigitalLaser
 
-class LaserHelper:
-    def __init__(self, laserInfos, fullDigitalLasers, nidaqHelper):
-        self.__fullDigitalLasers = fullDigitalLasers
+
+class LaserManager:
+    def __init__(self, laserInfos, nidaqManager):
+        self.__fullDigitalLasers = {}
+        for laserName, laserInfo in laserInfos.items():
+            if (laserInfo.digitalDriver is None or laserInfo.digitalPorts is None
+                    or len(laserInfo.digitalPorts) < 1):
+                continue
+
+            laser = FullDigitalLaser(laserInfo.digitalDriver, laserInfo.digitalPorts)
+            self.initFullDigitalLaser(laser)
+            self.__fullDigitalLasers[laserName] = laser
+
         self.__laserInfos = laserInfos
-        self.__nidaqHelper = nidaqHelper
+        self.__nidaqManager = nidaqManager
+
+    def initFullDigitalLaser(self, laser):
+        print(laser.idn)
+        laser.digital_mod = False
+        laser.enabled = False
+        laser.digital_mod = True
+        laser.autostart = False
+        laser.autostart = False
 
     def setEnabled(self, laserName, enable):
         if self.__laserInfos[laserName].isFullDigital():
             self.__fullDigitalLasers[laserName].enabled = enable
         else:
-            self.__nidaqHelper.setDigital(laserName, enable)
+            self.__nidaqManager.setDigital(laserName, enable)
 
     def changeVoltage(self, laserName, voltage):
         laserInfo = self.__laserInfos[laserName]
         if not laserInfo.isAotf():
             raise ValueError('Passed laser was not aotf')
 
-        self.__nidaqHelper.setAnalog(
+        self.__nidaqManager.setAnalog(
             target=laserName, voltage=voltage,
             min_val=laserInfo.valueRangeMin, max_val=laserInfo.valueRangeMax
         )

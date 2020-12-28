@@ -5,9 +5,9 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import numpy as np
-from pyqtgraph.Qt import QtCore
 
 import controller.presets as presets
+from framework import Signal, Thread, Worker
 from .basecontrollers import WidgetController
 
 
@@ -47,9 +47,9 @@ class PositionerController(WidgetController):
         stagePiezzoInfo = self._setupInfo.stagePiezzos[axis]
 
         self.stagePos[axis] += dist
-        self._master.nidaqHelper.setAnalog(target=axis,
-                                           voltage=self.stagePos[axis] / stagePiezzoInfo.conversionFactor,
-                                           min_val=stagePiezzoInfo.minVolt, max_val=stagePiezzoInfo.maxVolt)
+        self._master.nidaqManager.setAnalog(target=axis,
+                                            voltage=self.stagePos[axis] / stagePiezzoInfo.conversionFactor,
+                                            min_val=stagePiezzoInfo.minVolt, max_val=stagePiezzoInfo.maxVolt)
 
         newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
         self._widget.pars['Label' + axis].setText(newText)
@@ -70,7 +70,7 @@ class PositionerController(WidgetController):
 
     def closeEvent(self):
         for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self._master.nidaqHelper.setAnalog(stagePiezzoId, 0)
+            self._master.nidaqManager.setAnalog(stagePiezzoId, 0)
 
 
 class LaserController(WidgetController):
@@ -128,26 +128,26 @@ class LaserController(WidgetController):
     def closeEvent(self):
         for laserName, laserInfo in self._setupInfo.lasers.items():
             if laserName in self.aotfLasers:
-                self._master.laserHelper.changeVoltage(laserName, 0)
+                self._master.laserManager.changeVoltage(laserName, 0)
             else:
-                self._master.laserHelper.changePower(laserName, 0, False)
+                self._master.laserManager.changePower(laserName, 0, False)
 
-            self._master.laserHelper.setEnabled(laserName, False)
+            self._master.laserManager.setEnabled(laserName, False)
 
     def toggleLaser(self, laserName):
         """ Enable or disable laser (on/off)."""
         enable = self._widget.laserModules[laserName].enableButton.isChecked()
-        self._master.laserHelper.setEnabled(laserName, enable)
+        self._master.laserManager.setEnabled(laserName, enable)
 
     def changeSlider(self, laserName):
         """ Change power with slider magnitude. """
         magnitude = self._widget.laserModules[laserName].slider.value()
         if laserName in self.aotfLasers.keys():
             if not self.aotfLasers[laserName]:
-                self._master.laserHelper.changeVoltage(laserName, magnitude)
+                self._master.laserManager.changeVoltage(laserName, magnitude)
                 self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
         else:
-            self._master.laserHelper.changePower(laserName, magnitude, self.digMod)
+            self._master.laserManager.changePower(laserName, magnitude, self.digMod)
             self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
 
     def changeEdit(self, laserName):
@@ -155,10 +155,10 @@ class LaserController(WidgetController):
         magnitude = float(self._widget.laserModules[laserName].setPointEdit.text())
         if laserName in self.aotfLasers.keys():
             if not self.aotfLasers[laserName]:
-                self._master.laserHelper.changeVoltage(laserName, magnitude)
+                self._master.laserManager.changeVoltage(laserName, magnitude)
                 self._widget.laserModules[laserName].slider.setValue(magnitude)
         else:
-            self._master.laserHelper.changePower(laserName, magnitude, self.digMod)
+            self._master.laserManager.changePower(laserName, magnitude, self.digMod)
             self._widget.laserModules[laserName].slider.setValue(magnitude)
 
     def updateDigitalPowers(self, laserNames):
@@ -167,12 +167,12 @@ class LaserController(WidgetController):
         if self.digMod:
             for laserName in laserNames:
                 if laserName in self.aotfLasers.keys():
-                    self._master.laserHelper.changeVoltage(
+                    self._master.laserManager.changeVoltage(
                         laserName=laserName,
                         voltage=float(self._widget.digModule.powers[laserName].text())
                     )
                 else:
-                    self._master.laserHelper.changePower(
+                    self._master.laserManager.changePower(
                         laserName=laserName,
                         power=int(self._widget.digModule.powers[laserName].text()), dig=self.digMod
                     )
@@ -182,15 +182,15 @@ class LaserController(WidgetController):
         self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
         for laserName in laserNames:
             if laserName in self.aotfLasers.keys():
-                self._master.laserHelper.changeVoltage(
+                self._master.laserManager.changeVoltage(
                     laserName=laserName,
                     voltage=float(self._widget.digModule.powers[laserName].text())
                 )
                 self._widget.laserModules[laserName].enableButton.setChecked(False)
                 self.aotfLasers[laserName] = self.digMod
-                self._master.laserHelper.setEnabled(laserName, False)  # TODO: Correct?
+                self._master.laserManager.setEnabled(laserName, False)  # TODO: Correct?
             else:
-                self._master.laserHelper.digitalMod(
+                self._master.laserManager.digitalMod(
                     laserName=laserName, digital=self.digMod,
                     power=int(self._widget.digModule.powers[laserName].text())
                 )
@@ -244,10 +244,10 @@ class BeadController(WidgetController):
             self.running = True
             self.beadWorker = BeadWorker(self)
             self.beadWorker.newChunk.connect(self.update)
-            self.thread = QtCore.QThread()
+            self.thread = Thread()
             self.beadWorker.moveToThread(self.thread)
             self.thread.started.connect(self.beadWorker.run)
-            self._master.cameraHelper.execOnAll(lambda c: c.updateCameraIndices())
+            self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
         else:
             self.running = False
@@ -258,12 +258,12 @@ class BeadController(WidgetController):
         self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels=False)
 
 
-class BeadWorker(QtCore.QObject):
-    newChunk = QtCore.pyqtSignal()
-    stop = QtCore.pyqtSignal()
+class BeadWorker(Worker):
+    newChunk = Signal()
+    stop = Signal()
 
-    def __init__(self, controller, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, controller):
+        super().__init__()
         self.__controller = controller
 
     def run(self):
@@ -273,7 +273,7 @@ class BeadWorker(QtCore.QObject):
         i = 0
 
         while self.__controller.running:
-            newImages, _ = self.__controller._master.cameraHelper.execOnCurrent(lambda c: c.getChunk())
+            newImages, _ = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
             n = len(newImages)
             if n > 0:
                 pos = self.__controller._widget.ROI.pos()

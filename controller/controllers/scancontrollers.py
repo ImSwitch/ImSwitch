@@ -30,8 +30,8 @@ class ScanController(SuperScanController):
         self.getParameters()
         self.plotSignalGraph()
 
-        # Connect NidaqHelper signals
-        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
+        # Connect NidaqManager signals
+        self._master.nidaqManager.scanDoneSignal.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
         self._commChannel.prepareScan.connect(lambda: self.setScanButton(True))
@@ -152,11 +152,11 @@ class ScanController(SuperScanController):
 
     def runScan(self):
         self.getParameters()
-        self.signalDic = self._master.scanHelper.makeFullScan(
+        self.signalDic = self._master.scanManager.makeFullScan(
             self._stageParameterDict, self._TTLParameterDict, self._setupInfo,
             staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
         )
-        self._master.nidaqHelper.runScan(self.signalDic)
+        self._master.nidaqManager.runScan(self.signalDic)
 
     def scanDone(self):
         print("scan done")
@@ -164,7 +164,7 @@ class ScanController(SuperScanController):
             self.setScanButton(False)
             self._commChannel.endScan.emit()
         else:
-            self._master.nidaqHelper.runScan(self.signalDic)
+            self._master.nidaqManager.runScan(self.signalDic)
 
     def getParameters(self):
         if self._settingParameters:
@@ -220,7 +220,7 @@ class ScanController(SuperScanController):
             return
 
         self.getParameters()
-        TTLCycleSignalsDict = self._master.scanHelper.getTTLCycleSignalsDict(self._TTLParameterDict,
+        TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(self._TTLParameterDict,
                                                                              self._setupInfo)
 
         self._widget.graph.plot.clear()

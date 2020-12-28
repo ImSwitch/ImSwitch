@@ -13,14 +13,13 @@ import qdarkstyle
 
 import configfileutils
 from controller.MainController import MainController
-from model.MainModel import MainModel
 from view.MainView import MainView
 from view.guitools import ViewSetupInfo
 
-model = MainModel(configfileutils.loadSetupInfo(ViewSetupInfo))
+setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
 app = QtGui.QApplication([])
 app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB')))
-view = MainView(model.setupInfo)
-controller = MainController(model, view)
+view = MainView(setupInfo)
+controller = MainController(setupInfo, view)
 view.show()
 sys.exit(app.exec_())

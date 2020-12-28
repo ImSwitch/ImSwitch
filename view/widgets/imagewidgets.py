@@ -28,8 +28,6 @@ class CamParamTree(ParameterTree):
 
         # Parameter tree for the detector configuration
         params = [{'name': 'Model', 'type': 'str', 'readonly': True},
-                  {'name': 'Pixel size', 'type': 'float', 'value': 0.1,
-                   'readonly': False, 'suffix': 'µm'},
                   {'name': 'Image frame', 'type': 'group', 'children': [
                       {'name': 'Binning', 'type': 'list', 'value': 1,
                        'values': supportedBinnings, 'tip': BinTip},

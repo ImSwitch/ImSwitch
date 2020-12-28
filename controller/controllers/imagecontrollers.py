@@ -23,7 +23,6 @@ from .basecontrollers import WidgetController, LiveUpdatedController
 @dataclass
 class SettingsControllerParams:
     model: Any
-    umxpx: Any
     binning: Any
     frameMode: Any
     x0: Any
@@ -87,7 +86,6 @@ class SettingsController(WidgetController):
             framePar = detectorTree.p.param('Image frame')
             self.allParams[detectorName] = SettingsControllerParams(
                 model=detectorTree.p.param('Model'),
-                umxpx=detectorTree.p.param('Pixel size'),
                 binning=framePar.param('Binning'),
                 frameMode=framePar.param('Mode'),
                 x0=framePar.param('X0'),

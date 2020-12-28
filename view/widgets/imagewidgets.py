@@ -62,7 +62,7 @@ class CamParamTree(ParameterTree):
                     'type': 'float',
                     'value': detectorParameter.value,
                     'readonly': not detectorParameter.editable,
-                    'siPrefix': True,
+                    'siPrefix': detectorParameter.valueUnits in ['s'],
                     'suffix': detectorParameter.valueUnits,
                     'decimals': 5
                 }

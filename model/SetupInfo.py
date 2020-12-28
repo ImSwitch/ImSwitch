@@ -10,9 +10,9 @@ class DeviceInfo:
 
 
 @dataclass(frozen=True)
-class CameraInfo(DeviceInfo):
-    id: int  # index in camera list
-    properties: Dict[str, Any]
+class DetectorInfo(DeviceInfo):
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ class DesignersInfo:
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
-    cameras: Dict[str, CameraInfo]  # map from device ID to CameraInfo
+    detectors: Dict[str, DetectorInfo]  # map from device ID to CameraInfo
 
     lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
     stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
@@ -88,14 +88,14 @@ class SetupInfo:
 
     def getTTLDevices(self):
         devices = {}
-        for deviceInfos in self.lasers, self.cameras:
+        for deviceInfos in self.lasers, self.detectors:
             devices.update(deviceInfos)
 
         return devices
 
     def getAllDevices(self):
         devices = {}
-        for deviceInfos in self.lasers, self.cameras, self.stagePiezzos:
+        for deviceInfos in self.lasers, self.detectors, self.stagePiezzos:
             devices.update(deviceInfos)
 
         return devices

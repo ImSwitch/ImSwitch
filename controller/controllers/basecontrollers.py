@@ -6,8 +6,9 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import traceback
 import weakref
-from pyqtgraph.Qt import QtCore
-from controller.errors import InvalidChildClassError
+
+from framework import SignalInterface
+from model import InvalidChildClassError
 from controller.presets import Preset
 
 
@@ -48,12 +49,12 @@ class WidgetControllerFactory:
                     print(traceback.format_exc())
 
 
-class WidgetController(QtCore.QObject):
+class WidgetController(SignalInterface):
     """ Superclass for all WidgetControllers.
     All WidgetControllers should have access to the setup information,
     MasterController, CommunicationChannel and the linked Widget. """
 
-    def __init__(self, setupInfo, defaultPreset, commChannel, master, widget, *args, **kwargs):
+    def __init__(self, setupInfo, defaultPreset, commChannel, master, widget):
         # Protected attributes, which should only be accessed from WidgetController and its subclasses
         self._setupInfo = setupInfo
         self._defaultPreset = defaultPreset
@@ -62,7 +63,7 @@ class WidgetController(QtCore.QObject):
         self._widget = widget
 
         # Init superclass
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
     def loadPreset(self, preset):
         pass

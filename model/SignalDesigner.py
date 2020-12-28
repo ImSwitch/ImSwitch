@@ -4,16 +4,13 @@ Created on Thu Apr  9 09:20:14 2020
 
 @author: andreas.boden
 """
-import json
-import os
 
 import numpy as np
 
-import constants
 # try:
-#    from errors import InvalidChildClassError, IncompatibilityError
+#    from .errors import InvalidChildClassError, IncompatibilityError
 # except ModuleNotFoundError:
-from controller.errors import InvalidChildClassError
+from .errors import InvalidChildClassError
 
 
 class SignalDesignerFactory:

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
 
-from model.SetupInfo import SetupInfo
+from model import SetupInfo
 
 
 @dataclass(frozen=True)
@@ -10,6 +10,11 @@ class ROIInfo:
     y: int  # pixels
     w: int  # pixels
     h: int  # pixels
+
+
+@dataclass(frozen=True)
+class ScanDefaultsInfo:
+    defaultScanFile: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -29,7 +34,7 @@ class WidgetLayoutInfo:
 
 @dataclass(frozen=True)
 class ViewSetupInfo(SetupInfo):
-    # additional ROIs available to select in camera settings
+    # additional ROIs available to select in detector settings
     rois: Dict[str, ROIInfo] = field(default_factory=list)
 
     # which widgets are available
@@ -38,6 +43,8 @@ class ViewSetupInfo(SetupInfo):
     # widget layout
     widgetLayout: WidgetLayoutInfo = field(default_factory=WidgetLayoutInfo)
 
+    # scan defaults
+    scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)
 
     def setROI(self, name, x, y, width, height):
         self.rois[name] = ROIInfo(x=x, y=y, w=width, h=height)

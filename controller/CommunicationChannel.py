@@ -5,45 +5,47 @@ Created on Fri Mar 20 15:08:33 2020
 @author: _Xavi
 """
 import numpy as np
-from pyqtgraph.Qt import QtCore, QtGui
+from framework import Signal, SignalInterface
 
 
-class CommunicationChannel(QtCore.QObject):
+class CommunicationChannel(SignalInterface):
     """
     Communication Channel is a class that handles the communication between Master Controller
     and Widgets, or between Widgets.
     """
 
-    updateImage = QtCore.pyqtSignal(np.ndarray, bool)  # (image, init)
+    updateImage = Signal(np.ndarray, bool)  # (image, init)
 
-    acquisitionStopped = QtCore.pyqtSignal()
+    acquisitionStarted = Signal()
 
-    adjustFrame = QtCore.pyqtSignal(int, int)  # (width, height)
+    acquisitionStopped = Signal()
 
-    cameraSwitched = QtCore.pyqtSignal(str, str)  # (newCameraName, oldCameraName)
+    adjustFrame = Signal(int, int)  # (width, height)
 
-    gridToggle = QtCore.pyqtSignal()
+    detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
-    crosshairToggle = QtCore.pyqtSignal()
+    gridToggle = Signal()
 
-    addItemTovb = QtCore.pyqtSignal(QtGui.QGraphicsItem)  # (item)
+    crosshairToggle = Signal()
 
-    removeItemFromvb = QtCore.pyqtSignal(QtGui.QGraphicsItem)  # (item)
+    addItemTovb = Signal(object)  # (item)
 
-    endRecording = QtCore.pyqtSignal()
+    removeItemFromvb = Signal(object)  # (item)
 
-    updateRecFrameNumber = QtCore.pyqtSignal(int)  # (frameNumber)
+    endRecording = Signal()
 
-    updateRecTime = QtCore.pyqtSignal(int)  # (recTime)
+    updateRecFrameNum = Signal(int)  # (frameNumber)
 
-    prepareScan = QtCore.pyqtSignal()
+    updateRecTime = Signal(int)  # (recTime)
 
-    endScan = QtCore.pyqtSignal()
+    prepareScan = Signal()
 
-    moveZstage = QtCore.pyqtSignal(float)  # (step)
+    endScan = Signal()
 
-    def __init__(self, main, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    moveZstage = Signal(float)  # (step)
+
+    def __init__(self, main):
+        super().__init__()
         self.__main = main
 
     def getROIdata(self, image, ROI):

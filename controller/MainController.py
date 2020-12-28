@@ -56,6 +56,10 @@ class MainController:
         if self.__setupInfo.availableWidgets.FFTWidget:
             self.fftController = self.__factory.createController(controllers.FFTController, self.__mainView.fftWidget)
 
+        self.__mainView.setDetectorRelatedDocksVisible(
+            __masterController.detectorsManager.hasDetectors()
+        )
+
         # Check widget compatibility
         __masterController.scanManager._parameterCompatibility(self.scanController.parameterDict)
 

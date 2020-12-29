@@ -16,7 +16,7 @@ import view.guitools as guitools
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.stagePiezzos, self._setupInfo.getTTLDevices())
+        self._widget.initControls(self._setupInfo.positioners, self._setupInfo.getTTLDevices())
 
         self._stageParameterDict = {
             'Sample_rate': self._setupInfo.scan.stage.sampleRate,
@@ -119,17 +119,17 @@ class ScanController(SuperScanController):
     def setParameters(self):
         self._settingParameters = True
         try:
-            for i in range(len(self._setupInfo.stagePiezzos)):
-                stagePiezzoId = self._stageParameterDict['Targets[x]'][i]
+            for i in range(len(self._setupInfo.positioners)):
+                positionerName = self._stageParameterDict['Targets[x]'][i]
 
                 scanDimPar = self._widget.scanPar['scanDim' + str(i)]
-                scanDimPar.setCurrentIndex(scanDimPar.findText(stagePiezzoId))
+                scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
 
-                self._widget.scanPar['size' + stagePiezzoId].setText(
+                self._widget.scanPar['size' + positionerName].setText(
                     str(round(self._stageParameterDict['Sizes[x]'][i], 3))
                 )
 
-                self._widget.scanPar['stepSize' + stagePiezzoId].setText(
+                self._widget.scanPar['stepSize' + positionerName].setText(
                     str(round(self._stageParameterDict['Step_sizes[x]'][i], 3))
                 )
 
@@ -174,13 +174,13 @@ class ScanController(SuperScanController):
         self._stageParameterDict['Sizes[x]'] = []
         self._stageParameterDict['Step_sizes[x]'] = []
         self._stageParameterDict['Start[x]'] = []
-        for i in range(len(self._setupInfo.stagePiezzos)):
-            stagePiezzoId = self._widget.scanPar['scanDim' + str(i)].currentText()
-            size = float(self._widget.scanPar['size' + stagePiezzoId].text())
-            stepSize = float(self._widget.scanPar['stepSize' + stagePiezzoId].text())
-            start = self._commChannel.getStartPos()[stagePiezzoId]
+        for i in range(len(self._setupInfo.positioners)):
+            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
+            size = float(self._widget.scanPar['size' + positionerName].text())
+            stepSize = float(self._widget.scanPar['stepSize' + positionerName].text())
+            start = self._commChannel.getStartPos()[positionerName]
 
-            self._stageParameterDict['Targets[x]'].append(stagePiezzoId)
+            self._stageParameterDict['Targets[x]'].append(positionerName)
             self._stageParameterDict['Sizes[x]'].append(size)
             self._stageParameterDict['Step_sizes[x]'].append(stepSize)
             self._stageParameterDict['Start[x]'].append(start)
@@ -205,11 +205,11 @@ class ScanController(SuperScanController):
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
 
     def setContLaserPulses(self, isContLaserPulses):
-        for i in range(len(self._setupInfo.stagePiezzos)):
-            stagePiezzoId = self._widget.scanPar['scanDim' + str(i)].currentText()
+        for i in range(len(self._setupInfo.positioners)):
+            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
             self._widget.scanPar['scanDim' + str(i)].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['size' + stagePiezzoId].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['stepSize' + stagePiezzoId].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['size' + positionerName].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['stepSize' + positionerName].setEnabled(not isContLaserPulses)
 
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)

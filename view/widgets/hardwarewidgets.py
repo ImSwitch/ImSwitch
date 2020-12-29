@@ -21,21 +21,21 @@ class PositionerWidget(Widget):
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
 
-    def initControls(self, stagePiezzoInfos):
-        for index, (stagePiezzoId, stagePiezzoInfo) in enumerate(stagePiezzoInfos.items()):
-            self.pars['Label' + stagePiezzoId] = QtGui.QLabel("<strong>{} = {:.2f} µm</strong>".format(stagePiezzoId, 0))
-            self.pars['Label' + stagePiezzoId].setTextFormat(QtCore.Qt.RichText)
-            self.pars['UpButton' + stagePiezzoId] = guitools.BetterPushButton("+")
-            self.pars['DownButton' + stagePiezzoId] = guitools.BetterPushButton("-")
-            self.pars['StepEdit' + stagePiezzoId] = QtGui.QLineEdit("0")
-            self.pars['StepUnit' + stagePiezzoId] = QtGui.QLabel(" µm")
+    def initControls(self, positionerInfos):
+        for index, (positionerName, positionerInfo) in enumerate(positionerInfos.items()):
+            self.pars['Label' + positionerName] = QtGui.QLabel("<strong>{} = {:.2f} µm</strong>".format(positionerName, 0))
+            self.pars['Label' + positionerName].setTextFormat(QtCore.Qt.RichText)
+            self.pars['UpButton' + positionerName] = guitools.BetterPushButton("+")
+            self.pars['DownButton' + positionerName] = guitools.BetterPushButton("-")
+            self.pars['StepEdit' + positionerName] = QtGui.QLineEdit("0")
+            self.pars['StepUnit' + positionerName] = QtGui.QLabel(" µm")
 
-            self.grid.addWidget(self.pars['Label' + stagePiezzoId], index, 0)
-            self.grid.addWidget(self.pars['UpButton' + stagePiezzoId], index, 1)
-            self.grid.addWidget(self.pars['DownButton' + stagePiezzoId], index, 2)
+            self.grid.addWidget(self.pars['Label' + positionerName], index, 0)
+            self.grid.addWidget(self.pars['UpButton' + positionerName], index, 1)
+            self.grid.addWidget(self.pars['DownButton' + positionerName], index, 2)
             self.grid.addWidget(QtGui.QLabel("Step"), index, 3)
-            self.grid.addWidget(self.pars['StepEdit' + stagePiezzoId], index, 4)
-            self.grid.addWidget(self.pars['StepUnit' + stagePiezzoId], index, 5)
+            self.grid.addWidget(self.pars['StepEdit' + positionerName], index, 4)
+            self.grid.addWidget(self.pars['StepUnit' + positionerName], index, 5)
 
 
 class LaserWidget(Widget):

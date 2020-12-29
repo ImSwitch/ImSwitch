@@ -58,27 +58,36 @@
             "valueRangeStep": 1
         }
     },
-    "stagePiezzos": {
+    "positioners": {
         "X": {
             "analogChannel": 0,
             "digitalLine": null,
-            "conversionFactor": 1.587,
-            "minVolt": -10,
-            "maxVolt": 10
+            "managerName": "NidaqAOPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.587,
+                "minVolt": -10,
+                "maxVolt": 10
+            }
         },
         "Y": {
             "analogChannel": 1,
             "digitalLine": null,
-            "conversionFactor": 1.587,
-            "minVolt": -10,
-            "maxVolt": 10
+            "managerName": "NidaqAOPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.587,
+                "minVolt": -10,
+                "maxVolt": 10
+            }
         },
         "Z": {
             "analogChannel": 2,
             "digitalLine": null,
-            "conversionFactor": 10.0,
-            "minVolt": 0,
-            "maxVolt": 10
+            "managerName": "NidaqAOPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 10.0,
+                "minVolt": 0,
+                "maxVolt": 10
+            }
         }
     },
     "scan": {

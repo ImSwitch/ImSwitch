@@ -90,7 +90,8 @@ class BetaStageScanDesigner(SignalDesigner):
             print('Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
             return None
 
-        convFactors = [stagePiezzo.conversionFactor for stagePiezzo in setupInfo.stagePiezzos.values()]
+        convFactors = [positioner.managerProperties['conversionFactor']
+                       for positioner in setupInfo.positioners.values()]
 
         # Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \

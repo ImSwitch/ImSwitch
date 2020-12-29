@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from model import (
-    DetectorsManager, LaserManager, NidaqManager, RecordingManager, ScanManager
+    DetectorsManager, LaserManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
 )
 
 
@@ -22,6 +22,8 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
         self.laserManager = LaserManager(self.__setupInfo.lasers, self.nidaqManager)
+        self.positionersManager = PositionersManager(self.__setupInfo.positioners,
+                                                     nidaqManager=self.nidaqManager)
 
         # Connect signals
         self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)

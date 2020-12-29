@@ -16,61 +16,49 @@ class PositionerController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.stagePiezzos)
+        self._widget.initControls(self._setupInfo.positioners)
         self.loadPreset(self._defaultPreset)
-
-        self.stagePos = {}
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self.stagePos[stagePiezzoId] = 0
 
         # Connect CommunicationChannel signals
         self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
 
         # Connect PositionerWidget signals
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self._widget.pars['UpButton' + stagePiezzoId].pressed.connect(
-                lambda stagePiezzoId=stagePiezzoId: self.move(
-                    stagePiezzoId,
-                    float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+        for positionerName in self._setupInfo.positioners.keys():
+            self._widget.pars['UpButton' + positionerName].pressed.connect(
+                lambda positionerName=positionerName: self.move(
+                    positionerName,
+                    float(self._widget.pars['StepEdit' + positionerName].text())
                 )
             )
-            self._widget.pars['DownButton' + stagePiezzoId].pressed.connect(
-                lambda stagePiezzoId=stagePiezzoId: self.move(
-                    stagePiezzoId,
-                    -float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+            self._widget.pars['DownButton' + positionerName].pressed.connect(
+                lambda positionerName=positionerName: self.move(
+                    positionerName,
+                    -float(self._widget.pars['StepEdit' + positionerName].text())
                 )
             )
 
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-
-        stagePiezzoInfo = self._setupInfo.stagePiezzos[axis]
-
-        self.stagePos[axis] += dist
-        self._master.nidaqManager.setAnalog(target=axis,
-                                            voltage=self.stagePos[axis] / stagePiezzoInfo.conversionFactor,
-                                            min_val=stagePiezzoInfo.minVolt, max_val=stagePiezzoInfo.maxVolt)
-
-        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
+        newPos = self._master.positionersManager.execOn(axis, lambda p: p.move(dist))
+        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
         self._widget.pars['Label' + axis].setText(newText)
 
     def getPos(self):
-        return self.stagePos
+        return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def loadPreset(self, preset):
-        stagePiezzoInfos = self._setupInfo.stagePiezzos
-        stagePiezzoPresets = preset.positioner.stagePiezzos
+        positionerInfos = self._setupInfo.positioners
+        positionerPresets = preset.positioner.positioners
 
-        for stagePiezzoId in stagePiezzoInfos.keys():
-            stagePiezzoPreset = (
-                stagePiezzoPresets[stagePiezzoId] if stagePiezzoId in stagePiezzoPresets
-                else presets.PositionerPresetStagePiezzo()
+        for positionerName in positionerInfos.keys():
+            positionerPreset = (
+                positionerPresets[positionerName] if positionerName in positionerPresets
+                else presets.PositionerPresetPositioner()
             )
-            self._widget.pars['StepEdit' + stagePiezzoId].setText(stagePiezzoPreset.stepSize)
+            self._widget.pars['StepEdit' + positionerName].setText(positionerPreset.stepSize)
 
     def closeEvent(self):
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self._master.nidaqManager.setAnalog(stagePiezzoId, 0)
+        self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
 
 
 class LaserController(WidgetController):

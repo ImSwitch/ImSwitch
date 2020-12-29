@@ -40,10 +40,9 @@ class LaserInfo(DeviceInfo):
 
 
 @dataclass(frozen=True)
-class StagePiezzoInfo(DeviceInfo):
-    conversionFactor: float
-    minVolt: int  # piezzoconcept
-    maxVolt: int  # piezzoconcept
+class PositionerInfo(DeviceInfo):
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager
 
 
 @dataclass(frozen=True)
@@ -75,7 +74,7 @@ class SetupInfo:
     detectors: Dict[str, DetectorInfo]  # map from device ID to CameraInfo
 
     lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
-    stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
+    positioners: Dict[str, PositionerInfo]  # map from device ID to PositionerInfo
     scan: ScanInfo
 
     designers: DesignersInfo
@@ -95,7 +94,7 @@ class SetupInfo:
 
     def getAllDevices(self):
         devices = {}
-        for deviceInfos in self.lasers, self.detectors, self.stagePiezzos:
+        for deviceInfos in self.lasers, self.detectors, self.positioners:
             devices.update(deviceInfos)
 
         return devices

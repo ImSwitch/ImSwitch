@@ -175,6 +175,7 @@ class LaserController(WidgetController):
                     voltage=float(self._widget.digModule.powers[laserName].text())
                 )
                 self._widget.laserModules[laserName].enableButton.setChecked(False)
+                self._widget.laserModules[laserName].enableButton.setEnabled(not self.digMod)
                 self.aotfLasers[laserName] = self.digMod
                 self._master.laserManager.setEnabled(laserName, False)  # TODO: Correct?
             else:
@@ -182,6 +183,9 @@ class LaserController(WidgetController):
                     laserName=laserName, digital=self.digMod,
                     power=int(self._widget.digModule.powers[laserName].text())
                 )
+
+            self._widget.laserModules[laserName].setPointEdit.setEnabled(not self.digMod)
+            self._widget.laserModules[laserName].slider.setEnabled(not self.digMod)
 
             if not self.digMod:
                 self.changeEdit(laserName)

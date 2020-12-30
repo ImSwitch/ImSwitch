@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    analogChannel: Optional[int]  # null if the device is digital
-    digitalLine: Optional[int]  # null if the device is analog
+    analogChannel: Optional[int]  # null if the device is digital or doesn't use Nidaq
+    digitalLine: Optional[int]  # null if the device is analog or doesn't use Nidaq
 
 
 @dataclass(frozen=True)
@@ -71,10 +71,10 @@ class DesignersInfo:
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
-    detectors: Dict[str, DetectorInfo]  # map from device ID to CameraInfo
+    detectors: Dict[str, DetectorInfo]  # map from device name to CameraInfo
 
-    lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
-    positioners: Dict[str, PositionerInfo]  # map from device ID to PositionerInfo
+    lasers: Dict[str, LaserInfo]  # map from device name to LaserInfo
+    positioners: Dict[str, PositionerInfo]  # map from device name to PositionerInfo
     scan: ScanInfo
 
     designers: DesignersInfo

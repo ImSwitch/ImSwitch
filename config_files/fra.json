@@ -186,8 +186,5 @@
     },
     "widgetLayout": {
         "lasersAndAlignmentInSingleDock": true
-    },
-    "scanDefaults": {
-        "defaultScanFile": null
     }
 }

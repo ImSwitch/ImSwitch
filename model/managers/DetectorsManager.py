@@ -1,12 +1,12 @@
-import importlib
 from time import sleep
 
 import numpy as np
 
 from framework import Signal, SignalInterface, Thread, Timer, Worker
+from .MultiManager import MultiManager
 
 
-class DetectorsManager(SignalInterface):
+class DetectorsManager(MultiManager, SignalInterface):
     """ DetectorsManager is an interface for dealing with DetectorManagers. """
 
     acquisitionStarted = Signal()
@@ -14,19 +14,14 @@ class DetectorsManager(SignalInterface):
     detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
     imageUpdated = Signal(np.ndarray, bool)  # (image, init)
 
-    def __init__(self, detectorInfos, updatePeriod):
-        super().__init__()
+    def __init__(self, detectorInfos, updatePeriod, **kwargs):
+        MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
+        SignalInterface.__init__(self)
 
-        self._detectorManagers = {}
         self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
-            # Create detector manager
-            package = importlib.import_module('model.managers.detectors.' + detectorInfo.managerName)
-            manager = getattr(package, detectorInfo.managerName)
-            self._detectorManagers[detectorName] = manager(detectorInfo, detectorName)
-
             # Connect signals
-            self._detectorManagers[detectorName].imageUpdated.connect(
+            self._subManagers[detectorName].imageUpdated.connect(
                 lambda image, init, detectorName=detectorName: self.imageUpdated.emit(
                     image, init
                 ) if detectorName == self._currentDetectorName else None
@@ -47,7 +42,7 @@ class DetectorsManager(SignalInterface):
         return self._currentDetectorName is not None
 
     def getAllDetectorNames(self):
-        return list(self._detectorManagers.keys())
+        return list(self._subManagers.keys())
 
     def getCurrentDetectorName(self):
         if not self.hasDetectors():
@@ -59,26 +54,17 @@ class DetectorsManager(SignalInterface):
         if not self.hasDetectors():
             raise NoDetectorsError
 
-        return self._detectorManagers[self._currentDetectorName]
+        return self._subManagers[self._currentDetectorName]
 
     def setCurrentDetector(self, detectorName):
-        if detectorName not in self._detectorManagers:
-            raise NoSuchDetectorError(f'Detector "{detectorName}" does not exist or is not managed'
-                                      f' by this DetectorsManager.')
+        self._validateManagedDeviceName(detectorName)
 
         oldDetectorName = self._currentDetectorName
         self._currentDetectorName = detectorName
         self.detectorSwitched.emit(detectorName, oldDetectorName)
+
         if self._thread.isRunning():
             self.execOnCurrent(lambda c: c.updateLatestFrame(True))
-
-    def execOn(self, detectorName, func):
-        """ Executes a function on a specific detector and returns the result. """
-        if detectorName not in self._detectorManagers:
-            raise NoSuchDetectorError(f'Detector "{detectorName}" does not exist or is not managed'
-                                      f' by this DetectorsManager.')
-
-        return func(self._detectorManagers[detectorName])
 
     def execOnCurrent(self, func):
         """ Executes a function on the current detector and returns the result. """
@@ -86,11 +72,6 @@ class DetectorsManager(SignalInterface):
             raise NoDetectorsError
 
         return self.execOn(self._currentDetectorName, func)
-
-    def execOnAll(self, func):
-        """ Executes a function on all detectors and returns the results. """
-        return {detectorName: func(detectorManager)
-                for detectorName, detectorManager in self._detectorManagers.items()}
 
     def startAcquisition(self):
         self.execOnAll(lambda c: c.startAcquisition())
@@ -118,12 +99,6 @@ class LVWorker(Worker):
             lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True))
         )
         self.vtimer.start(self._updatePeriod)
-
-
-class NoSuchDetectorError(RuntimeError):
-    """ Error raised when a function related to a detector is called if the
-    detector is not managed by the DetectorsManager. """
-    pass
 
 
 class NoDetectorsError(RuntimeError):

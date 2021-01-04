@@ -229,9 +229,11 @@ class SLMWidget(Widget):
         super().__init__(*args, **kwargs)
 
         self.slmFrame = pg.GraphicsLayoutWidget()
-        self.slmFrame.vb = self.slmFrame.addViewBox(row=1, col=1)
-        self.slmFrame.img = pg.ImageItem()
-        self.slmFrame.setAspectLocked(True)
+        self.vb = self.slmFrame.addViewBox(row=1, col=1)
+        self.img = pg.ImageItem()
+        self.img.setImage(np.zeros((792,600)), autoLevels=True, autoDownsample=True, autoRange=True)
+        self.vb.addItem(self.img)
+        self.vb.setAspectLocked(True)
 
         self.slmParameterTree = pg.parametertree.ParameterTree()
         self.generalparams = [

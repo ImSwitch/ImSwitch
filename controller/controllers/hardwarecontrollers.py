@@ -9,7 +9,7 @@ from pyqtgraph.Qt import QtCore
 
 import controller.presets as presets
 from .basecontrollers import WidgetController
-from controller.helpers.SLMHelper import MaskMode, MaskChoice
+from controller.helpers.SLMHelper import MaskMode, Direction, MaskChoice
 
 
 class SLMController(WidgetController):
@@ -19,12 +19,11 @@ class SLMController(WidgetController):
         self._widget.initControls()
         self.loadPreset(self._defaultPreset)
 
-        # list all the buttons I want to connect to, and create functions with mock output for now
         # Connect SLMWidget buttons
-        self._widget.controlPanel.upButton.clicked.connect(lambda: self.moveMask('up'))  # change 'up' to (x,y)=(0,1)
-        self._widget.controlPanel.downButton.clicked.connect(lambda: self.moveMask('down'))  # change 'down' to (x,y)=(0,-1)
-        self._widget.controlPanel.leftButton.clicked.connect(lambda: self.moveMask('left'))  # change 'left' to (x,y)=(-1,0)
-        self._widget.controlPanel.rightButton.clicked.connect(lambda: self.moveMask('right'))  # change 'right' to (x,y)=(1,0)
+        self._widget.controlPanel.upButton.clicked.connect(lambda: self.moveMask(Direction.Up))  # change 'up' to (x,y)=(0,1)
+        self._widget.controlPanel.downButton.clicked.connect(lambda: self.moveMask(Direction.Down))  # change 'down' to (x,y)=(0,-1)
+        self._widget.controlPanel.leftButton.clicked.connect(lambda: self.moveMask(Direction.Left))  # change 'left' to (x,y)=(-1,0)
+        self._widget.controlPanel.rightButton.clicked.connect(lambda: self.moveMask(Direction.Right))  # change 'right' to (x,y)=(1,0)
 
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
@@ -47,7 +46,9 @@ class SLMController(WidgetController):
     def moveMask(self, direction):
         amount = self._widget.controlPanel.incrementSpinBox.value()
         mask = self._widget.controlPanel.maskComboBox.currentIndex()
+        image = self._master.slmHelper.moveMask(mask, direction, amount)
         print(f'Move {mask} phase mask {amount} pixels {direction}.')
+        self.updateDisplayImage(image)
 
     def saveParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
@@ -78,7 +79,7 @@ class SLMController(WidgetController):
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
-        self._widget.slmFrame.img.setImage(image, autoLevels=False, autoDownsample=False)
+        self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
         print("Updated displayed image")
     
     # Parameter tree apply pressed functions

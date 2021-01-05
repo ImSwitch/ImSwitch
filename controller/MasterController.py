@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from model import (
-    DetectorsManager, LaserManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
 )
 
 
@@ -21,7 +21,7 @@ class MasterController:
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.nidaqManager = NidaqManager(self.__setupInfo)
         self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
-        self.laserManager = LaserManager(self.__setupInfo.lasers, self.nidaqManager)
+        self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      nidaqManager=self.nidaqManager)
 

@@ -45,58 +45,62 @@
         "488 (OFF)": {
             "analogChannel": null,
             "digitalLine": 3,
-            "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-            "digitalPorts": [
-                "COM12"
-            ],
+            "managerName": "FullDigitalLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM12"
+                ]
+            },
             "wavelength": 488,
             "valueRangeMin": 0,
-            "valueRangeMax": 200,
-            "valueRangeStep": 1
+            "valueRangeMax": 200
         },
         "488 (EXC)": {
             "analogChannel": null,
             "digitalLine": 1,
-            "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-            "digitalPorts": [
-                "COM4"
-            ],
+            "managerName": "FullDigitalLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM4"
+                ]
+            },
             "wavelength": 488,
             "valueRangeMin": 0,
-            "valueRangeMax": 200,
-            "valueRangeStep": 1
+            "valueRangeMax": 200
         },
         "405 (ON)": {
             "analogChannel": null,
             "digitalLine": 2,
-            "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-            "digitalPorts": [
-                "COM11"
-            ],
+            "managerName": "FullDigitalLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM11"
+                ]
+            },
             "wavelength": 405,
             "valueRangeMin": 0,
-            "valueRangeMax": 200,
-            "valueRangeStep": 1
+            "valueRangeMax": 200
         },
         "592 (EXC)": {
             "analogChannel": 3,
             "digitalLine": 0,
-            "digitalDriver": null,
-            "digitalPorts": null,
+            "managerName": "NidaqAOLaserManager",
+            "managerProperties": {},
             "wavelength": 592,
             "valueRangeMin": 0,
-            "valueRangeMax": 1,
-            "valueRangeStep": 1
+            "valueRangeMax": 1
         },
         "592 (OFF)": {
             "analogChannel": null,
             "digitalLine": 6,
-            "digitalDriver": null,
-            "digitalPorts": null,
+            "managerName": "NidaqAOLaserManager",
+            "managerProperties": {},
             "wavelength": 592,
             "valueRangeMin": null,
-            "valueRangeMax": null,
-            "valueRangeStep": null
+            "valueRangeMax": null
         }
     },
     "positioners": {

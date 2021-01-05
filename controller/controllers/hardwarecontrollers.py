@@ -66,22 +66,18 @@ class LaserController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.lasers)
         self.loadPreset(self._defaultPreset)
+        self._widget.initControls(self._master.lasersManager)
 
-        self.digMod = False
         self.aotfLasers = {}
-        self.binaryLasers = set()
-        for laserName, laserInfo in self._setupInfo.lasers.items():
-            if laserInfo.isBinary():
-                self.binaryLasers.add(laserName)
-            elif laserInfo.isAotf():
+        for laserName, laserManager in self._master.lasersManager:
+            if not laserManager.isDigital:
                 self.aotfLasers[laserName] = False
 
         # Connect LaserWidget signals
         for laserModule in self._widget.laserModules.values():
-            if laserModule.laser not in self.binaryLasers:
-                if laserModule.laser not in self.aotfLasers:
+            if not self._master.lasersManager[laserModule.laser].isBinary:
+                if self._master.lasersManager[laserModule.laser].isDigital:
                     self.changeEdit(laserModule.laser)
 
                 laserModule.slider.valueChanged[int].connect(lambda _, laser=laserModule.laser: self.changeSlider(laser))
@@ -114,86 +110,67 @@ class LaserController(WidgetController):
             self._widget.digModule.powers[laserName].setText(laserPreset.value)
 
     def closeEvent(self):
-        for laserName, laserInfo in self._setupInfo.lasers.items():
-            if laserName in self.aotfLasers:
-                self._master.laserManager.changeVoltage(laserName, 0)
-            else:
-                self._master.laserManager.changePower(laserName, 0, False)
-
-            self._master.laserManager.setEnabled(laserName, False)
+        self._master.lasersManager.execOnAll(lambda l: l.setDigitalMod(False, 0))
+        self._master.lasersManager.execOnAll(lambda l: l.setValue(0))
 
     def toggleLaser(self, laserName):
         """ Enable or disable laser (on/off)."""
-        enable = self._widget.laserModules[laserName].enableButton.isChecked()
-        self._master.laserManager.setEnabled(laserName, enable)
+        self._master.lasersManager[laserName].setEnabled(
+            self._widget.laserModules[laserName].enableButton.isChecked()
+        )
 
     def changeSlider(self, laserName):
         """ Change power with slider magnitude. """
         magnitude = self._widget.laserModules[laserName].slider.value()
-        if laserName in self.aotfLasers.keys():
-            if not self.aotfLasers[laserName]:
-                self._master.laserManager.changeVoltage(laserName, magnitude)
-                self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
-        else:
-            self._master.laserManager.changePower(laserName, magnitude, self.digMod)
+        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
+            self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
 
     def changeEdit(self, laserName):
         """ Change power with edit magnitude. """
         magnitude = float(self._widget.laserModules[laserName].setPointEdit.text())
-        if laserName in self.aotfLasers.keys():
-            if not self.aotfLasers[laserName]:
-                self._master.laserManager.changeVoltage(laserName, magnitude)
-                self._widget.laserModules[laserName].slider.setValue(magnitude)
-        else:
-            self._master.laserManager.changePower(laserName, magnitude, self.digMod)
+        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
+            self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.laserModules[laserName].slider.setValue(magnitude)
 
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """
-        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
-        if self.digMod:
+        if self._widget.digModule.DigitalControlButton.isChecked():
             for laserName in laserNames:
-                if laserName in self.aotfLasers.keys():
-                    self._master.laserManager.changeVoltage(
-                        laserName=laserName,
-                        voltage=float(self._widget.digModule.powers[laserName].text())
-                    )
-                else:
-                    self._master.laserManager.changePower(
-                        laserName=laserName,
-                        power=int(self._widget.digModule.powers[laserName].text()), dig=self.digMod
-                    )
+                self._master.lasersManager[laserName].setValue(
+                    float(self._widget.digModule.powers[laserName].text())
+                )
 
     def GlobalDigitalMod(self, laserNames):
         """ Start digital modulation. """
-        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
+        digMod = self._widget.digModule.DigitalControlButton.isChecked()
         for laserName in laserNames:
-            if laserName in self.aotfLasers.keys():
-                self._master.laserManager.changeVoltage(
-                    laserName=laserName,
-                    voltage=float(self._widget.digModule.powers[laserName].text())
-                )
-                self._widget.laserModules[laserName].enableButton.setChecked(False)
-                self._widget.laserModules[laserName].enableButton.setEnabled(not self.digMod)
-                self.aotfLasers[laserName] = self.digMod
-                self._master.laserManager.setEnabled(laserName, False)  # TODO: Correct?
+            laserModule = self._widget.laserModules[laserName]
+            laserManager = self._master.lasersManager[laserName]
+
+            if laserManager.isBinary:
+                continue
+
+            value = float(self._widget.digModule.powers[laserName].text())
+            if laserManager.isDigital:
+                laserManager.setDigitalMod(digMod, value)
             else:
-                self._master.laserManager.digitalMod(
-                    laserName=laserName, digital=self.digMod,
-                    power=int(self._widget.digModule.powers[laserName].text())
-                )
+                laserManager.setValue(value)
+                laserModule.enableButton.setChecked(False)
+                laserModule.enableButton.setEnabled(not digMod)
+                self.aotfLasers[laserName] = digMod
+                laserManager.setEnabled(False)  # TODO: Correct?
 
-            self._widget.laserModules[laserName].setPointEdit.setEnabled(not self.digMod)
-            self._widget.laserModules[laserName].slider.setEnabled(not self.digMod)
+            laserModule.setPointEdit.setEnabled(not digMod)
+            laserModule.slider.setEnabled(not digMod)
 
-            if not self.digMod:
+            if not digMod:
                 self.changeEdit(laserName)
 
     def setDigitalButton(self, b):
         self._widget.digModule.DigitalControlButton.setChecked(b)
         self.GlobalDigitalMod(
-            [laser for laser in self._setupInfo.lasers.keys() if laser not in self.aotfLasers]
+            [laser.name for laser in self._master.lasersManager if laser.isDigital]
         )
 
 

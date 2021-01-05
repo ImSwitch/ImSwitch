@@ -25,37 +25,40 @@
         "405": {
             "analogChannel": null,
             "digitalLine": 0,
-            "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-            "digitalPorts": [
-                "COM9"
-            ],
+            "managerName": "FullDigitalLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM9"
+                ]
+            },
             "wavelength": 405,
             "valueRangeMin": 0,
-            "valueRangeMax": 200,
-            "valueRangeStep": 1
+            "valueRangeMax": 200
         },
         "488": {
             "analogChannel": null,
             "digitalLine": 1,
-            "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-            "digitalPorts": [
-                "COM4",
-                "COM14"
-            ],
+            "managerName": "FullDigitalLaserManager",
+            "managerProperties": {
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalPorts": [
+                    "COM4",
+                    "COM14"
+                ]
+            },
             "wavelength": 488,
             "valueRangeMin": 0,
-            "valueRangeMax": 200,
-            "valueRangeStep": 1
+            "valueRangeMax": 200
         },
         "473": {
             "analogChannel": 3,
             "digitalLine": 2,
-            "digitalDriver": null,
-            "digitalPorts": null,
+            "managerName": "NidaqAOLaserManager",
+            "managerProperties": {},
             "wavelength": 473,
             "valueRangeMin": 0,
-            "valueRangeMax": 5,
-            "valueRangeStep": 1
+            "valueRangeMax": 5
         }
     },
     "positioners": {

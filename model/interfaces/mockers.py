@@ -33,6 +33,7 @@ class MockLaser(Driver):
 
         self.enabled = False
         self.power_sp = 0 * self.mW
+        self._digMod = False
 
     @property
     def idn(self):
@@ -76,17 +77,17 @@ class MockLaser(Driver):
         return 55555 * self.mW
 
     def enter_mod_mode(self):
-        pass
+        self._digMod = True
 
     @property
     def digital_mod(self):
         """digital modulation enable state
         """
-        return True
+        return self._digMod
 
     @digital_mod.setter
     def digital_mod(self, value):
-        pass
+        self._digMod = value
 
     def mod_mode(self):
         """Returns the current operating mode

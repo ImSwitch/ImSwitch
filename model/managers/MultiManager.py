@@ -33,6 +33,12 @@ class MultiManager(ABC):
             raise NoSuchSubManagerError(f'Device "{managedDeviceName}" does not exist or is not'
                                         f' managed by this {self.__class__.__name__}.')
 
+    def __getitem__(self, key):
+        return self._subManagers[key]
+
+    def __iter__(self):
+        yield from self._subManagers.items()
+
 
 class NoSuchSubManagerError(RuntimeError):
     """ Error raised when a function related to a sub-manager is called if the

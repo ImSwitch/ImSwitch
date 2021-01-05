@@ -5,45 +5,28 @@ from typing import Any, Dict, List, Optional
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    analogChannel: Optional[int]  # null if the device is digital
-    digitalLine: Optional[int]  # null if the device is analog
+    analogChannel: Optional[int]  # null if the device is digital or doesn't use Nidaq
+    digitalLine: Optional[int]  # null if the device is analog or doesn't use Nidaq
+
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager
 
 
 @dataclass(frozen=True)
-class CameraInfo(DeviceInfo):
-    id: int  # index in camera list
-    properties: Dict[str, Any]
+class DetectorInfo(DeviceInfo):
+    pass
 
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    digitalDriver: Optional[str]  # null if the laser is analog
-    digitalPorts: Optional[List[str]]  # null if the laser is analog
     wavelength: str  # hex code
-
-    valueRangeMin: Optional[int]  # mW if digital, V if analog, null if binary
-    valueRangeMax: Optional[int]  # mW if digital, V if analog, null if binary
-    valueRangeStep: Optional[int]  # mW if digital, V if analog, null if binary
-
-    def getUnit(self):
-        return 'mW' if self.digitalDriver is not None else 'V'
-
-    def isFullDigital(self):
-        return (self.digitalDriver is not None and self.digitalPorts is not None
-                and len(self.digitalPorts) > 0)
-
-    def isAotf(self):
-        return not self.isFullDigital() and self.analogChannel is not None
-
-    def isBinary(self):
-        return not self.isFullDigital() and not self.isAotf()
+    valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
+    valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
 
 
 @dataclass(frozen=True)
-class StagePiezzoInfo(DeviceInfo):
-    conversionFactor: float
-    minVolt: int  # piezzoconcept
-    maxVolt: int  # piezzoconcept
+class PositionerInfo(DeviceInfo):
+    pass
 
 
 @dataclass(frozen=True)
@@ -72,10 +55,10 @@ class DesignersInfo:
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
-    cameras: Dict[str, CameraInfo]  # map from device ID to CameraInfo
+    detectors: Dict[str, DetectorInfo]  # map from device name to CameraInfo
 
-    lasers: Dict[str, LaserInfo]  # map from device ID to LaserInfo
-    stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
+    lasers: Dict[str, LaserInfo]  # map from device name to LaserInfo
+    positioners: Dict[str, PositionerInfo]  # map from device name to PositionerInfo
     scan: ScanInfo
 
     designers: DesignersInfo
@@ -88,14 +71,14 @@ class SetupInfo:
 
     def getTTLDevices(self):
         devices = {}
-        for deviceInfos in self.lasers, self.cameras:
+        for deviceInfos in self.lasers, self.detectors:
             devices.update(deviceInfos)
 
         return devices
 
     def getAllDevices(self):
         devices = {}
-        for deviceInfos in self.lasers, self.cameras, self.stagePiezzos:
+        for deviceInfos in self.lasers, self.detectors, self.positioners:
             devices.update(deviceInfos)
 
         return devices

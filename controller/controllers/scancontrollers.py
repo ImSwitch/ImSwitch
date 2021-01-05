@@ -16,7 +16,7 @@ import view.guitools as guitools
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.stagePiezzos, self._setupInfo.getTTLDevices())
+        self._widget.initControls(self._setupInfo.positioners, self._setupInfo.getTTLDevices())
 
         self._stageParameterDict = {
             'Sample_rate': self._setupInfo.scan.stage.sampleRate,
@@ -30,8 +30,8 @@ class ScanController(SuperScanController):
         self.getParameters()
         self.plotSignalGraph()
 
-        # Connect NidaqHelper signals
-        self._master.nidaqHelper.scanDoneSignal.connect(self.scanDone)
+        # Connect NidaqManager signals
+        self._master.nidaqManager.scanDoneSignal.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
         self._commChannel.prepareScan.connect(lambda: self.setScanButton(True))
@@ -119,17 +119,17 @@ class ScanController(SuperScanController):
     def setParameters(self):
         self._settingParameters = True
         try:
-            for i in range(len(self._setupInfo.stagePiezzos)):
-                stagePiezzoId = self._stageParameterDict['Targets[x]'][i]
+            for i in range(len(self._setupInfo.positioners)):
+                positionerName = self._stageParameterDict['Targets[x]'][i]
 
                 scanDimPar = self._widget.scanPar['scanDim' + str(i)]
-                scanDimPar.setCurrentIndex(scanDimPar.findText(stagePiezzoId))
+                scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
 
-                self._widget.scanPar['size' + stagePiezzoId].setText(
+                self._widget.scanPar['size' + positionerName].setText(
                     str(round(self._stageParameterDict['Sizes[x]'][i], 3))
                 )
 
-                self._widget.scanPar['stepSize' + stagePiezzoId].setText(
+                self._widget.scanPar['stepSize' + positionerName].setText(
                     str(round(self._stageParameterDict['Step_sizes[x]'][i], 3))
                 )
 
@@ -152,19 +152,19 @@ class ScanController(SuperScanController):
 
     def runScan(self):
         self.getParameters()
-        self.signalDic = self._master.scanHelper.makeFullScan(
+        self.signalDic = self._master.scanManager.makeFullScan(
             self._stageParameterDict, self._TTLParameterDict, self._setupInfo,
             staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
         )
-        self._master.nidaqHelper.runScan(self.signalDic)
+        self._master.nidaqManager.runScan(self.signalDic)
 
     def scanDone(self):
         print("scan done")
-        if not self._widget.continuousCheck.isChecked():
+        if not self._widget.contLaserPulsesRadio.isChecked() and not self._widget.continuousCheck.isChecked():
             self.setScanButton(False)
             self._commChannel.endScan.emit()
         else:
-            self._master.nidaqHelper.runScan(self.signalDic)
+            self._master.nidaqManager.runScan(self.signalDic)
 
     def getParameters(self):
         if self._settingParameters:
@@ -174,13 +174,13 @@ class ScanController(SuperScanController):
         self._stageParameterDict['Sizes[x]'] = []
         self._stageParameterDict['Step_sizes[x]'] = []
         self._stageParameterDict['Start[x]'] = []
-        for i in range(len(self._setupInfo.stagePiezzos)):
-            stagePiezzoId = self._widget.scanPar['scanDim' + str(i)].currentText()
-            size = float(self._widget.scanPar['size' + stagePiezzoId].text())
-            stepSize = float(self._widget.scanPar['stepSize' + stagePiezzoId].text())
-            start = self._commChannel.getStartPos()[stagePiezzoId]
+        for i in range(len(self._setupInfo.positioners)):
+            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
+            size = float(self._widget.scanPar['size' + positionerName].text())
+            stepSize = float(self._widget.scanPar['stepSize' + positionerName].text())
+            start = self._commChannel.getStartPos()[positionerName]
 
-            self._stageParameterDict['Targets[x]'].append(stagePiezzoId)
+            self._stageParameterDict['Targets[x]'].append(positionerName)
             self._stageParameterDict['Sizes[x]'].append(size)
             self._stageParameterDict['Step_sizes[x]'].append(stepSize)
             self._stageParameterDict['Start[x]'].append(start)
@@ -205,11 +205,11 @@ class ScanController(SuperScanController):
         self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
 
     def setContLaserPulses(self, isContLaserPulses):
-        for i in range(len(self._setupInfo.stagePiezzos)):
-            stagePiezzoId = self._widget.scanPar['scanDim' + str(i)].currentText()
+        for i in range(len(self._setupInfo.positioners)):
+            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
             self._widget.scanPar['scanDim' + str(i)].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['size' + stagePiezzoId].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['stepSize' + stagePiezzoId].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['size' + positionerName].setEnabled(not isContLaserPulses)
+            self._widget.scanPar['stepSize' + positionerName].setEnabled(not isContLaserPulses)
 
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)
@@ -220,7 +220,7 @@ class ScanController(SuperScanController):
             return
 
         self.getParameters()
-        TTLCycleSignalsDict = self._master.scanHelper.getTTLCycleSignalsDict(self._TTLParameterDict,
+        TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(self._TTLParameterDict,
                                                                              self._setupInfo)
 
         self._widget.graph.plot.clear()

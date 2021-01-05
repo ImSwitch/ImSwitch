@@ -19,10 +19,3 @@ class IncompatibilityError(Exception):
 
     def __init__(self, message):
         self.message = message
-
-
-class NidaqHelperError(Exception):
-    """ Exception raised when error occurs in NidaqHelper """
-
-    def __init__(self, message):
-        self.message = message

@@ -7,33 +7,33 @@ Created on Tue Apr  7 17:00:05 2020
 
 import numpy as np
 
-from controller.SignalDesigner import SignalDesignerFactory
-from controller.errors import IncompatibilityError
+from model.SignalDesigner import SignalDesignerFactory
+from model.errors import IncompatibilityError
 
 
-class ScanHelperFactory:
-    """Factory class for creating a ScanHelper object. Factory checks
-    that the new object is a valid ScanHelper."""
+class ScanManagerFactory:
+    """Factory class for creating a ScanManager object. Factory checks
+    that the new object is a valid ScanManager."""
 
     def __new__(cls, className, *args):
-        scanHelper = globals()[className](*args)
-        if scanHelper.isValidChild():
-            return scanHelper
+        scanManager = globals()[className](*args)
+        if scanManager.isValidChild():
+            return scanManager
 
 
-class SuperScanHelper:
+class SuperScanManager:
     def __init__(self):
-        self.isValidScanHelper = self.__isValidScanHelper
-        self.isValidChild = self.isValidScanHelper
+        self.isValidScanManager = self.__isValidScanManager
+        self.isValidChild = self.isValidScanManager
 
-    def __isValidScanHelper(self):  # For future possivle implementation
+    def __isValidScanManager(self):  # For future possivle implementation
         return True
 
     def _parameterCompatibility(self, parameterDict=None):
         raise NotImplementedError("Method not implemented in child")
 
 
-class ScanHelper(SuperScanHelper):
+class ScanManager(SuperScanManager):
     def __init__(self, setupInfo):
         super().__init__()
         self.__stageScanDesigner = SignalDesignerFactory(setupInfo, 'stageScanDesigner')
@@ -110,7 +110,7 @@ if __name__ == '__main__':
                      'Sample_rate': 100000}
 
     SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
-    sh = ScanHelperFactory('ScanHelper')
+    sh = ScanManagerFactory('ScanManager')
     fullsig = sh.makeFullScan(Stageparameters, TTLparameters)
     plt.plot(fullsig['stageScanSignalsDict']['Stage_X'])
     plt.plot(fullsig['stageScanSignalsDict']['Stage_Y'])

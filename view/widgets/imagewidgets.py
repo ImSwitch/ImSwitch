@@ -7,7 +7,6 @@ Created on Fri Mar 20 17:08:54 2020
 import os
 import time
 
-import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 from pyqtgraph.parametertree import Parameter, ParameterTree
@@ -17,24 +16,22 @@ from .basewidgets import Widget
 
 
 class CamParamTree(ParameterTree):
-    """ Making the ParameterTree for configuration of the camera during imaging
+    """ Making the ParameterTree for configuration of the detector during imaging
     """
 
-    def __init__(self, roiInfos, cameraPreset, *args, **kwargs):
+    def __init__(self, roiInfos, detectorParameters, supportedBinnings, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
                   "many pixels are to be read out and interpreted as a \n"
                   "single pixel value.")
 
-        # Parameter tree for the camera configuration
+        # Parameter tree for the detector configuration
         params = [{'name': 'Model', 'type': 'str', 'readonly': True},
-                  {'name': 'Pixel size', 'type': 'float', 'value': cameraPreset.pixelSize,
-                   'readonly': False, 'suffix': 'µm'},
                   {'name': 'Image frame', 'type': 'group', 'children': [
-                      {'name': 'Binning', 'type': 'list', 'value': cameraPreset.binning,
-                       'values': [1, 2, 4], 'tip': BinTip},
-                      {'name': 'Mode', 'type': 'list', 'value': cameraPreset.mode,
+                      {'name': 'Binning', 'type': 'list', 'value': 1,
+                       'values': supportedBinnings, 'tip': BinTip},
+                      {'name': 'Mode', 'type': 'list', 'value': 'Full chip',
                        'values': ['Full chip'] + list(roiInfos.keys()) + ['Custom']},
                       {'name': 'X0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
                       {'name': 'Y0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
@@ -47,27 +44,42 @@ class CamParamTree(ParameterTree):
                        'title': 'Save current parameters as mode'},
                       {'name': 'Delete mode', 'type': 'action',
                        'title': 'Remove current mode from list'},
-                      {'name': 'Update all cameras', 'type': 'bool', 'value': False}
-                  ]},
-                  {'name': 'Timings', 'type': 'group', 'children': [
-                      {'name': 'Set exposure time', 'type': 'float',
-                       'value': cameraPreset.setExposureTime, 'limits': (0, 9999),
-                       'siPrefix': True, 'suffix': 's'},
-                      {'name': 'Real exposure time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': ' s'},
-                      {'name': 'Internal frame interval', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': ' s'},
-                      {'name': 'Readout time', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': True, 'suffix': 's'},
-                      {'name': 'Internal frame rate', 'type': 'float',
-                       'value': 0, 'readonly': True, 'siPrefix': False, 'suffix': ' fps'}]},
-                  {'name': 'Acquisition mode', 'type': 'group', 'children': [
-                      {'name': 'Trigger source', 'type': 'list',
-                       'value': cameraPreset.acquisitionMode,
-                       'values': ['Internal trigger',
-                                  'External "Start-trigger"',
-                                  'External "frame-trigger"'],
-                       'siPrefix': True, 'suffix': 's'}]}]
+                      {'name': 'Update all detectors', 'type': 'bool', 'value': False}
+                  ]}]
+
+        detectorParamGroups = {}
+        for detectorParameterName, detectorParameter in detectorParameters.items():
+            if detectorParameter.group not in detectorParamGroups:
+                # Create group
+                detectorParamGroups[detectorParameter.group] = {
+                    'name': detectorParameter.group, 'type': 'group', 'children': []
+                }
+
+            detectorParameterType = type(detectorParameter).__name__
+            if detectorParameterType == 'DetectorNumberParameter':
+                pyqtParam = {
+                    'name': detectorParameterName,
+                    'type': 'float',
+                    'value': detectorParameter.value,
+                    'readonly': not detectorParameter.editable,
+                    'siPrefix': detectorParameter.valueUnits in ['s'],
+                    'suffix': detectorParameter.valueUnits,
+                    'decimals': 5
+                }
+            elif detectorParameterType == 'DetectorListParameter':
+                pyqtParam = {
+                    'name': detectorParameterName,
+                    'type': 'list',
+                    'value': detectorParameter.value,
+                    'readonly': not detectorParameter.editable,
+                    'values': detectorParameter.options
+                }
+            else:
+                raise TypeError(f'Unsupported detector parameter type "{detectorParameterType}"')
+
+            detectorParamGroups[detectorParameter.group]['children'].append(pyqtParam)
+
+        params += list(detectorParamGroups.values())
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)
@@ -127,14 +139,14 @@ class CamParamTree(ParameterTree):
 
 
 class SettingsWidget(Widget):
-    """ Camera settings and ROI parameters. """
+    """ Detector settings and ROI parameters. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        cameraTitle = QtGui.QLabel('<h2><strong>Camera settings</strong></h2>')
-        cameraTitle.setTextFormat(QtCore.Qt.RichText)
+        detectorTitle = QtGui.QLabel('<h2><strong>Detector settings</strong></h2>')
+        detectorTitle.setTextFormat(QtCore.Qt.RichText)
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
@@ -142,11 +154,29 @@ class SettingsWidget(Widget):
         # Add elements to GridLayout
         self.layout = QtGui.QVBoxLayout()
         self.setLayout(self.layout)
-        self.layout.addWidget(cameraTitle)
+        self.layout.addWidget(detectorTitle)
 
-    def initControls(self, roiInfos):
-        self.tree = CamParamTree(roiInfos, self._defaultPreset.camera)
-        self.layout.addWidget(self.tree)
+    def initControls(self, roiInfos, settingsPerDetector):
+        self.stack = QtGui.QStackedWidget()
+
+        self.trees = {}
+        for detectorName, (detectorParameters, supportedBinnings) in settingsPerDetector.items():
+            self.trees[detectorName] = CamParamTree(roiInfos, detectorParameters, supportedBinnings)
+            self.stack.addWidget(self.trees[detectorName])
+
+        self.layout.addWidget(self.stack)
+
+    def setDisplayedDetector(self, detectorName):
+        # Remember previously displayed detector settings widget scroll position
+        prevDetectorWidget = self.stack.currentWidget()
+        scrollX = prevDetectorWidget.horizontalScrollBar().value()
+        scrollY = prevDetectorWidget.verticalScrollBar().value()
+
+        # Switch to new detector settings widget and set scroll position to same as previous widget
+        newDetectorWidget = self.trees[detectorName]
+        self.stack.setCurrentWidget(newDetectorWidget)
+        newDetectorWidget.horizontalScrollBar().setValue(scrollX)
+        newDetectorWidget.verticalScrollBar().setValue(scrollY)
 
 
 class ViewWidget(Widget):
@@ -177,33 +207,33 @@ class ViewWidget(Widget):
                                           QtGui.QSizePolicy.Expanding)
         self.liveviewButton.setEnabled(True)
 
-        # Camera list
-        self.cameraListBox = QtGui.QHBoxLayout()
-        self.cameraListLabel = QtGui.QLabel('Current camera:')
-        self.cameraList = QtGui.QComboBox()
-        self.nextCameraButton = guitools.BetterPushButton('Next Camera')
-        self.cameraListBox.addWidget(self.cameraListLabel)
-        self.cameraListBox.addWidget(self.cameraList, 1)
-        self.cameraListBox.addWidget(self.nextCameraButton)
+        # Detector list
+        self.detectorListBox = QtGui.QHBoxLayout()
+        self.detectorListLabel = QtGui.QLabel('Current detector:')
+        self.detectorList = QtGui.QComboBox()
+        self.nextDetectorButton = guitools.BetterPushButton('Next')
+        self.detectorListBox.addWidget(self.detectorListLabel)
+        self.detectorListBox.addWidget(self.detectorList, 1)
+        self.detectorListBox.addWidget(self.nextDetectorButton)
 
         # Add elements to GridLayout
         self.viewCtrlLayout = QtGui.QGridLayout()
         self.setLayout(self.viewCtrlLayout)
-        self.viewCtrlLayout.addLayout(self.cameraListBox, 0, 0, 1, 2)
+        self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 2)
         self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 2)
         self.viewCtrlLayout.addWidget(self.gridButton, 2, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
 
-    def initControls(self, cameraModels):
-        if len(cameraModels) <= 1:
-            self.nextCameraButton.hide()
+    def initControls(self, detectorModels):
+        if len(detectorModels) <= 1:
+            self.nextDetectorButton.hide()
 
-        for cameraName, cameraModel in cameraModels.items():
-            self.cameraList.addItem(f'{cameraModel} ({cameraName})', cameraName)
+        for detectorName, detectorModel in detectorModels.items():
+            self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
-    """ Widget containing viewbox that displays the new camera frames.  """
+    """ Widget containing viewbox that displays the new detector frames.  """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -220,7 +250,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         # Viewbox and related elements
         self.vb = self.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = guitools.OptimizedImageItem()
+        self.img = guitools.OptimizedImageItem(axisOrder='row-major')
         self.img.translate(-0.5, -0.5)
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)
@@ -263,8 +293,8 @@ class RecordingWidget(Widget):
         recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
-        # Camera list
-        self.cameraList = QtGui.QComboBox()
+        # Detector list
+        self.detectorList = QtGui.QComboBox()
 
         # Folder and filename fields
         baseOutputFolder = self._defaultPreset.recording.outputFolder
@@ -330,8 +360,8 @@ class RecordingWidget(Widget):
         self.setLayout(recGrid)
 
         recGrid.addWidget(recTitle, 0, 0, 1, 3)
-        recGrid.addWidget(QtGui.QLabel('Camera to capture'), 1, 0)
-        recGrid.addWidget(self.cameraList, 1, 1, 1, 4)
+        recGrid.addWidget(QtGui.QLabel('Detector to capture'), 1, 0)
+        recGrid.addWidget(self.detectorList, 1, 1, 1, 4)
         recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
         recGrid.addWidget(self.folderEdit, 2, 1, 1, 3)
         recGrid.addWidget(self.openFolderButton, 2, 4)
@@ -367,11 +397,11 @@ class RecordingWidget(Widget):
         self.filenameEdit.setEnabled(False)
         self.untilSTOPbtn.setChecked(True)
 
-    def initControls(self, cameraModels):
-        if len(cameraModels) > 1:
-            self.cameraList.addItem('Current camera at start', -1)
-            self.cameraList.addItem('All cameras', -2)
+    def initControls(self, detectorModels):
+        if len(detectorModels) > 1:
+            self.detectorList.addItem('Current detector at start', -1)
+            self.detectorList.addItem('All detectors', -2)
 
-        for cameraName, cameraModel in cameraModels.items():
-            self.cameraList.addItem(f'{cameraModel} ({cameraName})', cameraName)
+        for detectorName, detectorModel in detectorModels.items():
+            self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 

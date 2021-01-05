@@ -7,15 +7,12 @@ Created on Fri Mar 20 15:08:33 2020
 from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
-from .presets import Preset
 
 
 class MainController:
     def __init__(self, setupInfo, mainView):
         self.__setupInfo = setupInfo
         self.__mainView = mainView
-
-        defaultPreset = Preset.getDefault(self.__mainView.presetDir)
 
         # Connect view signals
         self.__mainView.loadPresetButton.pressed.connect(self.loadPreset)
@@ -27,7 +24,7 @@ class MainController:
 
         # List of Controllers for the GUI Widgets
         self.__factory = controllers.WidgetControllerFactory(
-            self.__setupInfo, defaultPreset, self.__commChannel, __masterController
+            self.__setupInfo, self.__commChannel, __masterController
         )
 
         self.imageController = self.__factory.createController(controllers.ImageController, self.__mainView.imageWidget)

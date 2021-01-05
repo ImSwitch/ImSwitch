@@ -6,7 +6,6 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import numpy as np
 
-import controller.presets as presets
 from framework import Signal, Thread, Worker
 from .basecontrollers import WidgetController
 
@@ -17,7 +16,6 @@ class PositionerController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._widget.initControls(self._setupInfo.positioners)
-        self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
         self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
@@ -46,17 +44,6 @@ class PositionerController(WidgetController):
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
 
-    def loadPreset(self, preset):
-        positionerInfos = self._setupInfo.positioners
-        positionerPresets = preset.positioner.positioners
-
-        for positionerName in positionerInfos.keys():
-            positionerPreset = (
-                positionerPresets[positionerName] if positionerName in positionerPresets
-                else presets.PositionerPresetPositioner()
-            )
-            self._widget.pars['StepEdit' + positionerName].setText(positionerPreset.stepSize)
-
     def closeEvent(self):
         self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
 
@@ -66,7 +53,6 @@ class LaserController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.loadPreset(self._defaultPreset)
         self._widget.initControls(self._master.lasersManager)
 
         self.aotfLasers = {}
@@ -96,18 +82,6 @@ class LaserController(WidgetController):
         self._widget.digModule.updateDigPowersButton.clicked.connect(
             lambda: self.updateDigitalPowers(list(self._widget.digModule.powers.keys()))
         )
-
-    def loadPreset(self, preset):
-        laserInfos = self._setupInfo.lasers
-        laserPresets = self._defaultPreset.laserControl.lasers
-
-        for laserName in laserInfos.keys():
-            laserPreset = (laserPresets[laserName] if laserName in laserPresets
-                           else presets.LaserControlPresetLaser())
-
-            self._widget.laserModules[laserName].setPointEdit.setText(laserPreset.value)
-            self._widget.laserModules[laserName].slider.setValue(float(laserPreset.value))
-            self._widget.digModule.powers[laserName].setText(laserPreset.value)
 
     def closeEvent(self):
         self._master.lasersManager.execOnAll(lambda l: l.setDigitalMod(False, 0))

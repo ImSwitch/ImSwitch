@@ -1,16 +1,15 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 
-class PositionerManager:
+class PositionerManager(ABC):
     @abstractmethod
     def __init__(self, name, initialPosition):
-        super().__init__()
-        self._name = name
+        self.__name = name
         self._position = initialPosition
 
     @property
     def name(self):
-        return self._name
+        return self.__name
 
     @property
     def position(self):
@@ -18,12 +17,12 @@ class PositionerManager:
 
     @abstractmethod
     def move(self, dist):
-        """Moves the positioner by the specified distance and returns the new position. Derived
-        classes will update the position field manually."""
+        """Moves the positioner by the specified distance and returns the new
+        position. Derived classes will update the position field manually."""
         pass
 
     @abstractmethod
     def setPosition(self, position):
-        """Adjusts the positioner to the specified position and returns the new position. Derived
-        classes will update the position field manually."""
+        """Adjusts the positioner to the specified position and returns the new
+        position. Derived classes will update the position field manually."""
         pass

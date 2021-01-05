@@ -69,6 +69,7 @@ class SLMInfo:
     height: int
     wavelength: int
     pixelsize: float
+    angle_mount: float
     correctionPatternsDir: str
 
 

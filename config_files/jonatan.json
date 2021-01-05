@@ -150,6 +150,7 @@
     "height": 600,
     "wavelength": 775,
     "pixelsize": 0.02,
+    "angle_mount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   }
 }

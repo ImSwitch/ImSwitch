@@ -1,5 +1,5 @@
 from .DetectorsManager import DetectorsManager, NoDetectorsError
-from .LaserManager import LaserManager
+from .LasersManager import LasersManager
 from .NidaqManager import NidaqManager
 from .PositionersManager import PositionersManager
 from .RecordingManager import RecordingManager

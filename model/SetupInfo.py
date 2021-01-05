@@ -8,41 +8,25 @@ class DeviceInfo:
     analogChannel: Optional[int]  # null if the device is digital or doesn't use Nidaq
     digitalLine: Optional[int]  # null if the device is analog or doesn't use Nidaq
 
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager
+
 
 @dataclass(frozen=True)
 class DetectorInfo(DeviceInfo):
-    managerName: str  # manager class name
-    managerProperties: Dict[str, Any]  # properties to be read by manager
+    pass
 
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    digitalDriver: Optional[str]  # null if the laser is analog
-    digitalPorts: Optional[List[str]]  # null if the laser is analog
     wavelength: str  # hex code
-
-    valueRangeMin: Optional[int]  # mW if digital, V if analog, null if binary
-    valueRangeMax: Optional[int]  # mW if digital, V if analog, null if binary
-    valueRangeStep: Optional[int]  # mW if digital, V if analog, null if binary
-
-    def getUnit(self):
-        return 'mW' if self.digitalDriver is not None else 'V'
-
-    def isFullDigital(self):
-        return (self.digitalDriver is not None and self.digitalPorts is not None
-                and len(self.digitalPorts) > 0)
-
-    def isAotf(self):
-        return not self.isFullDigital() and self.analogChannel is not None
-
-    def isBinary(self):
-        return not self.isFullDigital() and not self.isAotf()
+    valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
+    valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
 
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
-    managerName: str  # manager class name
-    managerProperties: Dict[str, Any]  # properties to be read by manager
+    pass
 
 
 @dataclass(frozen=True)

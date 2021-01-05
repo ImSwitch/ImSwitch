@@ -6,9 +6,9 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore
 
 import view.guitools as guitools
+from framework import Mutex, Signal, Thread, Worker
 from .basecontrollers import WidgetController, LiveUpdatedController
 
 
@@ -30,7 +30,7 @@ class ULensesController(WidgetController):
     def updateGrid(self):
         """ Updates plot with new parameters. """
         self.getParameters()
-        size_x, size_y = self._master.cameraHelper.execOnCurrent(lambda c: c.shape)
+        size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         pattern_x = np.arange(self.x, size_x, self.up / self.px)
         pattern_y = np.arange(self.y, size_y, self.up / self.px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
@@ -70,7 +70,7 @@ class AlignXYController(LiveUpdatedController):
         self._widget.YButton.clicked.connect(lambda: self.setAxis(1))
 
     def update(self, im, init):
-        """ Update with new camera frame. """
+        """ Update with new detector frame. """
         if self.active:
             value = np.mean(
                 self._commChannel.getROIdata(im, self._widget.ROI),
@@ -120,7 +120,7 @@ class AlignAverageController(LiveUpdatedController):
         self._widget.roiButton.clicked.connect(self.toggleROI)
 
     def update(self, im, init):
-        """ Update with new camera frame. """
+        """ Update with new detector frame. """
         if self.active:
             value = np.mean(
                 self._commChannel.getROIdata(im, self._widget.ROI)
@@ -184,7 +184,7 @@ class AlignmentLineController(WidgetController):
 class FFTController(LiveUpdatedController):
     """ Linked to FFTWidget."""
 
-    imageReceived = QtCore.pyqtSignal(np.ndarray)
+    imageReceived = Signal(np.ndarray)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -196,7 +196,7 @@ class FFTController(LiveUpdatedController):
         # Prepare image computation worker
         self.imageComputationWorker = self.FFTImageComputationWorker()
         self.imageComputationWorker.fftImageComputed.connect(self.displayImage)
-        self.imageComputationThread = QtCore.QThread()
+        self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.imageReceived.connect(self.imageComputationWorker.computeFFTImage)
         self.imageComputationThread.start()
@@ -221,7 +221,7 @@ class FFTController(LiveUpdatedController):
         self._widget.img.setOnlyRenderVisible(self.active, render=False)
 
     def update(self, im, init):
-        """ Update with new camera frame. """
+        """ Update with new detector frame. """
         if self.active and (self.it == self.updateRate):
             self.it = 0
             self.imageComputationWorker.prepareForNewImage()
@@ -287,13 +287,13 @@ class FFTController(LiveUpdatedController):
             self._widget.uhline.show()
             self._widget.dhline.show()
 
-    class FFTImageComputationWorker(QtCore.QObject):
-        fftImageComputed = QtCore.pyqtSignal(np.ndarray)
+    class FFTImageComputationWorker(Worker):
+        fftImageComputed = Signal(np.ndarray)
 
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
+        def __init__(self):
+            super().__init__()
             self._numQueuedImages = 0
-            self._numQueuedImagesMutex = QtCore.QMutex()
+            self._numQueuedImagesMutex = Mutex()
 
         def computeFFTImage(self, image):
             """ Compute FFT of an image. """

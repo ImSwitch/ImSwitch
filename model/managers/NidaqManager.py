@@ -7,16 +7,15 @@ import operator
 
 import nidaqmx
 import numpy as np
-from pyqtgraph.Qt import QtCore
 
-from controller.errors import NidaqHelperError
+from framework import Signal, SignalInterface, Thread
 
 
-class NidaqHelper(QtCore.QObject):
-    scanDoneSignal = QtCore.pyqtSignal()
+class NidaqManager(SignalInterface):
+    scanDoneSignal = Signal()
 
-    def __init__(self, setupInfo, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, setupInfo):
+        super().__init__()
         self.__setupInfo = setupInfo
 
         self.busy = False
@@ -66,7 +65,7 @@ class NidaqHelper(QtCore.QObject):
         to either "high" or "low" voltage """
         line = self.__setupInfo.getDevice(target).digitalLine
         if line is None:
-            raise NidaqHelperError('Target has no digital output assigned to it')
+            raise NidaqManagerError('Target has no digital output assigned to it')
         else:
             if not self.busy:
                 self.busy = True
@@ -93,7 +92,7 @@ class NidaqHelper(QtCore.QObject):
         to a certain voltage """
         channel = self.__setupInfo.getDevice(target).analogChannel
         if channel is None:
-            raise NidaqHelperError('Target has no analog output assigned to it')
+            raise NidaqManagerError('Target has no analog output assigned to it')
         else:
             if not self.busy:
                 self.busy = True
@@ -157,7 +156,7 @@ class NidaqHelper(QtCore.QObject):
                 return
 
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-
+            clockDO = r'100kHzTimebase'
             if len(AOsignals) > 0:
                 sampsInScan = len(AOsignals[0])
                 self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
@@ -168,26 +167,26 @@ class NidaqHelper(QtCore.QObject):
 
                 self.aoTaskWaiter.connect(self.aoTask)
                 self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+                clockDO = r'ao/SampleClock'
 
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
-                                                      acquisitionTypeFinite, r'ao/SampleClock',
+                                                      acquisitionTypeFinite, clockDO ,
                                                       100000, sampsInScan=sampsInScan)
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
 
-            if len(AOsignals) > 0:
-                self.aoTask.start()
-
             if len(DOsignals) > 0:
                 self.doTask.start()
-
-            self.aoTaskWaiter.start()
-            self.doTaskWaiter.start()
-
+                self.doTaskWaiter.start()
+                
+            if len(AOsignals) > 0:
+                self.aoTask.start()
+                self.aoTaskWaiter.start()
+  
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
             self.busy = False
@@ -198,8 +197,8 @@ class NidaqHelper(QtCore.QObject):
         pass
 
 
-class WaitThread(QtCore.QThread):
-    waitdoneSignal = QtCore.pyqtSignal()
+class WaitThread(Thread):
+    waitdoneSignal = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -224,3 +223,9 @@ class WaitThread(QtCore.QThread):
             self.task.close()
         self.waitdoneSignal.emit()
         self.quit()
+
+
+class NidaqManagerError(Exception):
+    """ Exception raised when error occurs in NidaqManager """
+    def __init__(self, message):
+        self.message = message

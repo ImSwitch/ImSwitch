@@ -53,30 +53,23 @@ class MainView(QtGui.QMainWindow):
         layout = QtGui.QHBoxLayout()
         self.mainWidget.setLayout(layout)
 
-        leftContainer = QtGui.QVBoxLayout()
-        leftContainer.setContentsMargins(0, 0, 0, 0)
-        middleContainer = QtGui.QVBoxLayout()
-        middleContainer.setContentsMargins(0, 0, 0, 0)
-        rightContainer = QtGui.QVBoxLayout()
-        rightContainer.setContentsMargins(0, 0, 0, 0)
-
         # Presets
-        self.presetsMenu = QtGui.QComboBox()
+        #self.presetsMenu = QtGui.QComboBox()
 
-        for preset in sorted(os.listdir(self.presetDir)):
-            self.presetsMenu.addItem(preset)
+        #for preset in sorted(os.listdir(self.presetDir)):
+        #    self.presetsMenu.addItem(preset)
         self.loadPresetButton = guitools.BetterPushButton('Load preset')
 
-        presetPickerContainer = QtGui.QHBoxLayout()
-        presetPickerContainer.addWidget(self.presetsMenu, 1)
-        presetPickerContainer.addWidget(self.loadPresetButton)
-        leftContainer.addLayout(presetPickerContainer)
+        #presetPickerContainer = QtGui.QHBoxLayout()
+        #presetPickerContainer.addWidget(self.presetsMenu, 1)
+        #presetPickerContainer.addWidget(self.loadPresetButton)
+        #imageViewContainer.addLayout(presetPickerContainer)
 
         # Dock area
         dockArea = DockArea()
 
         # Laser dock
-        laserDock = Dock("Laser Control", size=(300, 1))
+        laserDock = Dock("Laser Control", size=(1, 1))
         self.laserWidgets = self.factory.createWidget(widgets.LaserWidget)
         laserDock.addWidget(self.laserWidgets)
         dockArea.addDock(laserDock)
@@ -141,35 +134,64 @@ class MainView(QtGui.QMainWindow):
         dockArea.addDock(scanDock)
 
         if availableWidgetsInfo.BeadRecWidget:
-            beadDock = Dock('Bead Rec', size=(1, 1))
+            self.beadDock = Dock('Bead Rec', size=(1, 100))
             self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)
-            beadDock.addWidget(self.beadRecWidget)
-            dockArea.addDock(beadDock)
-
-        rightContainer.addWidget(dockArea)
+            self.beadDock.addWidget(self.beadRecWidget)
+            dockArea.addDock(self.beadDock)
 
         # Add other widgets
         self.imageWidget = self.factory.createWidget(widgets.ImageWidget)
-        self.imageWidget.setSizePolicy(QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        middleContainer.addWidget(self.imageWidget)
+        self.recordingWidget = self.factory.createWidget(widgets.RecordingWidget)
+
+        # Image controls container
+        imageControlsContainer = QtGui.QVBoxLayout()
+        imageControlsContainer.setContentsMargins(0, 9, 0, 0)
 
         self.settingsWidget = self.factory.createWidget(widgets.SettingsWidget)
-        leftContainer.addWidget(self.settingsWidget, 1)
+        imageControlsContainer.addWidget(self.settingsWidget, 1)
 
         self.viewWidget = self.factory.createWidget(widgets.ViewWidget)
-        leftContainer.addWidget(self.viewWidget)
+        imageControlsContainer.addWidget(self.viewWidget)
 
-        self.recordingWidget = self.factory.createWidget(widgets.RecordingWidget)
-        leftContainer.addWidget(self.recordingWidget)
+        imageControlsContainerWidget = QtGui.QWidget()
+        imageControlsContainerWidget.setLayout(imageControlsContainer)
 
+        # Console
         console = ConsoleWidget(namespace={'pg': pg, 'np': np})
-        console.setMaximumHeight(150)
-        leftContainer.addWidget(console)
 
-        # Add containers to layout
-        layout.addLayout(leftContainer, 1)
-        layout.addLayout(middleContainer, 10)
-        layout.addLayout(rightContainer, 1)
+        # Docks
+        self.imageDock = Dock('Image Display', size=(1, 1))
+        self.imageDock.addWidget(self.imageWidget)
+        dockArea.addDock(self.imageDock, 'left')
+
+        self.imageControlsDock = Dock('Image Controls', size=(1, 100))
+        self.imageControlsDock.addWidget(imageControlsContainerWidget)
+        dockArea.addDock(self.imageControlsDock, 'left')
+
+        self.recordingDock = Dock('Recording', size=(1, 1))
+        self.recordingDock.addWidget(self.recordingWidget)
+        dockArea.addDock(self.recordingDock, 'bottom', self.imageControlsDock)
+
+        consoleDock = Dock('Console', size=(1, 1))
+        consoleDock.addWidget(console)
+        dockArea.addDock(consoleDock, 'bottom', self.recordingDock)
+
+        # Add dock area to layout
+        layout.addWidget(dockArea)
+
+        self.showMaximized()
+        self.imageControlsDock.container().setStretch(1, 1)
+        scanDock.container().setStretch(1, 1)
+        self.imageDock.setStretch(100, 100)
+
+    def setDetectorRelatedDocksVisible(self, visible):
+        self._catchingSetVisible(self.imageDock, visible)
+        self._catchingSetVisible(self.recordingDock, visible)
+        self._catchingSetVisible(self.imageControlsDock, visible)
+        self._catchingSetVisible(self.beadDock, visible)
+
+        if not visible:
+            self.showNormal()
 
         # Add tabs
         self.moduleTabs.addTab(self.mainWidget, 'Camera Interface')
@@ -181,3 +203,9 @@ class MainView(QtGui.QMainWindow):
     def closeEvent(self, event):
         self.closing.emit()
         event.accept()
+
+    def _catchingSetVisible(self, widget, visible):
+        try:
+            widget.setVisible(visible)
+        except AttributeError:
+            pass

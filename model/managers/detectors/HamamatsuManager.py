@@ -44,8 +44,8 @@ class HamamatsuManager(DetectorManager):
                                                              'External "start-trigger"',
                                                              'External "frame-trigger"'],
                                                     editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Misc', value=0.1,
-                                                  valueUnits='µm', editable=True)
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+                                                         valueUnits='µm', editable=True)
         }
 
         super().__init__(name, fullShape, [1, 2, 4], model, parameters, *args, **kwargs)

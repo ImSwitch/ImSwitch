@@ -14,7 +14,7 @@ class HamamatsuManager(DetectorManager):
     """HamamatsuManager deals with the Hamamatsu parameters and frame extraction
     for a Hamamatsu camera."""
 
-    def __init__(self, cameraInfo, name, *args, **kwargs):
+    def __init__(self, cameraInfo, name, **_kwargs):
         self._camera = getCameraObj(cameraInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
@@ -48,7 +48,7 @@ class HamamatsuManager(DetectorManager):
                                                          valueUnits='µm', editable=True)
         }
 
-        super().__init__(name, fullShape, [1, 2, 4], model, parameters, *args, **kwargs)
+        super().__init__(name, fullShape, [1, 2, 4], model, parameters)
         self._updatePropertiesFromCamera()
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 
@@ -72,10 +72,10 @@ class HamamatsuManager(DetectorManager):
         def cropAction():
             self._camera.setPropertyValue('subarray_vpos', 0)
             self._camera.setPropertyValue('subarray_hpos', 0)
-            self._camera.setPropertyValue('subarray_vsize', self._fullShape[0])
-            self._camera.setPropertyValue('subarray_hsize', self._fullShape[1])
+            self._camera.setPropertyValue('subarray_vsize', self.fullShape[0])
+            self._camera.setPropertyValue('subarray_hsize', self.fullShape[1])
 
-            if (vsize, hsize) != self._fullShape:
+            if (vsize, hsize) != self.fullShape:
                 self._camera.setPropertyValue('subarray_vsize', vsize)
                 self._camera.setPropertyValue('subarray_hsize', hsize)
                 self._camera.setPropertyValue('subarray_vpos', vpos)

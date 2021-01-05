@@ -57,13 +57,13 @@ class RecordingManager(SignalInterface):
         for detectorName in detectorNames:
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w', track_order=True)
 
-            shape = self.__detectorsManager.execOn(detectorName, lambda c: c.shape)
+            shape = self.__detectorsManager[detectorName].shape
             dataset = file.create_dataset('data', (shape[0], shape[1]), dtype='i2')
 
             for key, value in attrs[detectorName].items():
                 file.attrs[key] = value
 
-            dataset[:, :] = self.__detectorsManager.execOn(detectorName, lambda c: c.image)
+            dataset[:, :] = self.__detectorsManager[detectorName].image
             file.close()
 
 
@@ -76,8 +76,7 @@ class RecordingWorker(Worker):
         files = {detectorName: h5py.File(f'{self.savename}_{detectorName}.hdf5', 'w')
                  for detectorName in self.detectorNames}
 
-        shapes = {detectorName: self.__recordingManager.detectorsManager.execOn(detectorName,
-                                                                                lambda c: c.shape)
+        shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
 
         currentFrame = {}
@@ -103,9 +102,7 @@ class RecordingWorker(Worker):
                 detectorName = self.detectorNames[0]
                 frames = self.frames
                 while self.__recordingManager.record and currentFrame[detectorName] < frames:
-                    newframes, _ = self.__recordingManager.detectorsManager.execOn(
-                        detectorName, lambda c: c.getChunk()
-                    )
+                    newframes, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
                     n = len(newframes)
                     if n > 0:
                         it = currentFrame[detectorName]
@@ -126,9 +123,7 @@ class RecordingWorker(Worker):
                 currentRecTime = 0
                 while self.__recordingManager.record and currentRecTime < self.time:
                     for detectorName in self.detectorNames:
-                        newframes, _ = self.__recordingManager.detectorsManager.execOn(
-                            detectorName, lambda c: c.getChunk()
-                        )
+                        newframes, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
                         n = len(newframes)
                         if n > 0:
                             it = currentFrame[detectorName]
@@ -143,12 +138,9 @@ class RecordingWorker(Worker):
                 self.__recordingManager.recordingTimeUpdated.emit(0)
                 self.__recordingManager.endRecording()
             else:
-                start = time.time()
                 while self.__recordingManager.record:
                     for detectorName in self.detectorNames:
-                        newframes, _ = self.__recordingManager.detectorsManager.execOn(
-                            detectorName, lambda c: c.getChunk()
-                        )
+                        newframes, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
                         n = len(newframes)
                         if n > 0:
                             it = currentFrame[detectorName]

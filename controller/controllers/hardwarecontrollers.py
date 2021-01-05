@@ -4,6 +4,9 @@ Created on Sun Mar 22 10:40:53 2020
 
 @author: _Xavi
 """
+
+import pickle
+
 import numpy as np
 from pyqtgraph.Qt import QtCore
 
@@ -28,8 +31,11 @@ class SLMController(WidgetController):
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
 
+        self._widget.controlPanel.donutButton.clicked.connect(lambda: self.setMask(MaskMode.Donut))
+        self._widget.controlPanel.tophatButton.clicked.connect(lambda: self.setMask(MaskMode.Tophat))
+
         self._widget.controlPanel.blackButton.clicked.connect(lambda: self.setMask(MaskMode.Black))
-        self._widget.controlPanel.gaussiansButton.clicked.connect(lambda: self.setMask(MaskMode.Gauss))
+        self._widget.controlPanel.gaussianButton.clicked.connect(lambda: self.setMask(MaskMode.Gauss))
         
         self._widget.controlPanel.halfButton.clicked.connect(lambda: self.setMask(MaskMode.Half))
         self._widget.controlPanel.quadrantButton.clicked.connect(lambda: self.setMask(MaskMode.Quad))
@@ -38,54 +44,99 @@ class SLMController(WidgetController):
 
         # Connect SLMWidget parameter tree updates
         self.applySlmParam = self._widget.slmParameterTree.p.param('Apply')
-        self.applySlmParam.sigStateChanged.connect(self.applySlm)
+        self.applySlmParam.sigStateChanged.connect(self.applyGeneral)
         self.applyAberParam = self._widget.aberParameterTree.p.param('Apply')
-        self.applyAberParam.sigStateChanged.connect(self.applyAber)
+        self.applyAberParam.sigStateChanged.connect(self.applyAberrations)
 
     # Button pressed functions
     def moveMask(self, direction):
         amount = self._widget.controlPanel.incrementSpinBox.value()
         mask = self._widget.controlPanel.maskComboBox.currentIndex()
-        image = self._master.slmHelper.moveMask(mask, direction, amount)
-        print(f'Move {mask} phase mask {amount} pixels {direction}.')
+        self._master.slmHelper.moveMask(mask, direction, amount)
+        image = self._master.slmHelper.update()
         self.updateDisplayImage(image)
+        #print(f'Move {mask} phase mask {amount} pixels {direction}.')
 
     def saveParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
+        general_paramtree = self._widget.slmParameterTree
+        aber_paramtree = self._widget.aberParameterTree
+        center_coords = self._master.slmHelper.getCenters()
+
         if(obj=='No objective'):
             print('You have to choose an objective from the drop down menu.')
+            return
         else:
-            print(f'Save SLM parameters for {obj} objective.')
+            if(obj=='Oil'):
+                filename = 'info_oil.slm'
+            elif(obj=='Glycerol'):
+                filename = 'info_glyc.slm'
+        state_general = general_paramtree.p.saveState()
+        state_aber = aber_paramtree.p.saveState()
+        state_pos = center_coords
+        with open(filename, 'wb') as f:
+            pickler = pickle.Pickler(f)
+            pickler.dump(state_general)
+            pickler.dump(state_pos)
+            pickler.dump(state_aber)
+        #print(f'Saved SLM parameters for {obj} objective.')
 
     def loadParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
+        general_paramtree = self._widget.slmParameterTree
+        aber_paramtree = self._widget.aberParameterTree
+
         if(obj=='No objective'):
             print('You have to choose an objective from the drop down menu.')
+            return
         else:
-            print(f'Load SLM parameters for {obj} objective.')
+            if(obj=='Oil'):
+                filename = 'info_oil.slm'
+            elif(obj=='Glycerol'):
+                filename = 'info_glyc.slm'
+        with open(filename, 'rb') as f:
+            unpickler = pickle.Unpickler(f)
+            state_general = unpickler.load()
+            state_pos = unpickler.load()
+            state_aber = unpickler.load()
+        
+        self._widget.slmParameterTree.p.restoreState(state_general)
+        self._widget.aberParameterTree.p.restoreState(state_aber)
+        self._master.slmHelper.setCenters(state_pos)
+        self._master.slmHelper.setAberrations(self._widget.aberParameterTree)
+        self._master.slmHelper.setGeneral(self._widget.slmParameterTree)
+        image = self._master.slmHelper.update()
+        self.updateDisplayImage(image)
+        #print(f'Loaded SLM parameters for {obj} objective.')
 
     def setMask(self, maskMode):
         mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
         angle = np.float(self._widget.controlPanel.rotationEdit.text())
-        image = self._master.slmHelper.setMask(mask, angle, maskMode)
-        print("Updated image on SLM")
+        sigma = np.float(self._widget.slmParameterTree.p.param('General parameters').param('Sigma').value())
+        self._master.slmHelper.setMask(mask, angle, sigma, maskMode)
+        image = self._master.slmHelper.update()
         self.updateDisplayImage(image)
+        #print("Updated image on SLM")
 
-    def applySlm(self):
-        print('Apply changes to general slm mask parameters.')
+    def applyGeneral(self):
+        self._master.slmHelper.setGeneral(self._widget.slmParameterTree)
+        image = self._master.slmHelper.update()
+        self.updateDisplayImage(image)
+        #print('Apply changes to general slm mask parameters.')
         
-    def applyAber(self):
-        print('Apply changes to aberration correction masks.')
+    def applyAberrations(self):
+        self._master.slmHelper.setAberrations(self._widget.aberParameterTree)
+        image = self._master.slmHelper.update()
+        self.updateDisplayImage(image)
+        #print('Apply changes to aberration correction masks.')
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
-        print("Updated displayed image")
-    
-    # Parameter tree apply pressed functions
+        #print("Updated displayed image")
 
-    def loadPreset(self, preset):
-        print('Loaded default SLM settings.')
+    #def loadPreset(self, preset):
+    #    print('Loaded default SLM settings.')
 
 
 class PositionerController(WidgetController):

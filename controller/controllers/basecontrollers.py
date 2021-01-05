@@ -9,23 +9,21 @@ import weakref
 
 from framework import SignalInterface
 from model import InvalidChildClassError
-from controller.presets import Preset
 
 
 class WidgetControllerFactory:
     """Factory class for creating a WidgetController object. Factory checks
     that the new object is a valid WidgetController."""
 
-    def __init__(self, setupInfo, defaultPreset, commChannel, masterController):
+    def __init__(self, setupInfo, commChannel, masterController):
         self._setupInfo = setupInfo
-        self._defaultPreset = defaultPreset
         self._commChannel = commChannel
         self._master = masterController
         self._createdControllers = []
 
     def createController(self, controllerClass, widget, *args, **kwargs):
-        controller = controllerClass(self._setupInfo, self._defaultPreset, self._commChannel,
-                                     self._master, widget, *args, **kwargs)
+        controller = controllerClass(self._setupInfo, self._commChannel, self._master, widget,
+                                     *args, **kwargs)
 
         self._createdControllers.append(weakref.ref(controller))
         return controller
@@ -54,10 +52,9 @@ class WidgetController(SignalInterface):
     All WidgetControllers should have access to the setup information,
     MasterController, CommunicationChannel and the linked Widget. """
 
-    def __init__(self, setupInfo, defaultPreset, commChannel, master, widget):
+    def __init__(self, setupInfo, commChannel, master, widget):
         # Protected attributes, which should only be accessed from WidgetController and its subclasses
         self._setupInfo = setupInfo
-        self._defaultPreset = defaultPreset
         self._commChannel = commChannel
         self._master = master
         self._widget = widget

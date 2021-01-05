@@ -37,7 +37,7 @@ class PositionerController(WidgetController):
 
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.positionersManager.execOn(axis, lambda p: p.move(dist))
+        newPos = self._master.positionersManager[axis].move(dist)
         newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
         self._widget.pars['Label' + axis].setText(newText)
 

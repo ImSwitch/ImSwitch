@@ -14,7 +14,7 @@ class NidaqAOPositionerManager(PositionerManager):
 
     def setPosition(self, position):
         self._position = position
-        self._nidaqManager.setAnalog(target=self._name,
+        self._nidaqManager.setAnalog(target=self.name,
                                      voltage=position / self._conversionFactor,
                                      min_val=self._minVolt,
                                      max_val=self._maxVolt)

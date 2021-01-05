@@ -371,9 +371,8 @@ class SettingsController(WidgetController):
     def detectorSwitched(self, newDetectorName, _):
         """ Called when the user switches to another detector. """
         self._widget.setDisplayedDetector(newDetectorName)
-        self._master.detectorsManager.execOn(
-            newDetectorName, lambda c: self._commChannel.adjustFrame.emit(*c.shape)
-        )
+        newDetectorShape = self._master.detectorsManager[newDetectorName].shape
+        self._commChannel.adjustFrame.emit(*newDetectorShape)
 
     def getCamAttrs(self):
         return self._master.detectorsManager.execOnAll(

@@ -88,6 +88,12 @@ class MainView(QtGui.QMainWindow):
         laserDock.addWidget(self.laserWidgets)
         dockArea.addDock(laserDock)
 
+        # SLM widget dock
+        focusLockDock = Dock('Focus Lock', size=(300, 1))
+        self.focusLockWidget = self.factory.createWidget(widgets.FocusLockWidget)
+        focusLockDock.addWidget(self.focusLockWidget)
+        dockArea.addDock(focusLockDock, 'above', laserDock)
+
         # FFT dock
         if availableWidgetsInfo.FFTWidget:
             FFTDock = Dock("FFT Tool", size=(1, 1))

@@ -139,7 +139,8 @@
     "BeadRecWidget": false,
     "FFTWidget": false,
     "ULensesWidget": false,
-    "SLMWidget": true
+    "SLMWidget": true,
+    "FocusLockWidget": true
   },
   "designers": {
     "stageScanDesigner": "BetaStageScanDesigner",

@@ -83,13 +83,13 @@ class MainView(QtGui.QMainWindow):
         dockArea = DockArea()
 
         # Laser dock
-        laserDock = Dock("Laser Control", size=(300, 1))
+        laserDock = Dock("Laser Control", size=(1, 1))
         self.laserWidgets = self.factory.createWidget(widgets.LaserWidget)
         laserDock.addWidget(self.laserWidgets)
         dockArea.addDock(laserDock)
 
-        # SLM widget dock
-        focusLockDock = Dock('Focus Lock', size=(300, 1))
+        # Focus lock dock
+        focusLockDock = Dock('Focus Lock', size=(1, 1))
         self.focusLockWidget = self.factory.createWidget(widgets.FocusLockWidget)
         focusLockDock.addWidget(self.focusLockWidget)
         dockArea.addDock(focusLockDock, 'above', laserDock)

@@ -74,6 +74,11 @@ class SLMInfo:
 
 
 @dataclass(frozen=True)
+class FocusLockInfo:
+    scansPerS: int
+
+
+@dataclass(frozen=True)
 class DesignersInfo:
     stageScanDesigner: str  # name of the stage scan designer class to use
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
@@ -88,6 +93,7 @@ class SetupInfo:
     stagePiezzos: Dict[str, StagePiezzoInfo]  # map from device ID to StagePiezzoInfo
     scan: ScanInfo
     slm: SLMInfo
+    focusLock: FocusLockInfo
 
     designers: DesignersInfo
 

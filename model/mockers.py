@@ -457,3 +457,88 @@ class MockWebcam(Driver):
 
     def stop(self):
         pass
+
+
+class MockCameraTIS:
+    def __init__(self, cameraNo, exposure, gain, brightness):
+
+        self.properties['subarray_vpos'] = 0
+        self.properties['subarray_hpos'] = 0
+        self.properties['exposure_time'] = 0.03
+        self.properties['subarray_vsize'] = 1024
+        self.properties['subarray_hsize'] = 1280
+        self.exposure = 1
+        self.gain = 1
+        self.brightness = 1
+
+    def grab_image(self, **kwargs):
+        img = np.zeros((1024, 1280))
+        beamCenter = [int(np.random.randn() * 10 + 500),
+                      int(np.random.randn() * 10 + 600)]
+        img[beamCenter[0] - 10:beamCenter[0] + 10,
+        beamCenter[1] - 10:beamCenter[1] + 10] = 1
+        return img
+
+    def setPropertyValue(self, property_name, property_value):
+            return property_value
+
+    def show_dialog(self):
+        pass
+
+
+class MockPCZPiezo(Driver):
+    """Mock driver for the PiezoConcept Z-piezo."""
+
+    @Feat(read_once=True)
+    def idn(self):
+        """Get information of device"""
+#        return self.query('INFOS')
+        dummyquery = 'dummy zpiezo answer'
+        return dummyquery
+
+    # Z-MOVEMENT
+
+    @Feat(units='micrometer')
+    def absZ(self):
+        """ Absolute Z position. """
+        return 2.0
+
+    @absZ.setter
+    def absZ(self, value):
+        """ Absolute Z position movement, in um. """
+        pass
+
+    def relZ(self, value):
+        """ Relative Z position movement, in um. """
+        pass
+        if abs(float(value)) > 0.5:
+                print('Warning: Step bigger than 500 nm.')
+
+    @Action(units='micrometer')
+    def move_relZ(self, value):
+        """ Relative Z position movement, in um. """
+        pass
+        if abs(float(value)) > 0.5:
+                print('Warning: Step bigger than 500 nm.')
+
+    @Action(units='micrometer', limits=(100,))
+    def move_absZ(self, value):
+        """ Absolute Z position movement, in um. """
+        pass
+
+    # CONTROL/STATUS
+
+    @Feat()
+    def timeStep(self):
+        """ Get the time between each points sent by the RAM of the USB
+        interface to the nanopositioner. """
+        return 1
+
+    @timeStep.setter
+    def timeStep(self, value):
+        """ Set the time between each points sent by the RAM of the USB
+        interface to the nanopositioner, in ms. """
+        pass
+
+    def close(self):
+        pass

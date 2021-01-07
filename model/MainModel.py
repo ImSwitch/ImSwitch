@@ -4,7 +4,7 @@ Created on Fri Mar 20 15:16:06 2020
 
 @author: _Xavi
 """
-from model import instruments, SLM
+from model import instruments, SLM, piezoPiezoconceptZ, mockers
 
 
 class MainModel:
@@ -29,6 +29,13 @@ class MainModel:
             self.lasers[laserName] = laser
         
         self.slm = SLM.SLMdisplay(monitor = 1)
+
+        #try:
+        #    self.piezoz = piezoPiezoconceptZ.PCZPiezo('ASRL2::INSTR')
+        #except:
+        self.piezoz = mockers.MockPCZPiezo()
+
+#        self.focusLock = FocusLock.focuslock(scansPerS = self.setupInfo.focusLock.scansPerS)
 
     def initCamera(self, camera, cameraInfo):
         for propertyName, propertyValue in cameraInfo.properties.items():

@@ -10,6 +10,8 @@ from .helpers.NidaqHelper import NidaqHelper
 from .helpers.RecordingHelper import RecordingHelper
 from .helpers.ScanHelper import ScanHelper
 from .helpers.SLMHelper import SLMHelper
+from .helpers.PiezoconceptZHelper import PiezoconceptZHelper
+from .helpers.FocusLockHelper import FocusLockHelper
 
 
 class MasterController:
@@ -27,6 +29,8 @@ class MasterController:
         self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
                                        self.nidaqHelper)
         self.slmHelper = SLMHelper(self.__model.setupInfo.slm, self.__model.slm)
+        self.focusLockHelper = FocusLockHelper(self.__model.setupInfo.focusLock)
+        self.piezozHelper = PiezoconceptZHelper(self.__model.piezoz)
 
         # Connect signals
         self.cameraHelper.updateImageSignal.connect(self.__commChannel.updateImage)

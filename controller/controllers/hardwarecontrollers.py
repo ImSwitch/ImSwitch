@@ -139,6 +139,56 @@ class SLMController(WidgetController):
     #    print('Loaded default SLM settings.')
 
 
+class FocusLockController(WidgetController):
+    """Linked to FocusLockWidget."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.loadPreset(self._defaultPreset)
+
+        # Connect FocusLockWidget buttons
+        self._widget.kpEdit.textChanged.connect(self.unlockFocus)
+        self._widget.kiEdit.textChanged.connect(self.unlockFocus)
+
+        self._widget.lockButton.clicked.connect(lambda: self.toggleFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text())))
+        self._widget.camDialogButton.clicked.connect(self.cameraDialog)
+        self._widget.positionSetButton.clicked.connect(self.moveZ)
+        self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
+        self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
+
+        #self._widget.controlPanel.upButton.clicked.connect(lambda: self.moveMask(Direction.Up))  # change 'up' to (x,y)=(0,1)
+
+    # Button pressed/text edited functions
+    def unlockFocus(self):
+        self._master.focusLockHelper.unlockFocus()
+        print("Controller: Unlock focus.")
+
+    def toggleFocus(self, kp, ki):
+        if self._widget.lockButton.isChecked():
+            absz = self._master.piezozHelper.get_abs()
+            setPoint = self._master.focusLockHelper.lockFocus(kp, ki, absz)
+            self._widget.lockButton.setText('Unlock')
+            self._widget.focusLockGraph.lineLock = self._widget.focusLockGraph.plot.addLine(y=setPoint, pen='r')
+        else:
+            self._master.focusLockHelper.unlockFocus()
+            self._widget.lockButton.setText('Lock')
+        print("Controller: Toggle focus: unlock if locked, lock if unlocked. Also: change text on the lockButton.")
+
+    def cameraDialog(self):
+        print("Controller: Open camera settings dialog.")
+
+    def moveZ(self):
+        print("Controller: Potentially connect this to moving the z-piezo, or otherwise take care of that only in the positioning widget and remove this button. Can still keep the text and update with a signal to the current Z-position.")
+
+    def focusCalibrationStart(self):
+        print("Controller: Start focus calibration thread and calibrate.")
+
+    def showCalibrationCurve(self):
+        print("Controller: Show calibration curve.")
+
+    #def loadPreset(self, preset):
+    #    print('Loaded default focus lock settings.')
+
+
 class PositionerController(WidgetController):
     """ Linked to PositionerWidget."""
 

@@ -38,6 +38,7 @@ class MainController:
         self.viewController = self.__factory.createController(controllers.ViewController, self.__view.viewWidget)
         self.settingsController = self.__factory.createController(controllers.SettingsController, self.__view.settingsWidget)
         self.slmController = self.__factory.createController(controllers.SLMController, self.__view.slmWidget)
+        self.focusLockController = self.__factory.createController(controllers.FocusLockController, self.__view.focusLockWidget)
 
         if model.setupInfo.availableWidgets.BeadRecWidget:
             self.beadController = self.__factory.createController(controllers.BeadController, self.__view.beadRecWidget)

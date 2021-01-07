@@ -419,3 +419,96 @@ class SLMWidget(Widget):
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 1, 1)
+
+
+class FocusLockWidget(Widget):
+    ''' Widget containing focus lock interface. '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Focus lock
+        self.kpEdit = QtGui.QLineEdit('5')
+        self.kpLabel = QtGui.QLabel('kp')
+        self.kiEdit = QtGui.QLineEdit('0.1')
+        self.kiLabel = QtGui.QLabel('ki')
+        
+        self.lockButton = guitools.BetterPushButton('Lock')
+        self.lockButton.setCheckable(True)
+        self.lockButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                      QtGui.QSizePolicy.Expanding)
+        
+        self.zStackBox = QtGui.QCheckBox('Z-stack')
+        self.twoFociBox = QtGui.QCheckBox('Two foci')
+
+        self.zStepFromEdit = QtGui.QLineEdit('40')
+        self.zStepFromLabel = QtGui.QLabel('Min step (nm)')
+        self.zStepToEdit = QtGui.QLineEdit('100')
+        self.zStepToLabel = QtGui.QLabel('Max step (nm)')
+
+        #self.focusDataBox = QtGui.QCheckBox('Save data')  # Connect to exportData
+        self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
+
+        # Piezo absolute positioning
+        self.positionLabel = QtGui.QLabel('Position (µm)')  # Potentially disregard this and only use in the positioning widget?
+        self.positionEdit = QtGui.QLineEdit('50')
+        self.positionSetButton = guitools.BetterPushButton('Set')
+
+        # Focus lock calibration
+        self.calibFromLabel = QtGui.QLabel('From (µm)')
+        self.calibFromEdit = QtGui.QLineEdit('49')
+        self.calibToLabel = QtGui.QLabel('To (µm)')
+        self.calibToEdit = QtGui.QLineEdit('51')
+        self.focusCalibButton = guitools.BetterPushButton('Calib')
+        self.focusCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                            QtGui.QSizePolicy.Expanding)
+        self.calibCurveButton = guitools.BetterPushButton('See calib')
+        self.calibrationDisplay = QtGui.QLineEdit('Previous calib: none')  # Edit this from the controller with calibration values
+        self.calibrationDisplay.setReadOnly(True)
+        # CREATE CALIBRATION CURVE WINDOW AND FOCUS CALIBRATION GRAPH SOMEHOW
+
+        # Focus lock graph
+        self.focusLockGraph = pg.GraphicsLayoutWidget()
+        self.focusLockGraph.setAntialiasing(True)
+        self.focusPlot = self.focusLockGraph.addPlot(row=1, col=0)
+        self.focusPlot.setLabels(bottom=('Time', 's'), left=('Laser position', 'px'))
+        self.focusPlot.showGrid(x=True, y=True)
+        self.focusPlotCurve = self.focusPlot.plot(pen='y')   # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
+
+        # Webcam graph
+        self.webcamGraph = pg.GraphicsLayoutWidget()
+        self.img = pg.ImageItem(border='w')
+        self.img.setImage(np.zeros((100,100)))
+        self.vb = self.webcamGraph.addViewBox(invertY=True, invertX=False)
+        self.vb.setAspectLocked(True)
+        self.vb.addItem(self.img)
+
+        # PROCESS DATA THREAD - ADD SOMEWHERE ELSE, NOT HERE, AS IT HAS NO GRAPHICAL ELEMENTS!
+
+        # GUI layout below
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.focusLockGraph, 0, 0, 1, 9)
+        grid.addWidget(self.webcamGraph, 0, 9, 4, 1)
+        grid.addWidget(self.focusCalibButton, 1, 2, 2, 1)
+        grid.addWidget(self.calibrationDisplay, 3, 0, 1, 2)
+        grid.addWidget(self.kpLabel, 1, 3)
+        grid.addWidget(self.kpEdit, 1, 4)
+        grid.addWidget(self.kiLabel, 2, 3)
+        grid.addWidget(self.kiEdit, 2, 4)
+        grid.addWidget(self.lockButton, 1, 5, 2, 1)
+        grid.addWidget(self.zStackBox, 4, 2)
+        grid.addWidget(self.twoFociBox, 4, 6)
+        grid.addWidget(self.zStepFromLabel, 3, 4)
+        grid.addWidget(self.zStepFromEdit, 4, 4)
+        grid.addWidget(self.zStepToLabel, 3, 5)
+        grid.addWidget(self.zStepToEdit, 4, 5)
+        #grid.addWidget(self.focusDataBox, 4, 0, 1, 2)
+        grid.addWidget(self.calibFromLabel, 1, 0)
+        grid.addWidget(self.calibFromEdit, 1, 1)
+        grid.addWidget(self.calibToLabel, 2, 0)
+        grid.addWidget(self.calibToEdit, 2, 1)
+        grid.addWidget(self.calibCurveButton, 3, 2)
+        grid.addWidget(self.positionLabel, 1, 6)
+        grid.addWidget(self.positionEdit, 1, 7)
+        grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
+        grid.addWidget(self.camDialogButton, 3, 6, 1, 2)

@@ -15,6 +15,22 @@
         "subarray_hsize": 512,
         "subarray_vsize": 512
       }
+    },
+    "TIScam": {
+      "digitalLine": 3,
+      "id": 1,
+      "properties": {
+        "readout_speed": 3,
+        "trigger_global_exposure": 5,
+        "trigger_active": 2,
+        "trigger_polarity": 2,
+        "exposure_time": 0.01,
+        "trigger_source": 2,
+        "subarray_hpos": 0,
+        "subarray_vpos": 0,
+        "subarray_hsize": 512,
+        "subarray_vsize": 512
+      }
     }
   },
   "lasers": {
@@ -153,5 +169,8 @@
     "pixelsize": 0.02,
     "angle_mount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
+  },
+  "focusLock": {
+    "scansPerS": 10
   }
 }

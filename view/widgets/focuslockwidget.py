@@ -32,19 +32,30 @@ class FocusLockWidget(Widget):
         self.twoFociBox = QtGui.QCheckBox('Two foci')
         
         self.zStepFromEdit = QtGui.QLineEdit('40')
-        self.zStepFromLabel = QtGui.QLabel('Min step [nm]')
+        self.zStepFromLabel = QtGui.QLabel('Min step (nm)')
         self.zStepToEdit = QtGui.QLineEdit('100')
-        self.zStepToLabel = QtGui.QLabel('Max step [nm]')
+        self.zStepToLabel = QtGui.QLabel('Max step (nm)')
 
         self.focusDataBox = QtGui.QCheckBox('Save data')  # Connect to exportData
-        self.camDialogButton = QtGui.QPushButton('Camera Dialog')  # Connect to webcam.show_dialog
+        self.camDialogButton = guitools.BetterPushButton('Camera Dialog')  # Connect to webcam.show_dialog
 
         # Piezo absolute positioning
-        self.positionLabel = QtGui.QLabel('Position[um]')  # Potentially disregard this and only use in the positioning widget?
+        self.positionLabel = QtGui.QLabel('Position (µm)')  # Potentially disregard this and only use in the positioning widget?
         self.positionEdit = QtGui.QLineEdit('50')
-        self.positionSetButton = QtGui.QPushButton('Set')  # Connect to movePZT
+        self.positionSetButton = guitools.BetterPushButton('Set')  # Connect to movePZT
 
         # Focus lock calibration
+        self.calibFromLabel = QtGui.QLabel('From (µm)')
+        self.calibFromEdit = QtGui.QLineEdit('49')
+        self.calibToLabel = QtGui.QLabel('To (µm)')
+        self.calibToEdit = QtGui.QLineEdit('51')
+        self.focusCalibButton = guitools.BetterPushButton('Calib')  # Connect to focuscalibthread.start
+        self.focusCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                            QtGui.QSizePolicy.Expanding)
+        self.calibCurveButton = guitools.BetterPushButton('See calib')  # Connect to showCalibCurve
+        self.calibrationDisplay = QtGui.QLineEdit('Previous calibration: none')  # Edit this from the controller with calibration values
+        self.calibrationDisplay.setReadOnly(True)
+        # CREATE CALIBRATION CURVE WINDOW AND FOCUS CALIBRATION GRAPH SOMEHOW
 
 
         # Focus lock graph
@@ -61,204 +72,31 @@ class FocusLockWidget(Widget):
         # PROCESS DATA THREAD - ADD SOMEWHERE ELSE, NOT HERE, AS IT HAS NO GRAPHICAL ELEMENTS!
 
         # GUI layout below
-        # CONTINUE HERE
-
-
-class SLMWidget(Widget):
-    ''' Widget containing slm interface. '''
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.slmFrame = pg.GraphicsLayoutWidget()
-        self.vb = self.slmFrame.addViewBox(row=1, col=1)
-        self.img = pg.ImageItem()
-        self.img.setImage(np.zeros((792,600)), autoLevels=True, autoDownsample=True, autoRange=True)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-
-        self.slmParameterTree = pg.parametertree.ParameterTree()
-        self.generalparams = [{'name': 'General parameters', 'type': 'group', 'children': [
-                  {'name': 'Radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1, 'suffix': 'px'},
-                  {'name': 'Sigma', 'type': 'float', 'value': 35, 'limits': (1, 100), 'step': 0.1, 'suffix': 'px'},
-                  #{'name': 'angle', 'type': 'float', 'value': 0.15, 'limits': (0, 0.3), 'step': 0.01, 'suffix': 'rad'},
-                  #{'name': 'wavelength', 'type': 'float', 'value': 775, 'limits': (0, 1200), 'step': 1, 'suffix': 'nm'},
-                  #{'name': 'helix rotation', 'type': 'bool', 'value': True},
-                  ]},
-                  {'name': 'Apply', 'type': 'action'}
-                  ]
-        self.slmParameterTree.setStyleSheet('''
-        QTreeView::item, QAbstractSpinBox, QComboBox {
-            padding-top: 0;
-            padding-bottom: 0;
-            border: none;
-        }
-        
-        QComboBox QAbstractItemView {
-            min-width: 128px;
-        }
-        ''')
-        self.slmParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group', children=self.generalparams)
-        self.slmParameterTree.setParameters(self.slmParameterTree.p, showTop=False)
-        self.slmParameterTree._writable = True
-
-        self.aberParameterTree = pg.parametertree.ParameterTree()
-        aberlim = 2
-        self.aberparams = [{'name': 'Donut', 'type': 'group', 'children': [
-                    {'name': 'Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Vertical coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01}
-                 ]},
-                  {'name': 'Tophat', 'type': 'group', 'children': [
-                    {'name': 'Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Vertical coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01},
-                    {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim), 'step': 0.01}
-                  ]},
-                  {'name': 'Apply', 'type': 'action'}
-                  ] 
-        self.aberParameterTree.setStyleSheet('''
-        QTreeView::item, QAbstractSpinBox, QComboBox {
-            padding-top: 0;
-            padding-bottom: 0;
-            border: none;
-        }
-        
-        QComboBox QAbstractItemView {
-            min-width: 128px;
-        }
-        ''')
-        self.aberParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group', children=self.aberparams)
-        self.aberParameterTree.setParameters(self.aberParameterTree.p, showTop=False)
-        self.aberParameterTree._writable = True
-
-        self.paramtreeDockArea = pg.dockarea.DockArea()
-        pmtreeDock = pg.dockarea.Dock('Phase mask parameters', size=(1, 1))
-        pmtreeDock.addWidget(self.slmParameterTree)
-        self.paramtreeDockArea.addDock(pmtreeDock)
-        abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
-        abertreeDock.addWidget(self.aberParameterTree)
-        self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
-
-        # Control panel with most buttons
-        self.controlPanel = QtGui.QFrame()
-        self.controlPanel.choiceInterfaceLayout = QtGui.QGridLayout()
-        self.controlPanel.choiceInterface = QtGui.QWidget()
-        self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
-
-        # Choose which mask to modify
-        self.controlPanel.maskComboBox = QtGui.QComboBox()
-        self.controlPanel.maskComboBox.addItem("Donut (left)")
-        self.controlPanel.maskComboBox.addItem("Top hat (right)")
-        self.controlPanel.choiceInterfaceLayout.addWidget(QtGui.QLabel('Select mask:'), 0, 0)
-        self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.maskComboBox, 0, 1)
-
-        # Choose which objective is in use
-        self.controlPanel.objlensComboBox = QtGui.QComboBox()
-        self.controlPanel.objlensComboBox.addItem("No objective")
-        self.controlPanel.objlensComboBox.addItem("Oil")
-        self.controlPanel.objlensComboBox.addItem("Glycerol")
-        self.controlPanel.choiceInterfaceLayout.addWidget(QtGui.QLabel('Select objective:'), 1, 0)
-        self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
-
-        # Phase mask moving buttons
-        self.controlPanel.arrowButtons = []
-        self.controlPanel.upButton = guitools.BetterPushButton('Up (YZ)')
-        self.controlPanel.arrowButtons.append(self.controlPanel.upButton)
-        self.controlPanel.downButton = guitools.BetterPushButton('Down (YZ)')
-        self.controlPanel.arrowButtons.append(self.controlPanel.downButton)
-        self.controlPanel.leftButton = guitools.BetterPushButton('Left (XZ)')
-        self.controlPanel.arrowButtons.append(self.controlPanel.leftButton)
-        self.controlPanel.rightButton = guitools.BetterPushButton('Right (XZ)')
-        self.controlPanel.arrowButtons.append(self.controlPanel.rightButton)
-
-        for button in self.controlPanel.arrowButtons:
-            button.setCheckable(False)
-            button.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                 QtGui.QSizePolicy.Expanding)                   
-            button.setFixedSize(self.controlPanel.upButton.sizeHint())
-
-        # Interface to change the amount of displacement induced by the arrows
-        self.controlPanel.incrementInterface = QtGui.QWidget()
-        self.controlPanel.incrementInterfaceLayout = QtGui.QVBoxLayout()
-        self.controlPanel.incrementInterface.setLayout(self.controlPanel.incrementInterfaceLayout)
-        self.controlPanel.incrementlabel = QtGui.QLabel("Step (px)")
-        self.controlPanel.incrementSpinBox = QtGui.QSpinBox()
-        self.controlPanel.incrementSpinBox.setRange(1, 50)
-        self.controlPanel.incrementSpinBox.setValue(1)
-        self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementlabel)
-        self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementSpinBox)
-
-        # Interface to change the rotation angle of phase pattern
-        self.controlPanel.rotationInterface = QtGui.QWidget()
-        self.controlPanel.rotationInterfaceLayout = QtGui.QVBoxLayout()
-        self.controlPanel.rotationInterface.setLayout(self.controlPanel.rotationInterfaceLayout)
-        self.controlPanel.rotationLabel = QtGui.QLabel('Pattern angle (rad)')
-        self.controlPanel.rotationEdit = QtGui.QLineEdit('0')
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationLabel)
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationEdit)
-
-        # Buttons for saving, loading, and controlling the various phase patterns
-        self.controlPanel.saveButton = guitools.BetterPushButton("Save")
-        self.controlPanel.loadButton = guitools.BetterPushButton("Load")
-
-        self.controlPanel.donutButton = guitools.BetterPushButton("Donut")
-        self.controlPanel.tophatButton = guitools.BetterPushButton("Tophat")
-
-        self.controlPanel.blackButton = guitools.BetterPushButton("Black frame")
-        self.controlPanel.gaussianButton = guitools.BetterPushButton("Gaussian")
-
-        self.controlPanel.halfButton = guitools.BetterPushButton("Half pattern")
-        self.controlPanel.quadrantButton = guitools.BetterPushButton("Quad pattern")
-        self.controlPanel.hexButton = guitools.BetterPushButton("Hex pattern")
-        self.controlPanel.splitbullButton = guitools.BetterPushButton("Split pattern")
-
-        # Defining layout
-        self.controlPanel.arrowsFrame = QtGui.QFrame()
-        self.controlPanel.arrowsLayout = QtGui.QGridLayout()
-        self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.upButton, 0, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.leftButton, 1, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.incrementInterface, 1, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rightButton, 1, 2)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.downButton, 2, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 4, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussianButton, 4, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 5, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 5, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 6, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 6, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rotationInterface, 5, 2, 2, 1)
-
-        # Definition of the box layout:
-        self.controlPanel.boxLayout = QtGui.QVBoxLayout()
-        self.controlPanel.setLayout(self.controlPanel.boxLayout)
-
-        self.controlPanel.boxLayout.addWidget(self.controlPanel.choiceInterface)
-        self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
-
-        self.grid = QtGui.QGridLayout()
-        self.setLayout(self.grid)
-
-    def initControls(self):
-        self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
-        self.grid.addWidget(self.controlPanel, 1, 1, 1, 1)
+        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        grid = QtGui.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.focusLockGraph, 0, 0, 1, 9)
+        grid.addWidget(self.webcamGraph, 0, 9, 4, 1)
+        grid.addWidget(self.focusCalibButton, 1, 2, 2, 1)
+        grid.addWidget(self.calibrationDisplay, 3, 0, 1, 2)
+        grid.addWidget(self.kpLabel, 1, 3)
+        grid.addWidget(self.kpEdit, 1, 4)
+        grid.addWidget(self.kiLabel, 2, 3)
+        grid.addWidget(self.kiEdit, 2, 4)
+        grid.addWidget(self.lockButton, 1, 5, 2, 1)
+        grid.addWidget(self.zStackBox, 4, 2)
+        grid.addWidget(self.twoFociBox, 4, 6)
+        grid.addWidget(self.zStepFromLabel, 3, 4)
+        grid.addWidget(self.zStepFromEdit, 4, 4)
+        grid.addWidget(self.zStepToLabel, 3, 5)
+        grid.addWidget(self.zStepToEdit, 4, 5)
+        grid.addWidget(self.focusDataBox, 4, 0, 1, 2)
+        grid.addWidget(self.calibFromLabel, 1, 0)
+        grid.addWidget(self.calibFromEdit, 1, 1)
+        grid.addWidget(self.calibToLabel, 2, 0)
+        grid.addWidget(self.calibToEdit, 2, 1)
+        grid.addWidget(self.calibCurveButton, 3, 2)
+        grid.addWidget(self.positionLabel, 1, 6)
+        grid.addWidget(self.positionEdit, 1, 7)
+        grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
+        grid.addWidget(self.camDialogButton, 3, 6, 1, 2)

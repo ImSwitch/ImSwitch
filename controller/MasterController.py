@@ -24,7 +24,7 @@ class MasterController:
         self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      nidaqManager=self.nidaqManager)
-        self.slmManager = SLMManager(self.__setupInfo.slm, slm=)
+        self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals
         self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)

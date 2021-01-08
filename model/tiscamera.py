@@ -85,5 +85,15 @@ class CameraTIS:
         self.properties[property_name] = property_value
         return property_value
 
+    def getPropertyValue(self, property_name):
+
+        # Check if the property exists.
+        if not (property_name in self.properties):
+            print(" unknown property name:", property_name)
+            return False
+        prop_value = self.properties[property_name]
+
+        return prop_value
+
     def show_dialog(self):
         self.cam.show_property_dialog()

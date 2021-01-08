@@ -6,9 +6,10 @@ Created on Thu Jan 07 14:11:00 2021
 """
 
 from pyicic import IC_ImagingControl
+import mockers
 
 
-class CameraTIS:
+class CameraTIS(mockers.MockHamamatsu):
     def __init__(self, cameraNo, exposure, gain, brightness):
         super().__init__()
 

@@ -6,25 +6,24 @@ Created on Sun Mar 22 10:40:53 2020
 """
 import traceback
 import weakref
-from pyqtgraph.Qt import QtCore
-from controller.errors import InvalidChildClassError
-from controller.presets import Preset
+
+from framework import SignalInterface
+from model import InvalidChildClassError
 
 
 class WidgetControllerFactory:
     """Factory class for creating a WidgetController object. Factory checks
     that the new object is a valid WidgetController."""
 
-    def __init__(self, setupInfo, defaultPreset, commChannel, masterController):
+    def __init__(self, setupInfo, commChannel, masterController):
         self._setupInfo = setupInfo
-        self._defaultPreset = defaultPreset
         self._commChannel = commChannel
         self._master = masterController
         self._createdControllers = []
 
     def createController(self, controllerClass, widget, *args, **kwargs):
-        controller = controllerClass(self._setupInfo, self._defaultPreset, self._commChannel,
-                                     self._master, widget, *args, **kwargs)
+        controller = controllerClass(self._setupInfo, self._commChannel, self._master, widget,
+                                     *args, **kwargs)
 
         self._createdControllers.append(weakref.ref(controller))
         return controller
@@ -48,21 +47,20 @@ class WidgetControllerFactory:
                     print(traceback.format_exc())
 
 
-class WidgetController(QtCore.QObject):
+class WidgetController(SignalInterface):
     """ Superclass for all WidgetControllers.
     All WidgetControllers should have access to the setup information,
     MasterController, CommunicationChannel and the linked Widget. """
 
-    def __init__(self, setupInfo, defaultPreset, commChannel, master, widget, *args, **kwargs):
+    def __init__(self, setupInfo, commChannel, master, widget):
         # Protected attributes, which should only be accessed from WidgetController and its subclasses
         self._setupInfo = setupInfo
-        self._defaultPreset = defaultPreset
         self._commChannel = commChannel
         self._master = master
         self._widget = widget
 
         # Init superclass
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
     def loadPreset(self, preset):
         pass

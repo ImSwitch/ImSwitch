@@ -70,34 +70,34 @@ class ScanWidget(Widget):
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
 
-    def initControls(self, stagePiezzoInfos, TTLDeviceInfos):
-        self.scanDims = list(stagePiezzoInfos.keys())
+    def initControls(self, positionerInfos, TTLDeviceInfos):
+        self.scanDims = list(positionerInfos.keys())
 
         self.grid.addWidget(self.loadScanBtn, 0, 0)
         self.grid.addWidget(self.saveScanBtn, 0, 1)
         self.grid.addWidget(self.scanRadio, 0, 2)
         self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)
         self.grid.addItem(QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum), 0, 6)
-        self.grid.addWidget(self.scanButton, 1, 7, len(stagePiezzoInfos), 1)
+        self.grid.addWidget(self.scanButton, 1, 7, len(positionerInfos), 1)
         self.grid.addWidget(self.continuousCheck, 0, 7)
 
         currentRow = 1
 
-        stagePiezzoPresets = self._defaultPreset.scan.stagePiezzos
-        for index, (stagePiezzoId, stagePiezzoInfo) in enumerate(stagePiezzoInfos.items()):
-            stagePiezzoPreset = (
-                stagePiezzoPresets[stagePiezzoId] if stagePiezzoId in stagePiezzoPresets
-                else guitools.ScanPresetStagePiezzo()
+        positionerPresets = self._defaultPreset.scan.positioners
+        for index, (positionerName, positionerInfo) in enumerate(positionerInfos.items()):
+            positionerPreset = (
+                positionerPresets[positionerName] if positionerName in positionerPresets
+                else guitools.ScanPresetPositioner()
             )
 
-            sizePar = QtGui.QLineEdit(str(stagePiezzoPreset.size))
-            self.scanPar['size' + stagePiezzoId] = sizePar
-            stepSizePar = QtGui.QLineEdit(str(stagePiezzoPreset.stepSize))
-            self.scanPar['stepSize' + stagePiezzoId] = stepSizePar
+            sizePar = QtGui.QLineEdit(str(positionerPreset.size))
+            self.scanPar['size' + positionerName] = sizePar
+            stepSizePar = QtGui.QLineEdit(str(positionerPreset.stepSize))
+            self.scanPar['stepSize' + positionerName] = stepSizePar
 
-            self.grid.addWidget(QtGui.QLabel('Size {} (µm):'.format(stagePiezzoId)), currentRow, 0)
+            self.grid.addWidget(QtGui.QLabel('Size {} (µm):'.format(positionerName)), currentRow, 0)
             self.grid.addWidget(sizePar, currentRow, 1)
-            self.grid.addWidget(QtGui.QLabel('Step {} (µm):'.format(stagePiezzoId)), currentRow, 2)
+            self.grid.addWidget(QtGui.QLabel('Step {} (µm):'.format(positionerName)), currentRow, 2)
             self.grid.addWidget(stepSizePar, currentRow, 3)
 
             dimLabelText = '{}{} dimension:'.format(index + 1, guitools.ordinalSuffix(index + 1))

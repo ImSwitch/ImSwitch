@@ -33,6 +33,7 @@ class MockLaser(Driver):
 
         self.enabled = False
         self.power_sp = 0 * self.mW
+        self._digMod = False
 
     @property
     def idn(self):
@@ -76,17 +77,17 @@ class MockLaser(Driver):
         return 55555 * self.mW
 
     def enter_mod_mode(self):
-        pass
+        self._digMod = True
 
     @property
     def digital_mod(self):
         """digital modulation enable state
         """
-        return True
+        return self._digMod
 
     @digital_mod.setter
     def digital_mod(self, value):
-        pass
+        self._digMod = value
 
     def mod_mode(self):
         """Returns the current operating mode
@@ -165,7 +166,9 @@ class MockHamamatsu(Driver):
         self.max_backlog = 0
         self.number_image_buffers = 0
         self.hcam_data = []
-        self.max_value_for_mock_data = np.random.randint(65536)
+
+        self.mock_data_max_value = np.random.randint(65536)
+        self.mock_acquisiton_running = False
 
         self.s = Q_(1, 's')
 
@@ -187,7 +190,9 @@ class MockHamamatsu(Driver):
                            'subarray_mode': 'OFF',
                            'timing_readout_time': 9999,
                            'internal_frame_rate': 9999,
-                           'internal_frame_interval': 9999}
+                           'internal_frame_interval': 9999,
+                           'trigger_source': 1,
+                           'trigger_mode': 1}
 
         # Get camera max width, height.
         self.max_width = self.getPropertyValue("image_width")[0]
@@ -222,20 +227,19 @@ class MockHamamatsu(Driver):
 
         @return (frames, (frame x size, frame y size))'''
         frames = []
+        frame_x, frame_y = self.frame_x, self.frame_y
 
         for i in range(2):
             # Create storage
-            hc_data = HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
-            frames.append(np.reshape(hc_data.np_array, (self.frame_x, self.frame_y)))
+            hc_data = HMockCamData(frame_x * frame_y, self.mock_data_max_value)
+            frames.append(np.reshape(hc_data.getData(), (frame_x, frame_y)))
 
-        return frames, (self.frame_x, self.frame_y)
+        return frames, (frame_x, frame_y)
 
-    def getLast(self, transpose=False):
-        hc_data = HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
-        if transpose:
-            return np.reshape(hc_data.np_array.T, (self.frame_y, self.frame_x))
-        else:
-            return np.reshape(hc_data.np_array, (self.frame_x, self.frame_y))
+    def getLast(self):
+        frame_x, frame_y = self.frame_x, self.frame_y
+        hc_data = HMockCamData(frame_x * frame_y, self.mock_data_max_value)
+        return np.reshape(hc_data.getData(), (frame_x, frame_y))
 
     def getModelInfo(self):
         ''' Returns the model of the camera
@@ -351,6 +355,12 @@ class MockHamamatsu(Driver):
         if not (property_name in self.properties):
             return False
 
+        # Some values are not changeable while the acquisition is running
+        if (self.mock_acquisiton_running and
+            (property_name == 'subarray_vpos' or property_name == 'subarray_hpos' or
+             property_name == 'subarray_vsize' or property_name == 'subarray_hsize')):
+            raise Exception('Value not changeable while acquisition is running')
+
         # If the value is text, figure out what the
         # corresponding numerical property value is.
 
@@ -391,14 +401,17 @@ class MockHamamatsu(Driver):
         n_buffers = int((2.0 * 1024 * 1024 * 1024) / self.frame_bytes)
         self.number_image_buffers = n_buffers
 
-        self.hcam_data = [HMockCamData(self.frame_x * self.frame_y, self.max_value_for_mock_data)
+        self.hcam_data = [HMockCamData(self.frame_x * self.frame_y, self.mock_data_max_value)
                           for i in range(1, 2)]
+
+        self.mock_acquisiton_running = True
 
     # stopAcquisition
     #
     # Stop data acquisition.
     #
     def stopAcquisition(self):
+        self.mock_acquisiton_running = False
         pass
 
     def updateIndices(self):

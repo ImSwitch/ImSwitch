@@ -4,33 +4,33 @@ Created on Tue Mar 24 16:41:57 2020
 
 @author: _Xavi
 """
-from .helpers.CameraHelper import CameraHelper
-from .helpers.LaserHelper import LaserHelper
-from .helpers.NidaqHelper import NidaqHelper
-from .helpers.RecordingHelper import RecordingHelper
-from .helpers.ScanHelper import ScanHelper
-from .helpers.SLMHelper import SLMHelper
-from .helpers.PiezoconceptZHelper import PiezoconceptZHelper
-from .helpers.FocusLockHelper import FocusLockHelper
+from model import (
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
+)
 
 
 class MasterController:
-    # This class will handle the communication between software and hardware, using the Helpers for each hardware set.
-    def __init__(self, model, commChannel):
+    # This class will handle the communication between software and hardware, using the managers for each hardware set.
+    def __init__(self, setupInfo, commChannel):
         print('init master controller')
-        self.__model = model
+        self.__setupInfo = setupInfo
         self.__commChannel = commChannel
 
-        # Init helpers
-        self.cameraHelper = CameraHelper(self.__commChannel, self.__model.cameras)
-        self.recordingHelper = RecordingHelper(self.__commChannel, self.cameraHelper)
-        self.nidaqHelper = NidaqHelper(self.__model.setupInfo)
-        self.scanHelper = ScanHelper(self.__model.setupInfo)  # Make sure compatibility
-        self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
-                                       self.nidaqHelper)
-        self.slmHelper = SLMHelper(self.__model.setupInfo.slm, self.__model.slm)
-        #self.focusLockHelper = FocusLockHelper(self.__model.setupInfo.focusLock)
-        self.piezozHelper = PiezoconceptZHelper(self.__model.piezoz)
+        # Init managers
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100)
+        self.recordingManager = RecordingManager(self.detectorsManager)
+        self.nidaqManager = NidaqManager(self.__setupInfo)
+        self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
+        self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
+        self.positionersManager = PositionersManager(self.__setupInfo.positioners,
+                                                     nidaqManager=self.nidaqManager)
 
         # Connect signals
-        self.cameraHelper.updateImageSignal.connect(self.__commChannel.updateImage)
+        self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)
+        self.detectorsManager.acquisitionStopped.connect(self.__commChannel.acquisitionStopped)
+        self.detectorsManager.detectorSwitched.connect(self.__commChannel.detectorSwitched)
+        self.detectorsManager.imageUpdated.connect(self.__commChannel.updateImage)
+
+        self.recordingManager.recordingEnded.connect(self.__commChannel.endRecording)
+        self.recordingManager.recordingFrameNumUpdated.connect(self.__commChannel.updateRecFrameNum)
+        self.recordingManager.recordingTimeUpdated.connect(self.__commChannel.updateRecTime)

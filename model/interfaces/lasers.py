@@ -6,9 +6,7 @@ Created on Wed Apr  1 15:18:49 2020
 """
 import importlib
 
-import numpy as np
-
-from model import mockers
+from .mockers import MockLaser
 
 
 class FullDigitalLaser:
@@ -27,7 +25,7 @@ class FullDigitalLaser:
 
             return lasers[0] if len(ports) == 1 else LinkedFullDigitalLaser(lasers)
         except:
-            return mockers.MockLaser()
+            return MockLaser()
 
 
 class LinkedFullDigitalLaser:
@@ -129,41 +127,6 @@ class LinkedFullDigitalLaser:
     def finalize(self):
         for laser in self.lasers:
             laser.finalize()
-
-
-class Camera:
-    """ Buffer class for testing whether the camera is connected. If it's not,
-    it returns a dummy class for program testing. """
-    # TODO:
-    """This was originally (by federico) called from tormenta.py using a "with" call, as with the Lasers. But
-    accoring to litterature, "with" should be used with classes having __enter__ and __exit functions defined. 
-    For some reason this particular class gives "Error: class is missing __exit__ fcn" (or similar)
-    Maybe it could be rewritten using __enter__  __exit__. 
-    http://effbot.org/zone/python-with-statement.htm
-    Although I believe that design is more suitable for funcions that are 
-    called alot or environments that are used alot."""
-
-    def __new__(cls, cameraId):
-        if cameraId == 0:
-            try:
-                import model.hamamatsu as hm
-                print('Trying to import camera', cameraId)
-                camera = hm.HamamatsuCameraMR(cameraId)
-                print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
-                return camera
-            except:
-                print('Initializing Mock Hamamatsu')
-                return mockers.MockHamamatsu()
-        elif cameraId == 1:
-            try:
-                import model.tiscamera as tiscam
-                print('Trying to import TIScamera', cameraId)
-                camera = tiscam.CameraTIS(cameraId,1000,1,1)
-                print('Initialized TIS Camera Object, model: ', camera.camera_model)
-                return camera
-            except:
-                print('Initializing Mock TISCamera')
-                return mockers.MockCameraTIS()            
 
 
 def getDriver(iName):

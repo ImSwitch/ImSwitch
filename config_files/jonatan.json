@@ -211,6 +211,9 @@
     "angle_mount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
+  "focusLock": {
+    "scansPerS": 10
+  },
   "widgetLayout": {
       "lasersAndAlignmentInSingleDock": false
   }

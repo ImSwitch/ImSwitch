@@ -25,7 +25,8 @@ class FocusLockController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.loadPreset(self._defaultPreset)
-        self.scansPerS = self._setupInfo.focusLock.scansPerS
+        #self.scansPerS = self._setupInfo.focusLock.scansPerS
+        self.scansPerS = 10
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)

@@ -30,16 +30,6 @@ class WidgetAvailabilityInfo:
 
 
 @dataclass(frozen=True)
-class SLMInfo:
-    Width: int
-    Height: int
-    Wavelength: int
-    Pixelsize: float
-    MountingAngle: float
-    CorrectionPatternsDir: str
-
-
-@dataclass(frozen=True)
 class WidgetLayoutInfo:
     lasersAndAlignmentInSingleDock: bool = False
 
@@ -58,8 +48,6 @@ class ViewSetupInfo(SetupInfo):
     # scan defaults
     scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)
 
-    # slm layout
-    slm: SLMInfo = field(default_factory=SLMInfo)
 
     def setROI(self, name, x, y, width, height):
         self.rois[name] = ROIInfo(x=x, y=y, w=width, h=height)

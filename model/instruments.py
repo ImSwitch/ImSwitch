@@ -144,15 +144,26 @@ class Camera:
     called alot or environments that are used alot."""
 
     def __new__(cls, cameraId):
-        try:
-            import model.hamamatsu as hm
-            print('Trying to import camera', cameraId)
-            camera = hm.HamamatsuCameraMR(cameraId)
-            print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
-            return camera
-        except:
-            print('Initializing Mock Hamamatsu')
-            return mockers.MockHamamatsu()
+        if cameraId == 0:
+            try:
+                import model.hamamatsu as hm
+                print('Trying to import camera', cameraId)
+                camera = hm.HamamatsuCameraMR(cameraId)
+                print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
+                return camera
+            except:
+                print('Initializing Mock Hamamatsu')
+                return mockers.MockHamamatsu()
+        elif cameraId == 1:
+            try:
+                import model.tiscamera as tiscam
+                print('Trying to import TIScamera', cameraId)
+                camera = tiscam.CameraTIS(cameraId,1000,1,1)
+                print('Initialized TIS Camera Object, model: ', camera.camera_model)
+                return camera
+            except:
+                print('Initializing Mock TISCamera')
+                return mockers.MockCameraTIS()            
 
 
 def getDriver(iName):

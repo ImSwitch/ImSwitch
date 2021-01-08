@@ -460,16 +460,21 @@ class MockWebcam(Driver):
 
 
 class MockCameraTIS:
-    def __init__(self, cameraNo, exposure, gain, brightness):
+    def __init__(self):
 
-        self.properties['subarray_vpos'] = 0
-        self.properties['subarray_hpos'] = 0
-        self.properties['exposure_time'] = 0.03
-        self.properties['subarray_vsize'] = 1024
-        self.properties['subarray_hsize'] = 1280
-        self.exposure = 1
+        self.properties = {
+            'image_height': 1024,
+            'image_width': 1280,
+            'subarray_vpos': 0,
+            'subarray_hpos': 0,
+            'exposure_time': 0.1,
+            'subarray_vsize': 1024,
+            'subarray_hsize': 1280
+        }
+        self.exposure = 100
         self.gain = 1
         self.brightness = 1
+        self.camera_model = str.encode('mock')
 
     def grab_image(self, **kwargs):
         img = np.zeros((1024, 1280))
@@ -480,7 +485,10 @@ class MockCameraTIS:
         return img
 
     def setPropertyValue(self, property_name, property_value):
-            return property_value
+        return property_value
+
+    def getPropertyValue(self, property_name):
+        return [self.properties[property_name]]
 
     def show_dialog(self):
         pass

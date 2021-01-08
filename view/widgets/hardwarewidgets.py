@@ -7,7 +7,7 @@ Created on Fri Mar 20 17:08:54 2020
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
-from controller.helpers.SLMHelper import MaskMode
+from model.managers.SLMManager import MaskMode
 import view.guitools as guitools
 from .basewidgets import Widget
 

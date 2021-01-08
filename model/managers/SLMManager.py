@@ -16,7 +16,7 @@ import numpy as np
 
 from scipy import signal as sg
 
-class SLMHelper:
+class SLMManager:
     def __init__(self, slmInfo, slm, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__slm = slm

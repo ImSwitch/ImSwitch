@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager, SLMManager, FocusLockManager
 )
 
 
@@ -24,6 +24,7 @@ class MasterController:
         self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      nidaqManager=self.nidaqManager)
+        self.slmManager = SLMManager(self.__setupInfo.slm, slm=)
 
         # Connect signals
         self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)

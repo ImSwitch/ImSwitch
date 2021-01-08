@@ -24,7 +24,7 @@ class MainView(QtGui.QMainWindow):
     def __init__(self, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        availableWidgetsInfo = viewSetupInfo.availableWidgets
+        self.availableWidgetsInfo = viewSetupInfo.availableWidgets
         widgetLayoutInfo = viewSetupInfo.widgetLayout
 
         # Style overrides
@@ -88,7 +88,7 @@ class MainView(QtGui.QMainWindow):
         dockArea.addDock(focusLockDock, 'above', laserDock)
 
         # FFT dock
-        if availableWidgetsInfo.FFTWidget:
+        if self.availableWidgetsInfo.FFTWidget:
             FFTDock = Dock("FFT Tool", size=(1, 1))
             self.fftWidget = self.factory.createWidget(widgets.FFTWidget)
             FFTDock.addWidget(self.fftWidget)
@@ -108,22 +108,22 @@ class MainView(QtGui.QMainWindow):
             alignmentDockLocation = alignmentDock
 
         # Line Alignment Tool
-        if availableWidgetsInfo.AlignmentLineWidget:
+        if self.availableWidgetsInfo.AlignmentLineWidget:
             self.alignmentLineWidget = self.factory.createWidget(widgets.AlignmentLineWidget)
             addAlignmentDock("Alignment Tool", self.alignmentLineWidget)
 
         # Z align widget
-        if availableWidgetsInfo.AlignWidgetAverage:
+        if self.availableWidgetsInfo.AlignWidgetAverage:
             self.alignWidgetAverage = self.factory.createWidget(widgets.AlignWidgetAverage)
             addAlignmentDock("Axial Alignment Tool", self.alignWidgetAverage)
 
         # Rotational align widget
-        if availableWidgetsInfo.AlignWidgetXY:
+        if self.availableWidgetsInfo.AlignWidgetXY:
             self.alignWidgetXY = self.factory.createWidget(widgets.AlignWidgetXY)
             addAlignmentDock("Rotational Alignment Tool", self.alignWidgetXY)
 
         # ulenses Alignment Tool
-        if availableWidgetsInfo.AlignWidgetXY:
+        if self.availableWidgetsInfo.AlignWidgetXY:
             self.ulensesWidget = self.factory.createWidget(widgets.ULensesWidget)
             addAlignmentDock("uLenses Tool", self.ulensesWidget)
 
@@ -153,7 +153,7 @@ class MainView(QtGui.QMainWindow):
         slmDock.addWidget(self.slmWidget)
         dockArea.addDock(slmDock, 'above', scanDock)
 
-        if availableWidgetsInfo.BeadRecWidget:
+        if self.availableWidgetsInfo.BeadRecWidget:
             self.beadDock = Dock('Bead Rec', size=(1, 100))
             self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)
             self.beadDock.addWidget(self.beadRecWidget)
@@ -208,7 +208,8 @@ class MainView(QtGui.QMainWindow):
         self._catchingSetVisible(self.imageDock, visible)
         self._catchingSetVisible(self.recordingDock, visible)
         self._catchingSetVisible(self.imageControlsDock, visible)
-        self._catchingSetVisible(self.beadDock, visible)
+        if self.availableWidgetsInfo.BeadRecWidget:
+            self._catchingSetVisible(self.beadDock, visible)
 
         if not visible:
             self.showNormal()

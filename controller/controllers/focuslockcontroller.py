@@ -1,40 +1,176 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 07 11:42:00 2021
+Created on Fri Jan 08 16:53:00 2021
 
 @author: jonatanalvelid
 """
 
+import pickle
 import time
 import threading
 
 import numpy as np
 
-import scipy.ndimage as ndi
-import pyqtgraph.ptime as ptime
-from skimage.feature import peak_local_max
+from framework import Signal, Thread, Worker
 from pyqtgraph.Qt import QtCore
+from .basecontrollers import WidgetController
+from model.managers.SLMManager import MaskMode, Direction, MaskChoice
+from skimage.feature import peak_local_max
+import pyqtgraph.ptime as ptime
+import scipy.ndimage as ndi
 
 
-class FocusLockHelper:
-    """Manager for the focus lock."""
-    def __init__(self, focusLockInfo):       
+class FocusLockController(WidgetController):
+    """Linked to FocusLockWidget."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.loadPreset(self._defaultPreset)
+        self.scansPerS = self._setupInfo.focusLock.scansPerS
+
+        # Connect FocusLockWidget buttons
+        self._widget.kpEdit.textChanged.connect(self.unlockFocus)
+        self._widget.kiEdit.textChanged.connect(self.unlockFocus)
+
+        self._widget.lockButton.clicked.connect(self.toggleFocus)
+        self._widget.camDialogButton.clicked.connect(self.cameraDialog)
+        self._widget.positionSetButton.clicked.connect(self.moveZ)
+        self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
+        self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
+        
+        self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
+        self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
+        
         self.setPointSignal = 0
         self.locked = False
         self.aboutToLock = False
         self.zStackVar = False
         self.twoFociVar = False
         self.noStepVar = True
-        self.focusTime = 1000 / focusLockInfo.scansPerS  # time between focus signal updates in ms
+        self.focusTime = 1000 / self.scansPerS  # time between focus signal updates in ms
         self.initialZ = 0
         self.currentZ = 0
         self.lastZ = 0
         self.lockingData = np.zeros(7)
         self.__processDataThread = ProcessDataThread()
 
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update)
+        self.timer.start(self._master.focusLockManager.focusTime)
+
     def unlockFocus(self):
-        #if self
-        print("Manager: unlocking focus")
+        if self.locked:
+            self.locked = False
+            self._widget.lockButton.setChecked(False)
+            self._widget.focusLockGraph.plot.removeItem(self._widget.focusLockGraph.lineLock)
+    
+    def toggleFocus(self):
+        if self._widget.lockButton.isChecked():
+            absz = self._master.piezozHelper.get_abs()
+            self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
+            self._widget.lockButton.setText('Unlock')
+        else:
+            self.unlockFocus()
+            self._widget.lockButton.setText('Lock')
+        print("Controller: Toggle focus: unlock if locked, lock if unlocked. Also: change text on the lockButton.")
+
+    def cameraDialog(self):
+        self._master.cameraHelper.show_dialog()
+        print("Controller: Open camera settings dialog.")
+
+    def moveZ(self):
+        print("Controller: Potentially connect this to moving the z-piezo, or otherwise take care of that only in the positioning widget and remove this button. Can still keep the text and update with a signal to the current Z-position.")
+
+    def focusCalibrationStart(self):
+        print("Controller: Start focus calibration thread and calibrate.")
+
+    def showCalibrationCurve(self):
+        print("Controller: Show calibration curve.")
+
+    def zStackVarChange(self):
+        if self.zStackVar:
+            self.zStackVar = False
+        else:
+            self.zStackVar = True
+
+    def twoFociVarChange(self):
+        if self.twoFociVar:
+            self.twoFociVar = False
+        else:
+            self.twoFociVar = True
+
+    # Update focus lock
+    def update(self):
+        #1 Grab camera frame through cameraHelper
+        img = self._master.cameraHelper.grab_image()
+        #2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
+        self.setPointSignal = self.__processDataThread.update(img)
+        #3 Update PI with the new setPointSignal and get back the distance to move, send to
+        # update the PI control
+        if self.locked:
+            value_move = self.updatePI()
+            if self.noStepVar and abs(out) > 0.002:
+                self.zstepupdate = self.zstepupdate + 1
+                self.z.move_relZ(out * self.um)
+            self._master.piezozHelper.move_rel(value_move)
+        #elif self.aboutToLock:
+        #    self.lockingPI()
+        #4 Send updated position to z-piezo
+        #5 Update image and focusSignalPosition in FocusLockWidget
+        self._widget.webcamGraph.update(self.image)
+        self._widget.focusLockGraph.update(self.setPointSignal)
+
+    #def lockingPI(self):
+    #    self.lockingData[:-1] = self.lockingData[1:]
+    #    self.lockingData[-1] = self.setPointSignal
+    #    averageDiff = np.std(self.lockingData)
+    #    if averageDiff < 0.4:
+    #        absz = self._master.piezozHelper.get_abs()
+    #        self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
+    #        self.aboutToLock = False
+
+    def updatePI(self):
+        if not self.noStepVar:
+            self.noStepVar = True
+        self.currentZ = self._master.piezozHelper.get_abs()
+        distance = self.currentZ - self.initialZ
+        #self.stepDistance = self.currentZ - self.lastZ
+        out = self.PI.update(self.setPointSignal)
+        self.lastZ = self.currentZ
+
+        if abs(distance) > 5 or abs(out) > 3:
+            print('Safety unlocking!')
+            self.unlockFocus()
+        
+        return out
+
+#        elif self.zStackVar and self.zstepupdate > 15:
+#            if self.stepDistance > self.stepDistLow * self.um and self.stepDistance < self.stepDistHigh * self.um:
+#                self.unlockFocus()
+#                self.dataPoints = np.zeros(5)
+#                self.averageDiff = 10
+#                self.aboutToLock = True
+#                self.t0 = time.time()
+#                self.zsteptime = self.t0-self.t1
+#                self.t1 = self.t0
+#                self.noStepVar = False
+        #if self.noStepVar and abs(out) > 0.002:
+        #    self.zstepupdate = self.zstepupdate + 1
+        #    self.z.move_relZ(out * self.um)
+    #def loadPreset(self, preset):
+    #    print('Loaded default focus lock settings.')
+
+    #def initLock(self):
+    #    if not self.locked:
+    #        self.setPoint = self.processDataThread.focusSignal
+    #        self.focusLockGraph.line = self.focusLockGraph.plot.addLine(
+    #                                                y=self.setPoint, pen='r')
+    #        self.PI = pi.PI(self.setPoint, 0.001,
+    #                        np.float(self.kpEdit.text()),
+    #                        np.float(self.kiEdit.text()))
+    #        self.initialZ = self.z.absZ
+    #        self.locked = True
+    #        self.stepDistLow = 0.001 * np.float(self.zStepFromEdit.text())
+    #        self.stepDistHigh = 0.001 * np.float(self.zStepToEdit.text())
 
     def lockFocus(self, kp, ki, absz):
         if not self.locked:
@@ -42,12 +178,8 @@ class FocusLockHelper:
             self.pi = pi.PI(self.setPoint, 0.001, kp, ki)
             self.initialZ = absz
             self.locked = True
+            self._widget.focusLockGraph.lineLock = self._widget.focusLockGraph.plot.addLine(y=self.setPointSignal, pen='r')
         print("Manager: lock focus")
-        return self.setPointSignal
-
-    def toggleFocus(self):
-        self.aboutToLock = False
-        print("Manager: toggling focus")
 
     def focusCalibrationStart(self):
         print("Manager: starting focus calibration thread")
@@ -57,7 +189,7 @@ class ProcessDataThread(QtCore.QThread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # set the camera
-        self.webcam = self.focusWidget.webcam
+        #self.webcam = self.focusWidget.webcam
         # self.ws = {'vsub': 4, 'hsub': 4,
         #            'top': None, 'bot': None,
         #            'exposure_time': 10}
@@ -67,23 +199,16 @@ class ProcessDataThread(QtCore.QThread):
         #                                     bot=self.ws['bot'],
         #                                     exposure_time=self.ws[
         #                                     'exposure_time'])
-        self.image = self.webcam.grab_image()
+        #self.image = self.webcam.grab_image()
 
-        self.sensorSize = np.array(self.image.shape)
+        #self.sensorSize = np.array(self.image.shape)
         # print(self.sensorSize) #= (1024,1280)
 
         self.focusSignal = 0
 
     def update(self, img):
         self.updateFocusSignal(img)
-        # self.focusWidget.webcamGraph.update(self.image)  # DO THIS IN FOCUSLOCKHELPER INSTEAD
-        # self.focusWidget.focusLockGraph.update(self.focusSignal)  # DO THIS IN FOCUSLOCKHELPER INSTEAD
         return self.focusSignal
-        # update the PI control
-        if self.focusWidget.locked:
-            self.focusWidget.updatePI()
-        elif self.focusWidget.aboutToLock:
-            self.focusWidget.lockingPI()
 
     def updateFocusSignal(self, img):
         # update the focus signal
@@ -274,3 +399,4 @@ class PI(object):
     @ki.setter
     def ki(self, value):
         self._ki = value
+

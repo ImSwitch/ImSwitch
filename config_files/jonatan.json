@@ -1,128 +1,169 @@
 {
-  "cameras": {
+  "detectors": {
     "CAM": {
+      "analogChannel": null,
       "digitalLine": 3,
-      "id": 0,
-      "properties": {
-        "readout_speed": 3,
-        "trigger_global_exposure": 5,
-        "trigger_active": 2,
-        "trigger_polarity": 2,
-        "exposure_time": 0.01,
-        "trigger_source": 1,
-        "subarray_hpos": 0,
-        "subarray_vpos": 0,
-        "subarray_hsize": 512,
-        "subarray_vsize": 512
+      "managerName": "HamamatsuManager",
+      "managerProperties": {
+        "cameraListIndex": 0,
+        "hamamatsu": {
+          "readout_speed": 3,
+          "trigger_global_exposure": 5,
+          "trigger_active": 2,
+          "trigger_polarity": 2,
+          "exposure_time": 0.01,
+          "trigger_source": 1,
+          "subarray_hpos": 0,
+          "subarray_vpos": 0,
+          "subarray_hsize": 2304,
+          "subarray_vsize": 2304
+        }
       }
-    },
+    }
+  },
+  "webcams": {
     "TIScam": {
-      "digitalLine": 3,
-      "id": 1,
-      "properties": {
-        "readout_speed": 3,
-        "trigger_global_exposure": 5,
-        "trigger_active": 2,
-        "trigger_polarity": 2,
-        "exposure_time": 0.01,
-        "trigger_source": 2,
-        "subarray_hpos": 0,
-        "subarray_vpos": 0,
-        "subarray_hsize": 512,
-        "subarray_vsize": 512
-      }
+      "managerName": "TISManager",
+      "managerProperties": {
+          "cameraListIndex": 0,
+          "tis": {
+              "exposure": 0,
+              "gain": 0,
+              "brightness": 0
+            }
+        }
     }
   },
   "lasers": {
     "510": {
       "analogChannel": null,
       "digitalLine": 0,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM11"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM9"
+          ]
+      },
       "wavelength": 510,
       "valueRangeMin": 0,
-      "valueRangeMax": 1000,
-      "valueRangeStep": 1
+      "valueRangeMax": 1000
     },
     "561": {
       "analogChannel": null,
       "digitalLine": 1,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM12"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM10"
+          ]
+      },
       "wavelength": 561,
       "valueRangeMin": 0,
-      "valueRangeMax": 1,
-      "valueRangeStep": 1
+      "valueRangeMax": 1
     },
     "561AOTF": {
       "analogChannel": null,
       "digitalLine": 2,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM13"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM11"
+          ]
+      },
       "wavelength": 561,
       "valueRangeMin": 0,
-      "valueRangeMax": 23,
-      "valueRangeStep": 0.5
+      "valueRangeMax": 23
     },
     "640": {
       "analogChannel": null,
       "digitalLine": 3,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM14"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM12"
+          ]
+      },
       "wavelength": 640,
       "valueRangeMin": 0,
-      "valueRangeMax": 1,
-      "valueRangeStep": 1
+      "valueRangeMax": 1
     },
     "640AOTF": {
       "analogChannel": null,
       "digitalLine": 4,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM15"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM13"
+          ]
+      },
       "wavelength": 640,
       "valueRangeMin": 0,
-      "valueRangeMax": 200,
-      "valueRangeStep": 1
+      "valueRangeMax": 200
     },
     "775": {
       "analogChannel": null,
       "digitalLine": 5,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM16"],
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM14"
+          ]
+      },
       "wavelength": 775,
       "valueRangeMin": 0,
-      "valueRangeMax": 3000,
-      "valueRangeStep": 1
+      "valueRangeMax": 3000
     },
     "775AOM": {
       "analogChannel": 3,
-      "digitalLine": 1,
-      "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-      "digitalPorts": ["COM17"],
+      "digitalLine": 6,
+      "managerName": "FullDigitalLaserManager",
+      "managerProperties": {
+          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalPorts": [
+              "COM15"
+          ]
+      },
       "wavelength": 775,
       "valueRangeMin": 0,
-      "valueRangeMax": 1,
-      "valueRangeStep": 1
+      "valueRangeMax": 1
     }
   },
-  "stagePiezzos": {
+  "positioners": {
     "X": {
       "analogChannel": 0,
-      "conversionFactor": 1.5870,
-      "minVolt": -10,
-      "maxVolt": 10
+      "digitalLine": null,
+      "managerName": "NidaqAOPositionerManager",
+      "managerProperties": {
+        "conversionFactor": 1.587,
+        "minVolt": -10,
+        "maxVolt": 10
+      }
     },
     "Y": {
       "analogChannel": 1,
-      "conversionFactor": 1.5870,
-      "minVolt": -10,
-      "maxVolt": 10
+      "digitalLine": null,
+      "managerName": "NidaqAOPositionerManager",
+      "managerProperties": {
+        "conversionFactor": 1.587,
+        "minVolt": -10,
+        "maxVolt": 10
+      }
     },
     "Z": {
       "analogChannel": 2,
-      "conversionFactor": 10.0,
-      "minVolt": 0,
-      "maxVolt": 10
+      "digitalLine": null,
+      "managerName": "NidaqAOPositionerManager",
+      "managerProperties": {
+          "conversionFactor": 10.0,
+          "minVolt": 0,
+          "maxVolt": 10
+      }
     }
   },
   "scan": {
@@ -170,7 +211,7 @@
     "angle_mount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
-  "focusLock": {
-    "scansPerS": 10
+  "widgetLayout": {
+      "lasersAndAlignmentInSingleDock": false
   }
 }

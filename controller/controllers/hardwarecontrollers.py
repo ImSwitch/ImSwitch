@@ -10,9 +10,8 @@ import time
 import threading
 
 import numpy as np
-from pyqtgraph.Qt import QtCore
 
-import controller.presets as presets
+from framework import Signal, Thread, Worker
 from .basecontrollers import WidgetController
 from controller.helpers.SLMHelper import MaskMode, Direction, MaskChoice
 from skimage.feature import peak_local_max
@@ -530,61 +529,37 @@ class PositionerController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.stagePiezzos)
-        self.loadPreset(self._defaultPreset)
-
-        self.stagePos = {}
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self.stagePos[stagePiezzoId] = 0
+        self._widget.initControls(self._setupInfo.positioners)
 
         # Connect CommunicationChannel signals
         self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
 
         # Connect PositionerWidget signals
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self._widget.pars['UpButton' + stagePiezzoId].pressed.connect(
-                lambda stagePiezzoId=stagePiezzoId: self.move(
-                    stagePiezzoId,
-                    float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+        for positionerName in self._setupInfo.positioners.keys():
+            self._widget.pars['UpButton' + positionerName].pressed.connect(
+                lambda positionerName=positionerName: self.move(
+                    positionerName,
+                    float(self._widget.pars['StepEdit' + positionerName].text())
                 )
             )
-            self._widget.pars['DownButton' + stagePiezzoId].pressed.connect(
-                lambda stagePiezzoId=stagePiezzoId: self.move(
-                    stagePiezzoId,
-                    -float(self._widget.pars['StepEdit' + stagePiezzoId].text())
+            self._widget.pars['DownButton' + positionerName].pressed.connect(
+                lambda positionerName=positionerName: self.move(
+                    positionerName,
+                    -float(self._widget.pars['StepEdit' + positionerName].text())
                 )
             )
 
     def move(self, axis, dist):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-
-        stagePiezzoInfo = self._setupInfo.stagePiezzos[axis]
-
-        self.stagePos[axis] += dist
-        self._master.nidaqHelper.setAnalog(target=axis,
-                                           voltage=self.stagePos[axis] / stagePiezzoInfo.conversionFactor,
-                                           min_val=stagePiezzoInfo.minVolt, max_val=stagePiezzoInfo.maxVolt)
-
-        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(self.stagePos[axis])
+        newPos = self._master.positionersManager[axis].move(dist)
+        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
         self._widget.pars['Label' + axis].setText(newText)
 
     def getPos(self):
-        return self.stagePos
-
-    def loadPreset(self, preset):
-        stagePiezzoInfos = self._setupInfo.stagePiezzos
-        stagePiezzoPresets = preset.positioner.stagePiezzos
-
-        for stagePiezzoId in stagePiezzoInfos.keys():
-            stagePiezzoPreset = (
-                stagePiezzoPresets[stagePiezzoId] if stagePiezzoId in stagePiezzoPresets
-                else presets.PositionerPresetStagePiezzo()
-            )
-            self._widget.pars['StepEdit' + stagePiezzoId].setText(stagePiezzoPreset.stepSize)
+        return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def closeEvent(self):
-        for stagePiezzoId in self._setupInfo.stagePiezzos.keys():
-            self._master.nidaqHelper.setAnalog(stagePiezzoId, 0)
+        self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
 
 
 class LaserController(WidgetController):
@@ -592,22 +567,17 @@ class LaserController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.lasers)
-        self.loadPreset(self._defaultPreset)
+        self._widget.initControls(self._master.lasersManager)
 
-        self.digMod = False
         self.aotfLasers = {}
-        self.binaryLasers = set()
-        for laserName, laserInfo in self._setupInfo.lasers.items():
-            if laserInfo.isBinary():
-                self.binaryLasers.add(laserName)
-            elif laserInfo.isAotf():
+        for laserName, laserManager in self._master.lasersManager:
+            if not laserManager.isDigital:
                 self.aotfLasers[laserName] = False
 
         # Connect LaserWidget signals
         for laserModule in self._widget.laserModules.values():
-            if laserModule.laser not in self.binaryLasers:
-                if laserModule.laser not in self.aotfLasers:
+            if not self._master.lasersManager[laserModule.laser].isBinary:
+                if self._master.lasersManager[laserModule.laser].isDigital:
                     self.changeEdit(laserModule.laser)
 
                 laserModule.slider.valueChanged[int].connect(lambda _, laser=laserModule.laser: self.changeSlider(laser))
@@ -627,94 +597,68 @@ class LaserController(WidgetController):
             lambda: self.updateDigitalPowers(list(self._widget.digModule.powers.keys()))
         )
 
-    def loadPreset(self, preset):
-        laserInfos = self._setupInfo.lasers
-        laserPresets = self._defaultPreset.laserControl.lasers
-
-        for laserName in laserInfos.keys():
-            laserPreset = (laserPresets[laserName] if laserName in laserPresets
-                           else presets.LaserControlPresetLaser())
-
-            self._widget.laserModules[laserName].setPointEdit.setText(laserPreset.value)
-            self._widget.laserModules[laserName].slider.setValue(float(laserPreset.value))
-            self._widget.digModule.powers[laserName].setText(laserPreset.value)
-
     def closeEvent(self):
-        for laserName, laserInfo in self._setupInfo.lasers.items():
-            if laserName in self.aotfLasers:
-                self._master.laserHelper.changeVoltage(laserName, 0)
-            else:
-                self._master.laserHelper.changePower(laserName, 0, False)
-
-            self._master.laserHelper.setEnabled(laserName, False)
+        self._master.lasersManager.execOnAll(lambda l: l.setDigitalMod(False, 0))
+        self._master.lasersManager.execOnAll(lambda l: l.setValue(0))
 
     def toggleLaser(self, laserName):
         """ Enable or disable laser (on/off)."""
-        enable = self._widget.laserModules[laserName].enableButton.isChecked()
-        self._master.laserHelper.setEnabled(laserName, enable)
+        self._master.lasersManager[laserName].setEnabled(
+            self._widget.laserModules[laserName].enableButton.isChecked()
+        )
 
     def changeSlider(self, laserName):
         """ Change power with slider magnitude. """
         magnitude = self._widget.laserModules[laserName].slider.value()
-        if laserName in self.aotfLasers.keys():
-            if not self.aotfLasers[laserName]:
-                self._master.laserHelper.changeVoltage(laserName, magnitude)
-                self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
-        else:
-            self._master.laserHelper.changePower(laserName, magnitude, self.digMod)
+        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
+            self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
 
     def changeEdit(self, laserName):
         """ Change power with edit magnitude. """
         magnitude = float(self._widget.laserModules[laserName].setPointEdit.text())
-        if laserName in self.aotfLasers.keys():
-            if not self.aotfLasers[laserName]:
-                self._master.laserHelper.changeVoltage(laserName, magnitude)
-                self._widget.laserModules[laserName].slider.setValue(magnitude)
-        else:
-            self._master.laserHelper.changePower(laserName, magnitude, self.digMod)
+        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
+            self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.laserModules[laserName].slider.setValue(magnitude)
 
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """
-        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
-        if self.digMod:
+        if self._widget.digModule.DigitalControlButton.isChecked():
             for laserName in laserNames:
-                if laserName in self.aotfLasers.keys():
-                    self._master.laserHelper.changeVoltage(
-                        laserName=laserName,
-                        voltage=float(self._widget.digModule.powers[laserName].text())
-                    )
-                else:
-                    self._master.laserHelper.changePower(
-                        laserName=laserName,
-                        power=int(self._widget.digModule.powers[laserName].text()), dig=self.digMod
-                    )
+                self._master.lasersManager[laserName].setValue(
+                    float(self._widget.digModule.powers[laserName].text())
+                )
 
     def GlobalDigitalMod(self, laserNames):
         """ Start digital modulation. """
-        self.digMod = self._widget.digModule.DigitalControlButton.isChecked()
+        digMod = self._widget.digModule.DigitalControlButton.isChecked()
         for laserName in laserNames:
-            if laserName in self.aotfLasers.keys():
-                self._master.laserHelper.changeVoltage(
-                    laserName=laserName,
-                    voltage=float(self._widget.digModule.powers[laserName].text())
-                )
-                self.aotfLasers[laserName] = self.digMod
-                self._master.laserHelper.setEnabled(laserName, False)  # TODO: Correct?
-            else:
-                self._master.laserHelper.digitalMod(
-                    laserName=laserName, digital=self.digMod,
-                    power=int(self._widget.digModule.powers[laserName].text())
-                )
+            laserModule = self._widget.laserModules[laserName]
+            laserManager = self._master.lasersManager[laserName]
 
-            if not self.digMod:
+            if laserManager.isBinary:
+                continue
+
+            value = float(self._widget.digModule.powers[laserName].text())
+            if laserManager.isDigital:
+                laserManager.setDigitalMod(digMod, value)
+            else:
+                laserManager.setValue(value)
+                laserModule.enableButton.setChecked(False)
+                laserModule.enableButton.setEnabled(not digMod)
+                self.aotfLasers[laserName] = digMod
+                laserManager.setEnabled(False)  # TODO: Correct?
+
+            laserModule.setPointEdit.setEnabled(not digMod)
+            laserModule.slider.setEnabled(not digMod)
+
+            if not digMod:
                 self.changeEdit(laserName)
 
     def setDigitalButton(self, b):
         self._widget.digModule.DigitalControlButton.setChecked(b)
         self.GlobalDigitalMod(
-            [laser for laser in self._setupInfo.lasers.keys() if laser not in self.aotfLasers]
+            [laser.name for laser in self._master.lasersManager if laser.isDigital]
         )
 
 
@@ -757,10 +701,10 @@ class BeadController(WidgetController):
             self.running = True
             self.beadWorker = BeadWorker(self)
             self.beadWorker.newChunk.connect(self.update)
-            self.thread = QtCore.QThread()
+            self.thread = Thread()
             self.beadWorker.moveToThread(self.thread)
             self.thread.started.connect(self.beadWorker.run)
-            self._master.cameraHelper.execOnAll(lambda c: c.updateCameraIndices())
+            self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
         else:
             self.running = False
@@ -771,12 +715,12 @@ class BeadController(WidgetController):
         self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels=False)
 
 
-class BeadWorker(QtCore.QObject):
-    newChunk = QtCore.pyqtSignal()
-    stop = QtCore.pyqtSignal()
+class BeadWorker(Worker):
+    newChunk = Signal()
+    stop = Signal()
 
-    def __init__(self, controller, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, controller):
+        super().__init__()
         self.__controller = controller
 
     def run(self):
@@ -786,7 +730,7 @@ class BeadWorker(QtCore.QObject):
         i = 0
 
         while self.__controller.running:
-            newImages, _ = self.__controller._master.cameraHelper.execOnCurrent(lambda c: c.getChunk())
+            newImages, _ = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
             n = len(newImages)
             if n > 0:
                 pos = self.__controller._widget.ROI.pos()

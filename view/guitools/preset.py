@@ -14,23 +14,23 @@ class LaserControlPresetLaser:
 
 @dataclass(frozen=True)
 class LaserControlPreset:
-    lasers: Dict[str, LaserControlPresetLaser] = field(default_factory=dict)  # map from device ID to LaserControlPresetLaser
+    lasers: Dict[str, LaserControlPresetLaser] = field(default_factory=dict)  # map from device name to LaserControlPresetLaser
 
 
 # Positioner
 @dataclass(frozen=True)
-class PositionerPresetStagePiezzo:
+class PositionerPresetPositioner:
     stepSize: str = '0.05'  # micrometres
 
 
 @dataclass(frozen=True)
 class PositionerPreset:
-    stagePiezzos: Dict[str, PositionerPresetStagePiezzo] = field(default_factory=dict)  # map from device ID to PositionerPresetStagePiezzo
+    positioners: Dict[str, PositionerPresetPositioner] = field(default_factory=dict)  # map from device name to PositionerPresetPositioner
 
 
 # Scan
 @dataclass(frozen=True)
-class ScanPresetStagePiezzo:
+class ScanPresetPositioner:
     size: str = '2'  # micrometres
     stepSize: str = '0.1'  # micrometres
 
@@ -43,8 +43,8 @@ class ScanPresetTTL:
 
 @dataclass(frozen=True)
 class ScanPreset:
-    stagePiezzos: Dict[str, ScanPresetStagePiezzo] = field(default_factory=dict)  # map from device ID to ScanPresetStagePiezzo
-    pulses: Dict[str, ScanPresetTTL] = field(default_factory=dict)  # map from device ID to ScanPresetTTL
+    positioners: Dict[str, ScanPresetPositioner] = field(default_factory=dict)  # map from device name to ScanPresetPositioner
+    pulses: Dict[str, ScanPresetTTL] = field(default_factory=dict)  # map from device name to ScanPresetTTL
     dwellTime: str = '10'  # milliseconds
 
 

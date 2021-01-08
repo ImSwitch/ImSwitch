@@ -29,7 +29,7 @@ class MasterController:
         self.laserHelper = LaserHelper(self.__model.setupInfo.lasers, self.__model.lasers,
                                        self.nidaqHelper)
         self.slmHelper = SLMHelper(self.__model.setupInfo.slm, self.__model.slm)
-        self.focusLockHelper = FocusLockHelper(self.__model.setupInfo.focusLock)
+        #self.focusLockHelper = FocusLockHelper(self.__model.setupInfo.focusLock)
         self.piezozHelper = PiezoconceptZHelper(self.__model.piezoz)
 
         # Connect signals

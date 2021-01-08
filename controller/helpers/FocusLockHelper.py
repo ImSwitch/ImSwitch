@@ -30,6 +30,7 @@ class FocusLockHelper:
         self.currentZ = 0
         self.lastZ = 0
         self.lockingData = np.zeros(7)
+        self.__processDataThread = ProcessDataThread()
 
     def unlockFocus(self):
         #if self
@@ -37,7 +38,7 @@ class FocusLockHelper:
 
     def lockFocus(self, kp, ki, absz):
         if not self.locked:
-            self.setPointSignal = self.processDataThread.focusSignal
+            self.setPointSignal = self.__processDataThread.focusSignal
             self.pi = pi.PI(self.setPoint, 0.001, kp, ki)
             self.initialZ = absz
             self.locked = True
@@ -52,8 +53,120 @@ class FocusLockHelper:
         print("Manager: starting focus calibration thread")
 
 
-class FocusCalibThread(QtCore.QThread):
+class ProcessDataThread(QtCore.QThread):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # set the camera
+        self.webcam = self.focusWidget.webcam
+        # self.ws = {'vsub': 4, 'hsub': 4,
+        #            'top': None, 'bot': None,
+        #            'exposure_time': 10}
+        # self.image = self.webcam.grab_image(vsub=self.ws['vsub'],
+        #                                     hsub=self.ws['hsub'],
+        #                                     top=self.ws['top'],
+        #                                     bot=self.ws['bot'],
+        #                                     exposure_time=self.ws[
+        #                                     'exposure_time'])
+        self.image = self.webcam.grab_image()
 
+        self.sensorSize = np.array(self.image.shape)
+        # print(self.sensorSize) #= (1024,1280)
+
+        self.focusSignal = 0
+
+    def update(self, img):
+        self.updateFocusSignal(img)
+        # self.focusWidget.webcamGraph.update(self.image)  # DO THIS IN FOCUSLOCKHELPER INSTEAD
+        # self.focusWidget.focusLockGraph.update(self.focusSignal)  # DO THIS IN FOCUSLOCKHELPER INSTEAD
+        return self.focusSignal
+        # update the PI control
+        if self.focusWidget.locked:
+            self.focusWidget.updatePI()
+        elif self.focusWidget.aboutToLock:
+            self.focusWidget.lockingPI()
+
+    def updateFocusSignal(self, img):
+        # update the focus signal
+        print('Updating focus signal...')
+        try:
+            # self.image = self.webcam.grab_image(vsub=self.ws['vsub'],
+            #                                     hsub=self.ws['hsub'],
+            #                                     top=self.ws['top'],
+            #                                     bot=self.ws['bot'])
+#            then = time.time()
+            self.image = self.webcam.grab_image()
+#            now = time.time()
+#            print("Focus: Whole grab image took:", now-then, "seconds.")
+            # print("")
+        except:
+            print("No image grabbed.")
+            pass
+        imagearray = self.image
+        imagearray = imagearray[0:1024,730:830]
+        imagearray = np.swapaxes(imagearray,0,1)      # Swap matrix axes, after having turned the camera 90deg
+        # imagearraygf = imagearray
+        imagearraygf = ndi.filters.gaussian_filter(imagearray,7)     # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+
+        if self.focusWidget.twoFociVar:
+            allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
+#            print(allmaxcoords)
+            size = allmaxcoords.shape
+            maxvals = np.zeros(size[0])
+            maxvalpos = np.zeros(2)
+            for n in range(0,size[0]):
+                if imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]] > maxvals[0]:
+                    if imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]] > maxvals[1]:
+                        tempval = maxvals[1]
+                        maxvals[0] = tempval
+                        maxvals[1] = imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]]
+                        tempval = maxvalpos[1]
+                        maxvalpos[0] = tempval
+                        maxvalpos[1] = n
+                    else:
+                        maxvals[0] = imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]]
+                        maxvalpos[0] = n
+            xcenter = allmaxcoords[maxvalpos[0]][0]
+            ycenter = allmaxcoords[maxvalpos[0]][1]
+            if allmaxcoords[maxvalpos[1]][1] < ycenter:
+                xcenter = allmaxcoords[maxvalpos[1]][0]
+                ycenter = allmaxcoords[maxvalpos[1]][1]
+            centercoords2 = np.array([xcenter,ycenter])
+        else:
+            centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
+            centercoords2 = np.array([centercoords[0][0],centercoords[1][0]])
+            
+        subsizey = 50
+        subsizex = 50
+        xlow = max(0,(centercoords2[0]-subsizex))
+        xhigh = min(1024,(centercoords2[0]+subsizex))
+        ylow = max(0,(centercoords2[1]-subsizey))
+        yhigh = min(1280,(centercoords2[1]+subsizey))
+        #print(xlow)
+        #print(xhigh)
+        #print(ylow)
+        #print(yhigh)
+        imagearraygfsub = imagearraygf[xlow:xhigh,ylow:yhigh]
+        #imagearraygfsub = imagearraygf[xlow:xhigh,:]
+        #imagearraygfsubtest = imagearraygf
+        #zeroindices = np.zeros(imagearray.shape)
+        #zeroindices[xlow:xhigh,ylow:yhigh] = 1
+        #imagearraygfsubtest = np.multiply(imagearraygfsubtest,zeroindices)
+        self.image = imagearraygf
+        #print(centercoords2[1])
+        self.massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
+        #self.massCenter2 = np.array(ndi.measurements.center_of_mass(imagearraygfsubtest))
+        # self.massCenterGlobal[0] = self.massCenter[0] #+ centercoords2[0] #- subsizex - self.sensorSize[0] / 2     #add the information about where the center of the subarray is
+        self.massCenterGlobal = self.massCenter[1] + centercoords2[1] #- subsizey - self.sensorSize[1] / 2     #add the information about where the center of the subarray is
+#        print(self.massCenter[1])
+#        print(self.massCenterGlobal)
+#        print(centercoords2[1])
+#        print('')
+        #print(self.massCenter2[1])
+        #print('')
+        self.focusSignal = self.massCenterGlobal
+
+
+class FocusCalibThread(QtCore.QThread):
     def __init__(self, focusWidget, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -81,7 +194,6 @@ class FocusCalibThread(QtCore.QThread):
         self.export()
 
     def export(self):
-
         np.savetxt('calibration.txt', self.calibrationResult)
         cal = self.poly[0]
         calText = '1 px --> {} nm'.format(np.round(1000/cal, 1))

@@ -12,17 +12,17 @@ class PositionerManager(ABC):
         return self.__name
 
     @property
-    def position(self):
+    def position(self, *args):
         return self._position
 
     @abstractmethod
-    def move(self, dist):
+    def move(self, dist, *args):
         """Moves the positioner by the specified distance and returns the new
         position. Derived classes will update the position field manually."""
         pass
 
     @abstractmethod
-    def setPosition(self, position):
+    def setPosition(self, position, *args):
         """Adjusts the positioner to the specified position and returns the new
         position. Derived classes will update the position field manually."""
         pass

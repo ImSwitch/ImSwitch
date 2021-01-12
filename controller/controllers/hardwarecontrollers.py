@@ -8,6 +8,7 @@ Created on Sun Mar 22 10:40:53 2020
 import pickle
 import time
 import threading
+import textwrap
 
 import numpy as np
 
@@ -56,8 +57,8 @@ class SLMController(WidgetController):
     def moveMask(self, direction):
         amount = self._widget.controlPanel.incrementSpinBox.value()
         mask = self._widget.controlPanel.maskComboBox.currentIndex()
-        self._master.slmHelper.moveMask(mask, direction, amount)
-        image = self._master.slmHelper.update()
+        self._master.slmManager.moveMask(mask, direction, amount)
+        image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         #print(f'Move {mask} phase mask {amount} pixels {direction}.')
 
@@ -65,7 +66,7 @@ class SLMController(WidgetController):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
         general_paramtree = self._widget.slmParameterTree
         aber_paramtree = self._widget.aberParameterTree
-        center_coords = self._master.slmHelper.getCenters()
+        center_coords = self._master.slmManager.getCenters()
 
         if(obj=='No objective'):
             print('You have to choose an objective from the drop down menu.')
@@ -106,10 +107,10 @@ class SLMController(WidgetController):
         
         self._widget.slmParameterTree.p.restoreState(state_general)
         self._widget.aberParameterTree.p.restoreState(state_aber)
-        self._master.slmHelper.setCenters(state_pos)
-        self._master.slmHelper.setAberrations(self._widget.aberParameterTree)
-        self._master.slmHelper.setGeneral(self._widget.slmParameterTree)
-        image = self._master.slmHelper.update()
+        self._master.slmManager.setCenters(state_pos)
+        self._master.slmManager.setAberrations(self._widget.aberParameterTree)
+        self._master.slmManager.setGeneral(self._widget.slmParameterTree)
+        image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         #print(f'Loaded SLM parameters for {obj} objective.')
 
@@ -117,20 +118,20 @@ class SLMController(WidgetController):
         mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
         angle = np.float(self._widget.controlPanel.rotationEdit.text())
         sigma = np.float(self._widget.slmParameterTree.p.param('General parameters').param('Sigma').value())
-        self._master.slmHelper.setMask(mask, angle, sigma, maskMode)
-        image = self._master.slmHelper.update()
+        self._master.slmManager.setMask(mask, angle, sigma, maskMode)
+        image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         #print("Updated image on SLM")
 
     def applyGeneral(self):
-        self._master.slmHelper.setGeneral(self._widget.slmParameterTree)
-        image = self._master.slmHelper.update()
+        self._master.slmManager.setGeneral(self._widget.slmParameterTree)
+        image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         #print('Apply changes to general slm mask parameters.')
         
     def applyAberrations(self):
-        self._master.slmHelper.setAberrations(self._widget.aberParameterTree)
-        image = self._master.slmHelper.update()
+        self._master.slmManager.setAberrations(self._widget.aberParameterTree)
+        image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         #print('Apply changes to aberration correction masks.')
 
@@ -155,24 +156,30 @@ class PositionerController(WidgetController):
 
         # Connect PositionerWidget signals
         for positionerName in self._setupInfo.positioners.keys():
-            self._widget.pars['UpButton' + positionerName].pressed.connect(
-                lambda positionerName=positionerName: self.move(
-                    positionerName,
-                    float(self._widget.pars['StepEdit' + positionerName].text())
+            axes = self._setupInfo.positioners[positionerName].managerProperties['axisCount']
+            axislabels = textwrap.wrap(self._setupInfo.positioners[positionerName].managerProperties['axisLabels'],1)
+            for i in range(axes):
+                self._widget.pars['UpButton' + positionerName + axislabels[i]].pressed.connect(
+                    lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
+                        positionerName,
+                        float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
+                        i
+                    )
                 )
-            )
-            self._widget.pars['DownButton' + positionerName].pressed.connect(
-                lambda positionerName=positionerName: self.move(
-                    positionerName,
-                    -float(self._widget.pars['StepEdit' + positionerName].text())
+                self._widget.pars['DownButton' + positionerName + axislabels[i]].pressed.connect(
+                    lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
+                        positionerName,
+                        -float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
+                        i
+                    )
                 )
-            )
 
-    def move(self, axis, dist):
+    def move(self, positioner, dist, axis):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.positionersManager[axis].move(dist)
-        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
-        self._widget.pars['Label' + axis].setText(newText)
+        newPos = self._master.positionersManager[positioner].move(dist, axis)
+        newText = "<strong>{0:.2f} µm</strong>".format(newPos)
+        axislabels = textwrap.wrap(self._setupInfo.positioners[positioner].managerProperties['axisLabels'],1)
+        self._widget.pars['Position' + positioner + axislabels[axis]].setText(newText)
 
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)

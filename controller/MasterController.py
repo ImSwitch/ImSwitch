@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager, SLMManager, FocusLockManager
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager, SLMManager
 )
 
 

@@ -177,7 +177,7 @@ def getCameraObj(cameraId):
         camera = HamamatsuCameraMR(cameraId)
         print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
         return camera
-    except OSError:
+    except:
         print('Initializing Mock Hamamatsu')
         from model import MockHamamatsu
         return MockHamamatsu()

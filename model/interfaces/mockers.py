@@ -487,12 +487,11 @@ class MockCameraTIS:
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
-        self.camera_model = str.encode('mock')
+        self.model = 'mock'
 
-    def grab_image(self, **kwargs):
-        img = np.zeros((1024, 1280))
-        beamCenter = [int(np.random.randn() * 10 + 500),
-                      int(np.random.randn() * 10 + 600)]
+    def grabFrame(self, **kwargs):
+        img = np.zeros((500, 600))
+        beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
         img[beamCenter[0] - 10:beamCenter[0] + 10,
         beamCenter[1] - 10:beamCenter[1] + 10] = 1
         return img
@@ -510,6 +509,9 @@ class MockCameraTIS:
 class MockPCZPiezo(Driver):
     """Mock driver for the PiezoConcept Z-piezo."""
 
+    def __init__(self):
+        super().__init__()
+
     @Feat(read_once=True)
     def idn(self):
         """Get information of device"""
@@ -517,9 +519,12 @@ class MockPCZPiezo(Driver):
         dummyquery = 'dummy zpiezo answer'
         return dummyquery
 
+    def initialize(self):
+        pass
+
     # Z-MOVEMENT
 
-    @Feat(units='micrometer')
+    @Feat()
     def absZ(self):
         """ Absolute Z position. """
         return 2.0
@@ -527,25 +532,27 @@ class MockPCZPiezo(Driver):
     @absZ.setter
     def absZ(self, value):
         """ Absolute Z position movement, in um. """
-        pass
+        print(f"Mock PCZ: setting Z position to {value} um")
 
     def relZ(self, value):
         """ Relative Z position movement, in um. """
+        print(f"Mock PCZ: moving Z position {value} um")
         pass
         if abs(float(value)) > 0.5:
-                print('Warning: Step bigger than 500 nm.')
+                print('Warning: Step bigger than 500 nm')
 
-    @Action(units='micrometer')
+    @Action()
     def move_relZ(self, value):
         """ Relative Z position movement, in um. """
+        print(f"Mock PCZ: moving Z position {value} um")
         pass
         if abs(float(value)) > 0.5:
-                print('Warning: Step bigger than 500 nm.')
+                print('Warning: Step bigger than 500 nm')
 
-    @Action(units='micrometer', limits=(100,))
+    @Action(limits=(100,))
     def move_absZ(self, value):
         """ Absolute Z position movement, in um. """
-        pass
+        print(f"Mock PCZ: setting Z position to {value} um")
 
     # CONTROL/STATUS
 
@@ -563,3 +570,67 @@ class MockPCZPiezo(Driver):
 
     def close(self):
         pass
+
+
+class MockMHXYStage(Driver):
+
+    def __init__(self, SerialDriver=0):
+        super().__init__()
+        print('Simulated Marzhauser XY-stage')
+
+    @Feat(read_once=True)
+    def idn(self):
+        """Get information of device"""
+        return 'Marzhauser XY-stage mock'
+        
+    # XY-POSITION READING AND MOVEMENT
+
+    @Feat()
+    def absX(self):
+        """ Read absolute X position, in um. """
+        print(f"Mock MHXY: Absolute position, X.")
+
+    @Feat()
+    def absY(self):
+        """ Read absolute Y position, in um. """
+        print(f"Mock MHXY: Absolute position, Y.")
+
+    @Action()
+    def move_relX(self, value):
+        """ Relative X position movement, in um. """
+        print(f"Mock MHXY: Move relative, X: {value} um.")
+
+    @Action()
+    def move_relY(self, value):
+        """ Relative Y position movement, in um. """
+        print(f"Mock MHXY: Move relative, Y: {value} um.")
+
+    @Action(limits=(100,))
+    def move_absX(self, value):
+        """ Absolute X position movement, in um. """
+        print(f"Mock MHXY: Set position, X: {value} um.")
+
+    @Action(limits=(100,))
+    def move_absY(self, value):
+        """ Absolute Y position movement, in um. """
+        print(f"Mock MHXY: Set position, Y: {value} um.")
+
+    # CONTROL/STATUS/LIMITS
+
+    @Feat()
+    def circLimit(self):
+        """ Circular limits, in terms of X,Y center and radius. """
+        print(f"Mock MHXY: Ask circular limits.")
+
+    @circLimit.setter
+    def circLimit(self, xpos, ypos, radius):
+        """ Set circular limits, in terms of X,Y center and radius. """
+        print(f"Mock MHXY: Ask circular limits, X: {xpos}, Y: {ypos}, radius: {radius}.")
+     
+    @Action()
+    def function_press(self):
+        """ Check function button presses. """
+        print(f"Mock MHXY: Check button presses.")
+
+    def close(self):
+        self.finalize()

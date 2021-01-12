@@ -6,6 +6,7 @@
       "managerName": "HamamatsuManager",
       "managerProperties": {
         "cameraListIndex": 0,
+        "purpose": "acquisition",
         "hamamatsu": {
           "readout_speed": 3,
           "trigger_global_exposure": 5,
@@ -19,19 +20,22 @@
           "subarray_vsize": 2304
         }
       }
-    }
-  },
-  "webcams": {
-    "TIScam": {
+    },
+    "FocusLockCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
       "managerName": "TISManager",
       "managerProperties": {
-          "cameraListIndex": 0,
-          "tis": {
-              "exposure": 0,
-              "gain": 0,
-              "brightness": 0
-            }
+        "purpose": "focusLock",
+        "cameraListIndex": 0,
+        "tis": {
+          "exposure": 0,
+          "gain": 0,
+          "brightness": 0,
+          "image_width": 2448,
+          "image_height": 2048
         }
+      }
     }
   },
   "lasers": {
@@ -135,34 +139,58 @@
     }
   },
   "positioners": {
-    "X": {
+    "NidaqX": {
       "analogChannel": 0,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
         "conversionFactor": 1.587,
         "minVolt": -10,
-        "maxVolt": 10
+        "maxVolt": 10,
+        "axisCount": 1,
+        "axisLabels": "X"
       }
     },
-    "Y": {
+    "NidaqY": {
       "analogChannel": 1,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
         "conversionFactor": 1.587,
         "minVolt": -10,
-        "maxVolt": 10
+        "maxVolt": 10,
+        "axisCount": 1,
+        "axisLabels": "Y"
       }
     },
-    "Z": {
+    "NidaqZ": {
       "analogChannel": 2,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
-          "conversionFactor": 10.0,
-          "minVolt": 0,
-          "maxVolt": 10
+        "conversionFactor": 10.0,
+        "minVolt": 0,
+        "maxVolt": 10,
+        "axisCount": 1,
+        "axisLabels": "Z"
+      }
+    },
+    "PiezoZ": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "PiezoconceptZManager",
+      "managerProperties": {
+        "axisCount": 1,
+        "axisLabels": "Z"
+      }
+    },
+    "StageXY": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "MHXYStageManager",
+      "managerProperties": {
+        "axisCount": 2,
+        "axisLabels": "XY"
       }
     }
   },
@@ -204,6 +232,7 @@
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
   },
   "slm": {
+    "monitorIdx": 1,
     "width": 792,
     "height": 600,
     "wavelength": 775,
@@ -212,7 +241,13 @@
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
   "focusLock": {
-    "scansPerS": 10
+    "camera": "FocusLockCamera",
+    "positioner": "PiezoZ",
+    "updateFreq": 10,
+    "frameCrop_left": 200,
+    "frameCrop_right": 300,
+    "frameCrop_top": 0,
+    "frameCrop_bottom": 600
   },
   "widgetLayout": {
       "lasersAndAlignmentInSingleDock": false

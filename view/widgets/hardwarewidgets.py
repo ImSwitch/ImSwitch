@@ -4,6 +4,7 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
+import textwrap
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
@@ -22,20 +23,28 @@ class PositionerWidget(Widget):
         self.setLayout(self.grid)
 
     def initControls(self, positionerInfos):
+        gridpos = 0
         for index, (positionerName, positionerInfo) in enumerate(positionerInfos.items()):
-            self.pars['Label' + positionerName] = QtGui.QLabel("<strong>{} = {:.2f} µm</strong>".format(positionerName, 0))
-            self.pars['Label' + positionerName].setTextFormat(QtCore.Qt.RichText)
-            self.pars['UpButton' + positionerName] = guitools.BetterPushButton("+")
-            self.pars['DownButton' + positionerName] = guitools.BetterPushButton("-")
-            self.pars['StepEdit' + positionerName] = QtGui.QLineEdit("0")
-            self.pars['StepUnit' + positionerName] = QtGui.QLabel(" µm")
+            axes = positionerInfo.managerProperties['axisCount']
+            axislabels = textwrap.wrap(positionerInfo.managerProperties['axisLabels'],1)
+            for axis in range(axes):
+                self.pars['Label' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{}-{} </strong>".format(positionerName, axislabels[axis]))
+                self.pars['Label' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
+                self.pars['Position' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{:.2f} µm</strong>".format(0))
+                self.pars['Position' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
+                self.pars['UpButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("+")
+                self.pars['DownButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("-")
+                self.pars['StepEdit' + positionerName + axislabels[axis]] = QtGui.QLineEdit("0")
+                self.pars['StepUnit' + positionerName + axislabels[axis]] = QtGui.QLabel(" µm")
 
-            self.grid.addWidget(self.pars['Label' + positionerName], index, 0)
-            self.grid.addWidget(self.pars['UpButton' + positionerName], index, 1)
-            self.grid.addWidget(self.pars['DownButton' + positionerName], index, 2)
-            self.grid.addWidget(QtGui.QLabel("Step"), index, 3)
-            self.grid.addWidget(self.pars['StepEdit' + positionerName], index, 4)
-            self.grid.addWidget(self.pars['StepUnit' + positionerName], index, 5)
+                self.grid.addWidget(self.pars['Label' + positionerName + axislabels[axis]], gridpos, 0)
+                self.grid.addWidget(self.pars['Position' + positionerName + axislabels[axis]], gridpos, 1)
+                self.grid.addWidget(self.pars['UpButton' + positionerName + axislabels[axis]], gridpos, 2)
+                self.grid.addWidget(self.pars['DownButton' + positionerName + axislabels[axis]], gridpos, 3)
+                self.grid.addWidget(QtGui.QLabel("Step"), gridpos, 4)
+                self.grid.addWidget(self.pars['StepEdit' + positionerName + axislabels[axis]], gridpos, 5)
+                self.grid.addWidget(self.pars['StepUnit' + positionerName + axislabels[axis]], gridpos, 6)
+                gridpos = gridpos + 1
 
 
 class LaserWidget(Widget):
@@ -478,11 +487,11 @@ class FocusLockWidget(Widget):
 
         # Webcam graph
         self.webcamGraph = pg.GraphicsLayoutWidget()
-        self.img = pg.ImageItem(border='w')
-        self.img.setImage(np.zeros((100,100)))
+        self.camImg = pg.ImageItem(border='w')
+        self.camImg.setImage(np.zeros((100,100)))
         self.vb = self.webcamGraph.addViewBox(invertY=True, invertX=False)
         self.vb.setAspectLocked(True)
-        self.vb.addItem(self.img)
+        self.vb.addItem(self.camImg)
 
         # PROCESS DATA THREAD - ADD SOMEWHERE ELSE, NOT HERE, AS IT HAS NO GRAPHICAL ELEMENTS!
 

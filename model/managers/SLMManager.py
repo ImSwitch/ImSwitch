@@ -17,9 +17,9 @@ import numpy as np
 from scipy import signal as sg
 
 class SLMManager:
-    def __init__(self, slmInfo, slm, *args, **kwargs):
+    def __init__(self, slmInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__slm = slm
+        self.__slm = getSLMObj(slmInfo.monitorIdx)
         self.__slmInfo = slmInfo
         self.__wavelength = self.__slmInfo.wavelength
         self.__pixelsize = self.__slmInfo.pixelsize
@@ -463,6 +463,20 @@ class Mask(object):
             return out
         else:
             raise TypeError("Cannot add two masks with different shapes")
+
+
+def getSLMObj(slmIdx):
+    try:
+        from model.interfaces.SLM import SLMdisplay
+        print('Trying to import SLM', slmIdx)
+        slm = SLMdisplay(slmIdx)
+        print('Initialized SLM Object')
+        return slm
+    except OSError:
+        print('Failed to load SLM')
+    #    print('Initializing Mock SLM')
+    #    from model.interfaces import MockSLM
+    #    return MockSLM()
 
 
 class MaskMode(enum.Enum):

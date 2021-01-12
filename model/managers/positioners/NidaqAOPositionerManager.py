@@ -9,10 +9,10 @@ class NidaqAOPositionerManager(PositionerManager):
         self._maxVolt = positionerInfo.managerProperties['maxVolt']
         super().__init__(name, initialPosition=0)
 
-    def move(self, dist):
+    def move(self, dist, *args):
         return self.setPosition(self._position + dist)
 
-    def setPosition(self, position):
+    def setPosition(self, position, *args):
         self._position = position
         self._nidaqManager.setAnalog(target=self.name,
                                      voltage=position / self._conversionFactor,

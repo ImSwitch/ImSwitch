@@ -48,6 +48,7 @@ class ScanInfo:
 
 @dataclass(frozen=True)
 class SLMInfo:
+    monitorIdx: int
     width: int
     height: int
     wavelength: int
@@ -58,7 +59,13 @@ class SLMInfo:
 
 @dataclass(frozen=True)
 class FocusLockInfo:
-    scansPerS: int
+    camera: str
+    positioner: str
+    updateFreq: int
+    frameCrop_left: int
+    frameCrop_right: int
+    frameCrop_top: int
+    frameCrop_bottom: int
 
 
 @dataclass(frozen=True)

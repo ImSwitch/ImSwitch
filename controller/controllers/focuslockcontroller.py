@@ -25,8 +25,10 @@ class FocusLockController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #self.loadPreset(self._defaultPreset)
-        #self.scansPerS = self._setupInfo.focusLock.scansPerS
-        self.scansPerS = 10
+        self.camera = self._setupInfo.focusLock.camera
+        self.positioner = self._setupInfo.focusLock.positioner
+        self.updateFreq = self._setupInfo.focusLock.updateFreq
+        self.cropFrame = (self._setupInfo.focusLock.frameCrop_left, self._setupInfo.focusLock.frameCrop_right, self._setupInfo.focusLock.frameCrop_top, self._setupInfo.focusLock.frameCrop_bottom)
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)
@@ -47,26 +49,31 @@ class FocusLockController(WidgetController):
         self.zStackVar = False
         self.twoFociVar = False
         self.noStepVar = True
-        self.focusTime = 1000 / self.scansPerS  # time between focus signal updates in ms
-        self.initialZ = 0
-        self.currentZ = 0
+        self.focusTime = 1000 / self.updateFreq  # time between focus signal updates in ms
+        self.lockPosition = 0
+        self.currentPosition = 0
         self.lastZ = 0
+        self.buffer = 40
+        self.currPoint = 0
+        self.setPointData = np.zeros(self.buffer)
+        self.timeData = np.zeros(self.buffer)
         self.lockingData = np.zeros(7)
         self.__processDataThread = ProcessDataThread()
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(self._master.focusLockManager.focusTime)
+        self.timer.start(self.focusTime)
+        self.startTime = ptime.time()
 
     def unlockFocus(self):
         if self.locked:
             self.locked = False
             self._widget.lockButton.setChecked(False)
-            self._widget.focusLockGraph.plot.removeItem(self._widget.focusLockGraph.lineLock)
+            self._widget.focusPlot.removeItem(self._widget.focusLockGraph.lineLock)
     
     def toggleFocus(self):
         if self._widget.lockButton.isChecked():
-            absz = self._master.piezozHelper.get_abs()
+            absz = self._master.positionersManager.execOn(self.positioner, lambda p: p.get_abs())
             self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
             self._widget.lockButton.setText('Unlock')
         else:
@@ -75,11 +82,13 @@ class FocusLockController(WidgetController):
         print("Controller: Toggle focus: unlock if locked, lock if unlocked. Also: change text on the lockButton.")
 
     def cameraDialog(self):
-        self._master.cameraHelper.show_dialog()
+        self._master.detectorsManager.execOn(self.camera, lambda c: c.show_dialog())
         print("Controller: Open camera settings dialog.")
 
     def moveZ(self):
-        print("Controller: Potentially connect this to moving the z-piezo, or otherwise take care of that only in the positioning widget and remove this button. Can still keep the text and update with a signal to the current Z-position.")
+        abspos = np.float(self._widget.positionEdit.text())
+        self._master.positionersManager.execOn(self.positioner, lambda p: p.setPosition(abspos))
+        print(f"FL Controller: Move Z-piezo to absolute position {abspos} um.")
 
     def focusCalibrationStart(self):
         print("Controller: Start focus calibration thread and calibrate.")
@@ -101,24 +110,27 @@ class FocusLockController(WidgetController):
 
     # Update focus lock
     def update(self):
-        #1 Grab camera frame through cameraHelper
-        img = self._master.cameraHelper.grab_image()
+        #1 Grab camera frame through cameraHelper and crop
+        img = self._master.detectorsManager.execOn(self.camera, lambda c: c.getLatestFrame())
+        img = img[self.cropFrame[0]:self.cropFrame[1],self.cropFrame[2]:self.cropFrame[3]]
         #2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
-        self.setPointSignal = self.__processDataThread.update(img)
+        self.setPointSignal = self.__processDataThread.update(img, self.twoFociVar)
         #3 Update PI with the new setPointSignal and get back the distance to move, send to
-        # update the PI control
+        # update the PI control, and then send the move-distance to the z-piezo
         if self.locked:
             value_move = self.updatePI()
-            if self.noStepVar and abs(out) > 0.002:
-                self.zstepupdate = self.zstepupdate + 1
-                self.z.move_relZ(out * self.um)
-            self._master.piezozHelper.move_rel(value_move)
+            if self.noStepVar and abs(value_move) > 0.002:
+                #self.zstepupdate = self.zstepupdate + 1
+                self._master.positionersManager.execOn(self.positioner, lambda p: p.move(value_move))
         #elif self.aboutToLock:
         #    self.lockingPI()
-        #4 Send updated position to z-piezo
-        #5 Update image and focusSignalPosition in FocusLockWidget
-        self._widget.webcamGraph.update(self.image)
-        self._widget.focusLockGraph.update(self.setPointSignal)
+        #4 Update image and focusSignalPosition in FocusLockWidget
+        self.updateSetPointData()
+        self._widget.camImg.setImage(img)
+        if self.currPoint < self.buffer:
+            self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint], self.setPointData[1:self.currPoint])
+        else:
+            self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
 
     #def lockingPI(self):
     #    self.lockingData[:-1] = self.lockingData[1:]
@@ -128,21 +140,31 @@ class FocusLockController(WidgetController):
     #        absz = self._master.piezozHelper.get_abs()
     #        self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
     #        self.aboutToLock = False
+    def updateSetPointData(self):
+        if self.currPoint < self.buffer:
+            self.setPointData[self.currPoint] = self.setPointSignal
+            self.timeData[self.currPoint] = ptime.time() - self.startTime
+        else:
+            self.setPointData[:-1] = self.setPointData[1:]
+            self.setPointData[-1] = self.setPointSignal
+            self.timeData[:-1] = self.timeData[1:]
+            self.timeData[-1] = ptime.time() - self.startTime
+        self.currPoint += 1        
 
     def updatePI(self):
         if not self.noStepVar:
             self.noStepVar = True
-        self.currentZ = self._master.piezozHelper.get_abs()
-        distance = self.currentZ - self.initialZ
-        #self.stepDistance = self.currentZ - self.lastZ
-        out = self.PI.update(self.setPointSignal)
-        self.lastZ = self.currentZ
+        self.currentPosition = self._master.positionersManager.execOn(self.positioner, lambda p: p.get_abs())
+        distance = self.currentPosition - self.lockPosition
+        #self.stepDistance = self.currentPosition - self.lastZ
+        move = self.pi.update(self.setPointSignal)
+        self.lastZ = self.currentPosition
 
-        if abs(distance) > 5 or abs(out) > 3:
+        if abs(distance) > 5 or abs(move) > 3:
             print('Safety unlocking!')
             self.unlockFocus()
         
-        return out
+        return move
 
 #        elif self.zStackVar and self.zstepupdate > 15:
 #            if self.stepDistance > self.stepDistLow * self.um and self.stepDistance < self.stepDistHigh * self.um:
@@ -168,18 +190,17 @@ class FocusLockController(WidgetController):
     #        self.PI = pi.PI(self.setPoint, 0.001,
     #                        np.float(self.kpEdit.text()),
     #                        np.float(self.kiEdit.text()))
-    #        self.initialZ = self.z.absZ
+    #        self.lockPosition = self.z.absZ
     #        self.locked = True
     #        self.stepDistLow = 0.001 * np.float(self.zStepFromEdit.text())
     #        self.stepDistHigh = 0.001 * np.float(self.zStepToEdit.text())
 
     def lockFocus(self, kp, ki, absz):
         if not self.locked:
-            self.setPointSignal = self.__processDataThread.focusSignal
-            self.pi = pi.PI(self.setPoint, 0.001, kp, ki)
-            self.initialZ = absz
+            self.pi = PI(self.setPointSignal, 0.001, kp, ki)
+            self.lockPosition = absz
             self.locked = True
-            self._widget.focusLockGraph.lineLock = self._widget.focusLockGraph.plot.addLine(y=self.setPointSignal, pen='r')
+            self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(y=self.setPointSignal, pen='r')
         print("Manager: lock focus")
 
     def focusCalibrationStart(self):
@@ -189,51 +210,16 @@ class FocusLockController(WidgetController):
 class ProcessDataThread(QtCore.QThread):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # set the camera
-        #self.webcam = self.focusWidget.webcam
-        # self.ws = {'vsub': 4, 'hsub': 4,
-        #            'top': None, 'bot': None,
-        #            'exposure_time': 10}
-        # self.image = self.webcam.grab_image(vsub=self.ws['vsub'],
-        #                                     hsub=self.ws['hsub'],
-        #                                     top=self.ws['top'],
-        #                                     bot=self.ws['bot'],
-        #                                     exposure_time=self.ws[
-        #                                     'exposure_time'])
-        #self.image = self.webcam.grab_image()
 
-        #self.sensorSize = np.array(self.image.shape)
-        # print(self.sensorSize) #= (1024,1280)
-
-        self.focusSignal = 0
-
-    def update(self, img):
-        self.updateFocusSignal(img)
-        return self.focusSignal
-
-    def updateFocusSignal(self, img):
-        # update the focus signal
-        print('Updating focus signal...')
-        try:
-            # self.image = self.webcam.grab_image(vsub=self.ws['vsub'],
-            #                                     hsub=self.ws['hsub'],
-            #                                     top=self.ws['top'],
-            #                                     bot=self.ws['bot'])
-#            then = time.time()
-            self.image = self.webcam.grab_image()
-#            now = time.time()
-#            print("Focus: Whole grab image took:", now-then, "seconds.")
-            # print("")
-        except:
-            print("No image grabbed.")
-            pass
-        imagearray = self.image
-        imagearray = imagearray[0:1024,730:830]
-        imagearray = np.swapaxes(imagearray,0,1)      # Swap matrix axes, after having turned the camera 90deg
+    def update(self, img, twoFociVar):
+        # Update the focus signal
+        imagearray = img
+        #imagearray = imagearray[0:1024,730:830]
+        #imagearray = np.swapaxes(imagearray,0,1)      # Swap matrix axes, after having turned the camera 90deg
         # imagearraygf = imagearray
         imagearraygf = ndi.filters.gaussian_filter(imagearray,7)     # Gaussian filter the image, to remove noise and so on, to get a better center estimate
 
-        if self.focusWidget.twoFociVar:
+        if twoFociVar:
             allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
 #            print(allmaxcoords)
             size = allmaxcoords.shape
@@ -277,19 +263,16 @@ class ProcessDataThread(QtCore.QThread):
         #zeroindices = np.zeros(imagearray.shape)
         #zeroindices[xlow:xhigh,ylow:yhigh] = 1
         #imagearraygfsubtest = np.multiply(imagearraygfsubtest,zeroindices)
-        self.image = imagearraygf
+        #self.image = imagearraygf
         #print(centercoords2[1])
-        self.massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
+        massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
         #self.massCenter2 = np.array(ndi.measurements.center_of_mass(imagearraygfsubtest))
         # self.massCenterGlobal[0] = self.massCenter[0] #+ centercoords2[0] #- subsizex - self.sensorSize[0] / 2     #add the information about where the center of the subarray is
-        self.massCenterGlobal = self.massCenter[1] + centercoords2[1] #- subsizey - self.sensorSize[1] / 2     #add the information about where the center of the subarray is
-#        print(self.massCenter[1])
-#        print(self.massCenterGlobal)
-#        print(centercoords2[1])
-#        print('')
-        #print(self.massCenter2[1])
+        massCenterGlobal = massCenter[1] + centercoords2[1] #- subsizey - self.sensorSize[1] / 2     #add the information about where the center of the subarray is
+        #print(massCenter[1])
+        #print(massCenterGlobal)
         #print('')
-        self.focusSignal = self.massCenterGlobal
+        return massCenterGlobal
 
 
 class FocusCalibThread(QtCore.QThread):

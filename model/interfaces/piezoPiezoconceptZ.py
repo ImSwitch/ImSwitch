@@ -39,10 +39,11 @@ class PCZPiezo(MessageBasedDriver):
         return dummyquery
     def initialize(self):
         super().initialize()
+        return 'dummy zpiezo'
 
     # Z-MOVEMENT
 
-    @Feat(units='micrometer')
+    @Feat()
     def absZ(self):
         """ Absolute Z position. """
         return float(self.query('GET_X').split()[0])
@@ -61,7 +62,7 @@ class PCZPiezo(MessageBasedDriver):
         if abs(float(value)) > 0.5:
                 print('Warning: Step bigger than 500 nm.')
 
-    @Action(units='micrometer')
+    @Action()
     def move_relZ(self, value):
         """ Relative Z position movement, in um. """
         if float(value) < 0:
@@ -71,7 +72,7 @@ class PCZPiezo(MessageBasedDriver):
         if abs(float(value)) > 0.5:
                 print('Warning: Step bigger than 500 nm.')
 
-    @Action(units='micrometer', limits=(100,))
+    @Action(limits=(100,))
     def move_absZ(self, value):
         """ Absolute Z position movement, in um. """
         self.query('MOVEX ' + str(round(float(value), 3)) + 'u')

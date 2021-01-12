@@ -7,7 +7,7 @@ Created on Tue Mar 24 16:41:57 2020
 from .LaserManager import LaserManager
 
 
-class NidaqAOLaserManager(LaserManager):
+class NidaqLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **kwargs):
         self._nidaqManager = kwargs['nidaqManager']
 

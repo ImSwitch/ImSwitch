@@ -42,7 +42,7 @@
     "510": {
       "analogChannel": null,
       "digitalLine": 0,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -56,7 +56,7 @@
     "561": {
       "analogChannel": null,
       "digitalLine": 1,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -70,7 +70,7 @@
     "561AOTF": {
       "analogChannel": null,
       "digitalLine": 2,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -84,7 +84,7 @@
     "640": {
       "analogChannel": null,
       "digitalLine": 3,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -98,7 +98,7 @@
     "640AOTF": {
       "analogChannel": null,
       "digitalLine": 4,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -109,12 +109,12 @@
       "valueRangeMin": 0,
       "valueRangeMax": 200
     },
-    "775": {
+    "775Katana": {
       "analogChannel": null,
       "digitalLine": 5,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "CoboltLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+          "digitalDriver": "onefive.katana.KatanaLaser",
           "digitalPorts": [
               "COM14"
           ]
@@ -126,7 +126,7 @@
     "775AOM": {
       "analogChannel": 3,
       "digitalLine": 6,
-      "managerName": "FullDigitalLaserManager",
+      "managerName": "NidaqLaserManager",
       "managerProperties": {
           "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
           "digitalPorts": [
@@ -192,6 +192,60 @@
         "axisCount": 2,
         "axisLabels": "XY"
       }
+    }
+  },
+  "rs232devices": {
+    "aaaotf": {
+      "port": "COM4",
+      "encoding": "ascii",
+      "recv_termination": "\n",
+      "send_termination": "\r \n",
+      "baudrate": 57600,
+      "bytesize": 8,
+      "parity": "none",
+      "stopbits": 1,
+      "rtscts": "false",
+      "dsrdtr": "false",
+      "xonxoff": "false"
+    },
+    "katana": {
+      "port": "COM8",
+      "encoding": "ascii",
+      "recv_termination": "\n",
+      "send_termination": "\n",
+      "baudrate": 38400,
+      "bytesize": 8,
+      "parity": "none",
+      "stopbits": 1,
+      "rtscts": "false",
+      "dsrdtr": "false",
+      "xonxoff": "false"
+    },
+    "mhxystage": {
+      "port": "COM6",
+      "encoding": "ascii",
+      "recv_termination": "",
+      "send_termination": "\n",
+      "baudrate": 57600,
+      "bytesize": 8,
+      "parity": "none",
+      "stopbits": 2,
+      "rtscts": "false",
+      "dsrdtr": "false",
+      "xonxoff": "false"
+    },
+    "leicastand": {
+      "port": "COM10",
+      "encoding": "ascii",
+      "recv_termination": "\r",
+      "send_termination": "\r",
+      "baudrate": 19200,
+      "bytesize": 8,
+      "parity": "none",
+      "stopbits": 1,
+      "rtscts": "false",
+      "dsrdtr": "false",
+      "xonxoff": "false"
     }
   },
   "scan": {

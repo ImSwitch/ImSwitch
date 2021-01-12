@@ -25,7 +25,7 @@
         "405": {
             "analogChannel": null,
             "digitalLine": 0,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "CoboltLaserManager",
             "managerProperties": {
                 "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
@@ -39,7 +39,7 @@
         "488": {
             "analogChannel": null,
             "digitalLine": 1,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "CoboltLaserManager",
             "managerProperties": {
                 "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
@@ -54,7 +54,7 @@
         "473": {
             "analogChannel": 3,
             "digitalLine": 2,
-            "managerName": "NidaqAOLaserManager",
+            "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 473,
             "valueRangeMin": 0,

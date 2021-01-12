@@ -10,7 +10,7 @@ from model import FullDigitalLaser
 from .LaserManager import LaserManager
 
 
-class FullDigitalLaserManager(LaserManager):
+class CoboltLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_kwargs):
         # Init laser
         self._laser = FullDigitalLaser(laserInfo.managerProperties['digitalDriver'],

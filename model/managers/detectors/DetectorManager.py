@@ -36,8 +36,9 @@ class DetectorManager(SignalInterface):
         self.__model = model
         self.__parameters = parameters
 
-        self.__frameStart = (0, 0)
-        self.__shape = fullShape
+        self._frameStart = (0, 0)
+        self._shape = fullShape
+
         self.__fullShape = fullShape
         self.__supportedBinnings = supportedBinnings
         self.__image = np.array([])
@@ -78,11 +79,11 @@ class DetectorManager(SignalInterface):
 
     @property
     def frameStart(self):
-        return self.__frameStart
+        return self._frameStart
 
     @property
     def shape(self):
-        return self.__shape
+        return self._shape
 
     @property
     def fullShape(self):

@@ -33,8 +33,6 @@ class RS232Driver(MessageBasedDriver):
         #self.DSRDTR = settings["dsrdtr"]
         #self.XONXOFF = settings["xonxoff"]
 
-        
-
     def query(self, arg):
         return super().query(arg)
 

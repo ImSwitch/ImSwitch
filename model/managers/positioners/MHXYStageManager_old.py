@@ -9,32 +9,26 @@ from .PositionerManager import PositionerManager
 
 
 class MHXYStageManager(PositionerManager):
-    def __init__(self, positionerInfo, name, *args, **kwargs):
-        super().__init__(name=name, initialPosition=[0,0])
-        self._rs232Manager = kwargs['rs232sManager']._subManagers[positionerInfo.managerProperties['rs232device']]
-        print(str(self._rs232Manager.send('?readsn')))  # print serial no of stage
+    def __init__(self, *args, **kwargs):
+        super().__init__('name', initialPosition=[0,0])
 
     def move(self, value, axis):
         if axis == 0:
-            cmd = 'mor x ' + str(float(value))
+            self._mhxystage.move_relX(value)
         elif axis == 1:
-            cmd = 'mor y ' + str(float(value))
+            self._mhxystage.move_relY(value)
         else:
             print('Wrong axis, has to be 0 or 1.')
-            return
-        self._rs232Manager.send(cmd)
         self._position[axis] = self._position[axis] + value
         return self._position[axis]
 
     def setPosition(self, value, axis):
         if axis == 0:
-            cmd = 'moa x ' + str(float(value))
+            self._mhxystage.move_absX(value)
         elif axis == 1:
-            cmd = 'moa y ' + str(float(value))
+            self._mhxystage.move_absY(value)
         else:
             print('Wrong axis, has to be 0 or 1.')
-            return
-        self._rs232Manager.send(cmd)
         self._position[axis] = value
         return self._position[axis]
 
@@ -43,3 +37,17 @@ class MHXYStageManager(PositionerManager):
             return self._position[axis]
         else:
             print('Wrong axis, has to be 0 or 1.')
+
+
+def getMHXYObj():
+    try:
+        from model.interfaces.stageMHXY import MHXYStage
+        print('Trying to import MH xy-stage')
+        mhxystage = MHXYStage()
+        mhxystage.initialize()
+        print('Initialized MH XY-stage Object, serial no: ', mhxystage.idn)
+        return mhxystage
+    except:
+        print('Initializing Mock MH xy-stage')
+        from model.interfaces.mockers import MockMHXYStage
+        return MockMHXYStage()

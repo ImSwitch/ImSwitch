@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 07 15:14:00 2021
+Created on Wed Jan 13 11:57:00 2021
 
 @author: jonatanalvelid
 """
@@ -9,17 +9,28 @@ from .PositionerManager import PositionerManager
 
 
 class PiezoconceptZManager(PositionerManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__('name', 0)
-        self._piezoz = getPCZObj()
+    def __init__(self, positionerInfo, name, *args, **kwargs):
+        super().__init__(name=name, initialPosition=0)
+        self._rs232Manager = kwargs['rs232sManager']._subManagers[positionerInfo.managerProperties['rs232device']]
+        print('ZPiezo fake reply')  # print serial no of stage
 
+    # CONTINUE HERE
     def move(self, value, *args):
-        self._piezoz.move_relZ(value)
+        if value == 0:
+            return self._position
+        elif float(value) < 0:
+            cmd = 'MOVRX +' + str(round(float(value), 3))[1:7] + 'u'
+        elif float(value) > 0:
+            cmd = 'MOVRX -' + str(round(float(value), 3))[0:6] + 'u'
+        self._rs232Manager.send(cmd)
+
         self._position = self._position + value
         return self._position
 
     def setPosition(self, value, *args):
-        self._piezoz.move_absZ(value)
+        cmd = 'MOVEX ' + str(round(float(value), 3)) + 'u'
+        self._rs232Manager.send(cmd)
+
         self._position = value
         return self._position
 
@@ -27,17 +38,9 @@ class PiezoconceptZManager(PositionerManager):
         return self._position
 
     def get_abs(self):
-        return self._piezoz.absZ
+        cmd = 'GET_X'
+        reply = self._rs232Manager.send(cmd)
+        if reply is None:
+            reply = self._position
+        return reply
 
-
-def getPCZObj():
-    try:
-        from model.interfaces.piezoPiezoconceptZ import PCZPiezo
-        print('Trying to import z-piezo')
-        piezoz = PCZPiezo()
-        piezoz.initialize()
-    except:
-        print('Initializing mock z-piezo')
-        from model.interfaces.mockers import MockPCZPiezo
-        piezoz = MockPCZPiezo()
-    return piezoz

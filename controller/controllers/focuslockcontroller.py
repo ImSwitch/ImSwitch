@@ -161,7 +161,7 @@ class FocusLockController(WidgetController):
         self.lastZ = self.currentPosition
 
         if abs(distance) > 5 or abs(move) > 3:
-            print('Safety unlocking!')
+            print(f'Safety unlocking! Distance: {distance}, move: {move}.')
             self.unlockFocus()
         
         return move

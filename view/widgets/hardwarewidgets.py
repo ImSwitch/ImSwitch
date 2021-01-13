@@ -27,7 +27,7 @@ class PositionerWidget(Widget):
             self.pars['Label' + positionerName].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + positionerName] = guitools.BetterPushButton("+")
             self.pars['DownButton' + positionerName] = guitools.BetterPushButton("-")
-            self.pars['StepEdit' + positionerName] = QtGui.QLineEdit("0")
+            self.pars['StepEdit' + positionerName] = QtGui.QLineEdit("0.05")
             self.pars['StepUnit' + positionerName] = QtGui.QLabel(" µm")
 
             self.grid.addWidget(self.pars['Label' + positionerName], index, 0)

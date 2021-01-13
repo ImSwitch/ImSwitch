@@ -5,7 +5,7 @@ Created on Tue Mar 24 16:41:57 2020
 @author: _Xavi
 """
 from model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager, SLMManager
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, ScanManager, SLMManager
 )
 
 
@@ -17,13 +17,17 @@ class MasterController:
         self.__commChannel = commChannel
 
         # Init managers
+        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.nidaqManager = NidaqManager(self.__setupInfo)
         self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
-        self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
+        self.lasersManager = LasersManager(self.__setupInfo.lasers,
+                                           nidaqManager=self.nidaqManager,
+                                           rs232sManager=self.rs232sManager)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
-                                                     nidaqManager=self.nidaqManager)
+                                                     nidaqManager=self.nidaqManager,
+                                                     rs232sManager=self.rs232sManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals

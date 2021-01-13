@@ -634,3 +634,21 @@ class MockMHXYStage(Driver):
 
     def close(self):
         self.finalize()
+
+
+class MockRS232Driver():
+    """Mock RS232 driver"""
+
+    def __init__(self, settings, **kwargs):
+        self._settings = settings
+        pass
+
+    def query(self, arg):
+        print(f"Mock: sending the following to {self._settings['port']}: {arg}")
+        pass
+
+    def initialize(self):
+        pass
+
+    def close(self):
+        pass

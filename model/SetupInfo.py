@@ -30,6 +30,12 @@ class PositionerInfo(DeviceInfo):
 
 
 @dataclass(frozen=True)
+class RS232Info:
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager    
+
+
+@dataclass(frozen=True)
 class ScanInfoStage:
     sampleRate: int
     returnTime: float
@@ -81,6 +87,7 @@ class SetupInfo:
 
     lasers: Dict[str, LaserInfo]  # map from device name to LaserInfo
     positioners: Dict[str, PositionerInfo]  # map from device name to PositionerInfo
+    rs232devices: Dict[str, RS232Info]  # map from device name to RS232Info
     scan: ScanInfo
     slm: SLMInfo
     focusLock: FocusLockInfo

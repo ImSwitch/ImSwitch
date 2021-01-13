@@ -42,12 +42,8 @@
     "510": {
       "analogChannel": null,
       "digitalLine": 0,
-      "managerName": "CoboltLaserManager",
+      "managerName": "NidaqLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM9"
-          ]
       },
       "wavelength": 510,
       "valueRangeMin": 0,
@@ -56,12 +52,8 @@
     "561": {
       "analogChannel": null,
       "digitalLine": 1,
-      "managerName": "CoboltLaserManager",
+      "managerName": "NidaqLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM10"
-          ]
       },
       "wavelength": 561,
       "valueRangeMin": 0,
@@ -69,13 +61,11 @@
     },
     "561AOTF": {
       "analogChannel": null,
-      "digitalLine": 2,
-      "managerName": "CoboltLaserManager",
+      "digitalLine": null,
+      "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM11"
-          ]
+          "rs232device": "aaaotf",
+          "channel": 1
       },
       "wavelength": 561,
       "valueRangeMin": 0,
@@ -84,12 +74,8 @@
     "640": {
       "analogChannel": null,
       "digitalLine": 3,
-      "managerName": "CoboltLaserManager",
+      "managerName": "NidaqLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM12"
-          ]
       },
       "wavelength": 640,
       "valueRangeMin": 0,
@@ -97,13 +83,11 @@
     },
     "640AOTF": {
       "analogChannel": null,
-      "digitalLine": 4,
-      "managerName": "CoboltLaserManager",
+      "digitalLine": null,
+      "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM13"
-          ]
+          "rs232device": "aaaotf",
+          "channel": 2
       },
       "wavelength": 640,
       "valueRangeMin": 0,
@@ -111,27 +95,24 @@
     },
     "775Katana": {
       "analogChannel": null,
-      "digitalLine": 5,
-      "managerName": "CoboltLaserManager",
+      "digitalLine": null,
+      "managerName": "KatanaLaserManager",
       "managerProperties": {
-          "digitalDriver": "onefive.katana.KatanaLaser",
-          "digitalPorts": [
-              "COM14"
-          ]
+        "digitalDriver": null,
+        "digitalPorts": [
+          "COM15"
+        ],
+        "rs232device": "katana"
       },
       "wavelength": 775,
       "valueRangeMin": 0,
-      "valueRangeMax": 3000
+      "valueRangeMax": 3100
     },
     "775AOM": {
       "analogChannel": 3,
       "digitalLine": 6,
       "managerName": "NidaqLaserManager",
       "managerProperties": {
-          "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
-          "digitalPorts": [
-              "COM15"
-          ]
       },
       "wavelength": 775,
       "valueRangeMin": 0,
@@ -181,7 +162,8 @@
       "managerName": "PiezoconceptZManager",
       "managerProperties": {
         "axisCount": 1,
-        "axisLabels": "Z"
+        "axisLabels": "Z",
+        "rs232device": "pczpiezo"
       }
     },
     "StageXY": {
@@ -190,62 +172,91 @@
       "managerName": "MHXYStageManager",
       "managerProperties": {
         "axisCount": 2,
-        "axisLabels": "XY"
+        "axisLabels": "XY",
+        "rs232device": "mhxystage"
       }
     }
   },
   "rs232devices": {
     "aaaotf": {
-      "port": "COM4",
-      "encoding": "ascii",
-      "recv_termination": "\n",
-      "send_termination": "\r \n",
-      "baudrate": 57600,
-      "bytesize": 8,
-      "parity": "none",
-      "stopbits": 1,
-      "rtscts": "false",
-      "dsrdtr": "false",
-      "xonxoff": "false"
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM4",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\r \n",
+        "baudrate": 57600,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     },
     "katana": {
-      "port": "COM8",
-      "encoding": "ascii",
-      "recv_termination": "\n",
-      "send_termination": "\n",
-      "baudrate": 38400,
-      "bytesize": 8,
-      "parity": "none",
-      "stopbits": 1,
-      "rtscts": "false",
-      "dsrdtr": "false",
-      "xonxoff": "false"
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM8",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 38400,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    },
+    "pczpiezo": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM12",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 115200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     },
     "mhxystage": {
-      "port": "COM6",
-      "encoding": "ascii",
-      "recv_termination": "",
-      "send_termination": "\n",
-      "baudrate": 57600,
-      "bytesize": 8,
-      "parity": "none",
-      "stopbits": 2,
-      "rtscts": "false",
-      "dsrdtr": "false",
-      "xonxoff": "false"
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM6",
+        "encoding": "ascii",
+        "recv_termination": "",
+        "send_termination": "\n",
+        "baudrate": 57600,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 2,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     },
     "leicastand": {
-      "port": "COM10",
-      "encoding": "ascii",
-      "recv_termination": "\r",
-      "send_termination": "\r",
-      "baudrate": 19200,
-      "bytesize": 8,
-      "parity": "none",
-      "stopbits": 1,
-      "rtscts": "false",
-      "dsrdtr": "false",
-      "xonxoff": "false"
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM10",
+        "encoding": "ascii",
+        "recv_termination": "\r",
+        "send_termination": "\r",
+        "baudrate": 19200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     }
   },
   "scan": {

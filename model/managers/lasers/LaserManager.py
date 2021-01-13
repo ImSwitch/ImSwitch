@@ -48,16 +48,16 @@ class LaserManager(ABC):
         return self.__valueUnits
 
     @abstractmethod
-    def setEnabled(self, enabled):
+    def setEnabled(self, enabled, *args):
         """Sets whether the laser is enabled."""
         pass
 
     @abstractmethod
-    def setDigitalMod(self, digital, initialValue):
+    def setDigitalMod(self, digital, initialValue, *args):
         """Sets whether the laser is in digital modulation mode. Does nothing
         if the laser doesn't support this mode."""
         pass
 
     @abstractmethod
-    def setValue(self, value):
+    def setValue(self, value, *args):
         pass

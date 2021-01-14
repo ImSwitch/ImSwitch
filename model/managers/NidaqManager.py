@@ -13,11 +13,12 @@ from framework import Signal, SignalInterface, Thread
 
 class NidaqManager(SignalInterface):
     scanDoneSignal = Signal()
+    scanStartSignal = Signal()
 
     def __init__(self, setupInfo):
         super().__init__()
         self.__setupInfo = setupInfo
-
+        self.inputTasks = {}
         self.busy = False
         self.aoTaskWaiter = WaitThread()
         self.doTaskWaiter = WaitThread()
@@ -83,6 +84,24 @@ class NidaqManager(SignalInterface):
                                           sample_mode=acquisitionType, samps_per_chan=sampsInScan)
         return aotask
     
+    def startInputTask(self, taskName, taskType, *args):
+        if taskType=='ai':
+            task = self.__createChanAITask(self, *args)
+        elif taskType=='ci':
+            task = self.__createChanCITask(self, *args)
+        task.start()
+        self.inputTasks[taskName] = task
+
+    def stopInputTask(self, taskName):
+        self.inputTasks[taskName].stop()
+        del self.inputTasks[taskName]
+    
+    def readInputTask(self, taskName, samples=0, timeout=0):
+        if timeout==0:
+            return self.inputTasks[taskName].read(samples)
+        else:
+            return self.inputTasks[taskName].read(samples, timeout)
+
     def setDigital(self, target, enable):
         """ Function to set the digital line to a specific target
         to either "high" or "low" voltage """
@@ -136,7 +155,7 @@ class NidaqManager(SignalInterface):
                 aotask.stop()
                 aotask.close()
                 self.busy = False
-   
+
     def runScan(self, signalDic, detectors):
         """ Function assuming that the user wants to run a full scan with a stage 
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
@@ -201,6 +220,8 @@ class NidaqManager(SignalInterface):
 
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
+
+            scanStartSignal.emit()
 
             if len(DOsignals) > 0:
                 self.doTask.start()

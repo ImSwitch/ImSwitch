@@ -27,6 +27,7 @@ class WidgetAvailabilityInfo:
     ULensesWidget: bool = True
     SLMWidget: bool = True
     FocusLockWidget: bool = True
+    MotCorrWidget: bool = True
 
 
 @dataclass(frozen=True)

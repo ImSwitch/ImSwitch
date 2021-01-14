@@ -216,7 +216,7 @@
     "pczpiezo": {
       "managerName": "RS232Manager",
       "managerProperties": {
-        "port": "COM12",
+        "port": "COM5",
         "encoding": "ascii",
         "recv_termination": "\n",
         "send_termination": "\n",

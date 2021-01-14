@@ -12,9 +12,8 @@ class PiezoconceptZManager(PositionerManager):
     def __init__(self, positionerInfo, name, *args, **kwargs):
         super().__init__(name=name, initialPosition=0)
         self._rs232Manager = kwargs['rs232sManager']._subManagers[positionerInfo.managerProperties['rs232device']]
-        print('ZPiezo fake reply')  # print serial no of stage
+        print('ZPiezo fake reply')
 
-    # CONTINUE HERE
     def move(self, value, *args):
         if value == 0:
             return self._position

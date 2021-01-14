@@ -21,7 +21,7 @@ class AAAOTFLaserManager(LaserManager):
         super().__init__(
             name, isBinary=False, isDigital=True, wavelength=laserInfo.wavelength,
             valueRangeMin=laserInfo.valueRangeMin, valueRangeMax=laserInfo.valueRangeMax,
-            valueUnits='arb'
+            valueUnits='arb', valueRangeStep=laserInfo.valueRangeStep
         )
 
     def setEnabled(self, enabled):

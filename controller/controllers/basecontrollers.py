@@ -84,25 +84,25 @@ class LiveUpdatedController(WidgetController):
 class SuperScanController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self._stageParameterDict = None
-        # self._TTLParameterDict = None
+        # self._analogParameterDict = None
+        # self._digitalParameterDict = None
         # Make non-overwritable functions
         self.isValidScanController = self.__isValidScanController
         self.isValidChild = self.isValidScanController
 
     # @property
     # def stageParameterList(self):
-    #     if self._stageParameterDict is None:
+    #     if self._analogParameterDict is None:
     #         raise ValueError('Scan controller has no parameters defined')
     #     else:
-    #         return [*self._stageParameterDict] #makes list of dict keys
+    #         return [*self._analogParameterDict] #makes list of dict keys
 
     # @property
     # def TTLParameterList(self):
-    #     if self._TTLParameterDict is None:
+    #     if self._digitalParameterDict is None:
     #         raise ValueError('Scan controller has no parameters defined')
     #     else:
-    #         return [*self._TTLParameterDict] #makes list of dict keys
+    #         return [*self._digitalParameterDict] #makes list of dict keys
 
     @property
     def parameterDict(self):

@@ -47,7 +47,8 @@
       },
       "wavelength": 510,
       "valueRangeMin": 0,
-      "valueRangeMax": 1000
+      "valueRangeMax": 1000,
+      "valueRangeStep": 1
     },
     "561": {
       "analogChannel": null,
@@ -57,7 +58,8 @@
       },
       "wavelength": 561,
       "valueRangeMin": 0,
-      "valueRangeMax": 1
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
     },
     "561AOTF": {
       "analogChannel": null,
@@ -69,17 +71,19 @@
       },
       "wavelength": 561,
       "valueRangeMin": 0,
-      "valueRangeMax": 23
+      "valueRangeMax": 1023,
+      "valueRangeStep": 1
     },
     "640": {
       "analogChannel": null,
-      "digitalLine": 3,
+      "digitalLine": 2,
       "managerName": "NidaqLaserManager",
       "managerProperties": {
       },
       "wavelength": 640,
       "valueRangeMin": 0,
-      "valueRangeMax": 1
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
     },
     "640AOTF": {
       "analogChannel": null,
@@ -91,36 +95,35 @@
       },
       "wavelength": 640,
       "valueRangeMin": 0,
-      "valueRangeMax": 200
+      "valueRangeMax": 1023,
+      "valueRangeStep": 1
     },
     "775Katana": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "KatanaLaserManager",
       "managerProperties": {
-        "digitalDriver": null,
-        "digitalPorts": [
-          "COM15"
-        ],
         "rs232device": "katana"
       },
       "wavelength": 775,
       "valueRangeMin": 0,
-      "valueRangeMax": 3100
+      "valueRangeMax": 3100,
+      "valueRangeStep": 1
     },
     "775AOM": {
       "analogChannel": 3,
-      "digitalLine": 6,
+      "digitalLine": 3,
       "managerName": "NidaqLaserManager",
       "managerProperties": {
       },
       "wavelength": 775,
       "valueRangeMin": 0,
-      "valueRangeMax": 1
+      "valueRangeMax": 100,
+      "valueRangeStep": 1
     }
   },
   "positioners": {
-    "NidaqX": {
+    "ND-GalvoX": {
       "analogChannel": 0,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
@@ -132,7 +135,7 @@
         "axisLabels": "X"
       }
     },
-    "NidaqY": {
+    "ND-GalvoY": {
       "analogChannel": 1,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
@@ -144,7 +147,7 @@
         "axisLabels": "Y"
       }
     },
-    "NidaqZ": {
+    "ND-PiezoZ": {
       "analogChannel": 2,
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",

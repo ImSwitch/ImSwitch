@@ -639,7 +639,8 @@ class MockMHXYStage(Driver):
 class MockRS232Driver():
     """Mock RS232 driver"""
 
-    def __init__(self, settings, **kwargs):
+    def __init__(self, name, settings, **kwargs):
+        self._name = name
         self._settings = settings
         pass
 

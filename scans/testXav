@@ -1,4 +1,4 @@
-[stageParameterDict]
+[analogParameterDict]
 Sizes[3] = (1.0, 1.0, 0.0)
 Sample_rate = 100000
 Targets[3] = ('Stage_X', 'Stage_Y', 'Stage_Z')
@@ -7,7 +7,7 @@ Return_time_seconds = 0.001
 Start[3] = (0, 0, 0)
 Sequence_time_seconds = 0.01
 
-[TTLParameterDict]
+[digitalParameterDict]
 TTLStarts[x,y] = [[0.0], [0.0], [0.0], [0.0]]
 Sequence_time_seconds = 0.01
 Targets[x] = ['405', '473', '488', 'CAM']

@@ -25,7 +25,7 @@ class CoboltLaserManager(LaserManager):
         super().__init__(
             name, isBinary=False, isDigital=True, wavelength=laserInfo.wavelength,
             valueRangeMin=laserInfo.valueRangeMin, valueRangeMax=laserInfo.valueRangeMax,
-            valueUnits='mW'
+            valueUnits='mW', valueRangeStep=laserInfo.valueRangeStep
         )
 
     def setEnabled(self, enabled):

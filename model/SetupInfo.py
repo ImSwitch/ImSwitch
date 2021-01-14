@@ -22,6 +22,7 @@ class LaserInfo(DeviceInfo):
     wavelength: str  # hex code
     valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
     valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
+    valueRangeStep: Optional[float]
 
 
 @dataclass(frozen=True)

@@ -4,13 +4,14 @@ from abc import ABC, abstractmethod
 class LaserManager(ABC):
     @abstractmethod
     def __init__(self, name, isBinary, isDigital, wavelength,
-                 valueRangeMin, valueRangeMax, valueUnits):
+                 valueRangeMin, valueRangeMax, valueUnits, valueRangeStep):
         self.__name = name
         self.__isBinary = isBinary
         self.__isDigital = isDigital
         self.__wavelength = wavelength
         self.__valueRangeMin = valueRangeMin
         self.__valueRangeMax = valueRangeMax
+        self.__valueRangeStep = valueRangeStep
         self.__valueUnits = valueUnits
 
     @property
@@ -41,6 +42,11 @@ class LaserManager(ABC):
     def valueRangeMax(self):
         """The maximum value that the laser can be set to."""
         return self.__valueRangeMax
+
+    @property
+    def valueRangeStep(self):
+        """The step of the value range that the laser can be set to."""
+        return self.__valueRangeStep
 
     @property
     def valueUnits(self):

@@ -15,7 +15,7 @@ class NidaqLaserManager(LaserManager):
             name, isBinary=laserInfo.analogChannel is None, isDigital=False,
             wavelength=laserInfo.wavelength,
             valueRangeMin=laserInfo.valueRangeMin, valueRangeMax=laserInfo.valueRangeMax,
-            valueUnits='V'
+            valueUnits='V', valueRangeStep=laserInfo.valueRangeStep
         )
 
     def setEnabled(self, enabled):

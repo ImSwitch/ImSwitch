@@ -65,8 +65,8 @@ class LaserWidget(Widget):
                 name=laserName, units=laserManager.valueUnits,
                 laser=laserName, wavelength=laserManager.wavelength,
                 prange=(laserManager.valueRangeMin, laserManager.valueRangeMax),
-                tickInterval=5, singleStep=1, init_power=laserManager.valueRangeMin,
-                isBinary=laserManager.isBinary
+                tickInterval=5, singleStep=laserManager.valueRangeStep,
+                init_power=laserManager.valueRangeMin, isBinary=laserManager.isBinary
             )
 
             self.laserModules[laserName] = control
@@ -157,7 +157,7 @@ class LaserModule(QtGui.QFrame):
         if not isBinary:
             self.slider.setMinimum(prange[0])
             self.slider.setMaximum(prange[1])
-            self.slider.setTickInterval(tickInterval)
+            self.slider.setTickInterval(singleStep)
             self.slider.setSingleStep(singleStep)
             self.slider.setValue(0)
 

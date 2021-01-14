@@ -82,10 +82,11 @@ class MainView(QtGui.QMainWindow):
         dockArea.addDock(laserDock)
 
         # Focus lock dock
-        focusLockDock = Dock('Focus Lock', size=(1, 1))
-        self.focusLockWidget = self.factory.createWidget(widgets.FocusLockWidget)
-        focusLockDock.addWidget(self.focusLockWidget)
-        dockArea.addDock(focusLockDock, 'above', laserDock)
+        if self.availableWidgetsInfo.FocusLockWidget:
+            focusLockDock = Dock('Focus Lock', size=(1, 1))
+            self.focusLockWidget = self.factory.createWidget(widgets.FocusLockWidget)
+            focusLockDock.addWidget(self.focusLockWidget)
+            dockArea.addDock(focusLockDock, 'above', laserDock)
 
         # FFT dock
         if self.availableWidgetsInfo.FFTWidget:
@@ -148,10 +149,11 @@ class MainView(QtGui.QMainWindow):
         dockArea.addDock(scanDock)
 
         # SLM widget dock
-        slmDock = Dock('SLM', size=(1, 1))
-        self.slmWidget = self.factory.createWidget(widgets.SLMWidget)
-        slmDock.addWidget(self.slmWidget)
-        dockArea.addDock(slmDock, 'above', scanDock)
+        if self.availableWidgetsInfo.SLMWidget:
+            slmDock = Dock('SLM', size=(1, 1))
+            self.slmWidget = self.factory.createWidget(widgets.SLMWidget)
+            slmDock.addWidget(self.slmWidget)
+            dockArea.addDock(slmDock, 'above', scanDock)
 
         if self.availableWidgetsInfo.BeadRecWidget:
             self.beadDock = Dock('Bead Rec', size=(1, 100))
@@ -195,6 +197,13 @@ class MainView(QtGui.QMainWindow):
         consoleDock = Dock('Console', size=(1, 1))
         consoleDock.addWidget(console)
         dockArea.addDock(consoleDock, 'bottom', self.recordingDock)
+
+        # Objective motorized correction collar widget dock
+        if self.availableWidgetsInfo.MotCorrWidget:
+            motCorrDock = Dock('Objective Mot Corr', size=(1, 1))
+            self.motCorrWidget = self.factory.createWidget(widgets.MotCorrWidget)
+            motCorrDock.addWidget(self.motCorrWidget)
+            dockArea.addDock(motCorrDock, 'below',  self.imageControlsDock)
 
         # Add dock area to layout
         layout.addWidget(dockArea)

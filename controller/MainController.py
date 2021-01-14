@@ -54,10 +54,13 @@ class MainController:
             self.fftController = self.__factory.createController(controllers.FFTController, self.__mainView.fftWidget)
 
         if self.__setupInfo.availableWidgets.SLMWidget:
-            self.fftController = self.__factory.createController(controllers.SLMController, self.__mainView.slmWidget)
+            self.slmController = self.__factory.createController(controllers.SLMController, self.__mainView.slmWidget)
 
         if self.__setupInfo.availableWidgets.FocusLockWidget:
-            self.fftController = self.__factory.createController(controllers.FocusLockController, self.__mainView.focusLockWidget)
+            self.focuslockController = self.__factory.createController(controllers.FocusLockController, self.__mainView.focusLockWidget)
+
+        if self.__setupInfo.availableWidgets.MotCorrWidget:
+            self.motcorrController = self.__factory.createController(controllers.MotCorrController, self.__mainView.motCorrWidget)
 
         self.__mainView.setDetectorRelatedDocksVisible(
             __masterController.detectorsManager.hasDetectors()

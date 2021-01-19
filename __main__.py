@@ -8,8 +8,7 @@ import imcontrol
 import imreconstruct
 
 
-modulePackages = [imcontrol, imreconstruct]
-moduleNames = {
+modules = {
     imcontrol: 'Hardware Control',
     imreconstruct: 'Image Reconstruction'
 }
@@ -19,20 +18,18 @@ moduleCommChannel = ModuleCommunicationChannel()
 multiModuleWindow = MultiModuleWindow('ImSwitch')
 mainControllers = set()
 
-for modulePackage in modulePackages:
+for modulePackage in modules.keys():
     moduleCommChannel.register(modulePackage)
 
-for modulePackage in modulePackages:
-    view = None
+for modulePackage, moduleName in modules.items():
     try:
         view, controller = modulePackage.getMainViewAndController(moduleCommChannel)
-        multiModuleWindow.addModule(moduleNames[modulePackage], view)
-        mainControllers.add(controller)
     except:
         print(f'Failed to initialize module {modulePackage.__name__}')
         print(traceback.format_exc())
         moduleCommChannel.unregister(modulePackage)
-        if view is not None:
-            view.deleteLater()
+    else:
+        multiModuleWindow.addModule(moduleName, view)
+        mainControllers.add(controller)
 
 launchApp(app, multiModuleWindow, mainControllers)

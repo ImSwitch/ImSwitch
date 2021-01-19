@@ -1,8 +1,5 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-controller/__pycache__/
-view/__pycache__/
-model/__pycache__/
 *.py[cod]
 
 # C extensions
@@ -61,9 +58,9 @@ target/
 
 # PyCharm
 .idea/
-dlls/cudart64_90.dll
-dlls/GPU_acc_recon.dll
-dlls/opencv_core340.dll
+libs/cudart64_90.dll
+libs/GPU_acc_recon.dll
+libs/opencv_core340.dll
 
 # Generated config files
-config_files/options.json
+config/*_options.json

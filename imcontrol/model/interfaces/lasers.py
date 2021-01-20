@@ -134,7 +134,7 @@ def getDriver(iName):
 
     try:
         # Try our included drivers first
-        package = importlib.import_module('model.drivers.' + pName)
+        package = importlib.import_module('imcontrol.model.drivers.' + pName)
         driver = getattr(package, driverName)
     except ModuleNotFoundError or AttributeError:
         # If that fails, try to load the driver from lantz

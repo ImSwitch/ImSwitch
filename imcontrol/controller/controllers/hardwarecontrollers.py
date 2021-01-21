@@ -229,7 +229,7 @@ class BeadWorker(Worker):
 
                 for j in range(0, n):
                     img = newImages[j]
-                    img = img[x0:x1, y0:y1]
+                    img = img[y0:y1, x0:x1]
                     mean = np.mean(img)
                     self.__controller.recIm[i] = mean
                     i = i + 1

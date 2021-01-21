@@ -130,6 +130,18 @@
             "y": 539,
             "w": 1345,
             "h": 1345
+        },
+        "Imaging-20212101": {
+            "x": 616,
+            "y": 572,
+            "w": 1304,
+            "h": 1304
+        },
+        "image-210121": {
+            "x": 560,
+            "y": 588,
+            "w": 1308,
+            "h": 1308
         }
     },
     "availableWidgets": {
@@ -142,5 +154,8 @@
     },
     "widgetLayout": {
         "lasersAndAlignmentInSingleDock": false
+    },
+    "scanDefaults": {
+        "defaultScanFile": null
     }
 }

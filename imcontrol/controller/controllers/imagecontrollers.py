@@ -141,8 +141,8 @@ class SettingsController(ImConWidgetController):
         y0 = params.y0.value()
 
         # Round to closest "divisable by 4" value.
-        hpos = binning * y0
-        vpos = binning * x0
+        hpos = binning * x0
+        vpos = binning * y0
         hsize = binning * height
         vsize = binning * width
 

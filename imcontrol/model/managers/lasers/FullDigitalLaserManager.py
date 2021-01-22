@@ -12,6 +12,8 @@ from .LaserManager import LaserManager
 
 class FullDigitalLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **_kwargs):
+        self._digitalMod = False
+
         # Init laser
         self._laser = FullDigitalLaser(laserInfo.managerProperties['digitalDriver'],
                                        laserInfo.managerProperties['digitalPorts'])
@@ -33,7 +35,7 @@ class FullDigitalLaserManager(LaserManager):
 
     def setValue(self, power):
         power = int(power)
-        if self._laser.digital_mod:
+        if self._digitalMod:
             self._laser.power_mod = power * Q_(1, 'mW')
         else:
             self._laser.power_sp = power * Q_(1, 'mW')
@@ -48,3 +50,4 @@ class FullDigitalLaserManager(LaserManager):
             self._laser.digital_mod = False
             self._laser.query('cp')
             print('Exited digital modulation mode')
+        self._digitalMod = digital

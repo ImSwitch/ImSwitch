@@ -655,8 +655,9 @@ class RecorderController(ImConWidgetController):
 
             self.detectorsBeingCaptured = self.getDetectorsToCapture()
             self.attrs = self._commChannel.getCamAttrs()
-            scan = self._commChannel.getScanAttrs()
-            self.attrs.update(scan)
+            for attrDict in self.attrs.values():
+                attrDict.update(self._commChannel.getScanStageAttrs())
+                attrDict.update(self._commChannel.getScanTTLAttrs())
 
             recordingArgs = (self.detectorsBeingCaptured, self.recMode, self.savename,
                              self.keepInMemory, self.attrs)

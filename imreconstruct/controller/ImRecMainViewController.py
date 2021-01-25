@@ -140,6 +140,41 @@ class ImRecMainViewController(ImRecWidgetController):
     def currentDataChanged(self, dataObj):
         self._currentData = dataObj
 
+        # Update scan params based on new data
+        # TODO: What if the attribute names change in imcontrol?
+        dimensionMap = {
+            b'X': self._widget.r_l_text,
+            b'Y': self._widget.u_d_text,
+            b'Z': self._widget.b_f_text
+        }
+        try:
+            targetsAttr = dataObj.attrs['ScanStage:Targets[x]']
+            for i in range(0, min(3, len(targetsAttr))):
+                self._scanParDict['dimensions'][i] = dimensionMap[targetsAttr[i]]
+        except KeyError:
+            pass
+
+        try:
+            positiveDirectionAttr = dataObj.attrs['ScanStage:Positive_direction[x]']
+            for i in range(0, min(3, len(positiveDirectionAttr))):
+                self._scanParDict['directions'][i] = (self._widget.p_text if positiveDirectionAttr[i]
+                                                      else self._widget.n_text)
+        except KeyError:
+            pass
+
+        for i in range(0, 2):
+            self._scanParDict['steps'][i] = str(int(np.sqrt(dataObj.numFrames)))
+
+        try:
+            stepSizesAttr = dataObj.attrs['ScanStage:Step_sizes[x]']
+        except KeyError:
+            pass
+        else:
+            for i in range(0, min(4, len(stepSizesAttr))):
+                self._scanParDict['step_sizes'][i] = stepSizesAttr[i]
+
+        self.updateScanParams()
+
     def extractData(self):
         fwhmNm = self._widget.getFwhmNm()
         bgModelling = self._widget.getBgModelling()

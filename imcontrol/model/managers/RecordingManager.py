@@ -104,7 +104,7 @@ class RecordingWorker(Worker):
                     raise ValueError('Only one detector can be recorded in SpecFrames mode')
 
                 detectorName = self.detectorNames[0]
-                frames = self.recTime
+                frames = self.recFrames
                 while self.__recordingManager.record and currentFrame[detectorName] < frames:
                     newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
                     n = len(newFrames)

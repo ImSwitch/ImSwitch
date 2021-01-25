@@ -663,11 +663,11 @@ class RecorderController(ImConWidgetController):
 
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingManager.startRecording(
-                    *recordingArgs, frames=int(self._widget.numExpositionsEdit.text())
+                    *recordingArgs, recFrames=int(self._widget.numExpositionsEdit.text())
                 )
             elif self.recMode == RecMode.SpecTime:
                 self._master.recordingManager.startRecording(
-                    *recordingArgs, time=float(self._widget.timeToRec.text())
+                    *recordingArgs, recTime=float(self._widget.timeToRec.text())
                 )
             elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingManager.startRecording(*recordingArgs)

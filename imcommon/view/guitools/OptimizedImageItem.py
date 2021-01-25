@@ -37,7 +37,6 @@ class OptimizedImageItem(pg.ImageItem):
 
     def setAutoDownsample(self, ads):
         self.autoDownsample = ads
-        self.render()
 
     def setOnlyRenderVisible(self, orv, render=True):
         self.onlyRenderVisible = orv

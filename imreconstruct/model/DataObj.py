@@ -6,10 +6,11 @@ import tifffile as tiff
 
 
 class DataObj:
-    def __init__(self, name, *, path=None, data=None):
+    def __init__(self, name, *, path=None, data=None, attrs=None):
         self.name = name
         self.dataPath = path
         self.data = data
+        self.attrs = attrs
         self.darkFrame = None
         self._meanData = None
 
@@ -26,7 +27,7 @@ class DataObj:
             pass
         else:
             try:
-                self.data = loadData(self.dataPath)  # DataIO_tools.load_binary(self.data_path, dtype=np.uint16)
+                self.data, self.attrs = loadData(self.dataPath)  # DataIO_tools.load_binary(self.data_path, dtype=np.uint16)
                 if self.data is not None:
                     print('Data loaded')
             except:
@@ -60,12 +61,17 @@ def loadData(path):
         if ext in ['.hdf5', '.hdf']:
             with h5py.File(path, 'r') as datafile:
                 data = np.array(datafile.get('data')[:])
+                attrs = dict(datafile.attrs)
 
         elif ext in ['.tiff', '.tif']:
             with tiff.TiffFile(path) as datafile:
                 data = datafile.asarray()
+                attrs = None
 
-        return data
+        else:
+            raise ValueError(f'Unsupported file extension "{ext}"')
+
+        return data, attrs
     except:
         print('Error while loading data')
         return None

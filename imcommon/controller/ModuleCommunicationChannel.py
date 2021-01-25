@@ -8,7 +8,7 @@ class ModuleCommunicationChannel(SignalInterface):
     between modules.
     """
 
-    sigMemoryRecordingAvailable = Signal(str, object, np.ndarray)  # (name, Optional[path], data)
+    sigMemoryRecordingAvailable = Signal(str, object, np.ndarray, dict)  # (name, Optional[path], data, attrs)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

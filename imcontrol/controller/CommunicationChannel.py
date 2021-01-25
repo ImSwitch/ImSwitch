@@ -58,8 +58,11 @@ class CommunicationChannel(SignalInterface):
     def getCamAttrs(self):
         return self.__main.settingsController.getCamAttrs()
 
-    def getScanAttrs(self):
-        return self.__main.scanController.getScanAttrs()
+    def getScanStageAttrs(self):
+        return self.__main.scanController.getScanStageAttrs()
+
+    def getScanTTLAttrs(self):
+        return self.__main.scanController.getScanTTLAttrs()
 
     def getDimsScan(self):
         return self.__main.scanController.getDimsScan()

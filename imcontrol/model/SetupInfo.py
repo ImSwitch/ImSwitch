@@ -26,7 +26,7 @@ class LaserInfo(DeviceInfo):
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
-    pass
+    isPositiveDirection: bool = True
 
 
 @dataclass(frozen=True)

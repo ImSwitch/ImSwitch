@@ -18,7 +18,7 @@ class RecordingManager(SignalInterface):
     recordingEnded = Signal()
     recordingFrameNumUpdated = Signal(int)  # (frameNumber)
     recordingTimeUpdated = Signal(int)  # (recTime)
-    memoryRecordingAvailable = Signal(str, object, np.ndarray)  # (name, path, data)
+    memoryRecordingAvailable = Signal(str, object, np.ndarray, dict)  # (name, Optional[filePath], data, attrs)
 
     def __init__(self, detectorsManager):
         super().__init__()
@@ -157,8 +157,12 @@ class RecordingWorker(Worker):
                 for detectorName in self.detectorNames:
                     path = files[detectorName].filename
                     name = os.path.basename(path)
-                    data = np.array(list(datasets.values())[0][:])
-                    self.__recordingManager.memoryRecordingAvailable.emit(name, path, data)
+                    self.__recordingManager.memoryRecordingAvailable.emit(
+                        name,
+                        path,
+                        np.array(datasets[detectorName][:]),
+                        dict(files[detectorName].attrs)
+                    )
 
             [file.close() for file in files.values()]
 

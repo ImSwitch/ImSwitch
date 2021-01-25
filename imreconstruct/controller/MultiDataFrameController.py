@@ -39,8 +39,8 @@ class MultiDataFrameController(ImRecWidgetController):
         if not self._loadingData:
             self._widget.setAllRowsHighlighted(False)
 
-    def makeAndAddDataObj(self, name, path=None, data=None):
-        self._widget.addDataObj(DataObj(name, path=path, data=data))
+    def makeAndAddDataObj(self, name, path=None, data=None, attrs=None):
+        self._widget.addDataObj(DataObj(name, path=path, data=data, attrs=attrs))
         self.updateInfo()
 
     def addDataClicked(self):

@@ -184,7 +184,7 @@ class AlignmentLineController(WidgetController):
 class FFTController(LiveUpdatedController):
     """ Linked to FFTWidget."""
 
-    imageReceived = Signal(np.ndarray)
+    imageReceived = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -224,8 +224,8 @@ class FFTController(LiveUpdatedController):
         """ Update with new detector frame. """
         if self.active and (self.it == self.updateRate):
             self.it = 0
-            self.imageComputationWorker.prepareForNewImage()
-            self.imageReceived.emit(im)
+            self.imageComputationWorker.prepareForNewImage(im)
+            self.imageReceived.emit()
         elif self.active and (not (self.it == self.updateRate)):
             self.it += 1
 
@@ -295,21 +295,22 @@ class FFTController(LiveUpdatedController):
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
 
-        def computeFFTImage(self, image):
+        def computeFFTImage(self):
             """ Compute FFT of an image. """
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
 
-                fftImage = np.fft.fftshift(np.log10(abs(np.fft.fft2(image))))
+                fftImage = np.fft.fftshift(np.log10(abs(np.fft.fft2(self._image))))
                 self.fftImageComputed.emit(fftImage)
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1
                 self._numQueuedImagesMutex.unlock()
 
-        def prepareForNewImage(self):
+        def prepareForNewImage(self, image):
             """ Must always be called before the worker receives a new image. """
+            self._image = image
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()

@@ -19,7 +19,7 @@ except ImportError:
 
 
 class OptimizedImageItem(pg.ImageItem):
-    sigImageReadyForARGB = QtCore.Signal(np.ndarray, object, object, np.ndarray, bool)
+    sigImageReadyForARGB = QtCore.Signal()
     sigImageDisplayed = QtCore.Signal()
 
     def __init__(self, *args, **kargs):
@@ -179,8 +179,8 @@ class OptimizedImageItem(pg.ImageItem):
         viewBounds[1][1] = min(viewBounds[1][1] + 1, image.shape[0])
 
         # Send image to ARGB worker
-        self.imageARGBWorker.prepareForNewImage()
-        self.sigImageReadyForARGB.emit(image, lut, levels, viewBounds, self.onlyRenderVisible)
+        self.imageARGBWorker.prepareForNewImage(image, lut, levels, viewBounds, self.onlyRenderVisible)
+        self.sigImageReadyForARGB.emit()
 
     def paint(self, p, *args):
         profile = debug.Profiler()
@@ -231,10 +231,14 @@ class ImageARGBWorker(QtCore.QObject):
         self._numQueuedImages = 0
         self._numQueuedImagesMutex = QtCore.QMutex()
 
-    def produceARGB(self, image, lut, levels, viewBounds, onlyRenderVisible):
+    def produceARGB(self):
         try:
             if self._numQueuedImages > 1:
                 return  # Skip this frame in order to catch up
+
+            image, lut, levels, viewBounds, onlyRenderVisible = (
+                self._image, self._lut, self._levels, self._viewBounds, self._onlyRenderVisible
+            )
 
             if onlyRenderVisible:
                 # Only render the part of the image that is visible
@@ -259,8 +263,14 @@ class ImageARGBWorker(QtCore.QObject):
             self._numQueuedImages -= 1
             self._numQueuedImagesMutex.unlock()
 
-    def prepareForNewImage(self):
+    def prepareForNewImage(self, image, lut, levels, viewBounds, onlyRenderVisible):
         """ Should always be called before the worker receives a new image. """
+        self._image = image
+        self._lut = lut
+        self._levels = levels
+        self._viewBounds = viewBounds
+        self._onlyRenderVisible = onlyRenderVisible
+
         self._numQueuedImagesMutex.lock()
         self._numQueuedImages += 1
         self._numQueuedImagesMutex.unlock()

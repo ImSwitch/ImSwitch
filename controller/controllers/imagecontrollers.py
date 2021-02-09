@@ -47,12 +47,10 @@ class SettingsController(WidgetController):
         if not self._master.detectorsManager.hasDetectors():
             return
 
-        self._widget.initControls(
-            self._setupInfo.rois,
-            self._master.detectorsManager.execOnAll(
-                lambda c: (c.parameters, c.supportedBinnings)
+        for dName, dManager in self._master.detectorsManager:
+            self._widget.addDetector(
+                dName, dManager.parameters, dManager.supportedBinnings, self._setupInfo.rois
             )
-        )
 
         self.addROI()
         self.initParameters()
@@ -66,18 +64,18 @@ class SettingsController(WidgetController):
         self._commChannel.detectorSwitched.connect(self.detectorSwitched)
 
         # Connect SettingsWidget signals
-        self._widget.ROI.sigRegionChangeFinished.connect(self.ROIchanged)
+        self._widget.sigROIChanged.connect(self.ROIchanged)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
 
     def toggleROI(self, b):
         """ Show or hide ROI. """
         if b:
-            self._widget.ROI.show()
+            self._widget.showROI()
         else:
-            self._widget.ROI.hide()
+            self._widget.hideROI()
 
     def initParameters(self):
         """ Take parameters from the detector Tree map. """
@@ -159,15 +157,16 @@ class SettingsController(WidgetController):
         width, height = detector.shape
         if detector.name == self._master.detectorsManager.getCurrentDetectorName():
             self._commChannel.adjustFrame.emit(width, height)
-            self._widget.ROI.hide()
+            self._widget.hideROI()
 
         self.updateParamsFromDetector(detector=detector)
 
     def ROIchanged(self):
         """ Update parameters according to ROI. """
         frameStart = self._master.detectorsManager.execOnCurrent(lambda c: c.frameStart)
-        pos = self._widget.ROI.pos()
-        size = self._widget.ROI.size()
+        ROI = self._widget.getROIGraphicsItem()
+        pos = ROI.pos()
+        size = ROI.size()
 
         currentParams = self.getCurrentParams()
         currentParams.x0.setValue(frameStart[0] + int(pos[0]))
@@ -345,9 +344,7 @@ class SettingsController(WidgetController):
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
 
-            self._widget.ROI.setPos(ROIpos)
-            self._widget.ROI.setSize(ROIsize)
-            self._widget.ROI.show()
+            self._widget.showROI(ROIpos, ROIsize)
             self.ROIchanged()
 
         else:
@@ -423,42 +420,39 @@ class ViewController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.setDetectorList(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.setViewToolsEnabled(False)
 
         # Connect ViewWidget signals
-        self._widget.gridButton.clicked.connect(self.gridToggle)
-        self._widget.crosshairButton.clicked.connect(self.crosshairToggle)
-        self._widget.liveviewButton.clicked.connect(self.liveview)
-        self._widget.detectorList.currentIndexChanged.connect(self.detectorSwitch)
-        self._widget.nextDetectorButton.clicked.connect(self.detectorNext)
+        self._widget.sigGridToggled.connect(self.gridToggle)
+        self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
+        self._widget.sigLiveviewToggled.connect(self.liveview)
+        self._widget.sigDetectorChanged.connect(self.detectorSwitch)
+        self._widget.sigNextDetectorClicked.connect(self.detectorNext)
 
-    def liveview(self):
+    def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
-        self._widget.crosshairButton.setEnabled(True)
-        self._widget.gridButton.setEnabled(True)
-        if self._widget.liveviewButton.isChecked():
+        if enabled:
             self._master.detectorsManager.startAcquisition()
+            self._widget.setViewToolsEnabled(True)
         else:
             self._master.detectorsManager.stopAcquisition()
 
-    def gridToggle(self):
+    def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
-        self._commChannel.gridToggle.emit()
+        self._commChannel.gridToggle.emit(enabled)
 
-    def crosshairToggle(self):
+    def crosshairToggle(self, enabled):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
-        self._commChannel.crosshairToggle.emit()
+        self._commChannel.crosshairToggle.emit(enabled)
 
-    def detectorSwitch(self, listIndex):
+    def detectorSwitch(self, detectorName):
         """ Changes the current detector to the selected detector. """
-        detectorName = self._widget.detectorList.itemData(listIndex)
         self._master.detectorsManager.setCurrentDetector(detectorName)
 
     def detectorNext(self):
         """ Changes the current detector to the next detector. """
-        self._widget.detectorList.setCurrentIndex(
-            (self._widget.detectorList.currentIndex() + 1) % self._widget.detectorList.count()
-        )
+        self._widget.selectNextDetector()
 
     def closeEvent(self):
         self._master.detectorsManager.stopAcquisition()
@@ -489,9 +483,9 @@ class ImageController(LiveUpdatedController):
         self._commChannel.detectorSwitched.connect(self.restoreSavedLevels)
 
         # Connect ImageWidget signals
-        self._widget.levelsButton.pressed.connect(self.autoLevels)
-        self._widget.vb.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
-        self._widget.hist.sigLevelsChanged.connect(self.updateSavedLevels)
+        self._widget.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
+        self._widget.sigLevelsChanged.connect(self.updateSavedLevels)
+        self._widget.sigUpdateLevelsClicked.connect(self.autoLevels)
 
     def autoLevels(self, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -544,13 +538,13 @@ class ImageController(LiveUpdatedController):
         return (int(self._widget.vb.viewRect().center().x()),
                 int(self._widget.vb.viewRect().center().y()))
 
-    def gridToggle(self):
+    def gridToggle(self, enabled):
         """ Shows or hides grid. """
-        self._widget.grid.toggle()
+        self._widget.grid.setVisible(enabled)
 
-    def crosshairToggle(self):
+    def crosshairToggle(self, enabled):
         """ Shows or hides crosshair. """
-        self._widget.crosshair.toggle()
+        self._widget.crosshair.setVisible(enabled)
 
     def updateSavedLevels(self):
         detectorName = self._master.detectorsManager.getCurrentDetectorName()
@@ -567,7 +561,7 @@ class RecorderController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.setDetectorList(self._master.detectorsManager.execOnAll(lambda c: c.model))
 
         self.lapseCurrent = 0
         self.lapseTotal = 0
@@ -575,36 +569,32 @@ class RecorderController(WidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.endRecording.connect(self.endRecording)
-        self._commChannel.updateRecFrameNum.connect(self.updateRecFrameNum)
-        self._commChannel.updateRecTime.connect(self.updateRecTime)
+        self._commChannel.updateRecFrameNum.connect(self._widget.updateRecFrameNum)
+        self._commChannel.updateRecTime.connect(self._widget.updateRecTime)
         self._commChannel.endScan.connect(self.scanDone)
 
         # Connect RecordingWidget signals
-        self._widget.detectorList.currentIndexChanged.connect(self.setDetectorsToCapture)
-        self._widget.openFolderButton.clicked.connect(self.openFolder)
-        self._widget.specifyfile.clicked.connect(self.specFile)
-        self._widget.snapTIFFButton.clicked.connect(self.snap)
-        self._widget.recButton.toggled.connect(self.toggleREC)
-        self._widget.specifyFrames.clicked.connect(self.specFrames)
-        self._widget.specifyTime.clicked.connect(self.specTime)
-        self._widget.recScanOnceBtn.clicked.connect(self.recScanOnce)
-        self._widget.recScanLapseBtn.clicked.connect(self.recScanLapse)
-        self._widget.dimLapse.clicked.connect(self.dimLapse)
-        self._widget.untilSTOPbtn.clicked.connect(self.untilStop)
-
-    def isRecording(self):
-        return self._widget.recButton.isChecked()
+        self._widget.sigDetectorChanged.connect(self.detectorChanged)
+        self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
+        self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
+        self._widget.sigSnapRequested.connect(self.snap)
+        self._widget.sigRecToggled.connect(self.toggleREC)
+        self._widget.sigSpecFramesPicked.connect(self.specFrames)
+        self._widget.sigSpecTimePicked.connect(self.specTime)
+        self._widget.sigScanOncePicked.connect(self.recScanOnce)
+        self._widget.sigScanLapsePicked.connect(self.recScanLapse)
+        self._widget.sigDimLapsePicked.connect(self.dimLapse)
+        self._widget.sigUntilStopPicked.connect(self.untilStop)
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         try:
             if sys.platform == 'darwin':
-                subprocess.check_call(['open', self._widget.folderEdit.text()])
+                subprocess.check_call(['open', self._widget.getRecFolder()])
             elif sys.platform == 'linux':
-                subprocess.check_call(['xdg-open', self._widget.folderEdit.text()])
+                subprocess.check_call(['xdg-open', self._widget.getRecFolder()])
             elif sys.platform == 'win32':
-                os.startfile(self._widget.folderEdit.text())
-
+                os.startfile(self._widget.getRecFolder())
         except FileNotFoundError or subprocess.CalledProcessError:
             if sys.platform == 'darwin':
                 subprocess.check_call(['open', self._widget.dataDir])
@@ -613,19 +603,10 @@ class RecorderController(WidgetController):
             elif sys.platform == 'win32':
                 os.startfile(self._widget.dataDir)
 
-    def specFile(self):
-        """ Enables the ability to type a specific filename for the data to . """
-        if self._widget.specifyfile.checkState():
-            self._widget.filenameEdit.setEnabled(True)
-            self._widget.filenameEdit.setText('Filename')
-        else:
-            self._widget.filenameEdit.setEnabled(False)
-            self._widget.filenameEdit.setText('Current time')
-
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
-        detectorNames = self.getDetectorsToCapture()
-        folder = self._widget.folderEdit.text()
+        detectorNames = self.getDetectorNamesToCapture()
+        folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
             os.mkdir(folder)
         time.sleep(0.01)
@@ -637,40 +618,37 @@ class RecorderController(WidgetController):
     def toggleREC(self, checked):
         """ Start or end recording. """
         if checked:
-            # self._widget.detectorList.setEnabled(False)
-
-            folder = self._widget.folderEdit.text()
+            folder = self._widget.getRecFolder()
             if not os.path.exists(folder):
                 os.mkdir(folder)
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
 
-            self.detectorsBeingCaptured = self.getDetectorsToCapture()
+            self.detectorsBeingCaptured = self.getDetectorNamesToCapture()
             self.attrs = self._commChannel.getCamAttrs()
-            scan = self._commChannel.getScanAttrs()
-            self.attrs.update(scan)
+            self.attrs.update(self._commChannel.getScanAttrs())
 
             recordingArgs = self.detectorsBeingCaptured, self.recMode, self.savename, self.attrs
 
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingManager.startRecording(
-                    *recordingArgs, frames=int(self._widget.numExpositionsEdit.text())
+                    *recordingArgs, frames=self._widget.getNumExpositions()
                 )
             elif self.recMode == RecMode.SpecTime:
                 self._master.recordingManager.startRecording(
-                    *recordingArgs, time=float(self._widget.timeToRec.text())
+                    *recordingArgs, time=self._widget.getTimeToRec()
                 )
             elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingManager.startRecording(*recordingArgs)
                 time.sleep(0.1)
                 self._commChannel.prepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
-                self.lapseTotal = int(self._widget.timeLapseEdit.text())
+                self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
                 self.nextLapse()
             elif self.recMode == RecMode.DimLapse:
-                self.lapseTotal = int(self._widget.totalSlices.text())
+                self.lapseTotal = self._widget.getDimlapseSlices()
                 self.lapseCurrent = 0
                 self.nextLapse()
             else:
@@ -681,127 +659,83 @@ class RecorderController(WidgetController):
     def scanDone(self):
         if self._widget.recButton.isChecked():
             if self.recMode == RecMode.ScanOnce:
-                self._widget.recButton.setChecked(False)
                 self._master.recordingManager.endRecording()
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseCurrent += 1
                 if self.lapseCurrent < self.lapseTotal:
                     self._master.recordingManager.endRecording(emitSignal=False)
-                    self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
+                    self._widget.updateRecLapseNum(self.lapseCurrent)
                     self.timer = Timer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
-                    self.timer.start(int(float(self._widget.freqEdit.text()) * 1000))
+                    self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
                 else:
-                    self._widget.recButton.setChecked(False)
-                    self.lapseCurrent = 0
-                    self._widget.currentLapse.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingManager.endRecording()
             elif self.recMode == RecMode.DimLapse:
                 self.lapseCurrent += 1
                 if self.lapseCurrent < self.lapseTotal:
-                    self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
+                    self._widget.updateRecSliceNum(self.lapseCurrent)
                     self._master.recordingManager.endRecording(emitSignal=False)
                     time.sleep(0.3)
-                    self._commChannel.moveZstage.emit(float(self._widget.stepSizeEdit.text()))
+                    self._commChannel.moveZstage.emit(self._widget.getDimlapseStepSize())
                     self.timer = Timer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(1000)
                 else:
-                    self._widget.recButton.setChecked(False)
-                    self.lapseCurrent = 0
                     self._commChannel.moveZstage.emit(
-                        -self.lapseTotal * float(self._widget.stepSizeEdit.text())
+                        -self.lapseTotal * self._widget.getDimlapseStepSize()
                     )
-                    self._widget.currentSlice.setText(str(self.lapseCurrent) + ' / ')
                     self._master.recordingManager.endRecording()
 
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-        self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.attrs
-        )
-
+        self._master.recordingManager.startRecording(self.detectorsBeingCaptured, self.recMode,
+                                                     fileName, self.attrs)
         time.sleep(0.3)
         self._commChannel.prepareScan.emit()
 
     def endRecording(self):
-        self._widget.recButton.setChecked(False)
-        # self._widget.detectorList.setEnabled(True)
-        self._widget.currentFrame.setText('0 / ')
-
-    def updateRecFrameNum(self, f):
-        self._widget.currentFrame.setText(str(f) + ' /')
-
-    def updateRecTime(self, t):
-        self._widget.currentTime.setText(str(t) + ' /')
+        self.lapseCurrent = 0
+        self._widget.updateRecFrameNum(0)
+        self._widget.updateRecTime(0)
+        self._widget.updateRecLapseNum(0)
+        self._widget.updateRecSliceNum(0)
+        self._widget.setRecButtonChecked(False)
 
     def specFrames(self):
-        self._widget.numExpositionsEdit.setEnabled(True)
-        self._widget.timeToRec.setEnabled(False)
-        self._widget.timeLapseEdit.setEnabled(False)
-        self._widget.totalSlices.setEnabled(False)
-        self._widget.freqEdit.setEnabled(False)
-        self._widget.stepSizeEdit.setEnabled(False)
+        self._widget.setEnabledParams(numExpositions=True)
         self.recMode = RecMode.SpecFrames
 
     def specTime(self):
-        self._widget.numExpositionsEdit.setEnabled(False)
-        self._widget.timeToRec.setEnabled(True)
-        self._widget.timeLapseEdit.setEnabled(False)
-        self._widget.totalSlices.setEnabled(False)
-        self._widget.freqEdit.setEnabled(False)
-        self._widget.stepSizeEdit.setEnabled(False)
+        self._widget.setEnabledParams(timeToRec=True)
         self.recMode = RecMode.SpecTime
 
     def recScanOnce(self):
-        self._widget.numExpositionsEdit.setEnabled(False)
-        self._widget.timeToRec.setEnabled(False)
-        self._widget.timeLapseEdit.setEnabled(False)
-        self._widget.totalSlices.setEnabled(False)
-        self._widget.freqEdit.setEnabled(False)
-        self._widget.stepSizeEdit.setEnabled(False)
+        self._widget.setEnabledParams()
         self.recMode = RecMode.ScanOnce
 
     def recScanLapse(self):
-        self._widget.numExpositionsEdit.setEnabled(False)
-        self._widget.timeToRec.setEnabled(False)
-        self._widget.timeLapseEdit.setEnabled(True)
-        self._widget.totalSlices.setEnabled(False)
-        self._widget.freqEdit.setEnabled(True)
-        self._widget.stepSizeEdit.setEnabled(False)
+        self._widget.setEnabledParams(timelapseTime=True, timelapseFreq=True)
         self.recMode = RecMode.ScanLapse
 
     def dimLapse(self):
-        self._widget.totalSlices.setEnabled(True)
-        self._widget.numExpositionsEdit.setEnabled(False)
-        self._widget.timeToRec.setEnabled(False)
-        self._widget.timeLapseEdit.setEnabled(False)
-        self._widget.freqEdit.setEnabled(False)
-        self._widget.stepSizeEdit.setEnabled(True)
+        self._widget.setEnabledParams(dimlapseSlices=True, dimlapseStepSize=True)
         self.recMode = RecMode.DimLapse
 
     def untilStop(self):
-        self._widget.numExpositionsEdit.setEnabled(False)
-        self._widget.timeToRec.setEnabled(False)
-        self._widget.timeLapseEdit.setEnabled(False)
-        self._widget.totalSlices.setEnabled(False)
-        self._widget.freqEdit.setEnabled(False)
-        self._widget.stepSizeEdit.setEnabled(False)
+        self._widget.setEnabledParams()
         self.recMode = RecMode.UntilStop
 
-    def setDetectorsToCapture(self):
-        detectorListData = self._widget.detectorList.itemData(self._widget.detectorList.currentIndex())
+    def detectorChanged(self):
+        detectorListData = self._widget.getDetectorsToCapture()
         if detectorListData == -2:  # All detectors
             # When recording all detectors, the SpecFrames mode isn't supported
-            if self.recMode == RecMode.SpecFrames:
-                self._widget.untilSTOPbtn.setChecked(True)
-            self._widget.specifyFrames.setEnabled(False)
+            self._widget.setSpecifyFramesAllowed(False)
         else:
-            self._widget.specifyFrames.setEnabled(True)
+            self._widget.setSpecifyFramesAllowed(True)
 
-    def getDetectorsToCapture(self):
+    def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorListData = self._widget.detectorList.itemData(self._widget.detectorList.currentIndex())
+        detectorListData = self._widget.getDetectorsToCapture()
         if detectorListData == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorListData == -2:  # All detectors
@@ -811,10 +745,7 @@ class RecorderController(WidgetController):
 
     def getFileName(self):
         """ Gets the filename of the data to save. """
-        if self._widget.specifyfile.checkState():
-            filename = self._widget.filenameEdit.text()
-
-        else:
+        filename = self._widget.getCustomFilename()
+        if filename is None:
             filename = time.strftime('%Hh%Mm%Ss')
-
         return filename

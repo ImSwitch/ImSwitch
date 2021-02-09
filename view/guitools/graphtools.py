@@ -211,6 +211,12 @@ class Crosshair:
         self.hLine.hide()
         self.showed = False
 
+    def setVisible(self, visible):
+        if visible:
+            self.show()
+        else:
+            self.hide()
+
 
 class ROI(pg.ROI):
 

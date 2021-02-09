@@ -15,6 +15,9 @@ from .basewidgets import Widget
 class ULensesWidget(Widget):
     """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
 
+    sigULensesClicked = QtCore.Signal()
+    sigUShowLensesChanged = QtCore.Signal(bool)  # (enabled)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -41,9 +44,31 @@ class ULensesWidget(Widget):
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
 
+        # Connect signals
+        self.ulensesButton.clicked.connect(self.sigULensesClicked)
+        self.ulensesCheck.toggled.connect(self.sigUShowLensesChanged)
+
+    def getParameters(self):
+        """ Returns the X offset, Y offset, pixel size, and periodicity
+        parameters respectively set by the user."""
+        return (np.float(self.xEdit.text()),
+                np.float(self.yEdit.text()),
+                np.float(self.pxEdit.text()),
+                np.float(self.upEdit.text()))
+
+    def getPlotGraphicsItem(self):
+        return self.ulensesPlot
+
+    def setData(self, x, y):
+        """ Updates plot with new parameters. """
+        self.ulensesPlot.setData(x=x, y=y, pen=pg.mkPen(None), brush='r', symbol='x')
+
 
 class AlignWidgetXY(Widget):
     """ Alignment widget that shows the mean over an axis of a selected ROI."""
+
+    sigShowROIToggled = QtCore.Signal(bool)  # (enabled)
+    sigAxisChanged = QtCore.Signal(int)  # (axisNumber)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -66,9 +91,33 @@ class AlignWidgetXY(Widget):
         grid.addWidget(self.XButton, 1, 1, 1, 1)
         grid.addWidget(self.YButton, 1, 2, 1, 1)
 
+        # Connect signals
+        self.roiButton.toggled.connect(self.sigShowROIToggled)
+        self.XButton.clicked.connect(lambda: self.sigAxisChanged.emit(0))
+        self.YButton.clicked.connect(lambda: self.sigAxisChanged.emit(1))
+
+    def getROIGraphicsItem(self):
+        return self.ROI
+
+    def showROI(self, position, size):
+        self.ROI.setPos(position)
+        self.ROI.setSize(size)
+        self.ROI.show()
+
+    def hideROI(self):
+        self.ROI.hide()
+
+    def updateGraph(self, value):
+        self.graph.updateGraph(value)
+
+    def updateDisplayState(self, showingROI):
+        self.roiButton.setText('Show ROI' if showingROI else 'Hide ROI')
+
 
 class AlignWidgetAverage(Widget):
     """ Alignment widget that shows the mean over a selected ROI."""
+
+    sigShowROIToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -91,16 +140,38 @@ class AlignWidgetAverage(Widget):
         grid.addWidget(self.resetButton, 1, 1, 1, 1)
         # grid.setRowMinimumHeight(0, 300)
 
+        # Connect signals
+        self.roiButton.toggled.connect(self.sigShowROIToggled)
+
+    def getROIGraphicsItem(self):
+        return self.ROI
+
+    def showROI(self, position, size):
+        self.ROI.setPos(position)
+        self.ROI.setSize(size)
+        self.ROI.show()
+
+    def hideROI(self):
+        self.ROI.hide()
+
+    def updateGraph(self, value):
+        self.graph.updateGraph(value)
+
+    def updateDisplayState(self, showingROI):
+        self.roiButton.setText('Show ROI' if showingROI else 'Hide ROI')
+
 
 class AlignmentLineWidget(Widget):
     """ Alignment widget that displays a line on top of the image in the viewbox."""
+
+    sigAlignmentLineMakeClicked = QtCore.Signal()
+    sigAlignmentCheckToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
         self.angleEdit = QtGui.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
-        self.angle = np.float(self.angleEdit.text())
         self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
         pen = pg.mkPen(color=(255, 255, 0), width=0.5,
@@ -116,9 +187,25 @@ class AlignmentLineWidget(Widget):
         alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)
 
+        # Connect signals
+        self.alignmentLineMakerButton.clicked.connect(self.sigAlignmentLineMakeClicked)
+        self.alignmentCheck.toggled.connect(self.sigAlignmentCheckToggled)
+
+    def getAngleInput(self):
+        return float(self.angleEdit.text())
+
+    def setLineAngle(self, angle):
+        self.alignmentLine.setAngle(angle)
+
 
 class FFTWidget(Widget):
     """ Displays the FFT transform of the image. """
+
+    sigShowToggled = QtCore.Signal(bool)  # (enabled)
+    sigChangePosClicked = QtCore.Signal()
+    sigPosChanged = QtCore.Signal(float)  # (pos)
+    sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
+    sigResized = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -172,3 +259,23 @@ class FFTWidget(Widget):
         grid.addWidget(self.labelRate, 2, 2, 1, 1)
         grid.addWidget(self.lineRate, 2, 3, 1, 1)
         # grid.setRowMinimumHeight(0, 300)
+
+        # Connect signals
+        self.showCheck.toggled.connect(self.sigShowToggled)
+        self.changePosButton.clicked.connect(self.sigChangePosClicked)
+        self.linePos.textChanged.connect(
+            lambda: self.sigPosChanged.emit(self.getPos())
+        )
+        self.lineRate.textChanged.connect(
+            lambda: self.sigUpdateRateChanged.emit(self.getUpdateRate())
+        )
+        self.vb.sigResized.connect(self.sigResized)
+
+    def getShowChecked(self):
+        return self.showCheck.isChecked()
+
+    def getPos(self):
+        return float(self.linePos.text())
+
+    def getUpdateRate(self):
+        return float(self.lineRate.text())

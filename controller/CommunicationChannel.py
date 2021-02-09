@@ -24,9 +24,9 @@ class CommunicationChannel(SignalInterface):
 
     detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
-    gridToggle = Signal()
+    gridToggle = Signal(bool)  # (enabled)
 
-    crosshairToggle = Signal()
+    crosshairToggle = Signal(bool)  # (enabled)
 
     addItemTovb = Signal(object)  # (item)
 

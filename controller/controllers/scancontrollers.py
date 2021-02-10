@@ -68,14 +68,27 @@ class ScanController(SuperScanController):
 
         return x, y
 
-    def getScanAttrs(self):
-        stage = self._stageParameterDict.copy()
-        ttl = self._TTLParameterDict.copy()
-        stage['Targets[x]'] = np.string_(stage['Targets[x]'])
-        ttl['Targets[x]'] = np.string_(ttl['Targets[x]'])
+    def getScanStageAttrs(self):
+        self.getParameters()
+        prefix = 'ScanStage'
 
-        stage.update(ttl)
+        stage = {}
+        for key, value in self._stageParameterDict.items():
+            stage[f'{prefix}:{key}'] = value
+        stage[f'{prefix}:Targets[x]'] = np.string_(stage[f'{prefix}:Targets[x]'])
+
         return stage
+
+    def getScanTTLAttrs(self):
+        self.getParameters()
+        prefix = 'ScanTTL'
+
+        ttl = {}
+        for key, value in self._TTLParameterDict.items():
+            ttl[f'{prefix}:{key}'] = value
+        ttl[f'{prefix}:Targets[x]'] = np.string_(ttl[f'{prefix}:Targets[x]'])
+
+        return ttl
 
     def saveScan(self):
         self.getParameters()

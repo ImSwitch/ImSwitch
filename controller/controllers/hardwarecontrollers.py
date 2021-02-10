@@ -18,6 +18,7 @@ class PositionerController(WidgetController):
 
         for pName, pManager in self._master.positionersManager:
             self._widget.addPositioner(pName)
+            self.setSharedAttr(pName, 'Position', pManager.position)
 
         # Connect CommunicationChannel signals
         self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
@@ -40,7 +41,10 @@ class PositionerController(WidgetController):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
         newPos = self._master.positionersManager[positionerName].move(dist)
         self._widget.updatePosition(positionerName, newPos)
+        self.setSharedAttr(positionerName, 'Position', newPos)
 
+    def setSharedAttr(self, positionerName, attr, value):
+        self._commChannel.sharedAttrs[('Positioners', positionerName, attr)] = value
 
 
 class LaserController(WidgetController):
@@ -62,6 +66,12 @@ class LaserController(WidgetController):
             elif not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
+            self.setSharedAttr(lName, 'DigMod', self._widget.isDigModActive())
+            self.setSharedAttr(lName, 'Enabled', self._widget.isLaserActive(lName))
+            self.setSharedAttr(lName, 'Value',
+                               self._widget.getValue(lName) if not self._widget.isDigModActive()
+                               else self._widget.getDigValue(lName))
+
         # Connect LaserWidget signals
         self._widget.sigEnableChanged.connect(self.toggleLaser)
         self._widget.sigValueChanged.connect(self.valueChanged)
@@ -82,6 +92,7 @@ class LaserController(WidgetController):
     def toggleLaser(self, laserName, enabled):
         """ Enable or disable laser (on/off)."""
         self._master.lasersManager[laserName].setEnabled(enabled)
+        self.setSharedAttr(laserName, 'Enabled', enabled)
 
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
@@ -89,12 +100,15 @@ class LaserController(WidgetController):
             self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.setValue(laserName, magnitude)
 
+        self.setSharedAttr(laserName, 'Value', magnitude)
+
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """
         if self._widget.isDigModActive():
             for laserName in laserNames:
                 value = self._widget.getDigValue(laserName)
                 self._master.lasersManager[laserName].setValue(value)
+                self.setSharedAttr(laserName, 'Value', value)
 
     def GlobalDigitalMod(self, digMod, laserNames):
         """ Start/stop digital modulation. """
@@ -115,9 +129,14 @@ class LaserController(WidgetController):
                 laserManager.setEnabled(False)  # TODO: Correct?
             self._widget.setLaserEditable(laserName, not digMod)
 
+            self.setSharedAttr(laserName, 'DigMod', digMod)
             if not digMod:
                 self.valueChanged(laserName, self._widget.getValue(laserName))
+            else:
+                self.setSharedAttr(laserName, 'Value', value)
 
+    def setSharedAttr(self, laserName, attr, value):
+        self._commChannel.sharedAttrs[('Lasers', laserName, attr)] = value
 
 
 class BeadController(WidgetController):

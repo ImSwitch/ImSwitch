@@ -613,6 +613,8 @@ class RecorderController(WidgetController):
         name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
         attrs = self._commChannel.getCamAttrs()
+        for attrDict in attrs.values():
+            attrDict.update(self._commChannel.sharedAttrs.getHDF5Attributes())
         self._master.recordingManager.snap(detectorNames, savename, attrs)
 
     def toggleREC(self, checked):
@@ -627,7 +629,11 @@ class RecorderController(WidgetController):
 
             self.detectorsBeingCaptured = self.getDetectorNamesToCapture()
             self.attrs = self._commChannel.getCamAttrs()
-            self.attrs.update(self._commChannel.getScanAttrs())
+            for attrDict in self.attrs.values():
+                attrDict.update(self._commChannel.sharedAttrs.getHDF5Attributes())
+                attrDict.update(self._commChannel.getScanStageAttrs())
+                attrDict.update(self._commChannel.getScanTTLAttrs())
+                attrDict.update(self.getRecAttrs())
 
             recordingArgs = self.detectorsBeingCaptured, self.recMode, self.savename, self.attrs
 
@@ -749,3 +755,15 @@ class RecorderController(WidgetController):
         if filename is None:
             filename = time.strftime('%Hh%Mm%Ss')
         return filename
+
+    def getRecAttrs(self):
+        attrs = {'Rec:Mode': self.recMode.name}
+        if self.recMode == RecMode.SpecTime:
+            attrs.update({'Rec:Time': self._widget.getTimeToRec()})
+        elif self.recMode == RecMode.ScanLapse:
+            attrs.update({'Rec:Time': self._widget.getTimelapseTime(),
+                          'Rec:Freq': self._widget.getTimelapseFreq()})
+        elif self.recMode == RecMode.SpecTime:
+            attrs.update({'Rec:Slices': self._widget.getDimlapseSlices(),
+                          'Rec:StepSize': self._widget.getDimlapseStepSize()})
+        return attrs

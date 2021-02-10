@@ -4,8 +4,11 @@ Created on Fri Mar 20 15:08:33 2020
 
 @author: _Xavi
 """
+import copy
 import numpy as np
+
 from framework import Signal, SignalInterface
+from .SharedAttributes import SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -44,9 +47,14 @@ class CommunicationChannel(SignalInterface):
 
     moveZstage = Signal(float)  # (step)
 
+    @property
+    def sharedAttrs(self):
+        return self.__sharedAttrs
+
     def __init__(self, main):
         super().__init__()
         self.__main = main
+        self.__sharedAttrs = SharedAttributes()
 
     def getROIdata(self, image, ROI):
         return self.__main.imageController.getROIdata(image, ROI)
@@ -58,8 +66,11 @@ class CommunicationChannel(SignalInterface):
     def getCamAttrs(self):
         return self.__main.settingsController.getCamAttrs()
 
-    def getScanAttrs(self):
-        return self.__main.scanController.getScanAttrs()
+    def getScanStageAttrs(self):
+        return self.__main.scanController.getScanStageAttrs()
+
+    def getScanTTLAttrs(self):
+        return self.__main.scanController.getScanTTLAttrs()
 
     def getDimsScan(self):
         return self.__main.scanController.getDimsScan()

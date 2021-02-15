@@ -155,7 +155,7 @@ class SettingsController(WidgetController):
 
         # Final shape values might differ from the user-specified one because of detector limitation x128
         width, height = detector.shape
-        if detector.name == self._master.detectorsManager.getCurrentDetectorName():
+        if detector.name in self._master.detectorsManager.getCurrentDetectorNames():
             self._commChannel.adjustFrame.emit(width, height)
             self._widget.hideROI()
 
@@ -367,6 +367,7 @@ class SettingsController(WidgetController):
 
     def detectorSwitched(self, newDetectorName, _):
         """ Called when the user switches to another detector. """
+        return # TODO
         self._widget.setDisplayedDetector(newDetectorName)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
         self._commChannel.adjustFrame.emit(*newDetectorShape)
@@ -404,7 +405,7 @@ class SettingsController(WidgetController):
             self.updateFrameActionButtons()
 
     def getCurrentParams(self):
-        return self.allParams[self._master.detectorsManager.getCurrentDetectorName()]
+        return self.allParams[self._master.detectorsManager.getCurrentDetectorNames()[0]]  # TODO
 
     def getDetectorManagerFrameExecFunc(self):
         """ Returns the detector manager exec function that should be used for
@@ -446,9 +447,9 @@ class ViewController(WidgetController):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
         self._commChannel.crosshairToggle.emit(enabled)
 
-    def detectorSwitch(self, detectorName):
+    def detectorSwitch(self, detectorNames):
         """ Changes the current detector to the selected detector. """
-        self._master.detectorsManager.setCurrentDetector(detectorName)
+        self._master.detectorsManager.setCurrentDetectors(detectorNames)
 
     def detectorNext(self):
         """ Changes the current detector to the next detector. """
@@ -467,64 +468,70 @@ class ImageController(LiveUpdatedController):
         if not self._master.detectorsManager.hasDetectors():
             return
 
-        self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(
+        self._lastWidth, self._lastHeight = list(self._master.detectorsManager.execOnCurrent(
             lambda c: c.shape
-        )
+        ).values())[0]  # TODO
         self._savedLevels = {}
+
+        self._widget.setImages(self._master.detectorsManager.getAllDetectorNames())
 
         # Connect CommunicationChannel signals
         self._commChannel.updateImage.connect(self.update)
-        self._commChannel.acquisitionStopped.connect(self.acquisitionStopped)
         self._commChannel.adjustFrame.connect(self.adjustFrame)
         self._commChannel.gridToggle.connect(self.gridToggle)
         self._commChannel.crosshairToggle.connect(self.crosshairToggle)
         self._commChannel.addItemTovb.connect(self.addItemTovb)
         self._commChannel.removeItemFromvb.connect(self.removeItemFromvb)
-        self._commChannel.detectorSwitched.connect(self.restoreSavedLevels)
+        self._commChannel.detectorSwitched.connect(self.detectorSwitched)
 
         # Connect ImageWidget signals
-        self._widget.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
-        self._widget.sigLevelsChanged.connect(self.updateSavedLevels)
+        # TODO: self._widget.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
         self._widget.sigUpdateLevelsClicked.connect(self.autoLevels)
 
-    def autoLevels(self, im=None):
-        """ Set histogram levels automatically with current detector image."""
-        if im is None:
-            im = self._widget.img.image
+        self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorNames())
 
-        self._widget.hist.setLevels(*guitools.bestLevels(im))
-        self._widget.hist.vb.setYRange(im.min(), im.max())
+    def autoLevels(self, detectorNames=None, im=None):
+        """ Set histogram levels automatically with current detector image."""
+
+        if detectorNames is None:
+            detectorNames = self._widget.imgsz.keys()
+
+        for detectorName in detectorNames:
+            if im is None:
+                im = self._widget.imgsz[detectorName].data
+
+            self._widget.imgsz[detectorName].contrast_limits = guitools.bestLevels(im)
 
     def addItemTovb(self, item):
         """ Add item from communication channel to viewbox."""
-        self._widget.vb.addItem(item)
+        # TODO: self._widget.vb.addItem(item)
         item.hide()
 
     def removeItemFromvb(self, item):
         """ Remove item from communication channel to viewbox."""
-        self._widget.vb.removeItem(item)
+        # TODO: self._widget.vb.removeItem(item)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init):
         """ Update new image in the viewbox. """
-        if not init:
-            self._widget.img.setOnlyRenderVisible(True, render=False)
-            self._widget.levelsButton.setEnabled(True)
-            self.autoLevels(im)
+        #self._widget.levelsButton.setEnabled(True)
 
-        self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
+        initialDisplay = self._widget.imgsz[detectorName].data.size == 1
+        if initialDisplay:
+            self.autoLevels([detectorName], im)
 
-        if not init:
+        self._widget.imgsz[detectorName].data = im
+
+        if initialDisplay:
             self.adjustFrame(self._lastWidth, self._lastHeight)
 
-    def acquisitionStopped(self):
-        """ Disable the onlyRenderVisible optimization for a smoother experience. """
-        self._widget.img.setOnlyRenderVisible(False, render=True)
+    def detectorSwitched(self, newDetectorNames):
+        pass
+        # self._widget.setImages(newDetectorNames)
 
     def adjustFrame(self, width, height):
         """ Adjusts the viewbox to a new width and height. """
-        self._widget.grid.update([width, height])
-        guitools.setBestImageLimits(self._widget.vb, width, height)
-        self._widget.img.render()
+        # TOOD: self._widget.grid.update([width, height])
+        self._widget.resetView()
 
         self._lastWidth = width
         self._lastHeight = height
@@ -545,15 +552,6 @@ class ImageController(LiveUpdatedController):
     def crosshairToggle(self, enabled):
         """ Shows or hides crosshair. """
         self._widget.crosshair.setVisible(enabled)
-
-    def updateSavedLevels(self):
-        detectorName = self._master.detectorsManager.getCurrentDetectorName()
-        self._savedLevels[detectorName] = self._widget.hist.getLevels()
-
-    def restoreSavedLevels(self, newDetectorName):
-        """ Updates image levels from saved levels for detector that is switched to. """
-        if newDetectorName in self._savedLevels:
-            self._widget.hist.setLevels(*self._savedLevels[newDetectorName])
 
 
 class RecorderController(WidgetController):
@@ -743,7 +741,7 @@ class RecorderController(WidgetController):
         """ Returns a list of which detectors the user has selected to be captured. """
         detectorListData = self._widget.getDetectorsToCapture()
         if detectorListData == -1:  # Current detector at start
-            return [self._master.detectorsManager.getCurrentDetectorName()]
+            return self._master.detectorsManager.getCurrentDetectorNames()
         elif detectorListData == -2:  # All detectors
             return list(self._setupInfo.detectors.keys())
         else:  # A specific detector

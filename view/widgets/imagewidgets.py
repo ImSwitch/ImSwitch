@@ -212,7 +212,7 @@ class ViewWidget(Widget):
     sigGridToggled = QtCore.Signal(bool)  # (enabled)
     sigCrosshairToggled = QtCore.Signal(bool)  # (enabled)
     sigLiveviewToggled = QtCore.Signal(bool)  # (enabled)
-    sigDetectorChanged = QtCore.Signal(str)  # (detectorName)
+    sigDetectorChanged = QtCore.Signal(list)  # (detectorNames)
     sigNextDetectorClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -240,7 +240,7 @@ class ViewWidget(Widget):
 
         # Detector list
         self.detectorListBox = QtGui.QHBoxLayout()
-        self.detectorListLabel = QtGui.QLabel('Current detector:')
+        self.detectorListLabel = QtGui.QLabel('Active detectors:')
         self.detectorList = QtGui.QComboBox()
         self.nextDetectorButton = guitools.BetterPushButton('Next')
         self.nextDetectorButton.hide()
@@ -261,9 +261,20 @@ class ViewWidget(Widget):
         self.crosshairButton.toggled.connect(self.sigCrosshairToggled)
         self.liveviewButton.toggled.connect(self.sigLiveviewToggled)
         self.detectorList.currentIndexChanged.connect(
-            lambda index: self.sigDetectorChanged.emit(self.detectorList.itemData(index))
+            lambda index: self.sigDetectorChanged.emit([self.detectorList.itemData(index)])
         )
         self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
+
+    def getSelectedDetectors(self):
+        selectedDetectors = []
+
+        model = self.detectorList.model()
+        for i in range(model.rowCount()):
+            item = model.index(i, 0)
+            if item.data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
+                selectedDetectors.append(item.data(QtCore.Qt.UserRole))
+
+        return selectedDetectors
 
     def selectNextDetector(self):
         self.detectorList.setCurrentIndex(
@@ -271,16 +282,40 @@ class ViewWidget(Widget):
         )
 
     def setDetectorList(self, detectorModels):
-        self.nextDetectorButton.setVisible(len(detectorModels) > 1)
-        for detectorName, detectorModel in detectorModels.items():
-            self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+        # TODO: self.nextDetectorButton.setVisible(len(detectorModels) > 1)
+        #for detectorName, detectorModel in detectorModels.items():
+        #    self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+
+        model = QtGui.QStandardItemModel(len(detectorModels), 1)
+        for index, (detectorName, detectorModel) in enumerate(detectorModels.items()):
+            item = QtGui.QStandardItem(f'{detectorModel} ({detectorName})')
+            item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            item.setData(QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
+            item.setData(detectorName, QtCore.Qt.UserRole)
+            model.setItem(index, 0, item)
+
+        model.dataChanged.connect(
+            lambda: self.sigDetectorChanged.emit(self.getSelectedDetectors())
+        )
+        self.detectorList.setModel(model)
 
     def setViewToolsEnabled(self, enabled):
         self.crosshairButton.setEnabled(enabled)
         self.gridButton.setEnabled(enabled)
 
 
-class ImageWidget(pg.GraphicsLayoutWidget):
+import napari
+import numpy as np
+
+grayclip = []
+for i in range(255):
+    grayclip.append([i/255, i/255, i/255])
+grayclip.append([1, 0, 0])
+napari.utils.colormaps.AVAILABLE_COLORMAPS['grayclip'] = napari.utils.Colormap(
+    name='grayclip', colors=grayclip
+)
+
+class ImageWidget(Widget):
     """ Widget containing viewbox that displays the new detector frames.  """
 
     sigResized = QtCore.Signal()
@@ -289,54 +324,71 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.imgs = {}
+        self.imgsz = {}
+        self.hists = {}
+
+        self.ngui = napari.gui_qt()
+        self.nviewer = napari.Viewer(show=False)
+
+        self.viewCtrlLayout = QtGui.QGridLayout()
+        self.viewCtrlLayout.addWidget(self.nviewer.window._qt_window, 0, 0)
+        self.setLayout(self.viewCtrlLayout)
 
         # Graphical elements
-        self.levelsButton = guitools.BetterPushButton('Update Levels')
-        self.levelsButton.setEnabled(False)
-        self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                        QtGui.QSizePolicy.Expanding)
-        proxy = QtGui.QGraphicsProxyWidget()
-        proxy.setWidget(self.levelsButton)
-        self.addItem(proxy, row=0, col=2)
+        #self.levelsButton = guitools.BetterPushButton('Update Levels')
+        #self.levelsButton.setEnabled(False)
+        #self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+        #                                QtGui.QSizePolicy.Expanding)
+        #proxy = QtGui.QGraphicsProxyWidget()
+        #proxy.setWidget(self.levelsButton)
+        #self.addItem(proxy, row=0, col=2)
+#
+        ## Viewbox and related elements
+        #self.setAspectLocked(True)
+        #self.vb = self.addViewBox(row=1, col=1)
+        #self.vb.setMouseMode(pg.ViewBox.RectMode)
+        #self.vb.setAspectLocked(True)
+        #self.grid = guitools.Grid(self.vb)
+        #self.crosshair = guitools.Crosshair(self.vb)
+        ## x and y profiles
+        #xPlot = self.addPlot(row=0, col=1)
+        #xPlot.hideAxis('left')
+        #xPlot.hideAxis('bottom')
+        #self.xProfile = xPlot.plot()
+        #self.ci.layout.setRowMaximumHeight(0, 40)
+        #xPlot.setXLink(self.vb)
+        #yPlot = self.addPlot(row=1, col=0)
+        #yPlot.hideAxis('left')
+        #yPlot.hideAxis('bottom')
+        #self.yProfile = yPlot.plot()
+        #self.yProfile.rotate(90)
+        #self.ci.layout.setColumnMaximumWidth(0, 40)
+        #yPlot.setYLink(self.vb)
+#
+        ## Connect signals
+        #self.vb.sigResized.connect(self.sigResized)
+        #self.levelsButton.clicked.connect(self.sigUpdateLevelsClicked)
 
-        # Viewbox and related elements
-        self.vb = self.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = guitools.OptimizedImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.hist.gradient.loadPreset('greyclip')
-        self.grid = guitools.Grid(self.vb)
-        self.crosshair = guitools.Crosshair(self.vb)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        # x and y profiles
-        xPlot = self.addPlot(row=0, col=1)
-        xPlot.hideAxis('left')
-        xPlot.hideAxis('bottom')
-        self.xProfile = xPlot.plot()
-        self.ci.layout.setRowMaximumHeight(0, 40)
-        xPlot.setXLink(self.vb)
-        yPlot = self.addPlot(row=1, col=0)
-        yPlot.hideAxis('left')
-        yPlot.hideAxis('bottom')
-        self.yProfile = yPlot.plot()
-        self.yProfile.rotate(90)
-        self.ci.layout.setColumnMaximumWidth(0, 40)
-        yPlot.setYLink(self.vb)
+    def setImages(self, names):
+        for name, img in self.imgsz.items():
+            if name not in names:
+                self.nviewer.layers.remove(img)
 
-        # Connect signals
-        self.vb.sigResized.connect(self.sigResized)
-        self.hist.sigLevelsChanged.connect(self.sigLevelsChanged)
-        self.levelsButton.clicked.connect(self.sigUpdateLevelsClicked)
+        def addImage(name, colormap=None):
+            self.imgsz[name] = self.nviewer.add_image(
+                np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap
+            )
+
+        for name in names:
+            if name not in self.nviewer.layers:
+                try:
+                    addImage(name, name.lower())
+                except KeyError:
+                    addImage(name, 'grayclip')
+
+    def resetView(self):
+        self.nviewer.reset_view()
 
 
 class RecordingWidget(Widget):
@@ -511,7 +563,7 @@ class RecordingWidget(Widget):
 
     def setDetectorList(self, detectorModels):
         if len(detectorModels) > 1:
-            self.detectorList.addItem('Current detector at start', -1)
+            self.detectorList.addItem('Active detector(s) at start', -1)
             self.detectorList.addItem('All detectors', -2)
 
         for detectorName, detectorModel in detectorModels.items():

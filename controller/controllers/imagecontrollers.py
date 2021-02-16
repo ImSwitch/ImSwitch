@@ -155,7 +155,7 @@ class SettingsController(WidgetController):
 
         # Final shape values might differ from the user-specified one because of detector limitation x128
         width, height = detector.shape
-        if detector.name in self._master.detectorsManager.getCurrentDetectorNames():
+        if detector.name == self._master.detectorsManager.getCurrentDetectorName():
             self._commChannel.adjustFrame.emit(width, height)
             self._widget.hideROI()
 
@@ -367,7 +367,6 @@ class SettingsController(WidgetController):
 
     def detectorSwitched(self, newDetectorName, _):
         """ Called when the user switches to another detector. """
-        return # TODO
         self._widget.setDisplayedDetector(newDetectorName)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
         self._commChannel.adjustFrame.emit(*newDetectorShape)
@@ -405,7 +404,7 @@ class SettingsController(WidgetController):
             self.updateFrameActionButtons()
 
     def getCurrentParams(self):
-        return self.allParams[self._master.detectorsManager.getCurrentDetectorNames()[0]]  # TODO
+        return self.allParams[self._master.detectorsManager.getCurrentDetectorName()]
 
     def getDetectorManagerFrameExecFunc(self):
         """ Returns the detector manager exec function that should be used for
@@ -447,9 +446,9 @@ class ViewController(WidgetController):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
         self._commChannel.crosshairToggle.emit(enabled)
 
-    def detectorSwitch(self, detectorNames):
+    def detectorSwitch(self, detectorName):
         """ Changes the current detector to the selected detector. """
-        self._master.detectorsManager.setCurrentDetectors(detectorNames)
+        self._master.detectorsManager.setCurrentDetector(detectorName)
 
     def detectorNext(self):
         """ Changes the current detector to the next detector. """
@@ -468,15 +467,15 @@ class ImageController(LiveUpdatedController):
         if not self._master.detectorsManager.hasDetectors():
             return
 
-        self._lastWidth, self._lastHeight = list(self._master.detectorsManager.execOnCurrent(
+        self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(
             lambda c: c.shape
-        ).values())[0]  # TODO
+        )
         self._savedLevels = {}
 
         self._widget.setImages(self._master.detectorsManager.getAllDetectorNames())
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.imageUpdated.connect(self.update)
         self._commChannel.adjustFrame.connect(self.adjustFrame)
         self._commChannel.gridToggle.connect(self.gridToggle)
         self._commChannel.crosshairToggle.connect(self.crosshairToggle)
@@ -488,7 +487,7 @@ class ImageController(LiveUpdatedController):
         # TODO: self._widget.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))
         self._widget.sigUpdateLevelsClicked.connect(self.autoLevels)
 
-        self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorNames())
+        self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -510,8 +509,9 @@ class ImageController(LiveUpdatedController):
     def removeItemFromvb(self, item):
         """ Remove item from communication channel to viewbox."""
         # TODO: self._widget.vb.removeItem(item)
+        pass
 
-    def update(self, detectorName, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update new image in the viewbox. """
         #self._widget.levelsButton.setEnabled(True)
 
@@ -524,13 +524,13 @@ class ImageController(LiveUpdatedController):
         if initialDisplay:
             self.adjustFrame(self._lastWidth, self._lastHeight)
 
-    def detectorSwitched(self, newDetectorNames):
+    def detectorSwitched(self, newDetectorName):
         pass
-        # self._widget.setImages(newDetectorNames)
+        # self._widget.setImages([newDetectorName])
 
     def adjustFrame(self, width, height):
         """ Adjusts the viewbox to a new width and height. """
-        # TOOD: self._widget.grid.update([width, height])
+        # TODO: self._widget.grid.update([width, height])
         self._widget.resetView()
 
         self._lastWidth = width
@@ -741,7 +741,7 @@ class RecorderController(WidgetController):
         """ Returns a list of which detectors the user has selected to be captured. """
         detectorListData = self._widget.getDetectorsToCapture()
         if detectorListData == -1:  # Current detector at start
-            return self._master.detectorsManager.getCurrentDetectorNames()
+            return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorListData == -2:  # All detectors
             return list(self._setupInfo.detectors.keys())
         else:  # A specific detector

@@ -17,7 +17,7 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    updateImage = Signal(str, np.ndarray, bool)  # (detectorName, image, init)
+    imageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
 
     acquisitionStarted = Signal()
 
@@ -25,7 +25,7 @@ class CommunicationChannel(SignalInterface):
 
     adjustFrame = Signal(int, int)  # (width, height)
 
-    detectorSwitched = Signal(list, list)  # (newDetectorNames, oldDetectorNames)
+    detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
     gridToggle = Signal(bool)  # (enabled)
 

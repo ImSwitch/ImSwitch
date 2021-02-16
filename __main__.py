@@ -16,6 +16,9 @@ from controller.MainController import MainController
 from view.MainView import MainView
 from view.guitools import ViewSetupInfo
 
+os.environ['NAPARI_ASYNC'] = '1'
+os.environ['NAPARI_OCTREE'] = '0'
+
 setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
 app = QtGui.QApplication([])
 app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB')))

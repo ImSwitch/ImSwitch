@@ -727,7 +727,7 @@ class RecorderController(ImConWidgetController):
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
         self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.attrs
+            self.detectorsBeingCaptured, self.recMode, fileName, self.keepInMemory, self.attrs
         )
 
         time.sleep(0.3)

@@ -50,15 +50,15 @@ class AlignXYController(LiveUpdatedController):
         self.addROI()
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.imageUpdated.connect(self.update)
 
         # Connect AlignWidgetXY signals
         self._widget.sigShowROIToggled.connect(self.toggleROI)
         self._widget.sigAxisChanged.connect(self.setAxis)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
-        if self.active:
+        if isCurrentDetector and self.active:
             value = np.mean(
                 self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem()),
                 self.axis
@@ -98,14 +98,14 @@ class AlignAverageController(LiveUpdatedController):
         self.addROI()
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.imageUpdated.connect(self.update)
 
         # Connect AlignWidgetAverage signals
         self._widget.sigShowROIToggled.connect(self.toggleROI)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
-        if self.active:
+        if isCurrentDetector and self.active:
             value = np.mean(
                 self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem())
             )
@@ -180,7 +180,7 @@ class FFTController(LiveUpdatedController):
         self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.imageUpdated.connect(self.update)
 
         # Connect FFTWidget signals
         self._widget.sigShowToggled.connect(self.showFFT)
@@ -198,8 +198,11 @@ class FFTController(LiveUpdatedController):
         self.init = False
         self._widget.img.setOnlyRenderVisible(enabled, render=False)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
+        if not isCurrentDetector:
+            return
+
         if self.active and (self.it == self.updateRate):
             self.it = 0
             self.imageComputationWorker.prepareForNewImage(im)

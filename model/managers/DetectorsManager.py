@@ -11,25 +11,25 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     acquisitionStarted = Signal()
     acquisitionStopped = Signal()
-    detectorSwitched = Signal(list, list)  # (newDetectorNames, oldDetectorNames)
-    imageUpdated = Signal(str, np.ndarray, bool)  # (detectorName, image, init)
+    detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
+    imageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
 
     def __init__(self, detectorInfos, updatePeriod, **kwargs):
         MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
         SignalInterface.__init__(self)
 
-        self._currentDetectorNames = None
+        self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
             # Connect signals
             self._subManagers[detectorName].imageUpdated.connect(
                 lambda image, init, detectorName=detectorName: self.imageUpdated.emit(
-                    detectorName, image, init
-                ) if detectorName in self._currentDetectorNames else None
+                    detectorName, image, init, detectorName == self._currentDetectorName
+                )
             )
 
             # Set as default if first detector
-            if self._currentDetectorNames is None:
-                self._currentDetectorNames = list(detectorInfos.keys())
+            if self._currentDetectorName is None:
+                self._currentDetectorName = detectorName
 
         # A timer will collect the new frame and update it through the communication channel
         self._lvWorker = LVWorker(self, updatePeriod)
@@ -39,24 +39,29 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     def hasDetectors(self):
         """ Returns whether this manager manages any detectors. """
-        return self._currentDetectorNames is not None
+        return self._currentDetectorName is not None
 
     def getAllDetectorNames(self):
         return list(self._subManagers.keys())
 
-    def getCurrentDetectorNames(self):
+    def getCurrentDetectorName(self):
         if not self.hasDetectors():
             raise NoDetectorsError
 
-        return self._currentDetectorNames
+        return self._currentDetectorName
 
-    def setCurrentDetectors(self, detectorNames):
-        for detectorName in detectorNames:
-            self._validateManagedDeviceName(detectorName)
+    def getCurrentDetector(self):
+        if not self.hasDetectors():
+            raise NoDetectorsError
 
-        oldDetectorNames = self._currentDetectorNames
-        self._currentDetectorNames = detectorNames
-        self.detectorSwitched.emit(detectorNames, oldDetectorNames)
+        return self._subManagers[self._currentDetectorName]
+
+    def setCurrentDetector(self, detectorName):
+        self._validateManagedDeviceName(detectorName)
+
+        oldDetectorName = self._currentDetectorName
+        self._currentDetectorName = detectorName
+        self.detectorSwitched.emit(detectorName, oldDetectorName)
 
         if self._thread.isRunning():
             self.execOnCurrent(lambda c: c.updateLatestFrame(True))
@@ -66,9 +71,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         if not self.hasDetectors():
             raise NoDetectorsError
 
-        return {managedDeviceName: func(subManager)
-                for managedDeviceName, subManager in self._subManagers.items()
-                if managedDeviceName in self._currentDetectorNames}
+        return self.execOn(self._currentDetectorName, func)
 
     def startAcquisition(self):
         self.execOnAll(lambda c: c.startAcquisition())

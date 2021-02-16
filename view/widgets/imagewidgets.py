@@ -212,7 +212,7 @@ class ViewWidget(Widget):
     sigGridToggled = QtCore.Signal(bool)  # (enabled)
     sigCrosshairToggled = QtCore.Signal(bool)  # (enabled)
     sigLiveviewToggled = QtCore.Signal(bool)  # (enabled)
-    sigDetectorChanged = QtCore.Signal(list)  # (detectorNames)
+    sigDetectorChanged = QtCore.Signal(str)  # (detectorName)
     sigNextDetectorClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -240,7 +240,7 @@ class ViewWidget(Widget):
 
         # Detector list
         self.detectorListBox = QtGui.QHBoxLayout()
-        self.detectorListLabel = QtGui.QLabel('Active detectors:')
+        self.detectorListLabel = QtGui.QLabel('Current detector:')
         self.detectorList = QtGui.QComboBox()
         self.nextDetectorButton = guitools.BetterPushButton('Next')
         self.nextDetectorButton.hide()
@@ -261,20 +261,9 @@ class ViewWidget(Widget):
         self.crosshairButton.toggled.connect(self.sigCrosshairToggled)
         self.liveviewButton.toggled.connect(self.sigLiveviewToggled)
         self.detectorList.currentIndexChanged.connect(
-            lambda index: self.sigDetectorChanged.emit([self.detectorList.itemData(index)])
+            lambda index: self.sigDetectorChanged.emit(self.detectorList.itemData(index))
         )
         self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
-
-    def getSelectedDetectors(self):
-        selectedDetectors = []
-
-        model = self.detectorList.model()
-        for i in range(model.rowCount()):
-            item = model.index(i, 0)
-            if item.data(QtCore.Qt.CheckStateRole) == QtCore.Qt.Checked:
-                selectedDetectors.append(item.data(QtCore.Qt.UserRole))
-
-        return selectedDetectors
 
     def selectNextDetector(self):
         self.detectorList.setCurrentIndex(
@@ -282,22 +271,9 @@ class ViewWidget(Widget):
         )
 
     def setDetectorList(self, detectorModels):
-        # TODO: self.nextDetectorButton.setVisible(len(detectorModels) > 1)
-        #for detectorName, detectorModel in detectorModels.items():
-        #    self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
-
-        model = QtGui.QStandardItemModel(len(detectorModels), 1)
-        for index, (detectorName, detectorModel) in enumerate(detectorModels.items()):
-            item = QtGui.QStandardItem(f'{detectorModel} ({detectorName})')
-            item.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            item.setData(QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
-            item.setData(detectorName, QtCore.Qt.UserRole)
-            model.setItem(index, 0, item)
-
-        model.dataChanged.connect(
-            lambda: self.sigDetectorChanged.emit(self.getSelectedDetectors())
-        )
-        self.detectorList.setModel(model)
+        self.nextDetectorButton.setVisible(len(detectorModels) > 1)
+        for detectorName, detectorModel in detectorModels.items():
+            self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 
     def setViewToolsEnabled(self, enabled):
         self.crosshairButton.setEnabled(enabled)
@@ -328,7 +304,6 @@ class ImageWidget(Widget):
         self.imgsz = {}
         self.hists = {}
 
-        self.ngui = napari.gui_qt()
         self.nviewer = napari.Viewer(show=False)
 
         self.viewCtrlLayout = QtGui.QGridLayout()
@@ -563,7 +538,7 @@ class RecordingWidget(Widget):
 
     def setDetectorList(self, detectorModels):
         if len(detectorModels) > 1:
-            self.detectorList.addItem('Active detector(s) at start', -1)
+            self.detectorList.addItem('Current detector at start', -1)
             self.detectorList.addItem('All detectors', -2)
 
         for detectorName, detectorModel in detectorModels.items():

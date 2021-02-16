@@ -29,7 +29,7 @@ class MasterController:
         self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)
         self.detectorsManager.acquisitionStopped.connect(self.__commChannel.acquisitionStopped)
         self.detectorsManager.detectorSwitched.connect(self.__commChannel.detectorSwitched)
-        self.detectorsManager.imageUpdated.connect(self.__commChannel.updateImage)
+        self.detectorsManager.imageUpdated.connect(self.__commChannel.imageUpdated)
 
         self.recordingManager.recordingEnded.connect(self.__commChannel.endRecording)
         self.recordingManager.recordingFrameNumUpdated.connect(self.__commChannel.updateRecFrameNum)

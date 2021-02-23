@@ -1,28 +1,39 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 15:17:46 2020
-
-@author: _Xavi
-"""
-
 import os
-import sys
+import traceback
 
-from pyqtgraph.Qt import QtGui
-import qdarkstyle
+from imcommon import prepareApp, launchApp
+from imcommon.controller import ModuleCommunicationChannel
+from imcommon.view import MultiModuleWindow
 
-import configfileutils
-from controller.MainController import MainController
-from view.MainView import MainView
-from view.guitools import ViewSetupInfo
+import imcontrol
+import imreconstruct
+
 
 os.environ['NAPARI_ASYNC'] = '1'
 os.environ['NAPARI_OCTREE'] = '0'
 
-setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
-app = QtGui.QApplication([])
-app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB')))
-view = MainView(setupInfo)
-controller = MainController(setupInfo, view)
-view.show()
-sys.exit(app.exec_())
+modules = {
+    imcontrol: 'Hardware Control',
+    imreconstruct: 'Image Reconstruction'
+}
+
+app = prepareApp()
+moduleCommChannel = ModuleCommunicationChannel()
+multiModuleWindow = MultiModuleWindow('ImSwitch')
+mainControllers = set()
+
+for modulePackage in modules.keys():
+    moduleCommChannel.register(modulePackage)
+
+for modulePackage, moduleName in modules.items():
+    try:
+        view, controller = modulePackage.getMainViewAndController(moduleCommChannel)
+    except:
+        print(f'Failed to initialize module {modulePackage.__name__}')
+        print(traceback.format_exc())
+        moduleCommChannel.unregister(modulePackage)
+    else:
+        multiModuleWindow.addModule(moduleName, view)
+        mainControllers.add(controller)
+
+launchApp(app, multiModuleWindow, mainControllers)

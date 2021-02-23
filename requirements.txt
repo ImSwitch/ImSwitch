@@ -1,3 +1,4 @@
+colour-science~=0.3.15
 dataclasses; python_version < "3.7"
 dataclasses-json~=0.5.2
 h5py~=3.1.0
@@ -9,4 +10,3 @@ PyQt5~=5.15.2
 pyqtgraph==0.11.0
 QDarkStyle~=2.8.1
 tifffile
-colour-science~=0.3.15

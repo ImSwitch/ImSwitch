@@ -171,7 +171,7 @@ class ImRecMainViewController(ImRecWidgetController):
             pass
         else:
             for i in range(0, min(4, len(stepSizesAttr))):
-                self._scanParDict['step_sizes'][i] = stepSizesAttr[i]
+                self._scanParDict['step_sizes'][i] = str(stepSizesAttr[i])
 
         self.updateScanParams()
 

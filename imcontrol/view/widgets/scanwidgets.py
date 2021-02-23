@@ -4,12 +4,9 @@ Created on Fri Mar 20 17:08:54 2020
 
 @author: _Xavi
 """
-import os
-
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtCore, QtGui
 
-import constants
 import imcontrol.view.guitools as guitools
 from .basewidgets import Widget
 
@@ -18,13 +15,15 @@ class ScanWidget(Widget):
     ''' Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget'''
 
+    sigSaveScanClicked = QtCore.Signal()
+    sigLoadScanClicked = QtCore.Signal()
+    sigRunScanClicked = QtCore.Signal()
+    sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
+    sigSeqTimeParChanged = QtCore.Signal()
+    sigSignalParChanged = QtCore.Signal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.scanDir = os.path.join(constants.rootFolderPath, 'scans')
-
-        if not os.path.exists(self.scanDir):
-            os.makedirs(self.scanDir)
 
         self.scanInLiveviewWar = QtGui.QMessageBox()
         self.scanInLiveviewWar.setInformativeText(
@@ -70,21 +69,28 @@ class ScanWidget(Widget):
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
 
-    def initControls(self, positionerInfos, TTLDeviceInfos):
-        self.scanDims = list(positionerInfos.keys())
+        # Connect signals
+        self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
+        self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)
+        self.scanButton.clicked.connect(self.sigRunScanClicked)
+        self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
+        self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
+
+    def initControls(self, positionerNames, TTLDeviceNames):
+        self.scanDims = positionerNames
 
         self.grid.addWidget(self.loadScanBtn, 0, 0)
         self.grid.addWidget(self.saveScanBtn, 0, 1)
         self.grid.addWidget(self.scanRadio, 0, 2)
         self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)
         self.grid.addItem(QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum), 0, 6)
-        self.grid.addWidget(self.scanButton, 1, 7, len(positionerInfos), 1)
+        self.grid.addWidget(self.scanButton, 1, 7, len(positionerNames), 1)
         self.grid.addWidget(self.continuousCheck, 0, 7)
 
         currentRow = 1
 
         positionerPresets = self._defaultPreset.scan.positioners
-        for index, (positionerName, positionerInfo) in enumerate(positionerInfos.items()):
+        for index, positionerName in enumerate(positionerNames):
             positionerPreset = (
                 positionerPresets[positionerName] if positionerName in positionerPresets
                 else guitools.ScanPresetPositioner()
@@ -122,11 +128,11 @@ class ScanWidget(Widget):
 
         self.grid.addWidget(QtGui.QLabel('Start (ms):'), currentRow, 1)
         self.grid.addWidget(QtGui.QLabel('End (ms):'), currentRow, 2)
-        self.grid.addWidget(self.graph, currentRow, 3, 1 + len(TTLDeviceInfos), 5)
+        self.grid.addWidget(self.graph, currentRow, 3, 1 + len(TTLDeviceNames), 5)
         currentRow += 1
 
         pulsePresets = self._defaultPreset.scan.pulses
-        for deviceName in TTLDeviceInfos.keys():
+        for deviceName in TTLDeviceNames:
             pulsePreset = (pulsePresets[deviceName] if deviceName in pulsePresets
                            else guitools.ScanPresetTTL())
 
@@ -136,6 +142,90 @@ class ScanWidget(Widget):
             self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
             self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1
+
+            # Connect signals
+            self.pxParameters['sta' + deviceName].textChanged.connect(self.sigSignalParChanged)
+            self.pxParameters['end' + deviceName].textChanged.connect(self.sigSignalParChanged)
+
+    def isScanMode(self):
+        return self.scanRadio.isChecked()
+
+    def isContLaserMode(self):
+        return self.contLaserPulsesRadio.isChecked()
+
+    def continuousCheckEnabled(self):
+        return self.continuousCheck.isChecked()
+
+    def getScanDim(self, index):
+        return self.scanPar['scanDim' + str(index)].currentText()
+
+    def getScanSize(self, positionerName):
+        return float(self.scanPar['size' + positionerName].text())
+
+    def getScanStepSize(self, positionerName):
+        return float(self.scanPar['stepSize' + positionerName].text())
+
+    def getTTLStarts(self, deviceName):
+        return list(map(lambda s: float(s) / 1000 if s else None,
+                        self.pxParameters['sta' + deviceName].text().split(',')))
+
+    def getTTLEnds(self, deviceName):
+        return list(map(lambda e: float(e) / 1000 if e else None,
+                        self.pxParameters['end' + deviceName].text().split(',')))
+
+    def getSeqTimePar(self):
+        return float(self.seqTimePar.text()) / 1000
+
+    def setScanMode(self):
+        self.scanRadio.setChecked(True)
+
+    def setContLaserMode(self):
+        self.contLaserPulsesRadio.setChecked(True)
+
+    def setScanButtonChecked(self, checked):
+        self.scanButton.setChecked(checked)
+
+    def setScanDim(self, index, positionerName):
+        scanDimPar = self.scanPar['scanDim' + str(index)]
+        scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
+
+    def setScanSize(self, positionerName, size):
+        self.scanPar['size' + positionerName].setText(str(round(size, 3)))
+
+    def setScanStepSize(self, positionerName, stepSize):
+        self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
+
+    def setTTLStarts(self, deviceName, starts):
+        self.pxParameters['sta' + deviceName].setText(
+            ','.join(map(lambda s: str(round(1000 * s, 3)), starts))
+        )
+
+    def setTTLEnds(self, deviceName, ends):
+        self.pxParameters['end' + deviceName].setText(
+            ','.join(map(lambda e: str(round(1000 * e, 3)), ends))
+        )
+
+    def setSeqTimePar(self, seqTimePar):
+        self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
+
+    def setScanDimEnabled(self, index, enabled):
+        self.scanPar['scanDim' + str(index)].setEnabled(enabled)
+
+    def setScanSizeEnabled(self, positionerName, enabled):
+        self.scanPar['size' + positionerName].setEnabled(enabled)
+
+    def setScanStepSizeEnabled(self, positionerName, enabled):
+        self.scanPar['stepSize' + positionerName].setEnabled(enabled)
+
+    def plotSignalGraph(self, areas, signals, colors):
+        if len(areas) != len(signals) or len(signals) != len(colors):
+            raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
+
+        self.graph.plot.clear()
+        for i in range(len(areas)):
+            self.graph.plot.plot(areas[i], signals[i],  pen=pg.mkPen(colors[i]))
+
+        self.graph.plot.setYRange(-0.1, 1.1)
 
 
 class GraphFrame(pg.GraphicsWindow):

@@ -5,19 +5,25 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import configparser
+import os
 
 import numpy as np
-import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 
 import imcontrol.view.guitools as guitools
+import constants
 from .basecontrollers import SuperScanController
 
 
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.positioners, self._setupInfo.getTTLDevices())
+        self._widget.initControls(self._setupInfo.positioners.keys(),
+                                  self._setupInfo.getTTLDevices().keys())
+
+        self.scanDir = os.path.join(constants.rootFolderPath, 'scans')
+        if not os.path.exists(self.scanDir):
+            os.makedirs(self.scanDir)
 
         self._stageParameterDict = {
             'Sample_rate': self._setupInfo.scan.stage.sampleRate,
@@ -38,14 +44,12 @@ class ScanController(SuperScanController):
         self._commChannel.prepareScan.connect(lambda: self.setScanButton(True))
 
         # Connect ScanWidget signals
-        self._widget.saveScanBtn.clicked.connect(self.saveScan)
-        self._widget.loadScanBtn.clicked.connect(self.loadScan)
-        self._widget.scanButton.clicked.connect(self.runScan)
-        self._widget.seqTimePar.textChanged.connect(self.plotSignalGraph)
-        self._widget.contLaserPulsesRadio.toggled.connect(self.setContLaserPulses)
-        for deviceName in self._setupInfo.getTTLDevices():
-            self._widget.pxParameters['sta' + deviceName].textChanged.connect(self.plotSignalGraph)
-            self._widget.pxParameters['end' + deviceName].textChanged.connect(self.plotSignalGraph)
+        self._widget.sigSaveScanClicked.connect(self.saveScan)
+        self._widget.sigLoadScanClicked.connect(self.loadScan)
+        self._widget.sigRunScanClicked.connect(self.runScan)
+        self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
+        self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
+        self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
 
         print('Init Scan Controller')
 
@@ -100,9 +104,8 @@ class ScanController(SuperScanController):
 
         config['stageParameterDict'] = self._stageParameterDict
         config['TTLParameterDict'] = self._TTLParameterDict
-        config['Modes'] = {'scan_or_not': self._widget.scanRadio.isChecked()}
-        fileName, _ = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan',
-                                                     self._widget.scanDir)
+        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
+        fileName, _ = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan', self.scanDir)
         if fileName == '':
             return
 
@@ -113,8 +116,7 @@ class ScanController(SuperScanController):
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        fileName, _ = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan',
-                                                     self._widget.scanDir)
+        fileName, _ = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan', self.scanDir)
         if fileName == '':
             return
 
@@ -129,43 +131,27 @@ class ScanController(SuperScanController):
         scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
 
         if scanOrNot:
-            self._widget.scanRadio.setChecked(True)
+            self._widget.setScanMode()
         else:
-            self._widget.contLaserPulsesRadio.setChecked(True)
+            self._widget.setContLaserMode()
 
         self.setParameters()
-        # self._widget.updateScan(self._widget.allDevices)
 
     def setParameters(self):
         self._settingParameters = True
         try:
             for i in range(len(self._setupInfo.positioners)):
                 positionerName = self._stageParameterDict['Targets[x]'][i]
-
-                scanDimPar = self._widget.scanPar['scanDim' + str(i)]
-                scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
-
-                self._widget.scanPar['size' + positionerName].setText(
-                    str(round(self._stageParameterDict['Sizes[x]'][i], 3))
-                )
-
-                self._widget.scanPar['stepSize' + positionerName].setText(
-                    str(round(self._stageParameterDict['Step_sizes[x]'][i], 3))
-                )
+                self._widget.setScanDim(i, positionerName)
+                self._widget.setScanSize(positionerName, self._stageParameterDict['Sizes[x]'][i])
+                self._widget.setScanStepSize(positionerName, self._stageParameterDict['Step_sizes[x]'][i])
 
             for i in range(len(self._TTLParameterDict['Targets[x]'])):
                 deviceName = self._TTLParameterDict['Targets[x]'][i]
+                self._widget.setTTLStarts(deviceName, self._TTLParameterDict['TTLStarts[x,y]'][i])
+                self._widget.setTTLEnds(deviceName, self._TTLParameterDict['TTLEnds[x,y]'][i])
 
-                self._widget.pxParameters['sta' + deviceName].setText(
-                    str(round(1000 * self._TTLParameterDict['TTLStarts[x,y]'][i][0], 3))
-                )
-                self._widget.pxParameters['end' + deviceName].setText(
-                    str(round(1000 * self._TTLParameterDict['TTLEnds[x,y]'][i][0], 3))
-                )
-
-            self._widget.seqTimePar.setText(
-                str(round(float(1000 * self._TTLParameterDict['Sequence_time_seconds']), 3))
-            )
+            self._widget.setSeqTimePar(self._TTLParameterDict['Sequence_time_seconds'])
         finally:
             self._settingParameters = False
             self.plotSignalGraph()
@@ -174,13 +160,13 @@ class ScanController(SuperScanController):
         self.getParameters()
         self.signalDic = self._master.scanManager.makeFullScan(
             self._stageParameterDict, self._TTLParameterDict, self._setupInfo,
-            staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
+            staticPositioner=self._widget.isContLaserMode()
         )
         self._master.nidaqManager.runScan(self.signalDic)
 
     def scanDone(self):
         print("scan done")
-        if not self._widget.contLaserPulsesRadio.isChecked() and not self._widget.continuousCheck.isChecked():
+        if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
             self.setScanButton(False)
             self._commChannel.endScan.emit()
         else:
@@ -195,9 +181,9 @@ class ScanController(SuperScanController):
         self._stageParameterDict['Step_sizes[x]'] = []
         self._stageParameterDict['Start[x]'] = []
         for i in range(len(self._setupInfo.positioners)):
-            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
-            size = float(self._widget.scanPar['size' + positionerName].text())
-            stepSize = float(self._widget.scanPar['stepSize' + positionerName].text())
+            positionerName = self._widget.getScanDim(i)
+            size = self._widget.getScanSize(positionerName)
+            stepSize = self._widget.getScanStepSize(positionerName)
             start = self._commChannel.getStartPos()[positionerName]
 
             self._stageParameterDict['Targets[x]'].append(positionerName)
@@ -210,29 +196,21 @@ class ScanController(SuperScanController):
         self._TTLParameterDict['TTLEnds[x,y]'] = []
         for deviceName, deviceInfo in self._setupInfo.getTTLDevices().items():
             self._TTLParameterDict['Targets[x]'].append(deviceName)
+            self._TTLParameterDict['TTLStarts[x,y]'].append(self._widget.getTTLStarts(deviceName))
+            self._TTLParameterDict['TTLEnds[x,y]'].append(self._widget.getTTLEnds(deviceName))
 
-            deviceStarts = self._widget.pxParameters['sta' + deviceName].text().split(',')
-            self._TTLParameterDict['TTLStarts[x,y]'].append([
-                float(deviceStart) / 1000 for deviceStart in deviceStarts if deviceStart
-            ])
-
-            deviceEnds = self._widget.pxParameters['end' + deviceName].text().split(',')
-            self._TTLParameterDict['TTLEnds[x,y]'].append([
-                float(deviceEnd) / 1000 for deviceEnd in deviceEnds if deviceEnd
-            ])
-
-        self._TTLParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
-        self._stageParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
+        self._TTLParameterDict['Sequence_time_seconds'] = self._widget.getSeqTimePar()
+        self._stageParameterDict['Sequence_time_seconds'] = self._widget.getSeqTimePar()
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self._setupInfo.positioners)):
             positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
-            self._widget.scanPar['scanDim' + str(i)].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['size' + positionerName].setEnabled(not isContLaserPulses)
-            self._widget.scanPar['stepSize' + positionerName].setEnabled(not isContLaserPulses)
+            self._widget.setScanDimEnabled(i, not isContLaserPulses)
+            self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
+            self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
 
     def setScanButton(self, b):
-        self._widget.scanButton.setChecked(b)
+        self._widget.setScanButtonChecked(b)
         if b: self.runScan()
 
     def plotSignalGraph(self):
@@ -241,16 +219,19 @@ class ScanController(SuperScanController):
 
         self.getParameters()
         TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(self._TTLParameterDict,
-                                                                             self._setupInfo)
+                                                                              self._setupInfo)
 
-        self._widget.graph.plot.clear()
+        areas = []
+        signals = []
+        colors = []
         for deviceName, signal in TTLCycleSignalsDict.items():
             isLaser = deviceName in self._setupInfo.lasers
-
-            self._widget.graph.plot.plot(
-                np.linspace(0, self._TTLParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal)),
-                signal.astype(np.uint8),        
-                pen=pg.mkPen(guitools.colorutils.wavelengthToHex(self._setupInfo.lasers[deviceName].wavelength) if isLaser else '#ffffff')
+            areas.append(np.linspace(0, self._TTLParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal))),
+            signals.append(signal.astype(np.uint8))
+            colors.append(
+                guitools.colorutils.wavelengthToHex(
+                    self._setupInfo.lasers[deviceName].wavelength
+                ) if isLaser else '#ffffff'
             )
 
-        self._widget.graph.plot.setYRange(-0.1, 1.1)
+        self._widget.plotSignalGraph(areas, signals, colors)

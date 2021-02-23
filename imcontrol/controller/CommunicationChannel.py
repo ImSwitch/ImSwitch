@@ -6,6 +6,7 @@ Created on Fri Mar 20 15:08:33 2020
 """
 import numpy as np
 from imcommon.framework import Signal, SignalInterface
+from imcommon.model import SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -24,9 +25,9 @@ class CommunicationChannel(SignalInterface):
 
     detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
-    gridToggle = Signal()
+    gridToggle = Signal(bool)  # (enabled)
 
-    crosshairToggle = Signal()
+    crosshairToggle = Signal(bool)  # (enabled)
 
     addItemTovb = Signal(object)  # (item)
 
@@ -44,9 +45,14 @@ class CommunicationChannel(SignalInterface):
 
     moveZstage = Signal(float)  # (step)
 
+    @property
+    def sharedAttrs(self):
+        return self.__sharedAttrs
+
     def __init__(self, main):
         super().__init__()
         self.__main = main
+        self.__sharedAttrs = SharedAttributes()
 
     def getROIdata(self, image, ROI):
         return self.__main.imageController.getROIdata(image, ROI)

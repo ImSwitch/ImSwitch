@@ -27,6 +27,12 @@ class MultiManager(ABC):
         return {managedDeviceName: func(subManager)
                 for managedDeviceName, subManager in self._subManagers.items()}
 
+    def finalize(self):
+        """ Close/cleanup sub-managers. """
+        for subManager in self._subManagers.values():
+            if hasattr(subManager, 'finalize') and callable(subManager.finalize):
+                subManager.finalize()
+
     def _validateManagedDeviceName(self, managedDeviceName):
         """ Raises an error if the specified device is not managed by this
         manager. """

@@ -21,12 +21,12 @@ class ImConMainController(MainController):
 
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self)
-        __masterController = MasterController(self.__setupInfo, self.__commChannel,
+        self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
                                               self.__moduleCommChannel)
 
         # List of Controllers for the GUI Widgets
         self.__factory = controllers.ImConWidgetControllerFactory(
-            self.__setupInfo, __masterController, self.__commChannel, self.__moduleCommChannel
+            self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
         )
 
         self.imageController = self.__factory.createController(controllers.ImageController, self.__mainView.imageWidget)
@@ -58,11 +58,12 @@ class ImConMainController(MainController):
             self.fftController = self.__factory.createController(controllers.FFTController, self.__mainView.fftWidget)
 
         self.__mainView.setDetectorRelatedDocksVisible(
-            __masterController.detectorsManager.hasDetectors()
+            self.__masterController.detectorsManager.hasDetectors()
         )
 
         # Check widget compatibility
-        __masterController.scanManager._parameterCompatibility(self.scanController.parameterDict)
+        self.__masterController.scanManager._parameterCompatibility(self.scanController.parameterDict)
 
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()
+        self.__masterController.closeEvent()

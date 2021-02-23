@@ -61,3 +61,7 @@ class LaserManager(ABC):
     @abstractmethod
     def setValue(self, value):
         pass
+
+    def finalize(self):
+        """ Close/cleanup laser. """
+        pass

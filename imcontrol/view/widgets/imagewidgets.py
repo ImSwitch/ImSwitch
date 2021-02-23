@@ -141,6 +141,8 @@ class CamParamTree(ParameterTree):
 class SettingsWidget(Widget):
     """ Detector settings and ROI parameters. """
 
+    sigROIChanged = QtCore.Signal(object)  # (ROI)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -150,21 +152,21 @@ class SettingsWidget(Widget):
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
+        self.stack = QtGui.QStackedWidget()
+        self.trees = {}
 
         # Add elements to GridLayout
         self.layout = QtGui.QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.addWidget(detectorTitle)
-
-    def initControls(self, roiInfos, settingsPerDetector):
-        self.stack = QtGui.QStackedWidget()
-
-        self.trees = {}
-        for detectorName, (detectorParameters, supportedBinnings) in settingsPerDetector.items():
-            self.trees[detectorName] = CamParamTree(roiInfos, detectorParameters, supportedBinnings)
-            self.stack.addWidget(self.trees[detectorName])
-
         self.layout.addWidget(self.stack)
+
+        # Connect signals
+        self.ROI.sigRegionChangeFinished.connect(self.sigROIChanged)
+
+    def addDetector(self, detectorName, detectorParameters, supportedBinnings, roiInfos):
+        self.trees[detectorName] = CamParamTree(roiInfos, detectorParameters, supportedBinnings)
+        self.stack.addWidget(self.trees[detectorName])
 
     def setDisplayedDetector(self, detectorName):
         # Remember previously displayed detector settings widget scroll position
@@ -178,9 +180,28 @@ class SettingsWidget(Widget):
         newDetectorWidget.horizontalScrollBar().setValue(scrollX)
         newDetectorWidget.verticalScrollBar().setValue(scrollY)
 
+    def getROIGraphicsItem(self):
+        return self.ROI
+
+    def showROI(self, position=None, size=None):
+        if position is not None:
+            self.ROI.setPos(position)
+        if size is not None:
+            self.ROI.setSize(size)
+        self.ROI.show()
+
+    def hideROI(self):
+        self.ROI.hide()
+
 
 class ViewWidget(Widget):
     """ View settings (liveview, grid, crosshair). """
+
+    sigGridToggled = QtCore.Signal(bool)  # (enabled)
+    sigCrosshairToggled = QtCore.Signal(bool)  # (enabled)
+    sigLiveviewToggled = QtCore.Signal(bool)  # (enabled)
+    sigDetectorChanged = QtCore.Signal(str)  # (detectorName)
+    sigNextDetectorClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -189,14 +210,12 @@ class ViewWidget(Widget):
         # Grid
         self.gridButton = guitools.BetterPushButton('Grid')
         self.gridButton.setCheckable(True)
-        self.gridButton.setEnabled(False)
         self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                       QtGui.QSizePolicy.Expanding)
 
         # Crosshair
         self.crosshairButton = guitools.BetterPushButton('Crosshair')
         self.crosshairButton.setCheckable(True)
-        self.crosshairButton.setEnabled(False)
         self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                            QtGui.QSizePolicy.Expanding)
         # liveview
@@ -212,6 +231,7 @@ class ViewWidget(Widget):
         self.detectorListLabel = QtGui.QLabel('Current detector:')
         self.detectorList = QtGui.QComboBox()
         self.nextDetectorButton = guitools.BetterPushButton('Next')
+        self.nextDetectorButton.hide()
         self.detectorListBox.addWidget(self.detectorListLabel)
         self.detectorListBox.addWidget(self.detectorList, 1)
         self.detectorListBox.addWidget(self.nextDetectorButton)
@@ -224,16 +244,36 @@ class ViewWidget(Widget):
         self.viewCtrlLayout.addWidget(self.gridButton, 2, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
 
-    def initControls(self, detectorModels):
-        if len(detectorModels) <= 1:
-            self.nextDetectorButton.hide()
+        # Connect signals
+        self.gridButton.toggled.connect(self.sigGridToggled)
+        self.crosshairButton.toggled.connect(self.sigCrosshairToggled)
+        self.liveviewButton.toggled.connect(self.sigLiveviewToggled)
+        self.detectorList.currentIndexChanged.connect(
+            lambda index: self.sigDetectorChanged.emit(self.detectorList.itemData(index))
+        )
+        self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
 
+    def selectNextDetector(self):
+        self.detectorList.setCurrentIndex(
+            (self.detectorList.currentIndex() + 1) % self.detectorList.count()
+        )
+
+    def setDetectorList(self, detectorModels):
+        self.nextDetectorButton.setVisible(len(detectorModels) > 1)
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+
+    def setViewToolsEnabled(self, enabled):
+        self.crosshairButton.setEnabled(enabled)
+        self.gridButton.setEnabled(enabled)
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
     """ Widget containing viewbox that displays the new detector frames.  """
+
+    sigResized = QtCore.Signal()
+    sigLevelsChanged = QtCore.Signal()
+    sigUpdateLevelsClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -281,10 +321,27 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.ci.layout.setColumnMaximumWidth(0, 40)
         yPlot.setYLink(self.vb)
 
+        # Connect signals
+        self.vb.sigResized.connect(self.sigResized)
+        self.hist.sigLevelsChanged.connect(self.sigLevelsChanged)
+        self.levelsButton.clicked.connect(self.sigUpdateLevelsClicked)
+
 
 class RecordingWidget(Widget):
     """ Widget to control image or sequence recording.
     Recording only possible when liveview active. """
+
+    sigDetectorChanged = QtCore.Signal()
+    sigOpenRecFolderClicked = QtCore.Signal()
+    sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
+    sigSnapRequested = QtCore.Signal()
+    sigRecToggled = QtCore.Signal(bool)  # (enabled)
+    sigSpecFramesPicked = QtCore.Signal()
+    sigSpecTimePicked = QtCore.Signal()
+    sigScanOncePicked = QtCore.Signal()
+    sigScanLapsePicked = QtCore.Signal()
+    sigDimLapsePicked = QtCore.Signal()
+    sigUntilStopPicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -405,7 +462,53 @@ class RecordingWidget(Widget):
         self.filenameEdit.setEnabled(False)
         self.untilSTOPbtn.setChecked(True)
 
-    def initControls(self, detectorModels):
+        # Connect signals
+        self.detectorList.currentIndexChanged.connect(self.sigDetectorChanged)
+        self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
+        self.specifyfile.toggled.connect(self.sigSpecFileToggled)
+        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
+        self.recButton.toggled.connect(self.sigRecToggled)
+        self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
+        self.specifyTime.clicked.connect(self.sigSpecTimePicked)
+        self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
+        self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
+        self.dimLapse.clicked.connect(self.sigDimLapsePicked)
+        self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
+
+    def getDetectorsToCapture(self):
+        """ Returns a list of which detectors the user has selected to be
+        captured. Note: If "current detector at start" is selected, this
+        returns -1, and if "all detectors" is selected, this returns -2. """
+        return self.detectorList.itemData(self.detectorList.currentIndex())
+
+    def getSaveMode(self):
+        return self.saveModeList.currentIndex() + 1
+
+    def getRecFolder(self):
+        return self.folderEdit.text()
+
+    def getCustomFilename(self):
+        return self.filenameEdit.text() if self.specifyfile.isChecked() else None
+
+    def getNumExpositions(self):
+        return int(self.numExpositionsEdit.text())
+
+    def getTimeToRec(self):
+        return float(self.timeToRec.text())
+
+    def getTimelapseTime(self):
+        return int(self.timeLapseEdit.text())
+
+    def getTimelapseFreq(self):
+        return float(self.freqEdit.text())
+
+    def getDimlapseSlices(self):
+        return int(self.totalSlices.text())
+
+    def getDimlapseStepSize(self):
+        return float(self.stepSizeEdit.text())
+
+    def setDetectorList(self, detectorModels):
         if len(detectorModels) > 1:
             self.detectorList.addItem('Current detector at start', -1)
             self.detectorList.addItem('All detectors', -2)
@@ -413,12 +516,43 @@ class RecordingWidget(Widget):
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 
-    def getSaveMode(self):
-        return self.saveModeList.currentIndex() + 1
-
     def setSaveMode(self, saveMode):
         self.saveModeList.setCurrentIndex(saveMode - 1)
 
     def setSaveModeVisible(self, value):
         self.saveModeList.setVisible(value)
 
+    def setCustomFilenameEnabled(self, enabled):
+        """ Enables the ability to type a specific filename for the data to. """
+        self.filenameEdit.setEnabled(enabled)
+        self.filenameEdit.setText('Filename' if enabled else 'Current time')
+
+    def setEnabledParams(self, numExpositions=False, timeToRec=False,
+                         timelapseTime=False, timelapseFreq=False,
+                         dimlapseSlices=False, dimlapseStepSize=False):
+        self.numExpositionsEdit.setEnabled(numExpositions)
+        self.timeToRec.setEnabled(timeToRec)
+        self.timeLapseEdit.setEnabled(timelapseTime)
+        self.freqEdit.setEnabled(timelapseFreq)
+        self.totalSlices.setEnabled(dimlapseSlices)
+        self.stepSizeEdit.setEnabled(dimlapseStepSize)
+
+    def setSpecifyFramesAllowed(self, allowed):
+        self.specifyFrames.setEnabled(allowed)
+        if not allowed and self.specifyFrames.isChecked():
+            self.untilSTOPbtn.setChecked(True)
+
+    def setRecButtonChecked(self, checked):
+        self.recButton.setChecked(checked)
+
+    def updateRecFrameNum(self, frameNum):
+        self.currentFrame.setText(str(frameNum) + ' /')
+
+    def updateRecTime(self, recTime):
+        self.currentTime.setText(str(recTime) + ' /')
+
+    def updateRecLapseNum(self, lapseNum):
+        self.currentLapse.setText(str(lapseNum) + ' /')
+
+    def updateRecSliceNum(self, sliceNum):
+        self.currentSlice.setText(str(sliceNum) + ' /')

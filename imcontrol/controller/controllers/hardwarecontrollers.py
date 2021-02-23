@@ -15,37 +15,36 @@ class PositionerController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._setupInfo.positioners)
+
+        for pName, pManager in self._master.positionersManager:
+            self._widget.addPositioner(pName)
+            self.setSharedAttr(pName, 'Position', pManager.position)
 
         # Connect CommunicationChannel signals
         self._commChannel.moveZstage.connect(lambda step: self.move('Z', step))
 
         # Connect PositionerWidget signals
-        for positionerName in self._setupInfo.positioners.keys():
-            self._widget.pars['UpButton' + positionerName].pressed.connect(
-                lambda positionerName=positionerName: self.move(
-                    positionerName,
-                    float(self._widget.pars['StepEdit' + positionerName].text())
-                )
-            )
-            self._widget.pars['DownButton' + positionerName].pressed.connect(
-                lambda positionerName=positionerName: self.move(
-                    positionerName,
-                    -float(self._widget.pars['StepEdit' + positionerName].text())
-                )
-            )
+        self._widget.sigStepUpClicked.connect(
+            lambda positionerName: self.move(positionerName, self._widget.getStepSize(positionerName))
+        )
+        self._widget.sigStepDownClicked.connect(
+            lambda positionerName: self.move(positionerName, -self._widget.getStepSize(positionerName))
+        )
 
-    def move(self, axis, dist):
-        """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.positionersManager[axis].move(dist)
-        newText = "<strong>" + axis + " = {0:.2f} µm</strong>".format(newPos)
-        self._widget.pars['Label' + axis].setText(newText)
+    def closeEvent(self):
+        self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
 
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
 
-    def closeEvent(self):
-        self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
+    def move(self, positionerName, dist):
+        """ Moves the piezzos in x y or z (axis) by dist micrometers. """
+        newPos = self._master.positionersManager[positionerName].move(dist)
+        self._widget.updatePosition(positionerName, newPos)
+        self.setSharedAttr(positionerName, 'Position', newPos)
+
+    def setSharedAttr(self, positionerName, attr, value):
+        self._commChannel.sharedAttrs[('Positioners', positionerName, attr)] = value
 
 
 class LaserController(ImConWidgetController):
@@ -53,99 +52,91 @@ class LaserController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.lasersManager)
 
         self.aotfLasers = {}
-        for laserName, laserManager in self._master.lasersManager:
-            if not laserManager.isDigital:
-                self.aotfLasers[laserName] = False
 
-        # Connect LaserWidget signals
-        for laserModule in self._widget.laserModules.values():
-            if not self._master.lasersManager[laserModule.laser].isBinary:
-                if self._master.lasersManager[laserModule.laser].isDigital:
-                    self.changeEdit(laserModule.laser)
-
-                laserModule.slider.valueChanged[int].connect(lambda _, laser=laserModule.laser: self.changeSlider(laser))
-                laserModule.setPointEdit.returnPressed.connect(lambda laser=laserModule.laser: self.changeEdit(laser))
-
-            laserModule.enableButton.toggled.connect(lambda _, laser=laserModule.laser: self.toggleLaser(laser))
-
-        for digModuleLaser in self._widget.digModule.powers.keys():
-            self._widget.digModule.powers[digModuleLaser].textChanged.connect(
-                lambda _, laser=digModuleLaser: self.updateDigitalPowers([laser])
+        for lName, lManager in self._master.lasersManager:
+            self._widget.addLaser(
+                lName, lManager.valueUnits, lManager.wavelength,
+                (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None
             )
 
-        self._widget.digModule.DigitalControlButton.clicked.connect(
-            lambda: self.GlobalDigitalMod(list(self._widget.digModule.powers.keys()))
+            if not lManager.isDigital:
+                self.aotfLasers[lName] = False
+            elif not lManager.isBinary:
+                self.valueChanged(lName, lManager.valueRangeMin)
+
+            self.setSharedAttr(lName, 'DigMod', self._widget.isDigModActive())
+            self.setSharedAttr(lName, 'Enabled', self._widget.isLaserActive(lName))
+            self.setSharedAttr(lName, 'Value',
+                               self._widget.getValue(lName) if not self._widget.isDigModActive()
+                               else self._widget.getDigValue(lName))
+
+        # Connect LaserWidget signals
+        self._widget.sigEnableChanged.connect(self.toggleLaser)
+        self._widget.sigValueChanged.connect(self.valueChanged)
+
+        self._widget.sigDigitalModToggled.connect(
+            lambda digMod: self.GlobalDigitalMod(
+                digMod, [laser.name for _, laser in self._master.lasersManager]
+            )
         )
-        self._widget.digModule.updateDigPowersButton.clicked.connect(
-            lambda: self.updateDigitalPowers(list(self._widget.digModule.powers.keys()))
+        self._widget.sigDigitalValueChanged.connect(
+            lambda laserName: self.updateDigitalPowers([laserName])
         )
 
     def closeEvent(self):
         self._master.lasersManager.execOnAll(lambda l: l.setDigitalMod(False, 0))
         self._master.lasersManager.execOnAll(lambda l: l.setValue(0))
 
-    def toggleLaser(self, laserName):
+    def toggleLaser(self, laserName, enabled):
         """ Enable or disable laser (on/off)."""
-        self._master.lasersManager[laserName].setEnabled(
-            self._widget.laserModules[laserName].enableButton.isChecked()
-        )
+        self._master.lasersManager[laserName].setEnabled(enabled)
+        self.setSharedAttr(laserName, 'Enabled', enabled)
 
-    def changeSlider(self, laserName):
-        """ Change power with slider magnitude. """
-        magnitude = self._widget.laserModules[laserName].slider.value()
+    def valueChanged(self, laserName, magnitude):
+        """ Change magnitude. """
         if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
             self._master.lasersManager[laserName].setValue(magnitude)
-            self._widget.laserModules[laserName].setPointEdit.setText(str(magnitude))
+            self._widget.setValue(laserName, magnitude)
 
-    def changeEdit(self, laserName):
-        """ Change power with edit magnitude. """
-        magnitude = float(self._widget.laserModules[laserName].setPointEdit.text())
-        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
-            self._master.lasersManager[laserName].setValue(magnitude)
-            self._widget.laserModules[laserName].slider.setValue(magnitude)
+        self.setSharedAttr(laserName, 'Value', magnitude)
 
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """
-        if self._widget.digModule.DigitalControlButton.isChecked():
+        if self._widget.isDigModActive():
             for laserName in laserNames:
-                self._master.lasersManager[laserName].setValue(
-                    float(self._widget.digModule.powers[laserName].text())
-                )
+                value = self._widget.getDigValue(laserName)
+                self._master.lasersManager[laserName].setValue(value)
+                self.setSharedAttr(laserName, 'Value', value)
 
-    def GlobalDigitalMod(self, laserNames):
-        """ Start digital modulation. """
-        digMod = self._widget.digModule.DigitalControlButton.isChecked()
+    def GlobalDigitalMod(self, digMod, laserNames):
+        """ Start/stop digital modulation. """
         for laserName in laserNames:
-            laserModule = self._widget.laserModules[laserName]
             laserManager = self._master.lasersManager[laserName]
 
             if laserManager.isBinary:
                 continue
 
-            value = float(self._widget.digModule.powers[laserName].text())
+            value = self._widget.getDigValue(laserName)
             if laserManager.isDigital:
                 laserManager.setDigitalMod(digMod, value)
             else:
                 laserManager.setValue(value)
-                laserModule.enableButton.setChecked(False)
-                laserModule.enableButton.setEnabled(not digMod)
+                self._widget.setLaserActive(laserName, False)
+                self._widget.setLaserActivatable(laserName, not digMod)
                 self.aotfLasers[laserName] = digMod
                 laserManager.setEnabled(False)  # TODO: Correct?
+            self._widget.setLaserEditable(laserName, not digMod)
 
-            laserModule.setPointEdit.setEnabled(not digMod)
-            laserModule.slider.setEnabled(not digMod)
-
+            self.setSharedAttr(laserName, 'DigMod', digMod)
             if not digMod:
-                self.changeEdit(laserName)
+                self.valueChanged(laserName, self._widget.getValue(laserName))
+            else:
+                self.setSharedAttr(laserName, 'Value', value)
 
-    def setDigitalButton(self, b):
-        self._widget.digModule.DigitalControlButton.setChecked(b)
-        self.GlobalDigitalMod(
-            [laser.name for laser in self._master.lasersManager if laser.isDigital]
-        )
+    def setSharedAttr(self, laserName, attr, value):
+        self._commChannel.sharedAttrs[('Lasers', laserName, attr)] = value
 
 
 class BeadController(ImConWidgetController):
@@ -155,31 +146,27 @@ class BeadController(ImConWidgetController):
         self.addROI()
 
         # Connect BeadRecWidget signals
-        self._widget.roiButton.clicked.connect(self.toggleROI)
-        self._widget.runButton.clicked.connect(self.run)
+        self._widget.sigROIToggled.connect(self.roiToggled)
+        self._widget.sigRunClicked.connect(self.run)
 
-    def toggleROI(self):
+    def roiToggled(self, enabled):
         """ Show or hide ROI."""
-        if self._widget.roiButton.isChecked() is False:
-            self._widget.ROI.hide()
-            self.active = False
-            self._widget.roiButton.setText('Show ROI')
-        else:
+        if enabled:
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
 
-            self._widget.ROI.setPos(ROIpos)
-            self._widget.ROI.setSize(ROIsize)
-            self._widget.ROI.show()
-            self.active = True
-            self._widget.roiButton.setText('Hide ROI')
+            self._widget.showROI(ROIpos, ROIsize)
+        else:
+            self._widget.hideROI()
+
+        self._widget.updateDisplayState(enabled)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
 
     def run(self):
         if not self.running:
@@ -198,7 +185,7 @@ class BeadController(ImConWidgetController):
             self.thread.wait()
 
     def update(self):
-        self._widget.img.setImage(np.resize(self.recIm, self.dims + 1), autoLevels=False)
+        self._widget.updateImage(np.resize(self.recIm, self.dims + 1))
 
 
 class BeadWorker(Worker):
@@ -219,8 +206,9 @@ class BeadWorker(Worker):
             newImages, _ = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
             n = len(newImages)
             if n > 0:
-                pos = self.__controller._widget.ROI.pos()
-                size = self.__controller._widget.ROI.size()
+                roiItem = self.__controller._widget.getROIGraphicsItem()
+                pos = roiItem.pos()
+                size = roiItem.size()
 
                 x0 = int(pos[0])
                 y0 = int(pos[1])

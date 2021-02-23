@@ -20,37 +20,25 @@ class ULensesController(ImConWidgetController):
         self.addPlot()
 
         # Connect ULensesWidget signals
-        self._widget.ulensesButton.clicked.connect(self.updateGrid)
-        self._widget.ulensesCheck.stateChanged.connect(self.show)
+        self._widget.sigULensesClicked.connect(self.updateGrid)
+        self._widget.sigUShowLensesChanged.connect(self.toggleULenses)
 
     def addPlot(self):
         """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.ulensesPlot)
+        self._commChannel.addItemTovb.emit(self._widget.getPlotGraphicsItem())
 
     def updateGrid(self):
         """ Updates plot with new parameters. """
-        self.getParameters()
+        x, y, px, up = self._widget.getParameters()
         size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
-        pattern_x = np.arange(self.x, size_x, self.up / self.px)
-        pattern_y = np.arange(self.y, size_y, self.up / self.px)
+        pattern_x = np.arange(x, size_x, up / px)
+        pattern_y = np.arange(y, size_y, up / px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
-        self._widget.ulensesPlot.setData(x=grid[:, 0], y=grid[:, 1],
-                                         pen=pg.mkPen(None), brush='r', symbol='x')
-        if self._widget.ulensesCheck.isChecked(): self._widget.show()
+        self._widget.setData(x=grid[:, 0], y=grid[:, 1])
 
-    def show(self):
+    def toggleULenses(self, show):
         """ Shows or hides grid. """
-        if self._widget.ulensesCheck.isChecked():
-            self._widget.ulensesPlot.show()
-        else:
-            self._widget.ulensesPlot.hide()
-
-    def getParameters(self):
-        """ Update new parameters from graphical elements in the widget."""
-        self.x = np.float(self._widget.xEdit.text())
-        self.y = np.float(self._widget.yEdit.text())
-        self.px = np.float(self._widget.pxEdit.text())
-        self.up = np.float(self._widget.upEdit.text())
+        self._widget.ulensesPlot.setVisible(show)
 
 
 class AlignXYController(LiveUpdatedController):
@@ -65,41 +53,37 @@ class AlignXYController(LiveUpdatedController):
         self._commChannel.updateImage.connect(self.update)
 
         # Connect AlignWidgetXY signals
-        self._widget.roiButton.clicked.connect(self.toggleROI)
-        self._widget.XButton.clicked.connect(lambda: self.setAxis(0))
-        self._widget.YButton.clicked.connect(lambda: self.setAxis(1))
+        self._widget.sigShowROIToggled.connect(self.toggleROI)
+        self._widget.sigAxisChanged.connect(self.setAxis)
 
     def update(self, im, init):
         """ Update with new detector frame. """
         if self.active:
             value = np.mean(
-                self._commChannel.getROIdata(im, self._widget.ROI),
+                self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem()),
                 self.axis
             )
-            self._widget.graph.updateGraph(value)
+            self._widget.updateGraph(value)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
 
-    def toggleROI(self):
+    def toggleROI(self, show):
         """ Show or hide ROI."""
-        if self._widget.roiButton.isChecked() is False:
-            self._widget.ROI.hide()
-            self.active = False
-            self._widget.roiButton.setText('Show ROI')
-        else:
+        if show:
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
 
-            self._widget.ROI.setPos(ROIpos)
-            self._widget.ROI.setSize(ROIsize)
-            self._widget.ROI.show()
-            self.active = True
-            self._widget.roiButton.setText('Hide ROI')
+            self._widget.showROI(ROIpos, ROIsize)
+        else:
+            self._widget.hideROI()
+
+        self.active = show
+        self._widget.updateDisplayState(show)
 
     def setAxis(self, axis):
         """ Setter for the axis (X or Y). """
@@ -117,39 +101,35 @@ class AlignAverageController(LiveUpdatedController):
         self._commChannel.updateImage.connect(self.update)
 
         # Connect AlignWidgetAverage signals
-        self._widget.roiButton.clicked.connect(self.toggleROI)
+        self._widget.sigShowROIToggled.connect(self.toggleROI)
 
     def update(self, im, init):
         """ Update with new detector frame. """
         if self.active:
             value = np.mean(
-                self._commChannel.getROIdata(im, self._widget.ROI)
+                self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem())
             )
-            self._widget.graph.updateGraph(value)
+            self._widget.updateGraph(value)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.ROI)
+        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
 
-    def toggleROI(self):
+    def toggleROI(self, show):
         """ Show or hide ROI."""
-        if self._widget.roiButton.isChecked() is False:
-            self._widget.ROI.hide()
-            self.active = False
-            self._widget.roiButton.setText('Show ROI')
-        else:
+        if show:
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
 
-            self._widget.ROI.setPos(ROIpos)
-            self._widget.ROI.setSize(ROIsize)
-            self._widget.ROI.show()
-            self._widget.ROI.show()
-            self.active = True
-            self._widget.roiButton.setText('Hide ROI')
+            self._widget.showROI(ROIpos, ROIsize)
+        else:
+            self._widget.hideROI()
+
+        self.active = show
+        self._widget.updateDisplayState(show)
 
 
 class AlignmentLineController(ImConWidgetController):
@@ -160,8 +140,8 @@ class AlignmentLineController(ImConWidgetController):
         self.addLine()
 
         # Connect AlignmentLineWidget signals
-        self._widget.alignmentLineMakerButton.clicked.connect(self.updateLine)
-        self._widget.alignmentCheck.stateChanged.connect(self.show)
+        self._widget.sigAlignmentLineMakeClicked.connect(self.updateLine)
+        self._widget.sigAlignmentCheckToggled.connect(self.show)
 
     def addLine(self):
         """ Adds alignmentLine to ImageWidget viewbox through the CommunicationChannel. """
@@ -169,13 +149,11 @@ class AlignmentLineController(ImConWidgetController):
 
     def updateLine(self):
         """ Updates line with new parameters. """
-        self._widget.angle = np.float(self._widget.angleEdit.text())
-        self._widget.alignmentLine.setAngle(self._widget.angle)
-        self.show()
+        self._widget.setLineAngle(self._widget.getAngleInput())
 
-    def show(self):
+    def show(self, enabled):
         """ Shows or hides line. """
-        if self._widget.alignmentCheck.isChecked():
+        if enabled:
             self._widget.alignmentLine.show()
         else:
             self._widget.alignmentLine.hide()
@@ -184,7 +162,7 @@ class AlignmentLineController(ImConWidgetController):
 class FFTController(LiveUpdatedController):
     """ Linked to FFTWidget."""
 
-    imageReceived = Signal()
+    sigImageReceived = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -198,34 +176,34 @@ class FFTController(LiveUpdatedController):
         self.imageComputationWorker.fftImageComputed.connect(self.displayImage)
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        self.imageReceived.connect(self.imageComputationWorker.computeFFTImage)
+        self.sigImageReceived.connect(self.imageComputationWorker.computeFFTImage)
         self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
         self._commChannel.updateImage.connect(self.update)
 
         # Connect FFTWidget signals
-        self._widget.showCheck.stateChanged.connect(self.showFFT)
-        self._widget.changePosButton.clicked.connect(self.changePos)
-        self._widget.linePos.textChanged.connect(self.changePos)
-        self._widget.lineRate.textChanged.connect(self.changeRate)
-        self._widget.vb.sigResized.connect(self.adjustFrame)
+        self._widget.sigShowToggled.connect(self.showFFT)
+        self._widget.sigChangePosClicked.connect(self.changePos)
+        self._widget.sigPosChanged.connect(self.changePos)
+        self._widget.sigUpdateRateChanged.connect(self.changeRate)
+        self._widget.sigResized.connect(self.adjustFrame)
 
-        self.changeRate()
-        self.showFFT()
+        self.changeRate(self._widget.getUpdateRate())
+        self.showFFT(self._widget.getShowChecked())
 
-    def showFFT(self):
+    def showFFT(self, enabled):
         """ Show or hide FFT. """
-        self.active = self._widget.showCheck.isChecked()
+        self.active = enabled
         self.init = False
-        self._widget.img.setOnlyRenderVisible(self.active, render=False)
+        self._widget.img.setOnlyRenderVisible(enabled, render=False)
 
     def update(self, im, init):
         """ Update with new detector frame. """
         if self.active and (self.it == self.updateRate):
             self.it = 0
             self.imageComputationWorker.prepareForNewImage(im)
-            self.imageReceived.emit()
+            self.sigImageReceived.emit()
         elif self.active and (not (self.it == self.updateRate)):
             self.it += 1
 
@@ -247,14 +225,13 @@ class FFTController(LiveUpdatedController):
 
         guitools.setBestImageLimits(self._widget.vb, width, height)
 
-    def changeRate(self):
+    def changeRate(self, updateRate):
         """ Change update rate. """
-        self.updateRate = float(self._widget.lineRate.text())
+        self.updateRate = updateRate
         self.it = 0
 
-    def changePos(self):
+    def changePos(self, pos):
         """ Change positions of lines.  """
-        pos = float(self._widget.linePos.text())
         if (pos == self.show) or pos == 0:
             self._widget.vline.hide()
             self._widget.hline.hide()

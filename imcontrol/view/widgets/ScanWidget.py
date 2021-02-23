@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 17:08:54 2020
-
-@author: _Xavi
-"""
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
 
-import imcontrol.view.guitools as guitools
+from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
 

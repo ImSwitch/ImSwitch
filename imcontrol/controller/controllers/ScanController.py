@@ -1,17 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar 22 10:40:53 2020
-
-@author: _Xavi
-"""
 import configparser
 import os
 
 import numpy as np
-from pyqtgraph.Qt import QtGui
+from PyQt5 import QtGui
 
-import imcontrol.view.guitools as guitools
 import constants
+from imcontrol.view import guitools as guitools
 from .basecontrollers import SuperScanController
 
 

@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -17,23 +17,23 @@ class ULensesWidget(Widget):
 
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
-        self.ulensesCheck = QtGui.QCheckBox('Show uLenses')
-        self.xEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.xOffset)
-        self.yEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.yOffset)
-        self.pxEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.pixelSize)
-        self.upEdit = QtGui.QLineEdit(self._defaultPreset.uLenses.periodicity)
+        self.ulensesCheck = QtWidgets.QCheckBox('Show uLenses')
+        self.xEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.xOffset)
+        self.yEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.yOffset)
+        self.pxEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.pixelSize)
+        self.upEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.periodicity)
         self.ulensesPlot = pg.ScatterPlotItem()
 
         # Add elements to GridLayout
-        ulensesLayout = QtGui.QGridLayout()
+        ulensesLayout = QtWidgets.QGridLayout()
         self.setLayout(ulensesLayout)
-        ulensesLayout.addWidget(QtGui.QLabel('Pixel Size'), 0, 0)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Pixel Size'), 0, 0)
         ulensesLayout.addWidget(self.pxEdit, 0, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('Periodicity'), 1, 0)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Periodicity'), 1, 0)
         ulensesLayout.addWidget(self.upEdit, 1, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('X offset'), 2, 0)
+        ulensesLayout.addWidget(QtWidgets.QLabel('X offset'), 2, 0)
         ulensesLayout.addWidget(self.xEdit, 2, 1)
-        ulensesLayout.addWidget(QtGui.QLabel('Y offset'), 3, 0)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Y offset'), 3, 0)
         ulensesLayout.addWidget(self.yEdit, 3, 1)
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
         ulensesLayout.addWidget(self.ulensesCheck, 4, 1)

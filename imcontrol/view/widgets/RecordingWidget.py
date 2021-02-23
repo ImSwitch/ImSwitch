@@ -1,7 +1,7 @@
 import os
 import time
 
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -27,11 +27,11 @@ class RecordingWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        recTitle = QtGui.QLabel('<h2><strong>Recording settings</strong></h2>')
+        recTitle = QtWidgets.QLabel('<h2><strong>Recording settings</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
         # Detector list
-        self.detectorList = QtGui.QComboBox()
+        self.detectorList = QtWidgets.QComboBox()
 
         # Folder and filename fields
         baseOutputFolder = self._defaultPreset.recording.outputFolder
@@ -40,72 +40,72 @@ class RecordingWidget(Widget):
         else:
             self.initialDir = baseOutputFolder
 
-        self.folderEdit = QtGui.QLineEdit(self.initialDir)
+        self.folderEdit = QtWidgets.QLineEdit(self.initialDir)
         self.openFolderButton = guitools.BetterPushButton('Open')
-        self.specifyfile = QtGui.QCheckBox('Specify file name')
-        self.filenameEdit = QtGui.QLineEdit('Current time')
+        self.specifyfile = QtWidgets.QCheckBox('Specify file name')
+        self.filenameEdit = QtWidgets.QLineEdit('Current time')
 
         # Snap and recording buttons
         self.snapTIFFButton = guitools.BetterPushButton('Snap')
         self.snapTIFFButton.setStyleSheet("font-size:16px")
-        self.snapTIFFButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                          QtGui.QSizePolicy.Expanding)
+        self.snapTIFFButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                          QtWidgets.QSizePolicy.Expanding)
         self.recButton = guitools.BetterPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
         self.recButton.setCheckable(True)
-        self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                     QtGui.QSizePolicy.Expanding)
+        self.recButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                     QtWidgets.QSizePolicy.Expanding)
         # Number of frames and measurement timing
-        modeTitle = QtGui.QLabel('<strong>Recording mode</strong>')
+        modeTitle = QtWidgets.QLabel('<strong>Recording mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
-        self.specifyFrames = QtGui.QRadioButton('Number of frames')
-        self.specifyTime = QtGui.QRadioButton('Time (s)')
-        self.recScanOnceBtn = QtGui.QRadioButton('Scan once')
-        self.recScanLapseBtn = QtGui.QRadioButton('Time-lapse scan')
-        self.currentLapse = QtGui.QLabel('0 / ')
-        self.timeLapseEdit = QtGui.QLineEdit('5')
-        self.freqLabel = QtGui.QLabel('Freq [s]')
-        self.freqEdit = QtGui.QLineEdit('0')
-        self.dimLapse = QtGui.QRadioButton('3D-lapse')
-        self.currentSlice = QtGui.QLabel('0 / ')
-        self.totalSlices = QtGui.QLineEdit('5')
-        self.stepSizeLabel = QtGui.QLabel('Step size [um]')
-        self.stepSizeEdit = QtGui.QLineEdit('0.05')
-        self.untilSTOPbtn = QtGui.QRadioButton('Run until STOP')
-        self.timeToRec = QtGui.QLineEdit('1')
-        self.currentTime = QtGui.QLabel('0 / ')
+        self.specifyFrames = QtWidgets.QRadioButton('Number of frames')
+        self.specifyTime = QtWidgets.QRadioButton('Time (s)')
+        self.recScanOnceBtn = QtWidgets.QRadioButton('Scan once')
+        self.recScanLapseBtn = QtWidgets.QRadioButton('Time-lapse scan')
+        self.currentLapse = QtWidgets.QLabel('0 / ')
+        self.timeLapseEdit = QtWidgets.QLineEdit('5')
+        self.freqLabel = QtWidgets.QLabel('Freq [s]')
+        self.freqEdit = QtWidgets.QLineEdit('0')
+        self.dimLapse = QtWidgets.QRadioButton('3D-lapse')
+        self.currentSlice = QtWidgets.QLabel('0 / ')
+        self.totalSlices = QtWidgets.QLineEdit('5')
+        self.stepSizeLabel = QtWidgets.QLabel('Step size [um]')
+        self.stepSizeEdit = QtWidgets.QLineEdit('0.05')
+        self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
+        self.timeToRec = QtWidgets.QLineEdit('1')
+        self.currentTime = QtWidgets.QLabel('0 / ')
         self.currentTime.setAlignment((QtCore.Qt.AlignRight |
                                        QtCore.Qt.AlignVCenter))
-        self.currentFrame = QtGui.QLabel('0 /')
+        self.currentFrame = QtWidgets.QLabel('0 /')
         self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
                                         QtCore.Qt.AlignVCenter))
-        self.numExpositionsEdit = QtGui.QLineEdit('100')
-        self.tRemaining = QtGui.QLabel()
+        self.numExpositionsEdit = QtWidgets.QLineEdit('100')
+        self.tRemaining = QtWidgets.QLabel()
         self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
                                       QtCore.Qt.AlignVCenter))
 
-        self.saveModeLabel = QtGui.QLabel('<strong>Save mode:</strong>')
-        self.saveModeList = QtGui.QComboBox()
+        self.saveModeLabel = QtWidgets.QLabel('<strong>Save mode:</strong>')
+        self.saveModeList = QtWidgets.QComboBox()
         self.saveModeList.addItems(['Save on disk',
                                     'Save in memory for reconstruction',
                                     'Save on disk and keep in memory'])
 
         # Add items to GridLayout
-        buttonWidget = QtGui.QWidget()
-        buttonGrid = QtGui.QGridLayout()
+        buttonWidget = QtWidgets.QWidget()
+        buttonGrid = QtWidgets.QGridLayout()
         buttonWidget.setLayout(buttonGrid)
         buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
-        buttonWidget.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                   QtGui.QSizePolicy.Expanding)
+        buttonWidget.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                   QtWidgets.QSizePolicy.Expanding)
         buttonGrid.addWidget(self.recButton, 0, 2)
 
-        recGrid = QtGui.QGridLayout()
+        recGrid = QtWidgets.QGridLayout()
         self.setLayout(recGrid)
 
         recGrid.addWidget(recTitle, 0, 0, 1, 3)
-        recGrid.addWidget(QtGui.QLabel('Detector to capture'), 1, 0)
+        recGrid.addWidget(QtWidgets.QLabel('Detector to capture'), 1, 0)
         recGrid.addWidget(self.detectorList, 1, 1, 1, 4)
-        recGrid.addWidget(QtGui.QLabel('Folder'), 2, 0)
+        recGrid.addWidget(QtWidgets.QLabel('Folder'), 2, 0)
         recGrid.addWidget(self.folderEdit, 2, 1, 1, 3)
         recGrid.addWidget(self.openFolderButton, 2, 4)
         recGrid.addWidget(self.filenameEdit, 3, 1, 1, 3)

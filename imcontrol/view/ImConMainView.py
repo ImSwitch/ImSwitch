@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph.console import ConsoleWidget
 from pyqtgraph.dockarea import Dock, DockArea
 
@@ -16,7 +16,7 @@ import constants
 from . import guitools, widgets
 
 
-class ImConMainView(QtGui.QMainWindow):
+class ImConMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
 
     def __init__(self, viewSetupInfo, *args, **kwargs):
@@ -43,19 +43,19 @@ class ImConMainView(QtGui.QMainWindow):
         # Window
         self.setWindowTitle('ImSwitch')
 
-        self.cwidget = QtGui.QWidget()
-        layout = QtGui.QHBoxLayout()
+        self.cwidget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout()
         self.cwidget.setLayout(layout)
         self.setCentralWidget(self.cwidget)
 
         # Presets
-        #self.presetsMenu = QtGui.QComboBox()
+        #self.presetsMenu = QtWidgets.QComboBox()
 
         #for preset in sorted(os.listdir(self.presetDir)):
         #    self.presetsMenu.addItem(preset)
         self.loadPresetButton = guitools.BetterPushButton('Load preset')
 
-        #presetPickerContainer = QtGui.QHBoxLayout()
+        #presetPickerContainer = QtWidgets.QHBoxLayout()
         #presetPickerContainer.addWidget(self.presetsMenu, 1)
         #presetPickerContainer.addWidget(self.loadPresetButton)
         #imageViewContainer.addLayout(presetPickerContainer)
@@ -139,7 +139,7 @@ class ImConMainView(QtGui.QMainWindow):
         self.recordingWidget = self.factory.createWidget(widgets.RecordingWidget)
 
         # Image controls container
-        imageControlsContainer = QtGui.QVBoxLayout()
+        imageControlsContainer = QtWidgets.QVBoxLayout()
         imageControlsContainer.setContentsMargins(0, 9, 0, 0)
 
         self.settingsWidget = self.factory.createWidget(widgets.SettingsWidget)
@@ -148,7 +148,7 @@ class ImConMainView(QtGui.QMainWindow):
         self.viewWidget = self.factory.createWidget(widgets.ViewWidget)
         imageControlsContainer.addWidget(self.viewWidget)
 
-        imageControlsContainerWidget = QtGui.QWidget()
+        imageControlsContainerWidget = QtWidgets.QWidget()
         imageControlsContainerWidget.setLayout(imageControlsContainer)
 
         # Console

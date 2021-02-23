@@ -5,7 +5,7 @@ Created on Fri Mar 20 17:08:54 2020
 @author: _Xavi
 """
 import weakref
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtWidgets
 
 
 class WidgetFactory:
@@ -26,7 +26,7 @@ class WidgetFactory:
         return widget
 
 
-class Widget(QtGui.QWidget):
+class Widget(QtWidgets.QWidget):
     """ Superclass for all Widgets. All Widgets are subclasses of QWidget. """
 
     def __init__(self, defaultPreset, *args, **kwargs):

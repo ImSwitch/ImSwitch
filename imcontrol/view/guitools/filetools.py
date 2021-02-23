@@ -11,7 +11,7 @@ import os
 from ast import literal_eval
 
 from lantz import Q_
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtWidgets
 
 
 # Check for same name conflict
@@ -46,13 +46,13 @@ def insertSuffix(filename, suffix, newExt=None):
 def getFilenames(title, filetypes):
     filter = ';;'.join(['{name} ({extension})' for name, extension in filetypes])
 
-    files, _ = QtGui.QFileDialog.getOpenFileNames(caption=title, filter=filter)
+    files, _ = QtWidgets.QFileDialog.getOpenFileNames(caption=title, filter=filter)
     return files
 
 
 def savePreset(main, filename=None):
     if filename is None:
-        filename, okClicked = QtGui.QInputDialog.getText(None, 'Save preset',
+        filename, okClicked = QtWidgets.QInputDialog.getText(None, 'Save preset',
                                                          'Save config file as...')
 
         if not okClicked:

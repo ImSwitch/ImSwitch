@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 
@@ -17,9 +17,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         # Graphical elements
         self.levelsButton = guitools.BetterPushButton('Update Levels')
         self.levelsButton.setEnabled(False)
-        self.levelsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                        QtGui.QSizePolicy.Expanding)
-        proxy = QtGui.QGraphicsProxyWidget()
+        self.levelsButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                        QtWidgets.QSizePolicy.Expanding)
+        proxy = QtWidgets.QGraphicsProxyWidget()
         proxy.setWidget(self.levelsButton)
         self.addItem(proxy, row=0, col=2)
 

@@ -17,14 +17,14 @@ class ImageController(LiveUpdatedController):
         self._savedLevels = {}
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
-        self._commChannel.acquisitionStopped.connect(self.acquisitionStopped)
-        self._commChannel.adjustFrame.connect(self.adjustFrame)
-        self._commChannel.gridToggle.connect(self.gridToggle)
-        self._commChannel.crosshairToggle.connect(self.crosshairToggle)
-        self._commChannel.addItemTovb.connect(self.addItemTovb)
-        self._commChannel.removeItemFromvb.connect(self.removeItemFromvb)
-        self._commChannel.detectorSwitched.connect(self.restoreSavedLevels)
+        self._commChannel.sigUpdateImage.connect(self.update)
+        self._commChannel.sigAcquisitionStopped.connect(self.acquisitionStopped)
+        self._commChannel.sigAdjustFrame.connect(self.adjustFrame)
+        self._commChannel.sigGridToggled.connect(self.gridToggle)
+        self._commChannel.sigCrosshairToggled.connect(self.crosshairToggle)
+        self._commChannel.sigAddItemToVb.connect(self.addItemTovb)
+        self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromvb)
+        self._commChannel.sigDetectorSwitched.connect(self.restoreSavedLevels)
 
         # Connect ImageWidget signals
         self._widget.sigResized.connect(lambda: self.adjustFrame(self._lastWidth, self._lastHeight))

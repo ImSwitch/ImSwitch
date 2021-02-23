@@ -17,7 +17,7 @@ from . import guitools, widgets
 
 
 class ImConMainView(QtGui.QMainWindow):
-    closing = QtCore.Signal()
+    sigClosing = QtCore.Signal()
 
     def __init__(self, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -189,7 +189,7 @@ class ImConMainView(QtGui.QMainWindow):
             self.showNormal()
 
     def closeEvent(self, event):
-        self.closing.emit()
+        self.sigClosing.emit()
         event.accept()
 
     def _catchingSetVisible(self, widget, visible):

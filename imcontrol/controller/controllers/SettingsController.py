@@ -49,14 +49,14 @@ class SettingsController(ImConWidgetController):
         execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)))
 
         # Connect CommunicationChannel signals
-        self._commChannel.detectorSwitched.connect(self.detectorSwitched)
+        self._commChannel.sigDetectorSwitched.connect(self.detectorSwitched)
 
         # Connect SettingsWidget signals
         self._widget.sigROIChanged.connect(self.ROIchanged)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
+        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
 
     def toggleROI(self, b):
         """ Show or hide ROI. """
@@ -144,7 +144,7 @@ class SettingsController(ImConWidgetController):
         # Final shape values might differ from the user-specified one because of detector limitation x128
         width, height = detector.shape
         if detector.name == self._master.detectorsManager.getCurrentDetectorName():
-            self._commChannel.adjustFrame.emit(width, height)
+            self._commChannel.sigAdjustFrame.emit(width, height)
             self._widget.hideROI()
 
         self.updateParamsFromDetector(detector=detector)
@@ -357,7 +357,7 @@ class SettingsController(ImConWidgetController):
         """ Called when the user switches to another detector. """
         self._widget.setDisplayedDetector(newDetectorName)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
-        self._commChannel.adjustFrame.emit(*newDetectorShape)
+        self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
 
     def getCamAttrs(self):
         return self._master.detectorsManager.execOnAll(

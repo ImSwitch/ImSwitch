@@ -4,6 +4,7 @@ Created on Tue Mar 24 16:41:57 2020
 
 @author: _Xavi
 """
+from imcommon.model import DataItem
 from imcontrol.model import (
     DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
 )
@@ -39,4 +40,9 @@ class MasterController:
         self.recordingManager.recordingEnded.connect(self.__commChannel.endRecording)
         self.recordingManager.recordingFrameNumUpdated.connect(self.__commChannel.updateRecFrameNum)
         self.recordingManager.recordingTimeUpdated.connect(self.__commChannel.updateRecTime)
-        self.recordingManager.memoryRecordingAvailable.connect(self.__moduleCommChannel.sigMemoryRecordingAvailable)
+        self.recordingManager.memoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+
+    def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
+        self.__moduleCommChannel.memoryRecordings[name] = DataItem(
+            data=file, filePath=filePath, savedToDisk=savedToDisk
+        )

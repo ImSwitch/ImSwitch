@@ -1,0 +1,65 @@
+from dataclasses import dataclass
+from io import IOBase
+from typing import Union
+
+import h5py
+from h5py import h5f, h5p
+
+from imcommon.framework import Signal, SignalInterface
+
+
+@dataclass
+class DataItem:
+    data: Union[IOBase, h5py.File]
+    filePath: str
+    savedToDisk: bool
+
+
+class DataCollection(SignalInterface):
+    """ TODO. Collection of virtual files. File-like objects. """
+
+    sigDataSet = Signal(str, DataItem)  # (name, dataItem)
+    sigDataSavedToDisk = Signal(str, str)  # (name, filePath)
+    sigDataWillRemove = Signal(str)  # (name)
+    sigDataRemoved = Signal(str)  # (name)
+
+    def __init__(self):
+        super().__init__()
+        self._data = {}
+
+    def saveToDisk(self, name):
+        filePath = self._data[name].filePath
+
+        if isinstance(self._data[name].data, IOBase):
+            with open(filePath, 'wb') as file:
+                file.write(self._data[name].data.getbuffer())
+        elif isinstance(self._data[name].data, h5py.File):
+            # TODO: This seems to create files with incorrect headers
+            with open(filePath, 'wb') as file:
+                file.write(self._data[name].data.id.get_file_image())
+        else:
+            raise TypeError(f'Data has unsupported type "{type(self._data[name].data).__name__}"')
+
+        self.sigDataSavedToDisk.emit(name, filePath)
+
+    def __getitem__(self, name):
+        return self._data[name]
+
+    def __setitem__(self, name, value):
+        if not isinstance(value, DataItem):
+            raise TypeError('Value must be a DataItem')
+
+        self._data[name] = value
+        self.sigDataSet.emit(name, value)
+
+    def __delitem__(self, name):
+        self.sigDataWillRemove.emit(name)
+        self._data[name].data.close()
+        del self._data[name]
+        self.sigDataRemoved.emit(name)
+
+    def __contains__(self, name):
+        return name in self._data
+
+    def __iter__(self):
+        yield from self._data.items()

@@ -10,6 +10,10 @@ class MultiDataFrame(QtWidgets.QFrame):
     sigLoadAllDataClicked = QtCore.Signal()
     sigUnloadCurrentDataClicked = QtCore.Signal()
     sigUnloadAllDataClicked = QtCore.Signal()
+    sigDeleteCurrentDataClicked = QtCore.Signal()
+    sigDeleteAllDataClicked = QtCore.Signal()
+    sigSaveCurrentDataClicked = QtCore.Signal()
+    sigSaveAllDataClicked = QtCore.Signal()
     sigSetAsCurrentDataClicked = QtCore.Signal()
     sigSelectedItemChanged = QtCore.Signal()
 
@@ -26,23 +30,27 @@ class MultiDataFrame(QtWidgets.QFrame):
         self.dataLoadedStatus = QtWidgets.QLabel()
         self.dataLoadedStatus.setAlignment(QtCore.Qt.AlignTop)
 
-        setDataBtn = BetterPushButton('Set as current data')
-        setDataBtn.clicked.connect(self.sigSetAsCurrentDataClicked)
-        addDataBtn = BetterPushButton('Add data')
-        addDataBtn.clicked.connect(self.sigAddDataClicked)
-        loadCurrDataBtn = BetterPushButton('Load chosen data')
-        loadCurrDataBtn.clicked.connect(self.sigLoadCurrentDataClicked)
-        loadAllDataBtn = BetterPushButton('Load all data')
-        loadAllDataBtn.clicked.connect(self.sigLoadAllDataClicked)
+        self.setDataBtn = BetterPushButton('Set as current data')
+        self.setDataBtn.clicked.connect(self.sigSetAsCurrentDataClicked)
+        self.addDataBtn = BetterPushButton('Add data')
+        self.addDataBtn.clicked.connect(self.sigAddDataClicked)
+        self.loadCurrDataBtn = BetterPushButton('Load selected data')
+        self.loadCurrDataBtn.clicked.connect(self.sigLoadCurrentDataClicked)
+        self.loadAllDataBtn = BetterPushButton('Load all data')
+        self.loadAllDataBtn.clicked.connect(self.sigLoadAllDataClicked)
 
-        delDataBtn = BetterPushButton('Delete')
-        delDataBtn.clicked.connect(self.delData)
-        unloadDataBtn = BetterPushButton('Unload')
-        unloadDataBtn.clicked.connect(self.sigUnloadCurrentDataClicked)
-        delAllDataBtn = BetterPushButton('Delete all')
-        delAllDataBtn.clicked.connect(self.delAllData)
-        unloadAllDataBtn = BetterPushButton('Unload all')
-        unloadAllDataBtn.clicked.connect(self.sigUnloadAllDataClicked)
+        self.delDataBtn = BetterPushButton('Remove')
+        self.delDataBtn.clicked.connect(self.sigDeleteCurrentDataClicked)
+        self.unloadDataBtn = BetterPushButton('Unload')
+        self.unloadDataBtn.clicked.connect(self.sigUnloadCurrentDataClicked)
+        self.delAllDataBtn = BetterPushButton('Remove all')
+        self.delAllDataBtn.clicked.connect(self.sigDeleteAllDataClicked)
+        self.unloadAllDataBtn = BetterPushButton('Unload all')
+        self.unloadAllDataBtn.clicked.connect(self.sigUnloadAllDataClicked)
+        self.saveDataBtn = BetterPushButton('Save selected data')
+        self.saveDataBtn.clicked.connect(self.sigSaveCurrentDataClicked)
+        self.saveAllDataBtn = BetterPushButton('Save all')
+        self.saveAllDataBtn.clicked.connect(self.sigSaveAllDataClicked)
 
         ramUsageLabel = QtWidgets.QLabel('Current RAM usage')
 
@@ -56,25 +64,59 @@ class MultiDataFrame(QtWidgets.QFrame):
         layout.addWidget(self.dataList, 0, 0, 4, 1)
         layout.addWidget(dataLoadedLabel, 0, 1)
         layout.addWidget(self.dataLoadedStatus, 0, 2)
-        layout.addWidget(addDataBtn, 1, 1)
-        layout.addWidget(loadCurrDataBtn, 2, 1)
-        layout.addWidget(loadAllDataBtn, 3, 1)
-        layout.addWidget(setDataBtn, 4, 1)
-        layout.addWidget(delDataBtn, 1, 2)
-        layout.addWidget(unloadDataBtn, 2, 2)
-        layout.addWidget(delAllDataBtn, 3, 2)
-        layout.addWidget(unloadAllDataBtn, 4, 2)
+        layout.addWidget(self.addDataBtn, 1, 1)
+        layout.addWidget(self.loadCurrDataBtn, 2, 1)
+        layout.addWidget(self.loadAllDataBtn, 3, 1)
+        layout.addWidget(self.setDataBtn, 4, 1)
+        layout.addWidget(self.delDataBtn, 1, 2)
+        layout.addWidget(self.unloadDataBtn, 2, 2)
+        layout.addWidget(self.delAllDataBtn, 3, 2)
+        layout.addWidget(self.unloadAllDataBtn, 4, 2)
+        layout.addWidget(self.saveDataBtn, 5, 1)
+        layout.addWidget(self.saveAllDataBtn, 5, 2)
+        layout.addWidget(self.unloadAllDataBtn, 4, 2)
         layout.addWidget(ramUsageLabel, 4, 0)
         layout.addWidget(self.memBar, 5, 0)
 
     def requestFilePathsFromUser(self, defaultFolder=None):
         return QtWidgets.QFileDialog().getOpenFileNames(directory=defaultFolder)[0]
 
-    def addDataObj(self, dataObj):
-        listItem = QtWidgets.QListWidgetItem('Data: ' + dataObj.name)
+    def requestDeleteSelectedConfirmation(self):
+        result = QtWidgets.QMessageBox.question(
+            self, 'Remove selected?', 'Remove the selected item?',
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        return result == QtWidgets.QMessageBox.Yes
+
+    def requestDeleteAllConfirmation(self):
+        result = QtWidgets.QMessageBox.question(
+            self, 'Remove all?', 'Remove all items?',
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        return result == QtWidgets.QMessageBox.Yes
+
+    def addDataObj(self, name, dataObj):
+        listItem = QtWidgets.QListWidgetItem(f'Data: {name}')
         listItem.setData(1, dataObj)
+        listItem.setData(3, name)
         self.dataList.addItem(listItem)
         self.dataList.setCurrentItem(listItem)
+
+    def getDataObjByName(self, name):
+        for i in range(self.dataList.count()):
+            if self.dataList.item(i).data(3) == name:
+                return self.dataList.item(i).data(1)
+
+        return None
+
+    def setDataObjMemoryFlag(self, name, inMemory):
+        for i in range(self.dataList.count()):
+            if self.dataList.item(i).data(3) == name:
+                dataObj = self.dataList.item(i).data(1)
+                itemName = f'Data: {dataObj.name}'
+                if inMemory:
+                    itemName += ' (MEMORY)'
+                self.dataList.item(i).setText(itemName)
 
     def getSelectedDataObj(self):
         currentItem = self.dataList.currentItem()
@@ -89,15 +131,10 @@ class MultiDataFrame(QtWidgets.QFrame):
         for i in range(self.dataList.count()):
             yield self.dataList.item(i).data(1)
 
-    def delData(self):
-        for _ in range(len(self.dataList.selectedIndexes())):
-            row = self.dataList.selectedIndexes()[0].row()
-            self.dataList.takeItem(row)
-
-    def delAllData(self):
-        for _ in range(self.dataList.count()):
-            currRow = self.dataList.currentRow()
-            self.dataList.takeItem(currRow)
+    def delDataByName(self, name):
+        for i in range(self.dataList.count()):
+            if self.dataList.item(i) is not None and self.dataList.item(i).data(3) == name:
+                self.dataList.takeItem(i)
 
     def setCurrentRowHighlighted(self, highlighted):
         self.dataList.currentItem().setBackground(
@@ -112,6 +149,36 @@ class MultiDataFrame(QtWidgets.QFrame):
 
     def setLoadedStatusText(self, text):
         self.dataLoadedStatus.setText(text)
+
+    def setAddButtonEnabled(self, value):
+        self.addDataBtn.setEnabled(value)
+
+    def setSetCurrentButtonEnabled(self, value):
+        self.setDataBtn.setEnabled(value)
+
+    def setLoadButtonEnabled(self, value):
+        self.loadCurrDataBtn.setEnabled(value)
+
+    def setLoadAllButtonEnabled(self, value):
+        self.loadAllDataBtn.setEnabled(value)
+
+    def setUnloadButtonEnabled(self, value):
+        self.unloadDataBtn.setEnabled(value)
+
+    def setUnloadAllButtonEnabled(self, value):
+        self.unloadAllDataBtn.setEnabled(value)
+
+    def setDeleteButtonEnabled(self, value):
+        self.delDataBtn.setEnabled(value)
+
+    def setDeleteAllButtonEnabled(self, value):
+        self.delAllDataBtn.setEnabled(value)
+
+    def setSaveButtonEnabled(self, value):
+        self.saveDataBtn.setEnabled(value)
+
+    def setSaveAllButtonEnabled(self, value):
+        self.saveAllDataBtn.setEnabled(value)
 
     def updateMemBar(self, percentUsed):
         self.memBar.setValue(percentUsed)

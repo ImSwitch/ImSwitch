@@ -7,6 +7,7 @@ Created on Tue Apr 14 15:17:52 2020
 import enum
 import os
 import time
+from io import BytesIO
 
 import h5py
 import numpy as np
@@ -18,7 +19,7 @@ class RecordingManager(SignalInterface):
     recordingEnded = Signal()
     recordingFrameNumUpdated = Signal(int)  # (frameNumber)
     recordingTimeUpdated = Signal(int)  # (recTime)
-    memoryRecordingAvailable = Signal(str, object, np.ndarray, dict)  # (name, Optional[filePath], data, attrs)
+    memoryRecordingAvailable = Signal(str, object, object, bool)  # (name, file, filePath, savedToDisk)
 
     def __init__(self, detectorsManager):
         super().__init__()
@@ -37,7 +38,7 @@ class RecordingManager(SignalInterface):
     def detectorsManager(self):
         return self.__detectorsManager
 
-    def startRecording(self, detectorNames, recMode, savename, keepInMemory, attrs,
+    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
                        recFrames=None, recTime=None):
         self.__record = True    
         self.__recordingWorker.detectorNames = detectorNames
@@ -46,7 +47,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
-        self.__recordingWorker.keepInMemory = keepInMemory
+        self.__recordingWorker.saveMode = saveMode
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers())
         self.__thread.start()
 
@@ -59,7 +60,7 @@ class RecordingManager(SignalInterface):
     
     def snap(self, detectorNames, savename, attrs):
         for detectorName in detectorNames:
-            file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w', track_order=True)
+            file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 
             shape = self.__detectorsManager[detectorName].shape
             dataset = file.create_dataset('data', (shape[0], shape[1]), dtype='i2')
@@ -77,8 +78,13 @@ class RecordingWorker(Worker):
         self.__recordingManager = recordingManager
 
     def run(self):
-        files = {detectorName: h5py.File(f'{self.savename}_{detectorName}.hdf5', 'w')
-                 for detectorName in self.detectorNames}
+        files = {}
+        fileHandles = {}
+        filePaths = {}
+        for detectorName in self.detectorNames:
+            filePaths[detectorName] = f'{self.savename}_{detectorName}.hdf5'
+            fileHandles[detectorName] = BytesIO() if self.saveMode == SaveMode.RAM else filePaths[detectorName]
+            files[detectorName] = h5py.File(fileHandles[detectorName], 'w')
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -89,8 +95,8 @@ class RecordingWorker(Worker):
             currentFrame[detectorName] = 0
 
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (1, shapes[detectorName][0], shapes[detectorName][1]),
-                maxshape=(None, shapes[detectorName][0], shapes[detectorName][1]),
+                'data', (1, *shapes[detectorName]),
+                maxshape=(None, *shapes[detectorName]),
                 dtype='i2'
             )
 
@@ -153,18 +159,19 @@ class RecordingWorker(Worker):
                             dataset[it:it + n, :, :] = newFrames
                             currentFrame[detectorName] += n
         finally:
-            if self.keepInMemory:
-                for detectorName in self.detectorNames:
-                    path = files[detectorName].filename
-                    name = os.path.basename(path)
-                    self.__recordingManager.memoryRecordingAvailable.emit(
-                        name,
-                        path,
-                        np.array(datasets[detectorName][:]),
-                        dict(files[detectorName].attrs)
-                    )
-
-            [file.close() for file in files.values()]
+            for detectorName, file in files.items():
+                if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
+                    filePath = filePaths[detectorName]
+                    name = os.path.basename(filePath)
+                    if self.saveMode == SaveMode.RAM:
+                        file.close()
+                        self.__recordingManager.memoryRecordingAvailable.emit(
+                            name, fileHandles[detectorName], filePath, False
+                        )
+                    else:
+                        self.__recordingManager.memoryRecordingAvailable.emit(name, file, filePath, True)
+                else:
+                    file.close()
 
 
 class RecMode(enum.Enum):
@@ -174,3 +181,9 @@ class RecMode(enum.Enum):
     ScanLapse = 4
     DimLapse = 5
     UntilStop = 6
+
+
+class SaveMode(enum.Enum):
+    Disk = 1
+    RAM = 2
+    DiskAndRAM = 3

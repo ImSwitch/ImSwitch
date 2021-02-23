@@ -1,4 +1,7 @@
 import os
+from io import BytesIO
+
+import h5py
 import psutil
 
 import numpy as np
@@ -15,7 +18,9 @@ class MultiDataFrameController(ImRecWidgetController):
         self._loadingData = False
         self._dataFolder = None
 
-        self._moduleCommChannel.sigMemoryRecordingAvailable.connect(self.makeAndAddDataObj)
+        self._moduleCommChannel.memoryRecordings.sigDataSet.connect(self.memoryDataSet)
+        self._moduleCommChannel.memoryRecordings.sigDataSavedToDisk.connect(self.memoryDataSavedToDisk)
+        self._moduleCommChannel.memoryRecordings.sigDataWillRemove.connect(self.memoryDataWillRemove)
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
 
@@ -24,13 +29,19 @@ class MultiDataFrameController(ImRecWidgetController):
         self._widget.sigLoadAllDataClicked.connect(self.loadAllData)
         self._widget.sigUnloadCurrentDataClicked.connect(self.unloadCurrData)
         self._widget.sigUnloadAllDataClicked.connect(self.unloadAllData)
+        self._widget.sigDeleteCurrentDataClicked.connect(self.deleteCurrData)
+        self._widget.sigDeleteAllDataClicked.connect(self.deleteAllData)
         self._widget.sigSetAsCurrentDataClicked.connect(self.setAsCurrentData)
+        self._widget.sigSaveCurrentDataClicked.connect(self.saveCurrData)
+        self._widget.sigSaveAllDataClicked.connect(self.saveAllData)
         self._widget.sigSelectedItemChanged.connect(self.updateInfo)
 
-        self.updateMemBar()
         self._updateMemBarTimer = Timer()
         self._updateMemBarTimer.timeout.connect(self.updateMemBar)
         self._updateMemBarTimer.start(1000)
+
+        self.updateMemBar()
+        self.updateInfo()
 
     def dataFolderChanged(self, dataFolder):
         self._dataFolder = dataFolder
@@ -39,8 +50,31 @@ class MultiDataFrameController(ImRecWidgetController):
         if not self._loadingData:
             self._widget.setAllRowsHighlighted(False)
 
-    def makeAndAddDataObj(self, name, path=None, data=None, attrs=None):
-        self._widget.addDataObj(DataObj(name, path=path, data=data, attrs=attrs))
+    def memoryDataSet(self, name, dataItem):
+        if isinstance(dataItem.data, BytesIO):
+            file = h5py.File(dataItem.data)
+        elif isinstance(dataItem.data, h5py.File):
+            file = dataItem.data
+        else:
+            raise TypeError(f'Data has unsupported type "{type(dataItem.data).__name__}"')
+
+        self.makeAndAddDataObj(
+            name, path=dataItem.filePath if dataItem.savedToDisk else None, file=file
+        )
+
+    def memoryDataSavedToDisk(self, name, filePath):
+        self._widget.getDataObjByName(name).dataPath = filePath
+        self._widget.setDataObjMemoryFlag(name, False)
+        self.updateInfo()
+
+    def memoryDataWillRemove(self, name):
+        self._widget.getDataObjByName(name).checkAndUnloadData()
+        self._widget.delDataByName(name)
+        self.updateInfo()
+
+    def makeAndAddDataObj(self, name, path=None, file=None):
+        self._widget.addDataObj(name, DataObj(name, path=path, file=file))
+        self._widget.setDataObjMemoryFlag(name, path is None)
         self.updateInfo()
 
     def addDataClicked(self):
@@ -60,26 +94,51 @@ class MultiDataFrameController(ImRecWidgetController):
 
     def unloadCurrData(self):
         for dataObj in self._widget.getSelectedDataObjs():
-            dataObj.checkAndUnloadData()
+            if dataObj.dataPath is not None:  # Don't allow unloading RAM-only data
+                dataObj.checkAndUnloadData()
         self.updateInfo()
 
     def unloadAllData(self):
         for dataObj in self._widget.getAllDataObjs():
-            dataObj.checkAndUnloadData()
+            if dataObj.dataPath is not None:  # Don't allow unloading RAM-only data
+                dataObj.checkAndUnloadData()
         self.updateInfo()
 
-    def delData(self):
-        numSelected = np.shape(self.dataList.selectedIndexes())[0]
-        while not numSelected == 0:
-            ind = self.dataList.selectedIndexes()[0]
-            row = ind.row()
-            self.dataList.takeItem(row)
-            numSelected -= 1
+    def deleteCurrData(self):
+        if not self._widget.requestDeleteSelectedConfirmation():
+            return
 
-    def delAllData(self):
-        for i in range(self.dataList.count()):
-            currRow = self.dataList.currentRow()
-            self.dataList.takeItem(currRow)
+        self.unloadCurrData()
+        for dataObj in list(self._widget.getSelectedDataObjs()):
+            if dataObj.name in self._moduleCommChannel.memoryRecordings:
+                del self._moduleCommChannel.memoryRecordings[dataObj.name]
+                # No need to call delDataByName, it will be called in memoryDataWillRemove
+            else:
+                self._widget.delDataByName(dataObj.name)
+        self.updateInfo()
+
+    def deleteAllData(self):
+        if not self._widget.requestDeleteAllConfirmation():
+            return
+
+        self.unloadAllData()
+        for dataObj in list(self._widget.getAllDataObjs()):
+            if dataObj.name in self._moduleCommChannel.memoryRecordings:
+                del self._moduleCommChannel.memoryRecordings[dataObj.name]
+                # No need to call delDataByName, it will be called in memoryDataWillRemove
+            else:
+                self._widget.delDataByName(dataObj.name)
+        self.updateInfo()
+
+    def saveCurrData(self):
+        for dataObj in self._widget.getSelectedDataObjs():
+            if dataObj.dataPath is None:  # Can't save data already on disk
+                self._moduleCommChannel.memoryRecordings.saveToDisk(dataObj.name)
+
+    def saveAllData(self):
+        for dataObj in self._widget.getAllDataObjs():
+            if dataObj.dataPath is None:  # Can't save data already on disk
+                self._moduleCommChannel.memoryRecordings.saveToDisk(dataObj.name)
 
     def setAsCurrentData(self):
         try:
@@ -103,6 +162,33 @@ class MultiDataFrameController(ImRecWidgetController):
                 self._widget.setLoadedStatusText('Yes')
             else:
                 self._widget.setLoadedStatusText('No')
+
+        self._widget.setLoadButtonEnabled(
+            selectedDataObj is not None and not selectedDataObj.dataLoaded
+        )
+        self._widget.setUnloadButtonEnabled(
+            selectedDataObj is not None and selectedDataObj.dataLoaded
+            and selectedDataObj.dataPath is not None
+        )
+        self._widget.setSaveButtonEnabled(
+            selectedDataObj is not None and selectedDataObj.dataPath is None
+        )
+        self._widget.setDeleteButtonEnabled(selectedDataObj is not None)
+        self._widget.setSetCurrentButtonEnabled(selectedDataObj is not None)
+
+        allDataObjs = list(self._widget.getAllDataObjs())
+        self._widget.setLoadAllButtonEnabled(
+            len(allDataObjs) > 0 and any([not obj.dataLoaded for obj in allDataObjs])
+        )
+        self._widget.setUnloadAllButtonEnabled(
+            len(allDataObjs) > 0 and any([obj.dataLoaded and obj.dataPath is not None
+                                          for obj in allDataObjs])
+        )
+        self._widget.setSaveAllButtonEnabled(
+            len(allDataObjs) > 0 and any([obj.dataLoaded and obj.dataPath is None
+                                          for obj in allDataObjs])
+        )
+        self._widget.setDeleteAllButtonEnabled(len(allDataObjs) > 0)
 
     def updateMemBar(self):
         self._widget.updateMemBar(psutil.virtual_memory()[2])

@@ -16,7 +16,7 @@ from imcommon.framework import Timer
 
 import imcontrol.view.guitools as guitools
 from imcontrol.controller import configfileutils
-from imcontrol.model.managers.RecordingManager import RecMode
+from imcontrol.model.managers.RecordingManager import RecMode, SaveMode
 from .basecontrollers import ImConWidgetController, LiveUpdatedController
 
 
@@ -573,9 +573,8 @@ class RecorderController(ImConWidgetController):
         self.lapseTotal = 0
 
         imreconstructRegistered = self._moduleCommChannel.isModuleRegistered('imreconstruct')
-        self._widget.keepInMemoryCheckbox.setVisible(imreconstructRegistered)
-        if not imreconstructRegistered:
-            self._widget.keepInMemoryCheckbox.setChecked(False)
+        self._widget.setSaveMode(SaveMode.Disk.value)
+        self._widget.setSaveModeVisible(imreconstructRegistered)
 
         self.untilStop()
 
@@ -651,7 +650,7 @@ class RecorderController(ImConWidgetController):
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = guitools.getUniqueName(name)
-            self.keepInMemory = self._widget.keepInMemoryCheckbox.isChecked()
+            self.saveMode = SaveMode(self._widget.getSaveMode())
 
             self.detectorsBeingCaptured = self.getDetectorsToCapture()
             self.attrs = self._commChannel.getCamAttrs()
@@ -660,7 +659,7 @@ class RecorderController(ImConWidgetController):
                 attrDict.update(self._commChannel.getScanTTLAttrs())
 
             recordingArgs = (self.detectorsBeingCaptured, self.recMode, self.savename,
-                             self.keepInMemory, self.attrs)
+                             self.saveMode, self.attrs)
 
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingManager.startRecording(
@@ -727,7 +726,7 @@ class RecorderController(ImConWidgetController):
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
         self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.keepInMemory, self.attrs
+            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs
         )
 
         time.sleep(0.3)

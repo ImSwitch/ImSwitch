@@ -26,10 +26,10 @@ class RecorderController(ImConWidgetController):
         self.untilStop()
 
         # Connect CommunicationChannel signals
-        self._commChannel.endRecording.connect(self.endRecording)
-        self._commChannel.updateRecFrameNum.connect(self._widget.updateRecFrameNum)
-        self._commChannel.updateRecTime.connect(self._widget.updateRecTime)
-        self._commChannel.endScan.connect(self.scanDone)
+        self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
+        self._commChannel.sigUpdateRecFrameNum.connect(self._widget.updateRecFrameNum)
+        self._commChannel.sigUpdateRecTime.connect(self._widget.updateRecTime)
+        self._commChannel.sigScanEnded.connect(self.scanDone)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorChanged.connect(self.detectorChanged)
@@ -108,7 +108,7 @@ class RecorderController(ImConWidgetController):
             elif self.recMode == RecMode.ScanOnce:
                 self._master.recordingManager.startRecording(*recordingArgs)
                 time.sleep(0.1)
-                self._commChannel.prepareScan.emit()
+                self._commChannel.sigPrepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
@@ -142,12 +142,12 @@ class RecorderController(ImConWidgetController):
                     self._widget.updateRecSliceNum(self.lapseCurrent)
                     self._master.recordingManager.endRecording(emitSignal=False)
                     time.sleep(0.3)
-                    self._commChannel.moveZstage.emit(self._widget.getDimlapseStepSize())
+                    self._commChannel.sigMoveZStage.emit(self._widget.getDimlapseStepSize())
                     self.timer = Timer(singleShot=True)
                     self.timer.timeout.connect(self.nextLapse)
                     self.timer.start(1000)
                 else:
-                    self._commChannel.moveZstage.emit(
+                    self._commChannel.sigMoveZStage.emit(
                         -self.lapseTotal * self._widget.getDimlapseStepSize()
                     )
                     self._master.recordingManager.endRecording()
@@ -158,9 +158,9 @@ class RecorderController(ImConWidgetController):
             self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs
         )
         time.sleep(0.3)
-        self._commChannel.prepareScan.emit()
+        self._commChannel.sigPrepareScan.emit()
 
-    def endRecording(self):
+    def recordingEnded(self):
         self.lapseCurrent = 0
         self._widget.updateRecFrameNum(0)
         self._widget.updateRecTime(0)

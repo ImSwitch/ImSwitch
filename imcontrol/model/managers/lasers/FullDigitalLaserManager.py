@@ -51,3 +51,6 @@ class FullDigitalLaserManager(LaserManager):
             self._laser.query('cp')
             print('Exited digital modulation mode')
         self._digitalMod = digital
+
+    def finalize(self):
+        self._laser.finalize()

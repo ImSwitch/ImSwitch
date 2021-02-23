@@ -26,3 +26,7 @@ class PositionerManager(ABC):
         """Adjusts the positioner to the specified position and returns the new
         position. Derived classes will update the position field manually."""
         pass
+
+    def finalize(self):
+        """ Close/cleanup positioner. """
+        pass

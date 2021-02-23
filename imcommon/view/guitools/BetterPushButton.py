@@ -1,7 +1,7 @@
-from pyqtgraph.Qt import QtGui
+from pyqtgraph.Qt import QtGui, QtWidgets
 
 
-class BetterPushButton(QtGui.QPushButton):
+class BetterPushButton(QtWidgets.QPushButton):
     """BetterPushButton is a QPushButton that does not become too small when
     styled."""
 

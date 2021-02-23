@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -17,15 +17,15 @@ class AlignWidgetXY(Widget):
         # Graphical elements
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-        self.XButton = QtGui.QRadioButton('X dimension')
-        self.YButton = QtGui.QRadioButton('Y dimension')
+        self.XButton = QtWidgets.QRadioButton('X dimension')
+        self.YButton = QtWidgets.QRadioButton('Y dimension')
         self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color=pg.mkPen(255, 0, 0),
                                 scaleSnap=True, translateSnap=True)
         self.graph = guitools.ProjectionGraph()
 
         # Add elements to GridLayout
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
         grid.addWidget(self.graph, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)

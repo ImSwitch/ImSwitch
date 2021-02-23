@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -20,26 +20,26 @@ class ViewWidget(Widget):
         # Grid
         self.gridButton = guitools.BetterPushButton('Grid')
         self.gridButton.setCheckable(True)
-        self.gridButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                      QtGui.QSizePolicy.Expanding)
+        self.gridButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Expanding)
 
         # Crosshair
         self.crosshairButton = guitools.BetterPushButton('Crosshair')
         self.crosshairButton.setCheckable(True)
-        self.crosshairButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                           QtGui.QSizePolicy.Expanding)
+        self.crosshairButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                           QtWidgets.QSizePolicy.Expanding)
         # liveview
         self.liveviewButton = guitools.BetterPushButton('LIVEVIEW')
         self.liveviewButton.setStyleSheet("font-size:20px")
         self.liveviewButton.setCheckable(True)
-        self.liveviewButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
-                                          QtGui.QSizePolicy.Expanding)
+        self.liveviewButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                          QtWidgets.QSizePolicy.Expanding)
         self.liveviewButton.setEnabled(True)
 
         # Detector list
-        self.detectorListBox = QtGui.QHBoxLayout()
-        self.detectorListLabel = QtGui.QLabel('Current detector:')
-        self.detectorList = QtGui.QComboBox()
+        self.detectorListBox = QtWidgets.QHBoxLayout()
+        self.detectorListLabel = QtWidgets.QLabel('Current detector:')
+        self.detectorList = QtWidgets.QComboBox()
         self.nextDetectorButton = guitools.BetterPushButton('Next')
         self.nextDetectorButton.hide()
         self.detectorListBox.addWidget(self.detectorListLabel)
@@ -47,7 +47,7 @@ class ViewWidget(Widget):
         self.detectorListBox.addWidget(self.nextDetectorButton)
 
         # Add elements to GridLayout
-        self.viewCtrlLayout = QtGui.QGridLayout()
+        self.viewCtrlLayout = QtWidgets.QGridLayout()
         self.setLayout(self.viewCtrlLayout)
         self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 2)
         self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 2)

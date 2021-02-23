@@ -40,7 +40,7 @@ class LiveUpdatedController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.active = False
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, im, init):
         raise NotImplementedError
 
 

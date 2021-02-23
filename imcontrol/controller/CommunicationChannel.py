@@ -15,35 +15,35 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    imageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
+    sigUpdateImage = Signal(np.ndarray, bool)  # (image, init)
 
-    acquisitionStarted = Signal()
+    sigAcquisitionStarted = Signal()
 
-    acquisitionStopped = Signal()
+    sigAcquisitionStopped = Signal()
 
-    adjustFrame = Signal(int, int)  # (width, height)
+    sigAdjustFrame = Signal(int, int)  # (width, height)
 
-    detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
+    sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
-    gridToggle = Signal(bool)  # (enabled)
+    sigGridToggled = Signal(bool)  # (enabled)
 
-    crosshairToggle = Signal(bool)  # (enabled)
+    sigCrosshairToggled = Signal(bool)  # (enabled)
 
-    addItemTovb = Signal(object)  # (item)
+    sigAddItemToVb = Signal(object)  # (item)
 
-    removeItemFromvb = Signal(object)  # (item)
+    sigRemoveItemFromVb = Signal(object)  # (item)
 
-    endRecording = Signal()
+    sigRecordingEnded = Signal()
 
-    updateRecFrameNum = Signal(int)  # (frameNumber)
+    sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
 
-    updateRecTime = Signal(int)  # (recTime)
+    sigUpdateRecTime = Signal(int)  # (recTime)
 
-    prepareScan = Signal()
+    sigPrepareScan = Signal()
 
-    endScan = Signal()
+    sigScanEnded = Signal()
 
-    moveZstage = Signal(float)  # (step)
+    sigMoveZStage = Signal(float)  # (step)
 
     @property
     def sharedAttrs(self):

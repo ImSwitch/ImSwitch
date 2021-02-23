@@ -1,4 +1,3 @@
-import os
 import traceback
 
 from imcommon import prepareApp, launchApp
@@ -8,9 +7,6 @@ from imcommon.view import MultiModuleWindow
 import imcontrol
 import imreconstruct
 
-
-os.environ['NAPARI_ASYNC'] = '1'
-os.environ['NAPARI_OCTREE'] = '0'
 
 modules = {
     imcontrol: 'Hardware Control',

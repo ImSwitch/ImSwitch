@@ -14,7 +14,7 @@ class AlignmentLineController(ImConWidgetController):
 
     def addLine(self):
         """ Adds alignmentLine to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.alignmentLine)
+        self._commChannel.sigAddItemToVb.emit(self._widget.alignmentLine)
 
     def updateLine(self):
         """ Updates line with new parameters. """

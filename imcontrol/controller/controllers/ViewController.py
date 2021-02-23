@@ -26,11 +26,11 @@ class ViewController(ImConWidgetController):
 
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
-        self._commChannel.gridToggle.emit(enabled)
+        self._commChannel.sigGridToggled.emit(enabled)
 
     def crosshairToggle(self, enabled):
         """ Connect with crosshair toggle from Image Widget through communication channel. """
-        self._commChannel.crosshairToggle.emit(enabled)
+        self._commChannel.sigCrosshairToggled.emit(enabled)
 
     def detectorSwitch(self, detectorName):
         """ Changes the current detector to the selected detector. """

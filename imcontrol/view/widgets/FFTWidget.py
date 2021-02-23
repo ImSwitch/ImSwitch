@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -18,12 +18,12 @@ class FFTWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.showCheck = QtGui.QCheckBox('Show FFT')
+        self.showCheck = QtWidgets.QCheckBox('Show FFT')
         self.showCheck.setCheckable = True
         self.changePosButton = guitools.BetterPushButton('Period (pix)')
-        self.linePos = QtGui.QLineEdit('4')
-        self.lineRate = QtGui.QLineEdit('0')
-        self.labelRate = QtGui.QLabel('Update rate')
+        self.linePos = QtWidgets.QLineEdit('4')
+        self.lineRate = QtWidgets.QLineEdit('0')
+        self.labelRate = QtWidgets.QLabel('Update rate')
 
         # Vertical and horizontal lines
         self.vline = pg.InfiniteLine()
@@ -57,7 +57,7 @@ class FFTWidget(Widget):
         self.vb.addItem(self.dhline)
 
         # Add elements to GridLayout
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
         grid.addWidget(self.cwidget, 0, 0, 1, 6)
         grid.addWidget(self.showCheck, 1, 0, 1, 1)

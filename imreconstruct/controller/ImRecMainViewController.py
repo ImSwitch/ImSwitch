@@ -4,6 +4,7 @@ import os
 import numpy as np
 import tifffile as tiff
 
+import imreconstruct.view.guitools as guitools
 from imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from .basecontrollers import ImRecWidgetController
 from .DataFrameController import DataFrameController
@@ -68,12 +69,12 @@ class ImRecMainViewController(ImRecWidgetController):
         self._saveFolder = saveFolder
 
     def setDataFolder(self):
-        dataFolder = self._widget.requestFolderPathFromUser()
+        dataFolder = guitools.askForFolderPath(self._widget)
         if dataFolder:
             self._commChannel.sigDataFolderChanged.emit(dataFolder)
 
     def setSaveFolder(self):
-        saveFolder = self._widget.requestFolderPathFromUser()
+        saveFolder = guitools.askForFolderPath(self._widget)
         if saveFolder:
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
@@ -122,7 +123,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.showScanParamsDialog()
 
     def quickLoadData(self):
-        dataPath = self._widget.requestFilePathFromUser(defaultFolder=self._dataFolder)
+        dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
         if dataPath:
             print(f'Loading data at: {dataPath}')
 
@@ -248,9 +249,10 @@ class ImRecMainViewController(ImRecWidgetController):
         """Saves the reconstructed image from self.reconstructor to specified
         destination"""
         if dataType:
-            saveName = self._widget.requestFilePathFromUser(caption='Save File',
-                                                            defaultFolder=self._saveFolder,
-                                                            nameFilter='*.tiff', isSaving=True)
+            saveName = guitools.askForFilePath(self._widget,
+                                               caption='Save File',
+                                               defaultFolder=self._saveFolder,
+                                               nameFilter='*.tiff', isSaving=True)
 
             if saveName:
                 if dataType == 'reconstruction':

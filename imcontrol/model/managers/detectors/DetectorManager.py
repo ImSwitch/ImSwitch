@@ -140,3 +140,7 @@ class DetectorManager(SignalInterface):
     @abstractmethod
     def stopAcquisition(self):
         pass
+
+    def finalize(self):
+        """ Close/cleanup detector. """
+        pass

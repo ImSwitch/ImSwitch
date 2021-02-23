@@ -46,3 +46,7 @@ class MasterController:
         self.__moduleCommChannel.memoryRecordings[name] = DataItem(
             data=file, filePath=filePath, savedToDisk=savedToDisk
         )
+
+    def closeEvent(self):
+        for multiManager in (self.detectorsManager, self.lasersManager, self.positionersManager):
+            multiManager.finalize()

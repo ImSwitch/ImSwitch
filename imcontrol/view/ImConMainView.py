@@ -13,8 +13,7 @@ from pyqtgraph.console import ConsoleWidget
 from pyqtgraph.dockarea import Dock, DockArea
 
 import constants
-import imcontrol.view.guitools as guitools
-import imcontrol.view.widgets as widgets
+from . import guitools, widgets
 
 
 class ImConMainView(QtGui.QMainWindow):

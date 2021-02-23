@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from imcontrol.view import guitools as guitools
@@ -137,16 +137,16 @@ class SettingsWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        detectorTitle = QtGui.QLabel('<h2><strong>Detector settings</strong></h2>')
+        detectorTitle = QtWidgets.QLabel('<h2><strong>Detector settings</strong></h2>')
         detectorTitle.setTextFormat(QtCore.Qt.RichText)
         self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
                                 handleCenter=(0, 1), color='y', scaleSnap=True,
                                 translateSnap=True)
-        self.stack = QtGui.QStackedWidget()
+        self.stack = QtWidgets.QStackedWidget()
         self.trees = {}
 
         # Add elements to GridLayout
-        self.layout = QtGui.QVBoxLayout()
+        self.layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.addWidget(detectorTitle)
         self.layout.addWidget(self.stack)

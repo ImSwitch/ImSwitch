@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -24,7 +24,7 @@ class AlignWidgetAverage(Widget):
         self.resetButton.clicked.connect(self.graph.resetData)
 
         # Add items to GridLayout
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
         grid.addWidget(self.graph, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)

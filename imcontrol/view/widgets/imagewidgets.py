@@ -319,7 +319,7 @@ class RecordingWidget(Widget):
         self.recButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
                                      QtGui.QSizePolicy.Expanding)
         # Number of frames and measurement timing
-        modeTitle = QtGui.QLabel('<strong>Mode</strong>')
+        modeTitle = QtGui.QLabel('<strong>Recording mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
         self.specifyFrames = QtGui.QRadioButton('Number of frames')
         self.specifyTime = QtGui.QRadioButton('Time (s)')
@@ -347,7 +347,11 @@ class RecordingWidget(Widget):
         self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
                                       QtCore.Qt.AlignVCenter))
 
-        self.keepInMemoryCheckbox = QtGui.QCheckBox('Keep recordings in memory for reconstruction')
+        self.saveModeLabel = QtGui.QLabel('<strong>Save mode:</strong>')
+        self.saveModeList = QtGui.QComboBox()
+        self.saveModeList.addItems(['Save on disk',
+                                    'Save in memory for reconstruction',
+                                    'Save on disk and keep in memory'])
 
         # Add items to GridLayout
         buttonWidget = QtGui.QWidget()
@@ -391,8 +395,9 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.stepSizeLabel, 9, 3)
         recGrid.addWidget(self.stepSizeEdit, 9, 4)
         recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, -1)
-        recGrid.addWidget(self.keepInMemoryCheckbox, 11, 0, 1, -1)
-        recGrid.addWidget(buttonWidget, 12, 0, 1, -1)
+        recGrid.addWidget(self.saveModeLabel, 12, 0)
+        recGrid.addWidget(self.saveModeList, 12, 1, 1, -1)
+        recGrid.addWidget(buttonWidget, 13, 0, 1, -1)
 
         # Initial condition of fields and checkboxes.
         self.writable = True
@@ -407,4 +412,13 @@ class RecordingWidget(Widget):
 
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+
+    def getSaveMode(self):
+        return self.saveModeList.currentIndex() + 1
+
+    def setSaveMode(self, saveMode):
+        self.saveModeList.setCurrentIndex(saveMode - 1)
+
+    def setSaveModeVisible(self, value):
+        self.saveModeList.setVisible(value)
 

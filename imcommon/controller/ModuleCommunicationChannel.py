@@ -1,5 +1,6 @@
 import numpy as np
 from imcommon.framework import Signal, SignalInterface
+from imcommon.model import DataCollection
 
 
 class ModuleCommunicationChannel(SignalInterface):
@@ -8,10 +9,13 @@ class ModuleCommunicationChannel(SignalInterface):
     between modules.
     """
 
-    sigMemoryRecordingAvailable = Signal(str, object, np.ndarray, dict)  # (name, Optional[path], data, attrs)
+    @property
+    def memoryRecordings(self):
+        return self.__memoryRecordings
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__memoryRecordings = DataCollection()
         self.__registeredModules = set()
 
     def register(self, modulePackage):

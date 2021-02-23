@@ -2,7 +2,6 @@ import configparser
 import os
 
 import numpy as np
-from PyQt5 import QtGui
 
 import constants
 from imcontrol.view import guitools as guitools
@@ -32,10 +31,10 @@ class ScanController(SuperScanController):
         self.plotSignalGraph()
 
         # Connect NidaqManager signals
-        self._master.nidaqManager.scanDoneSignal.connect(self.scanDone)
+        self._master.nidaqManager.sigScanDone.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
-        self._commChannel.prepareScan.connect(lambda: self.setScanButton(True))
+        self._commChannel.sigPrepareScan.connect(lambda: self.setScanButton(True))
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -99,8 +98,8 @@ class ScanController(SuperScanController):
         config['stageParameterDict'] = self._stageParameterDict
         config['TTLParameterDict'] = self._TTLParameterDict
         config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
-        fileName, _ = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan', self.scanDir)
-        if fileName == '':
+        fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
+        if not fileName:
             return
 
         with open(fileName, 'w') as configfile:
@@ -110,8 +109,8 @@ class ScanController(SuperScanController):
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        fileName, _ = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan', self.scanDir)
-        if fileName == '':
+        fileName = guitools.askForFilePath(self._widget, 'Load scan', self.scanDir)
+        if not fileName:
             return
 
         config.read(fileName)
@@ -162,7 +161,7 @@ class ScanController(SuperScanController):
         print("scan done")
         if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
             self.setScanButton(False)
-            self._commChannel.endScan.emit()
+            self._commChannel.sigScanEnded.emit()
         else:
             self._master.nidaqManager.runScan(self.signalDic)
 

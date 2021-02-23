@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -15,8 +15,8 @@ class AlignmentLineWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.angleEdit = QtGui.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
-        self.alignmentCheck = QtGui.QCheckBox('Show Alignment Tool')
+        self.angleEdit = QtWidgets.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
+        self.alignmentCheck = QtWidgets.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
         pen = pg.mkPen(color=(255, 255, 0), width=0.5,
                        style=QtCore.Qt.SolidLine, antialias=True)
@@ -24,9 +24,9 @@ class AlignmentLineWidget(Widget):
             pen=pen, movable=True)
 
         # Add items to GridLayout
-        alignmentLayout = QtGui.QGridLayout()
+        alignmentLayout = QtWidgets.QGridLayout()
         self.setLayout(alignmentLayout)
-        alignmentLayout.addWidget(QtGui.QLabel('Line Angle'), 0, 0)
+        alignmentLayout.addWidget(QtWidgets.QLabel('Line Angle'), 0, 0)
         alignmentLayout.addWidget(self.angleEdit, 0, 1)
         alignmentLayout.addWidget(self.alignmentLineMakerButton, 1, 0)
         alignmentLayout.addWidget(self.alignmentCheck, 1, 1)

@@ -9,10 +9,10 @@ from .MultiManager import MultiManager
 class DetectorsManager(MultiManager, SignalInterface):
     """ DetectorsManager is an interface for dealing with DetectorManagers. """
 
-    acquisitionStarted = Signal()
-    acquisitionStopped = Signal()
-    detectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
-    imageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
+    sigAcquisitionStarted = Signal()
+    sigAcquisitionStopped = Signal()
+    sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
+    sigImageUpdated = Signal(np.ndarray, bool)  # (image, init)
 
     def __init__(self, detectorInfos, updatePeriod, **kwargs):
         MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
@@ -21,10 +21,10 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
             # Connect signals
-            self._subManagers[detectorName].imageUpdated.connect(
-                lambda image, init, detectorName=detectorName: self.imageUpdated.emit(
-                    detectorName, image, init, detectorName == self._currentDetectorName
-                )
+            self._subManagers[detectorName].sigImageUpdated.connect(
+                lambda image, init, detectorName=detectorName: self.sigImageUpdated.emit(
+                    image, init
+                ) if detectorName == self._currentDetectorName else None
             )
 
             # Set as default if first detector
@@ -61,7 +61,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         oldDetectorName = self._currentDetectorName
         self._currentDetectorName = detectorName
-        self.detectorSwitched.emit(detectorName, oldDetectorName)
+        self.sigDetectorSwitched.emit(detectorName, oldDetectorName)
 
         if self._thread.isRunning():
             self.execOnCurrent(lambda c: c.updateLatestFrame(True))
@@ -75,7 +75,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     def startAcquisition(self):
         self.execOnAll(lambda c: c.startAcquisition())
-        self.acquisitionStarted.emit()
+        self.sigAcquisitionStarted.emit()
         sleep(0.3)
         self._thread.start()
 
@@ -83,7 +83,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.quit()
         self._thread.wait()
         self.execOnAll(lambda c: c.stopAcquisition())
-        self.acquisitionStopped.emit()
+        self.sigAcquisitionStopped.emit()
 
 
 class LVWorker(Worker):

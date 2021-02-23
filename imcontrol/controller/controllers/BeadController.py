@@ -31,14 +31,14 @@ class BeadController(ImConWidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.addItemTovb.emit(self._widget.getROIGraphicsItem())
+        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
 
     def run(self):
         if not self.running:
             self.dims = np.array(self._commChannel.getDimsScan()).astype(int)
             self.running = True
             self.beadWorker = BeadWorker(self)
-            self.beadWorker.newChunk.connect(self.update)
+            self.beadWorker.sigNewChunk.connect(self.update)
             self.thread = Thread()
             self.beadWorker.moveToThread(self.thread)
             self.thread.started.connect(self.beadWorker.run)
@@ -54,8 +54,7 @@ class BeadController(ImConWidgetController):
 
 
 class BeadWorker(Worker):
-    newChunk = Signal()
-    stop = Signal()
+    sigNewChunk = Signal()
 
     def __init__(self, controller):
         super().__init__()
@@ -88,4 +87,4 @@ class BeadWorker(Worker):
                     i = i + 1
                     if i == N:
                         i = 0
-                self.newChunk.emit()
+                self.sigNewChunk.emit()

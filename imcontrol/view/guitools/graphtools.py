@@ -7,7 +7,7 @@ Created on Fri Feb  6 13:20:02 2015
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.ptime as ptime
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 
 def bestLevels(arr):
@@ -136,9 +136,9 @@ class TwoColorGrid:
         pen = QtGui.QPen(QtCore.Qt.yellow, 1, QtCore.Qt.SolidLine)
         pen2 = QtGui.QPen(QtCore.Qt.yellow, 0.75, QtCore.Qt.DotLine)
 
-        self.rectT = QtGui.QGraphicsRectItem(192, 118, 128, 128)
+        self.rectT = QtWidgets.QGraphicsRectItem(192, 118, 128, 128)
         self.rectT.setPen(pen)
-        self.rectR = QtGui.QGraphicsRectItem(192, 266, 128, 128)
+        self.rectR = QtWidgets.QGraphicsRectItem(192, 266, 128, 128)
         self.rectR.setPen(pen)
         self.yLine = pg.InfiniteLine(pos=0.5 * self.shape[0], pen=pen2)
         self.xLine = pg.InfiniteLine(pos=0.5 * self.shape[1], pen=pen2, angle=0)

@@ -19,14 +19,14 @@ class FFTController(LiveUpdatedController):
 
         # Prepare image computation worker
         self.imageComputationWorker = self.FFTImageComputationWorker()
-        self.imageComputationWorker.fftImageComputed.connect(self.displayImage)
+        self.imageComputationWorker.sigFftImageComputed.connect(self.displayImage)
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.sigImageReceived.connect(self.imageComputationWorker.computeFFTImage)
         self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
-        self._commChannel.updateImage.connect(self.update)
+        self._commChannel.sigUpdateImage.connect(self.update)
 
         # Connect FFTWidget signals
         self._widget.sigShowToggled.connect(self.showFFT)
@@ -111,7 +111,7 @@ class FFTController(LiveUpdatedController):
             self._widget.dhline.show()
 
     class FFTImageComputationWorker(Worker):
-        fftImageComputed = Signal(np.ndarray)
+        sigFftImageComputed = Signal(np.ndarray)
 
         def __init__(self):
             super().__init__()
@@ -125,7 +125,7 @@ class FFTController(LiveUpdatedController):
                     return  # Skip this frame in order to catch up
 
                 fftImage = np.fft.fftshift(np.log10(abs(np.fft.fft2(self._image))))
-                self.fftImageComputed.emit(fftImage)
+                self.sigFftImageComputed.emit(fftImage)
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1

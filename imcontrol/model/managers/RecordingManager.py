@@ -16,10 +16,10 @@ from imcommon.framework import Signal, SignalInterface, Thread, Worker
 
 
 class RecordingManager(SignalInterface):
-    recordingEnded = Signal()
-    recordingFrameNumUpdated = Signal(int)  # (frameNumber)
-    recordingTimeUpdated = Signal(int)  # (recTime)
-    memoryRecordingAvailable = Signal(str, object, object, bool)  # (name, file, filePath, savedToDisk)
+    sigRecordingEnded = Signal()
+    sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
+    sigRecordingTimeUpdated = Signal(int)  # (recTime)
+    sigMemoryRecordingAvailable = Signal(str, object, object, bool)  # (name, file, filePath, savedToDisk)
 
     def __init__(self, detectorsManager):
         super().__init__()
@@ -55,7 +55,7 @@ class RecordingManager(SignalInterface):
         self.__record = False
         self.__thread.quit()
         if emitSignal:
-            self.recordingEnded.emit()
+            self.sigRecordingEnded.emit()
         self.__thread.wait()
     
     def snap(self, detectorNames, savename, attrs):
@@ -125,8 +125,8 @@ class RecordingWorker(Worker):
                             dataset.resize(frames, axis=0)
                             dataset[it:frames, :, :] = newFrames[0:frames - it]
                             currentFrame[detectorName] = frames
-                        self.__recordingManager.recordingFrameNumUpdated.emit(it)
-                self.__recordingManager.recordingFrameNumUpdated.emit(0)
+                        self.__recordingManager.sigRecordingFrameNumUpdated.emit(it)
+                self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
                 self.__recordingManager.endRecording()
             elif self.recMode == RecMode.SpecTime:
                 start = time.time()
@@ -141,11 +141,11 @@ class RecordingWorker(Worker):
                             dataset.resize(n + it, axis=0)
                             dataset[it:it + n, :, :] = newFrames
                             currentFrame[detectorName] += n
-                            self.__recordingManager.recordingTimeUpdated.emit(
+                            self.__recordingManager.sigRecordingTimeUpdated.emit(
                                 np.around(currentRecTime, decimals=2)
                             )
                             currentRecTime = time.time() - start
-                self.__recordingManager.recordingTimeUpdated.emit(0)
+                self.__recordingManager.sigRecordingTimeUpdated.emit(0)
                 self.__recordingManager.endRecording()
             else:
                 while self.__recordingManager.record:
@@ -165,11 +165,11 @@ class RecordingWorker(Worker):
                     name = os.path.basename(filePath)
                     if self.saveMode == SaveMode.RAM:
                         file.close()
-                        self.__recordingManager.memoryRecordingAvailable.emit(
+                        self.__recordingManager.sigMemoryRecordingAvailable.emit(
                             name, fileHandles[detectorName], filePath, False
                         )
                     else:
-                        self.__recordingManager.memoryRecordingAvailable.emit(name, file, filePath, True)
+                        self.__recordingManager.sigMemoryRecordingAvailable.emit(name, file, filePath, True)
                 else:
                     file.close()
 

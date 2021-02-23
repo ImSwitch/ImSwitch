@@ -32,10 +32,10 @@ class ScanController(SuperScanController):
         self.plotSignalGraph()
 
         # Connect NidaqManager signals
-        self._master.nidaqManager.scanDoneSignal.connect(self.scanDone)
+        self._master.nidaqManager.sigScanDone.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
-        self._commChannel.prepareScan.connect(lambda: self.setScanButton(True))
+        self._commChannel.sigPrepareScan.connect(lambda: self.setScanButton(True))
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -162,7 +162,7 @@ class ScanController(SuperScanController):
         print("scan done")
         if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
             self.setScanButton(False)
-            self._commChannel.endScan.emit()
+            self._commChannel.sigScanEnded.emit()
         else:
             self._master.nidaqManager.runScan(self.signalDic)
 

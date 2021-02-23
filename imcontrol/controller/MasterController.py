@@ -32,15 +32,15 @@ class MasterController:
                                                      nidaqManager=self.nidaqManager)
 
         # Connect signals
-        self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)
-        self.detectorsManager.acquisitionStopped.connect(self.__commChannel.acquisitionStopped)
-        self.detectorsManager.detectorSwitched.connect(self.__commChannel.detectorSwitched)
-        self.detectorsManager.imageUpdated.connect(self.__commChannel.updateImage)
+        self.detectorsManager.sigAcquisitionStarted.connect(self.__commChannel.sigAcquisitionStarted)
+        self.detectorsManager.sigAcquisitionStopped.connect(self.__commChannel.sigAcquisitionStopped)
+        self.detectorsManager.sigDetectorSwitched.connect(self.__commChannel.sigDetectorSwitched)
+        self.detectorsManager.sigImageUpdated.connect(self.__commChannel.sigUpdateImage)
 
-        self.recordingManager.recordingEnded.connect(self.__commChannel.endRecording)
-        self.recordingManager.recordingFrameNumUpdated.connect(self.__commChannel.updateRecFrameNum)
-        self.recordingManager.recordingTimeUpdated.connect(self.__commChannel.updateRecTime)
-        self.recordingManager.memoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+        self.recordingManager.sigRecordingEnded.connect(self.__commChannel.sigRecordingEnded)
+        self.recordingManager.sigRecordingFrameNumUpdated.connect(self.__commChannel.sigUpdateRecFrameNum)
+        self.recordingManager.sigRecordingTimeUpdated.connect(self.__commChannel.sigUpdateRecTime)
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = DataItem(

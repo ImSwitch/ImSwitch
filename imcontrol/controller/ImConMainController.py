@@ -17,7 +17,7 @@ class ImConMainController(MainController):
         self.__moduleCommChannel = moduleCommChannel
 
         # Connect view signals
-        self.__mainView.closing.connect(self.closeEvent)
+        self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self)

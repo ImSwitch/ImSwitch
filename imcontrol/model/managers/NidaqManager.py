@@ -12,7 +12,7 @@ from imcommon.framework import Signal, SignalInterface, Thread
 
 
 class NidaqManager(SignalInterface):
-    scanDoneSignal = Signal()
+    sigScanDone = Signal()
 
     def __init__(self, setupInfo):
         super().__init__()
@@ -166,7 +166,7 @@ class NidaqManager(SignalInterface):
                 self.aoTask.write(np.array(AOsignals), auto_start=False)
 
                 self.aoTaskWaiter.connect(self.aoTask)
-                self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
+                self.aoTaskWaiter.sigWaitDone.connect(self.taskDone)
                 clockDO = r'ao/SampleClock'
 
             if len(DOsignals) > 0:
@@ -177,7 +177,7 @@ class NidaqManager(SignalInterface):
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
                 self.doTaskWaiter.connect(self.doTask)
-                self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
+                self.doTaskWaiter.sigWaitDone.connect(self.taskDone)
 
             if len(DOsignals) > 0:
                 self.doTask.start()
@@ -191,14 +191,14 @@ class NidaqManager(SignalInterface):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:
             self.busy = False
             self.signalSent = True
-            self.scanDoneSignal.emit()
+            self.sigScanDone.emit()
 
     def runContinuous(self, digital_targets, digital_signals):
         pass
 
 
 class WaitThread(Thread):
-    waitdoneSignal = Signal()
+    sigWaitDone = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class WaitThread(Thread):
         if self.task is not None:
             self.task.stop()
             self.task.close()
-        self.waitdoneSignal.emit()
+        self.sigWaitDone.emit()
         self.quit()
 
 

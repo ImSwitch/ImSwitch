@@ -26,7 +26,7 @@ class DetectorListParameter(DetectorParameter):
 
 
 class DetectorManager(SignalInterface):
-    imageUpdated = Signal(np.ndarray, bool)
+    sigImageUpdated = Signal(np.ndarray, bool)
 
     @abstractmethod
     def __init__(self, name, fullShape, supportedBinnings, model, parameters):
@@ -47,7 +47,7 @@ class DetectorManager(SignalInterface):
 
     def updateLatestFrame(self, init):
         self.__image = self.getLatestFrame()
-        self.imageUpdated.emit(self.__image, init)
+        self.sigImageUpdated.emit(self.__image, init)
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the updated list of parameters.

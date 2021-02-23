@@ -2,7 +2,7 @@ import configparser
 import os
 
 import numpy as np
-from PyQt5 import QtGui
+from PyQt5 import QtWidgets
 
 import constants
 from imcontrol.view import guitools as guitools
@@ -99,7 +99,7 @@ class ScanController(SuperScanController):
         config['stageParameterDict'] = self._stageParameterDict
         config['TTLParameterDict'] = self._TTLParameterDict
         config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
-        fileName, _ = QtGui.QFileDialog.getSaveFileName(self._widget, 'Save scan', self.scanDir)
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self._widget, 'Save scan', self.scanDir)
         if fileName == '':
             return
 
@@ -110,7 +110,7 @@ class ScanController(SuperScanController):
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        fileName, _ = QtGui.QFileDialog.getOpenFileName(self._widget, 'Load scan', self.scanDir)
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self._widget, 'Load scan', self.scanDir)
         if fileName == '':
             return
 

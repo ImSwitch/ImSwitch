@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -18,7 +18,7 @@ class LaserWidget(Widget):
         self.laserModules = {}
         self.digModule = DigitalModule()
 
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
         self.digModule = DigitalModule()
@@ -80,7 +80,7 @@ class LaserWidget(Widget):
         self.digModule.setValue(laserName, value)
 
 
-class DigitalModule(QtGui.QFrame):
+class DigitalModule(QtWidgets.QFrame):
     """ Module from LaserWidget to handle digital modulation. """
 
     sigDigitalModToggled = QtCore.Signal(bool)
@@ -90,10 +90,10 @@ class DigitalModule(QtGui.QFrame):
         super().__init__(*args, **kwargs)
         self.powers = {}
 
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-        title = QtGui.QLabel('<h3>Digital modulation<h3>')
+        title = QtWidgets.QLabel('<h3>Digital modulation<h3>')
         title.setTextFormat(QtCore.Qt.RichText)
         title.setAlignment(QtCore.Qt.AlignCenter)
         title.setStyleSheet("font-size:12px")
@@ -110,10 +110,10 @@ class DigitalModule(QtGui.QFrame):
     def addLaser(self, laserName, valueUnits, valueRange=None):
         isBinary = valueRange is None
 
-        power = QtGui.QLineEdit(str(valueRange[0]) if valueRange is not None else '0')
-        unit = QtGui.QLabel(valueUnits)
-        modFrame = QtGui.QFrame()
-        modGrid = QtGui.QGridLayout()
+        power = QtWidgets.QLineEdit(str(valueRange[0]) if valueRange is not None else '0')
+        unit = QtWidgets.QLabel(valueUnits)
+        modFrame = QtWidgets.QFrame()
+        modGrid = QtWidgets.QGridLayout()
         modFrame.setLayout(modGrid)
         modGrid.addWidget(power, 0, 0)
         modGrid.addWidget(unit, 0, 1)
@@ -145,7 +145,7 @@ class DigitalModule(QtGui.QFrame):
         self.powers[laserName].setText(str(value))
 
 
-class LaserModule(QtGui.QFrame):
+class LaserModule(QtWidgets.QFrame):
     """ Module from LaserWidget to handle a single laser. """
 
     sigEnableChanged = QtCore.Signal(bool)  # (enabled)
@@ -157,31 +157,31 @@ class LaserModule(QtGui.QFrame):
         isBinary = valueRange is None
 
         # Graphical elements
-        self.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Raised)
+        self.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Raised)
 
-        self.name = QtGui.QLabel(f'<h3>{name}<h3>')
+        self.name = QtWidgets.QLabel(f'<h3>{name}<h3>')
         self.name.setTextFormat(QtCore.Qt.RichText)
         self.name.setAlignment(QtCore.Qt.AlignCenter)
         color = guitools.colorutils.wavelengthToHex(wavelength)
         self.name.setStyleSheet(f'font-size:16px; border-bottom: 4px solid {color}')
         self.name.setFixedHeight(40)
 
-        self.setPointLabel = QtGui.QLabel('Setpoint')
-        self.setPointEdit = QtGui.QLineEdit(str(initialPower))
+        self.setPointLabel = QtWidgets.QLabel('Setpoint')
+        self.setPointEdit = QtWidgets.QLineEdit(str(initialPower))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
 
-        self.powerLabel = QtGui.QLabel('Power')
-        self.powerIndicator = QtGui.QLabel(str(initialPower))
+        self.powerLabel = QtWidgets.QLabel('Power')
+        self.powerIndicator = QtWidgets.QLabel(str(initialPower))
         self.powerIndicator.setFixedWidth(50)
         self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
 
-        self.minpower = QtGui.QLabel()
+        self.minpower = QtWidgets.QLabel()
         self.minpower.setAlignment(QtCore.Qt.AlignCenter)
-        self.maxpower = QtGui.QLabel()
+        self.maxpower = QtWidgets.QLabel()
         self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
 
-        self.slider = QtGui.QSlider(QtCore.Qt.Vertical, self)
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Vertical, self)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:
@@ -196,17 +196,17 @@ class LaserModule(QtGui.QFrame):
             self.slider.setSingleStep(singleStep)
             self.slider.setValue(0)
 
-        powerFrame = QtGui.QFrame(self)
-        self.powerGrid = QtGui.QGridLayout()
-        powerFrame.setFrameStyle(QtGui.QFrame.Panel | QtGui.QFrame.Plain)
+        powerFrame = QtWidgets.QFrame(self)
+        self.powerGrid = QtWidgets.QGridLayout()
+        powerFrame.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Plain)
         powerFrame.setLayout(self.powerGrid)
 
         self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
         self.powerGrid.addWidget(self.setPointEdit, 2, 0)
-        self.powerGrid.addWidget(QtGui.QLabel(units), 2, 1)
+        self.powerGrid.addWidget(QtWidgets.QLabel(units), 2, 1)
         self.powerGrid.addWidget(self.powerLabel, 3, 0, 1, 2)
         self.powerGrid.addWidget(self.powerIndicator, 4, 0)
-        self.powerGrid.addWidget(QtGui.QLabel(units), 4, 1)
+        self.powerGrid.addWidget(QtWidgets.QLabel(units), 4, 1)
         self.powerGrid.addWidget(self.maxpower, 0, 3)
         self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
         self.powerGrid.addWidget(self.minpower, 9, 3)
@@ -215,7 +215,7 @@ class LaserModule(QtGui.QFrame):
         self.enableButton.setCheckable(True)
 
         # Add elements to GridLayout
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.grid.addWidget(self.name, 0, 0, 1, 2)
         self.grid.addWidget(powerFrame, 1, 0, 1, 2)

@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -14,21 +14,21 @@ class PositionerWidget(Widget):
         super().__init__(*args, **kwargs)
         self.numPositioners = 0
         self.pars = {}
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
     def addPositioner(self, positionerName):
-        self.pars['Label' + positionerName] = QtGui.QLabel(f"<strong>{positionerName} = {0:.2f} µm</strong>")
+        self.pars['Label' + positionerName] = QtWidgets.QLabel(f"<strong>{positionerName} = {0:.2f} µm</strong>")
         self.pars['Label' + positionerName].setTextFormat(QtCore.Qt.RichText)
         self.pars['UpButton' + positionerName] = guitools.BetterPushButton("+")
         self.pars['DownButton' + positionerName] = guitools.BetterPushButton("-")
-        self.pars['StepEdit' + positionerName] = QtGui.QLineEdit("0.05")
-        self.pars['StepUnit' + positionerName] = QtGui.QLabel(" µm")
+        self.pars['StepEdit' + positionerName] = QtWidgets.QLineEdit("0.05")
+        self.pars['StepUnit' + positionerName] = QtWidgets.QLabel(" µm")
 
         self.grid.addWidget(self.pars['Label' + positionerName], self.numPositioners, 0)
         self.grid.addWidget(self.pars['UpButton' + positionerName], self.numPositioners, 1)
         self.grid.addWidget(self.pars['DownButton' + positionerName], self.numPositioners, 2)
-        self.grid.addWidget(QtGui.QLabel("Step"), self.numPositioners, 3)
+        self.grid.addWidget(QtWidgets.QLabel("Step"), self.numPositioners, 3)
         self.grid.addWidget(self.pars['StepEdit' + positionerName], self.numPositioners, 4)
         self.grid.addWidget(self.pars['StepUnit' + positionerName], self.numPositioners, 5)
 

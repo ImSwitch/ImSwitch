@@ -166,7 +166,7 @@ class RecordingWorker(Worker):
                     if self.saveMode == SaveMode.RAM:
                         file.close()
                         self.__recordingManager.sigMemoryRecordingAvailable.emit(
-                            name, fileHandles[detectorName], filePath, False
+                            name, h5py.File(fileHandles[detectorName]), filePath, False
                         )
                     else:
                         self.__recordingManager.sigMemoryRecordingAvailable.emit(name, file, filePath, True)

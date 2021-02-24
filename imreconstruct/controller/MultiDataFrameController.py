@@ -51,15 +51,12 @@ class MultiDataFrameController(ImRecWidgetController):
             self._widget.setAllRowsHighlighted(False)
 
     def memoryDataSet(self, name, dataItem):
-        if isinstance(dataItem.data, BytesIO):
-            file = h5py.File(dataItem.data)
-        elif isinstance(dataItem.data, h5py.File):
-            file = dataItem.data
-        else:
-            raise TypeError(f'Data has unsupported type "{type(dataItem.data).__name__}"')
+        if not isinstance(dataItem.data, h5py.File):
+            raise TypeError(f'Data has unsupported type "{type(dataItem.data).__name__}"; should be'
+                            f' h5py.File')
 
         self.makeAndAddDataObj(
-            name, path=dataItem.filePath if dataItem.savedToDisk else None, file=file
+            name, path=dataItem.filePath if dataItem.savedToDisk else None, file=dataItem.data
         )
 
     def memoryDataSavedToDisk(self, name, filePath):

@@ -12,7 +12,7 @@ class DetectorsManager(MultiManager, SignalInterface):
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
-    sigImageUpdated = Signal(np.ndarray, bool)  # (image, init)
+    sigImageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
 
     def __init__(self, detectorInfos, updatePeriod, **kwargs):
         MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
@@ -23,8 +23,8 @@ class DetectorsManager(MultiManager, SignalInterface):
             # Connect signals
             self._subManagers[detectorName].sigImageUpdated.connect(
                 lambda image, init, detectorName=detectorName: self.sigImageUpdated.emit(
-                    image, init
-                ) if detectorName == self._currentDetectorName else None
+                    detectorName, image, init, detectorName == self._currentDetectorName
+                )
             )
 
             # Set as default if first detector

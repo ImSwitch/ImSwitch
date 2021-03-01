@@ -1,63 +1,59 @@
+import napari
+import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtWidgets
 
-from imcontrol.view import guitools as guitools
+import imcontrol.view.guitools as guitools
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
     """ Widget containing viewbox that displays the new detector frames.  """
 
-    sigResized = QtCore.Signal()
-    sigLevelsChanged = QtCore.Signal()
-    sigUpdateLevelsClicked = QtCore.Signal()
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        guitools.addNapariGrayclipColormap()
+        self.napariViewer = napari.Viewer(show=False)
+        self.imgLayers = {}
 
-        # Graphical elements
-        self.levelsButton = guitools.BetterPushButton('Update Levels')
-        self.levelsButton.setEnabled(False)
-        self.levelsButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                        QtWidgets.QSizePolicy.Expanding)
-        proxy = QtWidgets.QGraphicsProxyWidget()
-        proxy.setWidget(self.levelsButton)
-        self.addItem(proxy, row=0, col=2)
+        self.viewCtrlLayout = QtWidgets.QGridLayout()
+        self.viewCtrlLayout.addWidget(self.napariViewer.window._qt_window, 0, 0)
+        self.setLayout(self.viewCtrlLayout)
 
-        # Viewbox and related elements
-        self.vb = self.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = guitools.OptimizedImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.hist.gradient.loadPreset('greyclip')
-        self.grid = guitools.Grid(self.vb)
-        self.crosshair = guitools.Crosshair(self.vb)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.addItem(self.hist, row=1, col=2)
-        # x and y profiles
-        xPlot = self.addPlot(row=0, col=1)
-        xPlot.hideAxis('left')
-        xPlot.hideAxis('bottom')
-        self.xProfile = xPlot.plot()
-        self.ci.layout.setRowMaximumHeight(0, 40)
-        xPlot.setXLink(self.vb)
-        yPlot = self.addPlot(row=1, col=0)
-        yPlot.hideAxis('left')
-        yPlot.hideAxis('bottom')
-        self.yProfile = yPlot.plot()
-        self.yProfile.rotate(90)
-        self.ci.layout.setColumnMaximumWidth(0, 40)
-        yPlot.setYLink(self.vb)
+    def setLayers(self, names):
+        for name, img in self.imgLayers.items():
+            if name not in names:
+                self.napariViewer.layers.remove(img)
 
-        # Connect signals
-        self.vb.sigResized.connect(self.sigResized)
-        self.hist.sigLevelsChanged.connect(self.sigLevelsChanged)
-        self.levelsButton.clicked.connect(self.sigUpdateLevelsClicked)
+        def addImage(name, colormap=None):
+            self.imgLayers[name] = self.napariViewer.add_image(
+                np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap
+            )
+
+        # This is for preventing reconstruction images displaying here. TODO: Fix the issue
+        self.napariViewer.add_image(np.zeros((1, 1)), name='(do not touch)')
+
+        for name in names:
+            if name not in self.napariViewer.layers:
+                try:
+                    addImage(name, name.lower())
+                except KeyError:
+                    addImage(name, 'grayclip')
+
+    def getImage(self, name):
+        return self.imgLayers[name].data.T
+
+    def setImage(self, name, im):
+        self.imgLayers[name].data = im.T
+
+    def clearImage(self, name):
+        self.setImage(name, np.zeros((1, 1)))
+
+    def getImageDisplayLevels(self, name):
+        return self.imgLayers[name].contrast_limits
+
+    def setImageDisplayLevels(self, name, minimum, maximum):
+        self.imgLayers[name].contrast_limits = (minimum, maximum)
+
+    def resetView(self):
+        self.napariViewer.reset_view()

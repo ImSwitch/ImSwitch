@@ -1,8 +1,8 @@
+import napari
 import numpy as np
-import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
 
-from .guitools import BetterPushButton
+from .guitools import BetterPushButton, addNapariGrayclipColormap
 
 
 class ReconstructionView(QtWidgets.QFrame):
@@ -18,17 +18,11 @@ class ReconstructionView(QtWidgets.QFrame):
         super().__init__(*args, **kwargs)
 
         # Image Widget
-        imageWidget = pg.GraphicsLayoutWidget()
-        self.imgVb = imageWidget.addViewBox(row=0, col=0)
-        self.imgVb.setMouseMode(pg.ViewBox.PanMode)
-        self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
-        # self.img.setPxMode(True)
-        self.imgVb.addItem(self.img)
-        self.imgVb.setAspectLocked(True)
-        self.imgHist = pg.HistogramLUTItem(image=self.img)
-        # self.hist.vb.setLimits(yMin=0, yMax=2048)
-        imageWidget.addItem(self.imgHist, row=0, col=1)
+        addNapariGrayclipColormap()
+        self.napariViewer = napari.Viewer(show=False)
+        self.imgLayer = self.napariViewer.add_image(
+            np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip'
+        )
 
         # Slider and edit box for choosing slice
         sliceLabel = QtWidgets.QLabel('Slice # ')
@@ -107,7 +101,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
         self.setLayout(layout)
 
-        layout.addWidget(imageWidget, 0, 0, 2, 1)
+        layout.addWidget(self.napariViewer.window._qt_window, 0, 0, 2, 1)
         layout.addWidget(self.chooseViewBox, 0, 1, 1, 2)
         layout.addWidget(self.reconList, 0, 3, 2, 1)
         layout.addWidget(self.sliceSlider, 2, 0)
@@ -196,20 +190,25 @@ class ReconstructionView(QtWidgets.QFrame):
     def getViewName(self):
         return self.chooseViewGroup.checkedButton().viewName
 
+    def getImage(self):
+        return self.imgLayer.data.T
+
     def setImage(self, im, autoLevels=False, levels=None):
-        if levels is None:
-            self.img.setImage(im, autoLevels=autoLevels)
-        else:
-            self.img.setImage(im, levels=levels)
+        self.imgLayer.data = im.T
+        self.imgLayer.contrast_limits_range = (im.min(), im.max())
+        if levels is not None:
+            self.setImageDisplayLevels(*levels)
+        elif autoLevels:
+            self.setImageDisplayLevels(*self.imgLayer.contrast_limits_range)
 
     def clearImage(self):
-        self.img.setImage(np.zeros((100, 100)))
+        self.setImage(np.zeros((1, 1)))
 
     def getImageDisplayLevels(self):
-        return self.imgHist.getLevels()
+        return self.imgLayer.contrast_limits
 
     def setImageDisplayLevels(self, minimum, maximum):
-        self.imgHist.setLevels(minimum, maximum)
+        self.imgLayer.contrast_limits = (minimum, maximum)
 
     def removeRecon(self):
         numSelected = len(self.reconList.selectedIndexes())
@@ -222,3 +221,6 @@ class ReconstructionView(QtWidgets.QFrame):
         for i in range(self.reconList.count()):
             currRow = self.reconList.currentRow()
             self.reconList.takeItem(currRow)
+
+    def resetView(self):
+        self.napariViewer.reset_view()

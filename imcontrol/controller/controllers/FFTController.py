@@ -44,13 +44,16 @@ class FFTController(LiveUpdatedController):
         self.init = False
         self._widget.img.setOnlyRenderVisible(enabled, render=False)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
-        if self.active and (self.it == self.updateRate):
+        if not isCurrentDetector or not self.active:
+            return
+
+        if self.it == self.updateRate:
             self.it = 0
             self.imageComputationWorker.prepareForNewImage(im)
             self.sigImageReceived.emit()
-        elif self.active and (not (self.it == self.updateRate)):
+        else:
             self.it += 1
 
     def displayImage(self, im):

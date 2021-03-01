@@ -260,7 +260,7 @@ class cropROI(pg.ROI):
         self.addScaleHandle((0, 1), (1, 0))
 
 
-class SumpixelsGraph(pg.GraphicsWindow):
+class SumpixelsGraph(pg.GraphicsLayoutWidget):
     """The graph window class"""
 
     def __init__(self, *args, **kwargs):
@@ -313,7 +313,7 @@ class SumpixelsGraph(pg.GraphicsWindow):
         self.ptr += 1
 
 
-class ProjectionGraph(pg.GraphicsWindow):
+class ProjectionGraph(pg.GraphicsLayoutWidget):
     """The graph window class"""
 
     def __init__(self, *args, **kwargs):

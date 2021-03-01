@@ -16,9 +16,9 @@ class AlignAverageController(LiveUpdatedController):
         # Connect AlignWidgetAverage signals
         self._widget.sigShowROIToggled.connect(self.toggleROI)
 
-    def update(self, im, init):
+    def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
-        if self.active:
+        if isCurrentDetector and self.active:
             value = np.mean(
                 self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem())
             )

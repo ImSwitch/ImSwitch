@@ -222,7 +222,7 @@ class ScanWidget(Widget):
         self.graph.plot.setYRange(-0.1, 1.1)
 
 
-class GraphFrame(pg.GraphicsWindow):
+class GraphFrame(pg.GraphicsLayoutWidget):
     """Creates the plot that plots the preview of the pulses."""
 
     def __init__(self, *args, **kwargs):

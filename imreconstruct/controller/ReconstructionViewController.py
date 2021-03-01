@@ -28,11 +28,11 @@ class ReconstructionViewController(ImRecWidgetController):
             if retrievedLevels is not None:
                 self._widget.setImageDisplayLevels(retrievedLevels[0], retrievedLevels[1])
         else:
-            self.fullUpdate(levels=self._widget.getCurrentItemData().getDispLevels())
+            self.fullUpdate(autoLevels=True, levels=self._widget.getCurrentItemData().getDispLevels())
 
         self._currItemInd = self._widget.getCurrentItemIndex()
 
-    def fullUpdate(self, levels):
+    def fullUpdate(self, autoLevels=False, levels=None):
         currentItemData = self._widget.getCurrentItemData()
         if currentItemData is not None:
             reconstructedShape = np.shape(self._widget.getCurrentItemData().reconstructed)
@@ -43,7 +43,8 @@ class ReconstructionViewController(ImRecWidgetController):
                 base=reconstructedShape[1] - 1,
                 t=reconstructedShape[2] - 1
             )
-            self.setImgSlice(*self._widget.getSliceParameters(), levels=levels)
+            self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels, levels=levels)
+            self._widget.resetView()
         else:
             self._widget.setSliceParameters(s=0, base=0, t=0)
             self._widget.setSliceParameterMaximums(s=0, base=0, t=0)

@@ -15,7 +15,7 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    sigUpdateImage = Signal(np.ndarray, bool)  # (image, init)
+    sigUpdateImage = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
 
     sigAcquisitionStarted = Signal()
 

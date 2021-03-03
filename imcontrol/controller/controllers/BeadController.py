@@ -71,8 +71,8 @@ class BeadWorker(Worker):
             n = len(newImages)
             if n > 0:
                 roiItem = self.__controller._widget.getROIGraphicsItem()
-                pos = roiItem.pos()
-                size = roiItem.size()
+                pos = roiItem.position
+                size = roiItem.size
 
                 x0 = int(pos[0])
                 y0 = int(pos[1])

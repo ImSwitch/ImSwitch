@@ -153,8 +153,8 @@ class SettingsController(ImConWidgetController):
         """ Update parameters according to ROI. """
         frameStart = self._master.detectorsManager.execOnCurrent(lambda c: c.frameStart)
         ROI = self._widget.getROIGraphicsItem()
-        pos = ROI.pos()
-        size = ROI.size()
+        pos = ROI.position
+        size = ROI.size
 
         currentParams = self.getCurrentParams()
         currentParams.x0.setValue(frameStart[0] + int(pos[0]))

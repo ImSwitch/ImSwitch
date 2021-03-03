@@ -17,9 +17,7 @@ class AlignWidgetAverage(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.resetButton = guitools.BetterPushButton('Reset graph')
-        self.ROI = guitools.ROI((50, 50), (0, 0), handlePos=(1, 0),
-                                handleCenter=(0, 1), color=pg.mkPen(0, 255, 0),
-                                scaleSnap=True, translateSnap=True)
+        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
         self.graph = guitools.SumpixelsGraph()
         self.resetButton.clicked.connect(self.graph.resetData)
 
@@ -38,8 +36,8 @@ class AlignWidgetAverage(Widget):
         return self.ROI
 
     def showROI(self, position, size):
-        self.ROI.setPos(position)
-        self.ROI.setSize(size)
+        self.ROI.position = position
+        self.ROI.size = size
         self.ROI.show()
 
     def hideROI(self):

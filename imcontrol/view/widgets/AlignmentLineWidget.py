@@ -20,8 +20,7 @@ class AlignmentLineWidget(Widget):
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
         pen = pg.mkPen(color=(255, 255, 0), width=0.5,
                        style=QtCore.Qt.SolidLine, antialias=True)
-        self.alignmentLine = pg.InfiniteLine(
-            pen=pen, movable=True)
+        self.alignmentLine = guitools.VispyLineVisual(movable=True)
 
         # Add items to GridLayout
         alignmentLayout = QtWidgets.QGridLayout()
@@ -39,4 +38,7 @@ class AlignmentLineWidget(Widget):
         return float(self.angleEdit.text())
 
     def setLineAngle(self, angle):
-        self.alignmentLine.setAngle(angle)
+        self.alignmentLine.angle = angle
+
+    def setLineVisibility(self, visible):
+        self.alignmentLine.setVisible(visible)

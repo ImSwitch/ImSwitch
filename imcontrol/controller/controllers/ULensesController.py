@@ -29,4 +29,4 @@ class ULensesController(ImConWidgetController):
 
     def toggleULenses(self, show):
         """ Shows or hides grid. """
-        self._widget.ulensesPlot.setVisible(show)
+        self._widget.setULensesVisible(show)

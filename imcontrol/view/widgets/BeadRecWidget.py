@@ -32,9 +32,7 @@ class BeadRecWidget(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtWidgets.QCheckBox('Run')
-        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
-                                handleCenter=(0, 1), color='y', scaleSnap=True,
-                                translateSnap=True)
+        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
@@ -51,8 +49,8 @@ class BeadRecWidget(Widget):
         return self.ROI
 
     def showROI(self, position, size):
-        self.ROI.setPos(position)
-        self.ROI.setSize(size)
+        self.ROI.position = position
+        self.ROI.size = size
         self.ROI.show()
 
     def hideROI(self):

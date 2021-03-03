@@ -22,7 +22,4 @@ class AlignmentLineController(ImConWidgetController):
 
     def show(self, enabled):
         """ Shows or hides line. """
-        if enabled:
-            self._widget.alignmentLine.show()
-        else:
-            self._widget.alignmentLine.hide()
+        self._widget.setLineVisibility(enabled)

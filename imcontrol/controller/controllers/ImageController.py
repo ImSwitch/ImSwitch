@@ -14,7 +14,7 @@ class ImageController(LiveUpdatedController):
         self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(
             lambda c: c.shape
         )
-        self._savedLevels = {}
+        self._shouldResetView = False
 
         self._widget.setLayers(self._master.detectorsManager.getAllDetectorNames())
 
@@ -23,11 +23,8 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigAdjustFrame.connect(self.adjustFrame)
         self._commChannel.sigGridToggled.connect(self.gridToggle)
         self._commChannel.sigCrosshairToggled.connect(self.crosshairToggle)
-        self._commChannel.sigAddItemToVb.connect(self.addItemTovb)
-        self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromvb)
-        self._commChannel.sigDetectorSwitched.connect(self.detectorSwitched)
-
-        self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
+        self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
+        self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -40,15 +37,14 @@ class ImageController(LiveUpdatedController):
 
             self._widget.setImageDisplayLevels(detectorName, *guitools.bestLevels(im))
 
-    def addItemTovb(self, item):
+    def addItemToVb(self, item):
         """ Add item from communication channel to viewbox."""
-        # TODO: self._widget.vb.addItem(item)
         item.hide()
+        self._widget.addItem(item)
 
-    def removeItemFromvb(self, item):
+    def removeItemFromVb(self, item):
         """ Remove item from communication channel to viewbox."""
-        # TODO: self._widget.vb.removeItem(item)
-        pass
+        self._widget.removeItem(item)
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update new image in the viewbox. """
@@ -57,17 +53,16 @@ class ImageController(LiveUpdatedController):
 
         self._widget.setImage(detectorName, im)
 
-        if not init:
-            self.adjustFrame(self._lastWidth, self._lastHeight)
+        if not init or self._shouldResetView:
+            self.adjustFrame(self._lastWidth, self._lastHeight, instantResetView=True)
 
-    def detectorSwitched(self, newDetectorName):
-        pass
-        # self._widget.setLayers([newDetectorName])
-
-    def adjustFrame(self, width, height):
+    def adjustFrame(self, width, height, instantResetView=False):
         """ Adjusts the viewbox to a new width and height. """
-        # TODO: self._widget.grid.update([width, height])
-        self._widget.resetView()
+        self._widget.updateGrid([width, height])
+        if instantResetView:
+            self._widget.resetView()
+        else:
+            self._shouldResetView = True
 
         self._lastWidth = width
         self._lastHeight = height
@@ -78,13 +73,12 @@ class ImageController(LiveUpdatedController):
 
     def getCenterROI(self):
         """ Returns center of viewbox to center a ROI. """
-        return (int(self._widget.vb.viewRect().center().x()),
-                int(self._widget.vb.viewRect().center().y()))
+        return self._widget.getCenterROI()
 
     def gridToggle(self, enabled):
         """ Shows or hides grid. """
-        self._widget.grid.setVisible(enabled)
+        self._widget.setGridVisible(enabled)
 
     def crosshairToggle(self, enabled):
         """ Shows or hides crosshair. """
-        self._widget.crosshair.setVisible(enabled)
+        self._widget.setCrosshairVisible(enabled)

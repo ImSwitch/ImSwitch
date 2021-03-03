@@ -1,8 +1,7 @@
 import numpy as np
-import pyqtgraph as pg
 from PyQt5 import QtCore, QtWidgets
 
-from imcontrol.view import guitools as guitools
+from imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -22,7 +21,7 @@ class ULensesWidget(Widget):
         self.yEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.yOffset)
         self.pxEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.pixelSize)
         self.upEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.periodicity)
-        self.ulensesPlot = pg.ScatterPlotItem()
+        self.ulensesPlot = guitools.VispyScatterVisual(color='red', symbol='x')
 
         # Add elements to GridLayout
         ulensesLayout = QtWidgets.QGridLayout()
@@ -55,4 +54,8 @@ class ULensesWidget(Widget):
 
     def setData(self, x, y):
         """ Updates plot with new parameters. """
-        self.ulensesPlot.setData(x=x, y=y, pen=pg.mkPen(None), brush='r', symbol='x')
+        self.ulensesPlot.setData(x=x, y=y)
+
+    def setULensesVisible(self, visible):
+        """ Updates visibility of plot. """
+        self.ulensesPlot.setVisible(visible)

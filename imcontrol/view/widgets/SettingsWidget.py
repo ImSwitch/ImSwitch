@@ -131,7 +131,7 @@ class CamParamTree(ParameterTree):
 class SettingsWidget(Widget):
     """ Detector settings and ROI parameters. """
 
-    sigROIChanged = QtCore.Signal(object)  # (ROI)
+    sigROIChanged = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,9 +139,7 @@ class SettingsWidget(Widget):
         # Graphical elements
         detectorTitle = QtWidgets.QLabel('<h2><strong>Detector settings</strong></h2>')
         detectorTitle.setTextFormat(QtCore.Qt.RichText)
-        self.ROI = guitools.ROI((0, 0), (0, 0), handlePos=(1, 0),
-                                handleCenter=(0, 1), color='y', scaleSnap=True,
-                                translateSnap=True)
+        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
         self.stack = QtWidgets.QStackedWidget()
         self.trees = {}
 
@@ -152,7 +150,7 @@ class SettingsWidget(Widget):
         self.layout.addWidget(self.stack)
 
         # Connect signals
-        self.ROI.sigRegionChangeFinished.connect(self.sigROIChanged)
+        self.ROI.sigROIChanged.connect(self.sigROIChanged)
 
     def addDetector(self, detectorName, detectorParameters, supportedBinnings, roiInfos):
         self.trees[detectorName] = CamParamTree(roiInfos, detectorParameters, supportedBinnings)
@@ -175,9 +173,9 @@ class SettingsWidget(Widget):
 
     def showROI(self, position=None, size=None):
         if position is not None:
-            self.ROI.setPos(position)
+            self.ROI.position = position
         if size is not None:
-            self.ROI.setSize(size)
+            self.ROI.size = size
         self.ROI.show()
 
     def hideROI(self):

@@ -51,12 +51,13 @@ class RecordingManager(SignalInterface):
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers())
         self.__thread.start()
 
-    def endRecording(self, emitSignal=True):
+    def endRecording(self, emitSignal=True, wait=True):
         self.__record = False
         self.__thread.quit()
         if emitSignal:
             self.sigRecordingEnded.emit()
-        self.__thread.wait()
+        if wait:
+            self.__thread.wait()
     
     def snap(self, detectorNames, savename, attrs):
         for detectorName in detectorNames:
@@ -78,6 +79,13 @@ class RecordingWorker(Worker):
         self.__recordingManager = recordingManager
 
     def run(self):
+        acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
+        try:
+            self._record()
+        finally:
+            self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
+
+    def _record(self):
         files = {}
         fileHandles = {}
         filePaths = {}
@@ -106,7 +114,6 @@ class RecordingWorker(Worker):
         try:
             if self.recMode == RecMode.SpecFrames:
                 if len(self.detectorNames) > 1:
-                    self.__recordingManager.endRecording()
                     raise ValueError('Only one detector can be recorded in SpecFrames mode')
 
                 detectorName = self.detectorNames[0]
@@ -127,7 +134,6 @@ class RecordingWorker(Worker):
                             currentFrame[detectorName] = frames
                         self.__recordingManager.sigRecordingFrameNumUpdated.emit(it)
                 self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
-                self.__recordingManager.endRecording()
             elif self.recMode == RecMode.SpecTime:
                 start = time.time()
                 currentRecTime = 0
@@ -146,7 +152,6 @@ class RecordingWorker(Worker):
                             )
                             currentRecTime = time.time() - start
                 self.__recordingManager.sigRecordingTimeUpdated.emit(0)
-                self.__recordingManager.endRecording()
             else:
                 while self.__recordingManager.record:
                     for detectorName in self.detectorNames:
@@ -172,6 +177,9 @@ class RecordingWorker(Worker):
                         self.__recordingManager.sigMemoryRecordingAvailable.emit(name, file, filePath, True)
                 else:
                     file.close()
+
+            if self.recMode == RecMode.SpecFrames or self.recMode == RecMode.SpecTime:
+                self.__recordingManager.endRecording(wait=False)
 
 
 class RecMode(enum.Enum):

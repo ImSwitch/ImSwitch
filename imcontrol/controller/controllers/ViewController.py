@@ -6,6 +6,8 @@ class ViewController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._acqHandle = None
+
         self._widget.setDetectorList(self._master.detectorsManager.execOnAll(lambda c: c.model))
         self._widget.setViewToolsEnabled(False)
 
@@ -19,10 +21,11 @@ class ViewController(ImConWidgetController):
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
         if enabled:
-            self._master.detectorsManager.startAcquisition()
+            self._acqHandle = self._master.detectorsManager.startAcquisition(liveView=True)
             self._widget.setViewToolsEnabled(True)
         else:
-            self._master.detectorsManager.stopAcquisition()
+            self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
+            self._acqHandle = None
 
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """
@@ -41,4 +44,5 @@ class ViewController(ImConWidgetController):
         self._widget.selectNextDetector()
 
     def closeEvent(self):
-        self._master.detectorsManager.stopAcquisition()
+        if self._acqHandle is not None:
+            self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)

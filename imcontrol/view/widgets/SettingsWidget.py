@@ -75,13 +75,10 @@ class CamParamTree(ParameterTree):
         self.setParameters(self.p, showTop=False)
         self._writable = True
 
-    def enableCropMode(self):
-        value = self.frameTransferParam.value()
-        if value:
-            self.cropModeEnableParam.setWritable(True)
-        else:
-            self.cropModeEnableParam.setValue(False)
-            self.cropModeEnableParam.setWritable(False)
+    def setImageFrameVisible(self, visible):
+        """ Sets whetehr the image frame settings are visible. """
+        framePar = self.p.param('Image frame')
+        framePar.setOpts(visible=visible)
 
     @property
     def writable(self):
@@ -169,6 +166,10 @@ class SettingsWidget(Widget):
         self.stack.setCurrentWidget(newDetectorWidget)
         newDetectorWidget.horizontalScrollBar().setValue(scrollX)
         newDetectorWidget.verticalScrollBar().setValue(scrollY)
+
+    def setImageFrameVisible(self, visible):
+        """ Sets whetehr the image frame settings are visible. """
+        self.stack.currentWidget().setImageFrameVisible(visible)
 
     def getROIGraphicsItem(self):
         return self.ROI

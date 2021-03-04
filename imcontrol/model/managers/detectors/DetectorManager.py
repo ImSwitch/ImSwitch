@@ -29,12 +29,13 @@ class DetectorManager(SignalInterface):
     sigImageUpdated = Signal(np.ndarray, bool)
 
     @abstractmethod
-    def __init__(self, name, fullShape, supportedBinnings, model, parameters):
+    def __init__(self, name, fullShape, supportedBinnings, model, parameters, croppable):
         super().__init__()
 
         self.__name = name
         self.__model = model
         self.__parameters = parameters
+        self.__croppable = croppable
 
         self._frameStart = (0, 0)
         self._shape = fullShape
@@ -96,6 +97,10 @@ class DetectorManager(SignalInterface):
     @property
     def parameters(self):
         return self.__parameters
+
+    @property
+    def croppable(self):
+        return self.__croppable
 
     @property
     @abstractmethod

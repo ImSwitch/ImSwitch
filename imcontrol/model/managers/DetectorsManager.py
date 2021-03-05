@@ -2,7 +2,7 @@ from time import sleep
 
 import numpy as np
 
-from imcommon.framework import Signal, SignalInterface, Thread, Timer, Worker
+from imcommon.framework import Mutex, Signal, SignalInterface, Thread, Timer, Worker
 from .MultiManager import MultiManager
 
 
@@ -17,6 +17,10 @@ class DetectorsManager(MultiManager, SignalInterface):
     def __init__(self, detectorInfos, updatePeriod, **kwargs):
         MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
         SignalInterface.__init__(self)
+
+        self._activeAcqHandles = []
+        self._activeAcqLVHandles = []
+        self._activeAcqsMutex = Mutex()
 
         self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
@@ -73,17 +77,60 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         return self.execOn(self._currentDetectorName, func)
 
-    def startAcquisition(self):
-        self.execOnAll(lambda c: c.startAcquisition())
-        self.sigAcquisitionStarted.emit()
-        sleep(0.3)
-        self._thread.start()
+    def startAcquisition(self, liveView=False):
+        self._activeAcqsMutex.lock()
+        try:
+            # Generate handle that will be used to stop acquisition
+            handle = np.random.randint(2**31)
 
-    def stopAcquisition(self):
-        self._thread.quit()
-        self._thread.wait()
-        self.execOnAll(lambda c: c.stopAcquisition())
-        self.sigAcquisitionStopped.emit()
+            # Add to handle list and set enable acquisition/LV flags if not already enabled
+            if not liveView:
+                self._activeAcqHandles.append(handle)
+                enableLV = False
+            else:
+                self._activeAcqLVHandles.append(handle)
+                enableLV = len(self._activeAcqLVHandles) == 1
+            enableAcq = len(self._activeAcqHandles) + len(self._activeAcqLVHandles) == 1
+        finally:
+            self._activeAcqsMutex.unlock()
+
+        # Do actual enabling
+        if enableAcq:
+            self.execOnAll(lambda c: c.startAcquisition())
+            self.sigAcquisitionStarted.emit()
+        if enableLV:
+            sleep(0.3)
+            self._thread.start()
+
+        return handle
+
+    def stopAcquisition(self, handle, liveView=False):
+        self._activeAcqsMutex.lock()
+        try:
+            # Remove from handle list and set disable acquisition/LV flags if not already disabled
+            if not liveView:
+                if handle not in self._activeAcqHandles:
+                    raise ValueError('Invalid or already used handle')
+
+                self._activeAcqHandles.remove(handle)
+                disableLV = False
+            else:
+                if handle not in self._activeAcqLVHandles:
+                    raise ValueError('Invalid or already used handle')
+
+                self._activeAcqLVHandles.remove(handle)
+                disableLV = len(self._activeAcqLVHandles) < 1
+            disableAcq = len(self._activeAcqHandles) < 1 and len(self._activeAcqLVHandles) < 1
+        finally:
+            self._activeAcqsMutex.unlock()
+
+        # Do actual disabling
+        if disableLV:
+            self._thread.quit()
+            self._thread.wait()
+        if disableAcq:
+            self.execOnAll(lambda c: c.stopAcquisition())
+            self.sigAcquisitionStopped.emit()
 
 
 class LVWorker(Worker):

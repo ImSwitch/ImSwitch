@@ -61,6 +61,7 @@ class ImageController(LiveUpdatedController):
         self._widget.updateGrid([width, height])
         if instantResetView:
             self._widget.resetView()
+            self._shouldResetView = False
         else:
             self._shouldResetView = True
 

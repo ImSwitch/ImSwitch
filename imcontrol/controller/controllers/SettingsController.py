@@ -47,6 +47,7 @@ class SettingsController(ImConWidgetController):
         execOnAll(lambda c: (self.adjustFrame(detector=c)))
         execOnAll(lambda c: (self.updateFrame(detector=c)))
         execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)))
+        self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
 
         # Connect CommunicationChannel signals
         self._commChannel.sigDetectorSwitched.connect(self.detectorSwitched)
@@ -353,9 +354,10 @@ class SettingsController(ImConWidgetController):
 
         self.syncFrameParams(doAdjustFrame=False)
 
-    def detectorSwitched(self, newDetectorName, _):
+    def detectorSwitched(self, newDetectorName, _=None):
         """ Called when the user switches to another detector. """
         self._widget.setDisplayedDetector(newDetectorName)
+        self._widget.setImageFrameVisible(self._master.detectorsManager[newDetectorName].croppable)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
         self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
 

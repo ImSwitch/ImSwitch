@@ -148,7 +148,7 @@ class RecorderController(ImConWidgetController):
                     self.timer.start(1000)
                 else:
                     self._commChannel.sigMoveZStage.emit(
-                        -self.lapseTotal * self._widget.getDimlapseStepSize()
+                        (self.lapseTotal - 1) * -self._widget.getDimlapseStepSize()
                     )
                     self._master.recordingManager.endRecording()
 

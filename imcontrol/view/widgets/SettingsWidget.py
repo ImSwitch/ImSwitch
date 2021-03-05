@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph.parametertree import ParameterTree, Parameter
 
 from imcontrol.view import guitools as guitools

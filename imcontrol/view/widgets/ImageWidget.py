@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
 

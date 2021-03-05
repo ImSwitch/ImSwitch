@@ -49,7 +49,7 @@ class HamamatsuManager(DetectorManager):
         }
 
         super().__init__(name=name, fullShape=fullShape, supportedBinnings=[1, 2, 4], model=model,
-                         parameters=parameters, croppable=False)
+                         parameters=parameters, croppable=True)
         self._updatePropertiesFromCamera()
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 

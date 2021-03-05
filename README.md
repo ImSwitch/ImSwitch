@@ -1,6 +1,6 @@
 # ImSwitch
  
-This is a new microscope control software based on the older control software Tempesta from TestaLab (www.testalab.org), but re-designed to have a solid architecture that enables change and nobel software architecture. It also includes image-reconstruction of RESOLFT and multifoci confocal images but aims at adapting to other microscopy modalities upon demand as well.
+This is a new microscope control software based on the older control software tormenta (https://github.com/fedebarabas/tormenta), but re-designed to have a solid architecture that enables change and robust software architecture. It also includes image-reconstruction of RESOLFT and multifoci confocal images but aims at adapting to other microscopy modalities upon demand as well.
 
 ImSwitch addresses some problems detected from the previous software:
 

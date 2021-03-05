@@ -1,20 +1,35 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 15:17:46 2020
+import traceback
 
-@author: _Xavi
-"""
+from imcommon import prepareApp, launchApp
+from imcommon.controller import ModuleCommunicationChannel
+from imcommon.view import MultiModuleWindow
 
-from controller.TempestaController import TempestaController
-from view.TempestaView import TempestaView
-from model.TempestaModel import TempestaModel
-from pyqtgraph.Qt import QtGui
-import sys
+import imcontrol
+import imreconstruct
 
-model = TempestaModel()
-app = QtGui.QApplication([])
-view = TempestaView()
-controller = TempestaController(model, view)
-view.registerController(controller)
-view.show()
-sys.exit(app.exec_())
+
+modules = {
+    imcontrol: 'Hardware Control',
+    imreconstruct: 'Image Reconstruction'
+}
+
+app = prepareApp()
+moduleCommChannel = ModuleCommunicationChannel()
+multiModuleWindow = MultiModuleWindow('ImSwitch')
+mainControllers = set()
+
+for modulePackage in modules.keys():
+    moduleCommChannel.register(modulePackage)
+
+for modulePackage, moduleName in modules.items():
+    try:
+        view, controller = modulePackage.getMainViewAndController(moduleCommChannel)
+    except:
+        print(f'Failed to initialize module {modulePackage.__name__}')
+        print(traceback.format_exc())
+        moduleCommChannel.unregister(modulePackage)
+    else:
+        multiModuleWindow.addModule(moduleName, view)
+        mainControllers.add(controller)
+
+launchApp(app, multiModuleWindow, mainControllers)

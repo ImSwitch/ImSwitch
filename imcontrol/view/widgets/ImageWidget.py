@@ -1,6 +1,6 @@
 import napari
 import numpy as np
-from PyQt5 import QtWidgets
+from pyqtgraph.Qt import QtWidgets
 
 import imcontrol.view.guitools as guitools
 

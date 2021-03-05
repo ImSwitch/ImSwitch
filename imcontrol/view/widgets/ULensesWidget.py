@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5 import QtCore, QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 
 from imcontrol.view import guitools
 from .basewidgets import Widget

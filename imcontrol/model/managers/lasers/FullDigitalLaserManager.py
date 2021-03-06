@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 24 16:41:57 2020
-
-@author: _Xavi
-"""
 from lantz import Q_
 
 from imcontrol.model.interfaces import FullDigitalLaser
@@ -51,6 +45,21 @@ class FullDigitalLaserManager(LaserManager):
             self._laser.query('cp')
             print('Exited digital modulation mode')
         self._digitalMod = digital
-
+		
     def finalize(self):
         self._laser.finalize()
+        
+# Copyright (C) 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License

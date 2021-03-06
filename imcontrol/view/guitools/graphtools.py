@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Feb  6 13:20:02 2015
+
+@author: federico
+"""
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.ptime as ptime
@@ -337,18 +343,3 @@ class ProjectionGraph(pg.GraphicsWindow):
         """
         self.data = values
         self.sumCurve.setData(np.arange(len(self.data)), self.data)
-
-# Copyright (C) 2017 Federico Barabas
-# This file is part of Tormenta.
-#
-# Tormenta is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Tormenta is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License

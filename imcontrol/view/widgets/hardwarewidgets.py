@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 17:08:54 2020
-
-@author: _Xavi
-"""
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 
@@ -367,3 +361,18 @@ class BeadRecWidget(Widget):
 
     def updateDisplayState(self, showingROI):
         self.roiButton.setText('Show ROI' if showingROI else 'Hide ROI')
+
+# Copyright (C) 2017 Federico Barabas 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# This file is part of Tormenta and ImSwitch.
+#
+# Tormenta and ImSwitch are free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tormenta and Imswitch are distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License

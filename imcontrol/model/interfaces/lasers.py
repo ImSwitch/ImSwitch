@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr  1 15:18:49 2020
-
-@author: Testa4
-"""
 import importlib
 
 from .mockers import MockLaser
@@ -144,3 +138,17 @@ def getDriver(iName):
     return driver
 
 
+# Copyright (C) 2017 Federico Barabas
+# This file is part of Tormenta.
+#
+# Tormenta is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tormenta is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License

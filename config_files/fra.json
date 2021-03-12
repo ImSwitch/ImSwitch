@@ -145,7 +145,7 @@
         }
     },
     "designers": {
-        "stageScanDesigner": "BetaStageScanDesigner",
+        "scanDesigner": "BetaStageScanDesigner",
         "TTLCycleDesigner": "BetaTTLCycleDesigner"
     },
     "rois": {

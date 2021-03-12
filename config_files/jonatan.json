@@ -128,11 +128,15 @@
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
-        "conversionFactor": 1.587,
+        "conversionFactor": 17.44,
         "minVolt": -10,
         "maxVolt": 10,
+        "vel_max": 10.0,
+        "acc_max": 10.0,
         "axisCount": 1,
-        "axisLabels": "X"
+        "axisLabels": "X",
+        "scanner": 1,
+        "positioner": 1
       }
     },
     "ND-GalvoY": {
@@ -140,11 +144,15 @@
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
-        "conversionFactor": 1.587,
+        "conversionFactor": 16.63,
         "minVolt": -10,
         "maxVolt": 10,
+        "vel_max": 10.0,
+        "acc_max": 10.0,
         "axisCount": 1,
-        "axisLabels": "Y"
+        "axisLabels": "Y",
+        "scanner": 1,
+        "positioner": 0
       }
     },
     "ND-PiezoZ": {
@@ -152,11 +160,15 @@
       "digitalLine": null,
       "managerName": "NidaqAOPositionerManager",
       "managerProperties": {
-        "conversionFactor": 10.0,
+        "conversionFactor": 1.0,
         "minVolt": 0,
         "maxVolt": 10,
+        "vel_max": 1000.0,
+        "acc_max": 1000.0,
         "axisCount": 1,
-        "axisLabels": "Z"
+        "axisLabels": "Z",
+        "scanner": 1,
+        "positioner": 0
       }
     },
     "PiezoZ": {
@@ -166,7 +178,9 @@
       "managerProperties": {
         "axisCount": 1,
         "axisLabels": "Z",
-        "rs232device": "pczpiezo"
+        "rs232device": "pczpiezo",
+        "scanner": 0,
+        "positioner": 1
       }
     },
     "StageXY": {
@@ -176,7 +190,9 @@
       "managerProperties": {
         "axisCount": 2,
         "axisLabels": "XY",
-        "rs232device": "mhxystage"
+        "rs232device": "mhxystage",
+        "scanner": 0,
+        "positioner": 1
       }
     }
   },
@@ -294,10 +310,10 @@
     "ULensesWidget": false,
     "SLMWidget": true,
     "FocusLockWidget": true,
-    "MotCorrWidget": true
+    "MotCorrWidget": false
   },
   "designers": {
-    "stageScanDesigner": "BetaStageScanDesigner",
+    "scanDesigner": "GalvoScanDesigner",
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
   },
   "slm": {

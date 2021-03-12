@@ -156,23 +156,24 @@ class PositionerController(WidgetController):
 
         # Connect PositionerWidget signals
         for positionerName in self._setupInfo.positioners.keys():
-            axes = self._setupInfo.positioners[positionerName].managerProperties['axisCount']
-            axislabels = textwrap.wrap(self._setupInfo.positioners[positionerName].managerProperties['axisLabels'],1)
-            for i in range(axes):
-                self._widget.pars['UpButton' + positionerName + axislabels[i]].pressed.connect(
-                    lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
-                        positionerName,
-                        float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
-                        i
+            if self._setupInfo.positioners[positionerName].managerProperties['positioner']:
+                axes = self._setupInfo.positioners[positionerName].managerProperties['axisCount']
+                axislabels = textwrap.wrap(self._setupInfo.positioners[positionerName].managerProperties['axisLabels'],1)
+                for i in range(axes):
+                    self._widget.pars['UpButton' + positionerName + axislabels[i]].pressed.connect(
+                        lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
+                            positionerName,
+                            float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
+                            i
+                        )
                     )
-                )
-                self._widget.pars['DownButton' + positionerName + axislabels[i]].pressed.connect(
-                    lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
-                        positionerName,
-                        -float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
-                        i
+                    self._widget.pars['DownButton' + positionerName + axislabels[i]].pressed.connect(
+                        lambda positionerName=positionerName, axislabel=axislabels[i], i=i: self.move(
+                            positionerName,
+                            -float(self._widget.pars['StepEdit' + positionerName + axislabel].text()),
+                            i
+                        )
                     )
-                )
 
     def move(self, positioner, dist, axis):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """

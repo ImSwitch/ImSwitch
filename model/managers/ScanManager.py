@@ -36,13 +36,13 @@ class SuperScanManager:
 class ScanManager(SuperScanManager):
     def __init__(self, setupInfo):
         super().__init__()
-        self.__stageScanDesigner = SignalDesignerFactory(setupInfo, 'stageScanDesigner')
+        self.__scanDesigner = SignalDesignerFactory(setupInfo, 'scanDesigner')
         self.__TTLCycleDesigner = SignalDesignerFactory(setupInfo, 'TTLCycleDesigner')
 
         self._expectedSyncParameters = []
 
     def _parameterCompatibility(self, parameterDict):
-        stageExpected = set(self.__stageScanDesigner.expectedParameters)
+        stageExpected = set(self.__scanDesigner.expectedParameters)
         stageIncoming = set(parameterDict['stageParameterList'])
 
         if not stageExpected == stageIncoming:
@@ -63,18 +63,18 @@ class ScanManager(SuperScanManager):
     def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
         return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
 
-    def makeFullScan(self, stageScanParameters, TTLParameters, setupInfo, staticPositioner=False):
+    def makeFullScan(self, scanParameters, TTLParameters, setupInfo, staticPositioner=False):
         TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, setupInfo)
 
         # Calculate samples to zero pad TTL signals with
-        TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * TTLParameters['Sample_rate']
+        TTLZeroPadSamples = scanParameters['Return_time_seconds'] * TTLParameters['sample_rate']
         if not TTLZeroPadSamples.is_integer():
             print('WARNING: Non-integer number of return samples, rounding up')
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
 
         if not staticPositioner:
-            stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(
-                stageScanParameters, setupInfo, returnFrames=True
+            scanSignalsDict, positions = self.__scanDesigner.make_signal(
+                scanParameters, setupInfo, returnFrames=True
             )
 
             # Tile and pad TTL signals according to sync parameters
@@ -85,9 +85,9 @@ class ScanManager(SuperScanManager):
 
                 TTLCycleSignalsDict[target] = signal
         else:
-            stageScanSignalsDict = {}
+            scanSignalsDict = {}
 
-        return {'stageScanSignalsDict': stageScanSignalsDict,
+        return {'scanSignalsDict': scanSignalsDict,
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 
 
@@ -96,44 +96,44 @@ if __name__ == '__main__':
     print('Running main')
     import matplotlib.pyplot as plt
 
-    Stageparameters = {'Targets[x]': ['Stage_X', 'Stage_Y', 'Stage_Z'],
-                       'Sizes[x]': [5, 5, 5],
-                       'Step_sizes[x]': [1, 1, 1],
-                       'Start[x]': [0, 0, 0],
-                       'Sequence_time_seconds': 0.005,
-                       'Sample_rate': 100000,
+    Stageparameters = {'target_device': ['Stage_X', 'Stage_Y', 'Stage_Z'],
+                       'axis_length': [5, 5, 5],
+                       'axis_step_size': [1, 1, 1],
+                       'axis_startpos': [0, 0, 0],
+                       'sequence_time': 0.005,
+                       'sample_rate': 100000,
                        'Return_time_seconds': 0.001}
-    TTLparameters = {'Targets[x]': ['405', '488'],
+    TTLparameters = {'target_device': ['405', '488'],
                      'TTLStarts[x,y]': [[0.0001, 0.004], [0, 0]],
                      'TTLEnds[x,y]': [[0.0015, 0.005], [0, 0]],
-                     'Sequence_time_seconds': 0.005,
-                     'Sample_rate': 100000}
+                     'sequence_time': 0.005,
+                     'sample_rate': 100000}
 
-    SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
+    SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'sample_rate': 100000}
     sh = ScanManagerFactory('ScanManager')
     fullsig = sh.makeFullScan(Stageparameters, TTLparameters)
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_X'])
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_Y'])
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_Z'])
+    plt.plot(fullsig['scanSignalsDict']['Stage_X'])
+    plt.plot(fullsig['scanSignalsDict']['Stage_Y'])
+    plt.plot(fullsig['scanSignalsDict']['Stage_Z'])
 
     plt.figure()
     plt.plot(fullsig['TTLCycleSignalsDict']['405'])
 
     """
-    parameters = {'Targets[x]': ['StageX', 'StageY', 'StageZ'], \
-                  'Sizes[x]':[5,5,5], \
-                  'Step_sizes[x]': [1,1,1], \
-                  'Sequence_time_seconds': 0.005, \
-                  'Sample_rate': 100000, \
+    parameters = {'target_device': ['StageX', 'StageY', 'StageZ'], \
+                  'axis_length':[5,5,5], \
+                  'axis_step_size': [1,1,1], \
+                  'sequence_time': 0.005, \
+                  'sample_rate': 100000, \
                   'Return_time_seconds': 0.001}
-    ssd = SignalDesignerFactory('stageScanDesigner', parameters)        
+    ssd = SignalDesignerFactory('scanDesigner', parameters)        
     sig_dict = ssd.make_signal(parameters)
     
-    parameters = {'Targets[x]': ['405', '488'], \
+    parameters = {'target_device': ['405', '488'], \
                   'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
                   'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
-                  'Sequence_time_seconds': 0.005, \
-                  'Sample_rate': 100000}
+                  'sequence_time': 0.005, \
+                  'sample_rate': 100000}
     ttldesigner = SignalDesignerFactory('TTLCycleDesigner', parameters)
     ttlDict = ttldesigner.make_signal(parameters)
     """

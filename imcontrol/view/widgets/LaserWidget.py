@@ -256,7 +256,7 @@ class LaserModule(QtWidgets.QFrame):
         self.setPointEdit.setText(str(value))
         self.slider.setValue(value)
 
-# Copyright (C) 2017 Federico Barabas 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# Copyright (C) 2017 Federico Barabas 2020, 2021 TestaLab
 # This file is part of Tormenta and ImSwitch.
 #
 # Tormenta and ImSwitch are free software: you can redistribute it and/or modify

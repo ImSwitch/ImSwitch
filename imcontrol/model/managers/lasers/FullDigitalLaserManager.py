@@ -49,7 +49,7 @@ class FullDigitalLaserManager(LaserManager):
     def finalize(self):
         self._laser.finalize()
         
-# Copyright (C) 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -77,7 +77,7 @@ class FocusLockInfo:
 
 @dataclass(frozen=True)
 class DesignersInfo:
-    stageScanDesigner: str  # name of the stage scan designer class to use
+    scanDesigner: str  # name of the scan designer class to use
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
 
 

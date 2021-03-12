@@ -190,6 +190,7 @@ class SaveMode(enum.Enum):
     RAM = 2
     DiskAndRAM = 3
     
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -204,3 +205,4 @@ class SaveMode(enum.Enum):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

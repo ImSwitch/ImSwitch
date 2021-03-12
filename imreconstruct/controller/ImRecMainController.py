@@ -27,6 +27,7 @@ class ImRecMainController(MainController):
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -41,3 +42,4 @@ class ImRecMainController(MainController):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

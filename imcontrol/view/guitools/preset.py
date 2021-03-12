@@ -111,6 +111,7 @@ class Preset:
     def getDefault(cls, presetDir):
         return cls.fromFile(presetDir, '_default.json')
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -125,3 +126,4 @@ class Preset:
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

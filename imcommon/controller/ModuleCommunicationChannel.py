@@ -27,7 +27,7 @@ class ModuleCommunicationChannel(SignalInterface):
     def isModuleRegistered(self, moduleName):
         return moduleName in self.__registeredModules
 
-# Copyright (C) 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

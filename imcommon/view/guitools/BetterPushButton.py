@@ -23,7 +23,7 @@ class BetterPushButton(QtWidgets.QPushButton):
         minWidth = max(self._minMinWidth, textWidth + 8)
         self.setStyleSheet(f'min-width: {minWidth}px')
 
-# Copyright (C) 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

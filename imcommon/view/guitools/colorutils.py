@@ -16,7 +16,7 @@ def wavelengthToHex(wavelength: float, gamma: float = 2.4):
     except ValueError:
         return 255, 255, 255
 
-# Copyright (C) 2020, 2021 Staffan Al-Kadhimi, Xavier Casas, Andreas Boden
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

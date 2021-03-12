@@ -25,26 +25,27 @@ class PositionerWidget(Widget):
     def initControls(self, positionerInfos):
         gridpos = 0
         for index, (positionerName, positionerInfo) in enumerate(positionerInfos.items()):
-            axes = positionerInfo.managerProperties['axisCount']
-            axislabels = textwrap.wrap(positionerInfo.managerProperties['axisLabels'],1)
-            for axis in range(axes):
-                self.pars['Label' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{}-{} </strong>".format(positionerName, axislabels[axis]))
-                self.pars['Label' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
-                self.pars['Position' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{:.2f} µm</strong>".format(0))
-                self.pars['Position' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
-                self.pars['UpButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("+")
-                self.pars['DownButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("-")
-                self.pars['StepEdit' + positionerName + axislabels[axis]] = QtGui.QLineEdit("0")
-                self.pars['StepUnit' + positionerName + axislabels[axis]] = QtGui.QLabel(" µm")
+            if positionerInfo.managerProperties['positioner']:
+                axes = positionerInfo.managerProperties['axisCount']
+                axislabels = textwrap.wrap(positionerInfo.managerProperties['axisLabels'],1)
+                for axis in range(axes):
+                    self.pars['Label' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{}-{} </strong>".format(positionerName, axislabels[axis]))
+                    self.pars['Label' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
+                    self.pars['Position' + positionerName + axislabels[axis]] = QtGui.QLabel("<strong>{:.2f} µm</strong>".format(0))
+                    self.pars['Position' + positionerName + axislabels[axis]].setTextFormat(QtCore.Qt.RichText)
+                    self.pars['UpButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("+")
+                    self.pars['DownButton' + positionerName + axislabels[axis]] = guitools.BetterPushButton("-")
+                    self.pars['StepEdit' + positionerName + axislabels[axis]] = QtGui.QLineEdit("0")
+                    self.pars['StepUnit' + positionerName + axislabels[axis]] = QtGui.QLabel(" µm")
 
-                self.grid.addWidget(self.pars['Label' + positionerName + axislabels[axis]], gridpos, 0)
-                self.grid.addWidget(self.pars['Position' + positionerName + axislabels[axis]], gridpos, 1)
-                self.grid.addWidget(self.pars['UpButton' + positionerName + axislabels[axis]], gridpos, 2)
-                self.grid.addWidget(self.pars['DownButton' + positionerName + axislabels[axis]], gridpos, 3)
-                self.grid.addWidget(QtGui.QLabel("Step"), gridpos, 4)
-                self.grid.addWidget(self.pars['StepEdit' + positionerName + axislabels[axis]], gridpos, 5)
-                self.grid.addWidget(self.pars['StepUnit' + positionerName + axislabels[axis]], gridpos, 6)
-                gridpos = gridpos + 1
+                    self.grid.addWidget(self.pars['Label' + positionerName + axislabels[axis]], gridpos, 0)
+                    self.grid.addWidget(self.pars['Position' + positionerName + axislabels[axis]], gridpos, 1)
+                    self.grid.addWidget(self.pars['UpButton' + positionerName + axislabels[axis]], gridpos, 2)
+                    self.grid.addWidget(self.pars['DownButton' + positionerName + axislabels[axis]], gridpos, 3)
+                    self.grid.addWidget(QtGui.QLabel("Step"), gridpos, 4)
+                    self.grid.addWidget(self.pars['StepEdit' + positionerName + axislabels[axis]], gridpos, 5)
+                    self.grid.addWidget(self.pars['StepUnit' + positionerName + axislabels[axis]], gridpos, 6)
+                    gridpos = gridpos + 1
 
 
 class LaserWidget(Widget):

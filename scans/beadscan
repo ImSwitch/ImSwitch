@@ -1,18 +1,18 @@
 [analogParameterDict]
-Sample_rate = 100000
+sample_rate = 100000
 Return_time_seconds = 0.01
-Targets[x] = ['X', 'Y', 'Z']
-Sizes[x] = [1.0, 1.0, 0.0]
-Step_sizes[x] = [0.05, 0.05, 10.0]
-Start[x] = [0, 0, 0]
-Sequence_time_seconds = 0.018
+target_device = ['X', 'Y', 'Z']
+axis_length = [1.0, 1.0, 0.0]
+axis_step_size = [0.05, 0.05, 10.0]
+axis_startpos = [0, 0, 0]
+sequence_time = 0.018
 
 [digitalParameterDict]
-Sample_rate = 100000
-Targets[x] = ['405', '488', '473', 'CAM']
+sample_rate = 100000
+target_device = ['405', '488', '473', 'CAM']
 TTLStarts[x,y] = [[0.0025], [0.0025], [0.0025], [0.0025]]
 TTLEnds[x,y] = [[0.0075], [0.0075], [0.0075], [0.0075]]
-Sequence_time_seconds = 0.018
+sequence_time = 0.018
 
 [Modes]
 scan_or_not = True

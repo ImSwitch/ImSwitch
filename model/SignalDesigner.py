@@ -6,6 +6,7 @@ Created on Thu Apr  9 09:20:14 2020
 """
 
 import numpy as np
+from scipy.interpolate import BPoly
 
 # try:
 #    from .errors import InvalidChildClassError, IncompatibilityError
@@ -74,12 +75,12 @@ class BetaStageScanDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._expectedParameters = ['Targets[x]',
-                                    'Sizes[x]',
-                                    'Step_sizes[x]',
-                                    'Start[x]',
-                                    'Sequence_time_seconds',
-                                    'Sample_rate',
+        self._expectedParameters = ['target_device',
+                                    'axis_length',
+                                    'axis_step_size',
+                                    'axis_startpos',
+                                    'sequence_time',
+                                    'sample_rate',
                                     'Return_time_seconds']
 
     def make_signal(self, parameterDict, setupInfo, returnFrames=False):
@@ -95,22 +96,22 @@ class BetaStageScanDesigner(SignalDesigner):
 
         # Retrieve sizes
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
-            [(parameterDict['Sizes[x]'][i] / convFactors[i]) for i in range(3)]
+            [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(3)]
 
         # Retrieve step sized
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
-            [(parameterDict['Step_sizes[x]'][i] / convFactors[i]) for i in range(3)]
+            [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(3)]
 
         # Retrive starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
-            [(parameterDict['Start[x]'][i] / convFactors[i]) for i in range(3)]
+            [(parameterDict['axis_startpos'][i] / convFactors[i]) for i in range(3)]
 
         fast_axis_positions = 1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
-        sequenceSamples = parameterDict['Sequence_time_seconds'] * parameterDict['Sample_rate']
-        returnSamples = parameterDict['Return_time_seconds'] * parameterDict['Sample_rate']
+        sequenceSamples = parameterDict['sequence_time'] * parameterDict['sample_rate']
+        returnSamples = parameterDict['Return_time_seconds'] * parameterDict['sample_rate']
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
@@ -158,9 +159,9 @@ class BetaStageScanDesigner(SignalDesigner):
                     self.__smoothRamp(sliceValues[s], slow_axis_start, returnSamples)
         slowAxisSignal = fullCubeSignal
 
-        sig_dict = {parameterDict['Targets[x]'][0]: fastAxisSignal,
-                    parameterDict['Targets[x]'][1]: middleAxisSignal,
-                    parameterDict['Targets[x]'][2]: slowAxisSignal}
+        sig_dict = {parameterDict['target_device'][0]: fastAxisSignal,
+                    parameterDict['target_device'][1]: middleAxisSignal,
+                    parameterDict['target_device'][2]: slowAxisSignal}
 
         if not returnFrames:
             return sig_dict
@@ -183,11 +184,11 @@ class BetaTTLCycleDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._expectedParameters = ['Targets[x]',
+        self._expectedParameters = ['target_device',
                                     'TTLStarts[x,y]',
                                     'TTLEnds[x,y]',
-                                    'Sequence_time_seconds',
-                                    'Sample_rate']
+                                    'sequence_time',
+                                    'sample_rate']
 
     def make_signal(self, parameterDict, setupInfo):
 
@@ -196,9 +197,9 @@ class BetaTTLCycleDesigner(SignalDesigner):
                   since this should be checked at program start-up')
             return None
 
-        targets = parameterDict['Targets[x]']
-        sampleRate = parameterDict['Sample_rate']
-        cycleSamples = parameterDict['Sequence_time_seconds'] * sampleRate
+        targets = parameterDict['target_device']
+        sampleRate = parameterDict['sample_rate']
+        cycleSamples = parameterDict['sequence_time'] * sampleRate
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
@@ -218,57 +219,92 @@ class BetaTTLCycleDesigner(SignalDesigner):
 class GalvoScanDesigner(SignalDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._expectedParameters = ['axis_scanner',
+        
+        self._expectedParameters = ['target_device',
                                     'axis_length',
-                                    'axis_center',
-                                    'pixel_size',
-                                    'pixel_dwelltime',
-                                    'time_step',
-                                    'vel_max',
-                                    'acc_max',
-                                    'sample_rate']
+                                    'axis_step_size',
+                                    'axis_centerpos',
+                                    'axis_startpos',
+                                    'sequence_time',
+                                    'sample_rate',
+                                    'Return_time_seconds']
 
-        self.__settlingtime = 50e3  # arbitrary for now
-        self.__paddingtime = 200e3  # arbitrary for now
+        self.__settlingtime = 50  # arbitrary for now  µs
+        self.__paddingtime = 200  # arbitrary for now  µs
+        self.__timestep = 0.1  # here for now, solve nicer later  µs
 
-    def make_signal(self, parameterDict, setupInfo):
+    def make_signal(self, parameterDict, setupInfo, returnFrames=False):
+        print(parameterDict)
+        axis_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']])
+        print(axis_count)
+        vel_max = [positioner.managerProperties['vel_max']
+                for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
+        acc_max = [positioner.managerProperties['acc_max']
+                for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
+        
+        # get list of positions for each axis
         convFactors = [positioner.managerProperties['conversionFactor']
-                for positioner in setupInfo.positioners.values()]
+                       for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
 
+        # retrieve axis lengths
+        axis_lengths = [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(axis_count)]
+
+        # retrieve axis step sizes
+        axis_step_sizes = [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(axis_count)]
+
+        # retrieve axis center positions
+        axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(axis_count)]
+
+        axis_positions = []
+        for i in range(axis_count):
+            axis_positions.append(1 + np.int(np.ceil(axis_lengths[i] / axis_step_sizes[i])))
+
+        # TODO: make this more modular to the number of scanners used?
         # fast axis signal
-        fast_pos = __generate_smooth_scan(parameterDict)
+        fast_pos = self.__generate_smooth_scan(parameterDict, vel_max, acc_max)
 
+        # slow (middle) axis signal
+        axis_reps = self.__get_axis_reps(fast_pos)
+        slow_pos = self.__generate_step_scan(parameterDict, axis_reps)
+
+        # TODO: add
         # slow axis signal
-        axis_reps = __get_axis_reps(fast_pos)
-        slow_pos = __generate_step_scan(parameterDict, axis_reps)
+        #####
 
+        # TODO: update to inlcude as many signals as scanners
         # pad all signals
-        fastAxisSignal, slowAxisSignal = __zero_padding(parameterDict, fast_pos, slow_pos)
+        fast_axis_signal, slow_axis_signal = self.__zero_padding(parameterDict, fast_pos, slow_pos)
 
-        sig_dict = {parameterDict['axis_scanner'][0]: fastAxisSignal,
-                    parameterDict['axis_scanner'][1]: slowAxisSignal}       
-        return sig_dict
+        sig_dict = {parameterDict['target_device'][0]: fast_axis_signal,
+                    parameterDict['target_device'][1]: slow_axis_signal}       
+        if not returnFrames:
+            return sig_dict
+        else:
+            return sig_dict, axis_positions
 
-    def __generate_smooth_scan(parameterDict):
+    def __generate_smooth_scan(self, parameterDict, vel_max, acc_max):
         """ Generate a smooth scanning curve with spline interpolation """ 
-        n_lines = int(parameterDict['axis_length'][1]/parameterDict['pixel_size'][1])  # number of lines
-        t_settling = self.__settlingtime/parameterDict['time_step']  # initial settling time before first line
+        n_lines = int(parameterDict['axis_length'][0]/parameterDict['axis_step_size'][0])  # number of lines
+        t_settling = self.__settlingtime/self.__timestep  # initial settling time before first line
+        v_max = vel_max[0]
+        a_max = acc_max[0]
         # generate 1 period of curve
-        curve_poly, time_fix, pos_fix = __linescan_poly(parameterDict)
+        curve_poly, time_fix, pos_fix = self.__linescan_poly(parameterDict, v_max, a_max)
         # calculate number of evaluation points for a line for decided timestep
-        n_eval = int(time_fix[-1]/parameterDict['time_step'])
+        n_eval = int(time_fix[-1]/self.__timestep)
         # generate multiline curve for the whole scan
-        pos = __generate_smooth_multiline(curve_poly, time_fix, pos_fix, n_eval, n_lines)
+        print(curve_poly)
+        pos = self.__generate_smooth_multiline(curve_poly, time_fix, pos_fix, n_eval, n_lines)
+        print(pos)
         # add missing start and end piece
-        pos_ret = __add_start_end(pos, pos_fix, t_settling)
+        pos_ret = self.__add_start_end(pos, pos_fix, t_settling)
         return pos_ret
 
-    def __generate_step_scan(parameterDict, axis_steps):
+    def __generate_step_scan(self, parameterDict, axis_steps):
         """ Generate a step-function scanning curve """
         l_scan = parameterDict['axis_length'][1]
-        c_scan = parameterDict['axis_center'][1]
-        n_lines = int(parameterDict['axis_length'][1]/parameterDict['pixel_size'][1])
+        c_scan = parameterDict['axis_centerpos'][1]
+        n_lines = int(parameterDict['axis_length'][1]/parameterDict['axis_step_size'][1])
         # create linspace for positions of interest
         positions = np.linspace(l_scan/n_lines, l_scan, n_lines) - l_scan/(n_lines*2)
         # repeat each middle element a number of times equal to the length of that between the faster axis repetitions
@@ -279,7 +315,7 @@ class GalvoScanDesigner(SignalDesigner):
         pos_ret = pos + c_scan
         return pos_ret
 
-    def __get_axis_reps(pos):
+    def __get_axis_reps(self, pos):
         """ Get the time of the steps taken on the axis provided (fast axis) """
         # get the positions of the velocity sign changes
         possign = np.sign(np.diff(pos))
@@ -292,15 +328,14 @@ class GalvoScanDesigner(SignalDesigner):
         axis_reps = np.append(axis_reps, len(pos))
         return axis_reps
 
-    def __linescan_poly(parameterDict):
+    def __linescan_poly(self, parameterDict, v_max, a_max):
         """ Generate a Bernstein piecewise polynomial for a smooth one-line scanning curve,
         from the acquisition parameter settings, using piecewise spline interpolation """
-        l_scan = parameterDict['axis_length'][0]
-        c_scan = parameterDict['axis_center'][0]
-        v_scan = parameterDict['pixel_size'][0]/parameterDict['pixel_dwelltime']
-        v_max = parameterDict['vel_max'][0]*1e-3
-        a_max = parameterDict['acc_max'][0]*1e-6
-        dt_fix = parameterDict['time_step']  # time between two fix points where the acceleration changes (infinite jerk)
+        sequence_time = parameterDict['sequence_time'] * 1e3  # ms --> µs
+        l_scan = parameterDict['axis_length'][0]  # µm
+        c_scan = parameterDict['axis_centerpos'][0]  # µm
+        v_scan = parameterDict['axis_step_size'][0]/sequence_time  # µm/µs
+        dt_fix = 1e-2  # time between two fix points where the acceleration changes (infinite jerk)  # µs
         
         # positions at fixed points
         p1 = c_scan
@@ -365,27 +400,34 @@ class GalvoScanDesigner(SignalDesigner):
         # generate Bernstein polynomial with piecewise spline interpolation with the fixed points
         # give positions, velocity, acceleration, and time of fixed points
         yder = np.array([pos, vel, acc]).T.tolist()
+        print(time), print(yder)
         bpoly = BPoly.from_derivatives(time, yder) # bpoly time unit: µs
         
         # return polynomial, that can be evaluated at any timepoints you want
         # return fixed points position and time
         return bpoly, time, pos
 
-    def __generate_smooth_multiline(pos_bpoly, time_fix, pos_fix, n_eval, n_lines):
+    def __generate_smooth_multiline(self, pos_bpoly, time_fix, pos_fix, n_eval, n_lines):
         """ Generate a smooth multiline curve by evaluating the polynomial with the clock frequency used and copying it """ 
         # get evaluation times for one line
-        x_eval = linspace(0, time_fix[-1], n_eval)
+        print(time_fix)
+        print(n_eval)
+        x_eval = np.linspace(0, time_fix[-1], n_eval)
+        print(x_eval)
         # evaluate polynomial
         x_bpoly = pos_bpoly(x_eval)
+        print(x_bpoly)
         pos_ret = []
         # concatenate for number of lines in scan
         for i in range(n_lines-1):
             pos_ret = np.append(pos_ret, x_bpoly[:-1])
         return pos_ret
 
-    def __add_start_end(pos, pos_fix, t_settling):
+    def __add_start_end(self, pos, pos_fix, t_settling):
         """ Add start and end half-lines to smooth scanning curve """
         # generate three pieces, two before and one after, to be concatenated to the given positions array
+        print(pos)
+        print(t_settling)
         pos_pre1 = np.repeat(np.min(pos),t_settling)
         pos_pre2 = pos[np.where(pos==np.min(pos))[0][-1]:]
         pos_post1 = pos[:np.argmin(abs(pos[:np.where(pos==np.max(pos))[0][0]]-pos_fix[2]))]
@@ -395,9 +437,9 @@ class GalvoScanDesigner(SignalDesigner):
         pos_ret = np.append(pos_ret, pos_post1)
         return pos_ret
 
-    def __zero_padding(parameterDict, pos1, pos2):
+    def __zero_padding(self, parameterDict, pos1, pos2):
         """ Pad zeros to the end of two scanning curves, for initial and final settling of galvos """
-        padlen = int(self.__paddingtime / parameterDict['time_step'])
+        padlen = int(self.__paddingtime / self.__timestep)
         # check that the length of pos1 and pos2 are identical
         padlen1 = np.array([padlen,padlen])
         padlen2 = np.array([padlen,padlen])

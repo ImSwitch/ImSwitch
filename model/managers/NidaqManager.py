@@ -163,7 +163,7 @@ class NidaqManager(SignalInterface):
         if not self.busy:
             self.busy = True
             self.signalSent = False
-            stageDic = signalDic['stageScanSignalsDict']
+            stageDic = signalDic['scanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
             AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
 

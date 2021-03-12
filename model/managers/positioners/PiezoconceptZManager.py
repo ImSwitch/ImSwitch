@@ -17,10 +17,10 @@ class PiezoconceptZManager(PositionerManager):
     def move(self, value, *args):
         if value == 0:
             return self._position
-        elif float(value) < 0:
-            cmd = 'MOVRX +' + str(round(float(value), 3))[1:7] + 'u'
         elif float(value) > 0:
-            cmd = 'MOVRX -' + str(round(float(value), 3))[0:6] + 'u'
+            cmd = 'MOVRX +' + str(round(float(value), 3))[0:6] + 'u'
+        elif float(value) < 0:
+            cmd = 'MOVRX -' + str(round(float(value), 3))[1:7] + 'u'
         self._rs232Manager.send(cmd)
 
         self._position = self._position + value

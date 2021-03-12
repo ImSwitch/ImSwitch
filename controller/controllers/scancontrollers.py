@@ -19,11 +19,11 @@ class ScanController(SuperScanController):
         self._widget.initControls(self._setupInfo.positioners, self._setupInfo.getTTLDevices())
 
         self._analogParameterDict = {
-            'Sample_rate': self._setupInfo.scan.stage.sampleRate,
+            'sample_rate': self._setupInfo.scan.stage.sampleRate,
             'Return_time_seconds': self._setupInfo.scan.stage.returnTime
         }
         self._digitalParameterDict = {
-            'Sample_rate': self._setupInfo.scan.ttl.sampleRate
+            'sample_rate': self._setupInfo.scan.ttl.sampleRate
         }
         self._settingParameters = False
 
@@ -59,16 +59,16 @@ class ScanController(SuperScanController):
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()
-        x = self._analogParameterDict['Sizes[x]'][0] / self._analogParameterDict['Step_sizes[x]'][0]
-        y = self._analogParameterDict['Sizes[x]'][1] / self._analogParameterDict['Step_sizes[x]'][1]
+        x = self._analogParameterDict['axis_length'][0] / self._analogParameterDict['axis_step_size'][0]
+        y = self._analogParameterDict['axis_length'][1] / self._analogParameterDict['axis_step_size'][1]
 
         return x, y
 
     def getScanAttrs(self):
         stage = self._analogParameterDict.copy()
         ttl = self._digitalParameterDict.copy()
-        stage['Targets[x]'] = np.string_(stage['Targets[x]'])
-        ttl['Targets[x]'] = np.string_(ttl['Targets[x]'])
+        stage['target_device'] = np.string_(stage['target_device'])
+        ttl['target_device'] = np.string_(ttl['target_device'])
 
         stage.update(ttl)
         return stage
@@ -119,22 +119,23 @@ class ScanController(SuperScanController):
     def setParameters(self):
         self._settingParameters = True
         try:
-            for i in range(len(self._setupInfo.positioners)):
-                positionerName = self._analogParameterDict['Targets[x]'][i]
+            for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
+                if positionerInfo.managerProperties['scanner']:
+                    positionerName = self._analogParameterDict['target_device'][i]
 
-                scanDimPar = self._widget.scanPar['scanDim' + str(i)]
-                scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
+                    scanDimPar = self._widget.scanPar['scanDim' + str(index)]
+                    scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
 
-                self._widget.scanPar['size' + positionerName].setText(
-                    str(round(self._analogParameterDict['Sizes[x]'][i], 3))
-                )
+                    self._widget.scanPar['size' + positionerName].setText(
+                        str(round(self._analogParameterDict['axis_length'][i], 3))
+                    )
 
-                self._widget.scanPar['stepSize' + positionerName].setText(
-                    str(round(self._analogParameterDict['Step_sizes[x]'][i], 3))
-                )
+                    self._widget.scanPar['stepSize' + positionerName].setText(
+                        str(round(self._analogParameterDict['axis_step_size'][i], 3))
+                    )
 
-            for i in range(len(self._digitalParameterDict['Targets[x]'])):
-                deviceName = self._digitalParameterDict['Targets[x]'][i]
+            for i in range(len(self._digitalParameterDict['target_device'])):
+                deviceName = self._digitalParameterDict['target_device'][i]
 
                 self._widget.pxParameters['sta' + deviceName].setText(
                     str(round(1000 * self._digitalParameterDict['TTLStarts[x,y]'][i][0], 3))
@@ -144,7 +145,7 @@ class ScanController(SuperScanController):
                 )
 
             self._widget.seqTimePar.setText(
-                str(round(float(1000 * self._digitalParameterDict['Sequence_time_seconds']), 3))
+                str(round(float(1000 * self._digitalParameterDict['sequence_time']), 3))
             )
         finally:
             self._settingParameters = False
@@ -170,26 +171,38 @@ class ScanController(SuperScanController):
         if self._settingParameters:
             return
 
-        self._analogParameterDict['Targets[x]'] = []
-        self._analogParameterDict['Sizes[x]'] = []
-        self._analogParameterDict['Step_sizes[x]'] = []
-        self._analogParameterDict['Start[x]'] = []
-        for i in range(len(self._setupInfo.positioners)):
-            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
-            size = float(self._widget.scanPar['size' + positionerName].text())
-            stepSize = float(self._widget.scanPar['stepSize' + positionerName].text())
-            start = self._commChannel.getStartPos()[positionerName]
+        self._analogParameterDict['target_device'] = []
+        self._analogParameterDict['axis_length'] = []
+        self._analogParameterDict['axis_step_size'] = []
+        self._analogParameterDict['axis_centerpos'] = []
+        self._analogParameterDict['axis_startpos'] = []
+        # TODO: this looks a bit wrong, as I am not using the enumerated info much anyway, and taking
+        # the values in the order of how they are listed in the scanWidget (correct order). Fix?
+        for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
+            if positionerInfo.managerProperties['scanner']:
+                positionerName = self._widget.scanPar['scanDim' + str(index)].currentText()
+                self._analogParameterDict['target_device'].append(positionerName)
+                if positionerName != 'None':
+                    size = float(self._widget.scanPar['size' + positionerName].text())
+                    stepSize = float(self._widget.scanPar['stepSize' + positionerName].text())
+                    center = float(self._widget.scanPar['center' + positionerName].text())
+                    start = self._commChannel.getStartPos()[positionerName]
+                    self._analogParameterDict['axis_length'].append(size)
+                    self._analogParameterDict['axis_step_size'].append(stepSize)
+                    self._analogParameterDict['axis_centerpos'].append(center)
+                    self._analogParameterDict['axis_startpos'].append(start)
+                else:
+                    self._analogParameterDict['axis_length'].append(1.0)
+                    self._analogParameterDict['axis_step_size'].append(1.0)
+                    # TODO: make this read the actual center position of the axis that is missing, but put 0 for now.
+                    self._analogParameterDict['axis_centerpos'].append(0.0)
+                    self._analogParameterDict['axis_startpos'].append(start)
 
-            self._analogParameterDict['Targets[x]'].append(positionerName)
-            self._analogParameterDict['Sizes[x]'].append(size)
-            self._analogParameterDict['Step_sizes[x]'].append(stepSize)
-            self._analogParameterDict['Start[x]'].append(start)
-
-        self._digitalParameterDict['Targets[x]'] = []
+        self._digitalParameterDict['target_device'] = []
         self._digitalParameterDict['TTLStarts[x,y]'] = []
         self._digitalParameterDict['TTLEnds[x,y]'] = []
         for deviceName, deviceInfo in self._setupInfo.getTTLDevices().items():
-            self._digitalParameterDict['Targets[x]'].append(deviceName)
+            self._digitalParameterDict['target_device'].append(deviceName)
 
             deviceStarts = self._widget.pxParameters['sta' + deviceName].text().split(',')
             self._digitalParameterDict['TTLStarts[x,y]'].append([
@@ -201,8 +214,8 @@ class ScanController(SuperScanController):
                 float(deviceEnd) / 1000 for deviceEnd in deviceEnds if deviceEnd
             ])
 
-        self._digitalParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
-        self._analogParameterDict['Sequence_time_seconds'] = float(self._widget.seqTimePar.text()) / 1000
+        self._digitalParameterDict['sequence_time'] = float(self._widget.seqTimePar.text()) / 1000
+        self._analogParameterDict['sequence_time'] = float(self._widget.seqTimePar.text()) / 1000
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self._setupInfo.positioners)):
@@ -228,7 +241,7 @@ class ScanController(SuperScanController):
             isLaser = deviceName in self._setupInfo.lasers
 
             self._widget.graph.plot.plot(
-                np.linspace(0, self._digitalParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal)),
+                np.linspace(0, self._digitalParameterDict['sequence_time'] * self._widget.sampleRate, len(signal)),
                 signal.astype(np.uint8),        
                 pen=pg.mkPen(guitools.color_utils.wavelength_to_hex(self._setupInfo.lasers[deviceName].wavelength) if isLaser else '#ffffff')
             )

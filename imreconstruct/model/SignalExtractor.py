@@ -107,6 +107,7 @@ class SignalExtractor:
         print('Signal extraction performed in', elapsed, 'seconds')
         return resCoeffs
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -121,3 +122,4 @@ class SignalExtractor:
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

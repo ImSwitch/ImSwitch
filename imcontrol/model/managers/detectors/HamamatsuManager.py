@@ -176,6 +176,7 @@ def getCameraObj(cameraId):
         from imcontrol.model.interfaces import MockHamamatsu
         return MockHamamatsu()
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -190,4 +191,5 @@ def getCameraObj(cameraId):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 

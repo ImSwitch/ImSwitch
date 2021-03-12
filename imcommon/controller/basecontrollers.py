@@ -49,6 +49,7 @@ class WidgetControllerFactory:
                     print(f'Error closing {type(controller).__name__}')
                     print(traceback.format_exc())
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -63,3 +64,4 @@ class WidgetControllerFactory:
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

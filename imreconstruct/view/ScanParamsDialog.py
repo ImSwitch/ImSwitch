@@ -189,6 +189,7 @@ class ScanParamsDialog(QtWidgets.QDialog):
         self.sigApplyParams.emit()
         self.close()
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -203,3 +204,4 @@ class ScanParamsDialog(QtWidgets.QDialog):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

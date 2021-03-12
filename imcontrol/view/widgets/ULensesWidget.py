@@ -57,6 +57,7 @@ class ULensesWidget(Widget):
         """ Updates plot with new parameters. """
         self.ulensesPlot.setData(x=x, y=y, pen=pg.mkPen(None), brush='r', symbol='x')
         
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -71,3 +72,4 @@ class ULensesWidget(Widget):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

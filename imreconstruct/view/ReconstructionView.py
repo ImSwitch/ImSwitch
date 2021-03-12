@@ -223,6 +223,7 @@ class ReconstructionView(QtWidgets.QFrame):
             currRow = self.reconList.currentRow()
             self.reconList.takeItem(currRow)
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -237,3 +238,4 @@ class ReconstructionView(QtWidgets.QFrame):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

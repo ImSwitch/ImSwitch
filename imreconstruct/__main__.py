@@ -9,6 +9,7 @@ moduleCommChannel.register(imreconstruct)
 mainView, mainController = imreconstruct.getMainViewAndController(moduleCommChannel)
 launchApp(app, mainView, [mainController])
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -23,3 +24,4 @@ launchApp(app, mainView, [mainController])
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

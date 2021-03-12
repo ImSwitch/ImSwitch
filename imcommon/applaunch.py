@@ -26,6 +26,7 @@ def launchApp(app, mainView, mainControllers):
         controller.closeEvent()
     sys.exit(exitCode)
 
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -40,3 +41,4 @@ def launchApp(app, mainView, mainControllers):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

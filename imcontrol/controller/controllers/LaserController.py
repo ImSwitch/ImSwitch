@@ -92,6 +92,7 @@ class LaserController(ImConWidgetController):
     def setSharedAttr(self, laserName, attr, value):
         self._commChannel.sharedAttrs[('Lasers', laserName, attr)] = value
         
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
@@ -106,3 +107,4 @@ class LaserController(ImConWidgetController):
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

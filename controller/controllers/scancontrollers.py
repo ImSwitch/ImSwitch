@@ -157,7 +157,7 @@ class ScanController(SuperScanController):
             self._analogParameterDict, self._digitalParameterDict, self._setupInfo,
             staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
         )
-        self._master.nidaqManager.runScan(self.signalDic)
+        self._master.nidaqManager.runScan(self.signalDic,[])
 
     def scanDone(self):
         print("scan done")

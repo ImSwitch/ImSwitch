@@ -1,0 +1,20 @@
+[analogParameterDict]
+sample_rate = 100000
+Return_time_seconds = 0.01
+target_device = ['ND-GalvoX', 'ND-GalvoY', 'ND-PiezoZ']
+axis_length = [10.0, 10.0, 10.0]
+axis_step_size = [0.03, 0.03, 0.03]
+axis_centerpos = [0.0, 0.0, 0.0]
+axis_startpos = [0, 0, 0]
+sequence_time = 1e-05
+
+[digitalParameterDict]
+sample_rate = 100000
+target_device = ['510', '561', '640', '561AOTF', '640AOTF', '775AOM', '775Katana', 'CAM', 'FocusLockCamera']
+TTLStarts[x,y] = [[0.0], [0.0], [5e-06], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]]
+TTLEnds[x,y] = [[0.0], [5e-06], [1e-05], [0.0], [0.0], [1e-05], [0.0], [0.0], [0.0]]
+sequence_time = 1e-05
+
+[Modes]
+scan_or_not = True
+

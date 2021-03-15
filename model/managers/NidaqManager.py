@@ -160,7 +160,9 @@ class NidaqManager(SignalInterface):
         """ Function assuming that the user wants to run a full scan with a stage 
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
         running. """
+        print('Create nidaq scan...')
         if not self.busy:
+            print('runScan 1')
             self.busy = True
             self.signalSent = False
             stageDic = signalDic['scanSignalsDict']
@@ -169,13 +171,15 @@ class NidaqManager(SignalInterface):
 
             AOsignals = []
             AOchannels = []
-
+            print('runScan 2')
             for pair in AOTargetChanPairs:
                 try:
+                    print('runScan 3')
                     signal = stageDic[pair[0]]
                     channel = pair[1]
                     AOsignals.append(signal)
                     AOchannels.append(channel)
+                    print('runScan 4')
                 except:
                     pass
 
@@ -183,22 +187,25 @@ class NidaqManager(SignalInterface):
 
             DOsignals = []
             DOlines = []
-
+            print('runScan 5')
             for pair in DOTargetChanPairs:
                 try:
+                    print('runScan 6')
                     signal = ttlDic[pair[0]]
                     line = pair[1]
                     DOsignals.append(signal)
                     DOlines.append(line)
+                    print('runScan 7')
                 except:
                     pass
 
             if len(AOsignals) < 1 and len(DOsignals) < 1:
                 self.busy = False
                 return
-
+            print('runScan 8')
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
             clockDO = r'100kHzTimebase'
+            print('runScan 9')
             if len(AOsignals) > 0:
                 sampsInScan = len(AOsignals[0])
                 self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
@@ -210,26 +217,28 @@ class NidaqManager(SignalInterface):
                 self.aoTaskWaiter.connect(self.aoTask)
                 self.aoTaskWaiter.waitdoneSignal.connect(self.taskDone)
                 clockDO = r'ao/SampleClock'
-
+            print('runScan 10')
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
-                                                      acquisitionTypeFinite, clockDO ,
+                                                      acquisitionTypeFinite, clockDO,
                                                       100000, sampsInScan=sampsInScan)
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
-
+            print('runScan 11')
             scanStartSignal.emit()
-
+            print('runScan 12')
             if len(DOsignals) > 0:
                 self.doTask.start()
                 self.doTaskWaiter.start()
-                
+            print('runScan 13')
             if len(AOsignals) > 0:
                 self.aoTask.start()
                 self.aoTaskWaiter.start()
+            print('runScan 14')
+            print('Nidaq scan started!')
   
     def taskDone(self):
         if not self.doTaskWaiter.running and not self.aoTaskWaiter.running and not self.signalSent:

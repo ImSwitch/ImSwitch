@@ -15,13 +15,13 @@ from framework import Signal, SignalInterface, Thread, Worker
 class APDManager(DetectorManager):
 
     # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
-    def __init__(self, nidaqManager, name, **_kwargs):
+    def __init__(self, APDInfo, name, nidaqManager, **_kwargs):
         model = 0
         self.__name = name
         self._image = np.array([])
 
-        for propertyName, propertyValue in webcamInfo.managerProperties['tis'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
+        #for propertyName, propertyValue in webcamInfo.managerProperties['tis'].items():
+        #    self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (0, 0)
 

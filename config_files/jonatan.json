@@ -21,13 +21,22 @@
         }
       }
     },
+    "APDred": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "APDManager",
+      "managerProperties": {
+        "cameraListIndex": null,
+        "purpose": "acquisition"
+      }
+    },
     "FocusLockCamera": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "TISManager",
       "managerProperties": {
         "purpose": "focusLock",
-        "cameraListIndex": 0,
+        "cameraListIndex": 1,
         "tis": {
           "exposure": 0,
           "gain": 0,
@@ -131,8 +140,8 @@
         "conversionFactor": 17.44,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 10.0,
-        "acc_max": 10.0,
+        "vel_max": 10e-3,
+        "acc_max": 10e-6,
         "axisCount": 1,
         "axisLabels": "X",
         "scanner": 1,
@@ -147,8 +156,8 @@
         "conversionFactor": 16.63,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 10.0,
-        "acc_max": 10.0,
+        "vel_max": 10e-3,
+        "acc_max": 10e-6,
         "axisCount": 1,
         "axisLabels": "Y",
         "scanner": 1,

@@ -52,7 +52,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
         self._widget.sigReconstructMulti.connect(self.reconstructMulti)
         self._widget.sigQuickLoadData.connect(self.quickLoadData)
-        self._widget.sigUpdate.connect(self.updateScanParams)
+        self._widget.sigUpdate.connect(lambda: self.updateScanParams(applyOnCurrentRecon=True))
 
         self._widget.sigShowPatternChanged.connect(self.togglePattern)
         self._widget.sigFindPattern.connect(self.findPattern)
@@ -112,8 +112,9 @@ class ImRecMainViewController(ImRecWidgetController):
         finally:
             self._settingPatternParams = False
 
-    def updateScanParams(self):
-        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict))
+    def updateScanParams(self, applyOnCurrentRecon=False):
+        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict),
+                                                    applyOnCurrentRecon)
 
     def scanParamsUpdated(self, scanParDict):
         self._scanParDict = scanParDict
@@ -257,14 +258,15 @@ class ImRecMainViewController(ImRecWidgetController):
             if saveName:
                 if dataType == 'reconstruction':
                     reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    vxsizec = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.r_l_text)])
-                    vxsizer = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.u_d_text)])
+                    scanParDict = reconstructionObj.getScanParms()
+                    vxsizec = int(scanParDict['step_sizes'][
+                                      scanParDict['dimensions'].index(self._widget.r_l_text)])
+                    vxsizer = int(scanParDict['step_sizes'][
+                                      scanParDict['dimensions'].index(self._widget.u_d_text)])
                     vxsizez = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.b_f_text)])
-                    dt = int(reconstructionObj.scanParDict['step_sizes'][
-                                 self._scanParDict['dimensions'].index(self._widget.timepoints_text)])
+                                      scanParDict['dimensions'].index(self._widget.b_f_text)])
+                    dt = int(scanParDict['step_sizes'][
+                                 scanParDict['dimensions'].index(self._widget.timepoints_text)])
 
                     print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez}')
                     # Reconstructed image

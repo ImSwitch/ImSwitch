@@ -32,6 +32,9 @@ class ReconObj:
     def getCoeffs(self):
         return self.coeffs
 
+    def getScanParams(self):
+        return self.scanParDict
+
     def addCoeffsTP(self, inCoeffs):
         if self.coeffs is None:
             # print('In if, shape is: ', np.shape(inCoeffs))

@@ -75,10 +75,13 @@ class ReconstructionViewController(ImRecWidgetController):
         self._widget.getCurrentItemData().updateImages()
         self.fullUpdate(levels=None)
 
-    def scanParamsUpdated(self, scanParDict):
+    def scanParamsUpdated(self, scanParDict, applyOnCurrentRecon):
+        if not applyOnCurrentRecon:
+            return
+
         currData = self._widget.getCurrentItemData()
         if currData is not None:
-            self._widget.getCurrentItemData().updateScanParams(scanParDict)
+            currData.updateScanParams(scanParDict)
             self.updateRecon()
 
 

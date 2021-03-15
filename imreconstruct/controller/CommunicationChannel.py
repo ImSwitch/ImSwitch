@@ -13,7 +13,7 @@ class CommunicationChannel(SignalInterface):
 
     sigCurrentDataChanged = Signal(object)  # (dataObj)
 
-    sigScanParamsUpdated = Signal(object)  # (scanParDict)
+    sigScanParamsUpdated = Signal(object, bool)  # (scanParDict, applyOnCurrentRecon)
 
     sigPatternUpdated = Signal(object)  # (pattern)
 

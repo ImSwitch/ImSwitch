@@ -31,7 +31,7 @@ class ScanParamsController(ImRecWidgetController):
         self._parDict['steps'] = self._widget.getSteps()
         self._parDict['step_sizes'] = self._widget.getStepSizes()
         self._parDict['unidirectional'] = self._widget.getUnidirectional()
-        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._parDict))
+        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._parDict), False)
 
 
 # Copyright (C) 2020, 2021 TestaLab

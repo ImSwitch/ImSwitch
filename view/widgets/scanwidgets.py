@@ -100,6 +100,8 @@ class ScanWidget(Widget):
                 self.scanPar['size' + positionerName] = sizePar
                 stepSizePar = QtGui.QLineEdit(str(positionerPreset.stepSize))
                 self.scanPar['stepSize' + positionerName] = stepSizePar
+                #self.numPixelsPar = QtGui.QLineEdit(str(int(positionerPreset.size/positionerPreset.stepSize)))
+                #self.numPixelsPar.setReadOnly(True)
                 centerPar = QtGui.QLineEdit(str(positionerPreset.center))
                 self.scanPar['center' + positionerName] = centerPar
 

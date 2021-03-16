@@ -108,6 +108,13 @@ class SetupInfo:
 
         return devices
 
+    def getDetectors(self):
+        devices = {}
+        for deviceInfos in self.detectors:
+            devices.update(deviceInfos)
+
+        return devices
+
     def getAllDevices(self):
         devices = {}
         for deviceInfos in self.lasers, self.detectors, self.positioners:

@@ -13,7 +13,7 @@ from framework import Signal, SignalInterface, Thread
 
 class NidaqManager(SignalInterface):
     scanDoneSignal = Signal()
-    scanStartSignal = Signal()
+    scanStartSignal = Signal(int, int, int, int, int)
 
     def __init__(self, setupInfo):
         super().__init__()
@@ -33,41 +33,6 @@ class NidaqManager(SignalInterface):
         targetPairs.sort(key=operator.itemgetter(1))
         return targetPairs
 
-    def __createLineDOTask(self, name, lines, acquisition, source, rate, sampsInScan=1000):
-        """ Simplified function to create a digital output task """
-        dotask = nidaqmx.Task(name)
-
-        lines = np.atleast_1d(lines)
-
-        for line in lines:
-            dotask.do_channels.add_do_chan('Dev1/port0/line%s' % line)
-        dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
-                                          sample_mode=acquisition, samps_per_chan=sampsInScan)
-        return dotask
-
-    def __createChanAITask(self, name, channels, acquisitionType, source, rate, min_val=-0.5,
-                           max_val=10.0, sampsInScan=1000, reference_trigger='PFI12'):
-        """ Simplified function to create an analog input task """
-        aitask = nidaqmx.AnalogInputTask(name)
-        for channel in channels:
-            aitask.create_voltage_channel(channel, min_val, max_val)        
-        aitask.configure_timing_sample_clock(source, sample_mode=acquisitionType, samps_per_chan=sampsInScan)
-        aitask.configure_trigger_digital_edge_start(reference_trigger) 
-        return aitask
-
-    def __createChanCITask(self, name, channels, acquisitionType, source, rate, sampsInScan=1000, reference_trigger='PFI12'):
-        """ Simplified function to create a counter input task """
-        citask = nidaqmx.CounterInputTask()
-        for channel in channels:
-            citask.create_channel_count_edges(channel, init=0)
-            citask.set_terminal_count_edges(channel, "PFI0")
-        citask.configure_timing_sample_clock(source=source,
-                                             sample_mode=acquisitionType, 
-                                             samples_per_channel=sampsInScan)
-        citask.set_arm_start_trigger_source(reference_trigger)
-        citask.set_arm_start_trigger(trigger_type='digital_edge')
-        return citask
-
     def __createChanAOTask(self, name, channels, acquisitionType,
                            source, rate, min_val=-1, max_val=1, sampsInScan=1000):
         """ Simplified function to create an analog output task """
@@ -83,13 +48,50 @@ class NidaqManager(SignalInterface):
         aotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
                                           sample_mode=acquisitionType, samps_per_chan=sampsInScan)
         return aotask
-    
+
+    def __createLineDOTask(self, name, lines, acquisition, source, rate, sampsInScan=1000):
+        """ Simplified function to create a digital output task """
+        dotask = nidaqmx.Task(name)
+
+        lines = np.atleast_1d(lines)
+
+        for line in lines:
+            dotask.do_channels.add_do_chan('Dev1/port0/line%s' % line)
+        dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
+                                          sample_mode=acquisition, samps_per_chan=sampsInScan)
+        return dotask
+
+    def __createChanAITask(self, name, channels, acquisitionType, source, min_val=-0.5,
+                           max_val=10.0, sampsInScan=1000, reference_trigger='PFI12'):
+        """ Simplified function to create an analog input task """
+        aitask = nidaqmx.AnalogInputTask(name)
+        for channel in channels:
+            aitask.create_voltage_channel(channel, min_val, max_val)        
+        aitask.configure_timing_sample_clock(source, sample_mode=acquisitionType, samps_per_chan=sampsInScan)
+        aitask.configure_trigger_digital_edge_start(reference_trigger) 
+        return aitask
+
+    def __createChanCITask(self, name, channel, acquisitionType='finite', source, sampsInScan=1000, reference_trigger='PFI12'):
+        """ Simplified function to create a counter input task """
+        citask = nidaqmx.CounterInputTask(name)
+        #for channel in channels:
+        citask.create_channel_count_edges('Dev1/ctr' % channel, init=0)
+        citask.set_terminal_count_edges('Dev1/ctr' % channel, "PFI0")
+
+        citask.configure_timing_sample_clock(source=source,
+                                             sample_mode=acquisitionType, 
+                                             samples_per_channel=sampsInScan)
+        citask.set_arm_start_trigger_source(reference_trigger)
+        citask.set_arm_start_trigger(trigger_type='digital_edge')
+        return citask
+
     def startInputTask(self, taskName, taskType, *args):
         if taskType=='ai':
-            task = self.__createChanAITask(self, *args)
+            task = self.__createChanAITask(self, taskName, *args)
         elif taskType=='ci':
-            task = self.__createChanCITask(self, *args)
+            task = self.__createChanCITask(self, taskName, *args)
         task.start()
+        #TODO: do something here to read and throw out the first read signal data? Or do somewhere else...
         self.inputTasks[taskName] = task
 
     def stopInputTask(self, taskName):
@@ -228,7 +230,7 @@ class NidaqManager(SignalInterface):
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
             print('runScan 11')
-            scanStartSignal.emit()
+            scanStartSignal.emit(n_lines, pixels_per_line, len(AOsignals[0]))  ### get number of lines and number of pixels to here somehow
             print('runScan 12')
             if len(DOsignals) > 0:
                 self.doTask.start()

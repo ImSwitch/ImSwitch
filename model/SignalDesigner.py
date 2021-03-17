@@ -164,9 +164,9 @@ class BetaStageScanDesigner(SignalDesigner):
                     parameterDict['target_device'][2]: slowAxisSignal}
 
         if not returnFrames:
-            return sig_dict
+            return sig_dict, {}
         else:
-            return sig_dict, [fast_axis_positions, middle_axis_positions, slow_axis_positions]
+            return sig_dict, [fast_axis_positions, middle_axis_positions, slow_axis_positions], {}
 
     def __makeRamp(self, start, end, samples):
         return np.linspace(start, end, num=samples)
@@ -263,10 +263,10 @@ class GalvoScanDesigner(SignalDesigner):
         # TODO: make this more modular to the number of scanners used?
         # fast axis signal
         #print('main-1')
-        fast_pos, l_period, n_lines = self.__generate_smooth_scan(parameterDict, vel_max, acc_max)
+        fast_pos, samples_period, n_lines = self.__generate_smooth_scan(parameterDict, vel_max, acc_max)
         #print('main-2')
         # slow (middle) axis signal
-        axis_reps = self.__get_axis_reps(fast_pos, l_period, n_lines)
+        axis_reps = self.__get_axis_reps(fast_pos, samples_period, n_lines)
         #print('main-3')
         slow_pos = self.__generate_step_scan(parameterDict, axis_reps)
         #print('main-4')
@@ -282,12 +282,26 @@ class GalvoScanDesigner(SignalDesigner):
 
         sig_dict = {parameterDict['target_device'][0]: fast_axis_signal,
                     parameterDict['target_device'][1]: slow_axis_signal}
+
+        pixels_line = int(parameterDict['axis_length'][0]/parameterDict['axis_step_size'][0])
+        scanInfoDict = {
+                'n_lines': int(parameterDict['axis_length'][1]/parameterDict['axis_step_size'][1]),
+                'pixels_line': pixels_line,
+                'samples_line': int(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep),
+                'samples_period': samples_period-1,
+                'samples_total': len(fast_axis_signal),
+                'throw_startzero': int(self.__paddingtime / self.__timestep),
+                'throw_settling': self._samples_settling,
+                'throw_startacc': self._samples_startacc,
+                'time_step': self.__timestep
+        }
+
         #print('main-6')
         print('Scanning curves done!')
         if not returnFrames:
-            return sig_dict
+            return sig_dict, scanInfoDict
         else:
-            return sig_dict, axis_positions
+            return sig_dict, axis_positions, scanInfoDict
 
     def __generate_smooth_scan(self, parameterDict, vel_max, acc_max):
         """ Generate a smooth scanning curve with spline interpolation """ 
@@ -331,17 +345,17 @@ class GalvoScanDesigner(SignalDesigner):
         #pos_ret = pos + c_scan
         return pos_ret
 
-    def __get_axis_reps(self, pos, l_period, n_lines):
+    def __get_axis_reps(self, pos, samples_period, n_lines):
         """ Much faster to get reps for each slow-axis position than get_axis_steps """
         #print('ar-1')
         # get length of first line
         first_line = [np.argmax(pos)]
         #print('ar-2')
         # get length of all other lines
-        mid_lines = np.repeat(l_period-1, n_lines-2)
+        mid_lines = np.repeat(samples_period-1, n_lines-2)
         #print('ar-3')
         # get length of last line
-        last_line = [len(pos)-(first_line[0]+(l_period-1)*(n_lines-2))]
+        last_line = [len(pos)-(first_line[0]+(samples_period-1)*(n_lines-2))]
         #print('ar-4')
         # concatenate all repetition lengths
         axis_reps = np.concatenate((first_line, mid_lines, last_line))
@@ -481,12 +495,14 @@ class GalvoScanDesigner(SignalDesigner):
         #print('se-1')
         settlinglen = int(self.__settlingtime / self.__timestep)  # initial settling time before first line
         pos_pre1 = np.repeat(np.min(pos),settlinglen)
+        self._samples_settling = len(pos_pre1)
         #print('se-2')
         pos_pre2 = pos[np.where(pos==np.min(pos))[0][-1]:]
         #print('se-3')
         pos_post1 = pos[:np.argmin(abs(pos[:np.where(pos==np.max(pos))[0][0]]-pos_fix[2]))]
         #print('se-4')
         pos_ret = np.concatenate((pos_pre1, pos_pre2, pos, pos_post1))
+        self._samples_startacc = len(pos_pre2) - len(pos_post1)
         #print('se-5')
         return pos_ret
 

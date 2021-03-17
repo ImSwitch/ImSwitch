@@ -23,10 +23,20 @@
     },
     "APDred": {
       "analogChannel": null,
-      "digitalLine": 1,
+      "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
         "ctrInputLine": 1,
+        "cameraListIndex": null,
+        "purpose": "acquisition"
+      }
+    },
+    "APDgreen": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "APDManager",
+      "managerProperties": {
+        "ctrInputLine": 12,
         "cameraListIndex": null,
         "purpose": "acquisition"
       }

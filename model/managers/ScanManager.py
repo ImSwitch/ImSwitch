@@ -73,7 +73,7 @@ class ScanManager(SuperScanManager):
         TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
 
         if not staticPositioner:
-            scanSignalsDict, positions = self.__scanDesigner.make_signal(
+            scanSignalsDict, positions, scanInfoDict = self.__scanDesigner.make_signal(
                 scanParameters, setupInfo, returnFrames=True
             )
 
@@ -86,9 +86,10 @@ class ScanManager(SuperScanManager):
                 TTLCycleSignalsDict[target] = signal
         else:
             scanSignalsDict = {}
+            scanInfoDict = {}
 
         return {'scanSignalsDict': scanSignalsDict,
-                'TTLCycleSignalsDict': TTLCycleSignalsDict}
+                'TTLCycleSignalsDict': TTLCycleSignalsDict}, scanInfoDict
 
 
 """ Developement testing """

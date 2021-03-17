@@ -13,7 +13,8 @@ from framework import Signal, SignalInterface, Thread
 
 class NidaqManager(SignalInterface):
     scanDoneSignal = Signal()
-    scanStartSignal = Signal(int, int, int, int, int)
+    scanInitiateSignal = Signal(dict)
+    scanStartSignal = Signal()
 
     def __init__(self, setupInfo):
         super().__init__()
@@ -45,11 +46,13 @@ class NidaqManager(SignalInterface):
                                                    min_val=min_val,
                                                    max_val=max_val)
 
-        aotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
-                                          sample_mode=acquisitionType, samps_per_chan=sampsInScan)
+        aotask.timing.cfg_samp_clk_timing(source=source,
+                                          rate=rate,
+                                          sample_mode=acquisitionType,
+                                          samps_per_chan=sampsInScan)
         return aotask
 
-    def __createLineDOTask(self, name, lines, acquisition, source, rate, sampsInScan=1000):
+    def __createLineDOTask(self, name, lines, acquisitionType, source, rate, sampsInScan=1000):
         """ Simplified function to create a digital output task """
         dotask = nidaqmx.Task(name)
 
@@ -58,7 +61,8 @@ class NidaqManager(SignalInterface):
         for line in lines:
             dotask.do_channels.add_do_chan('Dev1/port0/line%s' % line)
         dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
-                                          sample_mode=acquisition, samps_per_chan=sampsInScan)
+                                          sample_mode=acquisitionType,
+                                          samps_per_chan=sampsInScan)
         return dotask
 
     def __createChanAITask(self, name, channels, acquisitionType, source, min_val=-0.5,
@@ -67,11 +71,13 @@ class NidaqManager(SignalInterface):
         aitask = nidaqmx.AnalogInputTask(name)
         for channel in channels:
             aitask.create_voltage_channel(channel, min_val, max_val)        
-        aitask.configure_timing_sample_clock(source, sample_mode=acquisitionType, samps_per_chan=sampsInScan)
+        aitask.configure_timing_sample_clock(source=source,
+                                             sample_mode=acquisitionType,
+                                             samps_per_chan=sampsInScan)
         aitask.configure_trigger_digital_edge_start(reference_trigger) 
         return aitask
 
-    def __createChanCITask(self, name, channel, acquisitionType='finite', source, sampsInScan=1000, reference_trigger='PFI12'):
+    def __createChanCITask(self, name, channel, acquisitionType, source, sampsInScan=1000, reference_trigger='PFI12'):
         """ Simplified function to create a counter input task """
         citask = nidaqmx.CounterInputTask(name)
         #for channel in channels:
@@ -158,7 +164,7 @@ class NidaqManager(SignalInterface):
                 aotask.close()
                 self.busy = False
 
-    def runScan(self, signalDic, detectors):
+    def runScan(self, signalDic, scanInfoDict):
         """ Function assuming that the user wants to run a full scan with a stage 
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
         running. """
@@ -167,6 +173,7 @@ class NidaqManager(SignalInterface):
             print('runScan 1')
             self.busy = True
             self.signalSent = False
+            # TODO: fill this
             stageDic = signalDic['scanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
             AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
@@ -230,7 +237,7 @@ class NidaqManager(SignalInterface):
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
             print('runScan 11')
-            scanStartSignal.emit(n_lines, pixels_per_line, len(AOsignals[0]))  ### get number of lines and number of pixels to here somehow
+            scanInitiateSignal.emit(scanInfoDict)
             print('runScan 12')
             if len(DOsignals) > 0:
                 self.doTask.start()
@@ -239,6 +246,7 @@ class NidaqManager(SignalInterface):
             if len(AOsignals) > 0:
                 self.aoTask.start()
                 self.aoTaskWaiter.start()
+            scanStartSignal.emit()
             print('runScan 14')
             print('Nidaq scan started!')
   

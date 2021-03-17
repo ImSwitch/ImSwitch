@@ -17,10 +17,11 @@ class MasterController:
         self.__commChannel = commChannel
 
         # Init managers
-        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100)
-        self.recordingManager = RecordingManager(self.detectorsManager)
         self.nidaqManager = NidaqManager(self.__setupInfo)
+        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
+                                                     nidaqManager=self.nidaqManager)
+        self.recordingManager = RecordingManager(self.detectorsManager)
         self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            nidaqManager=self.nidaqManager,

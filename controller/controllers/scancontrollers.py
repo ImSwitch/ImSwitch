@@ -46,6 +46,11 @@ class ScanController(SuperScanController):
             self._widget.pxParameters['sta' + deviceName].textChanged.connect(self.plotSignalGraph)
             self._widget.pxParameters['end' + deviceName].textChanged.connect(self.plotSignalGraph)
 
+        for positionerName, positionerInfo in self._setupInfo.positioners.items():
+            if positionerInfo.managerProperties['scanner']:
+                self._widget.scanPar['size' + positionerName].textChanged.connect(self.update_pixels)
+                self._widget.scanPar['stepSize' + positionerName].textChanged.connect(self.update_pixels)
+
         print('Init Scan Controller')
 
     @property
@@ -227,6 +232,13 @@ class ScanController(SuperScanController):
     def setScanButton(self, b):
         self._widget.scanButton.setChecked(b)
         if b: self.runScan()
+
+    def update_pixels(self):
+        self.getParameters()
+        for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
+            if positionerInfo.managerProperties['scanner']:
+                pixels = round(float(self._analogParameterDict['axis_length'][index]) / float(self._analogParameterDict['axis_step_size'][index]))
+                self._widget.scanPar['pixels' + positionerName].setText(str(pixels))
 
     def plotSignalGraph(self):
         if self._settingParameters:

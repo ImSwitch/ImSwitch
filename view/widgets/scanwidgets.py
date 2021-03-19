@@ -82,8 +82,8 @@ class ScanWidget(Widget):
         self.grid.addWidget(self.scanRadio, 0, 2)
         self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)
         self.grid.addItem(QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum), 0, 6)
-        self.grid.addWidget(self.scanButton, 1, 9, len(positionerInfos), 1)
-        self.grid.addWidget(self.continuousCheck, 0, 9)
+        self.grid.addWidget(self.scanButton, 1, 10, len(positionerInfos), 1)
+        self.grid.addWidget(self.continuousCheck, 0, 11)
 
         currentRow = 1
 
@@ -100,8 +100,9 @@ class ScanWidget(Widget):
                 self.scanPar['size' + positionerName] = sizePar
                 stepSizePar = QtGui.QLineEdit(str(positionerPreset.stepSize))
                 self.scanPar['stepSize' + positionerName] = stepSizePar
-                #self.numPixelsPar = QtGui.QLineEdit(str(int(positionerPreset.size/positionerPreset.stepSize)))
-                #self.numPixelsPar.setReadOnly(True)
+                numPixelsPar = QtGui.QLineEdit(str(round(float(positionerPreset.size)/float(positionerPreset.stepSize))))
+                numPixelsPar.setReadOnly(True)
+                self.scanPar['pixels' + positionerName] = numPixelsPar
                 centerPar = QtGui.QLineEdit(str(positionerPreset.center))
                 self.scanPar['center' + positionerName] = centerPar
 
@@ -109,16 +110,18 @@ class ScanWidget(Widget):
                 self.grid.addWidget(sizePar, currentRow, 1)
                 self.grid.addWidget(QtGui.QLabel('Step {} (µm):'.format(positionerName)), currentRow, 2)
                 self.grid.addWidget(stepSizePar, currentRow, 3)
-                self.grid.addWidget(QtGui.QLabel('Center {} (µm):'.format(positionerName)), currentRow, 4)
-                self.grid.addWidget(centerPar, currentRow, 5)
+                self.grid.addWidget(QtGui.QLabel('# pixels {}:'.format(positionerName)), currentRow, 4)
+                self.grid.addWidget(numPixelsPar, currentRow, 5)
+                self.grid.addWidget(QtGui.QLabel('Center {} (µm):'.format(positionerName)), currentRow, 6)
+                self.grid.addWidget(centerPar, currentRow, 7)
 
                 dimLabelText = '{}{} dimension:'.format(index + 1, guitools.ordinalSuffix(index + 1))
-                self.grid.addWidget(QtGui.QLabel(dimLabelText), currentRow, 6)
+                self.grid.addWidget(QtGui.QLabel(dimLabelText), currentRow, 8)
                 scanDimPar = QtGui.QComboBox()
                 scanDimPar.addItems(self.scanDims)
                 scanDimPar.setCurrentIndex(index)
                 self.scanPar['scanDim' + str(index)] = scanDimPar
-                self.grid.addWidget(scanDimPar, currentRow, 7)
+                self.grid.addWidget(scanDimPar, currentRow, 9)
 
                 currentRow += 1
 

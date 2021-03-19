@@ -247,13 +247,13 @@ class GalvoScanDesigner(SignalDesigner):
         convFactors = [positioner.managerProperties['conversionFactor']
                        for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
 
-        # retrieve axis lengths
+        # retrieve axis lengths in V
         axis_lengths = [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(axis_count)]
 
-        # retrieve axis step sizes
+        # retrieve axis step sizes in V
         axis_step_sizes = [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(axis_count)]
 
-        # retrieve axis center positions
+        # retrieve axis center positions in V
         axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(axis_count)]
 
         axis_positions = []

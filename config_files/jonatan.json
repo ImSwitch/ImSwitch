@@ -2,10 +2,10 @@
   "detectors": {
     "CAM": {
       "analogChannel": null,
-      "digitalLine": 3,
+      "digitalLine": 4,
       "managerName": "HamamatsuManager",
       "managerProperties": {
-        "cameraListIndex": 0,
+        "cameraListIndex": 2,
         "purpose": "acquisition",
         "hamamatsu": {
           "readout_speed": 3,
@@ -47,13 +47,13 @@
       "managerName": "TISManager",
       "managerProperties": {
         "purpose": "focusLock",
-        "cameraListIndex": 1,
+        "cameraListIndex": 0,
         "tis": {
           "exposure": 0,
           "gain": 0,
           "brightness": 0,
-          "image_width": 2448,
-          "image_height": 2048
+          "image_width": 1280,
+          "image_height": 1024
         }
       }
     }
@@ -270,7 +270,7 @@
       "managerProperties": {
         "port": "COM6",
         "encoding": "ascii",
-        "recv_termination": "",
+        "recv_termination": "\r",
         "send_termination": "\n",
         "baudrate": 57600,
         "bytesize": 8,
@@ -337,22 +337,22 @@
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
   },
   "slm": {
-    "monitorIdx": 1,
+    "monitorIdx": 2,
     "width": 792,
     "height": 600,
     "wavelength": 775,
     "pixelsize": 0.02,
     "angle_mount": 0.15,
-    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
+    "correctionPatternsDir": "C:\\Users\\STEDRed\\Documents\\HamamatsuSLM\\deform_corr_patterns\\"
   },
   "focusLock": {
     "camera": "FocusLockCamera",
     "positioner": "PiezoZ",
     "updateFreq": 10,
-    "frameCrop_left": 200,
-    "frameCrop_right": 300,
+    "frameCrop_left": 730,
+    "frameCrop_right": 830,
     "frameCrop_top": 0,
-    "frameCrop_bottom": 600
+    "frameCrop_bottom": 1024
   },
   "widgetLayout": {
       "lasersAndAlignmentInSingleDock": false

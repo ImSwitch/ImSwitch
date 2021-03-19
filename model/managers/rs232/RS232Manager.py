@@ -24,11 +24,9 @@ class RS232Manager():
 def getRS232port(port, settings):
     try:
         from model.interfaces.RS232Driver import RS232Driver, generateDriverClass
-        print('Trying to import RS232Driver')
         DriverClass = generateDriverClass(settings)
         rs232port = DriverClass(port)
         rs232port.initialize()
-        print('Initialized RS232 port')
         return rs232port
     except:
         print('Initializing mock RS232 port')

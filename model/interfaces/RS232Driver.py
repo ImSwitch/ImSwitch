@@ -29,12 +29,19 @@ class RS232Driver(MessageBasedDriver):
 
     @classmethod
     def getDefaults(cls, settings):
+        if settings["parity"] == 'none':
+            set_par = constants.Parity.none
+        if settings["stopbits"] == 1:
+            set_stopb = constants.StopBits.one
+        elif settings["stopbits"] == 2:
+            set_stopb = constants.StopBits.two 
+
         defaults = {'ASRL': {'write_termination': settings["send_termination"],
                                  'read_termination': settings["recv_termination"],
                                  'baud_rate': settings["baudrate"],
                                  'bytesize': settings["bytesize"],
-                                 'parity': settings["parity"],
-                                 'stop_bits': settings["stopbits"],
+                                 'parity': set_par,
+                                 'stop_bits': set_stopb,
                                  'encoding': settings["encoding"],
                                 }}
         return defaults
@@ -52,6 +59,10 @@ class RS232Driver(MessageBasedDriver):
 def generateDriverClass(settings):
     class GeneratedDriver(RS232Driver):
         DEFAULTS = RS232Driver.getDefaults(settings)
+        try:
+            del DEFAULTS['ASRL']['bytesize']
+        except KeyError:
+            pass
 
     return GeneratedDriver
 

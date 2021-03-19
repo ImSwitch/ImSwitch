@@ -9,6 +9,7 @@ import nidaqmx
 import numpy as np
 
 from framework import Signal, SignalInterface, Thread
+from pyqtgraph.Qt import QtCore
 
 
 class NidaqManager(SignalInterface):
@@ -23,6 +24,9 @@ class NidaqManager(SignalInterface):
         self.busy = False
         self.aoTaskWaiter = WaitThread()
         self.doTaskWaiter = WaitThread()
+        print('Nidaq!')
+        #scanDoneSignal.emit()
+        #print('Signal emitted!')
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []
@@ -229,6 +233,8 @@ class NidaqManager(SignalInterface):
             print('runScan 10')
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
+                print(sampsInScan)
+                print(DOlines)
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
                                                       acquisitionTypeFinite, clockDO,
                                                       100000, sampsInScan=sampsInScan)
@@ -237,6 +243,7 @@ class NidaqManager(SignalInterface):
                 self.doTaskWaiter.connect(self.doTask)
                 self.doTaskWaiter.waitdoneSignal.connect(self.taskDone)
             print('runScan 11')
+            #scanDoneSignal.emit()
             scanInitiateSignal.emit(scanInfoDict)
             print('runScan 12')
             if len(DOsignals) > 0:

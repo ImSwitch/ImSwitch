@@ -468,9 +468,8 @@ class Mask(object):
 def getSLMObj(slmIdx):
     try:
         from model.interfaces.SLM import SLMdisplay
-        print('Trying to import SLM', slmIdx)
+        print('Trying to display SLM in monitor', slmIdx)
         slm = SLMdisplay(slmIdx)
-        print('Initialized SLM Object')
         return slm
     except OSError:
         print('Failed to load SLM')

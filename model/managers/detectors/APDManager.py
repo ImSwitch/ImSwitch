@@ -29,6 +29,7 @@ class APDManager(DetectorManager):
         parameters = {}
         self._nidaqManager = nidaqManager
         self._nidaqManager.scanInitiateSignal.connect(lambda scanInfoDict: self.initiateScan(scanInfoDict))
+        print('scanInitiateSignal is connected')
         self._nidaqManager.scanStartSignal.connect(self.startScan)
         super().__init__(name, fullShape, [1], model, parameters)
 

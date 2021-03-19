@@ -5,6 +5,7 @@ Created on Thu Jan 07 14:11:00 2021
 @author: jonatanalvelid
 """
 
+import numpy as np
 from pyicic import IC_ImagingControl
 
 
@@ -20,7 +21,7 @@ class CameraTIS:
 
         self.cam.open()
 
-        self.shape = (self.cam.get_image_description[0], self.cam.get_image_description[1])
+        self.shape = (0,0)
         self.cam.colorenable = 0
         self.cam.gain.auto = False
         self.cam.exposure.auto = False
@@ -53,6 +54,10 @@ class CameraTIS:
             self.cam.brightness = property_value
         elif property_name == "exposure":
             self.cam.exposure = property_value
+        elif property_name == 'image_height':
+            self.shape = (property_value, self.shape[1])
+        elif property_name == 'image_width':
+            self.shape = (self.shape[0], property_value)
         else:
             print('Property', property_name, 'does not exist')
             return False

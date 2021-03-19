@@ -30,6 +30,7 @@ class DetectorsManager(MultiManager, SignalInterface):
             # Set as default if first detector
             if self._currentDetectorName is None:
                 self._currentDetectorName = detectorName
+        acquisitionStarted.emit()
 
         # A timer will collect the new frame and update it through the communication channel
         self._lvWorker = LVWorker(self, updatePeriod)

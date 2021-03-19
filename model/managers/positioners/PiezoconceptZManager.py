@@ -12,7 +12,7 @@ class PiezoconceptZManager(PositionerManager):
     def __init__(self, positionerInfo, name, *args, **kwargs):
         super().__init__(name=name, initialPosition=0)
         self._rs232Manager = kwargs['rs232sManager']._subManagers[positionerInfo.managerProperties['rs232device']]
-        print('ZPiezo fake reply')
+        #print('ZPiezo fake reply')
 
     def move(self, value, *args):
         if value == 0:
@@ -41,5 +41,7 @@ class PiezoconceptZManager(PositionerManager):
         reply = self._rs232Manager.send(cmd)
         if reply is None:
             reply = self._position
+        else:
+            reply = float(reply.split(' ')[0])
         return reply
 

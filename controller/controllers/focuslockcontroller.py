@@ -79,7 +79,6 @@ class FocusLockController(WidgetController):
         else:
             self.unlockFocus()
             self._widget.lockButton.setText('Lock')
-        print("Controller: Toggle focus: unlock if locked, lock if unlocked. Also: change text on the lockButton.")
 
     def cameraDialog(self):
         self._master.detectorsManager.execOn(self.camera, lambda c: c.show_dialog())
@@ -201,7 +200,6 @@ class FocusLockController(WidgetController):
             self.lockPosition = absz
             self.locked = True
             self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(y=self.setPointSignal, pen='r')
-        print("Manager: lock focus")
 
     def focusCalibrationStart(self):
         print("Manager: starting focus calibration thread")

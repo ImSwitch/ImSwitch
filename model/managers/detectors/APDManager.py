@@ -17,13 +17,16 @@ class APDManager(DetectorManager):
     # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
     def __init__(self, APDInfo, name, nidaqManager, **_kwargs):
         model = 0
-        self.__name = name
+        self._name = name
         fullShape = (1000, 1000)
         self._image = np.random.rand(fullShape[0],fullShape[1])*100
-        self._detection_samplerate = 100e6  # detection sampling rate for the Nidaq, in Hz
-        self._nidaq_clock_source = r'20MHzTimebase'
+        #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
+        #self._nidaq_clock_source = r'20MHzTimebase'
+        self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
+        self._nidaq_clock_source = r'100kHzTimebase'
+        self.acquisition = True
 
-        self.__channel = APDInfo.managerProperties["ctrInputLine"]
+        self._channel = APDInfo.managerProperties["ctrInputLine"]
 
         # Prepare parameters
         parameters = {}
@@ -43,7 +46,7 @@ class APDManager(DetectorManager):
             self._scanWorker.newLine.connect(lambda line_pixels, line_count: self.updateImage(line_pixels, line_count))
     
     def startScan(self):
-        if self.acquistion:
+        if self.acquisition:
             self._scanThread.start()
     
     def startAcquisition(self):
@@ -59,7 +62,7 @@ class APDManager(DetectorManager):
 
     def updateImage(self, line_pixels, line_count):
         print('update image')
-        print(np.shape(line), self.__shape)
+        print(np.shape(line_pixels))#, self.__shape)
 
         self._image[line_count,:] = line_pixels
         # not sure, maybe enough with every 100ms updated image as without below call?
@@ -94,24 +97,27 @@ class ScanWorker(Worker):
     newLine = Signal(np.ndarray, int)
     def __init__(self, manager, scanInfoDict):
         super().__init__()
-        self._name = manager.__name
-        self._channel = manager.__channel
         self._manager = manager
-        self._scantimestep = scanInfoDict['time_step'] * 1e-6  # time step of scanning, in s
-        self._ratefrac_det_scan = self._scantimestep * self._manager._detection_samplerate  # sampling rate ratio between detection and scanning (=200 if scanning at 100 kHz and det at 20 MHz)
-        self._n_lines = scanInfoDict['n_lines']  # number of lines in image
-        self._pixels_line = scanInfoDict['pixels_line']  # number of pixels per line
-        self._samples_line = scanInfoDict['samples_line'] * self._ratefrac_det_scan  # number of samples per line
-        self._samples_period = scanInfoDict['samples_period'] * self._ratefrac_det_scan  # number of samples per fast axis period
-        self._samples_total = scanInfoDict['samples_total'] * self._ratefrac_det_scan  # number of samples in total signal
-        self._throw_startzero = scanInfoDict['throw_startzero'] * self._ratefrac_det_scan  # number of samples to throw due to the starting zero-padding
-        self._throw_settling = scanInfoDict['throw_settling'] * self._ratefrac_det_scan  # number of samples to throw due to settling time
-        self._throw_startacc = scanInfoDict['throw_startacc'] * self._ratefrac_det_scan  # number of samples to throw due to starting acceleration
-        self._samples_throw = self._throw_startzero + self._throw_settling + self._throw_startacc + self._throw_delay
-        detectionsamples_total = self._samples_total * self._ratefrac_det_scan  # total number of detection samples, unit: 1 * s * 1/s = 1
+        self._name = self._manager._name
+        self._channel = self._manager._channel
+
         self._throw_delay = 100  # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is actually in the correct place. How do we find this out? Depends on the response of the galvos, can we measure this somehow?
+
+        self._scantimestep = scanInfoDict['time_step'] * 1e-6  # time step of scanning, in s
+        #self._ratefrac_det_scan = round(self._scantimestep * self._manager._detection_samplerate)  # sampling rate ratio between detection and scanning (=200 if scanning at 100 kHz and det at 20 MHz)
+        self._ratefrac_det_scan = 1
+        self._n_lines = round(scanInfoDict['n_lines'])  # number of lines in image
+        self._pixels_line = round(scanInfoDict['pixels_line'])  # number of pixels per line
+        self._samples_line = round(scanInfoDict['samples_line'] * self._ratefrac_det_scan)  # number of samples per line
+        self._samples_period = round(scanInfoDict['samples_period'] * self._ratefrac_det_scan)  # number of samples per fast axis period
+        self._samples_total = round(scanInfoDict['samples_total'] * self._ratefrac_det_scan)  # number of samples in total signal
+        self._throw_startzero = round(scanInfoDict['throw_startzero'] * self._ratefrac_det_scan)  # number of samples to throw due to the starting zero-padding
+        self._throw_settling = round(scanInfoDict['throw_settling'] * self._ratefrac_det_scan)  # number of samples to throw due to settling time
+        self._throw_startacc = round(scanInfoDict['throw_startacc'] * self._ratefrac_det_scan)  # number of samples to throw due to starting acceleration
+        self._samples_throw = self._throw_startzero + self._throw_settling + self._throw_startacc + self._throw_delay
+        detectionsamples_total = round(self._samples_total * self._ratefrac_det_scan)  # total number of detection samples, unit: 1 * s * 1/s = 1
         # TODO: How to I get the following parameters into this function? Or read them from within _nidaqmanager? channels should definitely come from here I suppose...
-        self._manager._nidaqManager.startInputTask(self._name, 'ci', channel=self._channel, acquisitionType='finite', source=self._manager._nidaq_clock_source, sampsInScan=detectionsamples_total, reference_trigger='PFI12')
+        self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, detectionsamples_total, 'PFI12')
         self._manager._image = np.zeros((self._n_lines, self._pixels_line))
         self._manager.__fullShape = (self._n_lines, self._pixels_line)
 
@@ -128,8 +134,8 @@ class ScanWorker(Worker):
                 self._last_value = data[-1]
                 data = data - subtractionArray  # Now apd_data is an array contains at each position the number of counts at this position
                 line_samples = data[:self._samples_line]  # only take the first samples that corresponds to the samples during the line
-                line_pixels = samples_to_pixels(line_samples)  # translate sample stream to an array where each value corresponds to a pixel count
-                newLine.emit(line_pixels, self._line_counter)
+                line_pixels = self.samples_to_pixels(line_samples)  # translate sample stream to an array where each value corresponds to a pixel count
+                self.newLine.emit(line_pixels, self._line_counter)
                 self._line_counter += 1
             else:
                 self.close()

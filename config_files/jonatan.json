@@ -36,7 +36,7 @@
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
-        "ctrInputLine": 12,
+        "ctrInputLine": 2,
         "cameraListIndex": null,
         "purpose": "acquisition"
       }

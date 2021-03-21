@@ -1,30 +1,13 @@
-import os
-import sys
-
-from pyqtgraph.Qt import QtWidgets
-
-from .view.guitools import getBaseStyleSheet
+from pyqtgraph.console import ConsoleWidget
 
 
-def prepareApp():
-    """ This function must be called before any views are created. """
-    os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
-    app = QtWidgets.QApplication([])
-    app.setStyleSheet(getBaseStyleSheet())
-    return app
+class ConsoleView(ConsoleWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyleSheet('* { font-family: Courier; }')
 
-
-def launchApp(app, mainView, moduleMainControllers):
-    """ Launches the app. The program will exit when the app is exited. """
-
-    # Show app
-    mainView.show()
-    exitCode = app.exec_()
-
-    # Clean up
-    for controller in moduleMainControllers:
-        controller.closeEvent()
-    sys.exit(exitCode)
+    def setScriptScope(self, scope):
+        self.localNamespace.update(scope)
 
 
 # Copyright (C) 2020, 2021 TestaLab

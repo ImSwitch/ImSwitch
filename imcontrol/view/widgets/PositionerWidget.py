@@ -43,7 +43,14 @@ class PositionerWidget(Widget):
         )
 
     def getStepSize(self, positionerName):
+        """ Returns the step size of the specified positioner in
+        micrometers. """
         return float(self.pars['StepEdit' + positionerName].text())
+
+    def setStepSize(self, positionerName, stepSize):
+        """ Sets the step size of the specified positioner to the specified
+        number of micrometers. """
+        self.pars['StepEdit' + positionerName].setText(stepSize)
 
     def updatePosition(self, positionerName, position):
         text = f"<strong>{positionerName} = {position:.2f} µm</strong>"

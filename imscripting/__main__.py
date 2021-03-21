@@ -1,30 +1,5 @@
-import os
-import sys
-
-from pyqtgraph.Qt import QtWidgets
-
-from .view.guitools import getBaseStyleSheet
-
-
-def prepareApp():
-    """ This function must be called before any views are created. """
-    os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
-    app = QtWidgets.QApplication([])
-    app.setStyleSheet(getBaseStyleSheet())
-    return app
-
-
-def launchApp(app, mainView, moduleMainControllers):
-    """ Launches the app. The program will exit when the app is exited. """
-
-    # Show app
-    mainView.show()
-    exitCode = app.exec_()
-
-    # Clean up
-    for controller in moduleMainControllers:
-        controller.closeEvent()
-    sys.exit(exitCode)
+raise RuntimeError('imscripting cannot be run by itself -- it is designed to run as a part of the'
+                   ' ImSwitch suite to offer scripting capabilities for it.')
 
 
 # Copyright (C) 2020, 2021 TestaLab

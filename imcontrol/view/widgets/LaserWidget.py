@@ -51,21 +51,29 @@ class LaserWidget(Widget):
         self.digModule.addLaser(laserName, valueUnits, valueRange)
 
     def isDigModActive(self):
+        """ Returns whether the digital modulation mode is active. """
         return self.digModule.isActive()
 
     def isLaserActive(self, laserName):
+        """ Returns whether the specified laser is powered on. """
         return self.laserModules[laserName].isActive()
 
     def getValue(self, laserName):
+        """ Returns the value of the specified laser, in the units that the
+        laser uses. """
         return self.laserModules[laserName].getValue()
 
     def getDigValue(self, laserName):
+        """ Returns the digital modulation value of the specified laser, in the
+        units that the laser uses. """
         return self.digModule.getValue(laserName)
 
     def setDigModActive(self, digMod):
+        """ Sets whether the digital modulation mode is active. """
         self.digModule.setActive(digMod)
 
     def setLaserActive(self, laserName, active):
+        """ Sets whether the specified laser is powered on. """
         self.laserModules[laserName].setActive(active)
 
     def setLaserActivatable(self, laserName, activatable):
@@ -75,9 +83,13 @@ class LaserWidget(Widget):
         self.laserModules[laserName].setEditable(editable)
 
     def setValue(self, laserName, value):
+        """ Sets the value of the specified laser, in the units that the laser
+        uses. """
         self.laserModules[laserName].setValue(value)
 
     def setDigValue(self, laserName, value):
+        """ Sets the digital modulation value of the specified laser, in the
+        units that the laser uses. """
         self.digModule.setValue(laserName, value)
 
 
@@ -134,15 +146,21 @@ class DigitalModule(QtWidgets.QFrame):
         )
 
     def isActive(self):
+        """ Returns whether the digital modulation mode is active. """
         return self.DigitalControlButton.isChecked()
 
     def getValue(self, laserName):
+        """ Returns the digital modulation value of the specified laser, in the
+        units that the laser uses. """
         return float(self.powers[laserName].text())
 
     def setActive(self, active):
+        """ Sets whether the digital modulation mode is active. """
         self.DigitalControlButton.setChecked(active)
 
     def setValue(self, laserName, value):
+        """ Sets the digital modulation value of the specified laser, in the
+        units that the laser uses. """
         self.powers[laserName].setText(str(value))
 
 
@@ -237,12 +255,16 @@ class LaserModule(QtWidgets.QFrame):
         )
 
     def isActive(self):
+        """ Returns whether the laser is powered on. """
         return self.enableButton.isChecked()
 
     def getValue(self):
+        """ Returns the value of the laser, in the units that the laser
+        uses. """
         return float(self.setPointEdit.text())
 
     def setActive(self, active):
+        """ Sets whether the laser is powered on. """
         self.enableButton.setChecked(active)
 
     def setActivatable(self, activatable):
@@ -253,6 +275,7 @@ class LaserModule(QtWidgets.QFrame):
         self.slider.setEnabled(editable)
 
     def setValue(self, value):
+        """ Sets the value of the laser, in the units that the laser uses. """
         self.setPointEdit.setText(str(value))
         self.slider.setValue(value)
 

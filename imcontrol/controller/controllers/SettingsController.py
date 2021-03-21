@@ -3,6 +3,7 @@ from typing import Any
 
 import numpy as np
 
+from imcommon.model import APIExport
 from imcontrol.controller import configfileutils
 from .basecontrollers import ImConWidgetController
 from imcontrol.view import guitools as guitools
@@ -266,8 +267,10 @@ class SettingsController(ImConWidgetController):
             lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
         )
 
+    @APIExport
     def setDetectorParameter(self, detectorName, parameterName, value):
-        """ Update a new exposure time to the detector. """
+        """ Sets the specified detector-specific parameter to the specified
+        value. """
 
         if parameterName in ['Trigger source'] and self.getCurrentParams().allDetectorsFrame.value():
             # Special case for certain parameters that will follow the "update all detectors" option

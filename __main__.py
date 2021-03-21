@@ -6,33 +6,42 @@ from imcommon.view import MultiModuleWindow
 
 import imcontrol
 import imreconstruct
+import imscripting
 
 
 modules = {
     imcontrol: 'Hardware Control',
-    imreconstruct: 'Image Reconstruction'
+    imreconstruct: 'Image Reconstruction',
+    imscripting: 'Scripting'  # Must be last!
 }
 
 app = prepareApp()
 moduleCommChannel = ModuleCommunicationChannel()
 multiModuleWindow = MultiModuleWindow('ImSwitch')
-mainControllers = set()
+moduleMainViews = dict()
+moduleMainControllers = dict()
 
 for modulePackage in modules.keys():
     moduleCommChannel.register(modulePackage)
 
 for modulePackage, moduleName in modules.items():
     try:
-        view, controller = modulePackage.getMainViewAndController(moduleCommChannel)
+        view, controller = modulePackage.getMainViewAndController(
+            moduleCommChannel=moduleCommChannel,
+            multiModuleWindow=multiModuleWindow,
+            moduleMainViews=moduleMainViews,
+            moduleMainControllers=moduleMainControllers
+        )
     except:
         print(f'Failed to initialize module {modulePackage.__name__}')
         print(traceback.format_exc())
         moduleCommChannel.unregister(modulePackage)
     else:
-        multiModuleWindow.addModule(moduleName, view)
-        mainControllers.add(controller)
+        multiModuleWindow.addModule(modulePackage.__name__, moduleName, view)
+        moduleMainViews[modulePackage.__name__] = view
+        moduleMainControllers[modulePackage.__name__] = controller
 
-launchApp(app, multiModuleWindow, mainControllers)
+launchApp(app, multiModuleWindow, moduleMainControllers.values())
 
 
 # Copyright (C) 2020, 2021 TestaLab

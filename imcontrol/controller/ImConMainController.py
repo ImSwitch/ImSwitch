@@ -1,4 +1,5 @@
-from imcommon.controller import MainController
+from imcommon.controller import WidgetController, MainController
+from imcommon.model import generateAPI
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from . import controllers
@@ -57,6 +58,15 @@ class ImConMainController(MainController):
 
         # Check widget compatibility
         self.__masterController.scanManager._parameterCompatibility(self.scanController.parameterDict)
+
+        # Genearate API
+        self.__api = None
+        self.__api = generateAPI([getattr(self, obj) for obj in dir(self)
+                                  if isinstance(getattr(self, obj), WidgetController)])
+
+    @property
+    def api(self):
+        return self.__api
 
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()

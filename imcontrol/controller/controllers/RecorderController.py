@@ -4,6 +4,7 @@ import sys
 import time
 
 from imcommon.framework import Timer
+from imcommon.model import APIExport
 from .basecontrollers import ImConWidgetController
 from imcontrol.model.managers.RecordingManager import SaveMode, RecMode
 from imcontrol.view import guitools as guitools
@@ -18,6 +19,7 @@ class RecorderController(ImConWidgetController):
 
         self.lapseCurrent = 0
         self.lapseTotal = 0
+        self.recording = False
 
         imreconstructRegistered = self._moduleCommChannel.isModuleRegistered('imreconstruct')
         self._widget.setSaveMode(SaveMode.Disk.value)
@@ -77,7 +79,7 @@ class RecorderController(ImConWidgetController):
 
     def toggleREC(self, checked):
         """ Start or end recording. """
-        if checked:
+        if checked and not self.recording:
             folder = self._widget.getRecFolder()
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -119,6 +121,8 @@ class RecorderController(ImConWidgetController):
                 self.nextLapse()
             else:
                 self._master.recordingManager.startRecording(*recordingArgs)
+
+            self.recording = True
         else:
             self._master.recordingManager.endRecording()
 
@@ -161,6 +165,7 @@ class RecorderController(ImConWidgetController):
         self._commChannel.sigPrepareScan.emit()
 
     def recordingEnded(self):
+        self.recording = False
         self.lapseCurrent = 0
         self._widget.updateRecFrameNum(0)
         self._widget.updateRecTime(0)
@@ -228,6 +233,21 @@ class RecorderController(ImConWidgetController):
             attrs.update({'Rec:Slices': self._widget.getDimlapseSlices(),
                           'Rec:StepSize': self._widget.getDimlapseStepSize()})
         return attrs
+
+    @APIExport
+    def snapImage(self):
+        """ Take a snap and save it to a .tiff file at the set file path. """
+        self.snap()
+
+    @APIExport
+    def startRecording(self):
+        """ Starts recording with the set settings to the set file path. """
+        self._widget.setRecButtonChecked(True)
+
+    @APIExport
+    def stopRecording(self):
+        """ Stops recording. """
+        self._widget.setRecButtonChecked(False)
     
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,3 +1,4 @@
+from imcommon.model import APIExport
 from .basecontrollers import ImConWidgetController
 
 
@@ -91,7 +92,29 @@ class LaserController(ImConWidgetController):
 
     def setSharedAttr(self, laserName, attr, value):
         self._commChannel.sharedAttrs[('Lasers', laserName, attr)] = value
-        
+
+    @APIExport
+    def setLaserDigModActive(self, active):
+        """ Sets whether the laser digital modulation mode is active. """
+        self._widget.setDigModActive(active)
+
+    @APIExport
+    def setLaserActive(self, laserName, active):
+        """ Sets whether the specified laser is powered on. """
+        self._widget.setLaserActive(laserName, active)
+
+    @APIExport
+    def setLaserValue(self, laserName, value):
+        """ Sets the value of the specified laser, in the units that the laser
+        uses. """
+        self._widget.setValue(laserName, value)
+
+    @APIExport
+    def setLaserDigValue(self, laserName, value):
+        """ Sets the digital modulation value of the specified laser, in the
+        units that the laser uses. """
+        self._widget.setDigValue(laserName, value)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

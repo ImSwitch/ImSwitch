@@ -1,17 +1,31 @@
-def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
-    from imcontrol.controller import configfileutils, ImConMainController
-    from imcontrol.view import ViewSetupInfo, ImConMainView
+import os as _os
 
-    setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
+import constants as _constants
 
-    view = ImConMainView(setupInfo)
+
+def getMainViewAndController(moduleCommChannel, multiModuleWindow,
+                             moduleMainViews, moduleMainControllers, *_args, **_kwargs):
+    from imscripting.controller import ImScrMainController
+    from imscripting.view import ImScrMainView
+
+    view = ImScrMainView()
     try:
-        controller = ImConMainController(setupInfo, view, moduleCommChannel)
+        controller = ImScrMainController(
+            view,
+            moduleCommChannel=moduleCommChannel,
+            multiModuleWindow=multiModuleWindow,
+            moduleMainViews=moduleMainViews,
+            moduleMainControllers=moduleMainControllers
+        )
     except Exception as e:
         view.close()
         raise e
 
     return view, controller
+
+
+_os.environ['PATH'] = (_os.environ['PATH'] + ';' +
+                       _os.path.join(_constants.rootFolderPath, 'libs'))
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -3,7 +3,7 @@ import os as _os
 import constants as _constants
 
 
-def getMainViewAndController(moduleCommChannel):
+def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
     from imreconstruct.controller import ImRecMainController
     from imreconstruct.view import ImRecMainView
 

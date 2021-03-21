@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import constants
+from imcommon.model import APIExport
 from imcontrol.view import guitools as guitools
 from .basecontrollers import SuperScanController
 
@@ -91,6 +92,15 @@ class ScanController(SuperScanController):
         return ttl
 
     def saveScan(self):
+        fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
+        if not fileName:
+            return
+
+        self.saveScanParamsToFile(fileName)
+
+    @APIExport
+    def saveScanParamsToFile(self, filePath):
+        """ Saves the set scanning parameters to the specified file. """
         self.getParameters()
         config = configparser.ConfigParser()
         config.optionxform = str
@@ -98,22 +108,25 @@ class ScanController(SuperScanController):
         config['stageParameterDict'] = self._stageParameterDict
         config['TTLParameterDict'] = self._TTLParameterDict
         config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
-        fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
-        if not fileName:
-            return
 
-        with open(fileName, 'w') as configfile:
+        with open(filePath, 'w') as configfile:
             config.write(configfile)
 
     def loadScan(self):
-        config = configparser.ConfigParser()
-        config.optionxform = str
-
         fileName = guitools.askForFilePath(self._widget, 'Load scan', self.scanDir)
         if not fileName:
             return
 
-        config.read(fileName)
+        self.loadScanParamsFromFile(fileName)
+
+    @APIExport
+    def loadScanParamsFromFile(self, filePath):
+        """ Loads scanning parameters from the specified file. """
+
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        config.read(filePath)
 
         for key in self._stageParameterDict:
             self._stageParameterDict[key] = eval(config._sections['stageParameterDict'][key])
@@ -149,7 +162,9 @@ class ScanController(SuperScanController):
             self._settingParameters = False
             self.plotSignalGraph()
 
+    @APIExport
     def runScan(self):
+        """ Runs a scan with the set scanning parameters. """
         self.getParameters()
         self.signalDic = self._master.scanManager.makeFullScan(
             self._stageParameterDict, self._TTLParameterDict, self._setupInfo,

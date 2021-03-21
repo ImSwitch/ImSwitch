@@ -1,30 +1,10 @@
-import os
-import sys
-
-from pyqtgraph.Qt import QtWidgets
-
-from .view.guitools import getBaseStyleSheet
+from PyQt5 import QtWidgets
 
 
-def prepareApp():
-    """ This function must be called before any views are created. """
-    os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
-    app = QtWidgets.QApplication([])
-    app.setStyleSheet(getBaseStyleSheet())
-    return app
-
-
-def launchApp(app, mainView, moduleMainControllers):
-    """ Launches the app. The program will exit when the app is exited. """
-
-    # Show app
-    mainView.show()
-    exitCode = app.exec_()
-
-    # Clean up
-    for controller in moduleMainControllers:
-        controller.closeEvent()
-    sys.exit(exitCode)
+class FilesView(QtWidgets.QFrame):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyleSheet('* { border: 1px solid #29353D }')
 
 
 # Copyright (C) 2020, 2021 TestaLab

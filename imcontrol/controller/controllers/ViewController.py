@@ -1,3 +1,4 @@
+from imcommon.model import APIExport
 from .basecontrollers import ImConWidgetController
 
 
@@ -20,10 +21,10 @@ class ViewController(ImConWidgetController):
 
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
-        if enabled:
+        if enabled and self._acqHandle is None:
             self._acqHandle = self._master.detectorsManager.startAcquisition(liveView=True)
             self._widget.setViewToolsEnabled(True)
-        else:
+        elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
 
@@ -46,6 +47,21 @@ class ViewController(ImConWidgetController):
     def closeEvent(self):
         if self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
+
+    @APIExport
+    def setLiveViewActive(self, active):
+        """ Sets whether the LiveView is active and updating. """
+        self._widget.setLiveViewActive(active)
+
+    @APIExport
+    def setLiveViewGridVisible(self, visible):
+        """ Sets whether the LiveView grid is visible. """
+        self._widget.setLiveViewGridVisible(visible)
+
+    @APIExport
+    def setLiveViewCrosshairVisible(self, visible):
+        """ Sets whether the LiveView crosshair is visible. """
+        self._widget.setLiveViewCrosshairVisible(visible)
 
 
 # Copyright (C) 2020, 2021 TestaLab

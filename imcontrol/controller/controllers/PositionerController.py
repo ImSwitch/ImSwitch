@@ -1,3 +1,4 @@
+from imcommon.model import APIExport
 from .basecontrollers import ImConWidgetController
 
 
@@ -36,6 +37,30 @@ class PositionerController(ImConWidgetController):
 
     def setSharedAttr(self, positionerName, attr, value):
         self._commChannel.sharedAttrs[('Positioners', positionerName, attr)] = value
+
+    @APIExport
+    def setPositionerStepSize(self, positionerName, stepSize):
+        """ Sets the step size of the specified positioner to the specified
+        number of micrometers. """
+        self._widget.setStepSize(positionerName, stepSize)
+
+    @APIExport
+    def movePositioner(self, positionerName, dist):
+        """ Moves the specified positioner by the specified number of
+        micrometers. """
+        self.move(positionerName, dist)
+
+    @APIExport
+    def stepPositionerUp(self, positionerName):
+        """ Moves the specified positioner in positive direction by its set
+        step size. """
+        self.move(positionerName, self._widget.getStepSize(positionerName))
+
+    @APIExport
+    def stepPositionerDown(self, positionerName):
+        """ Moves the specified positioner in negative direction by its set
+        step size. """
+        self.move(positionerName, -self._widget.getStepSize(positionerName))
     
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -63,6 +63,9 @@ class ViewWidget(Widget):
         )
         self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
 
+    def getLiveViewActive(self):
+        return self.liveviewButton.isChecked()
+
     def selectNextDetector(self):
         self.detectorList.setCurrentIndex(
             (self.detectorList.currentIndex() + 1) % self.detectorList.count()
@@ -76,6 +79,18 @@ class ViewWidget(Widget):
     def setViewToolsEnabled(self, enabled):
         self.crosshairButton.setEnabled(enabled)
         self.gridButton.setEnabled(enabled)
+
+    def setLiveViewActive(self, active):
+        """ Sets whether the LiveView is active. """
+        self.liveviewButton.setChecked(active)
+
+    def setLiveViewGridVisible(self, visible):
+        """ Sets whether the LiveView grid is visible. """
+        self.crosshairButton.setChecked(visible)
+
+    def setLiveViewCrosshairVisible(self, visible):
+        """ Sets whether the LiveView crosshair is visible. """
+        self.gridButton.setChecked(visible)
 
 
 # Copyright (C) 2020, 2021 TestaLab

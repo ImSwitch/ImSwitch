@@ -29,7 +29,9 @@ class MasterController:
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      nidaqManager=self.nidaqManager,
                                                      rs232sManager=self.rs232sManager)
-        self.slmManager = SLMManager(self.__setupInfo.slm)
+                                                     
+        if self.__setupInfo.availableWidgets.SLMWidget:
+            self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals
         self.detectorsManager.acquisitionStarted.connect(self.__commChannel.acquisitionStarted)

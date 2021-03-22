@@ -200,6 +200,7 @@ class BetaTTLCycleDesigner(SignalDesigner):
         targets = parameterDict['target_device']
         sampleRate = parameterDict['sample_rate']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
+        print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
@@ -248,17 +249,18 @@ class GalvoScanDesigner(SignalDesigner):
                        for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
 
         # retrieve axis lengths in V
-        axis_lengths = [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(axis_count)]
-
+        self.axis_length = [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(axis_count)]
+        #print(self.axis_length)
         # retrieve axis step sizes in V
-        axis_step_sizes = [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(axis_count)]
-
+        self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(axis_count)]
+        #print(self.axis_step_size)
         # retrieve axis center positions in V
-        axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(axis_count)]
+        self.axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[i]) for i in range(axis_count)]
+        #print(self.axis_centerpos)
 
         axis_positions = []
         for i in range(axis_count):
-            axis_positions.append(1 + np.int(np.ceil(axis_lengths[i] / axis_step_sizes[i])))
+            axis_positions.append(np.int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
         # TODO: make this more modular to the number of scanners used?
         # fast axis signal
@@ -277,23 +279,26 @@ class GalvoScanDesigner(SignalDesigner):
 
         # TODO: update to inlcude as many signals as scanners
         # pad all signals
+        #print(np.shape(fast_pos))
         fast_axis_signal, slow_axis_signal = self.__zero_padding(parameterDict, fast_pos, slow_pos)
+        #print(np.shape(fast_axis_signal))
         #print('main-5')
 
         sig_dict = {parameterDict['target_device'][0]: fast_axis_signal,
                     parameterDict['target_device'][1]: slow_axis_signal}
 
-        pixels_line = int(parameterDict['axis_length'][0]/parameterDict['axis_step_size'][0])
+        pixels_line = int(self.axis_length[0]/self.axis_step_size[0])
         scanInfoDict = {
-                'n_lines': int(parameterDict['axis_length'][1]/parameterDict['axis_step_size'][1]),
+                'n_lines': int(self.axis_length[1]/self.axis_step_size[1]),
                 'pixels_line': pixels_line,
-                'samples_line': int(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep),
-                'samples_period': samples_period-1,
-                'samples_total': len(fast_axis_signal),
-                'throw_startzero': int(self.__paddingtime / self.__timestep),
-                'throw_settling': self._samples_settling,
-                'throw_startacc': self._samples_startacc,
-                'time_step': self.__timestep
+                'scan_samples_line': int(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep),
+                'scan_samples_period': samples_period-1,
+                'scan_samples_total': len(fast_axis_signal),
+                'scan_throw_startzero': int(self.__paddingtime / self.__timestep),
+                'scan_throw_settling': self._samples_settling,
+                'scan_throw_startacc': self._samples_startacc,
+                'scan_time_step': self.__timestep * 1e-6,
+                'dwell_time': parameterDict['sequence_time']
         }
 
         #print('main-6')
@@ -306,7 +311,7 @@ class GalvoScanDesigner(SignalDesigner):
     def __generate_smooth_scan(self, parameterDict, vel_max, acc_max):
         """ Generate a smooth scanning curve with spline interpolation """ 
         #print('sm-1')
-        n_lines = int(parameterDict['axis_length'][1]/parameterDict['axis_step_size'][1])  # number of lines
+        n_lines = int(self.axis_length[1]/self.axis_step_size[1])  # number of lines
         v_max = vel_max[0]
         a_max = acc_max[0]
         # generate 1 period of curve
@@ -318,6 +323,7 @@ class GalvoScanDesigner(SignalDesigner):
         # generate multiline curve for the whole scan
         #print(curve_poly)
         pos = self.__generate_smooth_multiline(curve_poly, time_fix, pos_fix, n_eval, n_lines)
+        #print(np.shape(pos))
         #print('sm-4')
         #print(pos)
         # add missing start and end piece
@@ -328,9 +334,9 @@ class GalvoScanDesigner(SignalDesigner):
     def __generate_step_scan(self, parameterDict, axis_reps):
         """ Generate a step-function scanning curve """
         #print('stsc-1')
-        l_scan = parameterDict['axis_length'][1]
-        c_scan = parameterDict['axis_centerpos'][1]
-        n_lines = int(parameterDict['axis_length'][1]/parameterDict['axis_step_size'][1])
+        l_scan = self.axis_length[1]
+        c_scan = self.axis_centerpos[1]
+        n_lines = int(self.axis_length[1]/self.axis_step_size[1])
         # create linspace for positions of interest
         positions = np.linspace(l_scan/n_lines, l_scan, n_lines) - l_scan/(n_lines*2) - l_scan/2 + c_scan
         #print('stsc-2')
@@ -386,9 +392,9 @@ class GalvoScanDesigner(SignalDesigner):
         #print('lp-1')
         sequence_time = parameterDict['sequence_time'] * 1e6  # s --> µs
         #print(f'Dwell time: {sequence_time} µs')
-        l_scan = parameterDict['axis_length'][0]  # µm
-        c_scan = parameterDict['axis_centerpos'][0]  # µm
-        v_scan = parameterDict['axis_step_size'][0]/sequence_time  # µm/µs
+        l_scan = self.axis_length[0]  # µm
+        c_scan = self.axis_centerpos[0]  # µm
+        v_scan = self.axis_step_size[0]/sequence_time  # µm/µs
         dt_fix = 1e-2  # time between two fix points where the acceleration changes (infinite jerk)  # µs
         #print('lp-2')
         #print(f'Scan velocity: {v_scan} µm/µs')

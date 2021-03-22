@@ -498,8 +498,10 @@ class ImageController(LiveUpdatedController):
         if im is None:
             im = self._widget.img.image
 
-        self._widget.hist.setLevels(*guitools.bestLevels(im))
-        self._widget.hist.vb.setYRange(im.min(), im.max())
+        #self._widget.hist.setLevels(*guitools.bestLevels(im))
+        #self._widget.hist.vb.setYRange(im.min(), im.max())
+        self._widget.hist.setLevels(0, im.max())
+        self._widget.hist.vb.setYRange(0, im.max())
 
     def addItemTovb(self, item):
         """ Add item from communication channel to viewbox."""

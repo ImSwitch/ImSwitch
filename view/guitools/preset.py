@@ -31,8 +31,8 @@ class PositionerPreset:
 # Scan
 @dataclass(frozen=True)
 class ScanPresetPositioner:
-    size: str = '2'  # micrometres
-    stepSize: str = '0.1'  # micrometres
+    size: str = '1'  # micrometres
+    stepSize: str = '0.05'  # micrometres
     center: str = '0'  # micrometres
 
 
@@ -46,7 +46,7 @@ class ScanPresetTTL:
 class ScanPreset:
     positioners: Dict[str, ScanPresetPositioner] = field(default_factory=dict)  # map from device name to ScanPresetPositioner
     pulses: Dict[str, ScanPresetTTL] = field(default_factory=dict)  # map from device name to ScanPresetTTL
-    dwellTime: str = '10'  # milliseconds
+    dwellTime: str = '0.01'  # milliseconds
 
 
 # uLenses

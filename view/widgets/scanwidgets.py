@@ -40,7 +40,8 @@ class ScanWidget(Widget):
 
         self.sampleRateEdit = QtGui.QLineEdit()
 
-        self.seqTimePar = QtGui.QLineEdit(self._defaultPreset.scan.dwellTime)  # ms
+        #self.seqTimePar = QtGui.QLineEdit(self._defaultPreset.scan.dwellTime)  # ms
+        self.seqTimePar = QtGui.QLineEdit('0.1')  # ms
         self.nrFramesPar = QtGui.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtGui.QLabel(str(self.scanDuration))

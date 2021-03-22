@@ -70,18 +70,43 @@ class ScanManager(SuperScanManager):
         TTLZeroPadSamples = scanParameters['Return_time_seconds'] * TTLParameters['sample_rate']
         if not TTLZeroPadSamples.is_integer():
             print('WARNING: Non-integer number of return samples, rounding up')
-        TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
+        #TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
 
         if not staticPositioner:
             scanSignalsDict, positions, scanInfoDict = self.__scanDesigner.make_signal(
                 scanParameters, setupInfo, returnFrames=True
             )
-
-            # Tile and pad TTL signals according to sync parameters
+            #TODO: # add below into a new TTL_cycle_designer, that takes the scanInfoDict from the analog signal designer as input
+            zeropad_lineflyback = scanInfoDict['scan_samples_period'] - scanInfoDict['scan_samples_line']
+            #print(f'scan flyback: {zeropad_lineflyback}')
+            zeropad_settling = scanInfoDict['scan_throw_settling']
+            #print(f'scan settl {zeropad_settling}')
+            zeropad_start = scanInfoDict['scan_throw_startzero']
+            #print(f'scan startendzero: {zeropad_startend}')
+            zeropad_startacc = scanInfoDict['scan_throw_startacc']
+            #print(f'scan startacc: {zeropad_startacc}')
+            # Tile and pad TTL signals according to fast axis scan parameters
             for target, signal in TTLCycleSignalsDict.items():
-                signal = np.tile(signal, positions[0])
-                signal = np.append(signal, np.zeros(TTLZeroPadSamples, dtype='bool'))
-                signal = np.tile(signal, positions[1] * positions[2])
+                #print(f'one pixel: {len(signal)}')
+                signal_line = np.tile(signal, scanInfoDict['pixels_line'])
+                #print(f'one line: {len(signal_line)}')
+                signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))
+                #print(f'one period: {len(signal_period)}')
+                #TODO: # only do 2D-scan for now, fix for 3D-scan
+                signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)  # all lines except last
+                #print(f'all-1 lines: {len(signal)}')
+                signal = np.append(signal, signal_line)  # add last line (does without flyback)
+                
+                #print(f'all lines: {len(signal)}')
+                signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)  # pad first line accelereation
+                #print(f'startacc: {len(signal)}')
+                signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)  # pad start settling
+                #print(f'settl: {len(signal)}')
+                signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zero
+                #print(f'zerostart: {len(signal)}')
+                zeropad_end = scanInfoDict['scan_samples_total'] - len(signal)
+                signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))  # pad end zero to same length
+                #print(f'zeroend: {len(signal)}')
 
                 TTLCycleSignalsDict[target] = signal
         else:

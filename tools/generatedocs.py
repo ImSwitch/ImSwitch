@@ -1,13 +1,10 @@
 import os
 import pydoc
 
-import constants
-from imcommon import prepareApp
-from imcommon.controller import ModuleCommunicationChannel
+from imswitch.imcommon import prepareApp, constants
+from imswitch.imcommon.controller import ModuleCommunicationChannel
 
-import imcontrol
-import imreconstruct
-
+from imswitch import imreconstruct, imcontrol
 
 # Create and set working directory
 docsDir = os.path.join(constants.rootFolderPath, 'docs')

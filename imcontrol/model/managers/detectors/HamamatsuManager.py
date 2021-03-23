@@ -66,21 +66,21 @@ class HamamatsuManager(DetectorManager):
         def cropAction():
             self._camera.setPropertyValue('subarray_vpos', 0)
             self._camera.setPropertyValue('subarray_hpos', 0)
-            self._camera.setPropertyValue('subarray_vsize', self.fullShape[0])
-            self._camera.setPropertyValue('subarray_hsize', self.fullShape[1])
+            self._camera.setPropertyValue('subarray_vsize', self.fullShape[1])
+            self._camera.setPropertyValue('subarray_hsize', self.fullShape[0])
 
-            if (vsize, hsize) != self.fullShape:
-                self._camera.setPropertyValue('subarray_vsize', vsize)
-                self._camera.setPropertyValue('subarray_hsize', hsize)
-                self._camera.setPropertyValue('subarray_vpos', vpos)
-                self._camera.setPropertyValue('subarray_hpos', hpos)
+            if (hsize, vsize) != self.fullShape:
+                self._camera.setPropertyValue('subarray_vsize', hsize)
+                self._camera.setPropertyValue('subarray_hsize', vsize)
+                self._camera.setPropertyValue('subarray_vpos', hpos)
+                self._camera.setPropertyValue('subarray_hpos', vpos)
 
         self._performSafeCameraAction(cropAction)
 
         # This should be the only place where self.frameStart is changed
-        self._frameStart = (vpos, hpos)
+        self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
-        self._shape = (vsize, hsize)
+        self._shape = (hsize, vsize)
 
     def setBinning(self, binning):
         super().setBinning(binning)

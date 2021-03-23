@@ -1,3 +1,4 @@
+
 from pyqtgraph.Qt import QtCore, QtWidgets
 
 from imcontrol.view import guitools as guitools
@@ -254,3 +255,20 @@ class LaserModule(QtWidgets.QFrame):
     def setValue(self, value):
         self.setPointEdit.setText(str(value))
         self.slider.setValue(value)
+
+# Copyright (C) 2017 Federico Barabas 2020, 2021 TestaLab
+# This file is part of Tormenta and ImSwitch.
+#
+# Tormenta and ImSwitch are free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Tormenta and Imswitch are distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+

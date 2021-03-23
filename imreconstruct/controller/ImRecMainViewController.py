@@ -52,7 +52,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
         self._widget.sigReconstructMulti.connect(self.reconstructMulti)
         self._widget.sigQuickLoadData.connect(self.quickLoadData)
-        self._widget.sigUpdate.connect(self.updateScanParams)
+        self._widget.sigUpdate.connect(lambda: self.updateScanParams(applyOnCurrentRecon=True))
 
         self._widget.sigShowPatternChanged.connect(self.togglePattern)
         self._widget.sigFindPattern.connect(self.findPattern)
@@ -112,8 +112,9 @@ class ImRecMainViewController(ImRecWidgetController):
         finally:
             self._settingPatternParams = False
 
-    def updateScanParams(self):
-        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict))
+    def updateScanParams(self, applyOnCurrentRecon=False):
+        self._commChannel.sigScanParamsUpdated.emit(copy.deepcopy(self._scanParDict),
+                                                    applyOnCurrentRecon)
 
     def scanParamsUpdated(self, scanParDict):
         self._scanParDict = scanParDict
@@ -257,14 +258,15 @@ class ImRecMainViewController(ImRecWidgetController):
             if saveName:
                 if dataType == 'reconstruction':
                     reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    vxsizec = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.r_l_text)])
-                    vxsizer = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.u_d_text)])
+                    scanParDict = reconstructionObj.getScanParms()
+                    vxsizec = int(scanParDict['step_sizes'][
+                                      scanParDict['dimensions'].index(self._widget.r_l_text)])
+                    vxsizer = int(scanParDict['step_sizes'][
+                                      scanParDict['dimensions'].index(self._widget.u_d_text)])
                     vxsizez = int(reconstructionObj.scanParDict['step_sizes'][
-                                      self._scanParDict['dimensions'].index(self._widget.b_f_text)])
-                    dt = int(reconstructionObj.scanParDict['step_sizes'][
-                                 self._scanParDict['dimensions'].index(self._widget.timepoints_text)])
+                                      scanParDict['dimensions'].index(self._widget.b_f_text)])
+                    dt = int(scanParDict['step_sizes'][
+                                 scanParDict['dimensions'].index(self._widget.timepoints_text)])
 
                     print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez}')
                     # Reconstructed image
@@ -294,3 +296,20 @@ class ImRecMainViewController(ImRecWidgetController):
                 print('No saving path given')
         else:
             print('No data type given in save current')
+
+
+# Copyright (C) 2020, 2021 TestaLab
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

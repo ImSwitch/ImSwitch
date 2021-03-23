@@ -55,7 +55,8 @@ class ImageController(LiveUpdatedController):
             self._widget.levelsButton.setEnabled(True)
             self.autoLevels(im)
 
-        self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
+        self._widget.img.setImage(im.reshape(im.shape[1], im.shape[0]),
+                                  autoLevels=False, autoDownsample=False)
 
         if not init:
             self.adjustFrame(self._lastWidth, self._lastHeight)

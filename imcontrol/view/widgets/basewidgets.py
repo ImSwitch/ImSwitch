@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 17:08:54 2020
-
-@author: _Xavi
-"""
 import weakref
 from pyqtgraph.Qt import QtWidgets
 
@@ -32,3 +26,19 @@ class Widget(QtWidgets.QWidget):
     def __init__(self, defaultPreset, *args, **kwargs):
         self._defaultPreset = defaultPreset
         super().__init__(*args, **kwargs)
+
+# Copyright (C) 2020, 2021TestaLab
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

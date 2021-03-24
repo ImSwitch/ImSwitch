@@ -31,8 +31,8 @@ class PositionerPreset:
 # Scan
 @dataclass(frozen=True)
 class ScanPresetPositioner:
-    size: str = '1'  # micrometres
-    stepSize: str = '0.05'  # micrometres
+    size: str = '15'  # micrometres
+    stepSize: str = '0.117'  # micrometres
     center: str = '0'  # micrometres
 
 

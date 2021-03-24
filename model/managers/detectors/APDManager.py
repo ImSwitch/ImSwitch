@@ -18,15 +18,18 @@ class APDManager(DetectorManager):
     def __init__(self, APDInfo, name, nidaqManager, **_kwargs):
         model = 0
         self._name = name
-        fullShape = (1000, 1000)
+        fullShape = (128, 128)
         self._image = np.random.rand(fullShape[0],fullShape[1])*100
-        #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
         #self._nidaq_clock_source = r'20MHzTimebase'
-        self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
+        #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
         self._nidaq_clock_source = r'100kHzTimebase'
+        self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
+        #self._nidaq_clock_source = r'20MHzTimebase'
+        #self._detection_samplerate = float(1e6)  # detection sampling rate for the Nidaq, in Hz
         self.acquisition = True
 
         self._channel = APDInfo.managerProperties["ctrInputLine"]
+        self._terminal = APDInfo.managerProperties["terminal"]
 
         # Prepare parameters
         parameters = {}
@@ -75,9 +78,9 @@ class APDManager(DetectorManager):
         #print(f'ui: line pixel shape{np.shape(line_pixels)}')
         #print(f'ui: line count: {line_count}')
 
-        self._image[line_count,:] = line_pixels
+        self._image[-(line_count+1),:] = line_pixels
         # not sure, maybe enough with every 100ms updated image as without below call?
-        self.updateLatestFrame(False)
+        #self.updateLatestFrame(False)
 
     def setParameter(self, name, value):
         pass
@@ -114,7 +117,9 @@ class ScanWorker(Worker):
         self._name = self._manager._name
         self._channel = self._manager._channel
 
-        self._throw_delay = 0  # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is actually in the correct place. How do we find this out? Depends on the response of the galvos, can we measure this somehow?
+        #self._throw_delay = int(13*20e6/100e3)  # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is actually in the correct place. How do we find this out? Depends on the response of the galvos, can we measure this somehow?
+        #self._throw_delay = 15200
+        self._throw_delay = 0
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
         self._frac_det_dwell = round(self._scan_dwell_time * self._manager._detection_samplerate)  # ratio between detection sampling time and pixel dwell time (has nothing to do with sampling of scanning line)
@@ -126,14 +131,14 @@ class ScanWorker(Worker):
         scantimest = scanInfoDict['scan_time_step']
         detsamprate = self._manager._detection_samplerate
         samptotdet = round(samptot * scantimest * detsamprate)
-        print(f'scansampltot: {samptot}, scantimestep: {scantimest}, detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
+        #print(f'scansampltot: {samptot}, scantimestep: {scantimest}, detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
         self._samples_total = round(scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # det samples in total signal: time for total scan * det sampling rate
         self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to the starting zero-padding: time for zero_padding * det sampling rate
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to settling time: time for settling * det sampling rate
         self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to starting acceleration: time for acceleration * det sampling rate
         self._samples_throw = self._throw_startzero + self._throw_settling + self._throw_startacc + self._throw_delay
         # TODO: How to I get the following parameters into this function? Or read them from within _nidaqmanager? channels should definitely come from here I suppose...
-        self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, self._samples_total, 'PFI12')
+        self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, self._samples_total, True, 'ao/StartTrigger', self._manager._terminal)
         self._manager._image = np.zeros((self._n_lines, self._pixels_line))
         self._manager.__shape = (self._n_lines, self._pixels_line)
 
@@ -171,8 +176,10 @@ class ScanWorker(Worker):
                 self.close()
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero)
         self._alldata += len(throwdata)
-        #print(f'sw fin: length of all data so far: {self._alldata}')
+        #print(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()
+        #print(self._name)
+        #print(np.mean(self._manager._image))
         self.close()
 
     def samples_to_pixels(self, line_samples):

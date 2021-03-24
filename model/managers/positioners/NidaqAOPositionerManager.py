@@ -14,8 +14,9 @@ class NidaqAOPositionerManager(PositionerManager):
 
     def setPosition(self, position, *args):
         self._position = position
-        self._nidaqManager.setAnalog(target=self.name,
-                                     voltage=position / self._conversionFactor,
-                                     min_val=self._minVolt,
-                                     max_val=self._maxVolt)
+        #TODO: probably add this again, but not for X and Y axis. When should I use it? For Z? STED 4th axis?
+        #self._nidaqManager.setAnalog(target=self.name,
+        #                             voltage=position / self._conversionFactor,
+        #                             min_val=self._minVolt,
+        #                             max_val=self._maxVolt)
         return position

@@ -200,7 +200,7 @@ class BetaTTLCycleDesigner(SignalDesigner):
         targets = parameterDict['target_device']
         sampleRate = parameterDict['sample_rate']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
-        print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
+        #print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))
@@ -232,11 +232,12 @@ class GalvoScanDesigner(SignalDesigner):
 
         self.__settlingtime = 20e3  # arbitrary for now  µs
         self.__paddingtime = 20e3  # arbitrary for now  µs
-        self.__timestep = 10  # here for now, solve nicer later  µs
+        self.__timestep = 10  # here for now, solve nicer later  µs (100 kHz)
+        #self.__timestep = 0.05  # here for now, solve nicer later  µs (20 MHz)
 
     def make_signal(self, parameterDict, setupInfo, returnFrames=False):
-        print(parameterDict)
-        print('Generating scanning curves...')
+        #print(parameterDict)
+        #print('Generating scanning curves...')
         axis_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']])
         #print(axis_count)
         vel_max = [positioner.managerProperties['vel_max']
@@ -302,7 +303,7 @@ class GalvoScanDesigner(SignalDesigner):
         }
 
         #print('main-6')
-        print('Scanning curves done!')
+        print('Scanning curves generated.')
         if not returnFrames:
             return sig_dict, scanInfoDict
         else:

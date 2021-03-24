@@ -67,9 +67,9 @@ class ScanManager(SuperScanManager):
         TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, setupInfo)
 
         # Calculate samples to zero pad TTL signals with
-        TTLZeroPadSamples = scanParameters['Return_time_seconds'] * TTLParameters['sample_rate']
-        if not TTLZeroPadSamples.is_integer():
-            print('WARNING: Non-integer number of return samples, rounding up')
+        #TTLZeroPadSamples = scanParameters['Return_time_seconds'] * TTLParameters['sample_rate']
+        #if not TTLZeroPadSamples.is_integer():
+        #    print('WARNING: Non-integer number of return samples, rounding up')
         #TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
 
         if not staticPositioner:
@@ -90,7 +90,7 @@ class ScanManager(SuperScanManager):
                 #print(f'one pixel: {len(signal)}')
                 signal_line = np.tile(signal, scanInfoDict['pixels_line'])
                 #print(f'one line: {len(signal_line)}')
-                signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))
+                signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))#*signal[0])
                 #print(f'one period: {len(signal_period)}')
                 #TODO: # only do 2D-scan for now, fix for 3D-scan
                 signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)  # all lines except last
@@ -105,6 +105,9 @@ class ScanManager(SuperScanManager):
                 signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zero
                 #print(f'zerostart: {len(signal)}')
                 zeropad_end = scanInfoDict['scan_samples_total'] - len(signal)
+                #onepad_end = 12
+                #signal = np.append(signal, np.ones(onepad_end, dtype='bool'))  # pad end zero to same length
+                #TODO: this does not seem to be correct, I have the laser off the last ~120 µs (last pixels) in the last row
                 signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))  # pad end zero to same length
                 #print(f'zeroend: {len(signal)}')
 

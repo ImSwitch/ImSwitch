@@ -17,8 +17,8 @@ from controller.MainController import MainController
 from view.MainView import MainView
 from view.guitools import ViewSetupInfo
 
-logging.getLogger("pyvisa").setLevel(logging.WARNING)
-logging.getLogger("lantz").setLevel(logging.WARNING)
+#logging.getLogger("pyvisa").setLevel(logging.WARNING)
+#logging.getLogger("lantz").setLevel(logging.WARNING)
 
 setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
 app = QtGui.QApplication([])

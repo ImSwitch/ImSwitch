@@ -1,21 +1,23 @@
 {
   "detectors": {
-    "APDred": {
+    "APD1": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "APDManager",
+      "managerProperties": {
+        "ctrInputLine": 0,
+        "terminal": "PFI0",
+        "cameraListIndex": null,
+        "purpose": "acquisition"
+      }
+    },
+    "APD2": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
         "ctrInputLine": 1,
-        "cameraListIndex": null,
-        "purpose": "acquisition"
-      }
-    },
-    "APDgreen": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "APDManager",
-      "managerProperties": {
-        "ctrInputLine": 2,
+        "terminal": "PFI12",
         "cameraListIndex": null,
         "purpose": "acquisition"
       }
@@ -96,8 +98,8 @@
         "conversionFactor": 17.44,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 10e-3,
-        "acc_max": 10e-6,
+        "vel_max": 1e-3,
+        "acc_max": 1e-6,
         "axisCount": 1,
         "axisLabels": "X",
         "scanner": 1,
@@ -112,8 +114,8 @@
         "conversionFactor": 16.63,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 10e-3,
-        "acc_max": 10e-6,
+        "vel_max": 1e-3,
+        "acc_max": 1e-6,
         "axisCount": 1,
         "axisLabels": "Y",
         "scanner": 1,
@@ -153,7 +155,7 @@
     "aaaotf": {
       "managerName": "RS232Manager",
       "managerProperties": {
-        "port": "COM4",
+        "port": "ASRL4::INSTR",
         "encoding": "ascii",
         "recv_termination": "\n",
         "send_termination": "\r \n",
@@ -169,7 +171,7 @@
     "pczpiezo": {
       "managerName": "RS232Manager",
       "managerProperties": {
-        "port": "COM5",
+        "port": "ASRL5::INSTR",
         "encoding": "ascii",
         "recv_termination": "\n",
         "send_termination": "\n",

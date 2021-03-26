@@ -216,11 +216,20 @@
     "FFTWidget": false,
     "ULensesWidget": false,
     "SLMWidget": false,
-    "FocusLockWidget": false,
+    "FocusLockWidget": true,
     "MotCorrWidget": false
   },
   "designers": {
     "scanDesigner": "GalvoScanDesigner",
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
+  },
+  "focusLock": {
+    "camera": "FocusLockCamera",
+    "positioner": "PiezoZ",
+    "updateFreq": 10,
+    "frameCrop_left": 0,
+    "frameCrop_right": 500,
+    "frameCrop_top": 0,
+    "frameCrop_bottom": 600
   }
 }

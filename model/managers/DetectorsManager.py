@@ -17,7 +17,7 @@ class DetectorsManager(MultiManager, SignalInterface):
     def __init__(self, detectorInfos, updatePeriod, **kwargs):
         MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
         SignalInterface.__init__(self)
-
+        self.__detectorInfos = detectorInfos
         self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
             # Connect signals
@@ -72,6 +72,17 @@ class DetectorsManager(MultiManager, SignalInterface):
             raise NoDetectorsError
 
         return self.execOn(self._currentDetectorName, func)
+
+    def execOnAll(self, func, purpose=False):
+        """ Executes a function on all sub-managers with a certain purpose, if such a condition. """
+        if purpose:
+            #print(self._subManagers.items())
+            return {managedDeviceName: func(subManager)
+                    for managedDeviceName, subManager in self._subManagers.items()
+                            if self.__detectorInfos[managedDeviceName].managerProperties['purpose'] == purpose}
+        else:
+            return {managedDeviceName: func(subManager)
+                    for managedDeviceName, subManager in self._subManagers.items()}
 
     def startAcquisition(self):
         self.execOnAll(lambda c: c.startAcquisition())

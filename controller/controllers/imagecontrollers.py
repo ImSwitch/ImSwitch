@@ -423,7 +423,7 @@ class ViewController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model, purpose='acquisition'))
 
         # Connect ViewWidget signals
         self._widget.gridButton.clicked.connect(self.gridToggle)
@@ -569,7 +569,7 @@ class RecorderController(WidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.initControls(self._master.detectorsManager.execOnAll(lambda c: c.model, purpose='acquisition'))
 
         self.lapseCurrent = 0
         self.lapseTotal = 0

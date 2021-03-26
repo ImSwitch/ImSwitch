@@ -23,8 +23,8 @@
         "stepSize": "0.1"
       },
       "Z": {
-        "size": "10",
-        "stepSize": "10"
+        "size": "2",
+        "stepSize": "0.1"
       }
     },
     "pulses": {

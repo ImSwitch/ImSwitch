@@ -27,6 +27,7 @@
       "managerName": "APDManager",
       "managerProperties": {
         "ctrInputLine": 1,
+        "terminal": "PFI0",
         "cameraListIndex": null,
         "purpose": "acquisition"
       }
@@ -37,6 +38,7 @@
       "managerName": "APDManager",
       "managerProperties": {
         "ctrInputLine": 2,
+        "terminal": "PFI12",
         "cameraListIndex": null,
         "purpose": "acquisition"
       }
@@ -337,13 +339,13 @@
     "TTLCycleDesigner": "BetaTTLCycleDesigner"
   },
   "slm": {
-    "monitorIdx": 2,
+    "monitorIdx": 1,
     "width": 792,
     "height": 600,
     "wavelength": 775,
     "pixelsize": 0.02,
     "angle_mount": 0.15,
-    "correctionPatternsDir": "C:\\Users\\STEDRed\\Documents\\HamamatsuSLM\\deform_corr_patterns\\"
+    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
   "focusLock": {
     "camera": "FocusLockCamera",

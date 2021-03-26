@@ -102,9 +102,16 @@ class SetupInfo:
         return self.getAllDevices()[deviceName]
 
     def getTTLDevices(self):
+        """ Returns DeviceInfo from all devices that have a digitalLine. """
         devices = {}
+        i=0
         for deviceInfos in self.lasers, self.detectors:
-            devices.update(deviceInfos)
+            deviceInfosCopy = deviceInfos.copy()
+            for item in list(deviceInfosCopy):
+                if not deviceInfosCopy[item].digitalLine:
+                    del deviceInfosCopy[item]
+            devices.update(deviceInfosCopy)
+            i+=1
 
         return devices
 

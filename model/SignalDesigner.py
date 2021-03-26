@@ -494,6 +494,69 @@ class GalvoScanDesigner(SignalDesigner):
         #print('smml-4')
         return pos_ret
 
+    def __init_positioning_poly(self, initpos, v_max, a_max):
+        v_max = np.sign(initpos)*v_max
+        a_max = np.sign(initpos)*a_max
+        dt_fix = 1e-2  # time between two fix points where the acceleration changes (infinite jerk)  # µs
+        
+        # positions at fixed points
+        p1 = p1p = 0
+        t_deacc = (v_max)/a_max
+        print(f'Deacc time: {t_deacc}')
+        d_deacc = 0.5*a_max*t_deacc**2
+        print(f'Deacc distance: {d_deacc}')
+        p2 = p2p = d_deacc
+        p3 = p3p = initpos - d_deacc
+        p4 = initpos
+        pos = [p1, p1p, p2, p2p, p3, p3p, p4]
+        
+        # time at fixed points
+        t1 = 0
+        t1p = dt_fix
+        t2 = t_deacc
+        t2p = t2 + dt_fix
+        t3 = t2 + abs(abs(p3 - p2)/v_max)
+        t3p = t3 + dt_fix
+        t4 = t3 + t_deacc
+        time = [t1, t1p, t2, t2p, t3, t3p, t4]
+        
+        # velocity at fixed points
+        v1 = v1p = 0
+        v2 = v2p = v3 = v3p = v_max
+        v4 = 0
+        vel = [v1, v1p, v2, v2p, v3, v3p, v4]
+        
+        # acceleration at fixed points
+        a1 = 0
+        a1p = a2 = a_max
+        a2p = a3 = 0
+        a3p = a4 = -a_max
+        acc = [a1, a1p, a2, a2p, a3, a3p, a4]
+        
+        # if p2 is already past the center of the scan it means that the max_velocity was never reached
+        # in this case, remove two fixed points, and change the values to the curr. vel and time in the
+        # middle of the flyback
+        if abs(p2) >= abs(initpos/2):
+            t_mid = np.sqrt(abs(initpos/a_max))
+            v_mid = a_max*t_mid
+            del pos[4:6]
+            del vel[4:6]
+            del acc[4:6]
+            del time[4:6]
+            pos[2:4] = [initpos/2, initpos/2]
+            vel[2:4] = [v_mid, v_mid]
+            acc[2:4] = [a_max, -a_max]
+            time[2] = t_mid
+            time[3] = t_mid + dt_fix
+            time[4] = 2*t_mid
+        
+        # generate Bernstein polynomial with piecewise spline interpolation with the fixed points
+        # give positions, velocity, acceleration, and time of fixed points        
+        yder = np.array([pos, vel, acc]).T.tolist()
+        bpoly = BPoly.from_derivatives(time, yder) # bpoly time unit: µs
+        # return polynomial, that can be evaluated at any timepoints you want
+        return bpoly
+
     def __add_start_end(self, pos, pos_fix):
         """ Add start and end half-lines to smooth scanning curve """
         # generate three pieces, two before and one after, to be concatenated to the given positions array

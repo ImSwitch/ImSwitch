@@ -248,6 +248,8 @@ class RecorderController(ImConWidgetController):
     def stopRecording(self):
         """ Stops recording. """
         self._widget.setRecButtonChecked(False)
+
+    # TODO: API functions for changing recording mode, detectors to capture
     
 
 # Copyright (C) 2020, 2021 TestaLab

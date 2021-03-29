@@ -1,10 +1,13 @@
+from PyQt5 import QtGui
 from pyqtgraph.console import ConsoleWidget
 
 
 class ConsoleView(ConsoleWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setStyleSheet('* { font-family: Courier; }')
+
+        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+        self.output.document().setDefaultFont(font)
 
     def setScriptScope(self, scope):
         self.localNamespace.update(scope)

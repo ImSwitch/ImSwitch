@@ -30,3 +30,11 @@ class Timer(QtCore.QTimer, base.Timer, metaclass=QObjectMeta):
 
 class Worker(QtCore.QObject, base.Worker, metaclass=QObjectMeta):
     pass
+
+
+class FrameworkUtils(base.FrameworkUtils):
+    @staticmethod
+    def processPendingEventsCurrThread():
+        QtCore.QAbstractEventDispatcher.instance(
+            QtCore.QThread.currentThread()
+        ).processEvents(QtCore.QEventLoop.AllEvents)

@@ -1,24 +1,82 @@
-import os
+import uuid
 
-import PyQt5
 from PyQt5 import QtCore, QtGui, QtWidgets, Qsci
-from pyqtgraph.dockarea import Dock, DockArea
-# TODO: Have output in separate dock (and separate file), use comm channel to update?
 
 from .guitools import BetterPushButton
 
 
-# from spyder.plugins.editor.widgets.editor import EditorPluginExample
-# class EditorViewSpyder(spyder.plugins.editor.widgets.editor.EditorPluginExample):
-#     pass
-
-
-class EditorView(QtWidgets.QWidget):
-    sigRunAllClicked = QtCore.Signal(str)  # (text)
-    sigRunSelectedClicked = QtCore.Signal(str)  # (selectedText)
+class EditorView(QtWidgets.QTabWidget):
+    sigRunAllClicked = QtCore.Signal(str, str)  # (instanceID, text)
+    sigRunSelectedClicked = QtCore.Signal(str, str)  # (instanceID, selectedText)
+    sigStopClicked = QtCore.Signal(str)  # (instanceID)
+    sigTextChanged = QtCore.Signal(str)  # (instanceID)
+    sigInstanceCloseClicked = QtCore.Signal(str)  # (instanceID)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setTabsClosable(True)
+
+        self.tabCloseRequested.connect(
+            lambda index: self.sigInstanceCloseClicked.emit(self.widget(index).getID())
+        )
+
+    def addEditor(self, name):
+        editorInstance = EditorInstanceView()
+        editorInstance.sigRunAllClicked.connect(
+            lambda text: self.sigRunAllClicked.emit(editorInstance.getID(), text)
+        )
+        editorInstance.sigRunSelectedClicked.connect(
+            lambda text: self.sigRunSelectedClicked.emit(editorInstance.getID(), text)
+        )
+        editorInstance.sigTextChanged.connect(
+            lambda: self.sigTextChanged.emit(editorInstance.getID())
+        )
+        editorInstance.sigStopClicked.connect(
+            lambda: self.sigStopClicked.emit(editorInstance.getID())
+        )
+        self.addTab(editorInstance, name)
+        self.setCurrentWidget(editorInstance)
+        return editorInstance
+
+    def setEditorName(self, instanceID, name):
+        for i in range(self.count()):
+            if self.widget(i).getID() == instanceID:
+                self.setTabText(i, name)
+                return
+
+    def getCurrentInstance(self):
+        return self.currentWidget()
+
+    def setCurrentInstanceByID(self, instanceID):
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if widget.getID() == instanceID:
+                self.setCurrentWidget(widget)
+                return
+
+    def getInstanceByID(self, instanceID):
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if widget.getID() == instanceID:
+                return widget
+
+    def closeInstance(self, instanceID):
+        for i in range(self.count()):
+            widget = self.widget(i)
+            if widget.getID() == instanceID:
+                widget.deleteLater()
+                self.removeTab(i)
+
+
+class EditorInstanceView(QtWidgets.QWidget):
+    sigRunAllClicked = QtCore.Signal(str)  # (text)
+    sigRunSelectedClicked = QtCore.Signal(str)  # (selectedText)
+    sigStopClicked = QtCore.Signal()
+    sigTextChanged = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.id = str(uuid.uuid4())
 
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
@@ -26,6 +84,12 @@ class EditorView(QtWidgets.QWidget):
         topContainer = QtWidgets.QHBoxLayout()
         topContainer.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(topContainer, 0)
+
+        topContainer.addSpacerItem(
+            QtWidgets.QSpacerItem(
+                40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
+            )
+        )
 
         self.runAllButton = BetterPushButton('Run all')
         self.runAllButton.clicked.connect(
@@ -39,18 +103,18 @@ class EditorView(QtWidgets.QWidget):
         )
         topContainer.addWidget(self.runSelectionButton, 0)
 
+        self.stopButton = BetterPushButton('Stop')
+        self.stopButton.clicked.connect(
+            lambda: self.sigStopClicked.emit()
+        )
+        topContainer.addWidget(self.stopButton, 0)
+
         self.scintilla = Scintilla()
+        self.scintilla.textChanged.connect(self.sigTextChanged)
         layout.addWidget(self.scintilla, 3)
 
-        layout.addWidget(QtWidgets.QLabel('Output:'), 0)
-
-        self.outputBox = QtWidgets.QPlainTextEdit()
-        self.outputBox.setReadOnly(True)
-        outputBoxFont = QtGui.QFont('Courier')
-        outputBoxFont.setStyleHint(QtGui.QFont.TypeWriter)
-        outputBoxFont.setPointSize(10)
-        self.outputBox.setFont(outputBoxFont)
-        layout.addWidget(self.outputBox, 1)
+    def getID(self):
+        return self.id
 
     def getSelectedText(self):
         return self.scintilla.selectedText()
@@ -58,11 +122,11 @@ class EditorView(QtWidgets.QWidget):
     def getText(self):
         return self.scintilla.text()
 
-    def setOutput(self, text):
-        self.outputBox.setPlainText(text)
+    def setText(self, text):
+        self.scintilla.setText(text)
 
 
-class Scintilla(Qsci.QsciScintilla):  # TODO: Maybe qutepart is better?
+class Scintilla(Qsci.QsciScintilla):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -77,36 +141,13 @@ class Scintilla(Qsci.QsciScintilla):  # TODO: Maybe qutepart is better?
         self.setScrollWidth(1)
         self.setScrollWidthTracking(True)
 
-        font = self.font()
-        font.setFamily('Courier')
+        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
         font.setPointSize(11)
-
-        bgColor = QtGui.QColor('#32414B')
-        #self.setMarginBackgroundColor(0, bgColor)
-
-        fgColor = QtGui.QColor('#F0F0F0')
-        strColor = QtGui.QColor('#AD80F3')
 
         lexer = Qsci.QsciLexerPython()
         lexer.setFont(font)
         lexer.setDefaultFont(font)
-        #lexer.setPaper(bgColor)
-        #lexer.setDefaultPaper(bgColor)
-        #lexer.setColor(fgColor, Qsci.QsciLexerPython.Default)
-        #lexer.setColor(fgColor, Qsci.QsciLexerPython.Identifier)
-        #lexer.setColor(strColor, Qsci.QsciLexerPython.SingleQuotedString)
-        #lexer.setColor(strColor, Qsci.QsciLexerPython.SingleQuotedFString)
-        #lexer.setColor(strColor, Qsci.QsciLexerPython.DoubleQuotedString)
-        #lexer.setColor(strColor, Qsci.QsciLexerPython.DoubleQuotedFString)
-        #lexer.setDefaultColor(fgColor)
         self.setLexer(lexer)
-
-        api = Qsci.QsciAPIs(lexer)
-        api.load(os.path.join(os.path.dirname(PyQt5.__file__), 'Qt/qsci/api/python/Python-3.7.api'))
-        api.prepare()
-        self.setAutoCompletionThreshold(1)
-        self.setAutoCompletionSource(Qsci.QsciScintilla.AcsAPIs)
-        self.setCallTipsStyle(Qsci.QsciScintilla.CallTipsContext)
 
 
 # Copyright (C) 2020, 2021 TestaLab

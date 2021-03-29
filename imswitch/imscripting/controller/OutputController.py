@@ -1,24 +1,19 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+from .basecontrollers import ImScrWidgetController
 
 
-class CommunicationChannel(SignalInterface):
-    """
-    CommunicationChannel is a class that handles the communication between controllers.
-    """
+class OutputController(ImScrWidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    sigExecutionStarted = Signal()
+        # Connect CommunicationChannel signals
+        self._commChannel.sigExecutionStarted.connect(self.executionStarted)
+        self._commChannel.sigOutputAppended.connect(self.outputAppended)
 
-    sigOutputAppended = Signal(str)  # (outputText)
+    def executionStarted(self):
+        self._widget.clearText()
 
-    sigNewFile = Signal()
-
-    sigOpenFile = Signal()
-
-    sigOpenFileFromPath = Signal(str)  # (path)
-
-    sigSaveFile = Signal()
-
-    sigSaveAsFile = Signal()
+    def outputAppended(self, outputText):
+        self._widget.appendText(outputText)
 
 
 # Copyright (C) 2020, 2021 TestaLab

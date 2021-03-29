@@ -17,7 +17,7 @@ class ImConMainController(MainController):
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self)
         self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
-                                              self.__moduleCommChannel)
+                                                   self.__moduleCommChannel)
 
         # List of Controllers for the GUI Widgets
         self.__factory = controllers.ImConWidgetControllerFactory(
@@ -60,10 +60,12 @@ class ImConMainController(MainController):
         # Check widget compatibility
         self.__masterController.scanManager._parameterCompatibility(self.scanController.parameterDict)
 
-        # Genearate API
+        # Generate API
         self.__api = None
-        self.__api = generateAPI([getattr(self, obj) for obj in dir(self)
-                                  if isinstance(getattr(self, obj), WidgetController)])
+        apiObjs = [getattr(self, obj) for obj in dir(self)
+                   if isinstance(getattr(self, obj), WidgetController)]
+        apiObjs.append(self.__commChannel)
+        self.__api = generateAPI(apiObjs)
 
     @property
     def api(self):

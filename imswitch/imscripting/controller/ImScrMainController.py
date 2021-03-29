@@ -8,12 +8,11 @@ from ..model import getActionsScope
 
 
 class ImScrMainController(MainController):
-    def __init__(self, mainView, moduleCommChannel, multiModuleWindow,
-                 moduleMainViews, moduleMainControllers):
+    def __init__(self, mainView, moduleCommChannel, multiModuleWindow, moduleMainControllers):
         self.__mainView = mainView
         self.__moduleCommChannel = moduleCommChannel
         self.__scriptScope = self._createScriptScope(moduleCommChannel, multiModuleWindow,
-                                                     moduleMainViews, moduleMainControllers)
+                                                     moduleMainControllers)
 
         # Connect view signals
         self.__mainView.sigClosing.connect(self.closeEvent)
@@ -30,12 +29,8 @@ class ImScrMainController(MainController):
             ImScrMainViewController, self.__mainView
         )
 
-    def _createScriptScope(self, moduleCommChannel, multiModuleWindow,
-                          moduleMainViews, moduleMainControllers):
+    def _createScriptScope(self, moduleCommChannel, multiModuleWindow, moduleMainControllers):
         """ Generates a scope of objects that are intended to be accessible by scripts. """
-
-        #if not set(moduleMainViews.keys()) == set(moduleMainControllers.keys()):
-        #    raise ValueError('moduleMainViews and moduleMainControllers do not have the same keys')
 
         scope = {}
         scope.update(getActionsScope())
@@ -47,13 +42,6 @@ class ImScrMainController(MainController):
                            for key, controller in moduleMainControllers.items()
                            if hasattr(controller, 'api')})
         })
-
-        #for moduleId in moduleMainViews.keys():
-        #    scope['modules'][moduleId] = {
-        #        'api': moduleMainControllers[moduleId].api
-        #        'controller': moduleMainControllers[moduleId],
-        #        #'view': moduleMainViews[moduleId]
-        #    }
 
         return scope
 

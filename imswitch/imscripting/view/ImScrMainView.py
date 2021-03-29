@@ -1,8 +1,10 @@
 from PyQt5 import QtCore, QtWidgets
+from pyqtgraph.dockarea import Dock, DockArea
 
 from .ConsoleView import ConsoleView
 from .EditorView import EditorView
 from .FilesView import FilesView
+from .OutputView import OutputView
 
 
 class ImScrMainView(QtWidgets.QMainWindow):
@@ -16,30 +18,44 @@ class ImScrMainView(QtWidgets.QMainWindow):
         menuBar = self.menuBar()
         file = menuBar.addMenu('&File')
 
-        openFileAction = QtWidgets.QAction('Open…', self)
-        openFileAction.setShortcut('Ctrl+O')
-        file.addAction(openFileAction)
-        saveFileAction = QtWidgets.QAction('Save', self)
-        saveFileAction.setShortcut('Ctrl+S')
-        file.addAction(saveFileAction)
-        saveAsFileAction = QtWidgets.QAction('Save as…', self)
-        saveAsFileAction.setShortcut('Ctrl+Shift+S')
-        file.addAction(saveAsFileAction)
+        self.newFileAction = QtWidgets.QAction('New…', self)
+        self.newFileAction.setShortcut('Ctrl+N')
+        file.addAction(self.newFileAction)
+        self.openFileAction = QtWidgets.QAction('Open…', self)
+        self.openFileAction.setShortcut('Ctrl+O')
+        file.addAction(self.openFileAction)
+        self.saveFileAction = QtWidgets.QAction('Save', self)
+        self.saveFileAction.setShortcut('Ctrl+S')
+        file.addAction(self.saveFileAction)
+        self.saveAsFileAction = QtWidgets.QAction('Save as…', self)
+        self.saveAsFileAction.setShortcut('Ctrl+Shift+S')
+        file.addAction(self.saveAsFileAction)
 
         # Main layout
-        layout = QtWidgets.QHBoxLayout()
-        self.cwidget = QtWidgets.QWidget()
-        self.setCentralWidget(self.cwidget)
-        self.cwidget.setLayout(layout)
-
-        self.files = FilesView()
-        layout.addWidget(self.files, 1)
+        self.dockArea = DockArea()
+        self.setCentralWidget(self.dockArea)
 
         self.editor = EditorView()
-        layout.addWidget(self.editor, 3)
+        self.editorDock = Dock('Script Editor')
+        self.editorDock.addWidget(self.editor)
+        self.dockArea.addDock(self.editorDock)
+
+        self.files = FilesView()
+        self.filesDock = Dock('Files')
+        self.filesDock.addWidget(self.files)
+        self.dockArea.addDock(self.filesDock, 'left', self.editorDock)
 
         self.console = ConsoleView()
-        layout.addWidget(self.console, 1)
+        self.consoleDock = Dock('Console')
+        self.consoleDock.addWidget(self.console)
+        self.dockArea.addDock(self.consoleDock, 'right', self.editorDock)
+
+        self.output = OutputView()
+        self.outputDock = Dock('Output')
+        self.outputDock.addWidget(self.output)
+        self.dockArea.addDock(self.outputDock, 'bottom', self.editorDock)
+
+        self.editorDock.setStretch(20, 30)
 
         self.showMaximized()
 

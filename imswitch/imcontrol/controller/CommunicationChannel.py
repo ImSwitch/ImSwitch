@@ -1,6 +1,8 @@
 import numpy as np
+from dotmap import DotMap
+
 from imswitch.imcommon.framework import Signal, SignalInterface
-from imswitch.imcommon.model import SharedAttributes
+from imswitch.imcommon.model import APIExport, SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -69,6 +71,25 @@ class CommunicationChannel(SignalInterface):
 
     def getStartPos(self):
         return self.__main.positionerController.getPos()
+
+    @APIExport
+    def signals(self):
+        """ Returns signals that can be used with e.g. the getWaitForSignal
+        action. Currently available signals are:
+
+         - acquisitionStarted
+         - acquisitionStopped
+         - recordingEnded
+         - scanEnded
+        """
+
+        return DotMap({
+            'acquisitionStarted': self.sigAcquisitionStarted,
+            'acquisitionStopped': self.sigAcquisitionStopped,
+            'recordingEnded': self.sigRecordingEnded,
+            'scanEnded': self.sigScanEnded
+        })
+
 
 
 # Copyright (C) 2020, 2021 TestaLab

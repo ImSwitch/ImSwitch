@@ -1,10 +1,5 @@
-import os as _os
-
-from imswitch.imcommon import constants as _constants
-
-
-def getMainViewAndController(moduleCommChannel, multiModuleWindow,
-                             moduleMainViews, moduleMainControllers, *_args, **_kwargs):
+def getMainViewAndController(moduleCommChannel, multiModuleWindow, moduleMainControllers,
+                             *_args, **_kwargs):
     from .controller import ImScrMainController
     from .view import ImScrMainView
 
@@ -14,7 +9,6 @@ def getMainViewAndController(moduleCommChannel, multiModuleWindow,
             view,
             moduleCommChannel=moduleCommChannel,
             multiModuleWindow=multiModuleWindow,
-            moduleMainViews=moduleMainViews,
             moduleMainControllers=moduleMainControllers
         )
     except Exception as e:
@@ -22,10 +16,6 @@ def getMainViewAndController(moduleCommChannel, multiModuleWindow,
         raise e
 
     return view, controller
-
-
-_os.environ['PATH'] = (_os.environ['PATH'] + ';' +
-                       _os.path.join(_constants.rootFolderPath, 'libs'))
 
 
 # Copyright (C) 2020, 2021 TestaLab

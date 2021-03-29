@@ -1,38 +1,55 @@
-import threading
+import importlib.util
+import os
+import time
 
+from imswitch.imcommon.framework import FrameworkUtils
 from imswitch.imcommon.model import APIExport, generateAPI
-#from imcommon.framework import Timer
 
 
 class _Actions:
-    @staticmethod
+    def __init__(self, scriptPath=None):
+        self._scriptPath = scriptPath
+
     @APIExport
-    def runInQueue(*funcsOrDelays):
-        funcsOrDelays = list(funcsOrDelays)
-        funcsToBeExecuted = []
-        delay = None
+    def importScript(self, path):
+        """ Imports the script at the specified path (either absolute or
+        relative to the script) and returns it as a module variable. """
 
-        while funcsOrDelays:
-            funcOrDelay = funcsOrDelays.pop(0)
-            if callable(funcOrDelay):
-                funcsToBeExecuted.append(funcOrDelay)
-            else:
-                delay = funcOrDelay
-                break
+        if self._scriptPath is not None:
+            path = os.path.join(os.path.dirname(self._scriptPath), path)
 
-        for func in funcsToBeExecuted:
-            func()
+        spec = importlib.util.spec_from_file_location(os.path.basename(path), path)
+        script = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(script)
+        return script
 
-        if delay is not None:
-            timer = threading.Timer(delay / 1000, lambda: _Actions.runInQueue(*funcsOrDelays))
-            timer.start()
-            #timer = Timer(singleShot=True)
-            #timer.timeout.connect(lambda: _Actions.runInQueue(*funcsOrDelays))
-            #timer.start(delay)
+    @APIExport
+    def getWaitForSignal(self, signal, pollIntervalSeconds=1):
+        """ Returns a function that will wait for the specified signal to emit.
+        The returned function will continuously check whether the signal has
+        been emitted since its creation. The polling interval defaults to one
+        second, and can be customized. """
+
+        emitted = False
+
+        def setEmitted():
+            nonlocal emitted
+            emitted = True
+
+        signal.connect(setEmitted)
+
+        def wait():
+            while not emitted:
+                FrameworkUtils.processPendingEventsCurrThread()
+                time.sleep(pollIntervalSeconds)
+
+            signal.disconnect(setEmitted)
+
+        return wait
 
 
-def getActionsScope():
-    return generateAPI([_Actions()]).toDict()
+def getActionsScope(scriptPath=None):
+    return generateAPI([_Actions(scriptPath)]).toDict()
 
 
 # Copyright (C) 2020, 2021 TestaLab

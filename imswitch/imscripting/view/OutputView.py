@@ -1,24 +1,29 @@
-import mimetypes
-import os
-
-from imswitch.imcommon import constants
-from .basecontrollers import ImScrWidgetController
+from PyQt5 import QtGui, QtWidgets
 
 
-class FilesController(ImScrWidgetController):
+class OutputView(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._widget.setRootPath(os.path.join(constants.rootFolderPath, 'scripts'))
+        layout = QtWidgets.QGridLayout()
+        self.setLayout(layout)
 
-        # Connect FilesView signals
-        self._widget.sigItemDoubleClicked.connect(self.checkAndOpenItem)
+        self.outputBox = QtWidgets.QPlainTextEdit()
+        self.outputBox.setReadOnly(True)
+        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+        font.setPointSize(9)
+        self.outputBox.setFont(font)
+        layout.addWidget(self.outputBox, 1, 1)
 
-    def checkAndOpenItem(self, itemPath):
-        mime, _ = mimetypes.guess_type(itemPath)
-        if mime is not None and mime.startswith('text/'):
-            self._commChannel.sigOpenFileFromPath.emit(itemPath)
+    def setText(self, text):
+        self.outputBox.setPlainText(text)
 
+    def appendText(self, text):
+        self.outputBox.moveCursor(QtGui.QTextCursor.End)
+        self.outputBox.insertPlainText(text)
+
+    def clearText(self):
+        self.outputBox.clear()
 
 
 # Copyright (C) 2020, 2021 TestaLab

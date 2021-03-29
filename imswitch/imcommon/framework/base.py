@@ -95,3 +95,10 @@ class Worker(SignalInterface, ABC):
     @abstractmethod
     def moveToThread(self, thread: Thread) -> None:
         pass
+
+
+class FrameworkUtils(ABC):
+    @staticmethod
+    @abstractmethod
+    def processPendingEventsCurrThread() -> None:
+        pass

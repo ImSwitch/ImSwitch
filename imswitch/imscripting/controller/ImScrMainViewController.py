@@ -2,6 +2,7 @@ from .basecontrollers import ImScrWidgetController
 from .ConsoleController import ConsoleController
 from .EditorController import EditorController
 from .FilesController import FilesController
+from .OutputController import OutputController
 
 
 class ImScrMainViewController(ImScrWidgetController):
@@ -10,6 +11,13 @@ class ImScrMainViewController(ImScrWidgetController):
         self.filesController = self._factory.createController(FilesController, self._widget.files)
         self.editorController = self._factory.createController(EditorController, self._widget.editor)
         self.consoleController = self._factory.createController(ConsoleController, self._widget.console)
+        self.outputController = self._factory.createController(OutputController, self._widget.output)
+
+        # Connect signals
+        self._widget.newFileAction.triggered.connect(self._commChannel.sigNewFile)
+        self._widget.openFileAction.triggered.connect(self._commChannel.sigOpenFile)
+        self._widget.saveFileAction.triggered.connect(self._commChannel.sigSaveFile)
+        self._widget.saveAsFileAction.triggered.connect(self._commChannel.sigSaveAsFile)
 
 
 # Copyright (C) 2020, 2021 TestaLab

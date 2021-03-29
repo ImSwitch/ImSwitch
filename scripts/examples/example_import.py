@@ -1,24 +1,5 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
-
-
-class CommunicationChannel(SignalInterface):
-    """
-    CommunicationChannel is a class that handles the communication between controllers.
-    """
-
-    sigExecutionStarted = Signal()
-
-    sigOutputAppended = Signal(str)  # (outputText)
-
-    sigNewFile = Signal()
-
-    sigOpenFile = Signal()
-
-    sigOpenFileFromPath = Signal(str)  # (path)
-
-    sigSaveFile = Signal()
-
-    sigSaveAsFile = Signal()
+imported = importScript('example_imported.py')
+imported.printMessage()
 
 
 # Copyright (C) 2020, 2021 TestaLab

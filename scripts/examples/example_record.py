@@ -1,24 +1,23 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+import time
 
+print('Starting recording...')
+api.imcontrol.startRecording()
 
-class CommunicationChannel(SignalInterface):
-    """
-    CommunicationChannel is a class that handles the communication between controllers.
-    """
+print('Recording started. Showing hardware control tab for a few seconds before stopping.')
+time.sleep(3)
+mainWindow.setCurrentModule('imcontrol')
+time.sleep(5)
 
-    sigExecutionStarted = Signal()
+print('Going back to scripting tab.')
+mainWindow.setCurrentModule('imscripting')
+time.sleep(2)
 
-    sigOutputAppended = Signal(str)  # (outputText)
+print('Stopping recording...')
+waitForRecordingToEnd = getWaitForSignal(api.imcontrol.signals().recordingEnded)
+api.imcontrol.stopRecording()  # It's important to call this after getWaitForSignal!
+waitForRecordingToEnd()
 
-    sigNewFile = Signal()
-
-    sigOpenFile = Signal()
-
-    sigOpenFileFromPath = Signal(str)  # (path)
-
-    sigSaveFile = Signal()
-
-    sigSaveAsFile = Signal()
+print('Recording stopped.')
 
 
 # Copyright (C) 2020, 2021 TestaLab

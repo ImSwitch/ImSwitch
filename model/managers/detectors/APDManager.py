@@ -134,9 +134,11 @@ class ScanWorker(Worker):
         #print(f'scansampltot: {samptot}, scantimestep: {scantimest}, detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
         self._samples_total = round(scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # det samples in total signal: time for total scan * det sampling rate
         self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to the starting zero-padding: time for zero_padding * det sampling rate
+        self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to smooth inital positioning time: time for initpos * det sampling rate
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to settling time: time for settling * det sampling rate
         self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to starting acceleration: time for acceleration * det sampling rate
-        self._samples_throw = self._throw_startzero + self._throw_settling + self._throw_startacc + self._throw_delay
+        self._throw_finalpos = round(scanInfoDict['scan_throw_finalpos'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to smooth final positioning time: time for initpos * det sampling rate
+        self._samples_throw = self._throw_startzero + self._throw_initpos + self._throw_settling + self._throw_startacc + self._throw_delay
         # TODO: How to I get the following parameters into this function? Or read them from within _nidaqmanager? channels should definitely come from here I suppose...
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, self._samples_total, True, 'ao/StartTrigger', self._manager._terminal)
         self._manager._image = np.zeros((self._n_lines, self._pixels_line))
@@ -174,7 +176,7 @@ class ScanWorker(Worker):
                 self._line_counter += 1
             else:
                 self.close()
-        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero)
+        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero+self._throw_finalpos)
         self._alldata += len(throwdata)
         #print(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()

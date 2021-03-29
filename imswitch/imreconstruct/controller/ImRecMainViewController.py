@@ -258,7 +258,7 @@ class ImRecMainViewController(ImRecWidgetController):
             if saveName:
                 if dataType == 'reconstruction':
                     reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    scanParDict = reconstructionObj.getScanParms()
+                    scanParDict = reconstructionObj.getScanParams()
                     vxsizec = int(scanParDict['step_sizes'][
                                       scanParDict['dimensions'].index(self._widget.r_l_text)])
                     vxsizer = int(scanParDict['step_sizes'][

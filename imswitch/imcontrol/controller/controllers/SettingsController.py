@@ -131,8 +131,8 @@ class SettingsController(ImConWidgetController):
         # Round to closest "divisable by 4" value.
         hpos = binning * x0
         vpos = binning * y0
-        hsize = binning * height
-        vsize = binning * width
+        hsize = binning * width
+        vsize = binning * height
 
         hmodulus = 4
         vmodulus = 4

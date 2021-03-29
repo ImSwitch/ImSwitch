@@ -26,7 +26,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         # Viewbox and related elements
         self.vb = self.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = guitools.OptimizedImageItem(axisOrder='row-major')
+        self.img = guitools.OptimizedImageItem()
         self.img.translate(-0.5, -0.5)
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)

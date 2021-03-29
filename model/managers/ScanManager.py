@@ -76,6 +76,8 @@ class ScanManager(SuperScanManager):
             scanSignalsDict, positions, scanInfoDict = self.__scanDesigner.make_signal(
                 scanParameters, setupInfo, returnFrames=True
             )
+            print(scanSignalsDict)
+            print(scanInfoDict)
             #TODO: # add below into a new TTL_cycle_designer, that takes the scanInfoDict from the analog signal designer as input
             zeropad_lineflyback = scanInfoDict['scan_samples_period'] - scanInfoDict['scan_samples_line']
             #print(f'scan flyback: {zeropad_lineflyback}')

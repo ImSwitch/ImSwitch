@@ -91,6 +91,16 @@ class NidaqManager(SignalInterface):
 
         return citask
 
+    def __createChanCOTask(self, name, channel, source, rate, starttrig=False, reference_trigger='ai/StartTrigger'):
+        cotask = nidaqmx.Task(name)
+        cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq('Dev1/ctr%s' % channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ)
+
+        if starttrig:
+            cotask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
+            cotask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
+
+        return cotask
+
     def __createChanAITask(self, name, channels, acquisitionType, source, rate, min_val=-0.5,
                            max_val=10.0, sampsInScan=1000, starttrig=False, reference_trigger='ai/StartTrigger'):
         """ Simplified function to create an analog input task """

@@ -97,7 +97,7 @@ class RecordingWorker(Worker):
             currentFrame[detectorName] = 0
 
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (1, *shapes[detectorName]),
+                'data', (0, *shapes[detectorName]),
                 maxshape=(None, *shapes[detectorName]),
                 dtype='i2'
             )
@@ -113,7 +113,7 @@ class RecordingWorker(Worker):
                 detectorName = self.detectorNames[0]
                 frames = self.recFrames
                 while self.__recordingManager.record and currentFrame[detectorName] < frames:
-                    newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
+                    newFrames = self._getNewFrames(detectorName)
                     n = len(newFrames)
                     if n > 0:
                         it = currentFrame[detectorName]
@@ -133,7 +133,7 @@ class RecordingWorker(Worker):
                 currentRecTime = 0
                 while self.__recordingManager.record and currentRecTime < self.recTime:
                     for detectorName in self.detectorNames:
-                        newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
+                        newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
                             it = currentFrame[detectorName]
@@ -149,7 +149,7 @@ class RecordingWorker(Worker):
             else:
                 while self.__recordingManager.record:
                     for detectorName in self.detectorNames:
-                        newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
+                        newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
                             it = currentFrame[detectorName]
@@ -174,6 +174,12 @@ class RecordingWorker(Worker):
 
             if self.recMode == RecMode.SpecFrames or self.recMode == RecMode.SpecTime:
                 self.__recordingManager.endRecording(wait=False)
+
+    def _getNewFrames(self, detectorName):
+        newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
+        newFrames = np.array(newFrames)
+        newFrames = newFrames.reshape(newFrames.shape[0], newFrames.shape[2], newFrames.shape[1])
+        return newFrames
 
 
 class RecMode(enum.Enum):

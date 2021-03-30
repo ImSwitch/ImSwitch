@@ -98,6 +98,8 @@ class EditorController(ImScrWidgetController):
 
     def instanceCloseClicked(self, instanceID):
         self._widget.closeInstance(instanceID)
+        del self._scriptPaths[instanceID]
+        del self._unsavedScripts[instanceID]
 
     def getScriptName(self, instanceID):
         scriptPath = self._scriptPaths[instanceID]

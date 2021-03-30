@@ -66,6 +66,7 @@ class EditorView(QtWidgets.QTabWidget):
             if widget.getID() == instanceID:
                 widget.deleteLater()
                 self.removeTab(i)
+                return
 
 
 class EditorInstanceView(QtWidgets.QWidget):

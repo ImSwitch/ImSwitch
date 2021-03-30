@@ -8,6 +8,8 @@ nidaqmx~=0.5.7
 numpy==1.19.3
 PyQt5~=5.15.2
 pyqtgraph==0.11.0
+pytest~=6.2.2
+pytest-qt~=3.3.0
 QDarkStyle~=2.8.1
 QScintilla~=2.12.1
 tifffile

@@ -32,13 +32,14 @@ class RecordingManager(SignalInterface):
     def detectorsManager(self):
         return self.__detectorsManager
 
-    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
+    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs, pixelSizeUm,
                        recFrames=None, recTime=None):
         self.__record = True    
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.attrs = attrs
+        self.__recordingWorker.pixelSizeUm = pixelSizeUm
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
         self.__recordingWorker.saveMode = saveMode
@@ -53,7 +54,7 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
     
-    def snap(self, detectorNames, savename, attrs):
+    def snap(self, detectorNames, savename, attrs, pixelSizeUm):
         for detectorName in detectorNames:
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 
@@ -62,6 +63,8 @@ class RecordingManager(SignalInterface):
 
             for key, value in attrs[detectorName].items():
                 file.attrs[key] = value
+
+            dataset.attrs['element_size_um'] = pixelSizeUm[detectorName]  # For ImageJ compatibility
 
             dataset[:, :] = self.__detectorsManager[detectorName].image
             file.close()
@@ -101,6 +104,9 @@ class RecordingWorker(Worker):
                 maxshape=(None, *shapes[detectorName]),
                 dtype='i2'
             )
+
+            # For ImageJ compatibility
+            datasets[detectorName].attrs['element_size_um'] = self.pixelSizeUm[detectorName]
 
             for key, value in self.attrs[detectorName].items():
                 files[detectorName].attrs[key] = value

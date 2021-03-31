@@ -362,10 +362,10 @@ class SettingsController(ImConWidgetController):
         self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
 
     def getCamAttrs(self):
-        return self._master.detectorsManager.execOnAll(
+        attrs = self._master.detectorsManager.execOnAll(
             lambda c: {
                 **{
-                    'Detector:Pixel size': c.pixelSize,
+                    'Detector:Pixel size': c.pixelSizeUm,
                     'Detector:Model': c.model,
                     'Detector:Binning': c.binning,
                     'Detector:ROI': [*c.frameStart, *c.shape]
@@ -373,6 +373,12 @@ class SettingsController(ImConWidgetController):
                 **{f'DetectorParam:{k}': v.value for k, v in c.parameters.items()}
             }
         )
+
+        pixelSizeUm = self._master.detectorsManager.execOnAll(
+            lambda c: c.pixelSizeUm
+        )
+
+        return attrs, pixelSizeUm
 
     def syncFrameParams(self, doAdjustFrame=True, doUpdateFrameActionButtons=True):
         currentParams = self.getCurrentParams()

@@ -187,11 +187,11 @@
   },
   "scan": {
     "stage": {
-      "sampleRate": 100000,
+      "sampleRate": 100e3,
       "returnTime": 0.01
     },
     "ttl": {
-      "sampleRate": 100000
+      "sampleRate": 100e3
     }
   },
   "rois": {
@@ -221,7 +221,7 @@
   },
   "designers": {
     "scanDesigner": "GalvoScanDesigner",
-    "TTLCycleDesigner": "BetaTTLCycleDesigner"
+    "TTLCycleDesigner": "PointScanTTLCycleDesigner"
   },
   "focusLock": {
     "camera": "FocusLockCamera",

@@ -1,6 +1,6 @@
 [analogParameterDict]
 sample_rate = 100000
-Return_time_seconds = 0.01
+return_time = 0.01
 target_device = ['X', 'Y', 'Z']
 axis_length = [0.918, 0.918, 0.0]
 axis_step_size = [0.025, 0.025, 10.0]
@@ -10,8 +10,8 @@ sequence_time = 0.015
 [digitalParameterDict]
 sample_rate = 100000
 target_device = ['405', '488', '473', 'CAM']
-TTLStarts[x,y] = [[0.0005], [0.0011], [0.0047], [0.0047]]
-TTLEnds[x,y] = [[0.001], [0.0046], [0.0057], [0.0057]]
+TTL_start = [[0.0005], [0.0011], [0.0047], [0.0047]]
+TTL_end = [[0.001], [0.0046], [0.0057], [0.0057]]
 sequence_time = 0.015
 
 [Modes]

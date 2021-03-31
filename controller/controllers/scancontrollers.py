@@ -20,7 +20,7 @@ class ScanController(SuperScanController):
 
         self._analogParameterDict = {
             'sample_rate': self._setupInfo.scan.stage.sampleRate,
-            'Return_time_seconds': self._setupInfo.scan.stage.returnTime
+            'return_time': self._setupInfo.scan.stage.returnTime
         }
         self._digitalParameterDict = {
             'sample_rate': self._setupInfo.scan.ttl.sampleRate
@@ -143,10 +143,10 @@ class ScanController(SuperScanController):
                 deviceName = self._digitalParameterDict['target_device'][i]
 
                 self._widget.pxParameters['sta' + deviceName].setText(
-                    str(round(1000 * self._digitalParameterDict['TTLStarts[x,y]'][i][0], 3))
+                    str(round(1000 * self._digitalParameterDict['TTL_start'][i][0], 3))
                 )
                 self._widget.pxParameters['end' + deviceName].setText(
-                    str(round(1000 * self._digitalParameterDict['TTLEnds[x,y]'][i][0], 3))
+                    str(round(1000 * self._digitalParameterDict['TTL_end'][i][0], 3))
                 )
 
             self._widget.seqTimePar.setText(
@@ -204,18 +204,18 @@ class ScanController(SuperScanController):
                     self._analogParameterDict['axis_startpos'].append(start)
 
         self._digitalParameterDict['target_device'] = []
-        self._digitalParameterDict['TTLStarts[x,y]'] = []
-        self._digitalParameterDict['TTLEnds[x,y]'] = []
+        self._digitalParameterDict['TTL_start'] = []
+        self._digitalParameterDict['TTL_end'] = []
         for deviceName, deviceInfo in self._setupInfo.getTTLDevices().items():
             self._digitalParameterDict['target_device'].append(deviceName)
 
             deviceStarts = self._widget.pxParameters['sta' + deviceName].text().split(',')
-            self._digitalParameterDict['TTLStarts[x,y]'].append([
+            self._digitalParameterDict['TTL_start'].append([
                 float(deviceStart) / 1000 for deviceStart in deviceStarts if deviceStart
             ])
 
             deviceEnds = self._widget.pxParameters['end' + deviceName].text().split(',')
-            self._digitalParameterDict['TTLEnds[x,y]'].append([
+            self._digitalParameterDict['TTL_end'].append([
                 float(deviceEnd) / 1000 for deviceEnd in deviceEnds if deviceEnd
             ])
 

@@ -3,16 +3,16 @@ Sizes[3] = (1.0, 1.0, 0.0)
 sample_rate = 100000
 Targets[3] = ('Stage_X', 'Stage_Y', 'Stage_Z')
 Step_sizes[3] = (0.05, 0.05, 1.0)
-Return_time_seconds = 0.001
+return_time = 0.001
 Start[3] = (0, 0, 0)
 sequence_time = 0.01
 
 [digitalParameterDict]
-TTLStarts[x,y] = [[0.0], [0.0], [0.0], [0.0]]
+TTL_start = [[0.0], [0.0], [0.0], [0.0]]
 sequence_time = 0.01
 target_device = ['405', '473', '488', 'CAM']
 sample_rate = 100000
-TTLEnds[x,y] = [[0.0], [0.0], [0.005], [0.0]]
+TTL_end = [[0.0], [0.0], [0.005], [0.0]]
 
 [Modes]
 scan_or_not = True

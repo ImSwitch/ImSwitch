@@ -22,10 +22,12 @@ class APDManager(DetectorManager):
         self._image = np.random.rand(fullShape[0],fullShape[1])*100
         #self._nidaq_clock_source = r'20MHzTimebase'
         #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
-        self._nidaq_clock_source = r'100kHzTimebase'
-        self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
+        #self._nidaq_clock_source = r'100kHzTimebase'
+        #self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
         #self._nidaq_clock_source = r'20MHzTimebase'
         #self._detection_samplerate = float(1e6)  # detection sampling rate for the Nidaq, in Hz
+        self._nidaq_clock_source = r'Dev1/ctr3'  # counter output task generating a 1 MHz frequency digitial pulse train
+        self._detection_samplerate = float(1e6)
         self.acquisition = True
 
         self._channel = APDInfo.managerProperties["ctrInputLine"]
@@ -156,7 +158,7 @@ class ScanWorker(Worker):
             if self.scanning:
                 #print(f'sw1: line {self._line_counter} started')
                 if self._line_counter == self._n_lines - 1:
-                    data = self._manager._nidaqManager.readInputTask(self._name, self._samples_line)  # read a whole period, starting with the line and then the data during the flyback
+                    data = self._manager._nidaqManager.readInputTask(self._name, self._samples_line)  # read a line
                 else:  
                     data = self._manager._nidaqManager.readInputTask(self._name, self._samples_period)  # read a whole period, starting with the line and then the data during the flyback
                 self._alldata += len(data)

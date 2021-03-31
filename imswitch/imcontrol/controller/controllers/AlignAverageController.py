@@ -42,7 +42,6 @@ class AlignAverageController(LiveUpdatedController):
             self._widget.hideROI()
 
         self.active = show
-        self._widget.updateDisplayState(show)
         
 
 # Copyright (C) 2020, 2021 TestaLab

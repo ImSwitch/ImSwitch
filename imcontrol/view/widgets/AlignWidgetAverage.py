@@ -45,10 +45,7 @@ class AlignWidgetAverage(Widget):
 
     def updateGraph(self, value):
         self.graph.updateGraph(value)
-
-    def updateDisplayState(self, showingROI):
-        self.roiButton.setText('Show ROI' if showingROI else 'Hide ROI')
-
+        
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -45,7 +45,6 @@ class AlignXYController(LiveUpdatedController):
             self._widget.hideROI()
 
         self.active = show
-        self._widget.updateDisplayState(show)
 
     def setAxis(self, axis):
         """ Setter for the axis (X or Y). """

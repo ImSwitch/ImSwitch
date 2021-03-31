@@ -236,6 +236,10 @@ class SettingsController(ImConWidgetController):
             self._setupInfo.setROI(name, x0, y0, width, height)
             configfileutils.saveSetupInfo(self._setupInfo)
 
+            # Update selected ROI in GUI
+            for params in self.allParams.values():
+                params.frameMode.setValue(name)
+
     def deleteMode(self):
         """ Delete the current frame mode from the mode list (if it's a saved
         custom ROI). """

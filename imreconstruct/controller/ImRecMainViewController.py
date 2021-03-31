@@ -173,7 +173,7 @@ class ImRecMainViewController(ImRecWidgetController):
             pass
         else:
             for i in range(0, min(4, len(stepSizesAttr))):
-                self._scanParDict['step_sizes'][i] = str(stepSizesAttr[i])
+                self._scanParDict['step_sizes'][i] = str(stepSizesAttr[i] * 1000)  # convert um->nm
 
         self.updateScanParams()
 
@@ -259,14 +259,26 @@ class ImRecMainViewController(ImRecWidgetController):
                 if dataType == 'reconstruction':
                     reconstructionObj = self.reconstructionController.getActiveReconObj()
                     scanParDict = reconstructionObj.getScanParams()
-                    vxsizec = int(scanParDict['step_sizes'][
-                                      scanParDict['dimensions'].index(self._widget.r_l_text)])
-                    vxsizer = int(scanParDict['step_sizes'][
-                                      scanParDict['dimensions'].index(self._widget.u_d_text)])
-                    vxsizez = int(reconstructionObj.scanParDict['step_sizes'][
-                                      scanParDict['dimensions'].index(self._widget.b_f_text)])
-                    dt = int(scanParDict['step_sizes'][
-                                 scanParDict['dimensions'].index(self._widget.timepoints_text)])
+                    vxsizec = int(float(
+                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                            self._widget.r_l_text
+                        )]
+                    ))
+                    vxsizer = int(float(
+                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                            self._widget.u_d_text
+                        )]
+                    ))
+                    vxsizez = int(float(
+                        reconstructionObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                            self._widget.b_f_text
+                        )]
+                    ))
+                    dt = int(float(
+                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                            self._widget.timepoints_text
+                        )]
+                    ))
 
                     print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez}')
                     # Reconstructed image

@@ -60,15 +60,18 @@ class ScanManager(SuperScanManager):
         # if not syncExpected == syncIncoming:
         #     raise IncompatibilityError('Incompatible sync parameters')
 
+    def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
+        return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
+
     def makeFullScan(self, scanParameters, TTLParameters, setupInfo, staticPositioner=False):
 
         if not staticPositioner:
             scanSignalsDict, positions, scanInfoDict = self.__scanDesigner.make_signal(
                 scanParameters, setupInfo, returnFrames=True
             )
-            TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, scanInfoDict)
+            TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo, scanInfoDict)
         else:
-            TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters)
+            TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
             scanSignalsDict = {}
             scanInfoDict = {}
 

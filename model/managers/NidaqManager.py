@@ -94,10 +94,11 @@ class NidaqManager(SignalInterface):
 
         return citask
 
-    def __createChanCOTask(self, name, channel, rate, starttrig=False, reference_trigger='ai/StartTrigger'):
+    def __createChanCOTask(self, name, channel, rate, sampsInScan=1000, starttrig=False, reference_trigger='ai/StartTrigger'):
         cotask = nidaqmx.Task(name)
         cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq('Dev1/ctr%s' % channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ)
-        cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
+        #cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
+        cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan=sampsInScan)
 
         if starttrig:
             cotask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
@@ -150,8 +151,6 @@ class NidaqManager(SignalInterface):
         if taskType=='ai':
             task = self.__createChanAITask(taskName, *args)
         elif taskType=='ci':
-            #print(taskName)
-            #print(*args)
             task = self.__createChanCITask(taskName, *args)
         task.start()
         print('start CI task')
@@ -164,7 +163,6 @@ class NidaqManager(SignalInterface):
         print(f'Input task deleted: {taskName}')
     
     def readInputTask(self, taskName, samples=0, timeout=False):
-        #print(f'NM: readInputTask {taskName}, #samples: {samples}')
         if not timeout:
             return self.inputTasks[taskName].read(samples)
         else:
@@ -234,7 +232,6 @@ class NidaqManager(SignalInterface):
         if not self.busy:
             self.aoTaskWaiter = WaitThread()
             self.doTaskWaiter = WaitThread()
-            #self.startTaskWaiter = WaitThread()
             self.timerTaskWaiter = WaitThread()
             self.busy = True
             self.signalSent = False
@@ -247,7 +244,6 @@ class NidaqManager(SignalInterface):
             AOchannels = []
             for pair in AOTargetChanPairs:
                 try:
-                    #print('runScan 3')
                     signal = stageDic[pair[0]]
                     channel = pair[1]
                     AOsignals.append(signal)
@@ -256,34 +252,26 @@ class NidaqManager(SignalInterface):
                     pass
 
             DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
-            #print(DOTargetChanPairs)
 
             DOsignals = []
             DOlines = []
             for pair in DOTargetChanPairs:
                 try:
                     signal = ttlDic[pair[0]]
-                    #print(np.shape(signal))
                     line = pair[1]
                     DOsignals.append(signal)
                     DOlines.append(line)
-                    #print(np.shape(DOsignals))
                 except:
                     pass
 
             if len(AOsignals) < 1 and len(DOsignals) < 1:
                 self.busy = False
                 return
-            # create dummy ai task
-            #self.start_task = self.__createChanAITask('StartTask', [1],
-            #                                    nidaqmx.constants.AcquisitionType.FINITE,
-            #                                    r'OnboardClock', 1000000, min_val=0.0,
-            #                                    max_val=10.0, sampsInScan=len(AOsignals[0])*10)
-            #self.startTaskWaiter.connect(self.start_task)
-            #self.startTaskWaiter.waitdoneSignal.connect(self.taskDoneStart)
 
             # create timer counter output task, to control the acquisition timing (1 MHz)
-            self.timerTask = self.__createChanCOTask('TimerTask', channel=3, rate=1e6, starttrig=True, reference_trigger='ao/StartTrigger')
+            self.timerTask = self.__createChanCOTask('TimerTask', channel=2,
+                                                     rate=1e6, sampsInScan=np.int(len(AOsignals[0])*10+1000) ,starttrig=True,
+                                                     reference_trigger='ao/StartTrigger')
             self.timerTaskWaiter.connect(self.timerTask)
             self.timerTaskWaiter.waitdoneSignal.connect(self.taskDoneTimer)
 
@@ -293,9 +281,6 @@ class NidaqManager(SignalInterface):
             clockDO = scanclock
             if len(AOsignals) > 0:
                 sampsInScan = len(AOsignals[0])
-                #print(sampsInScan)
-                #print(AOchannels)
-                print(np.shape(AOsignals))
                 self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
                                                       acquisitionTypeFinite, scanclock,
                                                       100000, min_val=-10, max_val=10,
@@ -309,9 +294,6 @@ class NidaqManager(SignalInterface):
                 clockDO = r'ao/SampleClock'
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
-                #print(sampsInScan)
-                #print(DOlines)
-                print(np.shape(DOsignals))
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
                                                       acquisitionTypeFinite, clockDO,
                                                       100000, sampsInScan=sampsInScan,
@@ -327,15 +309,12 @@ class NidaqManager(SignalInterface):
             self.timerTaskWaiter.start()
             if len(DOsignals) > 0:
                 self.doTask.start()
-                print('dotask started')
+                print('DO task started')
                 self.doTaskWaiter.start()
             if len(AOsignals) > 0:
                 self.aoTask.start()
-                print('aotask started')
+                print('AO task started')
                 self.aoTaskWaiter.start()
-            #self.start_task.start()
-            #self.startTaskWaiter.start()
-            print('starttask started')
             self.scanStartSignal.emit()
             print('Nidaq scan started!')
     
@@ -344,12 +323,6 @@ class NidaqManager(SignalInterface):
         self.outputTasks[taskName].close()
         del self.outputTasks[taskName]
         print(f'Output task deleted: {taskName}')
-
-    def stopStartTask(self):
-        self.start_task.stop()
-        self.start_task.close()
-        del self.start_task
-        print('Start task deleted')
 
     def stopTimerTask(self):
         self.timerTask.stop()
@@ -370,15 +343,10 @@ class NidaqManager(SignalInterface):
             self.stopOutputTask('do')
             print('DO scan finished!')
 
-    def taskDoneStart(self):
-        if not self.startTaskWaiter.running:
-            self.stopStartTask()
-            print('Start task finished!')
-
     def taskDoneTimer(self):
         if not self.timerTaskWaiter.running:
             self.stopTimerTask()
-            print('Start task finished!')
+            print('Timer task finished!')
 
     def runContinuous(self, digital_targets, digital_signals):
         pass
@@ -399,15 +367,11 @@ class WaitThread(Thread):
     def run(self):
         if self.running:
             self.task.wait_until_done(nidaqmx.constants.WAIT_INFINITELY)
-            print('WT for scan task finished.')
             self.close()
         else:
             self.quit()
 
     def close(self):
         self.running = False
-        #if self.task is not None:
-        #    self.task.stop()
-        #    self.task.close()
         self.waitdoneSignal.emit()
         self.quit()

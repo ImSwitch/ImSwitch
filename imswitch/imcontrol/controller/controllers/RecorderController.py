@@ -72,7 +72,7 @@ class RecorderController(ImConWidgetController):
         time.sleep(0.01)
         name = os.path.join(folder, self.getFileName()) + '_snap'
         savename = guitools.getUniqueName(name)
-        attrs = self._commChannel.getCamAttrs()
+        attrs, pixelSizeUm = self._commChannel.getCamAttrs()
         for attrDict in attrs.values():
             attrDict.update(self._commChannel.sharedAttrs.getHDF5Attributes())
         self._master.recordingManager.snap(detectorNames, savename, attrs)
@@ -89,7 +89,7 @@ class RecorderController(ImConWidgetController):
             self.saveMode = SaveMode(self._widget.getSaveMode())
 
             self.detectorsBeingCaptured = self.getDetectorNamesToCapture()
-            self.attrs = self._commChannel.getCamAttrs()
+            self.attrs, self.pixelSizeUm = self._commChannel.getCamAttrs()
             for attrDict in self.attrs.values():
                 attrDict.update(self._commChannel.sharedAttrs.getHDF5Attributes())
                 attrDict.update(self._commChannel.getScanStageAttrs())
@@ -97,7 +97,7 @@ class RecorderController(ImConWidgetController):
                 attrDict.update(self.getRecAttrs())
 
             recordingArgs = (self.detectorsBeingCaptured, self.recMode, self.savename,
-                             self.saveMode, self.attrs)
+                             self.saveMode, self.attrs, self.pixelSizeUm)
 
             if self.recMode == RecMode.SpecFrames:
                 self._master.recordingManager.startRecording(
@@ -159,7 +159,8 @@ class RecorderController(ImConWidgetController):
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
         self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs
+            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs,
+            self.pixelSizeUm
         )
         time.sleep(0.3)
         self._commChannel.sigPrepareScan.emit()

@@ -1,0 +1,19 @@
+[stageParameterDict]
+Sample_rate = 100000
+Return_time_seconds = 0.01
+Targets[x] = ['X', 'Y', 'Z']
+Sizes[x] = [1.0, 1.0, 0.0]
+Step_sizes[x] = [0.1, 0.1, 10.0]
+Start[x] = [0, 0, 0]
+Sequence_time_seconds = 0.11
+
+[TTLParameterDict]
+Sample_rate = 100000
+Targets[x] = ['405', '488', '473', 'CAM']
+TTLStarts[x,y] = [[0.0], [0.0052], [0.0052], [0.0]]
+TTLEnds[x,y] = [[0.005], [0.1052], [0.1052], [0.001]]
+Sequence_time_seconds = 0.11
+
+[Modes]
+scan_or_not = True
+

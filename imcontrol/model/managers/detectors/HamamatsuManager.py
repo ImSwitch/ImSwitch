@@ -47,7 +47,7 @@ class HamamatsuManager(DetectorManager):
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 
     @property
-    def pixelSize(self):
+    def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 

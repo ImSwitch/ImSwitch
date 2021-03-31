@@ -104,7 +104,8 @@ class DetectorManager(SignalInterface):
 
     @property
     @abstractmethod
-    def pixelSize(self):
+    def pixelSizeUm(self):
+        """The pixel size in micrometers."""
         pass
 
     @abstractmethod

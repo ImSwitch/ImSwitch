@@ -62,7 +62,7 @@
     "acquisitionMode": "Internal trigger"
   },
   "recording": {
-    "outputFolder": "D:\\Data",
+    "outputFolder": "C:\\DataImswitch",
     "includeDateInOutputFolder": true
   },
   "miscOptions": {

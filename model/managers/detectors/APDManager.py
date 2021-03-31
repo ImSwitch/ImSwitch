@@ -16,9 +16,11 @@ class APDManager(DetectorManager):
 
     # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
     def __init__(self, APDInfo, name, nidaqManager, **_kwargs):
-        model = 0
+        model = name
         self._name = name
-        fullShape = (128, 128)
+        self.__pixelsizex = 0
+        self.__pixelsizey = 0
+        fullShape = (1000,1000)
         self._image = np.random.rand(fullShape[0],fullShape[1])*100
         #self._nidaq_clock_source = r'20MHzTimebase'
         #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
@@ -26,7 +28,7 @@ class APDManager(DetectorManager):
         #self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
         #self._nidaq_clock_source = r'20MHzTimebase'
         #self._detection_samplerate = float(1e6)  # detection sampling rate for the Nidaq, in Hz
-        self._nidaq_clock_source = r'Dev1/ctr3'  # counter output task generating a 1 MHz frequency digitial pulse train
+        self._nidaq_clock_source = r'ctr2InternalOutput'  # counter output task generating a 1 MHz frequency digitial pulse train
         self._detection_samplerate = float(1e6)
         self.acquisition = True
 
@@ -39,6 +41,7 @@ class APDManager(DetectorManager):
         self._nidaqManager.scanInitiateSignal.connect(lambda scanInfoDict: self.initiateScan(scanInfoDict))
         print(f'{self._name}: scanInitiateSignal is connected')
         self._nidaqManager.scanStartSignal.connect(self.startScan)
+        self.__shape = fullShape
         super().__init__(name, fullShape, [1], model, parameters)
 
     def initiateScan(self, scanInfoDict):
@@ -81,8 +84,10 @@ class APDManager(DetectorManager):
         #print(f'ui: line count: {line_count}')
 
         self._image[-(line_count+1),:] = line_pixels
-        # not sure, maybe enough with every 100ms updated image as without below call?
-        #self.updateLatestFrame(False)
+        if line_count == 0:
+            # adjust viewbox shape to new image shape at the start of the image
+            self.updateLatestFrame(False)
+
 
     def setParameter(self, name, value):
         pass
@@ -99,8 +104,20 @@ class APDManager(DetectorManager):
     def flushBuffers(self):
         pass
 
+    @property
+    def shape(self):
+        return self.__shape
+
+    def setShape(self, ysize, xsize):
+        self.__shape = (xsize, ysize)
+
+    @property
     def pixelSize(self):
-        pass
+        return tuple([1, self.__pixelsize_ax2, self.__pixelsize_ax1])
+
+    def setPixelSize(self, pixelsize_ax1, pixelsize_ax2):
+        self.__pixelsize_ax1 = pixelsize_ax1
+        self.__pixelsize_ax2 = pixelsize_ax2
 
     def crop(self, hpos, vpos, hsize, vsize):
         pass
@@ -121,7 +138,7 @@ class ScanWorker(Worker):
 
         #self._throw_delay = int(13*20e6/100e3)  # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is actually in the correct place. How do we find this out? Depends on the response of the galvos, can we measure this somehow?
         #self._throw_delay = 15200
-        self._throw_delay = 0
+        self._throw_delay = 20
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
         self._frac_det_dwell = round(self._scan_dwell_time * self._manager._detection_samplerate)  # ratio between detection sampling time and pixel dwell time (has nothing to do with sampling of scanning line)
@@ -144,7 +161,8 @@ class ScanWorker(Worker):
         # TODO: How to I get the following parameters into this function? Or read them from within _nidaqmanager? channels should definitely come from here I suppose...
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, self._samples_total, True, 'ao/StartTrigger', self._manager._terminal)
         self._manager._image = np.zeros((self._n_lines, self._pixels_line))
-        self._manager.__shape = (self._n_lines, self._pixels_line)
+        self._manager.setShape(self._n_lines, self._pixels_line)
+        self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),float(scanInfoDict['pixel_size_ax2']))
 
         self._last_value = 0
         self._line_counter = 0

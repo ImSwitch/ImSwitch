@@ -20,8 +20,11 @@ class TISManager(DetectorManager):
         for propertyName, propertyValue in webcamInfo.managerProperties['tis'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.getPropertyValue('image_height')[0],
-                     self._camera.getPropertyValue('image_width')[0])
+        #fullShape = (self._camera.getPropertyValue('image_height')[0],
+        #             self._camera.getPropertyValue('image_width')[0])
+
+        fullShape = (self._camera.getPropertyValue('image_height'),
+                     self._camera.getPropertyValue('image_width'))
 
         # Prepare parameters
         parameters = {

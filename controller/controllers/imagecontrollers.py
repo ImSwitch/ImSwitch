@@ -379,6 +379,7 @@ class SettingsController(WidgetController):
             lambda c: {
                 **{
                     'Detector:Pixel size': c.pixelSize,
+                    'element_size_um': c.pixelSize,
                     'Detector:Model': c.model,
                     'Detector:Binning': c.binning,
                     'Detector:ROI': [*c.frameStart, *c.shape]
@@ -520,9 +521,10 @@ class ImageController(LiveUpdatedController):
             self.autoLevels(im)
 
         self._widget.img.setImage(im, autoLevels=False, autoDownsample=False)
-
+        
         if not init:
-            self.adjustFrame(self._lastWidth, self._lastHeight)
+            imshape = np.shape(im)
+            self.adjustFrame(imshape[1], imshape[0])
 
     def acquisitionStopped(self):
         """ Disable the onlyRenderVisible optimization for a smoother experience. """
@@ -807,7 +809,7 @@ class RecorderController(WidgetController):
         if detectorListData == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorListData == -2:  # All detectors
-            return list(self._setupInfo.detectors.keys())
+            return [detector for detector in self._setupInfo.detectors.keys() if self._setupInfo.detectors[detector].managerProperties['purpose']=='acquisition']
         else:  # A specific detector
             return [detectorListData]
 

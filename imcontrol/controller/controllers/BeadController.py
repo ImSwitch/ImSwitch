@@ -27,8 +27,6 @@ class BeadController(ImConWidgetController):
         else:
             self._widget.hideROI()
 
-        self._widget.updateDisplayState(enabled)
-
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
         self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())

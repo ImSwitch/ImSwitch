@@ -60,9 +60,6 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
-
-    def updateDisplayState(self, showingROI):
-        self.roiButton.setText('Show ROI' if showingROI else 'Hide ROI')
         
 
 # Copyright (C) 2020, 2021 TestaLab

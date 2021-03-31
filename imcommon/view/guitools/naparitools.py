@@ -485,6 +485,7 @@ class VispyCrosshairVisual(VispyBaseVisual):
     def __init__(self, color='yellow'):
         super().__init__()
         self._paused = False
+        self._mouse_moved_since_press = False
         self._color = Color(color).rgba
         self._line_positions = [0, 0]
         self._line_data2D = None
@@ -504,6 +505,7 @@ class VispyCrosshairVisual(VispyBaseVisual):
 
         self._nodes = [self.node]
 
+        canvas.connect(self.on_mouse_press)
         canvas.connect(self.on_mouse_move)
         canvas.connect(self.on_mouse_release)
         self._viewer.camera.events.zoom.connect(self._on_zoom_change)
@@ -544,7 +546,15 @@ class VispyCrosshairVisual(VispyBaseVisual):
 
         self._update_line_data()
 
+    def on_mouse_press(self, event):
+        if event.button != 1 or not self._visible:
+            return
+
+        self._mouse_moved_since_press = False
+
     def on_mouse_move(self, event):
+        self._mouse_moved_since_press = True
+
         if not self._visible or self._paused:
             return
 
@@ -553,10 +563,10 @@ class VispyCrosshairVisual(VispyBaseVisual):
         self._update_line_data()
 
     def on_mouse_release(self, event):
-        if event.button != 1 or not self._visible:
+        if event.button != 1 or not self._visible or self._mouse_moved_since_press:
             return
 
-        #self._paused = not self._paused
+        self._paused = not self._paused
 
 
 class VispyScatterVisual(VispyBaseVisual):

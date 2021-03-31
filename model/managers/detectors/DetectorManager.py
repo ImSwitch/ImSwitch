@@ -99,7 +99,7 @@ class DetectorManager(SignalInterface):
     @property
     @abstractmethod
     def pixelSize(self):
-        pass
+        return [self.__pixelsize_ax1, self.__pixelsize_ax2]
 
     @abstractmethod
     def setBinning(self, binning):

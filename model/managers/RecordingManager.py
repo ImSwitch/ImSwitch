@@ -56,12 +56,13 @@ class RecordingManager(SignalInterface):
     def snap(self, detectorNames, savename, attrs):
         for detectorName in detectorNames:
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w', track_order=True)
-
+            
             shape = self.__detectorsManager[detectorName].shape
-            dataset = file.create_dataset('data', (shape[0], shape[1]), dtype='i2')
+            dataset = file.create_dataset(f'data:{detectorName}', (shape[0], shape[1]), dtype='i2')
 
             for key, value in attrs[detectorName].items():
                 file.attrs[key] = value
+                dataset.attrs[key] = value
 
             dataset[:, :] = self.__detectorsManager[detectorName].image
             file.close()

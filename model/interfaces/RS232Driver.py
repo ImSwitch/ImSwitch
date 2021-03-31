@@ -13,25 +13,11 @@ from lantz.messagebased import MessageBasedDriver
 class RS232Driver(MessageBasedDriver):
     """General RS232 driver."""
 
-    #def __new__(cls, port, settings, *args, **kwargs):
-    #    cls.DEFAULTS = {'ASRL': {'write_termination': settings["send_termination"],
-    #                             'read_termination': settings["recv_termination"],
-    #                             'baud_rate': settings["baudrate"],
-    #                             'bytesize': settings["bytesize"],
-    #                             'parity': settings["parity"],
-    #                             'stop_bits': settings["stopbits"],
-    #                             'encoding': settings["encoding"],
-    #                            }}
-    #    return super(RS232Driver, cls).__new__(cls, *args, **kwargs)
-    
     def __init__(self, port, *args):
-        #print('rsd1')
         super().__init__(port)
-        #print('rsd2')
 
     @classmethod
     def getDefaults(cls, settings):
-        #print('rsdgd')
         if settings["parity"] == 'none':
             set_par = constants.Parity.none
         if settings["stopbits"] == 1:
@@ -61,13 +47,9 @@ class RS232Driver(MessageBasedDriver):
 
 def generateDriverClass(settings):
     class GeneratedDriver(RS232Driver):
-        #print('dc1')
         DEFAULTS = RS232Driver.getDefaults(settings)
-        #print('dc2')
         try:
-            #print('dc3')
             del DEFAULTS['ASRL']['bytesize']
-            #print('dc4')
         except KeyError:
             pass
 

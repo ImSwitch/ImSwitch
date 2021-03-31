@@ -237,8 +237,9 @@ class ScanController(SuperScanController):
         self.getParameters()
         for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
             if positionerInfo.managerProperties['scanner']:
-                pixels = round(float(self._analogParameterDict['axis_length'][index]) / float(self._analogParameterDict['axis_step_size'][index]))
-                self._widget.scanPar['pixels' + positionerName].setText(str(pixels))
+                if float(self._analogParameterDict['axis_step_size'][index]) != 0:
+                    pixels = round(float(self._analogParameterDict['axis_length'][index]) / float(self._analogParameterDict['axis_step_size'][index]))
+                    self._widget.scanPar['pixels' + positionerName].setText(str(pixels))
 
     def plotSignalGraph(self):
         if self._settingParameters:

@@ -81,7 +81,7 @@ class BetaStageScanDesigner(SignalDesigner):
                                     'axis_startpos',
                                     'sequence_time',
                                     'sample_rate',
-                                    'Return_time_seconds']
+                                    'return_time']
 
     def make_signal(self, parameterDict, setupInfo, returnFrames=False):
 
@@ -111,7 +111,7 @@ class BetaStageScanDesigner(SignalDesigner):
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
         sequenceSamples = parameterDict['sequence_time'] * parameterDict['sample_rate']
-        returnSamples = parameterDict['Return_time_seconds'] * parameterDict['sample_rate']
+        returnSamples = parameterDict['return_time'] * parameterDict['sample_rate']
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))
@@ -163,10 +163,13 @@ class BetaStageScanDesigner(SignalDesigner):
                     parameterDict['target_device'][1]: middleAxisSignal,
                     parameterDict['target_device'][2]: slowAxisSignal}
 
+        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image acquisition managers
+        scanInfoDict = {
+        }
         if not returnFrames:
-            return sig_dict, {}
+            return sig_dict, scanInfoDict
         else:
-            return sig_dict, [fast_axis_positions, middle_axis_positions, slow_axis_positions], {}
+            return sig_dict, [fast_axis_positions, middle_axis_positions, slow_axis_positions], scanInfoDict
 
     def __makeRamp(self, start, end, samples):
         return np.linspace(start, end, num=samples)
@@ -185,12 +188,12 @@ class BetaTTLCycleDesigner(SignalDesigner):
         super().__init__(*args, **kwargs)
 
         self._expectedParameters = ['target_device',
-                                    'TTLStarts[x,y]',
-                                    'TTLEnds[x,y]',
+                                    'TTL_start',
+                                    'TTL_end',
                                     'sequence_time',
                                     'sample_rate']
 
-    def make_signal(self, parameterDict, setupInfo):
+    def make_signal(self, parameterDict):
 
         if not self.parameterCompatibility(parameterDict):
             print('TTL parameters seem incompatible, this error should not be \
@@ -208,11 +211,100 @@ class BetaTTLCycleDesigner(SignalDesigner):
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
-            for j, start in enumerate(parameterDict['TTLStarts[x,y]'][i]):
+            for j, start in enumerate(parameterDict['TTL_start'][i]):
                 startSamp = np.int(np.round(start * sampleRate))
-                endSamp = np.int(np.round(parameterDict['TTLEnds[x,y]'][i][j] * sampleRate))
+                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sampleRate))
                 tmpSigArr[startSamp:endSamp] = True
 
+            signalDict[target] = np.copy(tmpSigArr)
+
+        #TODO: add signal-tiling and zero-padding in here for this TTL cycle designer as well (see PointScanTTLCycleDesigner)
+
+        return signalDict
+
+
+class PointScanTTLCycleDesigner(SignalDesigner):
+    """ Line-based TTL cycle designer, for point-scanning applications. 
+    Treat input ms as lines. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._expectedParameters = ['target_device',
+                                    'TTL_start',
+                                    'TTL_end',
+                                    'sequence_time',
+                                    'sample_rate']
+
+    def make_signal(self, parameterDict, scanInfoDict=None):
+        if not self.parameterCompatibility(parameterDict):
+            print('TTL parameters seem incompatible, this error should not be \
+                  since this should be checked at program start-up')
+            return None
+        
+        if not scanInfoDict:
+            return self.__make_signal_stationary(parameterDict)
+        else:
+            signal_dict = {}
+
+            targets = parameterDict['target_device']
+            sample_rate = parameterDict['sample_rate']
+            samples_pixel = parameterDict['sequence_time'] * sample_rate
+            pixels_line = scanInfoDict['pixels_line']
+            samples_line = scanInfoDict['scan_samples_line']
+            samples_total = scanInfoDict['scan_samples_total']
+
+            zeropad_syncdelay = 0
+            zeropad_lineflyback = scanInfoDict['scan_samples_period'] - scanInfoDict['scan_samples_line']
+            zeropad_initpos = scanInfoDict['scan_throw_initpos']
+            zeropad_settling = scanInfoDict['scan_throw_settling']
+            zeropad_start = scanInfoDict['scan_throw_startzero']
+            zeropad_startacc = scanInfoDict['scan_throw_startacc']
+            zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
+            # Tile and pad TTL signals according to fast axis scan parameters
+            for i, target in enumerate(targets):
+                signal_line = np.zeros(samples_line, dtype='bool')
+                for j, start, end in enumerate(zip(parameterDict['TTL_start'][i], parameterDict['TTL_end'][i])):
+                    start_on = np.min(np.int(np.round(start * samples_line)), samples_line)
+                    end_on =  np.min(np.int(np.round(end * samples_line)), samples_line)
+                    signal_line[start_on:end:on] = True
+                
+                signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))
+                #TODO: # only do 2D-scan for now, fix for 3D-scan
+                signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)  # all lines except last
+                signal = np.append(signal, signal_line)  # add last line (does without flyback)
+
+                signal = np.append(np.zeros(zeropad_syncdelay, dtype='bool'), signal)  # pad a delay for synchronizing scan position with TTL
+                signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)  # pad first line acceleration
+                signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)  # pad start settling
+                signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)  # pad initpos
+                signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zeros
+                zeropad_end = samples_total - len(signal)
+                signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))  # pad end zeros to same length as analog scanning
+
+                signal_dict[target] = signal
+            
+            # return signal_dict, which contains bool arrays for each target
+            return signal_dict
+
+    def __make_signal_stationary(self, parameterDict):
+        signal_dict_pixel = self.__pixel_stationary(parameterDict)
+        return signal_dict_pixel
+
+    def __pixel_stationary(self, parameterDict)
+        targets = parameterDict['target_device']
+        sample_rate = parameterDict['sample_rate']
+        samples_cycle = parameterDict['sequence_time'] * sample_rate
+        if not samples_cycle.is_integer():
+            print('WARNING: Non-integer number of sequence samples, rounding up')
+        samples_cycle = np.int(np.ceil(samples_cycle))
+        signalDict = {}
+        tmpSigArr = np.zeros(samples_cycle, dtype='bool')
+        for i, target in enumerate(targets):
+            tmpSigArr[:] = False
+            for j, start in enumerate(parameterDict['TTL_start'][i]):
+                startSamp = np.int(np.round(start * sample_rate))
+                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sample_rate))
+                tmpSigArr[startSamp:endSamp] = True
             signalDict[target] = np.copy(tmpSigArr)
         return signalDict
 
@@ -228,14 +320,13 @@ class GalvoScanDesigner(SignalDesigner):
                                     'axis_startpos',
                                     'sequence_time',
                                     'sample_rate',
-                                    'Return_time_seconds']
+                                    'return_time']
 
-        self.__settlingtime = 1000  # arbitrary for now  µs
-        self.__paddingtime = 1000  # arbitrary for now  µs
-        self.__timestep = 10  # here for now, solve nicer later  µs (100 kHz)
-        #self.__timestep = 0.05  # here for now, solve nicer later  µs (20 MHz)
 
     def make_signal(self, parameterDict, setupInfo, returnFrames=False):
+        self.__timestep = 1e6 / parameterDict['sample_rate']  # time step of evaluated scanning curves [µs]
+        self.__settlingtime = 300  # arbitrary for now  µs
+        self.__paddingtime = 300  # arbitrary for now  µs
         #print(parameterDict)
         #print('Generating scanning curves...')
         axis_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']])
@@ -289,6 +380,7 @@ class GalvoScanDesigner(SignalDesigner):
                     parameterDict['target_device'][1]: slow_axis_signal}
 
         pixels_line = int(self.axis_length[0]/self.axis_step_size[0])
+        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image acquisition managers
         scanInfoDict = {
                 'n_lines': int(self.axis_length[1]/self.axis_step_size[1]),
                 'pixels_line': pixels_line,

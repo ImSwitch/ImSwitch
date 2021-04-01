@@ -432,7 +432,7 @@ class HamamatsuCamera:
                                                          ctypes.byref(p_attr)),
                                "dcam_getpropertyattr")
         if (ret == 0):
-            print(" property", property_id, "is not supported")
+            print(" property", property_name, "is not supported")
             return False
         else:
             return p_attr

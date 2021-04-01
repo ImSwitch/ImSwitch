@@ -5,7 +5,9 @@ from .guitools import BetterPushButton
 
 class FilesView(QtWidgets.QWidget):
     sigItemDoubleClicked = QtCore.Signal(str)  # (itemPath)
-    # TODO: Root picker
+    sigRootPathSubmit = QtCore.Signal(str)  # (rootPath)
+    sigBrowseClicked = QtCore.Signal()
+    sigOpenRootInOSClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -28,13 +30,23 @@ class FilesView(QtWidgets.QWidget):
         )
         
         self.rootPickerLayout = QtWidgets.QHBoxLayout()
+
         self.rootPathEdit = QtWidgets.QLineEdit()
+        self.rootPathEdit.returnPressed.connect(
+            lambda: self.sigRootPathSubmit.emit(self.rootPathEdit.text())
+        )
         self.rootPathBrowse = BetterPushButton('Browse…')
+        self.rootPathBrowse.clicked.connect(self.sigBrowseClicked)
+
         self.rootPickerLayout.addWidget(self.rootPathEdit)
         self.rootPickerLayout.addWidget(self.rootPathBrowse)
 
+        self.openRootButton = QtWidgets.QPushButton('Show folder in OS file explorer')
+        self.openRootButton.clicked.connect(self.sigOpenRootInOSClicked)
+
         layout = QtWidgets.QVBoxLayout()
         layout.addLayout(self.rootPickerLayout)
+        layout.addWidget(self.openRootButton)
         layout.addWidget(self.tree)
         self.setLayout(layout)
 

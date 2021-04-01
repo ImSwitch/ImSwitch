@@ -1,10 +1,8 @@
 import os
-import subprocess
-import sys
 import time
 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import APIExport
+from imswitch.imcommon.model import osutils, APIExport
 from imswitch.imcontrol.model import SaveMode, RecMode
 from imswitch.imcontrol.view import guitools as guitools
 from .basecontrollers import ImConWidgetController
@@ -49,19 +47,9 @@ class RecorderController(ImConWidgetController):
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         try:
-            if sys.platform == 'darwin':
-                subprocess.check_call(['open', self._widget.getRecFolder()])
-            elif sys.platform == 'linux':
-                subprocess.check_call(['xdg-open', self._widget.getRecFolder()])
-            elif sys.platform == 'win32':
-                os.startfile(self._widget.getRecFolder())
-        except FileNotFoundError or subprocess.CalledProcessError:
-            if sys.platform == 'darwin':
-                subprocess.check_call(['open', self._widget.dataDir])
-            elif sys.platform == 'linux':
-                subprocess.check_call(['xdg-open', self._widget.dataDir])
-            elif sys.platform == 'win32':
-                os.startfile(self._widget.dataDir)
+            osutils.openFolderInOS(self._widget.getRecFolder())
+        except osutils.OSUtilsError:
+            osutils.openFolderInOS(self._widget.dataDir)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """

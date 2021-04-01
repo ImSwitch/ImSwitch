@@ -29,6 +29,9 @@ class ScriptExecutor(SignalInterface):
             print(f'\nTerminated script at {strftime("%Y-%m-%d %H:%M:%S")}')
             self._executionThread.terminate()
 
+    def isExecuting(self):
+        return self._executionThread.isRunning() and self._executionWorker.isWorking()
+
 
 class ExecutionThread(Worker):
     sigOutputAppended = Signal(str)  # (outputText)
@@ -36,12 +39,14 @@ class ExecutionThread(Worker):
     def __init__(self, scriptScope):
         super().__init__()
         self._scriptScope = scriptScope
+        self._isWorking = False
 
     def execute(self, scriptPath, code):
         scriptScope = {}
         scriptScope.update(self._scriptScope)
         scriptScope.update(getActionsScope(scriptPath))
 
+        self._isWorking = True
         oldStdout = sys.stdout
         try:
             sys.stdout = SignaledStringIO(self.sigOutputAppended)
@@ -53,6 +58,10 @@ class ExecutionThread(Worker):
             print(f'\nFinished script at {strftime("%Y-%m-%d %H:%M:%S")}')
         finally:
             sys.stdout = oldStdout
+            self._isWorking = False
+
+    def isWorking(self):
+        return self._isWorking
 
 
 class SignaledStringIO(StringIO):

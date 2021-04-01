@@ -27,7 +27,7 @@ class EditorController(ImScrWidgetController):
         # Connect EditorView signals
         self._widget.sigRunAllClicked.connect(self.runCurrentCode)
         self._widget.sigRunSelectedClicked.connect(self.runCurrentCode)
-        self._widget.sigStopClicked.connect(self.scriptExecutor.terminate)
+        self._widget.sigStopClicked.connect(self.stopExecution)
         self._widget.sigTextChanged.connect(self.textChanged)
         self._widget.sigInstanceCloseClicked.connect(self.instanceCloseClicked)
 
@@ -86,8 +86,26 @@ class EditorController(ImScrWidgetController):
         self.saveFile()
 
     def runCurrentCode(self, instanceID, code):
+        if self.scriptExecutor.isExecuting():
+            if not guitools.askYesNoQuestion(self._widget,
+                                             'Warning: Already Executing',
+                                             'A script is already running; it will be terminated if'
+                                             ' you proceed. Do you want to proceed?'):
+                return
+
         self._commChannel.sigExecutionStarted.emit()
         self.scriptExecutor.execute(self._scriptPaths[instanceID], code)
+
+    def stopExecution(self):
+        if not self.scriptExecutor.isExecuting():
+            return
+
+        if not guitools.askYesNoQuestion(self._widget,
+                                         'Stop execution?',
+                                         'Are you sure that you want to stop the script?'):
+            return
+
+        self.scriptExecutor.terminate()
 
     def textChanged(self, instanceID):
         if instanceID not in self._scriptPaths:
@@ -97,6 +115,13 @@ class EditorController(ImScrWidgetController):
         self._widget.setEditorName(instanceID, f'{self.getScriptName(instanceID)}*')
 
     def instanceCloseClicked(self, instanceID):
+        if self._unsavedScripts[instanceID]:
+            if not guitools.askYesNoQuestion(self._widget,
+                                             'Warning: Unsaved Changes',
+                                             'Are you sure you want to close the file? There are'
+                                             ' unsaved changes that will be lost.'):
+                return
+
         self._widget.closeInstance(instanceID)
         del self._scriptPaths[instanceID]
         del self._unsavedScripts[instanceID]

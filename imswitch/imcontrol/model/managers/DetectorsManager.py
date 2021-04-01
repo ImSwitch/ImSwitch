@@ -40,6 +40,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread = Thread()
         self._lvWorker.moveToThread(self._thread)
         self._thread.started.connect(self._lvWorker.run)
+        self._thread.finished.connect(self._lvWorker.stop)
 
     def hasDetectors(self):
         """ Returns whether this manager manages any detectors. """
@@ -138,14 +139,19 @@ class LVWorker(Worker):
         super().__init__()
         self._detectorsManager = detectorsManager
         self._updatePeriod = updatePeriod
+        self._vtimer = None
 
     def run(self):
         self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False))
-        self.vtimer = Timer()
-        self.vtimer.timeout.connect(
+        self._vtimer = Timer()
+        self._vtimer.timeout.connect(
             lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True))
         )
-        self.vtimer.start(self._updatePeriod)
+        self._vtimer.start(self._updatePeriod)
+
+    def stop(self):
+        if self._vtimer is not None:
+            self._vtimer.stop()
 
 
 class NoDetectorsError(RuntimeError):

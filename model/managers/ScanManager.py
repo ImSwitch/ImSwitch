@@ -60,6 +60,16 @@ class ScanManager(SuperScanManager):
         # if not syncExpected == syncIncoming:
         #     raise IncompatibilityError('Incompatible sync parameters')
 
+    def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
+        """ Check analog scanning signals so that they are inside the range of the acceptable scanner voltages."""
+        fast_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
+        slow_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+        if scanInfo['minmax_fast_axis'][0] < fast_positioner.managerProperties['minVolt'] or scanInfo['minmax_fast_axis'][1] > fast_positioner.managerProperties['maxVolt']:
+            return False
+        if scanInfo['minmax_slow_axis'][0] < slow_positioner.managerProperties['minVolt'] or scanInfo['minmax_slow_axis'][1] > slow_positioner.managerProperties['maxVolt']:
+            return False
+        return True
+
     def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
         return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
 
@@ -70,6 +80,9 @@ class ScanManager(SuperScanManager):
                 scanParameters, setupInfo, returnFrames=True
             )
             TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo, scanInfoDict)
+            if not self.checkSignalComp(scanParameters, setupInfo, scanInfoDict):
+                print('Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower scan.')
+                return
         else:
             TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
             scanSignalsDict = {}

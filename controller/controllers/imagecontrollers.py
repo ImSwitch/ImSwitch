@@ -309,10 +309,10 @@ class SettingsController(WidgetController):
         fullShape = detector.fullShape
         params.x0.setValue(frameStart[0])
         params.y0.setValue(frameStart[1])
-        params.width.setValue(shape[0])
-        params.width.setLimits((1, fullShape[0]))
-        params.height.setValue(shape[1])
-        params.height.setLimits((1, fullShape[1]))
+        #params.width.setValue(shape[0])
+        #params.width.setLimits((1, fullShape[0]))
+        #params.height.setValue(shape[1])
+        #params.height.setLimits((1, fullShape[1]))
 
         # Model
         params.model.setValue(detector.model)
@@ -355,8 +355,8 @@ class SettingsController(WidgetController):
                 fullChipShape = detector.fullShape
                 params.x0.setValue(0)
                 params.y0.setValue(0)
-                params.width.setValue(fullChipShape[0])
-                params.height.setValue(fullChipShape[1])
+                #params.width.setValue(fullChipShape[0])
+                #params.height.setValue(fullChipShape[1])
             else:
                 roiInfo = self._setupInfo.rois[frameMode]
                 params.x0.setValue(roiInfo.x)

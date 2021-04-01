@@ -1,6 +1,6 @@
 {
   "detectors": {
-    "APD1": {
+    "APDred": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "APDManager",
@@ -11,7 +11,7 @@
         "purpose": "acquisition"
       }
     },
-    "APD2": {
+    "APDgreen": {
       "analogChannel": null,
       "digitalLine": null,
       "managerName": "APDManager",
@@ -87,6 +87,29 @@
       "valueRangeMin": 0,
       "valueRangeMax": 1023,
       "valueRangeStep": 1
+    },
+    "775AOM": {
+      "analogChannel": 3,
+      "digitalLine": 3,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 100,
+      "valueRangeStep": 1
+    },
+    "775Katana": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "KatanaLaserManager",
+      "managerProperties": {
+        "rs232device": "katana"
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 3100,
+      "valueRangeStep": 1
     }
   },
   "positioners": {
@@ -98,8 +121,8 @@
         "conversionFactor": 17.44,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 1e-3,
-        "acc_max": 1e-6,
+        "vel_max": 100e-3,
+        "acc_max": 100e-6,
         "axisCount": 1,
         "axisLabels": "X",
         "scanner": 1,
@@ -114,8 +137,8 @@
         "conversionFactor": 16.63,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 1e-3,
-        "acc_max": 1e-6,
+        "vel_max": 100e-3,
+        "acc_max": 100e-6,
         "axisCount": 1,
         "axisLabels": "Y",
         "scanner": 1,
@@ -183,6 +206,22 @@
         "dsrdtr": "false",
         "xonxoff": "false"
       }
+    },
+    "katana": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM8",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 38400,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     }
   },
   "scan": {
@@ -215,13 +254,22 @@
     "BeadRecWidget": false,
     "FFTWidget": false,
     "ULensesWidget": false,
-    "SLMWidget": false,
+    "SLMWidget": true,
     "FocusLockWidget": true,
     "MotCorrWidget": false
   },
   "designers": {
     "scanDesigner": "GalvoScanDesigner",
     "TTLCycleDesigner": "PointScanTTLCycleDesigner"
+  },
+  "slm": {
+    "monitorIdx": 1,
+    "width": 792,
+    "height": 600,
+    "wavelength": 775,
+    "pixelsize": 0.02,
+    "angle_mount": 0.15,
+    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
   "focusLock": {
     "camera": "FocusLockCamera",

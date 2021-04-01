@@ -155,8 +155,8 @@ class RecordingWidget(Widget):
         self.dimLapse.clicked.connect(self.sigDimLapsePicked)
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
 
-    def getDetectorsToCapture(self):
-        """ Returns a list of which detectors the user has selected to be
+    def getDetectorToCapture(self):
+        """ Returns the name of the detector the user has selected to be
         captured. Note: If "current detector at start" is selected, this
         returns -1, and if "all detectors" is selected, this returns -2. """
         return self.detectorList.itemData(self.detectorList.currentIndex())
@@ -171,19 +171,19 @@ class RecordingWidget(Widget):
         return self.filenameEdit.text() if self.specifyfile.isChecked() else None
 
     def getNumExpositions(self):
-        return int(self.numExpositionsEdit.text())
+        return int(float(self.numExpositionsEdit.text()))
 
     def getTimeToRec(self):
         return float(self.timeToRec.text())
 
     def getTimelapseTime(self):
-        return int(self.timeLapseEdit.text())
+        return int(float(self.timeLapseEdit.text()))
 
     def getTimelapseFreq(self):
         return float(self.freqEdit.text())
 
     def getDimlapseSlices(self):
-        return int(self.totalSlices.text())
+        return int(float(self.totalSlices.text()))
 
     def getDimlapseStepSize(self):
         return float(self.stepSizeEdit.text())
@@ -196,6 +196,15 @@ class RecordingWidget(Widget):
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 
+    def setDetectorToCapture(self, detectorName):
+        """ Sets which detector should be captured. Note: The value -1
+        corresponds to "current detector at start", and the value -2
+        corresponds to "all detectors". """
+        for i in range(self.detectorList.count()):
+            if self.detectorList.itemData(i) == detectorName:
+                self.detectorList.setCurrentIndex(i)
+                return
+
     def setSaveMode(self, saveMode):
         self.saveModeList.setCurrentIndex(saveMode - 1)
 
@@ -206,6 +215,13 @@ class RecordingWidget(Widget):
         """ Enables the ability to type a specific filename for the data to. """
         self.filenameEdit.setEnabled(enabled)
         self.filenameEdit.setText('Filename' if enabled else 'Current time')
+
+    def setCustomFilename(self, filename):
+        self.setCustomFilenameEnabled(True)
+        self.filenameEdit.setText(filename)
+
+    def setRecFolder(self, folderPath):
+        self.folderEdit.setText(folderPath)
 
     def setEnabledParams(self, numExpositions=False, timeToRec=False,
                          timelapseTime=False, timelapseFreq=False,
@@ -224,6 +240,24 @@ class RecordingWidget(Widget):
 
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)
+
+    def setNumExpositions(self, numExpositions):
+        self.numExpositionsEdit.setText(str(numExpositions))
+
+    def setTimeToRec(self, secondsToRec):
+        self.numExpositionsEdit.setText(str(secondsToRec))
+
+    def setTimelapseTime(self, secondsToRec):
+        self.timeLapseEdit.setText(str(secondsToRec))
+
+    def setTimelapseFreq(self, freqSeconds):
+        self.freqEdit.setText(str(freqSeconds))
+
+    def setDimlapseSlices(self, numSlices):
+        self.totalSlices.setText(str(numSlices))
+
+    def setDimlapseStepSize(self, stepSizeUm):
+        self.stepSizeEdit.setText(str(stepSizeUm))
 
     def updateRecFrameNum(self, frameNum):
         self.currentFrame.setText(str(frameNum) + ' /')

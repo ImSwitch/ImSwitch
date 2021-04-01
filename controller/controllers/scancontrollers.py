@@ -158,10 +158,14 @@ class ScanController(SuperScanController):
 
     def runScan(self):
         self.getParameters()
-        self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
-            self._analogParameterDict, self._digitalParameterDict, self._setupInfo,
-            staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
-        )
+        try:
+            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                self._analogParameterDict, self._digitalParameterDict, self._setupInfo,
+                staticPositioner=self._widget.contLaserPulsesRadio.isChecked()
+            )
+        except:
+            #TODO: should raise an error here probably, but that does not crash the program.
+            return
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):

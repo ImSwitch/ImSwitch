@@ -7,6 +7,7 @@ Created on Thu Apr  9 09:20:14 2020
 
 import numpy as np
 from scipy.interpolate import BPoly
+import matplotlib.pyplot as plt
 
 # try:
 #    from .errors import InvalidChildClassError, IncompatibilityError
@@ -333,19 +334,22 @@ class GalvoScanDesigner(SignalDesigner):
 
     def make_signal(self, parameterDict, setupInfo, returnFrames=False):
         self.__timestep = 1e6 / parameterDict['sample_rate']  # time step of evaluated scanning curves [µs]
-        self.__settlingtime = 3000  # arbitrary for now  µs
+        self.__minsettlingtime = 1000  # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the max speed/acc, as that is what limits time it takes for axes to get to the right position
         self.__paddingtime = 3000  # arbitrary for now  µs
 
         axis_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']])
-        vel_max = [positioner.managerProperties['vel_max']
+        # convert vel_max from µm/µs to V/µs
+        vel_max = [positioner.managerProperties['vel_max'] / positioner.managerProperties['conversionFactor']
                 for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
-        acc_max = [positioner.managerProperties['acc_max']
+        # convert acc_max from µm/µs^2 to V/µs^2
+        acc_max = [positioner.managerProperties['acc_max'] / positioner.managerProperties['conversionFactor']
                 for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
         
         # get list of positions for each axis
         convFactors = [positioner.managerProperties['conversionFactor']
                        for positioner in setupInfo.positioners.values() if positioner.managerProperties['scanner']]
 
+        #TODO: this is not correct, as I take the order of conversion factors from the order in the list of scanners, but the scan info order as the scan axis order
         # retrieve axis lengths in V
         self.axis_length = [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(axis_count)]
         # retrieve axis step sizes in V
@@ -357,6 +361,8 @@ class GalvoScanDesigner(SignalDesigner):
         for i in range(axis_count):
             axis_positions.append(np.int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
+        self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos, vel_max, acc_max)
+
         # TODO: make this more modular to the number of scanners used?
         # fast axis signal
         fast_pos, samples_period, n_lines = self.__generate_smooth_scan(parameterDict, vel_max[0], acc_max[0])
@@ -365,7 +371,7 @@ class GalvoScanDesigner(SignalDesigner):
         slow_pos = self.__generate_step_scan(parameterDict, axis_reps, vel_max[1], acc_max[1])
 
         # TODO: add
-        # slow axis signal
+        # third axis signal
         #####
 
         # TODO: update to inlcude as many signals as scanners
@@ -375,8 +381,13 @@ class GalvoScanDesigner(SignalDesigner):
         sig_dict = {parameterDict['target_device'][0]: fast_axis_signal,
                     parameterDict['target_device'][1]: slow_axis_signal}
 
+        #plt.figure()
+        #plt.plot(fast_axis_signal-0.01)
+        #plt.plot(slow_axis_signal)
+        #plt.show()
+
         pixels_line = int(self.axis_length[0]/self.axis_step_size[0])
-        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image acquisition managers
+        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner and/or image acquisition managers
         scanInfoDict = {
                 'n_lines': int(self.axis_length[1]/self.axis_step_size[1]),
                 'pixels_line': pixels_line,
@@ -391,7 +402,9 @@ class GalvoScanDesigner(SignalDesigner):
                 'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
                 'dwell_time': parameterDict['sequence_time'],
                 'pixel_size_ax1': parameterDict['axis_step_size'][0],
-                'pixel_size_ax2': parameterDict['axis_step_size'][1]
+                'pixel_size_ax2': parameterDict['axis_step_size'][1],
+                'minmax_fast_axis': [min(fast_axis_signal), max(fast_axis_signal)],
+                'minmax_slow_axis': [min(slow_axis_signal), max(slow_axis_signal)]
         }
 
         print('Scanning curves generated.')
@@ -399,6 +412,16 @@ class GalvoScanDesigner(SignalDesigner):
             return sig_dict, scanInfoDict
         else:
             return sig_dict, axis_positions, scanInfoDict
+
+    def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
+        t_initpos_vc_slow = abs(axis_centerpos[1]-axis_length[1]/2)/vel_max[1]
+        t_initpos_vc_fast = abs(axis_centerpos[0]-axis_length[0]/2)/vel_max[0]
+        t_acc_slow = vel_max[1]/acc_max[1]
+        t_acc_fast = vel_max[0]/acc_max[0]
+        t_initpos_slow = t_initpos_vc_slow + 2*t_acc_slow
+        t_initpos_fast = t_initpos_vc_fast + 2*t_acc_fast
+        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_slow - t_initpos_fast])
+        return settlingtime
 
     def __generate_smooth_scan(self, parameterDict, v_max, a_max):
         """ Generate a smooth scanning curve with spline interpolation """ 
@@ -425,7 +448,6 @@ class GalvoScanDesigner(SignalDesigner):
         axis_reps[0] = axis_reps[0]-len(pos_init)
         # generate the final smooth positioning curve
         pos_final = self.__final_positioning(positions[-1], v_max, a_max)
-        axis_reps[-1] = axis_reps[-1]-len(pos_final)
         # repeat each middle element a number of times equal to the length of that between the faster axis repetitions
         pos_steps = np.repeat(positions, axis_reps)
         # add initial positioning
@@ -433,15 +455,15 @@ class GalvoScanDesigner(SignalDesigner):
         return pos_ret
 
     def __get_axis_reps(self, pos, samples_period, n_lines):
-        """ Much faster to get reps for each slow-axis position than get_axis_steps """
+        """ Get reps for each step on slow axis, by looking at the maximum and periods of the fast axis """
+        start_skip = self._samples_initpos + self._samples_settling + self._samples_startacc
+        end_skip = self._samples_finalpos
         # get length of first line
-        first_line = [np.argmax(pos)]
+        first_line = [np.argmax(pos[start_skip:-end_skip]) + start_skip]
         # get length of all other lines
-        mid_lines = np.repeat(samples_period-1, n_lines-2)
-        # get length of last line
-        last_line = [len(pos)-(first_line[0]+(samples_period-1)*(n_lines-2))]
+        rest_lines = np.repeat(samples_period-1, n_lines-1)
         # concatenate all repetition lengths
-        axis_reps = np.concatenate((first_line, mid_lines, last_line))
+        axis_reps = np.concatenate((first_line, rest_lines))
         return axis_reps
 
     def __linescan_poly(self, parameterDict, v_max, a_max):
@@ -451,7 +473,7 @@ class GalvoScanDesigner(SignalDesigner):
         l_scan = self.axis_length[0]  # µm
         c_scan = self.axis_centerpos[0]  # µm
         v_scan = self.axis_step_size[0]/sequence_time  # µm/µs
-        dt_fix = 1e-2  # time between two fix points where the acceleration changes (infinite jerk)  # µs
+        dt_fix = 1e-2  # time between two fix points where the acceleration changes (infinite jerk) - µs
 
         # positions at fixed points
         p1 = c_scan
@@ -538,7 +560,7 @@ class GalvoScanDesigner(SignalDesigner):
         
         # positions at fixed points
         p1 = p1p = 0
-        t_deacc = (v_max)/a_max
+        t_deacc = v_max/a_max
         d_deacc = 0.5*a_max*t_deacc**2
         p2 = p2p = d_deacc
         p3 = p3p = initpos - d_deacc
@@ -571,7 +593,7 @@ class GalvoScanDesigner(SignalDesigner):
         # if p2 is already past the center of the scan it means that the max_velocity was never reached
         # in this case, remove two fixed points, and change the values to the curr. vel and time in the
         # middle of the flyback
-        if abs(p2) >= abs(initpos/2):
+        if abs(p2 - p1) >= abs(initpos/2):
             t_mid = np.sqrt(abs(initpos/a_max))
             v_mid = a_max*t_mid
             del pos[4:6]
@@ -640,7 +662,7 @@ class GalvoScanDesigner(SignalDesigner):
         # if p2 is already past the center of the scan it means that the max_velocity was never reached
         # in this case, remove two fixed points, and change the values to the curr. vel and time in the
         # middle of the flyback
-        if abs(p2) <= abs(initpos/2) or abs(p2) > abs(initpos):
+        if abs(p2 - p1) >= abs(initpos/2):
             t_mid = np.sqrt(abs(initpos/a_max))
             v_mid = a_max*t_mid
             del pos[4:6]
@@ -691,13 +713,13 @@ class GalvoScanDesigner(SignalDesigner):
         # check that the length of pos1 and pos2 are identical
         padlen1 = np.array([padlen,padlen])
         padlen2 = np.array([padlen,padlen])
-        lendiff = abs(len(pos1)-len(pos2))
+        lendiff = len(pos1)-len(pos2)
         # if not equal, add to the correct padding length to make them equal
         if lendiff != 0:
             if lendiff > 0:
-                padlen2 = padlen2 + np.array([0,lendiff])
+                padlen2 = padlen2 + np.array([0,abs(lendiff)])
             elif lendiff < 0:
-                padlen1 = padlen1 + np.array([0,lendiff])
+                padlen1 = padlen1 + np.array([0,abs(lendiff)])
         # pad position arrays
         pos_ret1 = np.pad(pos1, padlen1, 'constant', constant_values=0)
         pos_ret2 = np.pad(pos2, padlen2, 'constant', constant_values=0)

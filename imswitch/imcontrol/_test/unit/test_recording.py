@@ -3,30 +3,30 @@ from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
 
-def record(qtbot, detectorInfos, *args, **kwargs):  # TODO: Should check all and not just one recording available
-    detectorsManager = DetectorsManager(detectorInfos, 1000)
+def record(qtbot, detectorInfos, *args, **kwargs):
+    detectorsManager = DetectorsManager(detectorInfos, updatePeriod=100)
     recordingManager = RecordingManager(detectorsManager)
 
-    memRecName, memRecFile, memRecSavedToDisk = None, None, None
+    filePerDetector, savedToDiskPerDetector = {}, {}
 
     def memoryRecordingAvailable(name, file, _, savedToDisk):
-        nonlocal memRecName, memRecFile, memRecSavedToDisk
-        memRecName, memRecFile, memRecSavedToDisk = name, file, savedToDisk
+        nonlocal filePerDetector, savedToDiskPerDetector
+        filePerDetector[name], savedToDiskPerDetector[name] = file, savedToDisk
 
     recordingManager.sigMemoryRecordingAvailable.connect(memoryRecordingAvailable)
-
-    with qtbot.waitSignal(recordingManager.sigMemoryRecordingAvailable, timeout=30000):
-        recordingManager.startRecording(*args, **kwargs)
-
+    recordingManager.startRecording(*args, **kwargs)
+    for i in range(len(detectorInfos)):
+        with qtbot.waitSignal(recordingManager.sigMemoryRecordingAvailable, timeout=30000):
+            pass
     recordingManager.sigMemoryRecordingAvailable.disconnect(memoryRecordingAvailable)
 
-    return memRecName, memRecFile, memRecSavedToDisk
+    return filePerDetector, savedToDiskPerDetector
 
 
 @pytest.mark.parametrize('detectorInfos,numFrames',
                          [(detectorInfosBasic, 10), (detectorInfosNonSquare, 53)])
 def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
-    memRecName, memRecFile, memRecSavedToDisk = record(
+    filePerDetector, savedToDiskPerDetector = record(
         qtbot,
         detectorInfos,
         detectorNames=list(detectorInfos.keys()),
@@ -37,18 +37,24 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
             'testAttr1': 2,
             'testAttr2': 'value'
         } for detectorName in detectorInfos.keys()},
+        pixelSizeUm={detectorName: [1, 0.1, 0.1] for detectorName in detectorInfos.keys()},
         recFrames=numFrames
     )
-    dataset = memRecFile.get('data')
 
-    assert memRecSavedToDisk is False
-    assert dataset.shape[0] == numFrames
+    assert len(filePerDetector) == len(detectorInfos)
+    assert len(savedToDiskPerDetector) == len(detectorInfos)
+
+    for file in filePerDetector.values():
+        dataset = file.get('data')
+        assert dataset.shape[0] == numFrames
+    for savedToDisk in savedToDiskPerDetector.values():
+        assert savedToDisk is False
 
 
 @pytest.mark.parametrize('detectorInfos',
                          [detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare])
 def test_recording_spec_time(qtbot, detectorInfos):
-    memRecName, memRecFile, memRecSavedToDisk = record(
+    filePerDetector, savedToDiskPerDetector = record(
         qtbot,
         detectorInfos,
         detectorNames=list(detectorInfos.keys()),
@@ -59,12 +65,18 @@ def test_recording_spec_time(qtbot, detectorInfos):
             'testAttr1': 2,
             'testAttr2': 'value'
         } for detectorName in detectorInfos.keys()},
+        pixelSizeUm={detectorName: [1, 0.1, 0.1] for detectorName in detectorInfos.keys()},
         recTime=5
     )
-    dataset = memRecFile.get('data')
 
-    assert memRecSavedToDisk is False
-    assert dataset.shape[0] > 0
+    assert len(filePerDetector) == len(detectorInfos)
+    assert len(savedToDiskPerDetector) == len(detectorInfos)
+
+    for file in filePerDetector.values():
+        dataset = file.get('data')
+        assert dataset.shape[0] > 0
+    for savedToDisk in savedToDiskPerDetector.values():
+        assert savedToDisk is False
 
 
 # Copyright (C) 2020, 2021 TestaLab

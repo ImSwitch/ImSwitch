@@ -199,7 +199,7 @@ class RecorderController(ImConWidgetController):
         self.recMode = RecMode.UntilStop
 
     def detectorChanged(self):
-        detectorListData = self._widget.getDetectorsToCapture()
+        detectorListData = self._widget.getDetectorToCapture()
         if detectorListData == -2:  # All detectors
             # When recording all detectors, the SpecFrames mode isn't supported
             self._widget.setSpecifyFramesAllowed(False)
@@ -208,7 +208,7 @@ class RecorderController(ImConWidgetController):
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorListData = self._widget.getDetectorsToCapture()
+        detectorListData = self._widget.getDetectorToCapture()
         if detectorListData == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
         elif detectorListData == -2:  # All detectors
@@ -250,7 +250,65 @@ class RecorderController(ImConWidgetController):
         """ Stops recording. """
         self._widget.setRecButtonChecked(False)
 
-    # TODO: API functions for changing recording mode, detectors to capture
+    @APIExport
+    def setRecModeSpecFrames(self, numFrames):
+        """ Sets the recording mode to record a specific number of frames. """
+        self.specFrames()
+        self._widget.setNumExpositions(numFrames)
+
+    @APIExport
+    def setRecModeSpecTime(self, secondsToRec):
+        """ Sets the recording mode to record for a specific amount of time.
+        """
+        self.specTime()
+        self._widget.setTimeToRec(secondsToRec)
+
+    @APIExport
+    def setRecModeScanOnce(self):
+        """ Sets the recording mode to record a single scan. """
+        self.recScanOnce()
+
+    @APIExport
+    def setRecModeScanTimelapse(self, secondsToRec, freqSeconds):
+        """ Sets the recording mode to record a timelapse of scans. """
+        self.recScanLapse()
+        self._widget.setTimelapseTime(secondsToRec)
+        self._widget.setTimelapseFreq(freqSeconds)
+
+    @APIExport
+    def setRecModeScanDimlapse(self, numSlices, stepSizeUm):
+        """ Sets the recording mode to record a 3D-lapse of scans. """
+        self.dimLapse()
+        self._widget.setDimlapseSlices(numSlices)
+        self._widget.setDimlapseStepSize(stepSizeUm)
+
+    @APIExport
+    def setRecModeUntilStop(self):
+        """ Sets the recording mode to record until recording is manually
+        stopped. """
+        self.untilStop()
+
+    @APIExport
+    def setDetectorToRecord(self, detectorName):
+        """ Sets which detectors to record. One can also pass -1 as the
+        argument to record the current detector, or -2 to record all detectors.
+        """
+        self._widget.setDetectorToCapture(detectorName)
+
+    @APIExport
+    def setRecFilename(self, filename):
+        """ Sets the name of the file to record to. This only sets the name of
+        the file, not the full path. One can also pass None as the argument to
+        use a default time-based filename. """
+        if filename is not None:
+            self._widget.setCustomFilename(filename)
+        else:
+            self._widget.setCustomFilenameEnabled(False)
+
+    @APIExport
+    def setRecFolder(self, folderPath):
+        """ Sets the folder to save recordings into. """
+        self._widget.setRecFolder(folderPath)
     
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -48,8 +48,12 @@ class ExecutionThread(Worker):
 
         self._isWorking = True
         oldStdout = sys.stdout
+        oldStderr = sys.stderr
         try:
-            sys.stdout = SignaledStringIO(self.sigOutputAppended)
+            outputIO = SignaledStringIO(self.sigOutputAppended)
+            sys.stdout = outputIO
+            sys.stderr = outputIO
+
             print(f'Started script at {strftime("%Y-%m-%d %H:%M:%S")}\n')
             try:
                 exec(code, scriptScope)
@@ -58,6 +62,7 @@ class ExecutionThread(Worker):
             print(f'\nFinished script at {strftime("%Y-%m-%d %H:%M:%S")}')
         finally:
             sys.stdout = oldStdout
+            sys.stderr = oldStderr
             self._isWorking = False
 
     def isWorking(self):

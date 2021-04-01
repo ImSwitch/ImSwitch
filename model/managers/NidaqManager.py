@@ -230,11 +230,6 @@ class NidaqManager(SignalInterface):
         running. """
         print('Create nidaq scan...')
         if not self.busy:
-            self.aoTaskWaiter = WaitThread()
-            self.doTaskWaiter = WaitThread()
-            self.timerTaskWaiter = WaitThread()
-            self.busy = True
-            self.signalSent = False
             # TODO: fill this
             stageDic = signalDic['scanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
@@ -268,6 +263,12 @@ class NidaqManager(SignalInterface):
                 self.busy = False
                 return
 
+            # create task waiters and change constants for beginning scan
+            self.aoTaskWaiter = WaitThread()
+            self.doTaskWaiter = WaitThread()
+            self.timerTaskWaiter = WaitThread()
+            self.busy = True
+            self.signalSent = False
             # create timer counter output task, to control the acquisition timing (1 MHz)
             self.timerTask = self.__createChanCOTask('TimerTask', channel=2,
                                                      rate=1e6, sampsInScan=np.int(len(AOsignals[0])*10+1000) ,starttrig=True,

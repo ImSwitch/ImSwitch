@@ -9,6 +9,7 @@ import nidaqmx
 import numpy as np
 
 from framework import Signal, SignalInterface, Thread
+from PyQt5.QtCore import QTimer
 
 
 class NidaqManager(SignalInterface):
@@ -271,7 +272,7 @@ class NidaqManager(SignalInterface):
             self.signalSent = False
             # create timer counter output task, to control the acquisition timing (1 MHz)
             self.timerTask = self.__createChanCOTask('TimerTask', channel=2,
-                                                     rate=1e6, sampsInScan=np.int(len(AOsignals[0])*10+1000) ,starttrig=True,
+                                                     rate=1e6, sampsInScan=np.int(len(AOsignals[0])*10) ,starttrig=True,
                                                      reference_trigger='ao/StartTrigger')
             self.timerTaskWaiter.connect(self.timerTask)
             self.timerTaskWaiter.waitdoneSignal.connect(self.taskDoneTimer)
@@ -333,10 +334,12 @@ class NidaqManager(SignalInterface):
 
     def taskDoneAO(self):
         if not self.aoTaskWaiter.running and not self.signalSent:
-            self.busy = False
-            self.signalSent = True
-            self.scanDoneSignal.emit()
             self.stopOutputTask('ao')
+            # create a timer to delay scanDoneSignal
+            #self.timer = QTimer()
+            #self.timer.timeout.connect(self.scanDone)
+            #self.timer.start(1000)
+            self.scanDone()
             print('AO scan finished!')
 
     def taskDoneDO(self):
@@ -348,6 +351,11 @@ class NidaqManager(SignalInterface):
         if not self.timerTaskWaiter.running:
             self.stopTimerTask()
             print('Timer task finished!')
+
+    def scanDone(self):
+        self.signalSent = True
+        self.busy = False
+        self.scanDoneSignal.emit()
 
     def runContinuous(self, digital_targets, digital_signals):
         pass

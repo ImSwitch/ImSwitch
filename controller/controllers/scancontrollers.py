@@ -5,6 +5,7 @@ Created on Sun Mar 22 10:40:53 2020
 @author: _Xavi
 """
 import configparser
+import time
 
 import numpy as np
 import pyqtgraph as pg

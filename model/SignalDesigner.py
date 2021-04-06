@@ -112,6 +112,7 @@ class BetaStageScanDesigner(SignalDesigner):
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
         sequenceSamples = parameterDict['sequence_time'] * parameterDict['sample_rate']
+        print(sequenceSamples)
         returnSamples = parameterDict['return_time'] * parameterDict['sample_rate']
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
@@ -302,9 +303,10 @@ class PointScanTTLCycleDesigner(SignalDesigner):
         targets = parameterDict['target_device']
         sample_rate = parameterDict['sample_rate']
         samples_cycle = parameterDict['sequence_time'] * sample_rate
-        if not samples_cycle.is_integer():
-            print('WARNING: Non-integer number of sequence samples, rounding up')
+        #if not samples_cycle.is_integer():
+            #print('WARNING: Non-integer number of sequence samples, rounding up')
         samples_cycle = np.int(np.ceil(samples_cycle))
+        #print(samples_cycle)
         signalDict = {}
         tmpSigArr = np.zeros(samples_cycle, dtype='bool')
         for i, target in enumerate(targets):
@@ -391,10 +393,10 @@ class GalvoScanDesigner(SignalDesigner):
         scanInfoDict = {
                 'n_lines': int(self.axis_length[1]/self.axis_step_size[1]),
                 'pixels_line': pixels_line,
-                'scan_samples_line': int(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep),
+                'scan_samples_line': np.int(round(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep)),
                 'scan_samples_period': samples_period-1,
                 'scan_samples_total': len(fast_axis_signal),
-                'scan_throw_startzero': int(self.__paddingtime / self.__timestep),
+                'scan_throw_startzero': np.int(round(self.__paddingtime / self.__timestep)),
                 'scan_throw_initpos': self._samples_initpos,
                 'scan_throw_settling': self._samples_settling,
                 'scan_throw_startacc': self._samples_startacc,
@@ -695,7 +697,7 @@ class GalvoScanDesigner(SignalDesigner):
         # generate five pieces, three before and two after, to be concatenated to the given positions array
         pos_pre1 = self.__init_positioning(initpos=np.min(pos), v_max=v_max, a_max=a_max)  # initial smooth acceleration piece from 0
         self._samples_initpos = len(pos_pre1)
-        settlinglen = int(self.__settlingtime / self.__timestep)  # initial settling time before first line
+        settlinglen = np.int(round(self.__settlingtime / self.__timestep))  # initial settling time before first line
         pos_pre2 = np.repeat(np.min(pos),settlinglen)  # settling positions
         self._samples_settling = len(pos_pre2)
         pos_pre3 = pos[np.where(pos==np.min(pos))[0][-1]:]  # first half scan curve
@@ -709,7 +711,7 @@ class GalvoScanDesigner(SignalDesigner):
 
     def __zero_padding(self, parameterDict, pos1, pos2):
         """ Pad zeros to the end of two scanning curves, for initial and final settling of galvos """
-        padlen = int(self.__paddingtime / self.__timestep)
+        padlen = np.int(round(self.__paddingtime / self.__timestep))
         # check that the length of pos1 and pos2 are identical
         padlen1 = np.array([padlen,padlen])
         padlen2 = np.array([padlen,padlen])

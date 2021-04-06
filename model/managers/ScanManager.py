@@ -76,9 +76,16 @@ class ScanManager(SuperScanManager):
     def makeFullScan(self, scanParameters, TTLParameters, setupInfo, staticPositioner=False):
 
         if not staticPositioner:
+            #print(scanParameters)
             scanSignalsDict, positions, scanInfoDict = self.__scanDesigner.make_signal(
                 scanParameters, setupInfo, returnFrames=True
             )
+            #print(scanInfoDict)
+            #print(scanInfoDict['scan_samples_total'])
+            #print(round(scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] * float(1e6)))
+            #print(round(scanInfoDict['scan_samples_line'] * scanInfoDict['scan_time_step'] * float(1e6)))
+            #print(round(scanInfoDict['scan_samples_period'] * scanInfoDict['scan_time_step'] * float(1e6)))
+            #print(round(scanInfoDict['dwell_time'] * float(1e6)))
             TTLCycleSignalsDict = self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo, scanInfoDict)
             if not self.checkSignalComp(scanParameters, setupInfo, scanInfoDict):
                 print('Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower scan.')

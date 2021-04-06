@@ -21,22 +21,6 @@
         "cameraListIndex": null,
         "purpose": "acquisition"
       }
-    },
-    "FocusLockCamera": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "TISManager",
-      "managerProperties": {
-        "purpose": "focusLock",
-        "cameraListIndex": 0,
-        "tis": {
-          "exposure": 0,
-          "gain": 0,
-          "brightness": 0,
-          "image_width": 1280,
-          "image_height": 1024
-        }
-      }
     }
   },
   "lasers": {
@@ -216,7 +200,7 @@
     "FFTWidget": false,
     "ULensesWidget": false,
     "SLMWidget": false,
-    "FocusLockWidget": true,
+    "FocusLockWidget": false,
     "MotCorrWidget": false
   },
   "designers": {

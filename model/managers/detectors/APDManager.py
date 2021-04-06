@@ -146,10 +146,10 @@ class ScanWorker(Worker):
         self._pixels_line = round(scanInfoDict['pixels_line'])  # number of pixels per line
         self._samples_line = round(scanInfoDict['scan_samples_line'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # det samples per line: time per line * det sampling rate
         self._samples_period = round(scanInfoDict['scan_samples_period'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # det samples per fast axis period: time per period * det sampling rate
-        samptot = scanInfoDict['scan_samples_total']
-        scantimest = scanInfoDict['scan_time_step']
-        detsamprate = self._manager._detection_samplerate
-        samptotdet = round(samptot * scantimest * detsamprate)
+        #samptot = scanInfoDict['scan_samples_total']
+        #scantimest = scanInfoDict['scan_time_step']
+        #detsamprate = self._manager._detection_samplerate
+        #samptotdet = round(samptot * scantimest * detsamprate)
         #print(f'scansampltot: {samptot}, scantimestep: {scantimest}, detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
         self._samples_total = round(scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # det samples in total signal: time for total scan * det sampling rate
         self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * scanInfoDict['scan_time_step'] * self._manager._detection_samplerate)  # # samples to throw due to the starting zero-padding: time for zero_padding * det sampling rate
@@ -170,7 +170,7 @@ class ScanWorker(Worker):
     def run(self):
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw)
         self._last_value = throwdata[-1]
-        self._alldata += len(throwdata)
+        #self._alldata += len(throwdata)
         #print(f'sw0: throw data shape: {np.shape(throwdata)}')
         while self._line_counter < self._n_lines:
             if self.scanning:
@@ -179,7 +179,7 @@ class ScanWorker(Worker):
                     data = self._manager._nidaqManager.readInputTask(self._name, self._samples_line)  # read a line
                 else:  
                     data = self._manager._nidaqManager.readInputTask(self._name, self._samples_period)  # read a whole period, starting with the line and then the data during the flyback
-                self._alldata += len(data)
+                #self._alldata += len(data)
                 #print(f'sw1.5: length of all data so far: {self._alldata}')
                 #print(f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}')
                 # galvo-sensor-data reading
@@ -197,7 +197,7 @@ class ScanWorker(Worker):
             else:
                 self.close()
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero+self._throw_finalpos)
-        self._alldata += len(throwdata)
+        #self._alldata += len(throwdata)
         #print(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()
         #print(self._name)

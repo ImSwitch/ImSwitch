@@ -212,6 +212,8 @@ class ImRecMainViewController(ImRecWidgetController):
                 np.array(self._scanParDict['steps'], dtype=np.int)) < self._currentData.numFrames:
             print('Too many frames in data')
         else:
+            if self._widget.bleachBool.value(): 
+                self.bleachingCorrection()
             coeffs = self.extractData()
             reconObj = ReconObj(self._currentData.name,
                                 self._scanParDict,
@@ -245,6 +247,14 @@ class ImRecMainViewController(ImRecWidgetController):
             reconObj.addCoeffsTP(coeffs)
             reconObj.updateImages()
             self._widget.addNewData(reconObj)
+
+    def bleachingCorrection(self):
+        data = self._currentData.data
+        energy = np.sum(data, axis=(1, 2))
+        for i in range(data.shape[0]):
+            c = (energy[0]/energy[i])**4
+            self._currentData.data[i,:,:] = data[i, :, :]*c
+    
 
     def saveCurrent(self, dataType=None):
         """Saves the reconstructed image from self.reconstructor to specified

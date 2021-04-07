@@ -77,6 +77,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.parTree = ReconParTree()
         self.showPatBool = self.parTree.p.param('Show pattern')
         self.showPatBool.sigValueChanged.connect(lambda _, v: self.sigShowPatternChanged.emit(v))
+        self.bleachBool = self.parTree.p.param('Bleaching correction')
         self.findPatBtn = self.parTree.p.param('Pattern').param('Find pattern')
         self.findPatBtn.sigActivated.connect(self.sigFindPattern)
         self.scanParWinBtn = self.parTree.p.param('Scanning parameters')
@@ -205,7 +206,8 @@ class ReconParTree(ParameterTree):
                  'values': ['Constant', 'Gaussian', 'No background'], 'children': [
                     {'name': 'BG Gaussian size', 'type': 'float', 'value': 500, 'suffix': 'nm'}]}]},
             {'name': 'Scanning parameters', 'type': 'action'},
-            {'name': 'Show pattern', 'type': 'bool'}]
+            {'name': 'Show pattern', 'type': 'bool'},
+            {'name': 'Bleaching correction', 'type': 'bool'}]
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)

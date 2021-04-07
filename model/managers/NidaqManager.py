@@ -180,6 +180,7 @@ class NidaqManager(SignalInterface):
                 self.busy = True
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 tasklen = 100
+                print(tasklen)
                 dotask = self.__createLineDOTask('setDigitalTask',
                                                  line,
                                                  acquisitionTypeFinite,
@@ -190,6 +191,7 @@ class NidaqManager(SignalInterface):
                 # signal = np.array([enable])
                 signal = enable * np.ones(tasklen, dtype=bool)
                 try:
+                    print(signal)
                     dotask.write(signal, auto_start=True)
                 except:
                     print(' Attempted writing analog data that is too large or too small.')
@@ -208,14 +210,19 @@ class NidaqManager(SignalInterface):
             if not self.busy:
                 self.busy = True
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-
+                tasklen = 10
+                print('setting analog voltage')
+                print(min_val)
+                print(max_val)
+                print(tasklen)
                 aotask = self.__createChanAOTask('setAnalogTask',
                                                  channel,
                                                  acquisitionTypeFinite,
-                                                 '100kHzTimebase',
-                                                 100000, min_val, max_val, 2, False)
+                                                 r'100kHzTimebase',
+                                                 100000, min_val, max_val, tasklen, False)
 
-                signal = voltage*np.ones(2, dtype=np.float)
+                signal = voltage*np.ones(tasklen, dtype=np.float)
+                print(signal)
                 try:
                     aotask.write(signal, auto_start=True)
                 except:

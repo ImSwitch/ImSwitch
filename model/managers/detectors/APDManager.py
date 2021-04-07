@@ -138,7 +138,7 @@ class ScanWorker(Worker):
 
         #self._throw_delay = int(13*20e6/100e3)  # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is actually in the correct place. How do we find this out? Depends on the response of the galvos, can we measure this somehow?
         #self._throw_delay = 15200
-        self._throw_delay = 20
+        self._throw_delay = 25
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
         self._frac_det_dwell = round(self._scan_dwell_time * self._manager._detection_samplerate)  # ratio between detection sampling time and pixel dwell time (has nothing to do with sampling of scanning line)

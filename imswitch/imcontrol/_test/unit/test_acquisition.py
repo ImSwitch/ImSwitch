@@ -13,8 +13,10 @@ def getImage(qtbot, detectorsManager):
 
     detectorsManager.sigImageUpdated.connect(imageUpdated)
 
-    with qtbot.waitSignal(detectorsManager.sigImageUpdated, timeout=30000):
-        handle = detectorsManager.startAcquisition(liveView=True)
+    handle = detectorsManager.startAcquisition(liveView=True)
+    for i in range(3):  # Make sure we get at least 3 images
+        with qtbot.waitSignal(detectorsManager.sigImageUpdated, timeout=30000):
+            pass
 
     detectorsManager.sigImageUpdated.disconnect(imageUpdated)
     detectorsManager.stopAcquisition(handle, liveView=True)

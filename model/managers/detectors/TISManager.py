@@ -23,19 +23,19 @@ class TISManager(DetectorManager):
         #fullShape = (self._camera.getPropertyValue('image_height')[0],
         #             self._camera.getPropertyValue('image_width')[0])
 
-        fullShape = (self._camera.getPropertyValue('image_height'),
-                     self._camera.getPropertyValue('image_width'))
+        fullShape = (self._camera.getPropertyValue('image_width'),
+                     self._camera.getPropertyValue('image_height'))
 
         # Prepare parameters
         parameters = {
-            'Exposure': DetectorNumberParameter(group='Misc', value=0, valueUnits='ms', editable=False),
-            'Gain': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
-            'Brightness': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
-            'Image width': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
-            'Image height': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms', editable=True),
+            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
+            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
+            #'image_width': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
+            #'image_height': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False)
         }
 
-        super().__init__(name, fullShape, [1], model, parameters)
+        super().__init__(name, fullShape, [1, 2], model, parameters)
 
     def getLatestFrame(self):
         return self._camera.grabFrame()
@@ -46,10 +46,10 @@ class TISManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self.__parameters:
+        if name not in self._parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self.__mode.setPropertyValue(name, value)
+        value = self._camera.setPropertyValue(name, value)
         return value
 
     def getParameter(self, name):
@@ -58,10 +58,10 @@ class TISManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self.__parameters:
+        if name not in self._parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self.__mode.getPropertyValue(name)
+        value = self._camera.getPropertyValue(name)
         return value
 
     def setBinning(self, binning):
@@ -79,16 +79,18 @@ class TISManager(DetectorManager):
     def stopAcquisition(self):
         pass
     
+    @property
     def pixelSize(self):
-        pass
+        return tuple([1, 1, 1])
 
     def crop(self, hpos, vpos, hsize, vsize):
         pass
 
     def show_dialog(self):
-        "Manager: open camera settings dialog mock."
-        pass
+        "Manager: open camera settings dialog."
+        self._camera.show_dialog()
 
+        
 def getTISObj(cameraId):
     try:
         from model.interfaces.tiscamera import CameraTIS

@@ -2,6 +2,8 @@ from .basecontrollers import ImScrWidgetController
 
 
 class OutputController(ImScrWidgetController):
+    """ Connected to OutputView. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

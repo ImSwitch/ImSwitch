@@ -2,6 +2,8 @@ from .basecontrollers import ImScrWidgetController
 
 
 class ConsoleController(ImScrWidgetController):
+    """ Connected to ConsoleView. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._widget.setScriptScope(self._scriptScope)

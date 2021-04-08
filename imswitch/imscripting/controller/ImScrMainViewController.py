@@ -6,6 +6,8 @@ from .OutputController import OutputController
 
 
 class ImScrMainViewController(ImScrWidgetController):
+    """ Connected to ImScrMainView. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.filesController = self._factory.createController(FilesController, self._widget.files)

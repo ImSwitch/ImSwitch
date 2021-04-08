@@ -8,6 +8,8 @@ from . import getActionsScope
 
 
 class ScriptExecutor(SignalInterface):
+    """ Handles execution and state of scripts. """
+
     sigOutputAppended = Signal(str)  # (outputText)
     _sigExecute = Signal(str, str)  # (scriptPath, code)
 
@@ -20,16 +22,22 @@ class ScriptExecutor(SignalInterface):
         self._sigExecute.connect(self._executionWorker.execute)
 
     def execute(self, scriptPath, code):
+        """ Executes the specified script code. scriptPath is the path to the
+        script file if if exists, or None if the script has not been saved to a
+        file. """
         self.terminate()
         self._executionThread.start()
         self._sigExecute.emit(scriptPath, code)
 
     def terminate(self):
+        """ Terminates the currently running script. Does nothing if no script
+        is running. """
         if self._executionThread.isRunning():
             print(f'\nTerminated script at {strftime("%Y-%m-%d %H:%M:%S")}')
             self._executionThread.terminate()
 
     def isExecuting(self):
+        """ Returns whether a script is currently being executed. """
         return self._executionThread.isRunning() and self._executionWorker.isWorking()
 
 

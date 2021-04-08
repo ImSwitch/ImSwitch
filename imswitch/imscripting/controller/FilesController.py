@@ -8,6 +8,8 @@ from .basecontrollers import ImScrWidgetController
 
 
 class FilesController(ImScrWidgetController):
+    """ Connected to FilesView. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

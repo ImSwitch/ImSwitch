@@ -4,6 +4,8 @@ from .guitools import BetterPushButton
 
 
 class FilesView(QtWidgets.QWidget):
+    """ View that displays a file tree. """
+
     sigItemDoubleClicked = QtCore.Signal(str)  # (itemPath)
     sigRootPathSubmit = QtCore.Signal(str)  # (rootPath)
     sigBrowseClicked = QtCore.Signal()
@@ -51,6 +53,8 @@ class FilesView(QtWidgets.QWidget):
         self.setLayout(layout)
 
     def setRootPath(self, path):
+        """ Sets the root path of the file tree. Files outside this will not be
+        displayed. """
         self.tree.setRootIndex(self.model.index(path))
         self.rootPathEdit.setText(path)
 

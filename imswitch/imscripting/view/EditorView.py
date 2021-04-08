@@ -6,6 +6,9 @@ from .guitools import BetterPushButton
 
 
 class EditorView(QtWidgets.QTabWidget):
+    """ View that displays a variable amount of editor instances in different
+    tabs, where the user can edit scripts. """
+
     sigRunAllClicked = QtCore.Signal(str, str)  # (instanceID, text)
     sigRunSelectedClicked = QtCore.Signal(str, str)  # (instanceID, selectedText)
     sigStopClicked = QtCore.Signal(str)  # (instanceID)
@@ -21,6 +24,7 @@ class EditorView(QtWidgets.QTabWidget):
         )
 
     def addEditor(self, name):
+        """ Opens a new editor tab. Returns the created editor instance. """
         editorInstance = EditorInstanceView()
         editorInstance.sigRunAllClicked.connect(
             lambda text: self.sigRunAllClicked.emit(editorInstance.getID(), text)
@@ -39,15 +43,19 @@ class EditorView(QtWidgets.QTabWidget):
         return editorInstance
 
     def setEditorName(self, instanceID, name):
+        """ Sets the title of an editor tab. """
         for i in range(self.count()):
             if self.widget(i).getID() == instanceID:
                 self.setTabText(i, name)
                 return
 
     def getCurrentInstance(self):
+        """ Returns the currently active (displayed) editor instance. """
         return self.currentWidget()
 
     def setCurrentInstanceByID(self, instanceID):
+        """ Sets the active (displayed) editor instance to the editor instance
+        with the specified ID. """
         for i in range(self.count()):
             widget = self.widget(i)
             if widget.getID() == instanceID:
@@ -55,12 +63,15 @@ class EditorView(QtWidgets.QTabWidget):
                 return
 
     def getInstanceByID(self, instanceID):
+        """ Returns the editor instance with the specified ID, or None if no
+        editor instance matches. """
         for i in range(self.count()):
             widget = self.widget(i)
             if widget.getID() == instanceID:
                 return widget
 
     def closeInstance(self, instanceID):
+        """ Closes the editor instance with the specified ID. """
         for i in range(self.count()):
             widget = self.widget(i)
             if widget.getID() == instanceID:
@@ -70,6 +81,8 @@ class EditorView(QtWidgets.QTabWidget):
 
 
 class EditorInstanceView(QtWidgets.QWidget):
+    """ A single editor instance where the user can edit scripts. """
+
     sigRunAllClicked = QtCore.Signal(str)  # (text)
     sigRunSelectedClicked = QtCore.Signal(str)  # (selectedText)
     sigStopClicked = QtCore.Signal()
@@ -115,15 +128,20 @@ class EditorInstanceView(QtWidgets.QWidget):
         layout.addWidget(self.scintilla, 3)
 
     def getID(self):
+        """ Returns the ID of the editor instance. Can be passed to certain
+        methods in the containing EditorView. """
         return self.id
 
     def getSelectedText(self):
+        """ Returns the selected text in the editor instance. """
         return self.scintilla.selectedText()
 
     def getText(self):
+        """ Returns all text in the editor instance. """
         return self.scintilla.text()
 
     def setText(self, text):
+        """ Sets the text in the editor instance. """
         self.scintilla.setText(text)
 
 

@@ -3,6 +3,8 @@ from pyqtgraph.console import ConsoleWidget
 
 
 class ConsoleView(ConsoleWidget):
+    """ View that contains a console where the user can run commands. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

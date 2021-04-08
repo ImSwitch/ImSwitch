@@ -7,6 +7,9 @@ from imswitch.imcommon.model import APIExport, generateAPI
 
 
 class _Actions:
+    """ Additional functions intended to be made available through the
+    scripting API. """
+
     def __init__(self, scriptPath=None):
         self._scriptPath = scriptPath
 
@@ -49,6 +52,7 @@ class _Actions:
 
 
 def getActionsScope(scriptPath=None):
+    """ Returns the script scope for the actions. """
     return generateAPI([_Actions(scriptPath)]).toDict()
 
 

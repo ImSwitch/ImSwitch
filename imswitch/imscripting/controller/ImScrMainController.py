@@ -8,6 +8,8 @@ from ..model import getActionsScope
 
 
 class ImScrMainController(MainController):
+    """ Main controller of imscripting. """
+
     def __init__(self, mainView, moduleCommChannel, multiModuleWindow, moduleMainControllers):
         self.__mainView = mainView
         self.__moduleCommChannel = moduleCommChannel

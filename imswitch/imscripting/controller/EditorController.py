@@ -7,6 +7,8 @@ from .basecontrollers import ImScrWidgetController
 
 
 class EditorController(ImScrWidgetController):
+    """ Connected to EditorView. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scriptExecutor = ScriptExecutor(self._scriptScope)
@@ -35,11 +37,15 @@ class EditorController(ImScrWidgetController):
         self.newFile()
 
     def newFile(self):
+        """ Creates a new file. """
         instance = self._widget.addEditor(_untitledFileName)
         self._scriptPaths[instance.getID()] = None
         self._unsavedScripts[instance.getID()] = False
 
     def openFile(self, scriptPath=None):
+        """ Opens an existing file. If scriptPath is None, the user will
+        specify which file will be opened. """
+
         if scriptPath is None:
             scriptPath = guitools.askForFilePath(
                 self._widget, 'Open script', defaultFolder=_scriptsFolderPath, nameFilter='*.py'
@@ -62,6 +68,8 @@ class EditorController(ImScrWidgetController):
         self._unsavedScripts[instance.getID()] = False
 
     def saveFile(self):
+        """ Saves the current file. If it's not already saved to a file, the
+        user will specify the path to save to. """
         instance = self._widget.getCurrentInstance()
         scriptPath = self._scriptPaths[instance.getID()]
         if scriptPath is None:
@@ -73,6 +81,7 @@ class EditorController(ImScrWidgetController):
             self._unsavedScripts[instance.getID()] = False
 
     def saveAsFile(self):
+        """ Saves the current file to the path specified by the user. """
         instance = self._widget.getCurrentInstance()
 
         scriptPath = guitools.askForFilePath(
@@ -86,6 +95,9 @@ class EditorController(ImScrWidgetController):
         self.saveFile()
 
     def runCurrentCode(self, instanceID, code):
+        """ Executes the specified code. instanceID is the ID of the instance
+        that contains the code. """
+
         if self.scriptExecutor.isExecuting():
             if not guitools.askYesNoQuestion(self._widget,
                                              'Warning: Already Executing',
@@ -97,6 +109,9 @@ class EditorController(ImScrWidgetController):
         self.scriptExecutor.execute(self._scriptPaths[instanceID], code)
 
     def stopExecution(self):
+        """ Stops the currently running script. Does nothing if no script is
+        running. """
+
         if not self.scriptExecutor.isExecuting():
             return
 
@@ -127,6 +142,8 @@ class EditorController(ImScrWidgetController):
         del self._unsavedScripts[instanceID]
 
     def getScriptName(self, instanceID):
+        """ Returns the name that should be used for the editor with the
+        specified instance ID. """
         scriptPath = self._scriptPaths[instanceID]
         if scriptPath is not None:
             return os.path.basename(scriptPath)

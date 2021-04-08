@@ -8,6 +8,8 @@ from .OutputView import OutputView
 
 
 class ImScrMainView(QtWidgets.QMainWindow):
+    """ Main view of imscripting. """
+
     sigClosing = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):

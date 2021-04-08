@@ -2,6 +2,8 @@ from PyQt5 import QtGui, QtWidgets
 
 
 class OutputView(QtWidgets.QWidget):
+    """ View that shows the output of scripts. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -16,13 +18,16 @@ class OutputView(QtWidgets.QWidget):
         layout.addWidget(self.outputBox, 1, 1)
 
     def setText(self, text):
+        """ Sets output text. """
         self.outputBox.setPlainText(text)
 
     def appendText(self, text):
+        """ Appends text to the output. """
         self.outputBox.moveCursor(QtGui.QTextCursor.End)
         self.outputBox.insertPlainText(text)
 
     def clearText(self):
+        """ Removes all text in the output view. """
         self.outputBox.clear()
 
 

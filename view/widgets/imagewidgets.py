@@ -228,13 +228,19 @@ class ViewWidget(Widget):
         self.detectorListBox.addWidget(self.detectorList, 1)
         self.detectorListBox.addWidget(self.nextDetectorButton)
 
+        # Detector settings button
+        self.detectorPropsButton = guitools.BetterPushButton('Detector properties')
+        self.detectorPropsButton.setSizePolicy(QtGui.QSizePolicy.Preferred,
+                                               QtGui.QSizePolicy.Expanding)
+
         # Add elements to GridLayout
         self.viewCtrlLayout = QtGui.QGridLayout()
         self.setLayout(self.viewCtrlLayout)
-        self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 2)
-        self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 2)
+        self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 3)
+        self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 3)
         self.viewCtrlLayout.addWidget(self.gridButton, 2, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
+        self.viewCtrlLayout.addWidget(self.detectorPropsButton, 2, 2)
 
     def initControls(self, detectorModels):
         if len(detectorModels) <= 1:

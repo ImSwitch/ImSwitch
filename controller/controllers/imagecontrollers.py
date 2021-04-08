@@ -432,6 +432,7 @@ class ViewController(WidgetController):
         self._widget.liveviewButton.clicked.connect(self.liveview)
         self._widget.detectorList.currentIndexChanged.connect(self.detectorSwitch)
         self._widget.nextDetectorButton.clicked.connect(self.detectorNext)
+        self._widget.detectorPropsButton.clicked.connect(self.showDetectorPropsDialog)
 
     def liveview(self):
         """ Start liveview and activate detector acquisition. """
@@ -441,6 +442,10 @@ class ViewController(WidgetController):
             self._master.detectorsManager.startAcquisition()
         else:
             self._master.detectorsManager.stopAcquisition()
+
+    def showDetectorPropsDialog(self):
+        """ Show the detector properties dialog for the current detector. """
+        self._master.detectorsManager.execOnCurrent(lambda c: c.show_dialog())
 
     def gridToggle(self):
         """ Connect with grid toggle from Image Widget through communication channel. """

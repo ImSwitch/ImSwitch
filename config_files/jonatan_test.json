@@ -30,11 +30,27 @@
             "purpose": "focusLock",
             "cameraListIndex": 0,
             "tis": {
-              "exposure": 0,
-              "gain": 0,
-              "brightness": 0,
+              "exposure": 1,
+              "gain": 1,
+              "brightness": 1,
               "image_width": 1280,
               "image_height": 1024
+            }
+          }
+        },
+        "WidefieldCamera": {
+          "analogChannel": null,
+          "digitalLine": null,
+          "managerName": "TISManager",
+          "managerProperties": {
+            "purpose": "acquisition",
+            "cameraListIndex": 1,
+            "tis": {
+              "exposure": 1,
+              "gain": 1,
+              "brightness": 1,
+              "image_width": 2448,
+              "image_height": 2048
             }
           }
         }
@@ -244,9 +260,9 @@
         "positioner": "PiezoZ",
         "updateFreq": 10,
         "frameCrop_left": 0,
-        "frameCrop_right": 500,
+        "frameCrop_right": 1000,
         "frameCrop_top": 0,
-        "frameCrop_bottom": 600
+        "frameCrop_bottom": 1000
     },
     "designers": {
         "scanDesigner": "GalvoScanDesigner",

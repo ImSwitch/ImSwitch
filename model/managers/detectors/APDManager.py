@@ -18,9 +18,10 @@ class APDManager(DetectorManager):
     def __init__(self, APDInfo, name, nidaqManager, **_kwargs):
         model = name
         self._name = name
-        self.__pixelsizex = 0
-        self.__pixelsizey = 0
-        fullShape = (1000,1000)
+        #self.__pixelsizex = 1
+        #self.__pixelsizey = 1
+        self.setPixelSize(1, 1)
+        fullShape = (100,100)
         self._image = np.random.rand(fullShape[0],fullShape[1])*100
         #self._nidaq_clock_source = r'20MHzTimebase'
         #self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
@@ -71,9 +72,12 @@ class APDManager(DetectorManager):
         self.acquisition = True
 
     def stopAcquisition(self):
-        self._scanWorker.scanning = False
-        self._scanThread.quit()
-        self._scanThread.wait()
+        try:
+            self._scanWorker.scanning = False
+            self._scanThread.quit()
+            self._scanThread.wait()
+        except:
+            pass
 
     def getLatestFrame(self):
         return self._image

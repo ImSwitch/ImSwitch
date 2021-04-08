@@ -13,7 +13,7 @@ def grabFrame(cam):
     # New: just take the R-component, this should anyway contain most information in both cameras. Change this if we want to look at another color, like GFP!
     frame = np.array(frame[0], dtype='float64')
     # Check if below is giving the right dimensions out
-    frame = np.reshape(frame,(2048, 2448,3))[:,:,0]
+    frame = np.reshape(frame,(2048,2448,3))[:,:,0]
     return frame
 
 
@@ -33,10 +33,17 @@ cam.exposure.auto = False
 cam.enable_continuous_mode(True)
 cam.start_live(show_display=False)
 
+print(cam.list_property_names())
+#cam.gain = 100
+print(cam.gain.value)
+cam.show_property_dialog()
+print(cam.gain.value)
+
 #shape = (cam.get_image_description()[0], cam.get_image_description()[1])
 
 img = grabFrame(cam)
 print(np.shape(img))
 print(np.max(img))
-plt.plot(img)
+#plt.plot(img)
+#plt.show()
 

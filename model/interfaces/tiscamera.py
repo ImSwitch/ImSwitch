@@ -67,11 +67,11 @@ class CameraTIS:
 
         # Check if the property exists.
         if property_name == "gain":
-            property_value = self.cam.gain
+            property_value = self.cam.gain.value
         elif property_name == "brightness":
-            property_value = self.cam.brightness
+            property_value = self.cam.brightness.value
         elif property_name == "exposure":
-            property_value = self.cam.exposure
+            property_value = self.cam.exposure.values
         elif property_name == "image_width":
             property_value = self.shape[0]
         elif property_name == "image_height":

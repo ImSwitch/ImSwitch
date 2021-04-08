@@ -4,6 +4,7 @@ from typing import List, Any
 
 import numpy as np
 from framework import Signal, SignalInterface
+import view.guitools as guitools
 
 
 @dataclass
@@ -34,7 +35,7 @@ class DetectorManager(SignalInterface):
 
         self.__name = name
         self.__model = model
-        self.__parameters = parameters
+        self._parameters = parameters
 
         self.__frameStart = (0, 0)
         self.__shape = fullShape
@@ -54,10 +55,10 @@ class DetectorManager(SignalInterface):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self.__parameters:
+        if name not in self._parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        self.__parameters[name].value = value
+        self._parameters[name].value = value
         return self.parameters
 
     @property
@@ -94,12 +95,13 @@ class DetectorManager(SignalInterface):
 
     @property
     def parameters(self):
-        return self.__parameters
+        return self._parameters
 
     @property
     @abstractmethod
     def pixelSize(self):
-        return [self.__pixelsize_ax1, self.__pixelsize_ax2]
+        return [1,1,1]
+        #return [self.__pixelsize_ax1, self.__pixelsize_ax2]
 
     @abstractmethod
     def setBinning(self, binning):

@@ -72,7 +72,7 @@ class NidaqManager(SignalInterface):
                            starttrig=False, reference_trigger='ai/StartTrigger', terminal='PFI0'):
         """ Simplified function to create a counter input task """
         citask = nidaqmx.Task(name)
-        print('Dev1/ctr%s' % channel)
+        #print('Dev1/ctr%s' % channel)
         citaskchannel = citask.ci_channels.add_ci_count_edges_chan('Dev1/ctr%s' % channel,
                                                                    initial_count=0,
                                                                    edge=nidaqmx.constants.Edge.RISING,
@@ -154,14 +154,14 @@ class NidaqManager(SignalInterface):
         elif taskType=='ci':
             task = self.__createChanCITask(taskName, *args)
         task.start()
-        print('start CI task')
+        #print('start CI task')
         self.inputTasks[taskName] = task
 
     def stopInputTask(self, taskName):
         self.inputTasks[taskName].stop()
         self.inputTasks[taskName].close()
         del self.inputTasks[taskName]
-        print(f'Input task deleted: {taskName}')
+        #print(f'Input task deleted: {taskName}')
     
     def readInputTask(self, taskName, samples=0, timeout=False):
         if not timeout:
@@ -180,7 +180,7 @@ class NidaqManager(SignalInterface):
                 self.busy = True
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 tasklen = 100
-                print(tasklen)
+                #print(tasklen)
                 dotask = self.__createLineDOTask('setDigitalTask',
                                                  line,
                                                  acquisitionTypeFinite,
@@ -191,7 +191,7 @@ class NidaqManager(SignalInterface):
                 # signal = np.array([enable])
                 signal = enable * np.ones(tasklen, dtype=bool)
                 try:
-                    print(signal)
+                    #print(signal)
                     dotask.write(signal, auto_start=True)
                 except:
                     print(' Attempted writing analog data that is too large or too small.')
@@ -211,10 +211,10 @@ class NidaqManager(SignalInterface):
                 self.busy = True
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 tasklen = 10
-                print('setting analog voltage')
-                print(min_val)
-                print(max_val)
-                print(tasklen)
+                #print('setting analog voltage')
+                #print(min_val)
+                #print(max_val)
+                #print(tasklen)
                 aotask = self.__createChanAOTask('setAnalogTask',
                                                  channel,
                                                  acquisitionTypeFinite,
@@ -222,11 +222,11 @@ class NidaqManager(SignalInterface):
                                                  100000, min_val, max_val, tasklen, False)
 
                 signal = voltage*np.ones(tasklen, dtype=np.float)
-                print(signal)
+                #print(signal)
                 try:
                     aotask.write(signal, auto_start=True)
                 except:
-                    print(' Attempted writing analog data that is too large or too small.')
+                    print('Attempted writing analog data that is too large or too small.')
                 aotask.wait_until_done()
                 aotask.stop()
                 aotask.close()
@@ -318,26 +318,26 @@ class NidaqManager(SignalInterface):
             self.timerTaskWaiter.start()
             if len(DOsignals) > 0:
                 self.doTask.start()
-                print('DO task started')
+                #print('DO task started')
                 self.doTaskWaiter.start()
             if len(AOsignals) > 0:
                 self.aoTask.start()
-                print('AO task started')
+                #print('AO task started')
                 self.aoTaskWaiter.start()
             self.scanStartSignal.emit()
-            print('Nidaq scan started!')
+            #print('Nidaq scan started!')
     
     def stopOutputTask(self, taskName):
         self.outputTasks[taskName].stop()
         self.outputTasks[taskName].close()
         del self.outputTasks[taskName]
-        print(f'Output task deleted: {taskName}')
+        #print(f'Output task deleted: {taskName}')
 
     def stopTimerTask(self):
         self.timerTask.stop()
         self.timerTask.close()
         del self.timerTask
-        print('Timer task deleted')
+        #print('Timer task deleted')
 
     def taskDoneAO(self):
         if not self.aoTaskWaiter.running and not self.signalSent:
@@ -347,22 +347,23 @@ class NidaqManager(SignalInterface):
             #self.timer.timeout.connect(self.scanDone)
             #self.timer.start(1000)
             self.scanDone()
-            print('AO scan finished!')
+            #print('AO scan finished!')
 
     def taskDoneDO(self):
         if not self.doTaskWaiter.running:
             self.stopOutputTask('do')
-            print('DO scan finished!')
+            #print('DO scan finished!')
 
     def taskDoneTimer(self):
         if not self.timerTaskWaiter.running:
             self.stopTimerTask()
-            print('Timer task finished!')
+            #print('Timer task finished!')
 
     def scanDone(self):
         self.signalSent = True
         self.busy = False
         self.scanDoneSignal.emit()
+        print('Nidaq scan finished!')
 
     def runContinuous(self, digital_targets, digital_signals):
         pass

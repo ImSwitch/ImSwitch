@@ -15,7 +15,7 @@ class FFTController(LiveUpdatedController):
         self.updateRate = 10
         self.it = 0
         self.init = False
-        self.show = False
+        self.showPos = False
 
         # Prepare image computation worker
         self.imageComputationWorker = self.FFTImageComputationWorker()
@@ -29,20 +29,26 @@ class FFTController(LiveUpdatedController):
         self._commChannel.sigUpdateImage.connect(self.update)
 
         # Connect FFTWidget signals
-        self._widget.sigShowToggled.connect(self.showFFT)
-        self._widget.sigChangePosClicked.connect(self.changePos)
+        self._widget.sigShowToggled.connect(self.setShowFFT)
+        self._widget.sigPosToggled.connect(self.setShowPos)
         self._widget.sigPosChanged.connect(self.changePos)
         self._widget.sigUpdateRateChanged.connect(self.changeRate)
         self._widget.sigResized.connect(self.adjustFrame)
 
         self.changeRate(self._widget.getUpdateRate())
-        self.showFFT(self._widget.getShowChecked())
+        self.setShowFFT(self._widget.getShowFFTChecked())
+        self.setShowPos(self._widget.getShowPosChecked())
 
-    def showFFT(self, enabled):
+    def setShowFFT(self, enabled):
         """ Show or hide FFT. """
         self.active = enabled
         self.init = False
         self._widget.img.setOnlyRenderVisible(enabled, render=False)
+
+    def setShowPos(self, enabled):
+        """ Show or hide lines. """
+        self.showPos = enabled
+        self.changePos(self._widget.getPos())
 
     def update(self, im, init):
         """ Update with new detector frame. """
@@ -78,16 +84,14 @@ class FFTController(LiveUpdatedController):
 
     def changePos(self, pos):
         """ Change positions of lines.  """
-        if (pos == self.show) or pos == 0:
+        if not self.showPos or pos == 0:
             self._widget.vline.hide()
             self._widget.hline.hide()
             self._widget.rvline.hide()
             self._widget.lvline.hide()
             self._widget.uhline.hide()
             self._widget.dhline.hide()
-            self.show = 0
         else:
-            self.show = pos
             pos = float(1 / pos)
             imgWidth = self._widget.img.width()
             imgHeight = self._widget.img.height()

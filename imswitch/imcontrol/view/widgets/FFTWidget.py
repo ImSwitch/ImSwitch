@@ -9,7 +9,7 @@ class FFTWidget(Widget):
     """ Displays the FFT transform of the image. """
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
-    sigChangePosClicked = QtCore.Signal()
+    sigPosToggled = QtCore.Signal(bool)  # (enabled)
     sigPosChanged = QtCore.Signal(float)  # (pos)
     sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
     sigResized = QtCore.Signal()
@@ -19,8 +19,9 @@ class FFTWidget(Widget):
 
         # Graphical elements
         self.showCheck = QtWidgets.QCheckBox('Show FFT')
-        self.showCheck.setCheckable = True
-        self.changePosButton = guitools.BetterPushButton('Period (pix)')
+        self.showCheck.setCheckable(True)
+        self.posCheck = guitools.BetterPushButton('Period (pix)')
+        self.posCheck.setCheckable(True)
         self.linePos = QtWidgets.QLineEdit('4')
         self.lineRate = QtWidgets.QLineEdit('0')
         self.labelRate = QtWidgets.QLabel('Update rate')
@@ -61,7 +62,7 @@ class FFTWidget(Widget):
         self.setLayout(grid)
         grid.addWidget(self.cwidget, 0, 0, 1, 6)
         grid.addWidget(self.showCheck, 1, 0, 1, 1)
-        grid.addWidget(self.changePosButton, 2, 0, 1, 1)
+        grid.addWidget(self.posCheck, 2, 0, 1, 1)
         grid.addWidget(self.linePos, 2, 1, 1, 1)
         grid.addWidget(self.labelRate, 2, 2, 1, 1)
         grid.addWidget(self.lineRate, 2, 3, 1, 1)
@@ -69,7 +70,7 @@ class FFTWidget(Widget):
 
         # Connect signals
         self.showCheck.toggled.connect(self.sigShowToggled)
-        self.changePosButton.clicked.connect(self.sigChangePosClicked)
+        self.posCheck.toggled.connect(self.sigPosToggled)
         self.linePos.textChanged.connect(
             lambda: self.sigPosChanged.emit(self.getPos())
         )
@@ -78,8 +79,11 @@ class FFTWidget(Widget):
         )
         self.vb.sigResized.connect(self.sigResized)
 
-    def getShowChecked(self):
+    def getShowFFTChecked(self):
         return self.showCheck.isChecked()
+
+    def getShowPosChecked(self):
+        return self.posCheck.isChecked()
 
     def getPos(self):
         return float(self.linePos.text())

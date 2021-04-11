@@ -48,21 +48,28 @@ class DetectorsManager(MultiManager, SignalInterface):
         return self._currentDetectorName is not None
 
     def getAllDetectorNames(self):
+        """ Returns the names of all managed detectors. """
         return list(self._subManagers.keys())
 
     def getCurrentDetectorName(self):
+        """ Returns the name of the current detector. """
+
         if not self.hasDetectors():
             raise NoDetectorsError
 
         return self._currentDetectorName
 
     def getCurrentDetector(self):
+        """ Returns the current detector. """
+
         if not self.hasDetectors():
             raise NoDetectorsError
 
         return self._subManagers[self._currentDetectorName]
 
     def setCurrentDetector(self, detectorName):
+        """ Sets the current detector by its name. """
+
         self._validateManagedDeviceName(detectorName)
 
         oldDetectorName = self._currentDetectorName
@@ -80,6 +87,11 @@ class DetectorsManager(MultiManager, SignalInterface):
         return self.execOn(self._currentDetectorName, func)
 
     def startAcquisition(self, liveView=False):
+        """ Starts detector acquisition if it is not already started. If
+        liveView is True, sigImageUpdated will be emitted for every new frame.
+        Returns a handle that can be passed to stopAcquisition when the
+        detector data is no longer needed. """
+
         self._activeAcqsMutex.lock()
         try:
             # Generate handle that will be used to stop acquisition
@@ -107,6 +119,9 @@ class DetectorsManager(MultiManager, SignalInterface):
         return handle
 
     def stopAcquisition(self, handle, liveView=False):
+        """ Stops detector acquisition if it is not already stopped and no
+        other handle is active. """
+
         self._activeAcqsMutex.lock()
         try:
             # Remove from handle list and set disable acquisition/LV flags if not already disabled

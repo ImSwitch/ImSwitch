@@ -209,6 +209,7 @@ class RecordingWidget(Widget):
         self.saveModeList.setCurrentIndex(saveMode - 1)
 
     def setSaveModeVisible(self, value):
+        self.saveModeLabel.setVisible(value)
         self.saveModeList.setVisible(value)
 
     def setCustomFilenameEnabled(self, enabled):

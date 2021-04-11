@@ -18,13 +18,18 @@ class ModuleCommunicationChannel(SignalInterface):
         self.__registeredModules = set()
 
     def register(self, modulePackage):
-        self.__registeredModules.add(modulePackage.__name__)
+        self.__registeredModules.add(self.getModuleId(modulePackage))
 
     def unregister(self, modulePackage):
-        self.__registeredModules.remove(modulePackage.__name__)
+        self.__registeredModules.remove(self.getModuleId(modulePackage))
 
-    def isModuleRegistered(self, moduleName):
-        return moduleName in self.__registeredModules
+    def getModuleId(self, modulePackage):
+        moduleId = modulePackage.__name__
+        moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        return moduleId
+
+    def isModuleRegistered(self, moduleId):
+        return moduleId in self.__registeredModules
 
 
 # Copyright (C) 2020, 2021 TestaLab

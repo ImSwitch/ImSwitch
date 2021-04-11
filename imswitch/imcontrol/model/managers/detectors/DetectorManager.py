@@ -26,6 +26,9 @@ class DetectorListParameter(DetectorParameter):
 
 
 class DetectorManager(SignalInterface):
+    """ Abstract class for a manager for controlling detectors. Intended to be
+    extended for each type of detector. """
+
     sigImageUpdated = Signal(np.ndarray, bool)
 
     @abstractmethod

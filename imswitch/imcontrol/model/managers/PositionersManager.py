@@ -2,6 +2,9 @@ from .MultiManager import MultiManager
 
 
 class PositionersManager(MultiManager):
+    """ PositionersManager interface for dealing with PositionerManagers. It is
+    a MultiManager for positioners. """
+
     def __init__(self, positionerInfos, **kwargs):
         super().__init__(positionerInfos, 'positioners', **kwargs)
 

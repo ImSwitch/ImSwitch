@@ -7,6 +7,8 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 
 
 class NidaqManager(SignalInterface):
+    """ For interaction with NI-DAQ hardware interfaces. """
+
     sigScanDone = Signal()
 
     def __init__(self, setupInfo):

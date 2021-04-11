@@ -10,6 +10,9 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 
 
 class RecordingManager(SignalInterface):
+    """ RecordingManager handles single frame captures as well as continuous
+    recordings of detector data. """
+
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
     sigRecordingTimeUpdated = Signal(int)  # (recTime)
@@ -26,6 +29,7 @@ class RecordingManager(SignalInterface):
         
     @property
     def record(self):
+        """ Whether a recording is currently being recorded. """
         return self.__record
 
     @property
@@ -34,6 +38,11 @@ class RecordingManager(SignalInterface):
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs, pixelSizeUm,
                        recFrames=None, recTime=None):
+        """ Starts a recording with the specified detectors, recording mode,
+        file name prefix, attributes to save to the recording per detector and
+        detector pixel size per detector. In SpecFrames mode, recFrames (the
+        number of frames) must be specified, and in SpecTime mode, recTime (the
+        recording time in seconds) must be specified. """
         self.__record = True    
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
@@ -47,6 +56,9 @@ class RecordingManager(SignalInterface):
         self.__thread.start()
 
     def endRecording(self, emitSignal=True, wait=True):
+        """ Ends the current recording. Unless emitSignal is false, the
+        sigRecordingEnded signal will be emitted. Unless wait is False, this
+        method will wait until the recording is complete before returning. """
         self.__record = False
         self.__thread.quit()
         if emitSignal:
@@ -55,6 +67,9 @@ class RecordingManager(SignalInterface):
             self.__thread.wait()
     
     def snap(self, detectorNames, savename, attrs, pixelSizeUm):
+        """ Saves a single frame capture with the specified detectors to a file
+        with the specified name prefix, attributes to save to the capture per
+        detector and detector pixel size per detector. """
         for detectorName in detectorNames:
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 

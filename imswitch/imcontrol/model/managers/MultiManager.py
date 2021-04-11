@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 
 
 class MultiManager(ABC):
+    """ Abstract class for a manager used to control a group of sub-managers.
+    Intended to be extended for each type of manager. """
+
     @abstractmethod
     def __init__(self, managedDeviceInfos, subManagersPackage, **kwargs):
         self._subManagers = {}

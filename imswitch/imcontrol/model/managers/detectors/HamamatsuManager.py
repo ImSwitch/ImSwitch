@@ -4,8 +4,8 @@ from .DetectorManager import (
 
 
 class HamamatsuManager(DetectorManager):
-    """HamamatsuManager deals with the Hamamatsu parameters and frame extraction
-    for a Hamamatsu camera."""
+    """ DetectorManager that deals with the Hamamatsu parameters and frame
+    extraction for a Hamamatsu camera. """
 
     def __init__(self, cameraInfo, name, **_kwargs):
         self._camera = getCameraObj(cameraInfo.managerProperties['cameraListIndex'])

@@ -2,6 +2,9 @@ from .MultiManager import MultiManager
 
 
 class LasersManager(MultiManager):
+    """ LasersManager is an interface for dealing with LaserManagers. It is a
+    MultiManager for lasers. """
+
     def __init__(self, laserInfos, **kwargs):
         super().__init__(laserInfos, 'lasers', **kwargs)
 

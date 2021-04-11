@@ -2,9 +2,9 @@ name: imswitch-test
 
 on:
   push:
-    branches: [ scripting-and-testing ]
+    branches: [ master ]
   pull_request:
-    branches: [ scripting-and-testing ]
+    branches: [ master ]
 
 jobs:
   build:

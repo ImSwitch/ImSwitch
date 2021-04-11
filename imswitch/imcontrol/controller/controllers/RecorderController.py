@@ -63,7 +63,7 @@ class RecorderController(ImConWidgetController):
         attrs, pixelSizeUm = self._commChannel.getCamAttrs()
         for attrDict in attrs.values():
             attrDict.update(self._commChannel.sharedAttrs.getHDF5Attributes())
-        self._master.recordingManager.snap(detectorNames, savename, attrs)
+        self._master.recordingManager.snap(detectorNames, savename, attrs, pixelSizeUm)
 
     def toggleREC(self, checked):
         """ Start or end recording. """

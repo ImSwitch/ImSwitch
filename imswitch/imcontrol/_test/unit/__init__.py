@@ -17,10 +17,10 @@ detectorInfosBasic = {
                 'trigger_source': 1,
                 'subarray_hpos': 0,
                 'subarray_vpos': 0,
-                'subarray_hsize': 2048,
-                'subarray_vsize': 2048,
-                'image_width': 2048,
-                'image_height': 2048
+                'subarray_hsize': 1024,
+                'subarray_vsize': 1024,
+                'image_width': 1024,
+                'image_height': 1024
             }
         }
     )
@@ -43,10 +43,10 @@ detectorInfosMulti = {
                 'trigger_source': 1,
                 'subarray_hpos': 0,
                 'subarray_vpos': 0,
-                'subarray_hsize': 1024,
-                'subarray_vsize': 1024,
-                'image_width': 1024,
-                'image_height': 1024
+                'subarray_hsize': 512,
+                'subarray_vsize': 512,
+                'image_width': 512,
+                'image_height': 512
             }
         }
     )
@@ -69,10 +69,10 @@ detectorInfosNonSquare = {
                 'trigger_source': 1,
                 'subarray_hpos': 0,
                 'subarray_vpos': 0,
-                'subarray_hsize': 2048,
-                'subarray_vsize': 1234,
-                'image_width': 2048,
-                'image_height': 1234
+                'subarray_hsize': 1024,
+                'subarray_vsize': 761,
+                'image_width': 1024,
+                'image_height': 761
             }
         }
     )

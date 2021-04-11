@@ -12,13 +12,15 @@ def record(qtbot, detectorInfos, *args, **kwargs):
     def memoryRecordingAvailable(name, file, _, savedToDisk):
         nonlocal filePerDetector, savedToDiskPerDetector
         filePerDetector[name], savedToDiskPerDetector[name] = file, savedToDisk
+        return True
 
-    recordingManager.sigMemoryRecordingAvailable.connect(memoryRecordingAvailable)
     recordingManager.startRecording(*args, **kwargs)
-    for i in range(len(detectorInfos)):
-        with qtbot.waitSignal(recordingManager.sigMemoryRecordingAvailable, timeout=30000):
-            pass
-    recordingManager.sigMemoryRecordingAvailable.disconnect(memoryRecordingAvailable)
+    with qtbot.waitSignals(
+        [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos],
+        check_params_cbs=[memoryRecordingAvailable for _ in detectorInfos],
+        timeout=30000
+    ):
+        pass
 
     return filePerDetector, savedToDiskPerDetector
 
@@ -47,6 +49,7 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
     for file in filePerDetector.values():
         dataset = file.get('data')
         assert dataset.shape[0] == numFrames
+        file.close()  # Otherwise we can get segfaults
     for savedToDisk in savedToDiskPerDetector.values():
         assert savedToDisk is False
 
@@ -75,6 +78,7 @@ def test_recording_spec_time(qtbot, detectorInfos):
     for file in filePerDetector.values():
         dataset = file.get('data')
         assert dataset.shape[0] > 0
+        file.close()  # Otherwise we can get segfaults
     for savedToDisk in savedToDiskPerDetector.values():
         assert savedToDisk is False
 

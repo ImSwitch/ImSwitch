@@ -5,6 +5,9 @@ from .LaserManager import LaserManager
 
 
 class FullDigitalLaserManager(LaserManager):
+    """ LaserManager for lasers that are fully digitally controlled using
+    drivers available through Lantz. """
+
     def __init__(self, laserInfo, name, **_kwargs):
         self._digitalMod = False
 

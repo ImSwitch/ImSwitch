@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class LaserManager(ABC):
+    """ Abstract class for a manager for controlling lasers. Intended to be
+    extended for each type of laser. """
+
     @abstractmethod
     def __init__(self, name, isBinary, isDigital, wavelength,
                  valueRangeMin, valueRangeMax, valueUnits):

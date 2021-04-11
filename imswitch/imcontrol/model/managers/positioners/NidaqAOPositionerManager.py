@@ -2,6 +2,8 @@ from .PositionerManager import PositionerManager
 
 
 class NidaqAOPositionerManager(PositionerManager):
+    """ PositionerManager for analog NI-DAQ-controlled positioners. """
+
     def __init__(self, positionerInfo, name, **kwargs):
         self._nidaqManager = kwargs['nidaqManager']
         self._conversionFactor = positionerInfo.managerProperties['conversionFactor']

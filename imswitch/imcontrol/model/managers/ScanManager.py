@@ -8,25 +8,23 @@ class ScanManagerFactory:
     """Factory class for creating a ScanManager object. Factory checks
     that the new object is a valid ScanManager."""
 
-    def __new__(cls, className, *args):
-        scanManager = globals()[className](*args)
+    def __new__(cls, className, setupInfo, *args):
+        scanManager = globals()[className](setupInfo, *args)
         if scanManager.isValidChild():
             return scanManager
 
 
 class SuperScanManager:
-    def __init__(self):
-        self.isValidScanManager = self.__isValidScanManager
-        self.isValidChild = self.isValidScanManager
-
-    def __isValidScanManager(self):  # For future possivle implementation
+    def isValidChild(self):  # For future possible implementation
         return True
 
-    def _parameterCompatibility(self, parameterDict=None):
+    def _parameterCompatibility(self, parameterDict):
         raise NotImplementedError("Method not implemented in child")
 
 
 class ScanManager(SuperScanManager):
+    """ ScanManager helps with generating signals for scanning. """
+
     def __init__(self, setupInfo):
         super().__init__()
         self.__stageScanDesigner = SignalDesignerFactory(setupInfo, 'stageScanDesigner')
@@ -54,9 +52,12 @@ class ScanManager(SuperScanManager):
         #     raise IncompatibilityError('Incompatible sync parameters')
 
     def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
+        """ Generates TTL scan signals. """
         return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
 
     def makeFullScan(self, stageScanParameters, TTLParameters, setupInfo, staticPositioner=False):
+        """ Generates stage and TTL scan signals. """
+
         TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, setupInfo)
 
         # Calculate samples to zero pad TTL signals with
@@ -83,61 +84,6 @@ class ScanManager(SuperScanManager):
         return {'stageScanSignalsDict': stageScanSignalsDict,
                 'TTLCycleSignalsDict': TTLCycleSignalsDict}
 
-
-""" Developement testing """
-if __name__ == '__main__':
-    print('Running main')
-    import matplotlib.pyplot as plt
-
-    Stageparameters = {'Targets[x]': ['Stage_X', 'Stage_Y', 'Stage_Z'],
-                       'Sizes[x]': [5, 5, 5],
-                       'Step_sizes[x]': [1, 1, 1],
-                       'Start[x]': [0, 0, 0],
-                       'Sequence_time_seconds': 0.005,
-                       'Sample_rate': 100000,
-                       'Return_time_seconds': 0.001}
-    TTLparameters = {'Targets[x]': ['405', '488'],
-                     'TTLStarts[x,y]': [[0.0001, 0.004], [0, 0]],
-                     'TTLEnds[x,y]': [[0.0015, 0.005], [0, 0]],
-                     'Sequence_time_seconds': 0.005,
-                     'Sample_rate': 100000}
-
-    SyncParameters = {'TTLRepetitions': 6, 'TTLZeroPad_seconds': 0.001, 'Sample_rate': 100000}
-    sh = ScanManagerFactory('ScanManager')
-    fullsig = sh.makeFullScan(Stageparameters, TTLparameters)
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_X'])
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_Y'])
-    plt.plot(fullsig['stageScanSignalsDict']['Stage_Z'])
-
-    plt.figure()
-    plt.plot(fullsig['TTLCycleSignalsDict']['405'])
-
-    """
-    parameters = {'Targets[x]': ['StageX', 'StageY', 'StageZ'], \
-                  'Sizes[x]':[5,5,5], \
-                  'Step_sizes[x]': [1,1,1], \
-                  'Sequence_time_seconds': 0.005, \
-                  'Sample_rate': 100000, \
-                  'Return_time_seconds': 0.001}
-    ssd = SignalDesignerFactory('stageScanDesigner', parameters)        
-    sig_dict = ssd.make_signal(parameters)
-    
-    parameters = {'Targets[x]': ['405', '488'], \
-                  'TTLStarts[x,y]': [[0.0012, 0.002], [0, 0]], \
-                  'TTLEnds[x,y]': [[0.0015, 0.0025], [0, 0]], \
-                  'Sequence_time_seconds': 0.005, \
-                  'Sample_rate': 100000}
-    ttldesigner = SignalDesignerFactory('TTLCycleDesigner', parameters)
-    ttlDict = ttldesigner.make_signal(parameters)
-    """
-    """
-    d = {'hej': 1, 'då': 2}
-    
-    for key, value in d.items():
-        print(key)
-        value = 3
-        print(value)
-   """
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

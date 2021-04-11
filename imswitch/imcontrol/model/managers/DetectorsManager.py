@@ -7,7 +7,8 @@ from .MultiManager import MultiManager
 
 
 class DetectorsManager(MultiManager, SignalInterface):
-    """ DetectorsManager is an interface for dealing with DetectorManagers. """
+    """ DetectorsManager is an interface for dealing with DetectorManagers. It
+    is a MultiManager for detectors. """
 
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()

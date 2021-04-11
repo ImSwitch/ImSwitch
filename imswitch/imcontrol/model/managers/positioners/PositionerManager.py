@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class PositionerManager(ABC):
+    """ Abstract class for a manager for controlling positioners. Intended to
+    be extended for each type of positioner. """
+
     @abstractmethod
     def __init__(self, name, initialPosition):
         self.__name = name
@@ -17,14 +20,15 @@ class PositionerManager(ABC):
 
     @abstractmethod
     def move(self, dist):
-        """Moves the positioner by the specified distance and returns the new
-        position. Derived classes will update the position field manually."""
+        """ Moves the positioner by the specified distance and returns the new
+        position. Derived classes will update the position field manually. """
         pass
 
     @abstractmethod
     def setPosition(self, position):
-        """Adjusts the positioner to the specified position and returns the new
-        position. Derived classes will update the position field manually."""
+        """ Adjusts the positioner to the specified position and returns the
+        new position. Derived classes will update the position field manually.
+        """
         pass
 
     def finalize(self):

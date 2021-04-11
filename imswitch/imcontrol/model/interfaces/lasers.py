@@ -1,6 +1,6 @@
 import importlib
 
-from .mockers import MockLaser
+from .lasers_mock import MockLaser
 
 
 class FullDigitalLaser:

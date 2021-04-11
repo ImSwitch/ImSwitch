@@ -1,3 +1,4 @@
 from .hamamatsu import HamamatsuCamera, HamamatsuCameraMR
+from .hamamatsu_mock import MockHamamatsu
 from .lasers import FullDigitalLaser
-from .mockers import MockHamamatsu, MockLaser
+from .lasers_mock import MockLaser

@@ -44,9 +44,7 @@
 import ctypes
 import ctypes.util
 import numpy as np
-import time
 
-print(r'C:\Users\testaRES\Desktop\WinPython-64bit-3.3.5.9\python-3.3.5.amd64\Lib\site-packages\lantz\drivers\hamamatsu')
 
 # Hamamatsu constants.
 DCAMCAP_EVENT_FRAMEREADY = int("0x0002", 0)

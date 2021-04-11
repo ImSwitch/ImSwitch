@@ -1,104 +1,9 @@
-
-
 import ctypes
 import ctypes.util
-import logging
 
 import numpy as np
-from lantz import Action, Feat
 from lantz import Driver
 from lantz import Q_
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s',
-                    datefmt='%Y-%d-%m %H:%M:%S')
-
-
-class constants:
-
-    def __init__(self):
-        self.GND = 0
-
-
-class MockLaser(Driver):
-
-    def __init__(self):
-        super().__init__()
-
-        self.mW = Q_(1, 'mW')
-
-        self.enabled = False
-        self.power_sp = 0 * self.mW
-        self._digMod = False
-
-    @property
-    def idn(self):
-        return 'Simulated laser'
-
-    @property
-    def status(self):
-        """Current device status
-        """
-        return 'Simulated laser status'
-
-    # ENABLE LASER
-    @property
-    def enabled(self):
-        """Method for turning on the laser
-        """
-        return self.enabled_state
-
-    @enabled.setter
-    def enabled(self, value):
-        self.enabled_state = value
-
-    # LASER'S CONTROL MODE AND SET POINT
-
-    @property
-    def power_sp(self):
-        """To handle output power set point (mW) in APC Mode
-        """
-        return self.power_setpoint
-
-    @power_sp.setter
-    def power_sp(self, value):
-        self.power_setpoint = value
-
-    # LASER'S CURRENT STATUS
-
-    @property
-    def power(self):
-        """To get the laser emission power (mW)
-        """
-        return 55555 * self.mW
-
-    def enter_mod_mode(self):
-        self._digMod = True
-
-    @property
-    def digital_mod(self):
-        """digital modulation enable state
-        """
-        return self._digMod
-
-    @digital_mod.setter
-    def digital_mod(self, value):
-        self._digMod = value
-
-    def mod_mode(self):
-        """Returns the current operating mode
-        """
-        return 0
-
-    @Feat(units='mW')
-    def power_mod(self):
-        return 0
-
-    @power_mod.setter
-    def power_mod(self, value):
-        pass
-
-    def query(self, text):
-        return 0
 
 
 class HMockCamData:
@@ -419,52 +324,6 @@ class MockHamamatsu(Driver):
     def shutdown(self):
         pass
 
-
-class MockPZT(Driver):
-    """Mock Driver for the nv401.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.pos = 0
-
-    def query(self, command, *,
-              send_args=(None, None), recv_args=(None, None)):
-        return 'Mock PZT'
-
-    @Feat(units='micrometer')
-    def position(self):
-        return self.pos
-
-    @position.setter
-    def position(self, value):
-        self.pos = value
-
-    @Action()
-    def zero_position(self):
-        self.pos = 0
-
-    @Action(units='micrometer', limits=(100,))
-    def moveAbsolute(self, value):
-        self.pos = value
-
-    @Action(units='micrometer')
-    def moveRelative(self, value):
-        self.pos = self.pos + value
-
-
-class MockWebcam(Driver):
-
-    def grab_image(self, **kwargs):
-        img = np.zeros((256, 320))
-        beamCenter = [int(np.random.randn() * 10 + 123),
-                      int(np.random.randn() * 10 + 155)]
-        img[beamCenter[0] - 10:beamCenter[0] + 10,
-        beamCenter[1] - 10:beamCenter[1] + 10] = 1
-        return img
-
-    def stop(self):
-        pass
 
 # Copyright (C) 2017 Federico Barabas
 # This file is part of Tormenta.

@@ -1,5 +1,9 @@
 import os
 import pydoc
+import re
+
+import html2text
+import m2r
 
 from imswitch.imcommon import prepareApp, constants
 from imswitch.imcommon.controller import ModuleCommunicationChannel
@@ -7,11 +11,25 @@ from imswitch.imscripting.model.actions import _Actions
 
 from imswitch import imcontrol, imreconstruct
 
+
+def writeDocs(cls):
+    obj, name = pydoc.resolve(cls)
+    html = pydoc.html.page(pydoc.describe(obj), pydoc.html.document(obj, name))
+
+    markdown = html2text.html2text(html)
+    markdown = markdown.replace('`', '')
+    markdown = re.sub(r'^[ \t|]+', '', markdown, flags=re.MULTILINE)
+
+    rst = m2r.convert(markdown)
+
+    with open(os.path.join(apiDocsDir, f'{cls.__name__}.rst'), 'w') as file:
+        file.write(rst)
+
+
 # Create and set working directory
 docsDir = os.path.join(constants.rootFolderPath, 'docs')
 apiDocsDir = os.path.join(docsDir, 'api')
 os.makedirs(apiDocsDir, exist_ok=True)
-os.chdir(apiDocsDir)
 
 # Generate docs for modules
 dummyApp = prepareApp()
@@ -36,7 +54,7 @@ for modulePackage in modules:
     for key, value in mainController.api.items():
         setattr(API, key, value)
 
-    pydoc.writedoc(API)
+    writeDocs(API)
 
 dummyApp.exit(0)
 
@@ -50,7 +68,7 @@ for subObjName in dir(_Actions):
     if hasattr(subObj, '_APIExport') and subObj._APIExport:
         setattr(_actions, subObjName, subObj)
 
-pydoc.writedoc(_actions)
+writeDocs(_actions)
 
 
 # Copyright (C) 2020, 2021 TestaLab

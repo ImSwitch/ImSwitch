@@ -6,7 +6,12 @@ from .LaserManager import LaserManager
 
 class FullDigitalLaserManager(LaserManager):
     """ LaserManager for lasers that are fully digitally controlled using
-    drivers available through Lantz. """
+    drivers available through Lantz.
+
+    Available manager properties:
+    * digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
+    * digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+    """
 
     def __init__(self, laserInfo, name, **_kwargs):
         self._digitalMod = False

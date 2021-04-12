@@ -2,7 +2,13 @@ from .PositionerManager import PositionerManager
 
 
 class NidaqAOPositionerManager(PositionerManager):
-    """ PositionerManager for analog NI-DAQ-controlled positioners. """
+    """ PositionerManager for analog NI-DAQ-controlled positioners.
+
+    Available manager properties:
+    * conversionFactor -- float
+    * minVolt -- minimum voltage
+    * maxVolt -- maximum voltage
+    """
 
     def __init__(self, positionerInfo, name, **kwargs):
         self._nidaqManager = kwargs['nidaqManager']

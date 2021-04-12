@@ -2,7 +2,10 @@ from .LaserManager import LaserManager
 
 
 class NidaqAOLaserManager(LaserManager):
-    """ LaserManager for analog NI-DAQ-controlled lasers. """
+    """ LaserManager for analog NI-DAQ-controlled lasers.
+
+    Available manager properties: None
+    """
 
     def __init__(self, laserInfo, name, **kwargs):
         self._nidaqManager = kwargs['nidaqManager']

@@ -5,7 +5,12 @@ from .DetectorManager import (
 
 class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
-    extraction for a Hamamatsu camera. """
+    extraction for a Hamamatsu camera.
+
+    Available manager properties:
+    * cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at 0)
+    * hamamatsu -- dictionary of DCAM API properties
+    """
 
     def __init__(self, cameraInfo, name, **_kwargs):
         self._camera = getCameraObj(cameraInfo.managerProperties['cameraListIndex'])

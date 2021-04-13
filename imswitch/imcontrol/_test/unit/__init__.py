@@ -7,7 +7,7 @@ detectorInfosBasic = {
         digitalLine=3,
         managerName='HamamatsuManager',
         managerProperties={
-            'cameraListIndex': 0,
+            'cameraListIndex': 'mock',
             'hamamatsu': {
                 'readout_speed': 3,
                 'trigger_global_exposure': 5,
@@ -33,7 +33,7 @@ detectorInfosMulti = {
         digitalLine=5,
         managerName='HamamatsuManager',
         managerProperties={
-            'cameraListIndex': 0,
+            'cameraListIndex': 'mock',
             'hamamatsu': {
                 'readout_speed': 3,
                 'trigger_global_exposure': 5,
@@ -59,7 +59,7 @@ detectorInfosNonSquare = {
         digitalLine=3,
         managerName='HamamatsuManager',
         managerProperties={
-            'cameraListIndex': 0,
+            'cameraListIndex': 'mock',
             'hamamatsu': {
                 'readout_speed': 3,
                 'trigger_global_exposure': 5,

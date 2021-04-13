@@ -1,8 +1,11 @@
-def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
+def getMainViewAndController(moduleCommChannel, *_args, overrideSetupInfo=None, **_kwargs):
     from .controller import configfileutils, ImConMainController
     from .view import ViewSetupInfo, ImConMainView
 
-    setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
+    if overrideSetupInfo is None:
+        setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
+    else:
+        setupInfo = overrideSetupInfo
 
     view = ImConMainView(setupInfo)
     try:

@@ -1,5 +1,7 @@
 from pyqtgraph.Qt import QtWidgets
 
+from imswitch.imcommon.model import APIExport
+
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
     def __init__(self, title, *args, **kwargs):
@@ -18,7 +20,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self._moduleIdNameMap[moduleId] = moduleName
         self.moduleTabs.addTab(moduleWidget, moduleName)
 
+    @APIExport
     def setCurrentModule(self, moduleId):
+        """ Sets the currently displayed module to the module with the
+        specified ID (e.g. "imcontrol"). """
         moduleName = self._moduleIdNameMap[moduleId]
         for i in range(self.moduleTabs.count()):
             if self.moduleTabs.tabText(i) == moduleName:

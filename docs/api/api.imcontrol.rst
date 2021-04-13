@@ -5,7 +5,7 @@
 class **api.imcontrol**\ (\ `builtins.object <builtins.html#object>`_\ )  
 ----------------------------------------------------------------------------
 
-These functions are available in api.imcontrol.  
+These functions are available in the api.imcontrol object.  
 
 Methods defined here:  
 

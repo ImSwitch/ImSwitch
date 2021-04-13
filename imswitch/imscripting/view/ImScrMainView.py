@@ -10,6 +10,10 @@ from .OutputView import OutputView
 class ImScrMainView(QtWidgets.QMainWindow):
     """ Main view of imscripting. """
 
+    sigNewFile = QtCore.Signal()
+    sigOpenFile = QtCore.Signal()
+    sigSaveFile = QtCore.Signal()
+    sigSaveAsFile = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -22,15 +26,19 @@ class ImScrMainView(QtWidgets.QMainWindow):
 
         self.newFileAction = QtWidgets.QAction('New…', self)
         self.newFileAction.setShortcut('Ctrl+N')
+        self.newFileAction.triggered.connect(self.sigNewFile)
         file.addAction(self.newFileAction)
         self.openFileAction = QtWidgets.QAction('Open…', self)
         self.openFileAction.setShortcut('Ctrl+O')
+        self.openFileAction.triggered.connect(self.sigOpenFile)
         file.addAction(self.openFileAction)
         self.saveFileAction = QtWidgets.QAction('Save', self)
         self.saveFileAction.setShortcut('Ctrl+S')
+        self.saveFileAction.triggered.connect(self.sigSaveFile)
         file.addAction(self.saveFileAction)
         self.saveAsFileAction = QtWidgets.QAction('Save as…', self)
         self.saveAsFileAction.setShortcut('Ctrl+Shift+S')
+        self.saveAsFileAction.triggered.connect(self.sigSaveAsFile)
         file.addAction(self.saveAsFileAction)
 
         # Main layout

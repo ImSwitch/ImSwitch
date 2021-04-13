@@ -16,10 +16,10 @@ class ImScrMainViewController(ImScrWidgetController):
         self.outputController = self._factory.createController(OutputController, self._widget.output)
 
         # Connect signals
-        self._widget.newFileAction.triggered.connect(self._commChannel.sigNewFile)
-        self._widget.openFileAction.triggered.connect(self._commChannel.sigOpenFile)
-        self._widget.saveFileAction.triggered.connect(self._commChannel.sigSaveFile)
-        self._widget.saveAsFileAction.triggered.connect(self._commChannel.sigSaveAsFile)
+        self._widget.sigNewFile.connect(self._commChannel.sigNewFile)
+        self._widget.sigOpenFile.connect(self._commChannel.sigOpenFile)
+        self._widget.sigSaveFile.connect(self._commChannel.sigSaveFile)
+        self._widget.sigSaveAsFile.connect(self._commChannel.sigSaveAsFile)
 
 
 # Copyright (C) 2020, 2021 TestaLab

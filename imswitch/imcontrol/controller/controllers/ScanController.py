@@ -1,5 +1,6 @@
 import configparser
 import os
+from ast import literal_eval
 
 import numpy as np
 
@@ -129,10 +130,14 @@ class ScanController(SuperScanController):
         config.read(filePath)
 
         for key in self._stageParameterDict:
-            self._stageParameterDict[key] = eval(config._sections['stageParameterDict'][key])
+            self._stageParameterDict[key] = literal_eval(
+                config._sections['stageParameterDict'][key]
+            )
 
         for key in self._TTLParameterDict:
-            self._TTLParameterDict[key] = eval(config._sections['TTLParameterDict'][key])
+            self._TTLParameterDict[key] = literal_eval(
+                config._sections['TTLParameterDict'][key]
+            )
 
         scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
 

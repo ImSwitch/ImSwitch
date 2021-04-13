@@ -1,6 +1,7 @@
 from dotmap import DotMap
 
 from imswitch.imcommon.controller import MainController
+from imswitch.imcommon.model import generateAPI
 from .CommunicationChannel import CommunicationChannel
 from .basecontrollers import ImScrWidgetControllerFactory
 from .ImScrMainViewController import ImScrMainViewController
@@ -38,7 +39,7 @@ class ImScrMainController(MainController):
         scope.update(getActionsScope())
         scope.update({
             'moduleCommChannel': moduleCommChannel,
-            'mainWindow': multiModuleWindow,
+            'mainWindow': generateAPI([multiModuleWindow]),
             'controllers': DotMap(moduleMainControllers),
             'api': DotMap({key: controller.api
                            for key, controller in moduleMainControllers.items()

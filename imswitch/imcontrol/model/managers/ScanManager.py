@@ -27,6 +27,7 @@ class ScanManager(SuperScanManager):
 
     def __init__(self, setupInfo):
         super().__init__()
+        self.__setupInfo = setupInfo
         self.__stageScanDesigner = SignalDesignerFactory(setupInfo, 'stageScanDesigner')
         self.__TTLCycleDesigner = SignalDesignerFactory(setupInfo, 'TTLCycleDesigner')
 
@@ -51,14 +52,14 @@ class ScanManager(SuperScanManager):
         # if not syncExpected == syncIncoming:
         #     raise IncompatibilityError('Incompatible sync parameters')
 
-    def getTTLCycleSignalsDict(self, TTLParameters, setupInfo):
+    def getTTLCycleSignalsDict(self, TTLParameters):
         """ Generates TTL scan signals. """
-        return self.__TTLCycleDesigner.make_signal(TTLParameters, setupInfo)
+        return self.__TTLCycleDesigner.make_signal(TTLParameters, self.__setupInfo)
 
-    def makeFullScan(self, stageScanParameters, TTLParameters, setupInfo, staticPositioner=False):
+    def makeFullScan(self, stageScanParameters, TTLParameters, staticPositioner=False):
         """ Generates stage and TTL scan signals. """
 
-        TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, setupInfo)
+        TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters)
 
         # Calculate samples to zero pad TTL signals with
         TTLZeroPadSamples = stageScanParameters['Return_time_seconds'] * TTLParameters['Sample_rate']
@@ -68,7 +69,7 @@ class ScanManager(SuperScanManager):
 
         if not staticPositioner:
             stageScanSignalsDict, positions = self.__stageScanDesigner.make_signal(
-                stageScanParameters, setupInfo, returnFrames=True
+                stageScanParameters, self.__setupInfo, returnFrames=True
             )
 
             # Tile and pad TTL signals according to sync parameters

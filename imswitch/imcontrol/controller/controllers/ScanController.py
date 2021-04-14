@@ -153,7 +153,7 @@ class ScanController(SuperScanController):
         """ Runs a scan with the set scanning parameters. """
         self.getParameters()
         self.signalDic = self._master.scanManager.makeFullScan(
-            self._stageParameterDict, self._TTLParameterDict, self._setupInfo,
+            self._stageParameterDict, self._TTLParameterDict,
             staticPositioner=self._widget.isContLaserMode()
         )
         self._master.nidaqManager.runScan(self.signalDic)
@@ -212,8 +212,9 @@ class ScanController(SuperScanController):
             return
 
         self.getParameters()
-        TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(self._TTLParameterDict,
-                                                                              self._setupInfo)
+        TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(
+            self._TTLParameterDict
+        )
 
         areas = []
         signals = []

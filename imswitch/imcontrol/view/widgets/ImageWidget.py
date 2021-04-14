@@ -37,9 +37,6 @@ class ImageWidget(QtWidgets.QWidget):
                 np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap
             )
 
-        # This is for preventing reconstruction images displaying here. TODO: Fix the issue
-        self.napariViewer.add_image(np.zeros((1, 1)), name='(do not touch)')
-
         for name in names:
             if name not in self.napariViewer.layers:
                 try:

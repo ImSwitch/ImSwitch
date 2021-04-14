@@ -36,7 +36,7 @@ class APDManager(DetectorManager):
         self._channel = APDInfo.managerProperties["ctrInputLine"]
         self._terminal = APDInfo.managerProperties["terminal"]
 
-        # Prepare parameters
+        # Prepare parameters and signal connections
         parameters = {}
         self._nidaqManager = nidaqManager
         self._nidaqManager.scanInitiateSignal.connect(lambda scanInfoDict: self.initiateScan(scanInfoDict))
@@ -76,6 +76,7 @@ class APDManager(DetectorManager):
             self._scanWorker.scanning = False
             self._scanThread.quit()
             self._scanThread.wait()
+            self._scanWorker.close()
         except:
             pass
 
@@ -199,14 +200,17 @@ class ScanWorker(Worker):
                 #print(f'sw6: line {self._line_counter} finished')
                 self._line_counter += 1
             else:
+                print('CLOSE!')
                 self.close()
-        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero+self._throw_finalpos)
+        #print('APD worker: read fin throwdata 1')
+        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_startzero + self._throw_finalpos)
+        #print('APD worker: read fin throwdata 2')
         #self._alldata += len(throwdata)
         #print(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()
         #print(self._name)
         #print(np.mean(self._manager._image))
-        self.close()
+        #self.close()
 
     def samples_to_pixels(self, line_samples):
         """ Reshape read datastream over the line to a line with pixel counts.
@@ -217,4 +221,4 @@ class ScanWorker(Worker):
         return line_pixels
 
     def close(self):
-        self._manager._nidaqManager.stopInputTask(self._name)
+        self._manager._nidaqManager.inputTaskDone(self._name)

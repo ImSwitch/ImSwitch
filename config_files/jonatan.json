@@ -1,26 +1,5 @@
 {
   "detectors": {
-    "CAM": {
-      "analogChannel": null,
-      "digitalLine": 4,
-      "managerName": "HamamatsuManager",
-      "managerProperties": {
-        "cameraListIndex": 2,
-        "purpose": "acquisition",
-        "hamamatsu": {
-          "readout_speed": 3,
-          "trigger_global_exposure": 5,
-          "trigger_active": 2,
-          "trigger_polarity": 2,
-          "exposure_time": 0.01,
-          "trigger_source": 1,
-          "subarray_hpos": 0,
-          "subarray_vpos": 0,
-          "subarray_hsize": 2304,
-          "subarray_vsize": 2304
-        }
-      }
-    },
     "APDred": {
       "analogChannel": null,
       "digitalLine": null,
@@ -56,6 +35,22 @@
           "brightness": 0,
           "image_width": 1280,
           "image_height": 1024
+        }
+      }
+    },
+    "WidefieldCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "TISManager",
+      "managerProperties": {
+        "purpose": "acquisition",
+        "cameraListIndex": 1,
+        "tis": {
+          "exposure": 1,
+          "gain": 1,
+          "brightness": 1,
+          "image_width": 2448,
+          "image_height": 2048
         }
       }
     }

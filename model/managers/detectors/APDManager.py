@@ -84,15 +84,15 @@ class APDManager(DetectorManager):
         return self._image
 
     def updateImage(self, line_pixels, line_count):
-        #print('ui: update image')
-        #print(f'ui: line pixel shape{np.shape(line_pixels)}')
-        #print(f'ui: line count: {line_count}')
-
         self._image[-(line_count+1),:] = line_pixels
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
             self.updateLatestFrame(False)
 
+    def initiateImage(self, lines, pixels_line):
+        if np.shape(self._image) != (lines, pixels_line):
+            self._image = np.zeros((lines, pixels_line))
+            self.setShape(lines, pixels_line)
 
     def setParameter(self, name, value):
         pass
@@ -165,8 +165,9 @@ class ScanWorker(Worker):
         self._samples_throw = self._throw_startzero + self._throw_initpos + self._throw_settling + self._throw_startacc + self._throw_delay
         # TODO: How to I get the following parameters into this function? Or read them from within _nidaqmanager? channels should definitely come from here I suppose...
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite', self._manager._nidaq_clock_source, self._manager._detection_samplerate, self._samples_total, True, 'ao/StartTrigger', self._manager._terminal)
-        self._manager._image = np.zeros((self._n_lines, self._pixels_line))
-        self._manager.setShape(self._n_lines, self._pixels_line)
+        self._manager.initiateImage(self._n_lines, self._pixels_line)
+        #self._manager._image = np.zeros((self._n_lines, self._pixels_line))
+        #self._manager.setShape(self._n_lines, self._pixels_line)
         self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),float(scanInfoDict['pixel_size_ax2']))
 
         self._last_value = 0

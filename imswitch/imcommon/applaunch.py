@@ -1,7 +1,7 @@
 import os
 import sys
 
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 
 from .view.guitools import getBaseStyleSheet
 
@@ -9,6 +9,7 @@ from .view.guitools import getBaseStyleSheet
 def prepareApp():
     """ This function must be called before any views are created. """
     os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     app = QtWidgets.QApplication([])
     app.setStyleSheet(getBaseStyleSheet())
     return app

@@ -61,3 +61,7 @@ target/
 
 # Generated config files
 config/*_options.json
+
+# Scripts folder (except examples)
+/scripts/
+!/scripts/examples/

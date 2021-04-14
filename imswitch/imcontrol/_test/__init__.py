@@ -1,11 +1,14 @@
+from imswitch.imcontrol.view import ViewSetupInfo
+
+setupInfoBasic = ViewSetupInfo.from_json("""
 {
     "detectors": {
         "CAM": {
             "analogChannel": null,
-            "digitalLine": 3,
+            "digitalLine": -98000,
             "managerName": "HamamatsuManager",
             "managerProperties": {
-                "cameraListIndex": 0,
+                "cameraListIndex": "mock",
                 "hamamatsu": {
                     "readout_speed": 3,
                     "trigger_global_exposure": 5,
@@ -24,12 +27,12 @@
     "lasers": {
         "405": {
             "analogChannel": null,
-            "digitalLine": 0,
+            "digitalLine": -98001,
             "managerName": "LantzLaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalDriver": "mock",
                 "digitalPorts": [
-                    "COM9"
+                    "mock"
                 ]
             },
             "wavelength": 405,
@@ -38,13 +41,13 @@
         },
         "488": {
             "analogChannel": null,
-            "digitalLine": 1,
+            "digitalLine": -98002,
             "managerName": "LantzLaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
+                "digitalDriver": "mock",
                 "digitalPorts": [
-                    "COM4",
-                    "COM14"
+                    "mock",
+                    "mock"
                 ]
             },
             "wavelength": 488,
@@ -52,8 +55,8 @@
             "valueRangeMax": 200
         },
         "473": {
-            "analogChannel": 3,
-            "digitalLine": 2,
+            "analogChannel": -99000,
+            "digitalLine": -98003,
             "managerName": "NidaqAOLaserManager",
             "managerProperties": {},
             "wavelength": 473,
@@ -63,7 +66,7 @@
     },
     "positioners": {
         "X": {
-            "analogChannel": 0,
+            "analogChannel": -99001,
             "digitalLine": null,
             "managerName": "NidaqAOPositionerManager",
             "managerProperties": {
@@ -73,7 +76,7 @@
             }
         },
         "Y": {
-            "analogChannel": 1,
+            "analogChannel": -99002,
             "digitalLine": null,
             "managerName": "NidaqAOPositionerManager",
             "managerProperties": {
@@ -83,7 +86,7 @@
             }
         },
         "Z": {
-            "analogChannel": 2,
+            "analogChannel": -99003,
             "digitalLine": null,
             "managerName": "NidaqAOPositionerManager",
             "managerProperties": {
@@ -159,3 +162,21 @@
         "defaultScanFile": null
     }
 }
+""", infer_missing=True)
+
+
+# Copyright (C) 2020, 2021 TestaLab
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

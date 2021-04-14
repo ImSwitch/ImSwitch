@@ -17,8 +17,8 @@ camera.
 
 Available manager properties:
 
-* cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at 0); set this to an invalid value, e.g. the string "mock" to load a mocker
-* hamamatsu -- dictionary of DCAM API properties
+- cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at 0); set this to an invalid value, e.g. the string "mock" to load a mocker
+- hamamatsu -- dictionary of DCAM API properties
 
 
 Laser managers
@@ -31,8 +31,8 @@ LaserManager for lasers that are fully digitally controlled using
 drivers available through Lantz.
 
 Available manager properties:
-* digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-* digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+- digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
+- digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
 
 
 NidaqAOLaserManager
@@ -52,6 +52,6 @@ NidaqAOPositionerManager
 PositionerManager for analog NI-DAQ-controlled positioners.
 
 Available manager properties:
-* conversionFactor -- float
-* minVolt -- minimum voltage
-* maxVolt -- maximum voltage
+- conversionFactor -- float
+- minVolt -- minimum voltage
+- maxVolt -- maximum voltage

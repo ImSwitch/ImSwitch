@@ -21,38 +21,6 @@
                 "cameraListIndex": null,
                 "purpose": "acquisition"
             }
-        },
-        "FocusLockCamera": {
-          "analogChannel": null,
-          "digitalLine": null,
-          "managerName": "TISManager",
-          "managerProperties": {
-            "purpose": "focusLock",
-            "cameraListIndex": 0,
-            "tis": {
-              "exposure": 1,
-              "gain": 1,
-              "brightness": 1,
-              "image_width": 1280,
-              "image_height": 1024
-            }
-          }
-        },
-        "WidefieldCamera": {
-          "analogChannel": null,
-          "digitalLine": null,
-          "managerName": "TISManager",
-          "managerProperties": {
-            "purpose": "acquisition",
-            "cameraListIndex": 1,
-            "tis": {
-              "exposure": 1,
-              "gain": 1,
-              "brightness": 1,
-              "image_width": 2448,
-              "image_height": 2048
-            }
-          }
         }
     },
     "lasers": {
@@ -100,28 +68,6 @@
             "wavelength": 640,
             "valueRangeMin": 0,
             "valueRangeMax": 1023,
-            "valueRangeStep": 1
-        },
-        "775AOM": {
-            "analogChannel": 3,
-            "digitalLine": 4,
-            "managerName": "NidaqLaserManager",
-            "managerProperties": {},
-            "wavelength": 775,
-            "valueRangeMin": 0,
-            "valueRangeMax": 10,
-            "valueRangeStep": 1
-        },
-        "775Katana": {
-            "analogChannel": null,
-            "digitalLine": null,
-            "managerName": "KatanaLaserManager",
-            "managerProperties": {
-                "rs232device": "katana"
-            },
-            "wavelength": 775,
-            "valueRangeMin": 0,
-            "valueRangeMax": 3100,
             "valueRangeStep": 1
         }
     },
@@ -219,22 +165,6 @@
                 "dsrdtr": "false",
                 "xonxoff": "false"
             }
-        },
-        "katana": {
-            "managerName": "RS232Manager",
-            "managerProperties": {
-                "port": "ASRL8::INSTR",
-                "encoding": "ascii",
-                "recv_termination": "\n",
-                "send_termination": "\n",
-                "baudrate": 38400,
-                "bytesize": 8,
-                "parity": "none",
-                "stopbits": 1,
-                "rtscts": "false",
-                "dsrdtr": "false",
-                "xonxoff": "false"
-            }
         }
     },
     "scan": {
@@ -245,24 +175,6 @@
         "ttl": {
             "sampleRate": 100000.0
         }
-    },
-    "slm": {
-        "monitorIdx": 2,
-        "width": 792,
-        "height": 600,
-        "wavelength": 775,
-        "pixelsize": 0.02,
-        "angle_mount": 0.15,
-        "correctionPatternsDir": "T:\\RedSTED\\SLM\\SLM_deformation_correction_pattern\\"
-    },
-    "focusLock": {
-        "camera": "FocusLockCamera",
-        "positioner": "PiezoZ",
-        "updateFreq": 10,
-        "frameCrop_left": 0,
-        "frameCrop_right": 1000,
-        "frameCrop_top": 0,
-        "frameCrop_bottom": 1000
     },
     "designers": {
         "scanDesigner": "GalvoScanDesigner",
@@ -277,8 +189,8 @@
         "BeadRecWidget": false,
         "FFTWidget": false,
         "ULensesWidget": false,
-        "SLMWidget": true,
-        "FocusLockWidget": true,
+        "SLMWidget": false,
+        "FocusLockWidget": false,
         "MotCorrWidget": false
     },
     "widgetLayout": {

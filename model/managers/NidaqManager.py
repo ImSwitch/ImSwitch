@@ -20,8 +20,10 @@ class NidaqManager(SignalInterface):
     def __init__(self, setupInfo):
         super().__init__()
         self.__setupInfo = setupInfo
-        self.inputTasks = {}
-        self.outputTasks = {}
+        #self.inputTasks = {}
+        #self.outputTasks = {}
+        #self.timerTasks = {}
+        self.tasks = {}
         self.busy = False
 
     def __makeSortedTargets(self, sortingKey):
@@ -155,19 +157,13 @@ class NidaqManager(SignalInterface):
             task = self.__createChanCITask(taskName, *args)
         task.start()
         #print('start CI task')
-        self.inputTasks[taskName] = task
-
-    def stopInputTask(self, taskName):
-        self.inputTasks[taskName].stop()
-        self.inputTasks[taskName].close()
-        del self.inputTasks[taskName]
-        #print(f'Input task deleted: {taskName}')
+        self.tasks[taskName] = task
     
     def readInputTask(self, taskName, samples=0, timeout=False):
         if not timeout:
-            return self.inputTasks[taskName].read(samples)
+            return self.tasks[taskName].read(samples)
         else:
-            return self.inputTasks[taskName].read(samples, timeout)
+            return self.tasks[taskName].read(samples, timeout)
 
     def setDigital(self, target, enable):
         """ Function to set the digital line to a specific target
@@ -236,8 +232,11 @@ class NidaqManager(SignalInterface):
         """ Function assuming that the user wants to run a full scan with a stage 
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
         running. """
-        print('Create nidaq scan...')
         if not self.busy:
+            self.busy = True
+            self.signalSent = False
+            print('Create nidaq scan...')
+
             # TODO: fill this
             stageDic = signalDic['scanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
@@ -275,15 +274,13 @@ class NidaqManager(SignalInterface):
             self.aoTaskWaiter = WaitThread()
             self.doTaskWaiter = WaitThread()
             self.timerTaskWaiter = WaitThread()
-            self.busy = True
-            self.signalSent = False
             # create timer counter output task, to control the acquisition timing (1 MHz)
             self.timerTask = self.__createChanCOTask('TimerTask', channel=2,
                                                      rate=1e6, sampsInScan=np.int(len(AOsignals[0])*10) ,starttrig=True,
                                                      reference_trigger='ao/StartTrigger')
             self.timerTaskWaiter.connect(self.timerTask)
-            self.timerTaskWaiter.waitdoneSignal.connect(self.taskDoneTimer)
-
+            self.timerTaskWaiter.waitdoneSignal.connect(lambda: self.taskDone('timer', self.timerTaskWaiter))
+            self.tasks['timer'] = self.timerTask
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
             scanclock = r'100kHzTimebase'
             ref_trigger = 'ao/StartTrigger'
@@ -298,8 +295,8 @@ class NidaqManager(SignalInterface):
                 self.aoTask.write(np.array(AOsignals), auto_start=False)
 
                 self.aoTaskWaiter.connect(self.aoTask)
-                self.aoTaskWaiter.waitdoneSignal.connect(self.taskDoneAO)
-                self.outputTasks['ao'] = self.aoTask
+                self.aoTaskWaiter.waitdoneSignal.connect(lambda: self.taskDone('ao', self.aoTaskWaiter))
+                self.tasks['ao'] = self.aoTask
                 clockDO = r'ao/SampleClock'
             if len(DOsignals) > 0:
                 sampsInScan = len(DOsignals[0])
@@ -311,59 +308,45 @@ class NidaqManager(SignalInterface):
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
                 self.doTaskWaiter.connect(self.doTask)
-                self.doTaskWaiter.waitdoneSignal.connect(self.taskDoneDO)
-                self.outputTasks['do'] = self.doTask
+                self.doTaskWaiter.waitdoneSignal.connect(lambda: self.taskDone('do', self.doTaskWaiter))
+                self.tasks['do'] = self.doTask
             self.scanInitiateSignal.emit(scanInfoDict)
-            self.timerTask.start()
+            self.tasks['timer'].start()
             self.timerTaskWaiter.start()
             if len(DOsignals) > 0:
-                self.doTask.start()
+                self.tasks['do'].start()
                 #print('DO task started')
                 self.doTaskWaiter.start()
             if len(AOsignals) > 0:
-                self.aoTask.start()
+                self.tasks['ao'].start()
                 #print('AO task started')
                 self.aoTaskWaiter.start()
             self.scanStartSignal.emit()
-            #print('Nidaq scan started!')
+            print('Nidaq scan started!')
+
+    def stopTask(self, taskName):
+        self.tasks[taskName].stop()
+        self.tasks[taskName].close()
+        del self.tasks[taskName]
+        print(f'Task {taskName} deleted')
     
-    def stopOutputTask(self, taskName):
-        self.outputTasks[taskName].stop()
-        self.outputTasks[taskName].close()
-        del self.outputTasks[taskName]
-        #print(f'Output task deleted: {taskName}')
+    def inputTaskDone(self, taskName):
+        if not self.signalSent:
+            self.stopTask(taskName)
+            if not self.tasks:
+                self.scanDone()
 
-    def stopTimerTask(self):
-        self.timerTask.stop()
-        self.timerTask.close()
-        del self.timerTask
-        #print('Timer task deleted')
-
-    def taskDoneAO(self):
-        if not self.aoTaskWaiter.running and not self.signalSent:
-            self.stopOutputTask('ao')
-            # create a timer to delay scanDoneSignal
-            #self.timer = QTimer()
-            #self.timer.timeout.connect(self.scanDone)
-            #self.timer.start(1000)
-            self.scanDone()
-            #print('AO scan finished!')
-
-    def taskDoneDO(self):
-        if not self.doTaskWaiter.running:
-            self.stopOutputTask('do')
-            #print('DO scan finished!')
-
-    def taskDoneTimer(self):
-        if not self.timerTaskWaiter.running:
-            self.stopTimerTask()
-            #print('Timer task finished!')
+    def taskDone(self, taskName, taskWaiter):
+        if not taskWaiter.running and not self.signalSent:
+            self.stopTask(taskName)
+            if not self.tasks:
+                self.scanDone()
 
     def scanDone(self):
         self.signalSent = True
         self.busy = False
-        self.scanDoneSignal.emit()
         print('Nidaq scan finished!')
+        self.scanDoneSignal.emit()
 
     def runContinuous(self, digital_targets, digital_signals):
         pass

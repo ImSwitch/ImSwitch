@@ -9,6 +9,24 @@ These functions are available in the api.imcontrol object.
 
 Methods defined here:  
 
+**getDetectorNames**\ () from
+`imswitch.imcontrol.controller.controllers.SettingsController.SettingsController <imswitch.imcontrol.controller.controllers.SettingsController.html#SettingsController>`_
+
+Returns the device names of all detectors. These device names can\ :raw-html-m2r:`<br>`
+be passed to other detector-related functions.
+
+**getLaserNames**\ () from
+`imswitch.imcontrol.controller.controllers.LaserController.LaserController <imswitch.imcontrol.controller.controllers.LaserController.html#LaserController>`_
+
+Returns the device names of all lasers. These device names can be\ :raw-html-m2r:`<br>`
+passed to other laser-related functions.
+
+**getPositionerNames**\ () from
+`imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
+
+Returns the device names of all positioners. These device names can\ :raw-html-m2r:`<br>`
+be passed to other positioner-related functions.
+
 **loadScanParamsFromFile**\ (filePath) from
 `imswitch.imcontrol.controller.controllers.ScanController.ScanController <imswitch.imcontrol.controller.controllers.ScanController.html#ScanController>`_
 

@@ -43,18 +43,10 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.started.connect(self._lvWorker.run)
         self._thread.finished.connect(self._lvWorker.stop)
 
-    def hasDetectors(self):
-        """ Returns whether this manager manages any detectors. """
-        return self._currentDetectorName is not None
-
-    def getAllDetectorNames(self):
-        """ Returns the names of all managed detectors. """
-        return list(self._subManagers.keys())
-
     def getCurrentDetectorName(self):
         """ Returns the name of the current detector. """
 
-        if not self.hasDetectors():
+        if not self.hasDevices():
             raise NoDetectorsError
 
         return self._currentDetectorName
@@ -62,7 +54,7 @@ class DetectorsManager(MultiManager, SignalInterface):
     def getCurrentDetector(self):
         """ Returns the current detector. """
 
-        if not self.hasDetectors():
+        if not self.hasDevices():
             raise NoDetectorsError
 
         return self._subManagers[self._currentDetectorName]
@@ -81,7 +73,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     def execOnCurrent(self, func):
         """ Executes a function on the current detector and returns the result. """
-        if not self.hasDetectors():
+        if not self.hasDevices():
             raise NoDetectorsError
 
         return self.execOn(self._currentDetectorName, func)

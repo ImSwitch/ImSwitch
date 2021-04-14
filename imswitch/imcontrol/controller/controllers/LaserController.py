@@ -116,6 +116,12 @@ class LaserController(ImConWidgetController):
             self.settingAttr = False
 
     @APIExport
+    def getLaserNames(self):
+        """ Returns the device names of all lasers. These device names can be
+        passed to other laser-related functions. """
+        return self._master.lasersManager.getAllDeviceNames()
+
+    @APIExport
     def setLaserDigModActive(self, active):
         """ Sets whether the laser digital modulation mode is active. """
         self._widget.setDigModActive(active)

@@ -56,7 +56,7 @@ class ImConMainController(MainController):
             self.fftController = self.__factory.createController(controllers.FFTController, self.__mainView.fftWidget)
 
         self.__mainView.setDetectorRelatedDocksVisible(
-            self.__masterController.detectorsManager.hasDetectors()
+            self.__masterController.detectorsManager.hasDevices()
         )
 
         # Check widget compatibility

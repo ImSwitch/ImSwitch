@@ -17,8 +17,15 @@ class MultiManager(ABC):
             )
             manager = getattr(package, managedDeviceInfo.managerName)
             self._subManagers[managedDeviceName] = manager(
-                managedDeviceInfo, managedDeviceName, **kwargs
-            )
+                managedDeviceInfo, managedDeviceName, **kwargs)
+
+    def hasDevices(self):
+        """ Returns whether this manager manages any devices. """
+        return len(self._subManagers) > 0
+
+    def getAllDeviceNames(self):
+        """ Returns the names of all managed devices. """
+        return list(self._subManagers.keys())
 
     def execOn(self, managedDeviceName, func):
         """ Executes a function on a specific sub-manager and returns the result. """

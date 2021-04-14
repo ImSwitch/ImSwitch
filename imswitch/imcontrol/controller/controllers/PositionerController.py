@@ -61,6 +61,12 @@ class PositionerController(ImConWidgetController):
             self.settingAttr = False
 
     @APIExport
+    def getPositionerNames(self):
+        """ Returns the device names of all positioners. These device names can
+        be passed to other positioner-related functions. """
+        return self._master.positionersManager.getAllDeviceNames()
+
+    @APIExport
     def setPositionerStepSize(self, positionerName, stepSize):
         """ Sets the step size of the specified positioner to the specified
         number of micrometers. """

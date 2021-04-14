@@ -36,19 +36,18 @@ class RecordingManager(SignalInterface):
     def detectorsManager(self):
         return self.__detectorsManager
 
-    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs, pixelSizeUm,
+    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
                        recFrames=None, recTime=None):
         """ Starts a recording with the specified detectors, recording mode,
-        file name prefix, attributes to save to the recording per detector and
-        detector pixel size per detector. In SpecFrames mode, recFrames (the
-        number of frames) must be specified, and in SpecTime mode, recTime (the
-        recording time in seconds) must be specified. """
+        file name prefix and attributes to save to the recording per detector.
+        In SpecFrames mode, recFrames (the number of frames) must be specified,
+        and in SpecTime mode, recTime (the recording time in seconds) must be
+        specified. """
         self.__record = True    
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.attrs = attrs
-        self.__recordingWorker.pixelSizeUm = pixelSizeUm
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
         self.__recordingWorker.saveMode = saveMode
@@ -66,10 +65,10 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
     
-    def snap(self, detectorNames, savename, attrs, pixelSizeUm):
+    def snap(self, detectorNames, savename, attrs):
         """ Saves a single frame capture with the specified detectors to a file
-        with the specified name prefix, attributes to save to the capture per
-        detector and detector pixel size per detector. """
+        with the specified name prefix and attributes to save to the capture
+        per detector. """
         for detectorName in detectorNames:
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 
@@ -79,7 +78,10 @@ class RecordingManager(SignalInterface):
             for key, value in attrs[detectorName].items():
                 file.attrs[key] = value
 
-            dataset.attrs['element_size_um'] = pixelSizeUm[detectorName]  # For ImageJ compatibility
+            dataset.attrs['detector_name'] = detectorName
+
+            # For ImageJ compatibility
+            dataset.attrs['element_size_um'] = self.__detectorsManager[detectorName].pixelSizeUm
 
             dataset[:, :] = self.__detectorsManager[detectorName].image
             file.close()
@@ -120,8 +122,11 @@ class RecordingWorker(Worker):
                 dtype='i2'
             )
 
+            datasets[detectorName].attrs['detector_name'] = detectorName
+
             # For ImageJ compatibility
-            datasets[detectorName].attrs['element_size_um'] = self.pixelSizeUm[detectorName]
+            datasets[detectorName].attrs['element_size_um']\
+                = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
             for key, value in self.attrs[detectorName].items():
                 files[detectorName].attrs[key] = value

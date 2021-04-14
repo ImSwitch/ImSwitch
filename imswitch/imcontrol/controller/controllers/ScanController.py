@@ -6,13 +6,17 @@ import numpy as np
 
 from imswitch.imcommon import constants
 from imswitch.imcommon.model import APIExport
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 from .basecontrollers import SuperScanController
 
 
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.settingAttr = False
+        self._settingParameters = False
+
         self._widget.initControls(self._setupInfo.positioners.keys(),
                                   self._setupInfo.getTTLDevices().keys())
 
@@ -27,16 +31,18 @@ class ScanController(SuperScanController):
         self._TTLParameterDict = {
             'Sample_rate': self._setupInfo.scan.ttl.sampleRate
         }
-        self._settingParameters = False
 
         self.getParameters()
         self.plotSignalGraph()
+        self.updateScanStageAttrs()
+        self.updateScanTTLAttrs()
 
         # Connect NidaqManager signals
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigPrepareScan.connect(lambda: self.setScanButton(True))
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -44,7 +50,10 @@ class ScanController(SuperScanController):
         self._widget.sigRunScanClicked.connect(self.runScan)
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
+        self._widget.sigSeqTimeParChanged.connect(self.updateScanTTLAttrs)
+        self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
+        self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
         print('Init Scan Controller')
 
@@ -63,34 +72,6 @@ class ScanController(SuperScanController):
         y = self._stageParameterDict['Sizes[x]'][1] / self._stageParameterDict['Step_sizes[x]'][1]
 
         return x, y
-
-    def getScanStageAttrs(self):
-        self.getParameters()
-        prefix = 'ScanStage'
-
-        stage = {}
-        for key, value in self._stageParameterDict.items():
-            stage[f'{prefix}:{key}'] = value
-        stage[f'{prefix}:Targets[x]'] = np.string_(stage[f'{prefix}:Targets[x]'])
-
-        stage[f'{prefix}:Positive_direction[x]'] = []
-        for i in range(len(self._setupInfo.positioners)):
-            positionerName = self._stageParameterDict['Targets[x]'][i]
-            positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
-            stage[f'{prefix}:Positive_direction[x]'].append(positiveDirection)
-
-        return stage
-
-    def getScanTTLAttrs(self):
-        self.getParameters()
-        prefix = 'ScanTTL'
-
-        ttl = {}
-        for key, value in self._TTLParameterDict.items():
-            ttl[f'{prefix}:{key}'] = value
-        ttl[f'{prefix}:Targets[x]'] = np.string_(ttl[f'{prefix}:Targets[x]'])
-
-        return ttl
 
     def saveScan(self):
         fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
@@ -248,6 +229,47 @@ class ScanController(SuperScanController):
             )
         self._widget.plotSignalGraph(areas, signals, colors)
 
+    def attrChanged(self, key, value):
+        if self.settingAttr or len(key) != 2:
+            return
+
+        if key[0] == _attrCategoryStage:
+            self._stageParameterDict[key[1]] = value
+            self.setParameters()
+        elif key[0] == _attrCategoryTTL:
+            self._TTLParameterDict[key[1]] = value
+            self.setParameters()
+
+    def setSharedAttr(self, category, attr, value):
+        self.settingAttr = True
+        try:
+            self._commChannel.sharedAttrs[(category, attr)] = value
+        finally:
+            self.settingAttr = False
+
+    def updateScanStageAttrs(self):
+        self.getParameters()
+
+        for key, value in self._stageParameterDict.items():
+            self.setSharedAttr(_attrCategoryStage, key, value)
+
+        positiveDirections = []
+        for i in range(len(self._setupInfo.positioners)):
+            positionerName = self._stageParameterDict['Targets[x]'][i]
+            positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
+            positiveDirections.append(positiveDirection)
+
+        self.setSharedAttr(_attrCategoryStage, 'Positive_direction[x]', positiveDirections)
+
+    def updateScanTTLAttrs(self):
+        self.getParameters()
+
+        for key, value in self._TTLParameterDict.items():
+            self.setSharedAttr(_attrCategoryTTL, key, value)
+
+
+_attrCategoryStage = 'ScanStage'
+_attrCategoryTTL = 'ScanTTL'
         
 
 # Copyright (C) 2020, 2021 TestaLab

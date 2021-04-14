@@ -8,12 +8,16 @@ class PositionerController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.settingAttr = False
+
+        # Set up positioners
         for pName, pManager in self._master.positionersManager:
             self._widget.addPositioner(pName)
-            self.setSharedAttr(pName, 'Position', pManager.position)
+            self.setSharedAttr(pName, _positionAttr, pManager.position)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigMoveZStage.connect(lambda step: self.move('Z', step))
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(
@@ -33,10 +37,28 @@ class PositionerController(ImConWidgetController):
         """ Moves the piezzos in x y or z (axis) by dist micrometers. """
         newPos = self._master.positionersManager[positionerName].move(dist)
         self._widget.updatePosition(positionerName, newPos)
-        self.setSharedAttr(positionerName, 'Position', newPos)
+        self.setSharedAttr(positionerName, _positionAttr, newPos)
+
+    def setPos(self, positionerName, position):
+        """ Moves the piezzos in x y or z (axis) to the specified position. """
+        newPos = self._master.positionersManager[positionerName].setPosition(position)
+        self._widget.updatePosition(positionerName, newPos)
+        self.setSharedAttr(positionerName, _positionAttr, newPos)
+
+    def attrChanged(self, key, value):
+        if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:
+            return
+
+        positionerName = key[1]
+        if key[2] == _positionAttr:
+            self.setPositioner(positionerName, value)
 
     def setSharedAttr(self, positionerName, attr, value):
-        self._commChannel.sharedAttrs[('Positioners', positionerName, attr)] = value
+        self.settingAttr = True
+        try:
+            self._commChannel.sharedAttrs[(_attrCategory, positionerName, attr)] = value
+        finally:
+            self.settingAttr = False
 
     @APIExport
     def setPositionerStepSize(self, positionerName, stepSize):
@@ -51,6 +73,11 @@ class PositionerController(ImConWidgetController):
         self.move(positionerName, dist)
 
     @APIExport
+    def setPositioner(self, positionerName, position):
+        """ Moves the specified positioner to the specified position. """
+        self.setPos(positionerName, position)
+
+    @APIExport
     def stepPositionerUp(self, positionerName):
         """ Moves the specified positioner in positive direction by its set
         step size. """
@@ -61,6 +88,10 @@ class PositionerController(ImConWidgetController):
         """ Moves the specified positioner in negative direction by its set
         step size. """
         self.move(positionerName, -self._widget.getStepSize(positionerName))
+
+
+_attrCategory = 'Positioner'
+_positionAttr = 'Position'
     
 
 # Copyright (C) 2020, 2021 TestaLab

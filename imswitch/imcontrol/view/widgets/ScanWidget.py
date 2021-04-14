@@ -14,6 +14,7 @@ class ScanWidget(Widget):
     sigRunScanClicked = QtCore.Signal()
     sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
     sigSeqTimeParChanged = QtCore.Signal()
+    sigStageParChanged = QtCore.Signal()
     sigSignalParChanged = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -109,6 +110,11 @@ class ScanWidget(Widget):
             self.grid.addWidget(scanDimPar, currentRow, 5)
 
             currentRow += 1
+
+            # Connect signals
+            self.scanPar['size' + positionerName].textChanged.connect(self.sigStageParChanged)
+            self.scanPar['stepSize' + positionerName].textChanged.connect(self.sigStageParChanged)
+            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(self.sigStageParChanged)
 
         self.grid.addWidget(QtWidgets.QLabel('Number of frames:'), currentRow, 4)
         self.grid.addWidget(self.nrFramesPar, currentRow, 5)

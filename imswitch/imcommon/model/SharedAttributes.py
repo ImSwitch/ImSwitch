@@ -1,21 +1,76 @@
-class SharedAttributes:
+import json
+
+import h5py
+
+from imswitch.imcommon.framework import Signal, SignalInterface
+
+
+class SharedAttributes(SignalInterface):
+    sigAttributeSet = Signal(object, object)  # (key, value)
+
     def __init__(self):
+        super().__init__()
         self._data = {}
 
     def getHDF5Attributes(self):
         attrs = {}
         for key, value in self._data.items():
             attrs[':'.join(key)] = value
+
         return attrs
 
+    def getJSON(self):
+        attrs = {}
+        for key, value in self._data.items():
+            parent = attrs
+            for i in range(len(key) - 1):
+                if key[i] not in parent:
+                    parent[key[i]] = {}
+                parent = parent[key[i]]
+
+            parent[key[-1]] = value
+
+        return json.dumps(attrs)
+
+    def update(self, data):
+        if isinstance(data, SharedAttributes):
+            data = data._data
+
+        for key, value in data.items():
+            self[key] = value
+
     def __getitem__(self, key):
+        self._validateKey(key)
         return self._data[key]
 
     def __setitem__(self, key, value):
+        self._validateKey(key)
         self._data[key] = value
+        self.sigAttributeSet.emit(key, value)
 
     def __iter__(self):
         yield from self._data.items()
+
+    @classmethod
+    def fromHDF5File(cls, filePath):
+        attrs = cls()
+        with h5py.File(filePath) as file:
+            for key, value in file.attrs.items():
+                keyTuple = tuple(key.split(':'))
+                attrs[keyTuple] = value
+        return attrs
+
+    @staticmethod
+    def _validateKey(key):
+        if type(key) is not tuple:
+            raise TypeError('Key must be a tuple of strings')
+
+        for keySegment in key:
+            if not isinstance(keySegment, str):
+                raise TypeError('Key must be a tuple of strings')
+
+            if ':' in keySegment:
+                raise KeyError('Key must not contain ":"')
 
 
 # Copyright (C) 2020, 2021 TestaLab

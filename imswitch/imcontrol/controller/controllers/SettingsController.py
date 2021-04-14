@@ -31,11 +31,14 @@ class SettingsController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.settingAttr = False
         self.allParams = {}
 
         if not self._master.detectorsManager.hasDetectors():
             return
 
+        # Set up detectors
         for dName, dManager in self._master.detectorsManager:
             self._widget.addDetector(
                 dName, dManager.parameters, dManager.supportedBinnings, self._setupInfo.rois
@@ -50,8 +53,11 @@ class SettingsController(ImConWidgetController):
         execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)))
         self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
 
+        self.updateSharedAttrs()
+
         # Connect CommunicationChannel signals
         self._commChannel.sigDetectorSwitched.connect(self.detectorSwitched)
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect SettingsWidget signals
         self._widget.sigROIChanged.connect(self.ROIchanged)
@@ -89,7 +95,7 @@ class SettingsController(ImConWidgetController):
             )
 
             params = self.allParams[detectorName]
-            params.binning.sigValueChanged.connect(self.setBinning)
+            params.binning.sigValueChanged.connect(self.updateBinning)
             params.frameMode.sigValueChanged.connect(self.updateFrame)
             params.applyROI.sigActivated.connect(self.adjustFrame)
             params.newROI.sigActivated.connect(self.updateFrame)
@@ -150,6 +156,7 @@ class SettingsController(ImConWidgetController):
             self._widget.hideROI()
 
         self.updateParamsFromDetector(detector=detector)
+        self.updateSharedAttrs()
 
     def ROIchanged(self):
         """ Update parameters according to ROI. """
@@ -265,27 +272,12 @@ class SettingsController(ImConWidgetController):
             self._setupInfo.removeROI(modeToDelete)
             configfileutils.saveSetupInfo(self._setupInfo)
 
-    def setBinning(self):
+    def updateBinning(self):
         """ Update a new binning to the detector. """
         self.getDetectorManagerFrameExecFunc()(
             lambda c: c.setBinning(int(self.allParams[c.name].binning.value()))
         )
-
-    @APIExport
-    def setDetectorParameter(self, detectorName, parameterName, value):
-        """ Sets the specified detector-specific parameter to the specified
-        value. """
-
-        if parameterName in ['Trigger source'] and self.getCurrentParams().allDetectorsFrame.value():
-            # Special case for certain parameters that will follow the "update all detectors" option
-            execFunc = self._master.detectorsManager.execOnAll
-        else:
-            execFunc = lambda f: self._master.detectorsManager.execOn(detectorName, f)
-
-        execFunc(
-            lambda c: (c.setParameter(parameterName, value) and
-                       self.updateParamsFromDetector(detector=c))
-        )
+        self.updateSharedAttrs()
 
     def updateParamsFromDetector(self, *, detector):
         """ Update the parameter values from the detector. """
@@ -368,25 +360,6 @@ class SettingsController(ImConWidgetController):
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
         self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
 
-    def getCamAttrs(self):
-        attrs = self._master.detectorsManager.execOnAll(
-            lambda c: {
-                **{
-                    'Detector:Pixel size': c.pixelSizeUm,
-                    'Detector:Model': c.model,
-                    'Detector:Binning': c.binning,
-                    'Detector:ROI': [*c.frameStart, *c.shape]
-                },
-                **{f'DetectorParam:{k}': v.value for k, v in c.parameters.items()}
-            }
-        )
-
-        pixelSizeUm = self._master.detectorsManager.execOnAll(
-            lambda c: c.pixelSizeUm
-        )
-
-        return attrs, pixelSizeUm
-
     def syncFrameParams(self, doAdjustFrame=True, doUpdateFrameActionButtons=True):
         currentParams = self.getCurrentParams()
         shouldSync = currentParams.allDetectorsFrame.value()
@@ -416,6 +389,88 @@ class SettingsController(ImConWidgetController):
         detectorsManager = self._master.detectorsManager
         return (detectorsManager.execOnAll if currentParams.allDetectorsFrame.value()
                 else detectorsManager.execOnCurrent)
+
+    def attrChanged(self, key, value):
+        if self.settingAttr or len(key) < 3 or key[0] != _attrCategory:
+            return
+
+        detectorName = key[1]
+        if len(key) == 3:
+            if key[2] == _binningAttr:
+                self.setDetectorBinning(detectorName, value)
+            elif key[2] == _ROIAttr:
+                self.setDetectorROI(detectorName, (value[0], value[1]), (value[2], value[3]))
+        if len(key) == 4:
+            if key[2] == _detectorParameterSubCategory:
+                self.setDetectorParameter(detectorName, key[3], value)
+
+    def setSharedAttr(self, detectorName, attr, value, *, isDetectorParameter=False):
+        self.settingAttr = True
+        try:
+            if not isDetectorParameter:
+                key = (_attrCategory, detectorName, attr)
+            else:
+                key = (_attrCategory, detectorName, _detectorParameterSubCategory, attr)
+            self._commChannel.sharedAttrs[key] = value
+        finally:
+            self.settingAttr = False
+
+    def updateSharedAttrs(self):
+        for dName, dManager in self._master.detectorsManager:
+            self.setSharedAttr(dName, _modelAttr, dManager.model)
+            self.setSharedAttr(dName, _pixelSizeAttr, dManager.pixelSizeUm)
+            self.setSharedAttr(dName, _binningAttr, dManager.binning)
+            self.setSharedAttr(dName, _ROIAttr, [*dManager.frameStart, *dManager.shape])
+
+            for parameterName, parameter in dManager.parameters.items():
+                self.setSharedAttr(dName, parameterName, parameter.value, isDetectorParameter=True)
+
+    @APIExport
+    def setDetectorBinning(self, detectorName, binning):
+        """ Sets binning value for the specified detector. """
+        self.allParams[detectorName].binning.setValue(binning)
+        self._master.detectorsManager[detectorName].setBinning(binning)
+
+    @APIExport
+    def setDetectorROI(self, detectorName, frameStart, shape):
+        """ Sets the ROI for the specified detector. frameStart is a tuple
+        (x0, y0) and shape is a tuple (width, height). """
+
+        detector = self._master.detectorsManager[detectorName]
+
+        self.allParams[detectorName].frameMode.setValue('Custom')
+        self.updateFrame(detector=detector)
+
+        self.allParams[detectorName].x0.setValue(frameStart[0])
+        self.allParams[detectorName].y0.setValue(frameStart[1])
+        self.allParams[detectorName].width.setValue(shape[0])
+        self.allParams[detectorName].height.setValue(shape[1])
+        self.adjustFrame(detector=detector)
+
+    @APIExport
+    def setDetectorParameter(self, detectorName, parameterName, value):
+        """ Sets the specified detector-specific parameter to the specified
+        value. """
+
+        if parameterName in ['Trigger source'] and self.getCurrentParams().allDetectorsFrame.value():
+            # Special case for certain parameters that will follow the "update all detectors" option
+            execFunc = self._master.detectorsManager.execOnAll
+        else:
+            execFunc = lambda f: self._master.detectorsManager.execOn(detectorName, f)
+
+        execFunc(
+            lambda c: (c.setParameter(parameterName, value) and
+                       self.updateParamsFromDetector(detector=c))
+        )
+        self.updateSharedAttrs()
+
+
+_attrCategory = 'Detector'
+_modelAttr = 'Model'
+_pixelSizeAttr = 'Pixel size'
+_binningAttr = 'Binning'
+_ROIAttr = 'ROI'
+_detectorParameterSubCategory = 'Param'
 
 
 # Copyright (C) 2020, 2021 TestaLab

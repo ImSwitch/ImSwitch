@@ -57,15 +57,6 @@ class CommunicationChannel(SignalInterface):
         # Returns the center of the VB to align the ROI
         return self.__main.imageController.getCenterROI()
 
-    def getCamAttrs(self):
-        return self.__main.settingsController.getCamAttrs()
-
-    def getScanStageAttrs(self):
-        return self.__main.scanController.getScanStageAttrs()
-
-    def getScanTTLAttrs(self):
-        return self.__main.scanController.getScanTTLAttrs()
-
     def getDimsScan(self):
         return self.__main.scanController.getDimsScan()
 

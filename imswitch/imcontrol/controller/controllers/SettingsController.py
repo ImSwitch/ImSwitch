@@ -35,7 +35,7 @@ class SettingsController(ImConWidgetController):
         self.settingAttr = False
         self.allParams = {}
 
-        if not self._master.detectorsManager.hasDetectors():
+        if not self._master.detectorsManager.hasDevices():
             return
 
         # Set up detectors
@@ -75,7 +75,7 @@ class SettingsController(ImConWidgetController):
 
     def initParameters(self):
         """ Take parameters from the detector Tree map. """
-        for detectorName in self._master.detectorsManager.getAllDetectorNames():
+        for detectorName in self._master.detectorsManager.getAllDeviceNames():
             detectorTree = self._widget.trees[detectorName]
             framePar = detectorTree.p.param('Image frame')
             self.allParams[detectorName] = SettingsControllerParams(
@@ -424,6 +424,12 @@ class SettingsController(ImConWidgetController):
 
             for parameterName, parameter in dManager.parameters.items():
                 self.setSharedAttr(dName, parameterName, parameter.value, isDetectorParameter=True)
+
+    @APIExport
+    def getDetectorNames(self):
+        """ Returns the device names of all detectors. These device names can
+        be passed to other detector-related functions. """
+        return self._master.detectorsManager.getAllDeviceNames()
 
     @APIExport
     def setDetectorBinning(self, detectorName, binning):

@@ -8,7 +8,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if not self._master.detectorsManager.hasDetectors():
+        if not self._master.detectorsManager.hasDevices():
             return
 
         self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(

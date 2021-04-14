@@ -3,11 +3,11 @@ import importlib
 from .lasers_mock import MockLaser
 
 
-class FullDigitalLaser:
+class LantzLaser:
     def __new__(cls, iName, ports):
         try:
             if len(ports) < 1:
-                raise ValueError('FullDigitalLaser requires at least one port, none passed')
+                raise ValueError('LantzLaser requires at least one port, none passed')
 
             driver = getDriver(iName)
 
@@ -17,15 +17,15 @@ class FullDigitalLaser:
                 laser.initialize()
                 lasers.append(laser)
 
-            return lasers[0] if len(ports) == 1 else LinkedFullDigitalLaser(lasers)
+            return lasers[0] if len(ports) == 1 else LinkedLantzLaser(lasers)
         except:
             return MockLaser()
 
 
-class LinkedFullDigitalLaser:
+class LinkedLantzLaser:
     def __init__(self, lasers):
         if len(lasers) < 1:
-            raise ValueError('LinkedFullDigitalLaser requires at least one laser, none passed')
+            raise ValueError('LinkedLantzLaser requires at least one laser, none passed')
 
         self.lasers = lasers
 

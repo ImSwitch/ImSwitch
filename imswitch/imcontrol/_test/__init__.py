@@ -28,7 +28,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         "405": {
             "analogChannel": null,
             "digitalLine": -98001,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "LantzLaserManager",
             "managerProperties": {
                 "digitalDriver": "mock",
                 "digitalPorts": [
@@ -42,7 +42,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         "488": {
             "analogChannel": null,
             "digitalLine": -98002,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "LantzLaserManager",
             "managerProperties": {
                 "digitalDriver": "mock",
                 "digitalPorts": [

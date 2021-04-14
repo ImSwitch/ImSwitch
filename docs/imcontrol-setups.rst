@@ -24,7 +24,7 @@ Available manager properties:
 Laser managers
 ==============
 
-FullDigitalLaserManager
+LantzLaserManager
 -----------------------
 
 LaserManager for lasers that are fully digitally controlled using

@@ -50,9 +50,6 @@ class CommunicationChannel(SignalInterface):
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
 
-    def getROIdata(self, image, ROI):
-        return self.__main.imageController.getROIdata(image, ROI)
-
     def getCenterROI(self):
         # Returns the center of the VB to align the ROI
         return self.__main.imageController.getCenterROI()

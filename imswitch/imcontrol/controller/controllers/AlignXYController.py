@@ -22,7 +22,7 @@ class AlignXYController(LiveUpdatedController):
         """ Update with new detector frame. """
         if isCurrentDetector and self.active:
             value = np.mean(
-                self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem()),
+                self.getCroppedImage(im, self._widget.getROIGraphicsItem()),
                 self.axis
             )
             self._widget.updateGraph(value)
@@ -49,6 +49,11 @@ class AlignXYController(LiveUpdatedController):
     def setAxis(self, axis):
         """ Setter for the axis (X or Y). """
         self.axis = axis
+
+    def getCroppedImage(self, image, roiItem):
+        """ Returns the cropped image within the ROI. """
+        x0, y0, x1, y1 = roiItem.bounds
+        return image[x0:x1, y0:y1]
         
 
 # Copyright (C) 2020, 2021 TestaLab

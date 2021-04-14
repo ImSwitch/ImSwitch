@@ -92,6 +92,16 @@ class VispyROIVisual(VispyBaseVisual):
         self._update_size()
         self.sigROIChanged.emit(self.position, self.size)
 
+    @property
+    def bounds(self):
+        pos = self.position
+        size = self.size
+        x0 = int(pos[0])
+        y0 = int(pos[1])
+        x1 = int(x0 + size[0])
+        y1 = int(y0 + size[1])
+        return x0, y0, x1, y1
+
     def __init__(self, rect_color='yellow', handle_color='orange'):
         super().__init__()
         self._drag_mode = None

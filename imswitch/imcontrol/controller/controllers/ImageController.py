@@ -68,16 +68,6 @@ class ImageController(LiveUpdatedController):
         self._lastWidth = width
         self._lastHeight = height
 
-    def getROIdata(self, image, roiItem):
-        """ Returns the cropped image within the ROI. """
-        pos = roiItem.position
-        size = roiItem.size
-        x0 = int(pos[0])
-        y0 = int(pos[1])
-        x1 = int(x0 + size[0])
-        y1 = int(y0 + size[1])
-        return image[x0:x1, y0:y1]
-
     def getCenterROI(self):
         """ Returns center of viewbox to center a ROI. """
         return self._widget.getCenterROI()

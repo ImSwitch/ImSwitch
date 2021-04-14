@@ -224,6 +224,24 @@ class RecordingWidget(Widget):
     def setRecFolder(self, folderPath):
         self.folderEdit.setText(folderPath)
 
+    def checkSpecFrames(self):
+        self.specifyFrames.setChecked(True)
+
+    def checkSpecTime(self):
+        self.specifyTime.setChecked(True)
+
+    def checkScanOnce(self):
+        self.recScanOnceBtn.setChecked(True)
+
+    def checkScanLapse(self):
+        self.recScanLapseBtn.setChecked(True)
+
+    def checkDimLapse(self):
+        self.dimLapse.setChecked(True)
+
+    def checkUntilStop(self):
+        self.untilSTOPbtn.setChecked(True)
+
     def setEnabledParams(self, numExpositions=False, timeToRec=False,
                          timelapseTime=False, timelapseFreq=False,
                          dimlapseSlices=False, dimlapseStepSize=False):

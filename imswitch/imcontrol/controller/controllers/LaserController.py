@@ -8,8 +8,10 @@ class LaserController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.aotfLasers = {}
+        self.settingAttr = False
 
+        # Set up lasers
+        self.aotfLasers = {}
         for lName, lManager in self._master.lasersManager:
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.wavelength,
@@ -21,11 +23,14 @@ class LaserController(ImConWidgetController):
             elif not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
-            self.setSharedAttr(lName, 'DigMod', self._widget.isDigModActive())
-            self.setSharedAttr(lName, 'Enabled', self._widget.isLaserActive(lName))
-            self.setSharedAttr(lName, 'Value',
+            self.setSharedAttr(lName, _digModAttr, self._widget.isDigModActive())
+            self.setSharedAttr(lName, _enabledAttr, self._widget.isLaserActive(lName))
+            self.setSharedAttr(lName, _valueAttr,
                                self._widget.getValue(lName) if not self._widget.isDigModActive()
                                else self._widget.getDigValue(lName))
+
+        # Connect CommunicationChannel signals
+        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect LaserWidget signals
         self._widget.sigEnableChanged.connect(self.toggleLaser)
@@ -47,7 +52,7 @@ class LaserController(ImConWidgetController):
     def toggleLaser(self, laserName, enabled):
         """ Enable or disable laser (on/off)."""
         self._master.lasersManager[laserName].setEnabled(enabled)
-        self.setSharedAttr(laserName, 'Enabled', enabled)
+        self.setSharedAttr(laserName, _enabledAttr, enabled)
 
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
@@ -55,7 +60,7 @@ class LaserController(ImConWidgetController):
             self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.setValue(laserName, magnitude)
 
-        self.setSharedAttr(laserName, 'Value', magnitude)
+        self.setSharedAttr(laserName, _valueAttr, magnitude)
 
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """
@@ -63,7 +68,7 @@ class LaserController(ImConWidgetController):
             for laserName in laserNames:
                 value = self._widget.getDigValue(laserName)
                 self._master.lasersManager[laserName].setValue(value)
-                self.setSharedAttr(laserName, 'Value', value)
+                self.setSharedAttr(laserName, _valueAttr, value)
 
     def GlobalDigitalMod(self, digMod, laserNames):
         """ Start/stop digital modulation. """
@@ -84,14 +89,31 @@ class LaserController(ImConWidgetController):
                 laserManager.setEnabled(False)  # TODO: Correct?
             self._widget.setLaserEditable(laserName, not digMod)
 
-            self.setSharedAttr(laserName, 'DigMod', digMod)
+            self.setSharedAttr(laserName, _digModAttr, digMod)
             if not digMod:
                 self.valueChanged(laserName, self._widget.getValue(laserName))
             else:
-                self.setSharedAttr(laserName, 'Value', value)
+                self.setSharedAttr(laserName, _valueAttr, value)
+
+    def attrChanged(self, key, value):
+        if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:
+            return
+
+        laserName = key[1]
+        if key[2] == _enabledAttr:
+            self.setLaserActive(laserName, value)
+        elif key[2] == _digModAttr:
+            self.setLaserDigModActive(value)
+        elif key[2] == _valueAttr:
+            self.setLaserValue(laserName, value)
+            self.setLaserDigValue(laserName, value)
 
     def setSharedAttr(self, laserName, attr, value):
-        self._commChannel.sharedAttrs[('Lasers', laserName, attr)] = value
+        self.settingAttr = True
+        try:
+            self._commChannel.sharedAttrs[(_attrCategory, laserName, attr)] = value
+        finally:
+            self.settingAttr = False
 
     @APIExport
     def setLaserDigModActive(self, active):
@@ -114,6 +136,12 @@ class LaserController(ImConWidgetController):
         """ Sets the digital modulation value of the specified laser, in the
         units that the laser uses. """
         self._widget.setDigValue(laserName, value)
+
+
+_attrCategory = 'Laser'
+_enabledAttr = 'Enabled'
+_digModAttr = 'DigMod'
+_valueAttr = 'Value'
 
 
 # Copyright (C) 2020, 2021 TestaLab

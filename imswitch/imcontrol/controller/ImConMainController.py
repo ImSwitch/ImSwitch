@@ -1,5 +1,6 @@
 from imswitch.imcommon.controller import WidgetController, MainController
-from imswitch.imcommon.model import generateAPI
+from imswitch.imcommon.model import generateAPI, SharedAttributes
+from imswitch.imcontrol.view import guitools
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from . import controllers
@@ -12,6 +13,7 @@ class ImConMainController(MainController):
         self.__moduleCommChannel = moduleCommChannel
 
         # Connect view signals
+        self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
@@ -70,6 +72,17 @@ class ImConMainController(MainController):
     @property
     def api(self):
         return self.__api
+
+    def loadParamsFromHDF5(self):
+        """ Set detector, positioner, laser etc. params from values saved in a
+        user-picked HDF5 snap/recording. """
+
+        filePath = guitools.askForFilePath(self.__mainView, 'Open HDF5 file', nameFilter='*.hdf5')
+        if not filePath:
+            return
+
+        attrs = SharedAttributes.fromHDF5File(filePath)
+        self.__commChannel.sharedAttrs.update(attrs)
 
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()

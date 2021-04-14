@@ -30,11 +30,22 @@ Runs a scan with the set scanning parameters.
 
 Saves the set scanning parameters to the specified file.
 
+**setDetectorBinning**\ (detectorName, binning) from
+`imswitch.imcontrol.controller.controllers.SettingsController.SettingsController <imswitch.imcontrol.controller.controllers.SettingsController.html#SettingsController>`_
+
+Sets binning value for the specified detector.
+
 **setDetectorParameter**\ (detectorName, parameterName, value) from
 `imswitch.imcontrol.controller.controllers.SettingsController.SettingsController <imswitch.imcontrol.controller.controllers.SettingsController.html#SettingsController>`_
 
 Sets the specified detector-specific parameter to the specified\ :raw-html-m2r:`<br>`
 value.
+
+**setDetectorROI**\ (detectorName, frameStart, shape) from
+`imswitch.imcontrol.controller.controllers.SettingsController.SettingsController <imswitch.imcontrol.controller.controllers.SettingsController.html#SettingsController>`_
+
+Sets the ROI for the specified detector. frameStart is a tuple\ :raw-html-m2r:`<br>`
+(x0, y0) and shape is a tuple (width, height).
 
 **setDetectorToRecord**\ (detectorName) from
 `imswitch.imcontrol.controller.controllers.RecorderController.RecorderController <imswitch.imcontrol.controller.controllers.RecorderController.html#RecorderController>`_
@@ -78,6 +89,11 @@ Sets whether the LiveView crosshair is visible.
 `imswitch.imcontrol.controller.controllers.ViewController.ViewController <imswitch.imcontrol.controller.controllers.ViewController.html#ViewController>`_
 
 Sets whether the LiveView grid is visible.
+
+**setPositioner**\ (positionerName, position) from
+`imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
+
+Moves the specified positioner to the specified position.
 
 **setPositionerStepSize**\ (positionerName, stepSize) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_

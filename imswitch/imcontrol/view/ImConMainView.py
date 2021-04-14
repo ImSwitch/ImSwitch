@@ -6,11 +6,12 @@ from pyqtgraph.Qt import QtCore, QtWidgets
 from pyqtgraph.console import ConsoleWidget
 from pyqtgraph.dockarea import Dock, DockArea
 
-from ...imcommon import constants
+from imswitch.imcommon import constants
 from . import guitools, widgets
 
 
 class ImConMainView(QtWidgets.QMainWindow):
+    sigLoadParamsFromHDF5 = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, viewSetupInfo, *args, **kwargs):
@@ -26,13 +27,14 @@ class ImConMainView(QtWidgets.QMainWindow):
         # Widget factory
         self.factory = widgets.WidgetFactory(defaultPreset)
 
-        # Think what is self. and what is not !
-
-        # Shortcuts
-        # TODO
-
         # Menu Bar
-        # TODO
+        menuBar = self.menuBar()
+        file = menuBar.addMenu('&File')
+
+        self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
+        self.loadParamsAction.setShortcut('Ctrl+O')
+        self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
+        file.addAction(self.loadParamsAction)
 
         # Window
         self.setWindowTitle('ImSwitch')

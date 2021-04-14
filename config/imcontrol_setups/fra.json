@@ -45,7 +45,7 @@
         "488 (OFF)": {
             "analogChannel": null,
             "digitalLine": 3,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "LantzLaserManager",
             "managerProperties": {
                 "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
@@ -59,7 +59,7 @@
         "488 (EXC)": {
             "analogChannel": null,
             "digitalLine": 1,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "LantzLaserManager",
             "managerProperties": {
                 "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
@@ -73,7 +73,7 @@
         "405 (ON)": {
             "analogChannel": null,
             "digitalLine": 2,
-            "managerName": "FullDigitalLaserManager",
+            "managerName": "LantzLaserManager",
             "managerProperties": {
                 "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [

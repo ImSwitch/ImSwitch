@@ -1,10 +1,10 @@
 from lantz import Q_
 
-from imswitch.imcontrol.model.interfaces import FullDigitalLaser
+from imswitch.imcontrol.model.interfaces import LantzLaser
 from .LaserManager import LaserManager
 
 
-class FullDigitalLaserManager(LaserManager):
+class LantzLaserManager(LaserManager):
     """ LaserManager for lasers that are fully digitally controlled using
     drivers available through Lantz.
 
@@ -17,8 +17,8 @@ class FullDigitalLaserManager(LaserManager):
         self._digitalMod = False
 
         # Init laser
-        self._laser = FullDigitalLaser(laserInfo.managerProperties['digitalDriver'],
-                                       laserInfo.managerProperties['digitalPorts'])
+        self._laser = LantzLaser(laserInfo.managerProperties['digitalDriver'],
+                                 laserInfo.managerProperties['digitalPorts'])
         print(self._laser.idn)
         self._laser.digital_mod = False
         self._laser.enabled = False

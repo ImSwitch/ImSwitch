@@ -20,7 +20,7 @@ class AlignAverageController(LiveUpdatedController):
         """ Update with new detector frame. """
         if isCurrentDetector and self.active:
             value = np.mean(
-                self._commChannel.getROIdata(im, self._widget.getROIGraphicsItem())
+                self.getCroppedImage(im, self._widget.getROIGraphicsItem())
             )
             self._widget.updateGraph(value)
 
@@ -42,6 +42,11 @@ class AlignAverageController(LiveUpdatedController):
             self._widget.hideROI()
 
         self.active = show
+
+    def getCroppedImage(self, image, roiItem):
+        """ Returns the cropped image within the ROI. """
+        x0, y0, x1, y1 = roiItem.bounds
+        return image[x0:x1, y0:y1]
         
 
 # Copyright (C) 2020, 2021 TestaLab

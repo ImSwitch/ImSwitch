@@ -16,7 +16,7 @@ class ImageController(LiveUpdatedController):
         )
         self._shouldResetView = False
 
-        self._widget.setLayers(self._master.detectorsManager.getAllDetectorNames())
+        self._widget.setLayers(self._master.detectorsManager.getAllDeviceNames())
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
@@ -29,7 +29,7 @@ class ImageController(LiveUpdatedController):
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
         if detectorNames is None:
-            detectorNames = self._master.detectorsManager.getAllDetectorNames()
+            detectorNames = self._master.detectorsManager.getAllDeviceNames()
 
         for detectorName in detectorNames:
             if im is None:

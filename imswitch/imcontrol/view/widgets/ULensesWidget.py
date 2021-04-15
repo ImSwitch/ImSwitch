@@ -18,10 +18,10 @@ class ULensesWidget(Widget):
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
         self.ulensesCheck = QtWidgets.QCheckBox('Show uLenses')
-        self.xEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.xOffset)
-        self.yEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.yOffset)
-        self.pxEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.pixelSize)
-        self.upEdit = QtWidgets.QLineEdit(self._defaultPreset.uLenses.periodicity)
+        self.xEdit = QtWidgets.QLineEdit('0')
+        self.yEdit = QtWidgets.QLineEdit('0')
+        self.pxEdit = QtWidgets.QLineEdit('157.5')
+        self.upEdit = QtWidgets.QLineEdit('1182')
         self.ulensesPlot = pg.ScatterPlotItem()
 
         # Add elements to GridLayout

@@ -1,15 +1,18 @@
-def getMainViewAndController(moduleCommChannel, *_args, overrideSetupInfo=None, **_kwargs):
-    from .controller import configfileutils, ImConMainController
+def getMainViewAndController(moduleCommChannel, *_args,
+                             overrideSetupInfo=None, overrideOptions=None, **_kwargs):
+    from .controller import ImConMainController
+    from imswitch.imcontrol.model import configfileutils
     from .view import ViewSetupInfo, ImConMainView
 
-    if overrideSetupInfo is None:
-        setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
-    else:
+    options, setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
+    if overrideSetupInfo is not None:
         setupInfo = overrideSetupInfo
+    if overrideOptions is not None:
+        options = overrideOptions
 
-    view = ImConMainView(setupInfo)
+    view = ImConMainView(options, setupInfo)
     try:
-        controller = ImConMainController(setupInfo, view, moduleCommChannel)
+        controller = ImConMainController(options, setupInfo, view, moduleCommChannel)
     except Exception as e:
         view.close()
         raise e

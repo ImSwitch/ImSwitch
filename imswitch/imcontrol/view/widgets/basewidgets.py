@@ -3,16 +3,15 @@ from pyqtgraph.Qt import QtWidgets
 
 
 class WidgetFactory:
-    """Factory class for creating widgets. It also has a method for loading a
-    preset for all the created widgets."""
+    """ Factory class for creating widgets. """
 
-    def __init__(self, defaultPreset):
-        self._defaultPreset = defaultPreset
+    def __init__(self, options):
+        self._options = options
         self._createdWidgets = []
 
     def createWidget(self, widgetClass, *args, **kwargs):
         if issubclass(widgetClass, Widget):
-            widget = widgetClass(self._defaultPreset, *args, **kwargs)
+            widget = widgetClass(self._options, *args, **kwargs)
         else:
             widget = widgetClass(*args, **kwargs)
 
@@ -23,8 +22,8 @@ class WidgetFactory:
 class Widget(QtWidgets.QWidget):
     """ Superclass for all Widgets. All Widgets are subclasses of QWidget. """
 
-    def __init__(self, defaultPreset, *args, **kwargs):
-        self._defaultPreset = defaultPreset
+    def __init__(self, options, *args, **kwargs):
+        self._options = options
         super().__init__(*args, **kwargs)
 
 # Copyright (C) 2020, 2021TestaLab

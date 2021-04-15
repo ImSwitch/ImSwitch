@@ -14,18 +14,14 @@ class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
-    def __init__(self, viewSetupInfo, *args, **kwargs):
+    def __init__(self, options, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         availableWidgetsInfo = viewSetupInfo.availableWidgets
         widgetLayoutInfo = viewSetupInfo.widgetLayout
 
-        # Preset controls
-        self.presetDir = os.path.join(constants.rootFolderPath, 'presets')
-        defaultPreset = guitools.Preset.getDefault(self.presetDir)
-
         # Widget factory
-        self.factory = widgets.WidgetFactory(defaultPreset)
+        self.factory = widgets.WidgetFactory(options)
 
         # Menu Bar
         menuBar = self.menuBar()
@@ -43,18 +39,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout = QtWidgets.QHBoxLayout()
         self.cwidget.setLayout(layout)
         self.setCentralWidget(self.cwidget)
-
-        # Presets
-        #self.presetsMenu = QtWidgets.QComboBox()
-
-        #for preset in sorted(os.listdir(self.presetDir)):
-        #    self.presetsMenu.addItem(preset)
-        self.loadPresetButton = guitools.BetterPushButton('Load preset')
-
-        #presetPickerContainer = QtWidgets.QHBoxLayout()
-        #presetPickerContainer.addWidget(self.presetsMenu, 1)
-        #presetPickerContainer.addWidget(self.loadPresetButton)
-        #imageViewContainer.addLayout(presetPickerContainer)
 
         # Dock area
         dockArea = DockArea()

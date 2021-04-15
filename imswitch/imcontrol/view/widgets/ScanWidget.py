@@ -34,7 +34,7 @@ class ScanWidget(Widget):
 
         self.sampleRateEdit = QtWidgets.QLineEdit()
 
-        self.seqTimePar = QtWidgets.QLineEdit(self._defaultPreset.scan.dwellTime)  # ms
+        self.seqTimePar = QtWidgets.QLineEdit('10')  # ms
         self.nrFramesPar = QtWidgets.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtWidgets.QLabel(str(self.scanDuration))
@@ -84,16 +84,10 @@ class ScanWidget(Widget):
 
         currentRow = 1
 
-        positionerPresets = self._defaultPreset.scan.positioners
         for index, positionerName in enumerate(positionerNames):
-            positionerPreset = (
-                positionerPresets[positionerName] if positionerName in positionerPresets
-                else guitools.ScanPresetPositioner()
-            )
-
-            sizePar = QtWidgets.QLineEdit(str(positionerPreset.size))
+            sizePar = QtWidgets.QLineEdit('2')
             self.scanPar['size' + positionerName] = sizePar
-            stepSizePar = QtWidgets.QLineEdit(str(positionerPreset.stepSize))
+            stepSizePar = QtWidgets.QLineEdit('1')
             self.scanPar['stepSize' + positionerName] = stepSizePar
 
             self.grid.addWidget(QtWidgets.QLabel('Size {} (µm):'.format(positionerName)), currentRow, 0)
@@ -131,14 +125,10 @@ class ScanWidget(Widget):
         self.grid.addWidget(self.graph, currentRow, 3, 1 + len(TTLDeviceNames), 5)
         currentRow += 1
 
-        pulsePresets = self._defaultPreset.scan.pulses
         for deviceName in TTLDeviceNames:
-            pulsePreset = (pulsePresets[deviceName] if deviceName in pulsePresets
-                           else guitools.ScanPresetTTL())
-
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit(pulsePreset.start)
-            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit(pulsePreset.end)
+            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('0')
+            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('10')
             self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
             self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1

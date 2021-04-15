@@ -15,7 +15,7 @@ class AlignmentLineWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Graphical elements
-        self.angleEdit = QtWidgets.QLineEdit(self._defaultPreset.alignmentLine.lineAngle)
+        self.angleEdit = QtWidgets.QLineEdit('30')
         self.alignmentCheck = QtWidgets.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
         pen = pg.mkPen(color=(255, 255, 0), width=0.5,

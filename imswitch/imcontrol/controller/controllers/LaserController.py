@@ -59,8 +59,8 @@ class LaserController(ImConWidgetController):
         if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
             self._master.lasersManager[laserName].setValue(magnitude)
             self._widget.setValue(laserName, magnitude)
+            self.setSharedAttr(laserName, _valueAttr, magnitude)
 
-        self.setSharedAttr(laserName, _valueAttr, magnitude)
 
     def updateDigitalPowers(self, laserNames):
         """ Update the powers if the digital mod is on. """

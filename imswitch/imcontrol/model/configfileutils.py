@@ -1,22 +1,14 @@
 import glob
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
-from dataclasses_json import dataclass_json
-
 from imswitch.imcommon import constants
-
-
-@dataclass_json
-@dataclass(frozen=True)
-class Options:
-    setupFileName: str  # JSON file that contains setup info
+from .Options import Options
 
 
 def loadSetupInfo(setupInfoType):
     with open(os.path.join(_setupFilesDir, _options.setupFileName)) as setupFile:
-        return setupInfoType.from_json(setupFile.read(), infer_missing=True)
+        return _options, setupInfoType.from_json(setupFile.read(), infer_missing=True)
 
 
 def saveSetupInfo(setupInfo):
@@ -29,15 +21,16 @@ _setupFilesDir = os.path.join(_configFilesDir, 'imcontrol_setups')
 _optionsFilePath = os.path.join(_configFilesDir, 'imcontrol_options.json')
 
 if not os.path.isfile(_optionsFilePath):
-    with open(_optionsFilePath, 'w') as optionsFile:
-        # Options file doesn't exist, create it. TODO: The user should pick the default config
-        _options = Options(
-            setupFileName=Path(glob.glob(os.path.join(_setupFilesDir, '*.json'))[0]).name
-        )
-        optionsFile.write(_options.to_json())
+    # Options file doesn't exist, create it. TODO: The user should pick the default config
+    _options = Options(
+        setupFileName=Path(glob.glob(os.path.join(_setupFilesDir, '*.json'))[0]).name
+    )
 else:
-    with open(_optionsFilePath) as optionsFile:
+    with open(_optionsFilePath, 'r') as optionsFile:
         _options = Options.from_json(optionsFile.read(), infer_missing=True)
+
+with open(_optionsFilePath, 'w') as optionsFile:
+    optionsFile.write(_options.to_json(indent=4))
 
 
 # Copyright (C) 2020, 2021 TestaLab

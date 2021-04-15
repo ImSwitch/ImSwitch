@@ -1,7 +1,7 @@
 import os
 
 from imswitch.imcommon import constants
-from imswitch.imscripting.model import ScriptExecutor
+from imswitch.imscripting.model import ScriptExecutor, ScriptStore, ScriptEntry
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
 
@@ -11,10 +11,10 @@ class EditorController(ImScrWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.scriptExecutor = ScriptExecutor(self._scriptScope)
 
-        self._scriptPaths = {}  # { editorViewInstanceID: filePath }
-        self._unsavedScripts = {}  # { editorViewInstanceID: unsaved }
+        self.scriptExecutor = ScriptExecutor(self._scriptScope)
+        self.scriptStore = ScriptStore()
+        self.loadingFile = False
 
         # Connect ScriptExecutor signals
         self.scriptExecutor.sigOutputAppended.connect(self._commChannel.sigOutputAppended)
@@ -39,8 +39,7 @@ class EditorController(ImScrWidgetController):
     def newFile(self):
         """ Creates a new file. """
         instance = self._widget.addEditor(_untitledFileName)
-        self._scriptPaths[instance.getID()] = None
-        self._unsavedScripts[instance.getID()] = False
+        self.scriptStore[instance.getID()] = ScriptEntry(filePath=None)
 
     def openFile(self, scriptPath=None):
         """ Opens an existing file. If scriptPath is None, the user will
@@ -53,32 +52,42 @@ class EditorController(ImScrWidgetController):
             if not scriptPath:
                 return
 
-        with open(scriptPath) as file:
-            code = file.read()
+        scriptEntry = ScriptEntry.loadFromFile(scriptPath)
 
-        for existingInstanceID, existingScriptPath in self._scriptPaths.items():
-            if scriptPath == existingScriptPath:
+        instance = None
+        for existingInstanceID, existingEntry in self.scriptStore:
+            if scriptPath == existingEntry.filePath:
                 # File already open
                 self._widget.setCurrentInstanceByID(existingInstanceID)
-                return
+                if self.verifyNotUnsaved(existingInstanceID):
+                    instance = self._widget.getInstanceByID(existingInstanceID)
+                else:
+                    return
 
-        instance = self._widget.addEditor(os.path.basename(scriptPath))
-        instance.setText(code)
-        self._scriptPaths[instance.getID()] = scriptPath
-        self._unsavedScripts[instance.getID()] = False
+        if instance is None:
+            instance = self._widget.addEditor(os.path.basename(scriptPath))
+        else:
+            self._widget.setEditorName(instance.getID(), self.getScriptName(instance.getID()))
+
+        self.loadingFile = True
+        try:
+            instance.setText(scriptEntry.code)
+        finally:
+            self.loadingFile = False
+
+        self.scriptStore[instance.getID()] = scriptEntry
 
     def saveFile(self):
         """ Saves the current file. If it's not already saved to a file, the
         user will specify the path to save to. """
         instance = self._widget.getCurrentInstance()
-        scriptPath = self._scriptPaths[instance.getID()]
-        if scriptPath is None:
-            self.saveAsFile()
+        scriptEntry = self.scriptStore[instance.getID()]
+        if scriptEntry.isSavedToFile():
+            scriptEntry.code = instance.getText()
+            scriptEntry.save()
+            self._widget.setEditorName(instance.getID(), os.path.basename(scriptEntry.filePath))
         else:
-            with open(scriptPath, 'w') as file:
-                file.write(instance.getText())
-            self._widget.setEditorName(instance.getID(), os.path.basename(scriptPath))
-            self._unsavedScripts[instance.getID()] = False
+            self.saveAsFile()
 
     def saveAsFile(self):
         """ Saves the current file to the path specified by the user. """
@@ -91,7 +100,7 @@ class EditorController(ImScrWidgetController):
         if not scriptPath:
             return
 
-        self._scriptPaths[instance.getID()] = scriptPath
+        self.scriptStore[instance.getID()].filePath = scriptPath
         self.saveFile()
 
     def runCurrentCode(self, instanceID, code):
@@ -106,7 +115,7 @@ class EditorController(ImScrWidgetController):
                 return
 
         self._commChannel.sigExecutionStarted.emit()
-        self.scriptExecutor.execute(self._scriptPaths[instanceID], code)
+        self.scriptExecutor.execute(self.scriptStore[instanceID].filePath, code)
 
     def stopExecution(self):
         """ Stops the currently running script. Does nothing if no script is
@@ -123,30 +132,34 @@ class EditorController(ImScrWidgetController):
         self.scriptExecutor.terminate()
 
     def textChanged(self, instanceID):
-        if instanceID not in self._scriptPaths:
+        if self.loadingFile or instanceID not in self.scriptStore:
             return  # This happens when the file has not been fully loaded yet
 
-        self._unsavedScripts[instanceID] = True
+        self.scriptStore[instanceID].unsaved = True
         self._widget.setEditorName(instanceID, f'{self.getScriptName(instanceID)}*')
 
     def instanceCloseClicked(self, instanceID):
-        if self._unsavedScripts[instanceID]:
-            if not guitools.askYesNoQuestion(self._widget,
-                                             'Warning: Unsaved Changes',
-                                             'Are you sure you want to close the file? There are'
-                                             ' unsaved changes that will be lost.'):
-                return
+        if not self.verifyNotUnsaved(instanceID):
+            return
 
         self._widget.closeInstance(instanceID)
-        del self._scriptPaths[instanceID]
-        del self._unsavedScripts[instanceID]
+        del self.scriptStore[instanceID]
+
+    def verifyNotUnsaved(self, instanceID):
+        if self.scriptStore[instanceID].unsaved:
+            return guitools.askYesNoQuestion(self._widget,
+                                             'Warning: Unsaved Changes',
+                                             'Are you sure you want to close the file? There are'
+                                             ' unsaved changes that will be lost.')
+
+        return True
 
     def getScriptName(self, instanceID):
         """ Returns the name that should be used for the editor with the
         specified instance ID. """
-        scriptPath = self._scriptPaths[instanceID]
-        if scriptPath is not None:
-            return os.path.basename(scriptPath)
+        scriptEntry = self.scriptStore[instanceID]
+        if scriptEntry.isSavedToFile():
+            return os.path.basename(scriptEntry.filePath)
         else:
             return _untitledFileName
 

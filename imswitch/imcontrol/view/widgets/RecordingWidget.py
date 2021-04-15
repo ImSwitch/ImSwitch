@@ -34,8 +34,8 @@ class RecordingWidget(Widget):
         self.detectorList = QtWidgets.QComboBox()
 
         # Folder and filename fields
-        baseOutputFolder = self._defaultPreset.recording.outputFolder
-        if self._defaultPreset.recording.includeDateInOutputFolder:
+        baseOutputFolder = self._options.recording.outputFolder
+        if self._options.recording.includeDateInOutputFolder:
             self.initialDir = os.path.join(baseOutputFolder, time.strftime('%Y-%m-%d'))
         else:
             self.initialDir = baseOutputFolder

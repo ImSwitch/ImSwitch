@@ -4,9 +4,9 @@ from typing import Any
 import numpy as np
 
 from imswitch.imcommon.model import APIExport
-from imswitch.imcontrol.controller import configfileutils
-from .basecontrollers import ImConWidgetController
+from imswitch.imcontrol.model import configfileutils
 from imswitch.imcontrol.view import guitools as guitools
+from .basecontrollers import ImConWidgetController
 
 
 @dataclass

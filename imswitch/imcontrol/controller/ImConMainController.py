@@ -7,7 +7,8 @@ from . import controllers
 
 
 class ImConMainController(MainController):
-    def __init__(self, setupInfo, mainView, moduleCommChannel):
+    def __init__(self, options, setupInfo, mainView, moduleCommChannel):
+        self.__options = options
         self.__setupInfo = setupInfo
         self.__mainView = mainView
         self.__moduleCommChannel = moduleCommChannel

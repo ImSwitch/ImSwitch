@@ -1,8 +1,28 @@
 {
     "detectors": {
-        "CAM": {
+        "Green": {
             "analogChannel": null,
-            "digitalLine": 3,
+            "digitalLine": 4,
+            "managerName": "HamamatsuManager",
+            "managerProperties": {
+                "cameraListIndex": 1,
+                "hamamatsu": {
+                    "readout_speed": 3,
+                    "trigger_global_exposure": 5,
+                    "trigger_active": 2,
+                    "trigger_polarity": 2,
+                    "exposure_time": 0.03,
+                    "trigger_source": 1,
+                    "subarray_hpos": 0,
+                    "subarray_vpos": 0,
+                    "subarray_hsize": 2048,
+                    "subarray_vsize": 2048
+                }
+            }
+        },
+        "Red": {
+            "analogChannel": null,
+            "digitalLine": 5,
             "managerName": "HamamatsuManager",
             "managerProperties": {
                 "cameraListIndex": 0,
@@ -15,8 +35,8 @@
                     "trigger_source": 1,
                     "subarray_hpos": 0,
                     "subarray_vpos": 0,
-                    "subarray_hsize": 2304,
-                    "subarray_vsize": 2304
+                    "subarray_hsize": 2048,
+                    "subarray_vsize": 2048
                 }
             }
         }

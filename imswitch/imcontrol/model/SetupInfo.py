@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, Undefined, CatchAll
 from typing import Any, Dict, List, Optional
 
@@ -14,7 +14,8 @@ class DeviceInfo:
 
 @dataclass(frozen=True)
 class DetectorInfo(DeviceInfo):
-    pass
+    forAcquisition: bool = False
+    forFocusLock: bool = False
 
 
 @dataclass(frozen=True)
@@ -22,11 +23,21 @@ class LaserInfo(DeviceInfo):
     wavelength: str  # hex code
     valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
     valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
+    valueRangeStep: float = 1.0
 
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
+    axes: List[str]
     isPositiveDirection: bool = True
+    forPositioning: bool = False
+    forScanning: bool = False
+
+
+@dataclass(frozen=True)
+class RS232Info:
+    managerName: str  # manager class name
+    managerProperties: Dict[str, Any]  # properties to be read by manager    
 
 
 @dataclass(frozen=True)
@@ -47,21 +58,46 @@ class ScanInfo:
 
 
 @dataclass(frozen=True)
+class SLMInfo:
+    monitorIdx: int
+    width: int
+    height: int
+    wavelength: int
+    pixelSize: float
+    angleMount: float
+    correctionPatternsDir: str
+
+
+@dataclass(frozen=True)
+class FocusLockInfo:
+    camera: str  # detector name
+    positioner: str  # positioner name
+    updateFreq: int
+    frameCropLeft: int
+    frameCropRight: int
+    frameCropTop: int
+    frameCropBottom: int
+
+
+@dataclass(frozen=True)
 class DesignersInfo:
-    stageScanDesigner: str  # name of the stage scan designer class to use
+    scanDesigner: str  # name of the scan designer class to use
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
-    detectors: Dict[str, DetectorInfo]  # map from device name to CameraInfo
+    detectors: Dict[str, DetectorInfo] = field(default_factory=dict)  # map from device name to CameraInfo
+    lasers: Dict[str, LaserInfo] = field(default_factory=dict)  # map from device name to LaserInfo
+    positioners: Dict[str, PositionerInfo] = field(default_factory=dict)  # map from device name to PositionerInfo
+    rs232devices: Dict[str, RS232Info] = field(default_factory=dict)  # map from device name to RS232Info
 
-    lasers: Dict[str, LaserInfo]  # map from device name to LaserInfo
-    positioners: Dict[str, PositionerInfo]  # map from device name to PositionerInfo
-    scan: ScanInfo
+    scan: ScanInfo = field(default_factory=ScanInfo)
+    slm: Optional[SLMInfo] = None
+    focusLock: Optional[FocusLockInfo] = None
 
-    designers: DesignersInfo
+    designers: DesignersInfo = field(default_factory=DesignersInfo)
 
     _catchAll: CatchAll = None
 
@@ -70,8 +106,22 @@ class SetupInfo:
         return self.getAllDevices()[deviceName]
 
     def getTTLDevices(self):
+        """ Returns DeviceInfo from all devices that have a digitalLine. """
         devices = {}
+        i = 0
         for deviceInfos in self.lasers, self.detectors:
+            deviceInfosCopy = deviceInfos.copy()
+            for item in list(deviceInfosCopy):
+                if not deviceInfosCopy[item].digitalLine:
+                    del deviceInfosCopy[item]
+            devices.update(deviceInfosCopy)
+            i += 1
+
+        return devices
+
+    def getDetectors(self):
+        devices = {}
+        for deviceInfos in self.detectors:
             devices.update(deviceInfos)
 
         return devices

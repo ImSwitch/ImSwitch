@@ -13,11 +13,11 @@ class HamamatsuManager(DetectorManager):
     * hamamatsu -- dictionary of DCAM API properties
     """
 
-    def __init__(self, cameraInfo, name, **_kwargs):
-        self._camera = getCameraObj(cameraInfo.managerProperties['cameraListIndex'])
+    def __init__(self, detectorInfo, name, **_kwargs):
+        self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
-        for propertyName, propertyValue in cameraInfo.managerProperties['hamamatsu'].items():
+        for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (self._camera.getPropertyValue('image_height')[0],
@@ -47,8 +47,8 @@ class HamamatsuManager(DetectorManager):
                                                          valueUnits='µm', editable=True)
         }
 
-        super().__init__(name=name, fullShape=fullShape, supportedBinnings=[1, 2, 4], model=model,
-                         parameters=parameters, croppable=True)
+        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2, 4],
+                         model=model, parameters=parameters, croppable=True)
         self._updatePropertiesFromCamera()
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
 

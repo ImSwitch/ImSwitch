@@ -150,14 +150,14 @@ class ImRecMainViewController(ImRecWidgetController):
             b'Z': self._widget.b_f_text
         }
         try:
-            targetsAttr = dataObj.attrs['ScanStage:Targets[x]']
+            targetsAttr = dataObj.attrs['ScanStage:target_device']
             for i in range(0, min(3, len(targetsAttr))):
                 self._scanParDict['dimensions'][i] = dimensionMap[targetsAttr[i]]
         except KeyError:
             pass
 
         try:
-            positiveDirectionAttr = dataObj.attrs['ScanStage:Positive_direction[x]']
+            positiveDirectionAttr = dataObj.attrs['ScanStage:positive_direction']
             for i in range(0, min(3, len(positiveDirectionAttr))):
                 self._scanParDict['directions'][i] = (self._widget.p_text if positiveDirectionAttr[i]
                                                       else self._widget.n_text)
@@ -168,7 +168,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._scanParDict['steps'][i] = str(int(np.sqrt(dataObj.numFrames)))
 
         try:
-            stepSizesAttr = dataObj.attrs['ScanStage:Step_sizes[x]']
+            stepSizesAttr = dataObj.attrs['ScanStage:axis_step_size']
         except KeyError:
             pass
         else:

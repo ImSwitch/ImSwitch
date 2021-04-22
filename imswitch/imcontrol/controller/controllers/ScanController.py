@@ -1,6 +1,7 @@
 import configparser
 import os
 from ast import literal_eval
+from traceback import print_exc
 
 import numpy as np
 
@@ -15,24 +16,34 @@ class ScanController(SuperScanController):
         super().__init__(*args, **kwargs)
 
         self.settingAttr = False
-        self._settingParameters = False
+        self.settingParameters = False
 
-        self._widget.initControls(self._setupInfo.positioners.keys(),
-                                  self._setupInfo.getTTLDevices().keys())
+        self.positioners = {
+            pName: pManager for pName, pManager in self._setupInfo.positioners.items()
+            if pManager.forScanning
+        }
+        self.TTLDevices = self._setupInfo.getTTLDevices()
 
-        self.scanDir = os.path.join(constants.rootFolderPath, 'scans')
+        self._widget.initControls(
+            self.positioners.keys(),
+            self.TTLDevices.keys(),
+            self._master.scanManager.TTLTimeUnits
+        )
+
+        self.scanDir = os.path.join(constants.rootFolderPath, 'save/scans')
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
 
-        self._stageParameterDict = {
-            'Sample_rate': self._setupInfo.scan.stage.sampleRate,
-            'Return_time_seconds': self._setupInfo.scan.stage.returnTime
+        self._analogParameterDict = {
+            'sample_rate': self._setupInfo.scan.stage.sampleRate,
+            'return_time': self._setupInfo.scan.stage.returnTime
         }
-        self._TTLParameterDict = {
-            'Sample_rate': self._setupInfo.scan.ttl.sampleRate
+        self._digitalParameterDict = {
+            'sample_rate': self._setupInfo.scan.ttl.sampleRate
         }
 
         self.getParameters()
+        self.updatePixels()
         self.plotSignalGraph()
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
@@ -51,6 +62,7 @@ class ScanController(SuperScanController):
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSeqTimeParChanged.connect(self.updateScanTTLAttrs)
+        self._widget.sigStageParChanged.connect(self.updatePixels)
         self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
@@ -59,8 +71,8 @@ class ScanController(SuperScanController):
 
     @property
     def parameterDict(self):
-        stageParameterList = [*self._stageParameterDict]
-        TTLParameterList = [*self._TTLParameterDict]
+        stageParameterList = [*self._analogParameterDict]
+        TTLParameterList = [*self._digitalParameterDict]
 
         return {'stageParameterList': stageParameterList,
                 'TTLParameterList': TTLParameterList}
@@ -68,8 +80,8 @@ class ScanController(SuperScanController):
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()
-        x = self._stageParameterDict['Sizes[x]'][0] / self._stageParameterDict['Step_sizes[x]'][0]
-        y = self._stageParameterDict['Sizes[x]'][1] / self._stageParameterDict['Step_sizes[x]'][1]
+        x = self._analogParameterDict['axis_length'][0] / self._analogParameterDict['axis_step_size'][0]
+        y = self._analogParameterDict['axis_length'][1] / self._analogParameterDict['axis_step_size'][1]
 
         return x, y
 
@@ -87,8 +99,8 @@ class ScanController(SuperScanController):
         config = configparser.ConfigParser()
         config.optionxform = str
 
-        config['stageParameterDict'] = self._stageParameterDict
-        config['TTLParameterDict'] = self._TTLParameterDict
+        config['analogParameterDict'] = self._analogParameterDict
+        config['digitalParameterDict'] = self._digitalParameterDict
         config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
 
         with open(filePath, 'w') as configfile:
@@ -110,14 +122,14 @@ class ScanController(SuperScanController):
 
         config.read(filePath)
 
-        for key in self._stageParameterDict:
-            self._stageParameterDict[key] = literal_eval(
-                config._sections['stageParameterDict'][key]
+        for key in self._analogParameterDict:
+            self._analogParameterDict[key] = literal_eval(
+                config._sections['analogParameterDict'][key]
             )
 
-        for key in self._TTLParameterDict:
-            self._TTLParameterDict[key] = literal_eval(
-                config._sections['TTLParameterDict'][key]
+        for key in self._digitalParameterDict:
+            self._digitalParameterDict[key] = literal_eval(
+                config._sections['digitalParameterDict'][key]
             )
 
         scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
@@ -130,90 +142,110 @@ class ScanController(SuperScanController):
         self.setParameters()
 
     def setParameters(self):
-        self._settingParameters = True
+        self.settingParameters = True
         try:
-            for i in range(len(self._setupInfo.positioners)):
-                positionerName = self._stageParameterDict['Targets[x]'][i]
+            for i in range(len(self.positioners)):
+                positionerName = self._analogParameterDict['target_device'][i]
                 self._widget.setScanDim(i, positionerName)
-                self._widget.setScanSize(positionerName, self._stageParameterDict['Sizes[x]'][i])
-                self._widget.setScanStepSize(positionerName, self._stageParameterDict['Step_sizes[x]'][i])
+                self._widget.setScanSize(positionerName, self._analogParameterDict['axis_length'][i])
+                self._widget.setScanStepSize(positionerName, self._analogParameterDict['axis_step_size'][i])
+                self._widget.setScanCenterPos(positionerName, self._analogParameterDict['axis_centerpos'][i])
 
-            for i in range(len(self._TTLParameterDict['Targets[x]'])):
-                deviceName = self._TTLParameterDict['Targets[x]'][i]
-                self._widget.setTTLStarts(deviceName, self._TTLParameterDict['TTLStarts[x,y]'][i])
-                self._widget.setTTLEnds(deviceName, self._TTLParameterDict['TTLEnds[x,y]'][i])
+            for i in range(len(self.TTLDevices)):
+                deviceName = self._digitalParameterDict['target_device'][i]
+                self._widget.setTTLStarts(deviceName, self._digitalParameterDict['TTL_start'][i])
+                self._widget.setTTLEnds(deviceName, self._digitalParameterDict['TTL_end'][i])
 
-            self._widget.setSeqTimePar(self._TTLParameterDict['Sequence_time_seconds'])
+            self._widget.setSeqTimePar(self._digitalParameterDict['sequence_time'])
         finally:
-            self._settingParameters = False
+            self.settingParameters = False
             self.plotSignalGraph()
 
     @APIExport
     def runScan(self):
         """ Runs a scan with the set scanning parameters. """
         self.getParameters()
-        self.signalDic = self._master.scanManager.makeFullScan(
-            self._stageParameterDict, self._TTLParameterDict,
-            staticPositioner=self._widget.isContLaserMode()
-        )
-        self._master.nidaqManager.runScan(self.signalDic)
+        try:
+            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                self._analogParameterDict, self._digitalParameterDict,
+                staticPositioner=self._widget.isContLaserMode()
+            )
+        except:
+            # TODO: should raise an error here probably, but that does not crash the program.
+            print_exc()
+            return
+
+        self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
-        print("scan done")
+        print('Scan done')
         if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
             self.setScanButton(False)
             self._commChannel.sigScanEnded.emit()
         else:
-            self._master.nidaqManager.runScan(self.signalDic)
+            print('Repeat scan')
+            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def getParameters(self):
-        if self._settingParameters:
+        if self.settingParameters:
             return
 
-        self._stageParameterDict['Targets[x]'] = []
-        self._stageParameterDict['Sizes[x]'] = []
-        self._stageParameterDict['Step_sizes[x]'] = []
-        self._stageParameterDict['Start[x]'] = []
-        for i in range(len(self._setupInfo.positioners)):
+        self._analogParameterDict['target_device'] = []
+        self._analogParameterDict['axis_length'] = []
+        self._analogParameterDict['axis_step_size'] = []
+        self._analogParameterDict['axis_centerpos'] = []
+        self._analogParameterDict['axis_startpos'] = []
+        for i in range(len(self.positioners)):
             positionerName = self._widget.getScanDim(i)
             size = self._widget.getScanSize(positionerName)
             stepSize = self._widget.getScanStepSize(positionerName)
+            center = self._widget.getScanCenterPos(positionerName)
             start = self._commChannel.getStartPos()[positionerName]
 
-            self._stageParameterDict['Targets[x]'].append(positionerName)
-            self._stageParameterDict['Sizes[x]'].append(size)
-            self._stageParameterDict['Step_sizes[x]'].append(stepSize)
-            self._stageParameterDict['Start[x]'].append(start)
+            self._analogParameterDict['target_device'].append(positionerName)
+            self._analogParameterDict['axis_length'].append(size)
+            self._analogParameterDict['axis_step_size'].append(stepSize)
+            self._analogParameterDict['axis_centerpos'].append(center)
+            self._analogParameterDict['axis_startpos'].append(start)
 
-        self._TTLParameterDict['Targets[x]'] = []
-        self._TTLParameterDict['TTLStarts[x,y]'] = []
-        self._TTLParameterDict['TTLEnds[x,y]'] = []
-        for deviceName, deviceInfo in self._setupInfo.getTTLDevices().items():
-            self._TTLParameterDict['Targets[x]'].append(deviceName)
-            self._TTLParameterDict['TTLStarts[x,y]'].append(self._widget.getTTLStarts(deviceName))
-            self._TTLParameterDict['TTLEnds[x,y]'].append(self._widget.getTTLEnds(deviceName))
+        self._digitalParameterDict['target_device'] = []
+        self._digitalParameterDict['TTL_start'] = []
+        self._digitalParameterDict['TTL_end'] = []
+        for deviceName, deviceInfo in self.TTLDevices.items():
+            self._digitalParameterDict['target_device'].append(deviceName)
+            self._digitalParameterDict['TTL_start'].append(self._widget.getTTLStarts(deviceName))
+            self._digitalParameterDict['TTL_end'].append(self._widget.getTTLEnds(deviceName))
 
-        self._TTLParameterDict['Sequence_time_seconds'] = self._widget.getSeqTimePar()
-        self._stageParameterDict['Sequence_time_seconds'] = self._widget.getSeqTimePar()
+        self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
+        self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
 
     def setContLaserPulses(self, isContLaserPulses):
-        for i in range(len(self._setupInfo.positioners)):
+        for i in range(len(self.positioners)):
             positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
             self._widget.setScanDimEnabled(i, not isContLaserPulses)
             self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
             self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
+            self._widget.setScanCenterPosEnabled(positionerName, not isContLaserPulses)
 
     def setScanButton(self, b):
         self._widget.setScanButtonChecked(b)
         if b: self.runScan()
 
+    def updatePixels(self):
+        self.getParameters()
+        for index, positionerName in enumerate(self.positioners):
+            if float(self._analogParameterDict['axis_step_size'][index]) != 0:
+                pixels = round(float(self._analogParameterDict['axis_length'][index]) /
+                               float(self._analogParameterDict['axis_step_size'][index]))
+                self._widget.setScanPixels(positionerName, pixels)
+
     def plotSignalGraph(self):
-        if self._settingParameters:
+        if self.settingParameters:
             return
 
         self.getParameters()
         TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(
-            self._TTLParameterDict
+            self._digitalParameterDict
         )
 
         areas = []
@@ -221,7 +253,7 @@ class ScanController(SuperScanController):
         colors = []
         for deviceName, signal in TTLCycleSignalsDict.items():
             isLaser = deviceName in self._setupInfo.lasers
-            areas.append(np.linspace(0, self._TTLParameterDict['Sequence_time_seconds'] * self._widget.sampleRate, len(signal))),
+            areas.append(np.linspace(0, self._digitalParameterDict['sequence_time'] * self._widget.sampleRate, len(signal))),
             signals.append(signal.astype(np.uint8))
             colors.append(
                 guitools.colorutils.wavelengthToHex(
@@ -235,10 +267,10 @@ class ScanController(SuperScanController):
             return
 
         if key[0] == _attrCategoryStage:
-            self._stageParameterDict[key[1]] = value
+            self._analogParameterDict[key[1]] = value
             self.setParameters()
         elif key[0] == _attrCategoryTTL:
-            self._TTLParameterDict[key[1]] = value
+            self._digitalParameterDict[key[1]] = value
             self.setParameters()
 
     def setSharedAttr(self, category, attr, value):
@@ -251,21 +283,21 @@ class ScanController(SuperScanController):
     def updateScanStageAttrs(self):
         self.getParameters()
 
-        for key, value in self._stageParameterDict.items():
+        for key, value in self._analogParameterDict.items():
             self.setSharedAttr(_attrCategoryStage, key, value)
 
         positiveDirections = []
-        for i in range(len(self._setupInfo.positioners)):
-            positionerName = self._stageParameterDict['Targets[x]'][i]
+        for i in range(len(self.positioners)):
+            positionerName = self._analogParameterDict['target_device'][i]
             positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
             positiveDirections.append(positiveDirection)
 
-        self.setSharedAttr(_attrCategoryStage, 'Positive_direction[x]', positiveDirections)
+        self.setSharedAttr(_attrCategoryStage, 'positive_direction', positiveDirections)
 
     def updateScanTTLAttrs(self):
         self.getParameters()
 
-        for key, value in self._TTLParameterDict.items():
+        for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
 
 

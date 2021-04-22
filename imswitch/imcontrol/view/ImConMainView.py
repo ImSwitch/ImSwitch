@@ -17,7 +17,7 @@ class ImConMainView(QtWidgets.QMainWindow):
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        availableWidgetsInfo = viewSetupInfo.availableWidgets
+        self.availableWidgetsInfo = viewSetupInfo.availableWidgets
         widgetLayoutInfo = viewSetupInfo.widgetLayout
 
         # Widget factory
@@ -49,8 +49,15 @@ class ImConMainView(QtWidgets.QMainWindow):
         laserDock.addWidget(self.laserWidgets)
         dockArea.addDock(laserDock)
 
+        # Focus lock dock
+        if self.availableWidgetsInfo.FocusLockWidget:
+            focusLockDock = Dock('Focus Lock', size=(1, 1))
+            self.focusLockWidget = self.factory.createWidget(widgets.FocusLockWidget)
+            focusLockDock.addWidget(self.focusLockWidget)
+            dockArea.addDock(focusLockDock, 'above', laserDock)
+
         # FFT dock
-        if availableWidgetsInfo.FFTWidget:
+        if self.availableWidgetsInfo.FFTWidget:
             FFTDock = Dock("FFT Tool", size=(1, 1))
             self.fftWidget = self.factory.createWidget(widgets.FFTWidget)
             FFTDock.addWidget(self.fftWidget)
@@ -70,29 +77,24 @@ class ImConMainView(QtWidgets.QMainWindow):
             alignmentDockLocation = alignmentDock
 
         # Line Alignment Tool
-        if availableWidgetsInfo.AlignmentLineWidget:
+        if self.availableWidgetsInfo.AlignmentLineWidget:
             self.alignmentLineWidget = self.factory.createWidget(widgets.AlignmentLineWidget)
             addAlignmentDock("Alignment Tool", self.alignmentLineWidget)
 
         # Z align widget
-        if availableWidgetsInfo.AlignWidgetAverage:
+        if self.availableWidgetsInfo.AlignWidgetAverage:
             self.alignWidgetAverage = self.factory.createWidget(widgets.AlignWidgetAverage)
             addAlignmentDock("Axial Alignment Tool", self.alignWidgetAverage)
 
         # Rotational align widget
-        if availableWidgetsInfo.AlignWidgetXY:
+        if self.availableWidgetsInfo.AlignWidgetXY:
             self.alignWidgetXY = self.factory.createWidget(widgets.AlignWidgetXY)
             addAlignmentDock("Rotational Alignment Tool", self.alignWidgetXY)
 
         # ulenses Alignment Tool
-        if availableWidgetsInfo.AlignWidgetXY:
+        if self.availableWidgetsInfo.AlignWidgetXY:
             self.ulensesWidget = self.factory.createWidget(widgets.ULensesWidget)
             addAlignmentDock("uLenses Tool", self.ulensesWidget)
-
-        try:
-            laserDock.raiseDock()
-        except AttributeError:  # raised when laser dock has no siblings
-            pass
 
         # Piezo positioner
         piezoDock = Dock('Piezo positioner', size=(1, 1))
@@ -101,14 +103,23 @@ class ImConMainView(QtWidgets.QMainWindow):
         if alignmentDockLocation is not None:
             dockArea.addDock(piezoDock, 'bottom', alignmentDockLocation)
         else:
-            dockArea.addDock(piezoDock, 'right', laserDock)
+            dockArea.addDock(piezoDock, 'bottom', laserDock)
 
+        # Scan widget dock
         scanDock = Dock('Scan', size=(1, 1))
         self.scanWidget = self.factory.createWidget(widgets.ScanWidget)
         scanDock.addWidget(self.scanWidget)
         dockArea.addDock(scanDock)
 
-        if availableWidgetsInfo.BeadRecWidget:
+        # SLM widget dock
+        if self.availableWidgetsInfo.SLMWidget:
+            slmDock = Dock('SLM', size=(1, 1))
+            self.slmWidget = self.factory.createWidget(widgets.SLMWidget)
+            slmDock.addWidget(self.slmWidget)
+            dockArea.addDock(slmDock, 'above', scanDock)
+
+        # Bead reconstruction
+        if self.availableWidgetsInfo.BeadRecWidget:
             self.beadDock = Dock('Bead Rec', size=(1, 100))
             self.beadRecWidget = self.factory.createWidget(widgets.BeadRecWidget)
             self.beadDock.addWidget(self.beadRecWidget)
@@ -151,6 +162,17 @@ class ImConMainView(QtWidgets.QMainWindow):
         consoleDock.addWidget(console)
         dockArea.addDock(consoleDock, 'bottom', self.recordingDock)
 
+        # Objective motorized correction collar widget dock
+        if self.availableWidgetsInfo.MotCorrWidget:
+            motCorrDock = Dock('Objective Mot Corr', size=(1, 1))
+            self.motCorrWidget = self.factory.createWidget(widgets.MotCorrWidget)
+            motCorrDock.addWidget(self.motCorrWidget)
+            dockArea.addDock(motCorrDock, 'below',  self.imageControlsDock)
+
+        # Raise important docks
+        self._raiseDock(self.imageControlsDock)
+        self._raiseDock(laserDock)
+
         # Add dock area to layout
         layout.addWidget(dockArea)
 
@@ -163,7 +185,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         self._catchingSetVisible(self.imageDock, visible)
         self._catchingSetVisible(self.recordingDock, visible)
         self._catchingSetVisible(self.imageControlsDock, visible)
-        self._catchingSetVisible(self.beadDock, visible)
+        if self.availableWidgetsInfo.BeadRecWidget:
+            self._catchingSetVisible(self.beadDock, visible)
 
         if not visible:
             self.showNormal()
@@ -176,6 +199,12 @@ class ImConMainView(QtWidgets.QMainWindow):
         try:
             widget.setVisible(visible)
         except AttributeError:
+            pass
+
+    def _raiseDock(self, dock):
+        try:
+            dock.raiseDock()
+        except AttributeError:  # raised when dock has no siblings
             pass
 
 # Copyright (C) 2020, 2021 TestaLab

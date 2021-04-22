@@ -35,10 +35,10 @@ Available manager properties:
 - digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
 
 
-NidaqAOLaserManager
--------------------
+NidaqLaserManager
+-----------------
 
-LaserManager for analog NI-DAQ-controlled lasers.
+LaserManager for analog-value NI-DAQ-controlled lasers.
 
 Available manager properties: None
 
@@ -46,10 +46,10 @@ Available manager properties: None
 Positioner managers
 ===================
 
-NidaqAOPositionerManager
-------------------------
+NidaqPositionerManager
+----------------------
 
-PositionerManager for analog NI-DAQ-controlled positioners.
+PositionerManager for analog-value NI-DAQ-controlled positioners.
 
 Available manager properties:
 - conversionFactor -- float

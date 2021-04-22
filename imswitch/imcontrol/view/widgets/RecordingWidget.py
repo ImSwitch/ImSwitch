@@ -158,7 +158,8 @@ class RecordingWidget(Widget):
     def getDetectorToCapture(self):
         """ Returns the name of the detector the user has selected to be
         captured. Note: If "current detector at start" is selected, this
-        returns -1, and if "all detectors" is selected, this returns -2. """
+        returns -1, and if "all acquisition detectors" is selected, this
+        returns -2. """
         return self.detectorList.itemData(self.detectorList.currentIndex())
 
     def getSaveMode(self):
@@ -191,7 +192,7 @@ class RecordingWidget(Widget):
     def setDetectorList(self, detectorModels):
         if len(detectorModels) > 1:
             self.detectorList.addItem('Current detector at start', -1)
-            self.detectorList.addItem('All detectors', -2)
+            self.detectorList.addItem('All acquisition detectors', -2)
 
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
@@ -199,7 +200,7 @@ class RecordingWidget(Widget):
     def setDetectorToCapture(self, detectorName):
         """ Sets which detector should be captured. Note: The value -1
         corresponds to "current detector at start", and the value -2
-        corresponds to "all detectors". """
+        corresponds to "all acquisition detectors". """
         for i in range(self.detectorList.count()):
             if self.detectorList.itemData(i) == detectorName:
                 self.detectorList.setCurrentIndex(i)

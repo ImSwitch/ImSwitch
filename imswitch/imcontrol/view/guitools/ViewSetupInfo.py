@@ -19,12 +19,15 @@ class ScanDefaultsInfo:
 
 @dataclass(frozen=True)
 class WidgetAvailabilityInfo:
-    AlignWidgetXY: bool = True
-    AlignWidgetAverage: bool = True
-    AlignmentLineWidget: bool = True
-    BeadRecWidget: bool = True
-    FFTWidget: bool = True
-    ULensesWidget: bool = True
+    AlignWidgetXY: bool = False
+    AlignWidgetAverage: bool = False
+    AlignmentLineWidget: bool = False
+    BeadRecWidget: bool = False
+    FFTWidget: bool = False
+    ULensesWidget: bool = False
+    SLMWidget: bool = False
+    FocusLockWidget: bool = False
+    MotCorrWidget: bool = False
 
 
 @dataclass(frozen=True)
@@ -35,7 +38,7 @@ class WidgetLayoutInfo:
 @dataclass(frozen=True)
 class ViewSetupInfo(SetupInfo):
     # additional ROIs available to select in detector settings
-    rois: Dict[str, ROIInfo] = field(default_factory=list)
+    rois: Dict[str, ROIInfo] = field(default_factory=dict)
 
     # which widgets are available
     availableWidgets: WidgetAvailabilityInfo = field(default_factory=WidgetAvailabilityInfo)
@@ -45,6 +48,7 @@ class ViewSetupInfo(SetupInfo):
 
     # scan defaults
     scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)
+
 
     def setROI(self, name, x, y, width, height):
         self.rois[name] = ROIInfo(x=x, y=y, w=width, h=height)

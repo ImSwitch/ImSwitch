@@ -27,9 +27,7 @@ class LantzLaserManager(LaserManager):
         # self._laser.autostart = False  # TODO: What's the point of this?
 
         super().__init__(
-            name, isBinary=False, isDigital=True, wavelength=laserInfo.wavelength,
-            valueRangeMin=laserInfo.valueRangeMin, valueRangeMax=laserInfo.valueRangeMax,
-            valueUnits='mW'
+            laserInfo, name, isBinary=False, isDigital=True, valueUnits='mW'
         )
 
     def setEnabled(self, enabled):

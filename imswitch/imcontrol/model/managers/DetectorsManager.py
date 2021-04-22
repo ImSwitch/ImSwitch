@@ -1,3 +1,4 @@
+from collections import Sequence
 from time import sleep
 
 import numpy as np

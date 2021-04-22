@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -8,7 +9,13 @@ from .view.guitools import getBaseStyleSheet
 
 def prepareApp():
     """ This function must be called before any views are created. """
-    os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # force Qt to use PyQt5
+
+    # Set logging levels
+    logging.getLogger("pyvisa").setLevel(logging.WARNING)
+    logging.getLogger("lantz").setLevel(logging.WARNING)
+
+    # Create app
+    os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # Force Qt to use PyQt5
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     app = QtWidgets.QApplication([])
     app.setStyleSheet(getBaseStyleSheet())

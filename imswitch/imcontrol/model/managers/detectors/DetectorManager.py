@@ -32,20 +32,29 @@ class DetectorManager(SignalInterface):
     sigImageUpdated = Signal(np.ndarray, bool)
 
     @abstractmethod
-    def __init__(self, name, fullShape, supportedBinnings, model, parameters, croppable):
+    def __init__(self, detectorInfo, name, fullShape, supportedBinnings, model, parameters,
+                 croppable):
         super().__init__()
+
+        self._detectorInfo = detectorInfo
+
+        self._frameStart = (0, 0)
+        self._shape = fullShape
 
         self.__name = name
         self.__model = model
         self.__parameters = parameters
         self.__croppable = croppable
 
-        self._frameStart = (0, 0)
-        self._shape = fullShape
-
         self.__fullShape = fullShape
         self.__supportedBinnings = supportedBinnings
         self.__image = np.array([])
+
+        self.__forAcquisition = detectorInfo.forAcquisition
+        self.__forFocusLock = detectorInfo.forFocusLock
+        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
+            raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
+                             ' DetectorInfo.')
 
         self.setBinning(supportedBinnings[0])
 
@@ -106,6 +115,14 @@ class DetectorManager(SignalInterface):
         return self.__croppable
 
     @property
+    def forAcquisition(self):
+        return self.__forAcquisition
+
+    @property
+    def forFocusLock(self):
+        return self.__forFocusLock
+
+    @property
     @abstractmethod
     def pixelSizeUm(self):
         """The pixel size in micrometers."""
@@ -149,7 +166,11 @@ class DetectorManager(SignalInterface):
     @abstractmethod
     def stopAcquisition(self):
         pass
-		
+
+    def openPropertiesGUI(self):
+        """ If the detector has a driver built-in GUI, open it. """
+        pass
+
     def finalize(self):
         """ Close/cleanup detector. """
         pass

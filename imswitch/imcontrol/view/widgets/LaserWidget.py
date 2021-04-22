@@ -1,4 +1,3 @@
-
 from pyqtgraph.Qt import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -29,13 +28,13 @@ class LaserWidget(Widget):
         self.digModule.sigDigitalModToggled.connect(self.sigDigitalModToggled)
         self.digModule.sigDigitalValueChanged.connect(self.sigDigitalValueChanged)
 
-    def addLaser(self, laserName, valueUnits, wavelength, valueRange=None):
+    def addLaser(self, laserName, valueUnits, wavelength, valueRange=None, valueRangeStep=1):
         """ Adds a laser module widget. valueRange is either a tuple
         (min, max), or None (if the laser can only be turned on/off). """
 
         control = LaserModule(
             name=laserName, units=valueUnits, wavelength=wavelength,
-            valueRange=valueRange, tickInterval=5, singleStep=1,
+            valueRange=valueRange, tickInterval=5, singleStep=valueRangeStep,
             initialPower=valueRange[0] if valueRange is not None else 0
         )
         control.sigEnableChanged.connect(

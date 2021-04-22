@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import DataItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager, ScanManager
+    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager,
+    RS232sManager, ScanManager, SLMManager
 )
 
 
@@ -17,13 +18,24 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100)
-        self.recordingManager = RecordingManager(self.detectorsManager)
         self.nidaqManager = NidaqManager(self.__setupInfo)
-        self.scanManager = ScanManager(self.__setupInfo)  # Make sure compatibility
-        self.lasersManager = LasersManager(self.__setupInfo.lasers, nidaqManager=self.nidaqManager)
+        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+
+        lowLevelManagers = {
+            'nidaqManager': self.nidaqManager,
+            'rs232sManager': self.rs232sManager
+        }
+
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
+                                                 **lowLevelManagers)
+        self.lasersManager = LasersManager(self.__setupInfo.lasers,
+                                           **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
-                                                     nidaqManager=self.nidaqManager)
+                                                     **lowLevelManagers)
+
+        self.scanManager = ScanManager(self.__setupInfo)
+        self.recordingManager = RecordingManager(self.detectorsManager)
+        self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals
         self.detectorsManager.sigAcquisitionStarted.connect(self.__commChannel.sigAcquisitionStarted)

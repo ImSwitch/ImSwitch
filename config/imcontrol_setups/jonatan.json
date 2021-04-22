@@ -1,0 +1,347 @@
+{
+  "detectors": {
+    "APDred": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "APDManager",
+      "managerProperties": {
+        "ctrInputLine": 1,
+        "terminal": "PFI0",
+        "cameraListIndex": null
+      },
+      "forAcquisition": true
+    },
+    "APDgreen": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "APDManager",
+      "managerProperties": {
+        "ctrInputLine": 2,
+        "terminal": "PFI12",
+        "cameraListIndex": null
+      },
+      "forAcquisition": true
+    },
+    "FocusLockCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "TISManager",
+      "managerProperties": {
+        "cameraListIndex": 0,
+        "tis": {
+          "exposure": 0,
+          "gain": 0,
+          "brightness": 0,
+          "image_width": 1280,
+          "image_height": 1024
+        }
+      },
+      "forFocusLock": true
+    },
+    "WidefieldCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "TISManager",
+      "managerProperties": {
+        "cameraListIndex": 1,
+        "tis": {
+          "exposure": 1,
+          "gain": 1,
+          "brightness": 1,
+          "image_width": 2448,
+          "image_height": 2048
+        }
+      },
+      "forAcquisition": true
+    }
+  },
+  "lasers": {
+    "510": {
+      "analogChannel": null,
+      "digitalLine": 0,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 510,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1000,
+      "valueRangeStep": 1
+    },
+    "561": {
+      "analogChannel": null,
+      "digitalLine": 1,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 561,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
+    },
+    "640": {
+      "analogChannel": null,
+      "digitalLine": 2,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 640,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1,
+      "valueRangeStep": 1
+    },
+    "561AOTF": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "AAAOTFLaserManager",
+      "managerProperties": {
+          "rs232device": "aaaotf",
+          "channel": 1
+      },
+      "wavelength": 561,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1023,
+      "valueRangeStep": 1
+    },
+    "640AOTF": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "AAAOTFLaserManager",
+      "managerProperties": {
+          "rs232device": "aaaotf",
+          "channel": 2
+      },
+      "wavelength": 640,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1023,
+      "valueRangeStep": 1
+    },
+    "775AOM": {
+      "analogChannel": 3,
+      "digitalLine": 3,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 100,
+      "valueRangeStep": 1
+    },
+    "775Katana": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "KatanaLaserManager",
+      "managerProperties": {
+        "rs232device": "katana"
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 3100,
+      "valueRangeStep": 1
+    }
+  },
+  "positioners": {
+    "ND-GalvoX": {
+      "analogChannel": 0,
+      "digitalLine": null,
+      "managerName": "NidaqPositionerManager",
+      "managerProperties": {
+        "conversionFactor": 17.44,
+        "minVolt": -10,
+        "maxVolt": 10,
+        "vel_max": 10e-3,
+        "acc_max": 10e-6
+      },
+      "axes": ["X"],
+      "forScanning": true
+    },
+    "ND-GalvoY": {
+      "analogChannel": 1,
+      "digitalLine": null,
+      "managerName": "NidaqPositionerManager",
+      "managerProperties": {
+        "conversionFactor": 16.63,
+        "minVolt": -10,
+        "maxVolt": 10,
+        "vel_max": 10e-3,
+        "acc_max": 10e-6
+      },
+      "axes": ["Y"],
+      "forScanning": true
+    },
+    "ND-PiezoZ": {
+      "analogChannel": 2,
+      "digitalLine": null,
+      "managerName": "NidaqPositionerManager",
+      "managerProperties": {
+        "conversionFactor": 1.0,
+        "minVolt": 0,
+        "maxVolt": 10,
+        "vel_max": 1000.0,
+        "acc_max": 1000.0
+      },
+      "axes": ["Z"],
+      "forScanning": true
+    },
+    "PiezoZ": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "PiezoconceptZManager",
+      "managerProperties": {
+        "rs232device": "pczpiezo"
+      },
+      "axes": ["Z"],
+      "forPositioning": true
+    },
+    "StageXY": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "MHXYStageManager",
+      "managerProperties": {
+        "rs232device": "mhxystage"
+      },
+      "axes": ["X", "Y"],
+      "forPositioning": true
+    }
+  },
+  "rs232devices": {
+    "aaaotf": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM4",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\r \n",
+        "baudrate": 57600,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    },
+    "katana": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM8",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 38400,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    },
+    "pczpiezo": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM5",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 115200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    },
+    "mhxystage": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM6",
+        "encoding": "ascii",
+        "recv_termination": "\r",
+        "send_termination": "\n",
+        "baudrate": 57600,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 2,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    },
+    "leicastand": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "COM10",
+        "encoding": "ascii",
+        "recv_termination": "\r",
+        "send_termination": "\r",
+        "baudrate": 19200,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
+    }
+  },
+  "scan": {
+    "stage": {
+      "sampleRate": 100000,
+      "returnTime": 0.01
+    },
+    "ttl": {
+      "sampleRate": 100000
+    }
+  },
+  "rois": {
+    "Fast scan": {
+      "x": 256,
+      "y": 256,
+      "w": 200,
+      "h": 200
+    },
+    "Imaging": {
+      "x": 256,
+      "y": 256,
+      "w": 512,
+      "h": 512
+    }
+  },
+  "availableWidgets": {
+    "AlignWidgetXY": false,
+    "AlignWidgetAverage": false,
+    "AlignmentLineWidget": false,
+    "BeadRecWidget": false,
+    "FFTWidget": false,
+    "ULensesWidget": false,
+    "SLMWidget": true,
+    "FocusLockWidget": true,
+    "MotCorrWidget": false
+  },
+  "designers": {
+    "scanDesigner": "GalvoScanDesigner",
+    "TTLCycleDesigner": "BetaTTLCycleDesigner"
+  },
+  "slm": {
+    "monitorIdx": 1,
+    "width": 792,
+    "height": 600,
+    "wavelength": 775,
+    "pixelsize": 0.02,
+    "angleMount": 0.15,
+    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
+  },
+  "focusLock": {
+    "camera": "FocusLockCamera",
+    "positioner": "PiezoZ",
+    "updateFreq": 10,
+    "frameCropLeft": 730,
+    "frameCropRight": 830,
+    "frameCropTop": 0,
+    "frameCropBottom": 1024
+  },
+  "widgetLayout": {
+      "lasersAndAlignmentInSingleDock": false
+  }
+}

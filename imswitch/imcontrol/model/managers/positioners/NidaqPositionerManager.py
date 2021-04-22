@@ -1,8 +1,8 @@
 from .PositionerManager import PositionerManager
 
 
-class NidaqAOPositionerManager(PositionerManager):
-    """ PositionerManager for analog NI-DAQ-controlled positioners.
+class NidaqPositionerManager(PositionerManager):
+    """ PositionerManager for analog-value NI-DAQ-controlled positioners.
 
     Available manager properties:
     * conversionFactor -- float
@@ -11,16 +11,20 @@ class NidaqAOPositionerManager(PositionerManager):
     """
 
     def __init__(self, positionerInfo, name, **kwargs):
+        if len(positionerInfo.axes) != 1:
+            raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
+                               f' {len(positionerInfo.axes)} provided.')
+
         self._nidaqManager = kwargs['nidaqManager']
         self._conversionFactor = positionerInfo.managerProperties['conversionFactor']
         self._minVolt = positionerInfo.managerProperties['minVolt']
         self._maxVolt = positionerInfo.managerProperties['maxVolt']
-        super().__init__(name, initialPosition=0)
+        super().__init__(positionerInfo, name, initialPosition=[0])
 
-    def move(self, dist):
-        return self.setPosition(self._position + dist)
+    def move(self, dist, axis):
+        return self.setPosition(self._position + dist, axis)
 
-    def setPosition(self, position):
+    def setPosition(self, position, axis):
         self._position = position
         self._nidaqManager.setAnalog(target=self.name,
                                      voltage=position / self._conversionFactor,

@@ -12,6 +12,7 @@ class ViewWidget(Widget):
     sigLiveviewToggled = QtCore.Signal(bool)  # (enabled)
     sigDetectorChanged = QtCore.Signal(str)  # (detectorName)
     sigNextDetectorClicked = QtCore.Signal()
+    sigDetectorPropsClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -46,13 +47,19 @@ class ViewWidget(Widget):
         self.detectorListBox.addWidget(self.detectorList, 1)
         self.detectorListBox.addWidget(self.nextDetectorButton)
 
+        # Detector settings button
+        self.detectorPropsButton = guitools.BetterPushButton('Detector properties')
+        self.detectorPropsButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                               QtWidgets.QSizePolicy.Expanding)
+
         # Add elements to GridLayout
         self.viewCtrlLayout = QtWidgets.QGridLayout()
         self.setLayout(self.viewCtrlLayout)
-        self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 2)
-        self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 2)
+        self.viewCtrlLayout.addLayout(self.detectorListBox, 0, 0, 1, 3)
+        self.viewCtrlLayout.addWidget(self.liveviewButton, 1, 0, 1, 3)
         self.viewCtrlLayout.addWidget(self.gridButton, 2, 0)
         self.viewCtrlLayout.addWidget(self.crosshairButton, 2, 1)
+        self.viewCtrlLayout.addWidget(self.detectorPropsButton, 2, 2)
 
         # Connect signals
         self.gridButton.toggled.connect(self.sigGridToggled)
@@ -62,6 +69,7 @@ class ViewWidget(Widget):
             lambda index: self.sigDetectorChanged.emit(self.detectorList.itemData(index))
         )
         self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
+        self.detectorPropsButton.clicked.connect(self.sigDetectorPropsClicked)
 
     def getLiveViewActive(self):
         return self.liveviewButton.isChecked()

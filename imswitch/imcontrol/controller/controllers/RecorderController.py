@@ -13,7 +13,10 @@ class RecorderController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._widget.setDetectorList(self._master.detectorsManager.execOnAll(lambda c: c.model))
+        self._widget.setDetectorList(
+            self._master.detectorsManager.execOnAll(lambda c: c.model,
+                                                    condition=lambda c: c.forAcquisition)
+        )
 
         self.settingAttr = False
         self.recording = False
@@ -212,7 +215,7 @@ class RecorderController(ImConWidgetController):
 
     def detectorChanged(self):
         detectorListData = self._widget.getDetectorToCapture()
-        if detectorListData == -2:  # All detectors
+        if detectorListData == -2:  # §
             # When recording all detectors, the SpecFrames mode isn't supported
             self._widget.setSpecifyFramesAllowed(False)
         else:
@@ -223,8 +226,13 @@ class RecorderController(ImConWidgetController):
         detectorListData = self._widget.getDetectorToCapture()
         if detectorListData == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
-        elif detectorListData == -2:  # All detectors
-            return list(self._setupInfo.detectors.keys())
+        elif detectorListData == -2:  # All acquisition detectors
+            return list(
+                self._master.detectorsManager.execOnAll(
+                    lambda c: c.name,
+                    condition=lambda c: c.forAcquisition
+                ).values()
+            )
         else:  # A specific detector
             return [detectorListData]
 

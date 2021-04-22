@@ -5,10 +5,10 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     "detectors": {
         "CAM": {
             "analogChannel": null,
-            "digitalLine": -98000,
+            "digitalLine": 3,
             "managerName": "HamamatsuManager",
             "managerProperties": {
-                "cameraListIndex": "mock",
+                "cameraListIndex": 0,
                 "hamamatsu": {
                     "readout_speed": 3,
                     "trigger_global_exposure": 5,
@@ -21,18 +21,19 @@ setupInfoBasic = ViewSetupInfo.from_json("""
                     "subarray_hsize": 2304,
                     "subarray_vsize": 2304
                 }
-            }
+            },
+            "forAcquisition": true
         }
     },
     "lasers": {
         "405": {
             "analogChannel": null,
-            "digitalLine": -98001,
+            "digitalLine": 0,
             "managerName": "LantzLaserManager",
             "managerProperties": {
-                "digitalDriver": "mock",
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
-                    "mock"
+                    "COM9"
                 ]
             },
             "wavelength": 405,
@@ -41,13 +42,13 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         },
         "488": {
             "analogChannel": null,
-            "digitalLine": -98002,
+            "digitalLine": 1,
             "managerName": "LantzLaserManager",
             "managerProperties": {
-                "digitalDriver": "mock",
+                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
-                    "mock",
-                    "mock"
+                    "COM4",
+                    "COM14"
                 ]
             },
             "wavelength": 488,
@@ -55,9 +56,9 @@ setupInfoBasic = ViewSetupInfo.from_json("""
             "valueRangeMax": 200
         },
         "473": {
-            "analogChannel": -99000,
-            "digitalLine": -98003,
-            "managerName": "NidaqAOLaserManager",
+            "analogChannel": 3,
+            "digitalLine": 2,
+            "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 473,
             "valueRangeMin": 0,
@@ -66,34 +67,43 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     },
     "positioners": {
         "X": {
-            "analogChannel": -99001,
+            "analogChannel": 0,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 1.587,
                 "minVolt": -10,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["X"],
+            "forScanning": true,
+            "forPositioning": true
         },
         "Y": {
-            "analogChannel": -99002,
+            "analogChannel": 1,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 1.587,
                 "minVolt": -10,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["Y"],
+            "forScanning": true,
+            "forPositioning": true
         },
         "Z": {
-            "analogChannel": -99003,
+            "analogChannel": 2,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 10.0,
                 "minVolt": 0,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["Z"],
+            "forScanning": true,
+            "forPositioning": true
         }
     },
     "scan": {
@@ -106,7 +116,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         }
     },
     "designers": {
-        "stageScanDesigner": "BetaStageScanDesigner",
+        "scanDesigner": "BetaScanDesigner",
         "TTLCycleDesigner": "BetaTTLCycleDesigner"
     },
     "rois": {

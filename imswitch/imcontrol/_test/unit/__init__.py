@@ -22,7 +22,8 @@ detectorInfosBasic = {
                 'image_width': 1024,
                 'image_height': 1024
             }
-        }
+        },
+        forAcquisition=True
     )
 }
 
@@ -48,7 +49,8 @@ detectorInfosMulti = {
                 'image_width': 512,
                 'image_height': 512
             }
-        }
+        },
+        forAcquisition=True
     )
 }
 
@@ -74,7 +76,8 @@ detectorInfosNonSquare = {
                 'image_width': 1024,
                 'image_height': 761
             }
-        }
+        },
+        forAcquisition=True
     )
 }
 

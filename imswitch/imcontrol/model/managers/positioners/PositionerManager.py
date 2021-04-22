@@ -6,9 +6,18 @@ class PositionerManager(ABC):
     be extended for each type of positioner. """
 
     @abstractmethod
-    def __init__(self, name, initialPosition):
-        self.__name = name
+    def __init__(self, positionerInfo, name, initialPosition):
+        self._positionerInfo = positionerInfo
         self._position = initialPosition
+
+        self.__name = name
+
+        self.__axes = positionerInfo.axes
+        self.__forPositioning = positionerInfo.forPositioning
+        self.__forScanning = positionerInfo.forScanning
+        if not positionerInfo.forPositioning and not positionerInfo.forScanning:
+            raise ValueError('At least one of forPositioning and forScanning must be set in'
+                             ' PositionerInfo.')
 
     @property
     def name(self):
@@ -18,16 +27,30 @@ class PositionerManager(ABC):
     def position(self):
         return self._position
 
+    @property
+    def axes(self):
+        return self.__axes
+
+    @property
+    def forPositioning(self):
+        return self.__forPositioning
+
+    @property
+    def forScanning(self):
+        return self.__forScanning
+
     @abstractmethod
-    def move(self, dist):
+    def move(self, dist, axis):
         """ Moves the positioner by the specified distance and returns the new
-        position. Derived classes will update the position field manually. """
+        position. Derived classes will update the position field manually. If
+        the positioner controls multiple axes, the axis must be specified. """
         pass
 
     @abstractmethod
-    def setPosition(self, position):
+    def setPosition(self, position, axis):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
+        If the positioner controls multiple axes, the axis must be specified.
         """
         pass
 

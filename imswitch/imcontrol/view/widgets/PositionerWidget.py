@@ -1,3 +1,5 @@
+import textwrap
+
 from pyqtgraph.Qt import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -5,10 +7,10 @@ from .basewidgets import Widget
 
 
 class PositionerWidget(Widget):
-    """ Widget in control of the piezzo movement. """
+    """ Widget in control of the piezo movement. """
 
-    sigStepUpClicked = QtCore.Signal(str)  # (positionerName)
-    sigStepDownClicked = QtCore.Signal(str)  # (positionerName)
+    sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,44 +19,57 @@ class PositionerWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addPositioner(self, positionerName):
-        self.pars['Label' + positionerName] = QtWidgets.QLabel(f"<strong>{positionerName} = {0:.2f} µm</strong>")
-        self.pars['Label' + positionerName].setTextFormat(QtCore.Qt.RichText)
-        self.pars['UpButton' + positionerName] = guitools.BetterPushButton("+")
-        self.pars['DownButton' + positionerName] = guitools.BetterPushButton("-")
-        self.pars['StepEdit' + positionerName] = QtWidgets.QLineEdit("0.05")
-        self.pars['StepUnit' + positionerName] = QtWidgets.QLabel(" µm")
+    def addPositioner(self, positionerName, axes):
+        for i in range(len(axes)):
+            axis = axes[i]
+            parNameSuffix = self._getParNameSuffix(positionerName, axis)
+            label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
 
-        self.grid.addWidget(self.pars['Label' + positionerName], self.numPositioners, 0)
-        self.grid.addWidget(self.pars['UpButton' + positionerName], self.numPositioners, 1)
-        self.grid.addWidget(self.pars['DownButton' + positionerName], self.numPositioners, 2)
-        self.grid.addWidget(QtWidgets.QLabel("Step"), self.numPositioners, 3)
-        self.grid.addWidget(self.pars['StepEdit' + positionerName], self.numPositioners, 4)
-        self.grid.addWidget(self.pars['StepUnit' + positionerName], self.numPositioners, 5)
+            self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
+            self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
+            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
+            self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
+            self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
+            self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
+            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0.05')
+            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
 
-        self.numPositioners += 1
+            self.grid.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
+            self.grid.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
+            self.grid.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
+            self.grid.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
+            self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
+            self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
+            self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
 
-        # Connect signals
-        self.pars['UpButton' + positionerName].clicked.connect(
-            lambda: self.sigStepUpClicked.emit(positionerName)
-        )
-        self.pars['DownButton' + positionerName].clicked.connect(
-            lambda: self.sigStepDownClicked.emit(positionerName)
-        )
+            self.numPositioners += 1
 
-    def getStepSize(self, positionerName):
-        """ Returns the step size of the specified positioner in
+            # Connect signals
+            self.pars['UpButton' + parNameSuffix].clicked.connect(
+                lambda: self.sigStepUpClicked.emit(positionerName, axis)
+            )
+            self.pars['DownButton' + parNameSuffix].clicked.connect(
+                lambda: self.sigStepDownClicked.emit(positionerName, axis)
+            )
+
+    def getStepSize(self, positionerName, axis):
+        """ Returns the step size of the specified positioner axis in
         micrometers. """
-        return float(self.pars['StepEdit' + positionerName].text())
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        return float(self.pars['StepEdit' + parNameSuffix].text())
 
-    def setStepSize(self, positionerName, stepSize):
-        """ Sets the step size of the specified positioner to the specified
-        number of micrometers. """
-        self.pars['StepEdit' + positionerName].setText(stepSize)
+    def setStepSize(self, positionerName, axis, stepSize):
+        """ Sets the step size of the specified positioner axis to the
+        specified number of micrometers. """
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['StepEdit' + parNameSuffix].setText(stepSize)
 
-    def updatePosition(self, positionerName, position):
-        text = f"<strong>{positionerName} = {position:.2f} µm</strong>"
-        self.pars['Label' + positionerName].setText(text)
+    def updatePosition(self, positionerName, axis, position):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
+
+    def _getParNameSuffix(self, positionerName, axis):
+        return f'{positionerName}--{axis}'
         
 
 # Copyright (C) 2020, 2021 TestaLab

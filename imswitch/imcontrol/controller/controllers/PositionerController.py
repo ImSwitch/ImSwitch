@@ -12,51 +12,65 @@ class PositionerController(ImConWidgetController):
 
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
-            self._widget.addPositioner(pName)
-            self.setSharedAttr(pName, _positionAttr, pManager.position)
+            if not pManager.forPositioning:
+                continue
+
+            self._widget.addPositioner(pName, pManager.axes)
+            for axis in pManager.axes:
+                self.setSharedAttr(pName, axis, _positionAttr, pManager.position)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigMoveZStage.connect(lambda step: self.move('Z', step))
+        self._commChannel.sigMoveZStage.connect(self.moveZStage)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect PositionerWidget signals
-        self._widget.sigStepUpClicked.connect(
-            lambda positionerName: self.move(positionerName, self._widget.getStepSize(positionerName))
-        )
-        self._widget.sigStepDownClicked.connect(
-            lambda positionerName: self.move(positionerName, -self._widget.getStepSize(positionerName))
-        )
+        self._widget.sigStepUpClicked.connect(self.stepUp)
+        self._widget.sigStepDownClicked.connect(self.stepDown)
 
     def closeEvent(self):
-        self._master.positionersManager.execOnAll(lambda p: p.setPosition(0))
+        self._master.positionersManager.execOnAll(
+            lambda p: [p.setPosition(0, axis) for axis in p.axes]
+        )
 
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
 
-    def move(self, positionerName, dist):
-        """ Moves the piezzos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.positionersManager[positionerName].move(dist)
-        self._widget.updatePosition(positionerName, newPos)
-        self.setSharedAttr(positionerName, _positionAttr, newPos)
+    def move(self, positionerName, axis, dist):
+        """ Moves the piezos in x y or z (axis) by dist micrometers. """
+        newPos = self._master.positionersManager[positionerName].move(dist, axis)
+        self._widget.updatePosition(positionerName, axis, newPos)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
-    def setPos(self, positionerName, position):
-        """ Moves the piezzos in x y or z (axis) to the specified position. """
-        newPos = self._master.positionersManager[positionerName].setPosition(position)
-        self._widget.updatePosition(positionerName, newPos)
-        self.setSharedAttr(positionerName, _positionAttr, newPos)
+    def setPos(self, positionerName, axis, position):
+        """ Moves the piezos in x y or z (axis) to the specified position. """
+        newPos = self._master.positionersManager[positionerName].setPosition(position, axis)
+        self._widget.updatePosition(positionerName, axis, newPos)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+    def stepUp(self, positionerName, axis):
+        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
+
+    def stepDown(self, positionerName, axis):
+        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
+
+    def moveZStage(self, step):
+        for pName, pManager in self._master.positionersManager:
+            if 'Z' in pManager.axes:
+                self.move(pName, 'Z', step)
 
     def attrChanged(self, key, value):
-        if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:
+        if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:
             return
 
         positionerName = key[1]
-        if key[2] == _positionAttr:
-            self.setPositioner(positionerName, value)
+        axis = key[2]
+        if key[3] == _positionAttr:
+            self.setPositioner(positionerName, axis, value)
 
-    def setSharedAttr(self, positionerName, attr, value):
+    def setSharedAttr(self, positionerName, axis, attr, value):
         self.settingAttr = True
         try:
-            self._commChannel.sharedAttrs[(_attrCategory, positionerName, attr)] = value
+            self._commChannel.sharedAttrs[(_attrCategory, positionerName, axis, attr)] = value
         finally:
             self.settingAttr = False
 
@@ -67,33 +81,33 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport
-    def setPositionerStepSize(self, positionerName, stepSize):
-        """ Sets the step size of the specified positioner to the specified
-        number of micrometers. """
-        self._widget.setStepSize(positionerName, stepSize)
+    def setPositionerStepSize(self, positionerName, axis, stepSize):
+        """ Sets the step size of the specified positioner axis to the
+        specified number of micrometers. """
+        self._widget.setStepSize(positionerName, axis, stepSize)
 
     @APIExport
-    def movePositioner(self, positionerName, dist):
-        """ Moves the specified positioner by the specified number of
+    def movePositioner(self, positionerName, axis, dist):
+        """ Moves the specified positioner axis by the specified number of
         micrometers. """
-        self.move(positionerName, dist)
+        self.move(positionerName, axis, dist)
 
     @APIExport
-    def setPositioner(self, positionerName, position):
-        """ Moves the specified positioner to the specified position. """
-        self.setPos(positionerName, position)
+    def setPositioner(self, positionerName, axis, position):
+        """ Moves the specified positioner axis to the specified position. """
+        self.setPos(positionerName, axis, position)
 
     @APIExport
-    def stepPositionerUp(self, positionerName):
-        """ Moves the specified positioner in positive direction by its set
-        step size. """
-        self.move(positionerName, self._widget.getStepSize(positionerName))
+    def stepPositionerUp(self, positionerName, axis):
+        """ Moves the specified positioner axis in positive direction by its
+        set step size. """
+        self.stepUp(positionerName, axis)
 
     @APIExport
-    def stepPositionerDown(self, positionerName):
-        """ Moves the specified positioner in negative direction by its set
-        step size. """
-        self.move(positionerName, -self._widget.getStepSize(positionerName))
+    def stepPositionerDown(self, positionerName, axis):
+        """ Moves the specified positioner axis in negative direction by its
+        set step size. """
+        self.stepDown(positionerName, axis)
 
 
 _attrCategory = 'Positioner'

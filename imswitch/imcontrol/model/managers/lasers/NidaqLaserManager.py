@@ -1,8 +1,8 @@
 from .LaserManager import LaserManager
 
 
-class NidaqAOLaserManager(LaserManager):
-    """ LaserManager for analog NI-DAQ-controlled lasers.
+class NidaqLaserManager(LaserManager):
+    """ LaserManager for analog-value NI-DAQ-controlled lasers.
 
     Available manager properties: None
     """
@@ -11,9 +11,7 @@ class NidaqAOLaserManager(LaserManager):
         self._nidaqManager = kwargs['nidaqManager']
 
         super().__init__(
-            name, isBinary=laserInfo.analogChannel is None, isDigital=False,
-            wavelength=laserInfo.wavelength,
-            valueRangeMin=laserInfo.valueRangeMin, valueRangeMax=laserInfo.valueRangeMax,
+            laserInfo, name, isBinary=laserInfo.analogChannel is None, isDigital=False,
             valueUnits='V'
         )
 

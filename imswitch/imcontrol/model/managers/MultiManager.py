@@ -28,14 +28,20 @@ class MultiManager(ABC):
         return list(self._subManagers.keys())
 
     def execOn(self, managedDeviceName, func):
-        """ Executes a function on a specific sub-manager and returns the result. """
+        """ Executes a function on a specific sub-manager and returns the
+        result. """
         self._validateManagedDeviceName(managedDeviceName)
         return func(self._subManagers[managedDeviceName])
 
-    def execOnAll(self, func):
-        """ Executes a function on all sub-managers and returns the results. """
+    def execOnAll(self, func, *, condition=None):
+        """ Executes a function on all sub-managers and returns the
+        results. """
+        if condition is None:
+            condition = lambda _: True
+
         return {managedDeviceName: func(subManager)
-                for managedDeviceName, subManager in self._subManagers.items()}
+                for managedDeviceName, subManager in self._subManagers.items()
+                if condition(subManager)}
 
     def finalize(self):
         """ Close/cleanup sub-managers. """

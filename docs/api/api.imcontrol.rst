@@ -32,10 +32,10 @@ be passed to other positioner-related functions.
 
 Loads scanning parameters from the specified file.
 
-**movePositioner**\ (positionerName, dist) from
+**movePositioner**\ (positionerName, axis, dist) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
 
-Moves the specified positioner by the specified number of\ :raw-html-m2r:`<br>`
+Moves the specified positioner axis by the specified number of\ :raw-html-m2r:`<br>`
 micrometers.
 
 **runScan**\ () from
@@ -108,16 +108,16 @@ Sets whether the LiveView crosshair is visible.
 
 Sets whether the LiveView grid is visible.
 
-**setPositioner**\ (positionerName, position) from
+**setPositioner**\ (positionerName, axis, position) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
 
-Moves the specified positioner to the specified position.
+Moves the specified positioner axis to the specified position.
 
-**setPositionerStepSize**\ (positionerName, stepSize) from
+**setPositionerStepSize**\ (positionerName, axis, stepSize) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
 
-Sets the step size of the specified positioner to the specified\ :raw-html-m2r:`<br>`
-number of micrometers.
+Sets the step size of the specified positioner axis to the\ :raw-html-m2r:`<br>`
+specified number of micrometers.
 
 **setRecFilename**\ (filename) from
 `imswitch.imcontrol.controller.controllers.RecorderController.RecorderController <imswitch.imcontrol.controller.controllers.RecorderController.html#RecorderController>`_
@@ -184,17 +184,17 @@ Take a snap and save it to a .tiff file at the set file path.
 
 Starts recording with the set settings to the set file path.
 
-**stepPositionerDown**\ (positionerName) from
+**stepPositionerDown**\ (positionerName, axis) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
 
-Moves the specified positioner in negative direction by its set\ :raw-html-m2r:`<br>`
-step size.
+Moves the specified positioner axis in negative direction by its\ :raw-html-m2r:`<br>`
+set step size.
 
-**stepPositionerUp**\ (positionerName) from
+**stepPositionerUp**\ (positionerName, axis) from
 `imswitch.imcontrol.controller.controllers.PositionerController.PositionerController <imswitch.imcontrol.controller.controllers.PositionerController.html#PositionerController>`_
 
-Moves the specified positioner in positive direction by its set\ :raw-html-m2r:`<br>`
-step size.
+Moves the specified positioner axis in positive direction by its\ :raw-html-m2r:`<br>`
+set step size.
 
 **stopRecording**\ () from
 `imswitch.imcontrol.controller.controllers.RecorderController.RecorderController <imswitch.imcontrol.controller.controllers.RecorderController.html#RecorderController>`_

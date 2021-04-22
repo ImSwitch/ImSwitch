@@ -4,11 +4,14 @@ from .AlignWidgetAverage import AlignWidgetAverage
 from .AlignWidgetXY import AlignWidgetXY
 from .BeadRecWidget import BeadRecWidget
 from .FFTWidget import FFTWidget
+from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
+from .MotCorrWidget import MotCorrWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
+from .SLMWidget import SLMWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget

@@ -56,6 +56,15 @@ class ImConMainController(MainController):
         if self.__setupInfo.availableWidgets.FFTWidget:
             self.fftController = self.__factory.createController(controllers.FFTController, self.__mainView.fftWidget)
 
+        if self.__setupInfo.availableWidgets.SLMWidget:
+            self.slmController = self.__factory.createController(controllers.SLMController, self.__mainView.slmWidget)
+
+        if self.__setupInfo.availableWidgets.FocusLockWidget:
+            self.focuslockController = self.__factory.createController(controllers.FocusLockController, self.__mainView.focusLockWidget)
+
+        if self.__setupInfo.availableWidgets.MotCorrWidget:
+            self.motcorrController = self.__factory.createController(controllers.MotCorrController, self.__mainView.motCorrWidget)
+
         self.__mainView.setDetectorRelatedDocksVisible(
             self.__masterController.detectorsManager.hasDevices()
         )

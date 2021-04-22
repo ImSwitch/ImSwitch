@@ -1,0 +1,194 @@
+{
+    "detectors": {
+        "APDred": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "APDManager",
+            "managerProperties": {
+                "ctrInputLine": 0,
+                "terminal": "PFI0",
+                "cameraListIndex": null
+            },
+            "forAcquisition": true
+        },
+        "APDgreen": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "APDManager",
+            "managerProperties": {
+                "ctrInputLine": 1,
+                "terminal": "PFI12",
+                "cameraListIndex": null
+            },
+            "forAcquisition": true
+        }
+    },
+    "lasers": {
+        "561": {
+            "analogChannel": null,
+            "digitalLine": 1,
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 561,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1,
+            "valueRangeStep": 1
+        },
+        "640": {
+            "analogChannel": null,
+            "digitalLine": 2,
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 640,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1,
+            "valueRangeStep": 1
+        },
+        "561AOTF": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "AAAOTFLaserManager",
+            "managerProperties": {
+                "rs232device": "aaaotf",
+                "channel": 1
+            },
+            "wavelength": 561,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1023,
+            "valueRangeStep": 1
+        },
+        "640AOTF": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "AAAOTFLaserManager",
+            "managerProperties": {
+                "rs232device": "aaaotf",
+                "channel": 2
+            },
+            "wavelength": 640,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1023,
+            "valueRangeStep": 1
+        }
+    },
+    "positioners": {
+        "ND-GalvoX": {
+            "analogChannel": 0,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 17.44,
+                "minVolt": -10,
+                "maxVolt": 10,
+                "vel_max": 0.1,
+                "acc_max": 0.0001
+            },
+            "axes": ["X"],
+            "forScanning": true
+        },
+        "ND-GalvoY": {
+            "analogChannel": 1,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 16.63,
+                "minVolt": -10,
+                "maxVolt": 10,
+                "vel_max": 0.1,
+                "acc_max": 0.0001
+            },
+            "axes": ["Y"],
+            "forScanning": true
+        },
+        "ND-PiezoZ": {
+            "analogChannel": 2,
+            "digitalLine": null,
+            "managerName": "NidaqPositionerManager",
+            "managerProperties": {
+                "conversionFactor": 1.0,
+                "minVolt": 0,
+                "maxVolt": 10,
+                "vel_max": 1000.0,
+                "acc_max": 1000.0
+            },
+            "axes": ["Z"],
+            "forScanning": true
+        },
+        "PiezoZ": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "PiezoconceptZManager",
+            "managerProperties": {
+                "rs232device": "pczpiezo"
+            },
+            "axes": ["Z"],
+            "forPositioning": true
+        }
+    },
+    "rs232devices": {
+        "aaaotf": {
+            "managerName": "RS232Manager",
+            "managerProperties": {
+                "port": "ASRL4::INSTR",
+                "encoding": "ascii",
+                "recv_termination": "\n",
+                "send_termination": "\r \n",
+                "baudrate": 57600,
+                "bytesize": 8,
+                "parity": "none",
+                "stopbits": 1,
+                "rtscts": "false",
+                "dsrdtr": "false",
+                "xonxoff": "false"
+            }
+        },
+        "pczpiezo": {
+            "managerName": "RS232Manager",
+            "managerProperties": {
+                "port": "ASRL5::INSTR",
+                "encoding": "ascii",
+                "recv_termination": "\n",
+                "send_termination": "\n",
+                "baudrate": 115200,
+                "bytesize": 8,
+                "parity": "none",
+                "stopbits": 1,
+                "rtscts": "false",
+                "dsrdtr": "false",
+                "xonxoff": "false"
+            }
+        }
+    },
+    "scan": {
+        "stage": {
+            "sampleRate": 100000.0,
+            "returnTime": 0.01
+        },
+        "ttl": {
+            "sampleRate": 100000.0
+        }
+    },
+    "designers": {
+        "scanDesigner": "GalvoScanDesigner",
+        "TTLCycleDesigner": "PointScanTTLCycleDesigner"
+    },
+    "rois": {
+    },
+    "availableWidgets": {
+        "AlignWidgetXY": false,
+        "AlignWidgetAverage": false,
+        "AlignmentLineWidget": false,
+        "BeadRecWidget": false,
+        "FFTWidget": false,
+        "ULensesWidget": false,
+        "SLMWidget": false,
+        "FocusLockWidget": false,
+        "MotCorrWidget": false
+    },
+    "widgetLayout": {
+        "lasersAndAlignmentInSingleDock": false
+    },
+    "scanDefaults": {
+        "defaultScanFile": null
+    }
+}

@@ -6,15 +6,18 @@ from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
 def getImage(qtbot, detectorsManager):
     receivedImage = None
+    numImagesReceived = 0
 
-    def imageUpdated(img):
-        nonlocal receivedImage
-        receivedImage = img
+    def imageUpdated(_, img, __, isCurrentDetector):
+        nonlocal receivedImage, numImagesReceived
+        if isCurrentDetector:
+            receivedImage = img
+            numImagesReceived += 1
 
     detectorsManager.sigImageUpdated.connect(imageUpdated)
 
     handle = detectorsManager.startAcquisition(liveView=True)
-    for i in range(3):  # Make sure we get at least 3 images
+    while numImagesReceived < 3:  # Make sure we get at least 3 images
         with qtbot.waitSignal(detectorsManager.sigImageUpdated, timeout=30000):
             pass
 

@@ -18,7 +18,8 @@
                     "subarray_hsize": 2048,
                     "subarray_vsize": 2048
                 }
-            }
+            },
+            "forAcquisition": true
         },
         "Red": {
             "analogChannel": null,
@@ -38,7 +39,8 @@
                     "subarray_hsize": 2048,
                     "subarray_vsize": 2048
                 }
-            }
+            },
+            "forAcquisition": true
         }
     },
     "lasers": {
@@ -87,7 +89,7 @@
         "592 (EXC)": {
             "analogChannel": 3,
             "digitalLine": 0,
-            "managerName": "NidaqAOLaserManager",
+            "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
             "valueRangeMin": 0,
@@ -96,7 +98,7 @@
         "592 (OFF)": {
             "analogChannel": null,
             "digitalLine": 6,
-            "managerName": "NidaqAOLaserManager",
+            "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
             "valueRangeMin": null,
@@ -107,32 +109,41 @@
         "X": {
             "analogChannel": 0,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 1.75,
                 "minVolt": 0,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["X"],
+            "forScanning": true,
+            "forPositioning": true
         },
         "Y": {
             "analogChannel": 1,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 1.75,
                 "minVolt": 0,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["Y"],
+            "forScanning": true,
+            "forPositioning": true
         },
         "Z": {
             "analogChannel": 2,
             "digitalLine": null,
-            "managerName": "NidaqAOPositionerManager",
+            "managerName": "NidaqPositionerManager",
             "managerProperties": {
                 "conversionFactor": 1.75,
                 "minVolt": 0,
                 "maxVolt": 10
-            }
+            },
+            "axes": ["Z"],
+            "forScanning": true,
+            "forPositioning": true
         }
     },
     "scan": {
@@ -145,7 +156,7 @@
         }
     },
     "designers": {
-        "stageScanDesigner": "BetaStageScanDesigner",
+        "scanDesigner": "BetaScanDesigner",
         "TTLCycleDesigner": "BetaTTLCycleDesigner"
     },
     "rois": {

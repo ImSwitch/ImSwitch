@@ -6,8 +6,8 @@ from .basewidgets import Widget
 
 
 class ScanWidget(Widget):
-    ''' Widget containing scanner interface and beadscan reconstruction.
-            This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget'''
+    """ Widget containing scanner interface and beadscan reconstruction.
+            This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
 
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
@@ -50,8 +50,7 @@ class ScanWidget(Widget):
         self.scanRadio.setChecked(True)
         self.contLaserPulsesRadio = QtWidgets.QRadioButton('Cont. Laser Pulses')
 
-        self.scanButton = guitools.BetterPushButton('Scan', 96)
-        self.scanButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        self.scanButton = guitools.BetterPushButton('Run Scan')
 
         self.continuousCheck = QtWidgets.QCheckBox('Repeat')
 
@@ -59,7 +58,7 @@ class ScanWidget(Widget):
         self.graph = GraphFrame()
         self.graph.setEnabled(False)
         self.graph.plot.getAxis('bottom').setScale(1000 / self.sampleRate)
-        self.graph.setFixedHeight(100)
+        self.graph.setFixedHeight(128)
 
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
@@ -71,61 +70,112 @@ class ScanWidget(Widget):
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
         self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
 
-    def initControls(self, positionerNames, TTLDeviceNames):
+    def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
+        currentRow = 0
         self.scanDims = positionerNames
 
-        self.grid.addWidget(self.loadScanBtn, 0, 0)
-        self.grid.addWidget(self.saveScanBtn, 0, 1)
-        self.grid.addWidget(self.scanRadio, 0, 2)
-        self.grid.addWidget(self.contLaserPulsesRadio, 0, 3)
-        self.grid.addItem(QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum), 0, 6)
-        self.grid.addWidget(self.scanButton, 1, 7, len(positionerNames), 1)
-        self.grid.addWidget(self.continuousCheck, 0, 7)
+        # Add general buttons
+        self.grid.addWidget(self.loadScanBtn, currentRow, 0)
+        self.grid.addWidget(self.saveScanBtn, currentRow, 1)
+        self.grid.addWidget(self.scanRadio, currentRow, 2)
+        self.grid.addWidget(self.contLaserPulsesRadio, currentRow, 3)
+        self.grid.addItem(
+            QtWidgets.QSpacerItem(40, 20,
+                                  QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
+            currentRow, 4
+        )
+        self.grid.addWidget(self.continuousCheck, currentRow, 5)
+        self.grid.addWidget(self.scanButton, currentRow, 6)
+        currentRow += 1
 
-        currentRow = 1
+        # Add space item to make the grid look nicer
+        self.grid.addItem(
+            QtWidgets.QSpacerItem(20, 40,
+                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
+            currentRow, 0, 1, -1
+        )
+        currentRow += 1
+
+        # Add param labels
+        sizeLabel = QtWidgets.QLabel('Size (µm)')
+        stepLabel = QtWidgets.QLabel('Step size (µm)')
+        pixelsLabel = QtWidgets.QLabel('Pixels (#)')
+        centerLabel = QtWidgets.QLabel('Center (µm)')
+        scandimLabel = QtWidgets.QLabel('Scan dim')
+        sizeLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        stepLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        pixelsLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        centerLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        scandimLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(sizeLabel, currentRow, 1)
+        self.grid.addWidget(stepLabel, currentRow, 2)
+        self.grid.addWidget(pixelsLabel, currentRow, 3)
+        self.grid.addWidget(centerLabel, currentRow, 4)
+        self.grid.addWidget(scandimLabel, currentRow, 6)
+        currentRow += 1
 
         for index, positionerName in enumerate(positionerNames):
+            # Scan params
             sizePar = QtWidgets.QLineEdit('2')
             self.scanPar['size' + positionerName] = sizePar
             stepSizePar = QtWidgets.QLineEdit('1')
             self.scanPar['stepSize' + positionerName] = stepSizePar
-
-            self.grid.addWidget(QtWidgets.QLabel('Size {} (µm):'.format(positionerName)), currentRow, 0)
+            numPixelsPar = QtWidgets.QLineEdit('2')
+            numPixelsPar.setEnabled(False)
+            self.scanPar['pixels' + positionerName] = numPixelsPar
+            centerPar = QtWidgets.QLineEdit('0')
+            self.scanPar['center' + positionerName] = centerPar
+            self.grid.addWidget(QtWidgets.QLabel(positionerName), currentRow, 0)
             self.grid.addWidget(sizePar, currentRow, 1)
-            self.grid.addWidget(QtWidgets.QLabel('Step {} (µm):'.format(positionerName)), currentRow, 2)
-            self.grid.addWidget(stepSizePar, currentRow, 3)
+            self.grid.addWidget(stepSizePar, currentRow, 2)
+            self.grid.addWidget(numPixelsPar, currentRow, 3)
+            self.grid.addWidget(centerPar, currentRow, 4)
 
-            dimLabelText = '{}{} dimension:'.format(index + 1, guitools.ordinalSuffix(index + 1))
-            self.grid.addWidget(QtWidgets.QLabel(dimLabelText), currentRow, 4)
+            # Scan dimension label and pickier
+            dimlabel = QtWidgets.QLabel(
+                f'{index + 1}{guitools.ordinalSuffix(index + 1)} dimension:'
+            )
+            dimlabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            self.grid.addWidget(dimlabel, currentRow, 5)
             scanDimPar = QtWidgets.QComboBox()
             scanDimPar.addItems(self.scanDims)
             scanDimPar.setCurrentIndex(index)
             self.scanPar['scanDim' + str(index)] = scanDimPar
-            self.grid.addWidget(scanDimPar, currentRow, 5)
+            self.grid.addWidget(scanDimPar, currentRow, 6)
 
             currentRow += 1
 
             # Connect signals
             self.scanPar['size' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['stepSize' + positionerName].textChanged.connect(self.sigStageParChanged)
+            self.scanPar['pixels' + positionerName].textChanged.connect(self.sigStageParChanged)
+            self.scanPar['center' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(self.sigStageParChanged)
 
-        self.grid.addWidget(QtWidgets.QLabel('Number of frames:'), currentRow, 4)
-        self.grid.addWidget(self.nrFramesPar, currentRow, 5)
-        currentRow += 1
+        # Add dwell time parameter
+        self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
+        self.grid.addWidget(self.seqTimePar, currentRow, 6)
 
-        self.grid.addWidget(QtWidgets.QLabel('Dwell time (ms):'), currentRow, 0)
-        self.grid.addWidget(self.seqTimePar, currentRow, 1)
-        self.grid.addWidget(QtWidgets.QLabel('Total time (s):'), currentRow, 2)
-        self.grid.addWidget(self.scanDurationLabel, currentRow, 3)
+        # Add space item to make the grid look nicer
+        self.grid.addItem(
+            QtWidgets.QSpacerItem(20, 40,
+                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
+            currentRow, 0, 1, -1
+        )
         currentRow += 1
+        graphRow = currentRow
 
-        self.grid.addWidget(QtWidgets.QLabel('Start (ms):'), currentRow, 1)
-        self.grid.addWidget(QtWidgets.QLabel('End (ms):'), currentRow, 2)
-        self.grid.addWidget(self.graph, currentRow, 3, 1 + len(TTLDeviceNames), 5)
+        # TTL pulse param labels
+        startLabel = QtWidgets.QLabel(f'Start ({TTLTimeUnits})')
+        endLabel = QtWidgets.QLabel(f'End ({TTLTimeUnits})')
+        startLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        endLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(startLabel, currentRow, 1)
+        self.grid.addWidget(endLabel, currentRow, 2)
         currentRow += 1
 
         for deviceName in TTLDeviceNames:
+            # TTL pulse params
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
             self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('0')
             self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('10')
@@ -136,6 +186,9 @@ class ScanWidget(Widget):
             # Connect signals
             self.pxParameters['sta' + deviceName].textChanged.connect(self.sigSignalParChanged)
             self.pxParameters['end' + deviceName].textChanged.connect(self.sigSignalParChanged)
+
+        # Add pulse graph
+        self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
 
     def isScanMode(self):
         return self.scanRadio.isChecked()
@@ -154,6 +207,9 @@ class ScanWidget(Widget):
 
     def getScanStepSize(self, positionerName):
         return float(self.scanPar['stepSize' + positionerName].text())
+
+    def getScanCenterPos(self, positionerName):
+        return float(self.scanPar['center' + positionerName].text())
 
     def getTTLStarts(self, deviceName):
         return list(map(lambda s: float(s) / 1000 if s else None,
@@ -185,6 +241,9 @@ class ScanWidget(Widget):
     def setScanStepSize(self, positionerName, stepSize):
         self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
 
+    def setScanPixels(self, positionerName, pixels):
+        self.scanPar['pixels' + positionerName].setText(str(pixels))
+
     def setTTLStarts(self, deviceName, starts):
         self.pxParameters['sta' + deviceName].setText(
             ','.join(map(lambda s: str(round(1000 * s, 3)), starts))
@@ -206,6 +265,9 @@ class ScanWidget(Widget):
 
     def setScanStepSizeEnabled(self, positionerName, enabled):
         self.scanPar['stepSize' + positionerName].setEnabled(enabled)
+
+    def setScanCenterPosEnabled(self, positionerName, enabled):
+        self.scanPar['center' + positionerName].setEnabled(enabled)
 
     def plotSignalGraph(self, areas, signals, colors):
         if len(areas) != len(signals) or len(signals) != len(colors):

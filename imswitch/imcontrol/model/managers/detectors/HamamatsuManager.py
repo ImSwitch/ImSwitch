@@ -20,8 +20,8 @@ class HamamatsuManager(DetectorManager):
         for propertyName, propertyValue in cameraInfo.managerProperties['hamamatsu'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.getPropertyValue('image_height')[0],
-                     self._camera.getPropertyValue('image_width')[0])
+        fullShape = (self._camera.getPropertyValue('image_width')[0],
+                     self._camera.getPropertyValue('image_height')[0])
 
         model = self._camera.camera_model.decode('utf-8')
 
@@ -86,7 +86,7 @@ class HamamatsuManager(DetectorManager):
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
-        self._shape = (hsize, vsize)
+        self._shape = (vsize, hsize)
 
     def setBinning(self, binning):
         super().setBinning(binning)

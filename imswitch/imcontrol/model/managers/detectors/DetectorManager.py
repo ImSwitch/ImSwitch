@@ -1,9 +1,15 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List, Any
+from typing import Any, Callable, List
 
 import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface
+
+
+@dataclass
+class DetectorAction:
+    group: str
+    func: Callable[[], Any]
 
 
 @dataclass
@@ -32,8 +38,8 @@ class DetectorManager(SignalInterface):
     sigImageUpdated = Signal(np.ndarray, bool)
 
     @abstractmethod
-    def __init__(self, detectorInfo, name, fullShape, supportedBinnings, model, parameters,
-                 croppable):
+    def __init__(self, detectorInfo, name, fullShape, supportedBinnings, model, *,
+                 parameters=None, actions=None, croppable=True):
         super().__init__()
 
         self._detectorInfo = detectorInfo
@@ -43,7 +49,8 @@ class DetectorManager(SignalInterface):
 
         self.__name = name
         self.__model = model
-        self.__parameters = parameters
+        self.__parameters = parameters if parameters is not None else {}
+        self.__actions = actions if actions is not None else {}
         self.__croppable = croppable
 
         self.__fullShape = fullShape
@@ -111,6 +118,14 @@ class DetectorManager(SignalInterface):
         return self.__parameters
 
     @property
+    def actions(self):
+        return self.__actions
+
+    @property
+    def actions(self):
+        return self.__actions
+
+    @property
     def croppable(self):
         return self.__croppable
 
@@ -165,10 +180,6 @@ class DetectorManager(SignalInterface):
 
     @abstractmethod
     def stopAcquisition(self):
-        pass
-
-    def openPropertiesGUI(self):
-        """ If the detector has a driver built-in GUI, open it. """
         pass
 
     def finalize(self):

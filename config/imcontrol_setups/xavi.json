@@ -18,7 +18,8 @@
                     "subarray_hsize": 2048,
                     "subarray_vsize": 2048
                 }
-            }
+            },
+            "forAcquisition": true
         },
         "Red": {
             "analogChannel": null,

@@ -43,7 +43,6 @@ class RecorderController(ImConWidgetController):
         self._widget.sigSpecTimePicked.connect(self.specTime)
         self._widget.sigScanOncePicked.connect(self.recScanOnce)
         self._widget.sigScanLapsePicked.connect(self.recScanLapse)
-        self._widget.sigDimLapsePicked.connect(self.dimLapse)
         self._widget.sigUntilStopPicked.connect(self.untilStop)
 
     def openFolder(self):
@@ -106,10 +105,6 @@ class RecorderController(ImConWidgetController):
                 self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
                 self.nextLapse()
-            elif self.recMode == RecMode.DimLapse:
-                self.lapseTotal = self._widget.getDimlapseSlices()
-                self.lapseCurrent = 0
-                self.nextLapse()
             else:
                 self._master.recordingManager.startRecording(*recordingArgs)
 
@@ -131,21 +126,6 @@ class RecorderController(ImConWidgetController):
                     self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
                 else:
                     self._master.recordingManager.endRecording()
-            elif self.recMode == RecMode.DimLapse:
-                self.lapseCurrent += 1
-                if self.lapseCurrent < self.lapseTotal:
-                    self._widget.updateRecSliceNum(self.lapseCurrent)
-                    self._master.recordingManager.endRecording(emitSignal=False)
-                    time.sleep(0.3)
-                    self._commChannel.sigMoveZStage.emit(self._widget.getDimlapseStepSize())
-                    self.timer = Timer(singleShot=True)
-                    self.timer.timeout.connect(self.nextLapse)
-                    self.timer.start(1000)
-                else:
-                    self._commChannel.sigMoveZStage.emit(
-                        (self.lapseTotal - 1) * -self._widget.getDimlapseStepSize()
-                    )
-                    self._master.recordingManager.endRecording()
 
     def nextLapse(self):
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
@@ -161,7 +141,6 @@ class RecorderController(ImConWidgetController):
         self._widget.updateRecFrameNum(0)
         self._widget.updateRecTime(0)
         self._widget.updateRecLapseNum(0)
-        self._widget.updateRecSliceNum(0)
         self._widget.setRecButtonChecked(False)
 
     def specFrames(self):
@@ -184,11 +163,6 @@ class RecorderController(ImConWidgetController):
         self._widget.setEnabledParams(timelapseTime=True, timelapseFreq=True)
         self.recMode = RecMode.ScanLapse
 
-    def dimLapse(self):
-        self._widget.checkDimLapse()
-        self._widget.setEnabledParams(dimlapseSlices=True, dimlapseStepSize=True)
-        self.recMode = RecMode.DimLapse
-
     def untilStop(self):
         self._widget.checkUntilStop()
         self._widget.setEnabledParams()
@@ -203,8 +177,6 @@ class RecorderController(ImConWidgetController):
             self.recScanOnce()
         elif recMode == RecMode.ScanLapse:
             self.recScanLapse()
-        elif recMode == RecMode.DimLapse:
-            self.dimLapse()
         elif recMode == RecMode.UntilStop:
             self.untilStop()
         else:
@@ -251,10 +223,6 @@ class RecorderController(ImConWidgetController):
             self._widget.setTimelapseTime(value)
         elif key[1] == _freqAttr:
             self._widget.setTimelapseFreq(value)
-        elif key[1] == _slicesAttr:
-            self._widget.setDimlapseSlices(value)
-        elif key[1] == _stepSizeAttr:
-            self._widget.setDimlapseStepSize(value)
 
     def setSharedAttr(self, attr, value):
         self.settingAttr = True
@@ -282,9 +250,6 @@ class RecorderController(ImConWidgetController):
             elif self.recMode == RecMode.ScanLapse:
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
-            elif self.recMode == RecMode.DimLapse:
-                self.setSharedAttr(_slicesAttr, self._widget.getDimlapseSlices())
-                self.setSharedAttr(_stepSizeAttr, self._widget.getDimlapseStepSize())
 
     @APIExport
     def snapImage(self):
@@ -325,13 +290,6 @@ class RecorderController(ImConWidgetController):
         self.recScanLapse()
         self._widget.setTimelapseTime(secondsToRec)
         self._widget.setTimelapseFreq(freqSeconds)
-
-    @APIExport
-    def setRecModeScanDimlapse(self, numSlices, stepSizeUm):
-        """ Sets the recording mode to record a 3D-lapse of scans. """
-        self.dimLapse()
-        self._widget.setDimlapseSlices(numSlices)
-        self._widget.setDimlapseStepSize(stepSizeUm)
 
     @APIExport
     def setRecModeUntilStop(self):

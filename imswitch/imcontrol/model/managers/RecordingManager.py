@@ -213,8 +213,7 @@ class RecMode(enum.Enum):
     SpecTime = 2
     ScanOnce = 3
     ScanLapse = 4
-    DimLapse = 5
-    UntilStop = 6
+    UntilStop = 5
 
 
 class SaveMode(enum.Enum):

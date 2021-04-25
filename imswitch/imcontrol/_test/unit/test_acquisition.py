@@ -34,8 +34,8 @@ def test_acquisition_liveview_single(qtbot, detectorInfos):
 
     assert receivedImage is not None
     assert receivedImage.shape == (
-        detectorInfos['CAM'].managerProperties['hamamatsu']['image_width'],
-        detectorInfos['CAM'].managerProperties['hamamatsu']['image_height']
+        detectorInfos['CAM'].managerProperties['hamamatsu']['image_height'],
+        detectorInfos['CAM'].managerProperties['hamamatsu']['image_width']
     )
     assert not np.all(receivedImage == receivedImage[0, 0])  # Assert that not all pixels are same
 
@@ -48,8 +48,8 @@ def test_acquisition_liveview_multi(qtbot, currentDetector):
 
     assert receivedImage is not None
     assert receivedImage.shape == (
-        detectorInfosMulti[currentDetector].managerProperties['hamamatsu']['image_width'],
-        detectorInfosMulti[currentDetector].managerProperties['hamamatsu']['image_height']
+        detectorInfosMulti[currentDetector].managerProperties['hamamatsu']['image_height'],
+        detectorInfosMulti[currentDetector].managerProperties['hamamatsu']['image_width']
     )
     assert not np.all(receivedImage == receivedImage[0, 0])  # Assert that not all pixels are same
 

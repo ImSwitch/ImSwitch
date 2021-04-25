@@ -41,4 +41,4 @@ jobs:
       env:
         QT_DEBUG_PLUGINS: 1
       run: |
-        PYTHONPATH=. pytest
+        PYTHONPATH=. pytest -v

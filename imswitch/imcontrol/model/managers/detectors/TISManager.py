@@ -4,7 +4,7 @@ Created on Fri Jan 08 14:00:00 2021
 @author: jonatanalvelid
 """
 
-from .DetectorManager import DetectorManager, DetectorNumberParameter
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 
 class TISManager(DetectorManager):
@@ -31,8 +31,14 @@ class TISManager(DetectorManager):
             #'image_height': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False)
         }
 
+        # Prepare actions
+        actions = {
+            'More properties': DetectorAction(group='Misc',
+                                              func=self._camera.openPropertiesGUI)
+        }
+
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2],
-                         model=model, parameters=parameters, croppable=False)
+                         model=model, parameters=parameters, actions=actions, croppable=False)
 
     def getLatestFrame(self):
         return self._camera.grabFrame()
@@ -82,10 +88,6 @@ class TISManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         pass
-
-    def openPropertiesGUI(self):
-        "Manager: open camera settings dialog."
-        self._camera.openPropertiesGUI()
 
         
 def getTISObj(cameraId):

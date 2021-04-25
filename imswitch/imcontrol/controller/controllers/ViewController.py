@@ -21,7 +21,6 @@ class ViewController(ImConWidgetController):
         self._widget.sigLiveviewToggled.connect(self.liveview)
         self._widget.sigDetectorChanged.connect(self.detectorSwitch)
         self._widget.sigNextDetectorClicked.connect(self.detectorNext)
-        self._widget.sigDetectorPropsClicked.connect(self.showDetectorPropsDialog)
 
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
@@ -47,10 +46,6 @@ class ViewController(ImConWidgetController):
     def detectorNext(self):
         """ Changes the current detector to the next detector. """
         self._widget.selectNextDetector()
-
-    def showDetectorPropsDialog(self):
-        """ Show the detector properties dialog for the current detector. """
-        self._master.detectorsManager.execOnCurrent(lambda c: c.openPropertiesGUI())
 
     def closeEvent(self):
         if self._acqHandle is not None:

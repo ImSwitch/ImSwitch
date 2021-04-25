@@ -41,7 +41,8 @@ class SettingsController(ImConWidgetController):
         # Set up detectors
         for dName, dManager in self._master.detectorsManager:
             self._widget.addDetector(
-                dName, dManager.parameters, dManager.supportedBinnings, self._setupInfo.rois
+                dName, dManager.parameters, dManager.actions, dManager.supportedBinnings,
+                self._setupInfo.rois
             )
 
         self.addROI()
@@ -118,6 +119,12 @@ class SettingsController(ImConWidgetController):
                     lambda _, value, detectorName=detectorName, parameterName=parameterName:
                         self.setDetectorParameter(detectorName, parameterName, value)
                 )
+
+        detectorsActions = self._master.detectorsManager.execOnAll(lambda c: c.actions)
+        for detectorName, detectorActions in detectorsActions.items():
+            for actionName, action in detectorActions.items():
+                paramInWidget = self._widget.trees[detectorName].p.param(action.group).param(actionName)
+                paramInWidget.sigActivated.connect(action.func)
 
     def adjustFrame(self, *, detector=None):
         """ Crop detector and adjust frame. """

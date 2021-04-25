@@ -116,10 +116,6 @@ class APDManager(DetectorManager):
     def crop(self, hpos, vpos, hsize, vsize):
         pass
 
-    def openPropertiesGUI(self):
-        """ Manager: open camera settings dialog mock. """
-        pass
-
 
 class ScanWorker(Worker):
     newLine = Signal(np.ndarray, int)

@@ -9,7 +9,8 @@ class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the detector during imaging
     """
 
-    def __init__(self, roiInfos, detectorParameters, supportedBinnings, *args, **kwargs):
+    def __init__(self, detectorParameters, detectorActions, supportedBinnings, roiInfos,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         BinTip = ("Sets binning mode. Binning mode specifies if and how \n"
@@ -68,6 +69,17 @@ class CamParamTree(ParameterTree):
                 raise TypeError(f'Unsupported detector parameter type "{detectorParameterType}"')
 
             detectorParamGroups[detectorParameter.group]['children'].append(pyqtParam)
+
+        for detectorActionName, detectorAction in detectorActions.items():
+            if detectorAction.group not in detectorParamGroups:
+                # Create group
+                detectorParamGroups[detectorAction.group] = {
+                    'name': detectorAction.group, 'type': 'group', 'children': []
+                }
+
+            detectorParamGroups[detectorAction.group]['children'].append(
+                {'name': detectorActionName, 'type': 'action', 'title': detectorActionName}
+            )
 
         params += list(detectorParamGroups.values())
 
@@ -149,8 +161,10 @@ class SettingsWidget(Widget):
         # Connect signals
         self.ROI.sigROIChanged.connect(self.sigROIChanged)
 
-    def addDetector(self, detectorName, detectorParameters, supportedBinnings, roiInfos):
-        self.trees[detectorName] = CamParamTree(roiInfos, detectorParameters, supportedBinnings)
+    def addDetector(self, detectorName, detectorParameters, detectorActions, supportedBinnings,
+                    roiInfos):
+        self.trees[detectorName] = CamParamTree(detectorParameters, detectorActions,
+                                                supportedBinnings, roiInfos)
         self.stack.addWidget(self.trees[detectorName])
 
     def setDisplayedDetector(self, detectorName):

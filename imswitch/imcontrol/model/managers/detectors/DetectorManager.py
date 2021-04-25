@@ -126,14 +126,16 @@ class DetectorManager(SignalInterface):
     @abstractmethod
     def getLatestFrame(self):
         """Returns the frame that represents what the detector currently is
-        capturing."""
+        capturing. The returned object is a numpy array of shape
+        (height, width)."""
         pass
 
     @abstractmethod
     def getChunk(self):
         """Returns the frames captured by the detector since getChunk was last
         called, or since the buffers were last flushed (whichever happened
-        last)."""
+        last). The returned object is a numpy array of shape
+        (numFrames, height, width)."""
         pass
 
     @abstractmethod

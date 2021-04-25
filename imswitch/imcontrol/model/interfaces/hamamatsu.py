@@ -793,13 +793,13 @@ class HamamatsuCameraMR(HamamatsuCamera):
         frames = []
         for n in self.newFrames():
             im = self.hcam_data[n].getData()
-            frames.append(np.reshape(im, (self.frame_x, self.frame_y)))
-        return np.array(frames), (self.frame_x, self.frame_y)
+            frames.append(np.reshape(im, (self.frame_y, self.frame_x)))
+        return np.array(frames), (self.frame_y, self.frame_x)
         
     def getLast(self):
         b_index, f_count = self.getAq_Info()
         im = self.hcam_data[b_index].getData()
-        return np.reshape(im, (self.frame_x, self.frame_y))
+        return np.reshape(im, (self.frame_y, self.frame_x))
         
     def updateIndices(self):
         b_index, f_count = self.getAq_Info()

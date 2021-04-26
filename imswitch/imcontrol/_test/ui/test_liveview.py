@@ -43,6 +43,10 @@ def test_crosshair_no_error(qtbot):
     assert not mainView.viewWidget.crosshairButton.isChecked()
 
 
+def test_close_no_error(qtbot):
+    mainView.close()
+
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #

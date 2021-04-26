@@ -1,1 +1,1 @@
-from imswitch.imcommon.view.guitools import *
+from imswitch.imcommon.view.guitools import *  # noqa

@@ -1,10 +1,10 @@
 def getMainViewAndController(moduleCommChannel, *_args,
                              overrideSetupInfo=None, overrideOptions=None, **_kwargs):
     from .controller import ImConMainController
-    from imswitch.imcontrol.model import configfileutils
+    from imswitch.imcontrol.model import configfiletools
     from .view import ViewSetupInfo, ImConMainView
 
-    options, setupInfo = configfileutils.loadSetupInfo(ViewSetupInfo)
+    options, setupInfo = configfiletools.loadSetupInfo(ViewSetupInfo)
     if overrideSetupInfo is not None:
         setupInfo = overrideSetupInfo
     if overrideOptions is not None:

@@ -157,17 +157,15 @@ setupInfoBasic = ViewSetupInfo.from_json("""
             "h": 1308
         }
     },
-    "availableWidgets": {
-        "AlignWidgetXY": true,
-        "AlignWidgetAverage": true,
-        "AlignmentLineWidget": true,
-        "BeadRecWidget": true,
-        "FFTWidget": true,
-        "ULensesWidget": true
-    },
-    "widgetLayout": {
-        "lasersAndAlignmentInSingleDock": false
-    },
+    "availableWidgets": [
+        "Laser",
+        "AlignXY",
+        "AlignAverage",
+        "AlignmentLine",
+        "BeadRec",
+        "FFT",
+        "ULenses"
+    ],
     "scanDefaults": {
         "defaultScanFile": null
     }

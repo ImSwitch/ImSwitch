@@ -308,17 +308,11 @@
       "h": 512
     }
   },
-  "availableWidgets": {
-    "AlignWidgetXY": false,
-    "AlignWidgetAverage": false,
-    "AlignmentLineWidget": false,
-    "BeadRecWidget": false,
-    "FFTWidget": false,
-    "ULensesWidget": false,
-    "SLMWidget": true,
-    "FocusLockWidget": true,
-    "MotCorrWidget": false
-  },
+  "availableWidgets": [
+      "Laser",
+      "SLM",
+      "FocusLock"
+  ],
   "designers": {
     "scanDesigner": "GalvoScanDesigner",
     "TTLCycleDesigner": "BetaTTLCycleDesigner"

@@ -4,7 +4,7 @@ from .basecontrollers import LiveUpdatedController
 
 
 class AlignAverageController(LiveUpdatedController):
-    """ Linked to AlignWidgetAverage."""
+    """ Linked to AlignAverageWidget."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -13,7 +13,7 @@ class AlignAverageController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect AlignWidgetAverage signals
+        # Connect AlignAverageWidget signals
         self._widget.sigShowROIToggled.connect(self.toggleROI)
 
     def update(self, detectorName, im, init, isCurrentDetector):

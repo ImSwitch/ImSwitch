@@ -2,9 +2,8 @@ import os
 import time
 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import osutils, APIExport
+from imswitch.imcommon.model import filetools, ostools, APIExport
 from imswitch.imcontrol.model import SaveMode, RecMode
-from imswitch.imcontrol.view import guitools as guitools
 from .basecontrollers import ImConWidgetController
 
 
@@ -48,9 +47,9 @@ class RecorderController(ImConWidgetController):
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         try:
-            osutils.openFolderInOS(self._widget.getRecFolder())
-        except osutils.OSUtilsError:
-            osutils.openFolderInOS(self._widget.dataDir)
+            ostools.openFolderInOS(self._widget.getRecFolder())
+        except ostools.OSUtilsError:
+            ostools.openFolderInOS(self._widget.dataDir)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
@@ -63,7 +62,7 @@ class RecorderController(ImConWidgetController):
 
         detectorNames = self.getDetectorNamesToCapture()
         name = os.path.join(folder, self.getFileName()) + '_snap'
-        savename = guitools.getUniqueName(name)
+        savename = filetools.getUniqueName(name)
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
 
@@ -79,7 +78,7 @@ class RecorderController(ImConWidgetController):
                 os.mkdir(folder)
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
-            self.savename = guitools.getUniqueName(name)
+            self.savename = filetools.getUniqueName(name)
             self.saveMode = SaveMode(self._widget.getSaveMode())
 
             self.detectorsBeingCaptured = self.getDetectorNamesToCapture()

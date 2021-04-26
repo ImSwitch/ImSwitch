@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 
 from imswitch.imcommon.model import APIExport
-from imswitch.imcontrol.model import configfileutils
+from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools as guitools
 from .basecontrollers import ImConWidgetController
 
@@ -242,7 +242,7 @@ class SettingsController(ImConWidgetController):
 
             # Set in setup info
             self._setupInfo.setROI(name, x0, y0, width, height)
-            configfileutils.saveSetupInfo(self._setupInfo)
+            configfiletools.saveSetupInfo(self._setupInfo)
 
             # Update selected ROI in GUI
             for params in self.allParams.values():
@@ -270,7 +270,7 @@ class SettingsController(ImConWidgetController):
 
             # Remove from setup info
             self._setupInfo.removeROI(modeToDelete)
-            configfileutils.saveSetupInfo(self._setupInfo)
+            configfiletools.saveSetupInfo(self._setupInfo)
 
     def updateBinning(self):
         """ Update a new binning to the detector. """

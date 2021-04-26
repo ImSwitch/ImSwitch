@@ -1,4 +1,3 @@
 from .api import APIExport, generateAPI
-from .DataCollection import DataItem, DataCollection
 from .SharedAttributes import SharedAttributes
-
+from .VFileCollection import DataItem, VFileCollection

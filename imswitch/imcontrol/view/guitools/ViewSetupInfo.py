@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from imswitch.imcontrol.model import SetupInfo
 
@@ -18,30 +18,12 @@ class ScanDefaultsInfo:
 
 
 @dataclass(frozen=True)
-class WidgetAvailabilityInfo:
-    AlignWidgetXY: bool = True
-    AlignWidgetAverage: bool = True
-    AlignmentLineWidget: bool = True
-    BeadRecWidget: bool = True
-    FFTWidget: bool = True
-    ULensesWidget: bool = True
-
-
-@dataclass(frozen=True)
-class WidgetLayoutInfo:
-    lasersAndAlignmentInSingleDock: bool = False
-
-
-@dataclass(frozen=True)
 class ViewSetupInfo(SetupInfo):
     # additional ROIs available to select in detector settings
     rois: Dict[str, ROIInfo] = field(default_factory=list)
 
     # which widgets are available
-    availableWidgets: WidgetAvailabilityInfo = field(default_factory=WidgetAvailabilityInfo)
-
-    # widget layout
-    widgetLayout: WidgetLayoutInfo = field(default_factory=WidgetLayoutInfo)
+    availableWidgets: List[str] = field(default_factory=list)
 
     # scan defaults
     scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)

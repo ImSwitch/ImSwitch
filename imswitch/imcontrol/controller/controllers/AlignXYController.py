@@ -4,7 +4,7 @@ from .basecontrollers import LiveUpdatedController
 
 
 class AlignXYController(LiveUpdatedController):
-    """ Linked to AlignWidgetXY. """
+    """ Linked to AlignXYWidget. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -14,7 +14,7 @@ class AlignXYController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect AlignWidgetXY signals
+        # Connect AlignXYWidget signals
         self._widget.sigShowROIToggled.connect(self.toggleROI)
         self._widget.sigAxisChanged.connect(self.setAxis)
 

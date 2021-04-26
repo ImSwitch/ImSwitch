@@ -7,7 +7,7 @@ from imswitch.imcontrol.model import SaveMode, RecMode
 from .basecontrollers import ImConWidgetController
 
 
-class RecorderController(ImConWidgetController):
+class RecordingController(ImConWidgetController):
     """ Linked to RecordingWidget. """
 
     def __init__(self, *args, **kwargs):

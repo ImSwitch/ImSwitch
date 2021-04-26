@@ -184,17 +184,9 @@
       "h": 512
     }
   },
-  "availableWidgets": {
-    "AlignWidgetXY": false,
-    "AlignWidgetAverage": false,
-    "AlignmentLineWidget": false,
-    "BeadRecWidget": false,
-    "FFTWidget": false,
-    "ULensesWidget": false,
-    "SLMWidget": false,
-    "FocusLockWidget": false,
-    "MotCorrWidget": false
-  },
+  "availableWidgets": [
+      "Laser"
+  ],
   "designers": {
     "scanDesigner": "GalvoScanDesigner",
     "TTLCycleDesigner": "PointScanTTLCycleDesigner"

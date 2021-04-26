@@ -191,15 +191,13 @@
             "h": 520
         }
     },
-    "availableWidgets": {
-        "AlignWidgetXY": true,
-        "AlignWidgetAverage": true,
-        "AlignmentLineWidget": true,
-        "BeadRecWidget": true,
-        "FFTWidget": true,
-        "ULensesWidget": true
-    },
-    "widgetLayout": {
-        "lasersAndAlignmentInSingleDock": true
-    }
+    "availableWidgets": [
+        "Laser",
+        "AlignXY",
+        "AlignAverage",
+        "AlignmentLine",
+        "BeadRec",
+        "FFT",
+        "ULenses"
+    ]
 }

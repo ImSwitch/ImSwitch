@@ -50,13 +50,13 @@ class CommunicationChannel(SignalInterface):
 
     def getCenterROI(self):
         # Returns the center of the VB to align the ROI
-        return self.__main.imageController.getCenterROI()
+        return self.__main.controllers['Image'].getCenterROI()
 
     def getDimsScan(self):
-        return self.__main.scanController.getDimsScan()
+        return self.__main.controllers['Scan'].getDimsScan()
 
     def getStartPos(self):
-        return self.__main.positionerController.getPos()
+        return self.__main.controllers['Positioner'].getPos()
 
     @APIExport
     def signals(self):

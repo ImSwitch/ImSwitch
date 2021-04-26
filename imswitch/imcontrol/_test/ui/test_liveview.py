@@ -12,35 +12,35 @@ def qapp():
 
 
 def test_liveview_no_error(qtbot):
-    qtbot.mouseClick(mainView.viewWidget.liveviewButton, QtCore.Qt.LeftButton)
-    assert mainView.viewWidget.liveviewButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].liveviewButton, QtCore.Qt.LeftButton)
+    assert mainView.widgets['View'].liveviewButton.isChecked()
 
     QtTest.QTest.qWait(3000)
-    qtbot.mouseClick(mainView.viewWidget.liveviewButton, QtCore.Qt.LeftButton)
-    assert not mainView.viewWidget.liveviewButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].liveviewButton, QtCore.Qt.LeftButton)
+    assert not mainView.widgets['View'].liveviewButton.isChecked()
 
 
 def test_grid_no_error(qtbot):
-    qtbot.mouseClick(mainView.viewWidget.gridButton, QtCore.Qt.LeftButton)
-    assert mainView.viewWidget.gridButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].gridButton, QtCore.Qt.LeftButton)
+    assert mainView.widgets['View'].gridButton.isChecked()
 
     QtTest.QTest.qWait(100)
-    qtbot.mouseClick(mainView.viewWidget.gridButton, QtCore.Qt.LeftButton)
-    assert not mainView.viewWidget.gridButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].gridButton, QtCore.Qt.LeftButton)
+    assert not mainView.widgets['View'].gridButton.isChecked()
 
 
 def test_crosshair_no_error(qtbot):
-    qtbot.mouseClick(mainView.viewWidget.crosshairButton, QtCore.Qt.LeftButton)
-    assert mainView.viewWidget.crosshairButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].crosshairButton, QtCore.Qt.LeftButton)
+    assert mainView.widgets['View'].crosshairButton.isChecked()
 
     QtTest.QTest.qWait(100)
-    qtbot.mouseMove(mainView.imageWidget, pos=QtCore.QPoint(120, 120))
+    qtbot.mouseMove(mainView.widgets['Image'], pos=QtCore.QPoint(120, 120))
     QtTest.QTest.qWait(100)
-    qtbot.mouseMove(mainView.imageWidget, pos=QtCore.QPoint(150, 160))
+    qtbot.mouseMove(mainView.widgets['Image'], pos=QtCore.QPoint(150, 160))
 
     QtTest.QTest.qWait(100)
-    qtbot.mouseClick(mainView.viewWidget.crosshairButton, QtCore.Qt.LeftButton)
-    assert not mainView.viewWidget.crosshairButton.isChecked()
+    qtbot.mouseClick(mainView.widgets['View'].crosshairButton, QtCore.Qt.LeftButton)
+    assert not mainView.widgets['View'].crosshairButton.isChecked()
 
 
 def test_close_no_error(qtbot):

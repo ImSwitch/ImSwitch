@@ -5,11 +5,10 @@ from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
 
-class AlignWidgetXY(Widget):
-    """ Alignment widget that shows the mean over an axis of a selected ROI."""
+class AlignAverageWidget(Widget):
+    """ Alignment widget that shows the mean over a selected ROI."""
 
     sigShowROIToggled = QtCore.Signal(bool)  # (enabled)
-    sigAxisChanged = QtCore.Signal(int)  # (axisNumber)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,23 +16,21 @@ class AlignWidgetXY(Widget):
         # Graphical elements
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
-        self.XButton = QtWidgets.QRadioButton('X dimension')
-        self.YButton = QtWidgets.QRadioButton('Y dimension')
+        self.resetButton = guitools.BetterPushButton('Reset graph')
         self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
-        self.graph = guitools.ProjectionGraph()
+        self.graph = guitools.SumpixelsGraph()
+        self.resetButton.clicked.connect(self.graph.resetData)
 
-        # Add elements to GridLayout
+        # Add items to GridLayout
         grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
         grid.addWidget(self.graph, 0, 0, 1, 6)
         grid.addWidget(self.roiButton, 1, 0, 1, 1)
-        grid.addWidget(self.XButton, 1, 1, 1, 1)
-        grid.addWidget(self.YButton, 1, 2, 1, 1)
+        grid.addWidget(self.resetButton, 1, 1, 1, 1)
+        # grid.setRowMinimumHeight(0, 300)
 
         # Connect signals
         self.roiButton.toggled.connect(self.sigShowROIToggled)
-        self.XButton.clicked.connect(lambda: self.sigAxisChanged.emit(0))
-        self.YButton.clicked.connect(lambda: self.sigAxisChanged.emit(1))
 
     def getROIGraphicsItem(self):
         return self.ROI

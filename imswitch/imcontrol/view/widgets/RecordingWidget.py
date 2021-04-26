@@ -20,7 +20,6 @@ class RecordingWidget(Widget):
     sigSpecTimePicked = QtCore.Signal()
     sigScanOncePicked = QtCore.Signal()
     sigScanLapsePicked = QtCore.Signal()
-    sigDimLapsePicked = QtCore.Signal()
     sigUntilStopPicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
@@ -66,9 +65,6 @@ class RecordingWidget(Widget):
         self.timeLapseEdit = QtWidgets.QLineEdit('5')
         self.freqLabel = QtWidgets.QLabel('Freq [s]')
         self.freqEdit = QtWidgets.QLineEdit('0')
-        self.dimLapse = QtWidgets.QRadioButton('3D-lapse')
-        self.currentSlice = QtWidgets.QLabel('0 / ')
-        self.totalSlices = QtWidgets.QLineEdit('5')
         self.stepSizeLabel = QtWidgets.QLabel('Step size [um]')
         self.stepSizeEdit = QtWidgets.QLineEdit('0.05')
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
@@ -126,11 +122,6 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.timeLapseEdit, 8, 2)
         recGrid.addWidget(self.freqLabel, 8, 3)
         recGrid.addWidget(self.freqEdit, 8, 4)
-        recGrid.addWidget(self.dimLapse, 9, 0, 1, 5)
-        recGrid.addWidget(self.currentSlice, 9, 1)
-        recGrid.addWidget(self.totalSlices, 9, 2)
-        recGrid.addWidget(self.stepSizeLabel, 9, 3)
-        recGrid.addWidget(self.stepSizeEdit, 9, 4)
         recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, -1)
         recGrid.addWidget(self.saveModeLabel, 12, 0)
         recGrid.addWidget(self.saveModeList, 12, 1, 1, -1)
@@ -152,7 +143,6 @@ class RecordingWidget(Widget):
         self.specifyTime.clicked.connect(self.sigSpecTimePicked)
         self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
         self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
-        self.dimLapse.clicked.connect(self.sigDimLapsePicked)
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
 
     def getDetectorToCapture(self):
@@ -182,12 +172,6 @@ class RecordingWidget(Widget):
 
     def getTimelapseFreq(self):
         return float(self.freqEdit.text())
-
-    def getDimlapseSlices(self):
-        return int(float(self.totalSlices.text()))
-
-    def getDimlapseStepSize(self):
-        return float(self.stepSizeEdit.text())
 
     def setDetectorList(self, detectorModels):
         if len(detectorModels) > 1:
@@ -237,21 +221,15 @@ class RecordingWidget(Widget):
     def checkScanLapse(self):
         self.recScanLapseBtn.setChecked(True)
 
-    def checkDimLapse(self):
-        self.dimLapse.setChecked(True)
-
     def checkUntilStop(self):
         self.untilSTOPbtn.setChecked(True)
 
     def setEnabledParams(self, numExpositions=False, timeToRec=False,
-                         timelapseTime=False, timelapseFreq=False,
-                         dimlapseSlices=False, dimlapseStepSize=False):
+                         timelapseTime=False, timelapseFreq=False):
         self.numExpositionsEdit.setEnabled(numExpositions)
         self.timeToRec.setEnabled(timeToRec)
         self.timeLapseEdit.setEnabled(timelapseTime)
         self.freqEdit.setEnabled(timelapseFreq)
-        self.totalSlices.setEnabled(dimlapseSlices)
-        self.stepSizeEdit.setEnabled(dimlapseStepSize)
 
     def setSpecifyFramesAllowed(self, allowed):
         self.specifyFrames.setEnabled(allowed)
@@ -273,12 +251,6 @@ class RecordingWidget(Widget):
     def setTimelapseFreq(self, freqSeconds):
         self.freqEdit.setText(str(freqSeconds))
 
-    def setDimlapseSlices(self, numSlices):
-        self.totalSlices.setText(str(numSlices))
-
-    def setDimlapseStepSize(self, stepSizeUm):
-        self.stepSizeEdit.setText(str(stepSizeUm))
-
     def updateRecFrameNum(self, frameNum):
         self.currentFrame.setText(str(frameNum) + ' /')
 
@@ -287,9 +259,6 @@ class RecordingWidget(Widget):
 
     def updateRecLapseNum(self, lapseNum):
         self.currentLapse.setText(str(lapseNum) + ' /')
-
-    def updateRecSliceNum(self, sliceNum):
-        self.currentSlice.setText(str(sliceNum) + ' /')
         
 
 # Copyright (C) 2020, 2021 TestaLab

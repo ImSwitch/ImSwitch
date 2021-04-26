@@ -182,11 +182,11 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.imageDock.setStretch(100, 100)
 
     def setDetectorRelatedDocksVisible(self, visible):
-        self._catchingSetVisible(self.imageDock, visible)
-        self._catchingSetVisible(self.recordingDock, visible)
-        self._catchingSetVisible(self.imageControlsDock, visible)
-        if self.availableWidgetsInfo.BeadRecWidget:
-            self._catchingSetVisible(self.beadDock, visible)
+        for dock in ['imageDock', 'recordingDock', 'imageControlsDock', 'beadDock']:
+            try:
+                getattr(self, dock).setVisible(visible)
+            except AttributeError:
+                pass  # Happens if widget not added as part of configuration
 
         if not visible:
             self.showNormal()
@@ -195,17 +195,13 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.sigClosing.emit()
         event.accept()
 
-    def _catchingSetVisible(self, widget, visible):
-        try:
-            widget.setVisible(visible)
-        except AttributeError:
-            pass
 
     def _raiseDock(self, dock):
         try:
             dock.raiseDock()
         except AttributeError:  # raised when dock has no siblings
             pass
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

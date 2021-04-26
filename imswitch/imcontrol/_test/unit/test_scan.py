@@ -52,11 +52,11 @@ def test_scan_signals():
 
     # Check all values against precomputed ones
     with np.load(os.path.join(os.path.dirname(__file__), 'test_scan_expected.npz')) as data:
-        assert np.all(fullsig['scanSignalsDict']['X'] == data['Stage_X'])
-        assert np.all(fullsig['scanSignalsDict']['Y'] == data['Stage_Y'])
-        assert np.all(fullsig['scanSignalsDict']['Z'] == data['Stage_Z'])
-        assert np.all(fullsig['TTLCycleSignalsDict']['405'] == data['TTL_405'])
-        assert np.all(fullsig['TTLCycleSignalsDict']['488'] == data['TTL_488'])
+        np.testing.assert_allclose(fullsig['scanSignalsDict']['X'], data['Stage_X'])
+        np.testing.assert_allclose(fullsig['scanSignalsDict']['Y'], data['Stage_Y'])
+        np.testing.assert_allclose(fullsig['scanSignalsDict']['Z'], data['Stage_Z'])
+        np.testing.assert_allclose(fullsig['TTLCycleSignalsDict']['405'], data['TTL_405'])
+        np.testing.assert_allclose(fullsig['TTLCycleSignalsDict']['488'], data['TTL_488'])
 
 
 # Copyright (C) 2020, 2021 TestaLab

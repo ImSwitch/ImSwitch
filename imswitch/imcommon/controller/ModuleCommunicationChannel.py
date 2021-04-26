@@ -1,5 +1,5 @@
 from imswitch.imcommon.framework import SignalInterface
-from imswitch.imcommon.model import DataCollection
+from imswitch.imcommon.model import VFileCollection
 
 
 class ModuleCommunicationChannel(SignalInterface):
@@ -14,7 +14,7 @@ class ModuleCommunicationChannel(SignalInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__memoryRecordings = DataCollection()
+        self.__memoryRecordings = VFileCollection()
         self.__registeredModules = set()
 
     def register(self, modulePackage):

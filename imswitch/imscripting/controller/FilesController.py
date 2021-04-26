@@ -2,7 +2,7 @@ import mimetypes
 import os
 
 from imswitch.imcommon import constants
-from imswitch.imcommon.model import osutils
+from imswitch.imcommon.model import ostools
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
 
@@ -38,7 +38,7 @@ class FilesController(ImScrWidgetController):
             self.setRootPath(rootPath)
 
     def openRootInOS(self):
-        osutils.openFolderInOS(self._rootPath)
+        ostools.openFolderInOS(self._rootPath)
 
 
 # Copyright (C) 2020, 2021 TestaLab

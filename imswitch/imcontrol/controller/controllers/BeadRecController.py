@@ -4,7 +4,7 @@ from imswitch.imcommon.framework import Thread, Worker, Signal
 from .basecontrollers import ImConWidgetController
 
 
-class BeadController(ImConWidgetController):
+class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.running = False

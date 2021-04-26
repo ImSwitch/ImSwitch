@@ -69,6 +69,9 @@ class ScanController(SuperScanController):
 
         print('Init Scan Controller')
 
+        # Check widget compatibility
+        self._master.scanManager._parameterCompatibility(self.parameterDict)
+
     @property
     def parameterDict(self):
         stageParameterList = [*self._analogParameterDict]

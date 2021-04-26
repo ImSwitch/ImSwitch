@@ -4,55 +4,8 @@ import pyqtgraph.ptime as ptime
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 
-def bestLevels(arr):
-    # Best cmin, cmax algorithm taken from ImageJ routine:
-    # http://cmci.embl.de/documents/120206pyip_cooking/
-    # python_imagej_cookbook#automatic_brightnesscontrast_button
-    pixelCount = arr.size
-    limit = pixelCount / 10
-    threshold = pixelCount / 5000
-    hist, bin_edges = np.histogram(arr, 256)
-    i = 0
-    found = False
-    count = 0
-    while True:
-        i += 1
-        count = hist[i]
-        if count > limit:
-            count = 0
-        found = count > threshold
-        if found or i >= 255:
-            break
-    hmin = i
-
-    i = 256
-    while True:
-        i -= 1
-        count = hist[i]
-        if count > limit:
-            count = 0
-        found = count > threshold
-        if found or i < 1:
-            break
-    hmax = i
-
-    return bin_edges[hmin], bin_edges[hmax]
-
-
-def setBestImageLimits(viewBox, width, height):
-    viewBox.setAspectLocked()
-    viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
-
-    viewBox.setRange(xRange=(-0.5, width - 0.5), yRange=(-0.5, height - 0.5), padding=0)
-    viewBounds = viewBox.viewRange()
-    viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1],
-                      yMin=viewBounds[1][0], yMax=viewBounds[1][1])
-
-
 class Grid:
-
     def __init__(self, viewBox):
-
         self.showed = False
         self.vb = viewBox
         self.shape = None
@@ -120,9 +73,7 @@ class Grid:
 
 
 class TwoColorGrid:
-
     def __init__(self, viewBox, shape=(512, 512)):
-
         self.showed = False
         self.vb = viewBox
         self.shape = shape
@@ -163,9 +114,7 @@ class TwoColorGrid:
 
 
 class Crosshair:
-
     def __init__(self, viewBox):
-
         self.showed = False
 
         self.vLine = pg.InfiniteLine(pos=0, angle=90, movable=False)
@@ -213,7 +162,6 @@ class Crosshair:
 
 
 class ROI(pg.ROI):
-
     def __init__(self, shape, pos, handlePos, handleCenter, color, *args,
                  **kwargs):
         self.mainShape = shape
@@ -244,7 +192,6 @@ class ROI(pg.ROI):
 
 
 class cropROI(pg.ROI):
-
     def __init__(self, shape, vb, *args, **kwargs):
         self.mainShape = shape
 
@@ -337,6 +284,7 @@ class ProjectionGraph(pg.GraphicsLayoutWidget):
         """
         self.data = values
         self.sumCurve.setData(np.arange(len(self.data)), self.data)
+
 
 # Copyright (C) 2017 Federico Barabas
 # This file is part of Tormenta.

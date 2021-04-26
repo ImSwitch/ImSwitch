@@ -14,8 +14,9 @@ class DataItem:
     savedToDisk: bool
 
 
-class DataCollection(SignalInterface):
-    """ TODO. Collection of virtual files. File-like objects. """
+class VFileCollection(SignalInterface):
+    """ VFileCollection is a collection of virtual file-like objects. In
+    addition to holding the data, it also handles saving it to the disk. """
 
     sigDataSet = Signal(str, DataItem)  # (name, dataItem)
     sigDataSavedToDisk = Signal(str, str)  # (name, filePath)

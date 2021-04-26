@@ -16,7 +16,6 @@ class PositionerController(ImConWidgetController):
             self.setSharedAttr(pName, _positionAttr, pManager.position)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigMoveZStage.connect(lambda step: self.move('Z', step))
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect PositionerWidget signals

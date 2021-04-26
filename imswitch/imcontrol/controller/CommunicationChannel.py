@@ -39,8 +39,6 @@ class CommunicationChannel(SignalInterface):
 
     sigScanEnded = Signal()
 
-    sigMoveZStage = Signal(float)  # (step)
-
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

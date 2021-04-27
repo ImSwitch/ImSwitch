@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from imswitch.imcontrol.model import IncompatibilityError
-from imswitch.imcontrol.model.SignalDesigner import SignalDesignerFactory
+from ..errors import IncompatibilityError
+from ..signaldesigners import SignalDesignerFactory
 
 
 class ScanManagerFactory:

@@ -12,10 +12,15 @@ def openFolderInOS(folderPath):
         elif sys.platform == 'win32':
             os.startfile(folderPath)
     except FileNotFoundError or subprocess.CalledProcessError as err:
-        raise OSUtilsError(err)
+        raise OSToolsError(err)
 
 
-class OSUtilsError(Exception):
+def restartSoftware(module='imswitch'):
+    """ Restarts the software. """
+    os.execv(sys.executable, ['"' + sys.executable + '"', '-m', module])
+
+
+class OSToolsError(Exception):
     pass
 
 

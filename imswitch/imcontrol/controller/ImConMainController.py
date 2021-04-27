@@ -37,10 +37,6 @@ class ImConMainController(MainController):
                 getattr(controllers, f'{widgetKey}Controller'), widget
             )
 
-        self.__mainView.setDetectorRelatedDocksVisible(
-            self.__masterController.detectorsManager.hasDevices()
-        )
-
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers) + [self.__commChannel]

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pyqtgraph as pg
@@ -8,11 +7,11 @@ from pyqtgraph.console import ConsoleWidget
 from pyqtgraph.dockarea import Dock, DockArea
 
 from . import widgets
-from .widgets.basewidgets import Widget
 
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
+    sigPickSetup = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
@@ -25,11 +24,16 @@ class ImConMainView(QtWidgets.QMainWindow):
         # Menu Bar
         menuBar = self.menuBar()
         file = menuBar.addMenu('&File')
+        tools = menuBar.addMenu('&Tools')
 
         self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
         self.loadParamsAction.setShortcut('Ctrl+O')
         self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
         file.addAction(self.loadParamsAction)
+
+        self.pickSetupAction = QtWidgets.QAction('Pick setup…', self)
+        self.pickSetupAction.triggered.connect(self.sigPickSetup)
+        tools.addAction(self.pickSetupAction)
 
         # Window
         self.setWindowTitle('ImSwitch')

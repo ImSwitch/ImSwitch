@@ -1,17 +1,19 @@
 import pytest
 from PyQt5 import QtCore, QtTest
+
 from .. import optionsBasic, setupInfoBasic
-from . import prepareUI
+from . import getApp, prepareUI
 
 
-app, mainView = None, None
+mainView = None
 
 
 @pytest.fixture(scope='module')
 def qapp():
-    global app, mainView
-    if app is None:
-        app, mainView = prepareUI(optionsBasic, setupInfoBasic)
+    global mainView
+    app = getApp()
+    mainView = prepareUI(optionsBasic, setupInfoBasic)
+    yield app
 
 
 def test_liveview_no_error(qtbot):

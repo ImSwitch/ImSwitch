@@ -1,16 +1,27 @@
+import pytest
+
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
 from imswitch import imcontrol
 
 
+app = None
+
+
+def getApp():
+    global app
+    if app is None:
+        app = prepareApp()
+    return app
+
+
 def prepareUI(options, setupInfo):
-    app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
     moduleCommChannel.register(imcontrol)
     mainView, _ = imcontrol.getMainViewAndController(moduleCommChannel,
                                                      overrideSetupInfo=setupInfo,
                                                      overrideOptions=options)
-    return app, mainView
+    return mainView
 
 
 # Copyright (C) 2020, 2021 TestaLab

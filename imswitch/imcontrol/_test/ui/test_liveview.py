@@ -4,12 +4,14 @@ from .. import optionsBasic, setupInfoBasic
 from . import prepareUI
 
 
-app, mainView = prepareUI(optionsBasic, setupInfoBasic)
+app, mainView = None, None
 
 
 @pytest.fixture(scope='module')
 def qapp():
-    yield app
+    global app, mainView
+    if app is None:
+        app, mainView = prepareUI(optionsBasic, setupInfoBasic)
 
 
 def test_liveview_no_error(qtbot):

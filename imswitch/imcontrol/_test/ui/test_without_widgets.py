@@ -3,12 +3,14 @@ from .. import optionsBasic, setupInfoWithoutWidgets
 from . import prepareUI
 
 
-app, mainView = prepareUI(optionsBasic, setupInfoWithoutWidgets)
+app, mainView = None, None
 
 
 @pytest.fixture(scope='module')
 def qapp():
-    yield app
+    global app, mainView
+    if app is None:
+        app, mainView = prepareUI(optionsBasic, setupInfoWithoutWidgets)
 
 
 def test_without_widgets_starts(qtbot):

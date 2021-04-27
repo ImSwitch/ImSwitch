@@ -1,23 +1,26 @@
 import pytest
+from PyQt5 import QtTest
+
 from .. import optionsBasic, setupInfoWithoutWidgets
-from . import prepareUI
+from . import getApp, prepareUI
 
 
-app, mainView = None, None
+mainView = None
 
 
 @pytest.fixture(scope='module')
 def qapp():
-    global app, mainView
-    if app is None:
-        app, mainView = prepareUI(optionsBasic, setupInfoWithoutWidgets)
+    global mainView
+    app = getApp()
+    mainView = prepareUI(optionsBasic, setupInfoWithoutWidgets)
+    yield app
 
 
-def test_without_widgets_starts(qtbot):
-    pass
+def test_without_widgets_starts_no_error(qtbot):
+    QtTest.QTest.qWait(1000)
 
 
-def test_without_widgets_no_error(qtbot):
+def test_without_widgets_close_no_error(qtbot):
     mainView.close()
 
 

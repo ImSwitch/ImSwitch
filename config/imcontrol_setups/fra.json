@@ -181,7 +181,13 @@
         }
     },
     "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image",
         "Laser",
+        "Positioner",
+        "Scan",
         "AlignXY",
         "AlignAverage",
         "AlignmentLine",

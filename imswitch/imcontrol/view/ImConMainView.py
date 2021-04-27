@@ -131,16 +131,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
 
-    def setDetectorRelatedDocksVisible(self, visible):
-        for dock in ['imageDock', 'recordingDock', 'imageControlsDock', 'beadDock']:
-            try:
-                getattr(self, dock).setVisible(visible)
-            except AttributeError:
-                pass  # Happens if widget not added as part of configuration
-
-        if not visible:
-            self.showNormal()
-
     def closeEvent(self, event):
         self.sigClosing.emit()
         event.accept()

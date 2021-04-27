@@ -7,7 +7,6 @@ from .FFTController import FFTController
 from .FocusLockController import FocusLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
-from .MotCorrController import MotCorrController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .ScanController import ScanController

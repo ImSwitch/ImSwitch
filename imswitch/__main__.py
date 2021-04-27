@@ -1,16 +1,28 @@
+import importlib
+import sys
 import traceback
 
 from .imcommon import prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel
+from .imcommon.model import modulesconfigtools
 from .imcommon.view import MultiModuleWindow
 
-from . import imcontrol, imreconstruct, imscripting
 
-modules = {
-    imcontrol: 'Hardware Control',
-    imreconstruct: 'Image Reconstruction',
-    imscripting: 'Scripting'  # Must be last!
+moduleNames = {
+    'imcontrol': 'Hardware Control',
+    'imreconstruct': 'Image Reconstruction',
+    'imscripting': 'Scripting'
 }
+
+enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
+if 'imscripting' in enabledModuleIds:
+    # Ensure that imscripting is added last
+    enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
+
+modules = {}
+for moduleId in modulesconfigtools.getEnabledModuleIds():
+    module = importlib.import_module(f'imswitch.{moduleId}')
+    modules[module] = moduleNames[moduleId]
 
 app = prepareApp()
 moduleCommChannel = ModuleCommunicationChannel()
@@ -30,7 +42,7 @@ for modulePackage, moduleName in modules.items():
             multiModuleWindow=multiModuleWindow,
             moduleMainControllers=moduleMainControllers
         )
-    except:
+    except Exception:
         print(f'Failed to initialize module {moduleId}')
         print(traceback.format_exc())
         moduleCommChannel.unregister(modulePackage)

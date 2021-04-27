@@ -60,6 +60,7 @@ target/
 .idea/
 
 # Generated config files
+config/modules.json
 config/*_options.json
 
 # Scripts folder (except examples)

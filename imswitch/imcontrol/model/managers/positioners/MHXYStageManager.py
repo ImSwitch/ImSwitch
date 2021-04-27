@@ -9,11 +9,14 @@ from .PositionerManager import PositionerManager
 
 class MHXYStageManager(PositionerManager):
     def __init__(self, positionerInfo, name, *args, **kwargs):
-        if len(positionerInfo.axes) != 2:
-            raise RuntimeError(f'{self.__class__.__name__} only supports two axes,'
-                               f' {len(positionerInfo.axes)} provided.')
+        if (len(positionerInfo.axes) != 2
+                or 'X' not in positionerInfo.axes or 'Y' not in positionerInfo.axes):
+            raise RuntimeError(f'{self.__class__.__name__} requires two axes named X and Y'
+                               f' respectively, {positionerInfo.axes} provided.')
 
-        super().__init__(positionerInfo, name, initialPosition=[0, 0])
+        super().__init__(positionerInfo, name, initialPosition={
+            axis: 0 for axis in positionerInfo.axes
+        })
         self._rs232Manager = kwargs['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         print(str(self._rs232Manager.send('?readsn')))  # print serial no of stage
 
@@ -27,7 +30,6 @@ class MHXYStageManager(PositionerManager):
             return
         self._rs232Manager.send(cmd)
         self._position[axis] = self._position[axis] + value
-        return self._position[axis]
 
     def setPosition(self, value, axis):
         if axis == 'X':
@@ -39,7 +41,6 @@ class MHXYStageManager(PositionerManager):
             return
         self._rs232Manager.send(cmd)
         self._position[axis] = value
-        return self._position[axis]
 
 
 # Copyright (C) 2020, 2021 TestaLab

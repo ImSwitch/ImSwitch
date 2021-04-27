@@ -1,14 +1,16 @@
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtGui, QtWidgets
 
 from imswitch.imcommon.model import APIExport
 
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
-    def __init__(self, title, *args, **kwargs):
+    def __init__(self, title, iconPath=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._moduleIdNameMap = {}
 
         self.setWindowTitle(title)
+        if iconPath:
+            self.setWindowIcon(QtGui.QIcon(iconPath))
 
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()

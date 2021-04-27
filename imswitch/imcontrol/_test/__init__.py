@@ -6,7 +6,7 @@ optionsBasic = Options.from_json("""
 {
     "setupFileName": "",
     "recording": {
-        "outputFolder": "D:\\Data\\",
+        "outputFolder": "D:\\\\Data\\\\",
         "includeDateInOutputFolder": true
     }
 }

@@ -40,13 +40,17 @@ class SettingsController(ImConWidgetController):
 
         # Set up detectors
         for dName, dManager in self._master.detectorsManager:
+            if not dManager.forAcquisition:
+                continue
+
             self._widget.addDetector(
-                dName, dManager.parameters, dManager.actions, dManager.supportedBinnings,
+                dName, dManager.model, dManager.parameters, dManager.actions, dManager.supportedBinnings,
                 self._setupInfo.rois
             )
 
         self.addROI()
         self.initParameters()
+
         execOnAll = self._master.detectorsManager.execOnAll
         execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)))
         execOnAll(lambda c: (self.adjustFrame(detector=c)))
@@ -62,6 +66,8 @@ class SettingsController(ImConWidgetController):
 
         # Connect SettingsWidget signals
         self._widget.sigROIChanged.connect(self.ROIchanged)
+        self._widget.sigDetectorChanged.connect(self.detectorSwitchClicked)
+        self._widget.sigNextDetectorClicked.connect(self.detectorNextClicked)
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
@@ -366,6 +372,14 @@ class SettingsController(ImConWidgetController):
         self._widget.setImageFrameVisible(self._master.detectorsManager[newDetectorName].croppable)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
         self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
+
+    def detectorSwitchClicked(self, detectorName):
+        """ Changes the current detector to the selected detector. """
+        self._master.detectorsManager.setCurrentDetector(detectorName)
+
+    def detectorNextClicked(self):
+        """ Changes the current detector to the next detector. """
+        self._widget.selectNextDetector()
 
     def syncFrameParams(self, doAdjustFrame=True, doUpdateFrameActionButtons=True):
         currentParams = self.getCurrentParams()

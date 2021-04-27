@@ -50,13 +50,16 @@ class CommunicationChannel(SignalInterface):
 
     def getCenterROI(self):
         # Returns the center of the VB to align the ROI
-        return self.__main.controllers['Image'].getCenterROI()
+        if 'Image' in self.__main.controllers:
+            return self.__main.controllers['Image'].getCenterROI()
+        else:
+            raise RuntimeError('Required image widget not available')
 
     def getDimsScan(self):
-        return self.__main.controllers['Scan'].getDimsScan()
-
-    def getStartPos(self):
-        return self.__main.controllers['Positioner'].getPos()
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getDimsScan()
+        else:
+            raise RuntimeError('Required scan widget not available')
 
     @APIExport
     def signals(self):

@@ -203,7 +203,7 @@ class ScanController(SuperScanController):
             size = self._widget.getScanSize(positionerName)
             stepSize = self._widget.getScanStepSize(positionerName)
             center = self._widget.getScanCenterPos(positionerName)
-            start = self._commChannel.getStartPos()[positionerName]
+            start = list(self._master.positionersManager[positionerName].position.values())
 
             self._analogParameterDict['target_device'].append(positionerName)
             self._analogParameterDict['axis_length'].append(size)

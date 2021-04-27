@@ -3,6 +3,7 @@ from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController
 from .BeadRecController import BeadRecController
+from .ConsoleController import ConsoleController
 from .FFTController import FFTController
 from .FocusLockController import FocusLockController
 from .ImageController import ImageController

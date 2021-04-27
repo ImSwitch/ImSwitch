@@ -141,6 +141,8 @@ class SettingsWidget(Widget):
     """ Detector settings and ROI parameters. """
 
     sigROIChanged = QtCore.Signal()
+    sigDetectorChanged = QtCore.Signal(str)  # (detectorName)
+    sigNextDetectorClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -152,20 +154,37 @@ class SettingsWidget(Widget):
         self.stack = QtWidgets.QStackedWidget()
         self.trees = {}
 
+        self.detectorListBox = QtWidgets.QHBoxLayout()
+        self.detectorListLabel = QtWidgets.QLabel('Current detector:')
+        self.detectorList = QtWidgets.QComboBox()
+        self.nextDetectorButton = guitools.BetterPushButton('Next')
+        self.nextDetectorButton.hide()
+        self.detectorListBox.addWidget(self.detectorListLabel)
+        self.detectorListBox.addWidget(self.detectorList, 1)
+        self.detectorListBox.addWidget(self.nextDetectorButton)
+
         # Add elements to GridLayout
         self.layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.layout)
         self.layout.addWidget(detectorTitle)
         self.layout.addWidget(self.stack)
+        self.layout.addLayout(self.detectorListBox)
 
         # Connect signals
         self.ROI.sigROIChanged.connect(self.sigROIChanged)
+        self.detectorList.currentIndexChanged.connect(
+            lambda index: self.sigDetectorChanged.emit(self.detectorList.itemData(index))
+        )
+        self.nextDetectorButton.clicked.connect(self.sigNextDetectorClicked)
 
-    def addDetector(self, detectorName, detectorParameters, detectorActions, supportedBinnings,
-                    roiInfos):
+    def addDetector(self, detectorName, detectorModel, detectorParameters, detectorActions,
+                    supportedBinnings, roiInfos):
         self.trees[detectorName] = CamParamTree(detectorParameters, detectorActions,
                                                 supportedBinnings, roiInfos)
         self.stack.addWidget(self.trees[detectorName])
+
+        self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+        self.nextDetectorButton.setVisible(True)
 
     def setDisplayedDetector(self, detectorName):
         # Remember previously displayed detector settings widget scroll position
@@ -178,6 +197,11 @@ class SettingsWidget(Widget):
         self.stack.setCurrentWidget(newDetectorWidget)
         newDetectorWidget.horizontalScrollBar().setValue(scrollX)
         newDetectorWidget.verticalScrollBar().setValue(scrollY)
+
+    def selectNextDetector(self):
+        self.detectorList.setCurrentIndex(
+            (self.detectorList.currentIndex() + 1) % self.detectorList.count()
+        )
 
     def setImageFrameVisible(self, visible):
         """ Sets whetehr the image frame settings are visible. """

@@ -1,17 +1,10 @@
-from imswitch.imcommon import prepareApp
-from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch import imcontrol
+from .basecontrollers import ImConWidgetController
 
 
-def prepareUI(options, setupInfo):
-    app = prepareApp()
-    moduleCommChannel = ModuleCommunicationChannel()
-    moduleCommChannel.register(imcontrol)
-    mainView, _ = imcontrol.getMainViewAndController(moduleCommChannel,
-                                                     overrideSetupInfo=setupInfo,
-                                                     overrideOptions=options)
-    return app, mainView
-
+class ConsoleController(ImConWidgetController):
+    """ Linked to ConsoleWidget."""
+    pass
+    
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

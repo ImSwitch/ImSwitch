@@ -185,7 +185,13 @@
     }
   },
   "availableWidgets": [
-      "Laser"
+      "Settings",
+      "View",
+      "Recording",
+      "Image",
+      "Laser",
+      "Positioner",
+      "Scan"
   ],
   "designers": {
     "scanDesigner": "GalvoScanDesigner",

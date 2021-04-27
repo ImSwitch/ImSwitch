@@ -13,34 +13,34 @@ class PiezoconceptZManager(PositionerManager):
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
                                f' {len(positionerInfo.axes)} provided.')
 
-        super().__init__(positionerInfo, name, initialPosition=[0])
+        super().__init__(positionerInfo, name, initialPosition={
+            axis: 0 for axis in positionerInfo.axes
+        })
         self._rs232Manager = kwargs['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         #print('ZPiezo fake reply')
 
     def move(self, value, axis):
         if value == 0:
-            return self._position
+            return
         elif float(value) > 0:
             cmd = 'MOVRX +' + str(round(float(value), 3))[0:6] + 'u'
         elif float(value) < 0:
             cmd = 'MOVRX -' + str(round(float(value), 3))[1:7] + 'u'
         self._rs232Manager.send(cmd)
 
-        self._position = self._position + value
-        return self._position
+        self._position[self.axes[0]] = self._position[self.axes[0]] + value
 
     def setPosition(self, value, axis):
         cmd = 'MOVEX ' + str(round(float(value), 3)) + 'u'
         self._rs232Manager.send(cmd)
 
-        self._position = value
-        return self._position
+        self._position[self.axes[0]] = value
 
     def get_abs(self):
         cmd = 'GET_X'
         reply = self._rs232Manager.send(cmd)
         if reply is None:
-            reply = self._position
+            reply = self._position[self.axes[0]]
         else:
             reply = float(reply.split(' ')[0])
         return reply

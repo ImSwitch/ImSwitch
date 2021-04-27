@@ -241,6 +241,9 @@ class ScanWidget(Widget):
     def setScanStepSize(self, positionerName, stepSize):
         self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
 
+    def setScanCenterPos(self, positionerName, centerPos):
+        self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
+
     def setScanPixels(self, positionerName, pixels):
         self.scanPar['pixels' + positionerName].setText(str(pixels))
 

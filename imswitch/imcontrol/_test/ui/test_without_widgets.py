@@ -1,16 +1,22 @@
-from imswitch.imcommon import prepareApp
-from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch import imcontrol
+import pytest
+from .. import optionsBasic, setupInfoWithoutWidgets
+from . import prepareUI
 
 
-def prepareUI(options, setupInfo):
-    app = prepareApp()
-    moduleCommChannel = ModuleCommunicationChannel()
-    moduleCommChannel.register(imcontrol)
-    mainView, _ = imcontrol.getMainViewAndController(moduleCommChannel,
-                                                     overrideSetupInfo=setupInfo,
-                                                     overrideOptions=options)
-    return app, mainView
+app, mainView = prepareUI(optionsBasic, setupInfoWithoutWidgets)
+
+
+@pytest.fixture(scope='module')
+def qapp():
+    yield app
+
+
+def test_without_widgets_starts(qtbot):
+    pass
+
+
+def test_without_widgets_no_error(qtbot):
+    mainView.close()
 
 
 # Copyright (C) 2020, 2021 TestaLab

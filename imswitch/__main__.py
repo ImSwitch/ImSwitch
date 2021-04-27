@@ -1,8 +1,8 @@
 import importlib
-import sys
+import os
 import traceback
 
-from .imcommon import prepareApp, launchApp
+from .imcommon import constants, prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel
 from .imcommon.model import modulesconfigtools
 from .imcommon.view import MultiModuleWindow
@@ -26,7 +26,9 @@ for moduleId in modulesconfigtools.getEnabledModuleIds():
 
 app = prepareApp()
 moduleCommChannel = ModuleCommunicationChannel()
-multiModuleWindow = MultiModuleWindow('ImSwitch')
+multiModuleWindow = MultiModuleWindow(
+    'ImSwitch', os.path.join(constants.rootFolderPath, 'icon.png')
+)
 moduleMainControllers = dict()
 
 for modulePackage in modules.keys():

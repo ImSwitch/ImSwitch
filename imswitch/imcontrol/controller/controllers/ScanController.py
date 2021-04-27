@@ -181,7 +181,7 @@ class ScanController(SuperScanController):
             positionerName = self._widget.getScanDim(i)
             size = self._widget.getScanSize(positionerName)
             stepSize = self._widget.getScanStepSize(positionerName)
-            start = self._commChannel.getStartPos()[positionerName]
+            start = self._master.positionersManager[positionerName].position
 
             self._stageParameterDict['Targets[x]'].append(positionerName)
             self._stageParameterDict['Sizes[x]'].append(size)

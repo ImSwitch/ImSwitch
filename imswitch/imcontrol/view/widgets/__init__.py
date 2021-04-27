@@ -3,6 +3,7 @@ from .AlignmentLineWidget import AlignmentLineWidget
 from .AlignAverageWidget import AlignAverageWidget
 from .AlignXYWidget import AlignXYWidget
 from .BeadRecWidget import BeadRecWidget
+from .ConsoleWidget import ConsoleWidget
 from .FFTWidget import FFTWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget

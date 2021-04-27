@@ -36,21 +36,24 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves the piezos in x y or z (axis) by dist micrometers. """
-        newPos = self._master.positionersManager[positionerName].move(dist, axis)
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        self._master.positionersManager[positionerName].move(dist, axis)
+        self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the piezos in x y or z (axis) to the specified position. """
-        newPos = self._master.positionersManager[positionerName].setPosition(position, axis)
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        self._master.positionersManager[positionerName].setPosition(position, axis)
+        self.updatePosition(positionerName, axis)
 
     def stepUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
 
     def stepDown(self, positionerName, axis):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
+
+    def updatePosition(self, positionerName, axis):
+        newPos = self._master.positionersManager[positionerName].position[axis]
+        self._widget.updatePosition(positionerName, axis, newPos)
+        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     def moveZStage(self, step):
         for pName, pManager in self._master.positionersManager:

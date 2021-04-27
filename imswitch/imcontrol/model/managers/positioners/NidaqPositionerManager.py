@@ -19,18 +19,19 @@ class NidaqPositionerManager(PositionerManager):
         self._conversionFactor = positionerInfo.managerProperties['conversionFactor']
         self._minVolt = positionerInfo.managerProperties['minVolt']
         self._maxVolt = positionerInfo.managerProperties['maxVolt']
-        super().__init__(positionerInfo, name, initialPosition=[0])
+        super().__init__(positionerInfo, name, initialPosition={
+            axis: 0 for axis in positionerInfo.axes
+        })
 
     def move(self, dist, axis):
-        return self.setPosition(self._position + dist, axis)
+        self.setPosition(self._position[self.axes[0]] + dist, axis)
 
     def setPosition(self, position, axis):
-        self._position = position
+        self._position[self.axes[0]] = position
         self._nidaqManager.setAnalog(target=self.name,
                                      voltage=position / self._conversionFactor,
                                      min_val=self._minVolt,
                                      max_val=self._maxVolt)
-        return position
 
 
 # Copyright (C) 2020, 2021 TestaLab

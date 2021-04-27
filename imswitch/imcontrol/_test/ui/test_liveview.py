@@ -1,12 +1,13 @@
 import pytest
 from PyQt5 import QtCore, QtTest
+from .. import optionsBasic, setupInfoBasic
 from . import prepareUI
 
 
-app, mainView = prepareUI()
+app, mainView = prepareUI(optionsBasic, setupInfoBasic)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def qapp():
     yield app
 

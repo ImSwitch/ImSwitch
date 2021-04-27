@@ -83,10 +83,15 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport
-    def setPositionerStepSize(self, positionerName, axis, stepSize):
-        """ Sets the step size of the specified positioner axis to the
-        specified number of micrometers. """
-        self._widget.setStepSize(positionerName, axis, stepSize)
+    def getPositionerPositions(self):
+        """ Returns the positions of all positioners. """
+        return self.getPos()
+
+    @APIExport
+    def setPositionerStepSize(self, positionerName, stepSize):
+        """ Sets the step size of the specified positioner to the specified
+        number of micrometers. """
+        self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport
     def movePositioner(self, positionerName, axis, dist):

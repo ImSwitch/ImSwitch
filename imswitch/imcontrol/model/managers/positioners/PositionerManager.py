@@ -25,6 +25,8 @@ class PositionerManager(ABC):
 
     @property
     def position(self):
+        """ The positioner's position. This is a dict in the format
+        { axis: position }. """
         return self._position
 
     @property

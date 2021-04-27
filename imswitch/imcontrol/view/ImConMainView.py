@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 
-import numpy as np
-import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
-from pyqtgraph.console import ConsoleWidget
 from pyqtgraph.dockarea import Dock, DockArea
 
 from . import widgets
@@ -19,6 +16,7 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
+        self.docks = {}
         self.widgets = {}
 
         # Menu Bar
@@ -45,23 +43,24 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Dock area
         dockArea = DockArea()
+        enabledDockKeys = viewSetupInfo.availableWidgets
 
         prevRightDock = None
         prevRightDockYPosition = -1
         def addRightDock(widgetKey, dockInfo):
             nonlocal prevRightDock, prevRightDockYPosition
-            dock = Dock(dockInfo.name, size=(1, 1))
+            self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.widgets[widgetKey] = self.factory.createWidget(
                 getattr(widgets, f'{widgetKey}Widget')
             )
-            dock.addWidget(self.widgets[widgetKey])
+            self.docks[widgetKey].addWidget(self.widgets[widgetKey])
             if prevRightDock is None:
-                dockArea.addDock(dock)
+                dockArea.addDock(self.docks[widgetKey])
             elif dockInfo.yPosition > prevRightDockYPosition:
-                dockArea.addDock(dock, 'bottom', prevRightDock)
+                dockArea.addDock(self.docks[widgetKey], 'bottom', prevRightDock)
             else:
-                dockArea.addDock(dock, 'above', prevRightDock)
-            prevRightDock = dock
+                dockArea.addDock(self.docks[widgetKey], 'above', prevRightDock)
+            prevRightDock = self.docks[widgetKey]
             prevRightDockYPosition = dockInfo.yPosition
 
         rightDocks = {
@@ -78,58 +77,59 @@ class ImConMainView(QtWidgets.QMainWindow):
             'FFT': _DockInfo(name='FFT Tool', yPosition=3)
         }
 
-        enabledRightDockKeys = ['Positioner', 'Scan'] + viewSetupInfo.availableWidgets
         for widgetKey, dockInfo in rightDocks.items():
-            if widgetKey in enabledRightDockKeys:
+            if widgetKey in enabledDockKeys:
                 addRightDock(widgetKey, dockInfo)
 
-        # Add other widgets
-        self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
-        self.widgets['Recording'] = self.factory.createWidget(widgets.RecordingWidget)
+        if 'Image' in enabledDockKeys:
+            self.docks['Image'] = Dock('Image Display', size=(1, 1))
+            self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
+            self.docks['Image'].addWidget(self.widgets['Image'])
+            dockArea.addDock(self.docks['Image'], 'left')
 
-        # Image controls container
-        imageControlsContainer = QtWidgets.QVBoxLayout()
-        imageControlsContainer.setContentsMargins(0, 9, 0, 0)
+        prevLeftDock = None
+        prevLeftDockYPosition = -1
+        def addLeftDock(widgetKey, dockInfo):
+            nonlocal prevLeftDock, prevLeftDockYPosition
+            self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
+            self.widgets[widgetKey] = self.factory.createWidget(
+                getattr(widgets, f'{widgetKey}Widget')
+            )
+            self.docks[widgetKey].addWidget(self.widgets[widgetKey])
+            if prevLeftDock is None:
+                dockArea.addDock(self.docks[widgetKey], 'left')
+            elif dockInfo.yPosition > prevLeftDockYPosition:
+                dockArea.addDock(self.docks[widgetKey], 'bottom', prevLeftDock)
+            else:
+                dockArea.addDock(self.docks[widgetKey], 'above', prevLeftDock)
+            prevLeftDock = self.docks[widgetKey]
+            prevLeftDockYPosition = dockInfo.yPosition
 
-        self.widgets['Settings'] = self.factory.createWidget(widgets.SettingsWidget)
-        imageControlsContainer.addWidget(self.widgets['Settings'], 1)
+        leftDocks = {
+            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
+            'View': _DockInfo(name='Image Controls', yPosition=1),
+            'Recording': _DockInfo(name='Recording', yPosition=2),
+            'Console': _DockInfo(name='Console', yPosition=3)
+        }
 
-        self.widgets['View'] = self.factory.createWidget(widgets.ViewWidget)
-        imageControlsContainer.addWidget(self.widgets['View'])
-
-        imageControlsContainerWidget = QtWidgets.QWidget()
-        imageControlsContainerWidget.setLayout(imageControlsContainer)
-
-        # Console
-        console = ConsoleWidget(namespace={'pg': pg, 'np': np})
-
-        # Docks
-        self.imageDock = Dock('Image Display', size=(1, 1))
-        self.imageDock.addWidget(self.widgets['Image'])
-        dockArea.addDock(self.imageDock, 'left')
-
-        self.imageControlsDock = Dock('Image Controls', size=(1, 100))
-        self.imageControlsDock.addWidget(imageControlsContainerWidget)
-        dockArea.addDock(self.imageControlsDock, 'left')
-
-        self.recordingDock = Dock('Recording', size=(1, 1))
-        self.recordingDock.addWidget(self.widgets['Recording'])
-        dockArea.addDock(self.recordingDock, 'bottom', self.imageControlsDock)
-
-        consoleDock = Dock('Console', size=(1, 1))
-        consoleDock.addWidget(console)
-        dockArea.addDock(consoleDock, 'bottom', self.recordingDock)
-
-        # Raise important docks
-        self._raiseDock(self.imageControlsDock)
+        for widgetKey, dockInfo in leftDocks.items():
+            if widgetKey in enabledDockKeys:
+                addLeftDock(widgetKey, dockInfo)
 
         # Add dock area to layout
         layout.addWidget(dockArea)
 
+        # Maximize window
         self.showMaximized()
-        self.imageControlsDock.container().setStretch(1, 1)
-        prevRightDock.container().setStretch(1, 100)
-        self.imageDock.setStretch(100, 100)
+
+        # Adjust dock sizes
+        if 'Settings' in self.docks:
+            self.docks['Settings'].setStretch(1, 10)
+            self.docks['Settings'].container().setStretch(3, 1)
+        if prevRightDock is not None:
+            prevRightDock.setStretch(1, 10)
+        if 'Image' in self.docks:
+            self.docks['Image'].setStretch(10, 1)
 
     def setDetectorRelatedDocksVisible(self, visible):
         for dock in ['imageDock', 'recordingDock', 'imageControlsDock', 'beadDock']:
@@ -144,13 +144,6 @@ class ImConMainView(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.sigClosing.emit()
         event.accept()
-
-
-    def _raiseDock(self, dock):
-        try:
-            dock.raiseDock()
-        except AttributeError:  # raised when dock has no siblings
-            pass
 
 
 @dataclass

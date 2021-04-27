@@ -1,14 +1,33 @@
 def getMainViewAndController(moduleCommChannel, *_args,
                              overrideSetupInfo=None, overrideOptions=None, **_kwargs):
     from .controller import ImConMainController
-    from imswitch.imcontrol.model import configfiletools
+    from .model import configfiletools
     from .view import ViewSetupInfo, ImConMainView
 
-    options, setupInfo = configfiletools.loadSetupInfo(ViewSetupInfo)
-    if overrideSetupInfo is not None:
-        setupInfo = overrideSetupInfo
-    if overrideOptions is not None:
+    if overrideOptions is None:
+        options, optionsDidNotExist = configfiletools.loadOptions()
+        if optionsDidNotExist:
+            import dataclasses
+            import sys
+            from imswitch.imcontrol.view.guitools import PickSetupDialog
+
+            # Let user pick the setup to use
+            setupFileName = PickSetupDialog.showAndWaitForResult(
+                parent=None,  setupList=configfiletools.getSetupList()
+            )
+            if not setupFileName:
+                print('User did not pick a setup to use')
+                sys.exit()
+            options = dataclasses.replace(options, setupFileName=setupFileName)
+
+        configfiletools.saveOptions(options)
+    else:
         options = overrideOptions
+
+    if overrideSetupInfo is None:
+        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+    else:
+        setupInfo = overrideSetupInfo
 
     view = ImConMainView(options, setupInfo)
     try:

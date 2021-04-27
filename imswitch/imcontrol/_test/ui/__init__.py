@@ -1,6 +1,6 @@
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch.imcontrol._test import setupInfoBasic
+from imswitch.imcontrol._test import optionsBasic, setupInfoBasic
 from imswitch import imcontrol
 
 
@@ -9,7 +9,8 @@ def prepareUI():
     moduleCommChannel = ModuleCommunicationChannel()
     moduleCommChannel.register(imcontrol)
     mainView, _ = imcontrol.getMainViewAndController(moduleCommChannel,
-                                                     overrideSetupInfo=setupInfoBasic)
+                                                     overrideSetupInfo=setupInfoBasic,
+                                                     overrideOptions=optionsBasic)
     return app, mainView
 
 

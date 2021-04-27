@@ -1,4 +1,17 @@
+from imswitch.imcontrol.model import Options
 from imswitch.imcontrol.view import ViewSetupInfo
+
+
+optionsBasic = Options.from_json("""
+{
+    "setupFileName": "",
+    "recording": {
+        "outputFolder": "D:\\Data\\",
+        "includeDateInOutputFolder": true
+    }
+}
+""")
+
 
 setupInfoBasic = ViewSetupInfo.from_json("""
 {

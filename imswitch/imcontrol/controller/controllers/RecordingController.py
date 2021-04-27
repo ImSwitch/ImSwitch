@@ -51,7 +51,7 @@ class RecordingController(ImConWidgetController):
         """ Opens current folder in File Explorer. """
         try:
             ostools.openFolderInOS(self._widget.getRecFolder())
-        except ostools.OSUtilsError:
+        except ostools.OSToolsError:
             ostools.openFolderInOS(self._widget.dataDir)
 
     def snap(self):

@@ -177,9 +177,6 @@
     "availableWidgets": [
         "Laser"
     ],
-    "widgetLayout": {
-        "lasersAndAlignmentInSingleDock": false
-    },
     "scanDefaults": {
         "defaultScanFile": null
     }

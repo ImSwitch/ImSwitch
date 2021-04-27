@@ -334,8 +334,5 @@
     "frameCropRight": 830,
     "frameCropTop": 0,
     "frameCropBottom": 1024
-  },
-  "widgetLayout": {
-      "lasersAndAlignmentInSingleDock": false
   }
 }

@@ -242,7 +242,7 @@ class SettingsController(ImConWidgetController):
 
             # Set in setup info
             self._setupInfo.setROI(name, x0, y0, width, height)
-            configfiletools.saveSetupInfo(self._setupInfo)
+            configfiletools.saveSetupInfo(configfiletools.loadOptions(), self._setupInfo)
 
             # Update selected ROI in GUI
             for params in self.allParams.values():
@@ -270,7 +270,7 @@ class SettingsController(ImConWidgetController):
 
             # Remove from setup info
             self._setupInfo.removeROI(modeToDelete)
-            configfiletools.saveSetupInfo(self._setupInfo)
+            configfiletools.saveSetupInfo(configfiletools.loadOptions(), self._setupInfo)
 
     def updateBinning(self):
         """ Update a new binning to the detector. """

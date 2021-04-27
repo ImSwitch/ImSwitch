@@ -6,31 +6,52 @@ from imswitch.imcommon import constants
 from .Options import Options
 
 
-def loadSetupInfo(setupInfoType):
-    with open(os.path.join(_setupFilesDir, _options.setupFileName)) as setupFile:
-        return _options, setupInfoType.from_json(setupFile.read(), infer_missing=True)
+def getSetupList():
+    return [Path(file).name for file in glob.glob(os.path.join(_setupFilesDir, '*.json'))]
 
 
-def saveSetupInfo(setupInfo):
-    with open(os.path.join(_setupFilesDir, _options.setupFileName), 'w') as setupFile:
+def loadSetupInfo(options, setupInfoType):
+    with open(os.path.join(_setupFilesDir, options.setupFileName)) as setupFile:
+        return setupInfoType.from_json(setupFile.read(), infer_missing=True)
+
+
+def saveSetupInfo(options, setupInfo):
+    with open(os.path.join(_setupFilesDir, options.setupFileName), 'w') as setupFile:
         setupFile.write(setupInfo.to_json(indent=4))
+
+
+def loadOptions():
+    global _options
+
+    if _options is not None:
+        return _options, False
+
+    optionsDidNotExist = False
+    if not os.path.isfile(_optionsFilePath):
+        _options = Options(
+            setupFileName=getSetupList()[0]
+        )
+        optionsDidNotExist = True
+    else:
+        with open(_optionsFilePath, 'r') as optionsFile:
+            _options = Options.from_json(optionsFile.read(), infer_missing=True)
+
+    return _options, optionsDidNotExist
+
+
+def saveOptions(options):
+    global _options
+
+    _options = options
+    with open(_optionsFilePath, 'w') as optionsFile:
+        optionsFile.write(_options.to_json(indent=4))
 
 
 _configFilesDir = os.path.join(constants.rootFolderPath, 'config')
 _setupFilesDir = os.path.join(_configFilesDir, 'imcontrol_setups')
 _optionsFilePath = os.path.join(_configFilesDir, 'imcontrol_options.json')
 
-if not os.path.isfile(_optionsFilePath):
-    # Options file doesn't exist, create it. TODO: The user should pick the default config
-    _options = Options(
-        setupFileName=Path(glob.glob(os.path.join(_setupFilesDir, '*.json'))[0]).name
-    )
-else:
-    with open(_optionsFilePath, 'r') as optionsFile:
-        _options = Options.from_json(optionsFile.read(), infer_missing=True)
-
-with open(_optionsFilePath, 'w') as optionsFile:
-    optionsFile.write(_options.to_json(indent=4))
+_options = None
 
 
 # Copyright (C) 2020, 2021 TestaLab

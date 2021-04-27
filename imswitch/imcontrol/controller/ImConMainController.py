@@ -1,5 +1,8 @@
-from imswitch.imcommon.controller import WidgetController, MainController
-from imswitch.imcommon.model import generateAPI, SharedAttributes
+import dataclasses
+
+from imswitch.imcommon.controller import MainController
+from imswitch.imcommon.model import ostools, generateAPI, SharedAttributes
+from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
@@ -15,6 +18,7 @@ class ImConMainController(MainController):
 
         # Connect view signals
         self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
+        self.__mainView.sigPickSetup.connect(self.pickSetup)
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
@@ -56,6 +60,27 @@ class ImConMainController(MainController):
 
         attrs = SharedAttributes.fromHDF5File(filePath)
         self.__commChannel.sharedAttrs.update(attrs)
+
+    def pickSetup(self):
+        """ Let the user change which setup is used. """
+
+        options, _ = configfiletools.loadOptions()
+
+        setupFileName = guitools.PickSetupDialog.showAndWaitForResult(
+            parent=self.__mainView, setupList=configfiletools.getSetupList(),
+            preselectedSetup=options.setupFileName
+        )
+        if not setupFileName:
+            return
+
+        proceed = guitools.askYesNoQuestion(self.__mainView, 'Warning',
+                                            'The software will restart. Continue?')
+        if not proceed:
+            return
+
+        options = dataclasses.replace(options, setupFileName=setupFileName)
+        configfiletools.saveOptions(options)
+        ostools.restartSoftware()
 
     def closeEvent(self):
         self.__factory.closeAllCreatedControllers()

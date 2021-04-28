@@ -56,7 +56,7 @@ class ImageController(LiveUpdatedController):
         if not init:
             self.autoLevels([detectorName], im)
 
-        self._widget.setImage(detectorName, im.reshape(im.shape[1], im.shape[0]).T)
+        self._widget.setImage(detectorName, im)
 
         if not init or self._shouldResetView:
             self.adjustFrame(self._lastWidth, self._lastHeight, instantResetView=True)

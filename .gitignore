@@ -59,6 +59,9 @@ target/
 # PyCharm
 .idea/
 
+# Visual Studio Code
+.vscode/
+
 # Generated config files
 config/modules.json
 config/*_options.json

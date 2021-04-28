@@ -62,7 +62,7 @@ target/
 # PyCharm
 .idea/
 
-# VS Code
+# Visual Studio Code
 .vscode/
 
 # Generated config files

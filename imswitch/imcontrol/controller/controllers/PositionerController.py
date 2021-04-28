@@ -55,11 +55,6 @@ class PositionerController(ImConWidgetController):
         self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
-    def moveZStage(self, step):
-        for pName, pManager in self._master.positionersManager:
-            if 'Z' in pManager.axes:
-                self.move(pName, 'Z', step)
-
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:
             return

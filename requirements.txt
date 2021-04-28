@@ -8,7 +8,7 @@ napari[pyqt5]~=0.4.6
 nidaqmx~=0.5.7
 numpy==1.19.3
 psutil~=5.7.3
-git+git://github.com/morefigs/py-ic-imaging-control#egg=pyicic; platform_system == "Windows"
+git+https://github.com/morefigs/py-ic-imaging-control#egg=py-ic-imaging-control; platform_system == "Windows"
 PyQt5~=5.15.2
 pyqtgraph==0.11.0
 pyserial~=3.5

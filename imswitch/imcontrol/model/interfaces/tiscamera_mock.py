@@ -17,6 +17,21 @@ class MockCameraTIS:
         self.brightness = 1
         self.model = 'mock'
 
+    def start_live(self):
+        pass
+
+    def stop_live(self):
+        pass
+
+    def suspend_live(self):
+        pass
+
+    def prepare_live(self):
+        pass
+
+    def setROI(self, hpos, vpos, hsize, vsize):
+        pass
+
     def grabFrame(self, **kwargs):
         img = np.zeros((500, 600))
         beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]

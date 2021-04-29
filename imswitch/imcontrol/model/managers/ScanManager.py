@@ -1,3 +1,4 @@
+import copy
 from abc import ABC, abstractmethod
 
 from ..errors import IncompatibilityError
@@ -29,10 +30,14 @@ class ScanManager(SuperScanManager):
     def __init__(self, setupInfo):
         super().__init__()
         self._setupInfo = setupInfo
-        self._scanDesigner = SignalDesignerFactory(setupInfo, 'scanDesigner')
-        self._TTLCycleDesigner = SignalDesignerFactory(setupInfo, 'TTLCycleDesigner')
+        self._scanDesigner = SignalDesignerFactory(setupInfo.scan.scanDesigner)
+        self._TTLCycleDesigner = SignalDesignerFactory(setupInfo.scan.TTLCycleDesigner)
 
         self._expectedSyncParameters = []
+
+    @property
+    def sampleRate(self):
+        return self._setupInfo.scan.sampleRate
 
     @property
     def TTLTimeUnits(self):
@@ -57,16 +62,22 @@ class ScanManager(SuperScanManager):
         # if not syncExpected.issubset(syncIncoming):
         #     raise IncompatibilityError('Incompatible sync parameters')
 
-    def getTTLCycleSignalsDict(self, TTLParameters):
-        """ Generates TTL scan signals. """
-        return self._TTLCycleDesigner.make_signal(TTLParameters, self._setupInfo)
+    def getScanSignalsDict(self, scanParameters):
+        """ Generates scan signals. """
+        parameterDict = copy.deepcopy(self._setupInfo.scan.scanDesignerParams)
+        parameterDict.update(scanParameters)
+        return self._scanDesigner.make_signal(parameterDict, self._setupInfo)
+
+    def getTTLCycleSignalsDict(self, TTLParameters, scanInfoDict=None):
+        """ Generates TTL cycle signals. """
+        parameterDict = copy.deepcopy(self._setupInfo.scan.TTLCycleDesignerParams)
+        parameterDict.update(TTLParameters)
+        return self._TTLCycleDesigner.make_signal(parameterDict, self._setupInfo, scanInfoDict)
 
     def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
         """ Generates stage and TTL scan signals. """
         if not staticPositioner:
-            scanSignalsDict, positions, scanInfoDict = self._scanDesigner.make_signal(
-                scanParameters, self._setupInfo
-            )
+            scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
             if not self._scanDesigner.checkSignalComp(
                     scanParameters, self._setupInfo, scanInfoDict
             ):
@@ -74,13 +85,9 @@ class ScanManager(SuperScanManager):
                       ' slower scan.')
                 return
 
-            TTLCycleSignalsDict = self._TTLCycleDesigner.make_signal(
-                TTLParameters, self._setupInfo, scanInfoDict
-            )
+            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
         else:
-            TTLCycleSignalsDict = self._TTLCycleDesigner.make_signal(
-                TTLParameters, self._setupInfo
-            )
+            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters)
             scanSignalsDict = {}
             scanInfoDict = {}
 

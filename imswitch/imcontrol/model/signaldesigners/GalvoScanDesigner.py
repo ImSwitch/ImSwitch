@@ -13,9 +13,7 @@ class GalvoScanDesigner(ScanDesigner):
                                     'axis_step_size',
                                     'axis_centerpos',
                                     'axis_startpos',
-                                    'sequence_time',
-                                    'sample_rate',
-                                    'return_time']
+                                    'sequence_time']
 
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
         """ Check analog scanning signals so that they are inside the range of
@@ -32,7 +30,7 @@ class GalvoScanDesigner(ScanDesigner):
         return True
 
     def make_signal(self, parameterDict, setupInfo):
-        self.__timestep = 1e6 / parameterDict['sample_rate']  # time step of evaluated scanning curves [µs]
+        self.__timestep = 1e6 / setupInfo.scan.sampleRate  # time step of evaluated scanning curves [µs]
         self.__minsettlingtime = 1000  # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the max speed/acc, as that is what limits time it takes for axes to get to the right position
         self.__paddingtime = 3000  # arbitrary for now  µs
 

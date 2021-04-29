@@ -32,8 +32,6 @@ class ScanWidget(Widget):
         self.saveScanBtn = guitools.BetterPushButton('Save Scan')
         self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
-        self.sampleRateEdit = QtWidgets.QLineEdit()
-
         self.seqTimePar = QtWidgets.QLineEdit('10')  # ms
         self.nrFramesPar = QtWidgets.QLabel()
         self.scanDuration = 0
@@ -54,10 +52,8 @@ class ScanWidget(Widget):
 
         self.continuousCheck = QtWidgets.QCheckBox('Repeat')
 
-        self.sampleRate = 10000
         self.graph = GraphFrame()
         self.graph.setEnabled(False)
-        self.graph.plot.getAxis('bottom').setScale(1000 / self.sampleRate)
         self.graph.setFixedHeight(128)
 
         self.grid = QtWidgets.QGridLayout()
@@ -272,7 +268,7 @@ class ScanWidget(Widget):
     def setScanCenterPosEnabled(self, positionerName, enabled):
         self.scanPar['center' + positionerName].setEnabled(enabled)
 
-    def plotSignalGraph(self, areas, signals, colors):
+    def plotSignalGraph(self, areas, signals, colors, sampleRate):
         if len(areas) != len(signals) or len(signals) != len(colors):
             raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
 
@@ -281,6 +277,7 @@ class ScanWidget(Widget):
             self.graph.plot.plot(areas[i], signals[i],  pen=pg.mkPen(colors[i]))
 
         self.graph.plot.setYRange(-0.1, 1.1)
+        self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
 
 
 class GraphFrame(pg.GraphicsLayoutWidget):

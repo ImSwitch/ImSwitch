@@ -11,8 +11,6 @@ class BetaScanDesigner(ScanDesigner):
                                     'axis_length',
                                     'axis_step_size',
                                     'axis_startpos',
-                                    'sequence_time',
-                                    'sample_rate',
                                     'return_time']
 
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
@@ -55,9 +53,10 @@ class BetaScanDesigner(ScanDesigner):
         middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
         slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
 
-        sequenceSamples = parameterDict['sequence_time'] * parameterDict['sample_rate']
+        sampleRate = setupInfo.scan.sampleRate
+        sequenceSamples = parameterDict['sequence_time'] * sampleRate
         print(sequenceSamples)
-        returnSamples = parameterDict['return_time'] * parameterDict['sample_rate']
+        returnSamples = parameterDict['return_time'] * sampleRate
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         sequenceSamples = np.int(np.ceil(sequenceSamples))

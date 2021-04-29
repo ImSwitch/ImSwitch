@@ -161,15 +161,6 @@
       }
     }
   },
-  "scan": {
-    "stage": {
-      "sampleRate": 100e3,
-      "returnTime": 0.01
-    },
-    "ttl": {
-      "sampleRate": 100e3
-    }
-  },
   "rois": {
     "Fast scan": {
       "x": 256,
@@ -193,9 +184,12 @@
       "Positioner",
       "Scan"
   ],
-  "designers": {
+  "scan": {
     "scanDesigner": "GalvoScanDesigner",
-    "TTLCycleDesigner": "PointScanTTLCycleDesigner"
+    "scanDesignerParams": {},
+    "TTLCycleDesigner": "PointScanTTLCycleDesigner",
+    "TTLCycleDesignerParams": {},
+    "sampleRate": 100000
   },
   "focusLock": {
     "camera": "FocusLockCamera",

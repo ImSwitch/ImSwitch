@@ -37,24 +37,7 @@ class PositionerInfo(DeviceInfo):
 @dataclass(frozen=True)
 class RS232Info:
     managerName: str  # manager class name
-    managerProperties: Dict[str, Any]  # properties to be read by manager    
-
-
-@dataclass(frozen=True)
-class ScanInfoStage:
-    sampleRate: int
-    returnTime: float
-
-
-@dataclass(frozen=True)
-class ScanInfoTTL:
-    sampleRate: int
-
-
-@dataclass(frozen=True)
-class ScanInfo:
-    stage: ScanInfoStage
-    ttl: ScanInfoTTL
+    managerProperties: Dict[str, Any]  # properties to be read by manager
 
 
 @dataclass(frozen=True)
@@ -80,9 +63,12 @@ class FocusLockInfo:
 
 
 @dataclass(frozen=True)
-class DesignersInfo:
+class ScanInfo:
     scanDesigner: str  # name of the scan designer class to use
+    scanDesignerParams: Dict[str, Any]  # properties to be read by ScanDesigner
     TTLCycleDesigner: str  # name of the TTL cycle designer class to use
+    TTLCycleDesignerParams: Dict[str, Any]  # properties to be read by TTLCycleDesigner
+    sampleRate: int  # scan sample rate
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
@@ -93,11 +79,10 @@ class SetupInfo:
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)  # map from device name to PositionerInfo
     rs232devices: Dict[str, RS232Info] = field(default_factory=dict)  # map from device name to RS232Info
 
-    scan: ScanInfo = field(default_factory=ScanInfo)
     slm: Optional[SLMInfo] = None
     focusLock: Optional[FocusLockInfo] = None
 
-    designers: DesignersInfo = field(default_factory=DesignersInfo)
+    scan: ScanInfo = field(default_factory=ScanInfo)
 
     _catchAll: CatchAll = None
 

@@ -12,8 +12,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         self._expectedParameters = ['target_device',
                                     'TTL_start',
                                     'TTL_end',
-                                    'sequence_time',
-                                    'sample_rate']
+                                    'sequence_time']
 
     @property
     def timeUnits(self):
@@ -26,12 +25,12 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             return None
 
         if not scanInfoDict:
-            return self.__make_signal_stationary(parameterDict)
+            return self.__make_signal_stationary(parameterDict, setupInfo.scan.sampleRate)
         else:
             signal_dict = {}
 
+            sample_rate = setupInfo.scan.sampleRate
             targets = parameterDict['target_device']
-            sample_rate = parameterDict['sample_rate']
             samples_pixel = parameterDict['sequence_time'] * sample_rate
             pixels_line = scanInfoDict['pixels_line']
             samples_line = scanInfoDict['scan_samples_line']
@@ -77,13 +76,12 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             # return signal_dict, which contains bool arrays for each target
             return signal_dict
 
-    def __make_signal_stationary(self, parameterDict):
-        signal_dict_pixel = self.__pixel_stationary(parameterDict)
+    def __make_signal_stationary(self, parameterDict, sample_rate):
+        signal_dict_pixel = self.__pixel_stationary(parameterDict, sample_rate)
         return signal_dict_pixel
 
-    def __pixel_stationary(self, parameterDict):
+    def __pixel_stationary(self, parameterDict, sample_rate):
         targets = parameterDict['target_device']
-        sample_rate = parameterDict['sample_rate']
         samples_cycle = parameterDict['sequence_time'] * sample_rate
         #if not samples_cycle.is_integer():
             #print('WARNING: Non-integer number of sequence samples, rounding up')

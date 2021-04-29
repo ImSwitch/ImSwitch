@@ -10,8 +10,7 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
         self._expectedParameters = ['target_device',
                                     'TTL_start',
                                     'TTL_end',
-                                    'sequence_time',
-                                    'sample_rate']
+                                    'sequence_time']
 
     @property
     def timeUnits(self):
@@ -24,8 +23,8 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
                   since this should be checked at program start-up')
             return None
 
+        sampleRate = setupInfo.scan.sampleRate
         targets = parameterDict['target_device']
-        sampleRate = parameterDict['sample_rate']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
         #print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():

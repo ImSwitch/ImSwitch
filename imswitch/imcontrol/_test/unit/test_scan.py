@@ -12,13 +12,11 @@ def test_scan_signals():
                        'axis_step_size': [1, 1, 1],
                        'axis_startpos': [[0], [0], [0]],
                        'sequence_time': 0.005,
-                       'sample_rate': 100000,
                        'return_time': 0.001}
     TTLParameters = {'target_device': ['405', '488'],
                      'TTL_start': [[0.0001, 0.004], [0, 0]],
                      'TTL_end': [[0.0015, 0.005], [0, 0]],
-                     'sequence_time': 0.005,
-                     'sample_rate': 100000}
+                     'sequence_time': 0.005}
 
     sh = ScanManager(setupInfo=setupInfoBasic)
     fullsig, _ = sh.makeFullScan(stageParameters, TTLParameters)

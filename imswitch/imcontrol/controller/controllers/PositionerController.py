@@ -35,12 +35,12 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def move(self, positionerName, axis, dist):
-        """ Moves the piezos in x y or z (axis) by dist micrometers. """
+        """ Moves positioner by dist micrometers in the specified axis. """
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
-        """ Moves the piezos in x y or z (axis) to the specified position. """
+        """ Moves the positioner to the specified position in the specified axis. """
         self._master.positionersManager[positionerName].setPosition(position, axis)
         self.updatePosition(positionerName, axis)
 

@@ -28,10 +28,11 @@ class FocusLockController(ImConWidgetController):
         self.camera = self._setupInfo.focusLock.camera
         self.positioner = self._setupInfo.focusLock.positioner
         self.updateFreq = self._setupInfo.focusLock.updateFreq
-        self.cropFrame = (self._setupInfo.focusLock.frameCropLeft,
-                          self._setupInfo.focusLock.frameCropRight,
-                          self._setupInfo.focusLock.frameCropTop,
-                          self._setupInfo.focusLock.frameCropBottom)
+        self.cropFrame = (self._setupInfo.focusLock.frameCropx,
+                          self._setupInfo.focusLock.frameCropy,
+                          self._setupInfo.focusLock.frameCropw,
+                          self._setupInfo.focusLock.frameCroph)
+        self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)
@@ -61,7 +62,9 @@ class FocusLockController(ImConWidgetController):
         self.setPointData = np.zeros(self.buffer)
         self.timeData = np.zeros(self.buffer)
         self.lockingData = np.zeros(7)
-        self.__processDataThread = ProcessDataThread()
+
+        self._master.detectorsManager[self.camera].startAcquisition()
+        self.__processDataThread = ProcessDataThread(self)
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update)
@@ -84,12 +87,12 @@ class FocusLockController(ImConWidgetController):
             self._widget.lockButton.setText('Lock')
 
     def cameraDialog(self):
-        self._master.detectorsManager[self.camera].openPropertiesGUI()
+        self._master.detectorsManager[self.camera].openPropertiesDialog()
         print("Controller: Open camera settings dialog.")
 
     def moveZ(self):
         abspos = np.float(self._widget.positionEdit.text())
-        self._master.positionersManager[self.positioner].setPosition(abspos)
+        self._master.positionersManager[self.positioner].setPosition(abspos, 0)
         print(f"FL Controller: Move Z-piezo to absolute position {abspos} um.")
 
     def focusCalibrationStart(self):
@@ -112,36 +115,27 @@ class FocusLockController(ImConWidgetController):
 
     # Update focus lock
     def update(self):
-        #1 Grab camera frame through cameraHelper and crop
-        img = self._master.detectorsManager[self.camera].getLatestFrame()
-        img = img[self.cropFrame[0]:self.cropFrame[1],self.cropFrame[2]:self.cropFrame[3]]
+        #1 Grab camera frame
+        img = self.__processDataThread.grabCameraFrame()
         #2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
-        self.setPointSignal = self.__processDataThread.update(img, self.twoFociVar)
+        self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
         #3 Update PI with the new setPointSignal and get back the distance to move, send to
         # update the PI control, and then send the move-distance to the z-piezo
         if self.locked:
             value_move = self.updatePI()
             if self.noStepVar and abs(value_move) > 0.002:
                 #self.zstepupdate = self.zstepupdate + 1
-                self._master.positionersManager[self.positioner].move(value_move)
+                self._master.positionersManager[self.positioner].move(value_move, 0)
         #elif self.aboutToLock:
         #    self.lockingPI()
         #4 Update image and focusSignalPosition in FocusLockWidget
         self.updateSetPointData()
-        self._widget.camImg.setImage(img)
+        #self._widget.camImg.setImage(img)
         if self.currPoint < self.buffer:
             self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint], self.setPointData[1:self.currPoint])
         else:
             self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
 
-    #def lockingPI(self):
-    #    self.lockingData[:-1] = self.lockingData[1:]
-    #    self.lockingData[-1] = self.setPointSignal
-    #    averageDiff = np.std(self.lockingData)
-    #    if averageDiff < 0.4:
-    #        absz = self._master.piezozHelper.get_abs()
-    #        self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
-    #        self.aboutToLock = False
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint] = self.setPointSignal
@@ -158,7 +152,6 @@ class FocusLockController(ImConWidgetController):
             self.noStepVar = True
         self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
         distance = self.currentPosition - self.lockPosition
-        #self.stepDistance = self.currentPosition - self.lastZ
         move = self.pi.update(self.setPointSignal)
         self.lastZ = self.currentPosition
 
@@ -167,35 +160,6 @@ class FocusLockController(ImConWidgetController):
             self.unlockFocus()
         
         return move
-
-#        elif self.zStackVar and self.zstepupdate > 15:
-#            if self.stepDistance > self.stepDistLow * self.um and self.stepDistance < self.stepDistHigh * self.um:
-#                self.unlockFocus()
-#                self.dataPoints = np.zeros(5)
-#                self.averageDiff = 10
-#                self.aboutToLock = True
-#                self.t0 = time.time()
-#                self.zsteptime = self.t0-self.t1
-#                self.t1 = self.t0
-#                self.noStepVar = False
-        #if self.noStepVar and abs(out) > 0.002:
-        #    self.zstepupdate = self.zstepupdate + 1
-        #    self.z.move_relZ(out * self.um)
-    #def loadPreset(self, preset):
-    #    print('Loaded default focus lock settings.')
-
-    #def initLock(self):
-    #    if not self.locked:
-    #        self.setPoint = self.processDataThread.focusSignal
-    #        self.focusLockGraph.line = self.focusLockGraph.plot.addLine(
-    #                                                y=self.setPoint, pen='r')
-    #        self.PI = pi.PI(self.setPoint, 0.001,
-    #                        np.float(self.kpEdit.text()),
-    #                        np.float(self.kiEdit.text()))
-    #        self.lockPosition = self.z.absZ
-    #        self.locked = True
-    #        self.stepDistLow = 0.001 * np.float(self.zStepFromEdit.text())
-    #        self.stepDistHigh = 0.001 * np.float(self.zStepToEdit.text())
 
     def lockFocus(self, kp, ki, absz):
         if not self.locked:
@@ -209,20 +173,20 @@ class FocusLockController(ImConWidgetController):
 
 
 class ProcessDataThread(QtCore.QThread):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, controller, *args, **kwargs):
+        self._controller = controller
         super().__init__(*args, **kwargs)
 
-    def update(self, img, twoFociVar):
+    def grabCameraFrame(self):
+        self.latestimg = self._controller._master.detectorsManager[self._controller.camera].getLatestFrame()
+        return self.latestimg
+
+    def update(self, twoFociVar):
         # Update the focus signal
-        imagearray = img
-        #imagearray = imagearray[0:1024,730:830]
-        #imagearray = np.swapaxes(imagearray,0,1)      # Swap matrix axes, after having turned the camera 90deg
-        # imagearraygf = imagearray
-        imagearraygf = ndi.filters.gaussian_filter(imagearray,7)     # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+        imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)     # Gaussian filter the image, to remove noise and so on, to get a better center estimate
 
         if twoFociVar:
             allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
-#            print(allmaxcoords)
             size = allmaxcoords.shape
             maxvals = np.zeros(size[0])
             maxvalpos = np.zeros(2)
@@ -254,25 +218,12 @@ class ProcessDataThread(QtCore.QThread):
         xhigh = min(1024,(centercoords2[0]+subsizex))
         ylow = max(0,(centercoords2[1]-subsizey))
         yhigh = min(1280,(centercoords2[1]+subsizey))
-        #print(xlow)
-        #print(xhigh)
-        #print(ylow)
-        #print(yhigh)
+
         imagearraygfsub = imagearraygf[xlow:xhigh,ylow:yhigh]
-        #imagearraygfsub = imagearraygf[xlow:xhigh,:]
-        #imagearraygfsubtest = imagearraygf
-        #zeroindices = np.zeros(imagearray.shape)
-        #zeroindices[xlow:xhigh,ylow:yhigh] = 1
-        #imagearraygfsubtest = np.multiply(imagearraygfsubtest,zeroindices)
-        #self.image = imagearraygf
-        #print(centercoords2[1])
+
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
-        #self.massCenter2 = np.array(ndi.measurements.center_of_mass(imagearraygfsubtest))
-        # self.massCenterGlobal[0] = self.massCenter[0] #+ centercoords2[0] #- subsizex - self.sensorSize[0] / 2     #add the information about where the center of the subarray is
         massCenterGlobal = massCenter[1] + centercoords2[1] #- subsizey - self.sensorSize[1] / 2     #add the information about where the center of the subarray is
-        #print(massCenter[1])
-        #print(massCenterGlobal)
-        #print('')
+
         return massCenterGlobal
 
 

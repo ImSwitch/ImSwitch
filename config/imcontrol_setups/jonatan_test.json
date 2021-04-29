@@ -21,6 +21,38 @@
                 "cameraListIndex": null
             },
             "forAcquisition": true
+        },
+        "SmartSTEDCamera": {
+          "analogChannel": null,
+          "digitalLine": null,
+          "managerName": "TISManager",
+          "managerProperties": {
+            "cameraListIndex": 1,
+            "tis": {
+              "exposure": 0,
+              "gain": 0,
+              "brightness": 0,
+              "image_width": 2448,
+              "image_height": 2048
+            }
+          },
+          "forAcquisition": true
+        },
+        "FocusLockCamera": {
+          "analogChannel": null,
+          "digitalLine": null,
+          "managerName": "TISManager",
+          "managerProperties": {
+            "cameraListIndex": 0,
+            "tis": {
+              "exposure": 0,
+              "gain": 0,
+              "brightness": 0,
+              "image_width": 1280,
+              "image_height": 1024
+            }
+          },
+          "forFocusLock": true
         }
     },
     "lasers": {
@@ -173,6 +205,24 @@
         "TTLCycleDesigner": "PointScanTTLCycleDesigner"
     },
     "rois": {
+        "Full chip": {
+            "x": 0,
+            "y": 0,
+            "w": 2448,
+            "h": 2048
+        },
+        "smartSTED_wf": {
+            "x": 0,
+            "y": 0,
+            "w": 512,
+            "h": 1024
+        },
+        "test": {
+            "x": 0,
+            "y": 0,
+            "w": 2000,
+            "h": 1000
+        }
     },
     "availableWidgets": [
         "Settings",
@@ -181,9 +231,29 @@
         "Image",
         "Laser",
         "Positioner",
-        "Scan"
+        "Scan",
+        "FocusLock",
+        "SLM"
     ],
     "scanDefaults": {
         "defaultScanFile": null
+    },
+    "slm": {
+      "monitorIdx": 2,
+      "width": 792,
+      "height": 600,
+      "wavelength": 775,
+      "pixelSize": 0.02,
+      "angleMount": 0.15,
+      "correctionPatternsDir": "C:\\Users\\STEDRed\\Documents\\HamamatsuSLM\\deform_corr_patterns\\"
+    },
+    "focusLock": {
+      "camera": "FocusLockCamera",
+      "positioner": "PiezoZ",
+      "updateFreq": 5,
+      "frameCropx": 780,
+      "frameCropy": 400,
+      "frameCropw": 500,
+      "frameCroph": 100
     }
 }

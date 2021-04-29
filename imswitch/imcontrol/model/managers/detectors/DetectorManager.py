@@ -122,10 +122,6 @@ class DetectorManager(SignalInterface):
         return self.__actions
 
     @property
-    def actions(self):
-        return self.__actions
-
-    @property
     def croppable(self):
         return self.__croppable
 

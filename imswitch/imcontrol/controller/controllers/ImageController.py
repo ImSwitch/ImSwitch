@@ -16,7 +16,7 @@ class ImageController(LiveUpdatedController):
         )
         self._shouldResetView = False
 
-        self._widget.setLayers(self._master.detectorsManager.getAllDeviceNames())
+        self._widget.setLayers(self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition))
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
@@ -34,13 +34,14 @@ class ImageController(LiveUpdatedController):
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
         if detectorNames is None:
-            detectorNames = self._master.detectorsManager.getAllDeviceNames()
+            detectorNames = self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
 
         for detectorName in detectorNames:
             if im is None:
                 im = self._widget.getImage(detectorName)
 
-            self._widget.setImageDisplayLevels(detectorName, *guitools.bestLevels(im))
+            #self._widget.setImageDisplayLevels(detectorName, *guitools.bestLevels(im))
+            self._widget.setImageDisplayLevels(detectorName, *guitools.minmaxLevels(im))
 
     def addItemToVb(self, item):
         """ Add item from communication channel to viewbox."""

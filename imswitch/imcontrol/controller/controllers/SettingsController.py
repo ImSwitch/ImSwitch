@@ -52,10 +52,10 @@ class SettingsController(ImConWidgetController):
         self.initParameters()
 
         execOnAll = self._master.detectorsManager.execOnAll
-        execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)))
-        execOnAll(lambda c: (self.adjustFrame(detector=c)))
-        execOnAll(lambda c: (self.updateFrame(detector=c)))
-        execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)))
+        execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)), condition = lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.adjustFrame(detector=c)), condition = lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.updateFrame(detector=c)), condition = lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)), condition = lambda c: c.forAcquisition)
         self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
 
         self.updateSharedAttrs()
@@ -83,41 +83,42 @@ class SettingsController(ImConWidgetController):
     def initParameters(self):
         """ Take parameters from the detector Tree map. """
         for detectorName in self._master.detectorsManager.getAllDeviceNames():
-            detectorTree = self._widget.trees[detectorName]
-            framePar = detectorTree.p.param('Image frame')
-            self.allParams[detectorName] = SettingsControllerParams(
-                model=detectorTree.p.param('Model'),
-                binning=framePar.param('Binning'),
-                frameMode=framePar.param('Mode'),
-                x0=framePar.param('X0'),
-                y0=framePar.param('Y0'),
-                width=framePar.param('Width'),
-                height=framePar.param('Height'),
-                applyROI=framePar.param('Apply'),
-                newROI=framePar.param('New ROI'),
-                abortROI=framePar.param('Abort ROI'),
-                saveMode=framePar.param('Save mode'),
-                deleteMode=framePar.param('Delete mode'),
-                allDetectorsFrame=framePar.param('Update all detectors')
-            )
+            if self._master.detectorsManager[detectorName].forAcquisition:
+                detectorTree = self._widget.trees[detectorName]
+                framePar = detectorTree.p.param('Image frame')
+                self.allParams[detectorName] = SettingsControllerParams(
+                    model=detectorTree.p.param('Model'),
+                    binning=framePar.param('Binning'),
+                    frameMode=framePar.param('Mode'),
+                    x0=framePar.param('X0'),
+                    y0=framePar.param('Y0'),
+                    width=framePar.param('Width'),
+                    height=framePar.param('Height'),
+                    applyROI=framePar.param('Apply'),
+                    newROI=framePar.param('New ROI'),
+                    abortROI=framePar.param('Abort ROI'),
+                    saveMode=framePar.param('Save mode'),
+                    deleteMode=framePar.param('Delete mode'),
+                    allDetectorsFrame=framePar.param('Update all detectors')
+                )
 
-            params = self.allParams[detectorName]
-            params.binning.sigValueChanged.connect(self.updateBinning)
-            params.frameMode.sigValueChanged.connect(self.updateFrame)
-            params.applyROI.sigActivated.connect(self.adjustFrame)
-            params.newROI.sigActivated.connect(self.updateFrame)
-            params.abortROI.sigActivated.connect(self.abortROI)
-            params.saveMode.sigActivated.connect(self.saveMode)
-            params.deleteMode.sigActivated.connect(self.deleteMode)
+                params = self.allParams[detectorName]
+                params.binning.sigValueChanged.connect(self.updateBinning)
+                params.frameMode.sigValueChanged.connect(self.updateFrame)
+                params.applyROI.sigActivated.connect(self.adjustFrame)
+                params.newROI.sigActivated.connect(self.updateFrame)
+                params.abortROI.sigActivated.connect(self.abortROI)
+                params.saveMode.sigActivated.connect(self.saveMode)
+                params.deleteMode.sigActivated.connect(self.deleteMode)
 
-            syncFrameParamsWithoutUpdates = lambda: self.syncFrameParams(False, False)
-            params.x0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
-            params.y0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
-            params.width.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
-            params.height.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
-            params.allDetectorsFrame.sigValueChanged.connect(self.syncFrameParams)
+                syncFrameParamsWithoutUpdates = lambda: self.syncFrameParams(False, False)
+                params.x0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+                params.y0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+                params.width.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+                params.height.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
+                params.allDetectorsFrame.sigValueChanged.connect(self.syncFrameParams)
 
-        detectorsParameters = self._master.detectorsManager.execOnAll(lambda c: c.parameters)
+        detectorsParameters = self._master.detectorsManager.execOnAll(lambda c: c.parameters, condition = lambda c: c.forAcquisition)
         for detectorName, detectorParameters in detectorsParameters.items():
             for parameterName, parameter in detectorParameters.items():
                 paramInWidget = self._widget.trees[detectorName].p.param(parameter.group).param(parameterName)
@@ -126,7 +127,7 @@ class SettingsController(ImConWidgetController):
                         self.setDetectorParameter(detectorName, parameterName, value)
                 )
 
-        detectorsActions = self._master.detectorsManager.execOnAll(lambda c: c.actions)
+        detectorsActions = self._master.detectorsManager.execOnAll(lambda c: c.actions, condition = lambda c: c.forAcquisition)
         for detectorName, detectorActions in detectorsActions.items():
             for actionName, action in detectorActions.items():
                 paramInWidget = self._widget.trees[detectorName].p.param(action.group).param(actionName)

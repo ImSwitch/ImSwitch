@@ -6,29 +6,30 @@ Created on Fri Jan 08 14:00:00 2021
 
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
+import numpy as np
+
 
 class TISManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_kwargs):
         self._camera = getTISObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
+        self._running = False
+        self._adjustingParameters = False
 
         for propertyName, propertyValue in detectorInfo.managerProperties['tis'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        #fullShape = (self._camera.getPropertyValue('image_height')[0],
-        #             self._camera.getPropertyValue('image_width')[0])
-
         fullShape = (self._camera.getPropertyValue('image_width'),
                      self._camera.getPropertyValue('image_height'))
+
+        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
         # Prepare parameters
         parameters = {
             'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms', editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
             'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
-            #'image_width': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False),
-            #'image_height': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.', editable=False)
         }
 
         # Prepare actions
@@ -37,11 +38,23 @@ class TISManager(DetectorManager):
                                               func=self._camera.openPropertiesGUI)
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1, 2],
-                         model=model, parameters=parameters, actions=actions, croppable=False)
+        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
+                         model=model, parameters=parameters, actions=actions, croppable=True)
 
     def getLatestFrame(self):
-        return self._camera.grabFrame()
+        if not self._adjustingParameters:
+            #dt = datetime.now()
+            #time_curr_bef = round(dt.microsecond/1000)
+            frame = self._camera.grabFrame()
+            #dt = datetime.now()
+            #time_curr_mid = round(dt.microsecond/1000)
+            #frame = np.fliplr(frame)
+            self.__image = frame
+            #dt = datetime.now()
+            #time_curr_aft = round(dt.microsecond/1000)
+            #print(f'Time for grab: {time_curr_mid-time_curr_bef} ms')
+            #print(f'Time for flip: {time_curr_aft-time_curr_mid} ms')
+        return self.__image
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -77,19 +90,57 @@ class TISManager(DetectorManager):
         pass
 
     def startAcquisition(self):
-        pass
+        if not self._running:
+            self._camera.start_live()
+            self._running = True
 
     def stopAcquisition(self):
-        pass
+        if self._running:
+            self._running = False
+            self._camera.suspend_live()
     
+    def stopAcquisitionForROIChange(self):
+        if self._running:
+            self._running = False
+            self._camera.stop_live()
+
     @property
     def pixelSizeUm(self):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
-        pass
-
+        def cropAction():
+            #print(f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.')
+            self._camera.setROI(hpos, vpos, hsize, vsize)
         
+        self._performSafeCameraAction(cropAction)
+        #TODO: unsure if frameStart is needed? Try without.
+        # This should be the only place where self.frameStart is changed
+        self._frameStart = (hpos, vpos)
+        # Only place self.shapes is changed
+        self._shape = (hsize, vsize)
+
+    def _performSafeCameraAction(self, function):
+        """ This method is used to change those camera properties that need
+        the camera to be idle to be able to be adjusted.
+        """
+        self._adjustingParameters = True
+        wasrunning = self._running
+        if self._running:
+            self.stopAcquisitionForROIChange()
+        function()
+        if wasrunning:
+            #print('TISManager: performSafe: camera was running')
+            #self._camera.cam.open()
+            self.startAcquisition()
+        #else:
+            #print('TISManager: performSafe: camera was not running')
+        self._adjustingParameters = False
+
+    def openPropertiesDialog(self):
+        self._camera.openPropertiesGUI()
+
+
 def getTISObj(cameraId):
     try:
         from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS

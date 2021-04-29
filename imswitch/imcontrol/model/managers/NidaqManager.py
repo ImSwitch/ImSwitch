@@ -20,9 +20,6 @@ class NidaqManager(SignalInterface):
     def __init__(self, setupInfo):
         super().__init__()
         self.__setupInfo = setupInfo
-        #self.inputTasks = {}
-        #self.outputTasks = {}
-        #self.timerTasks = {}
         self.tasks = {}
         self.busy = False
 
@@ -339,7 +336,7 @@ class NidaqManager(SignalInterface):
         self.tasks[taskName].stop()
         self.tasks[taskName].close()
         del self.tasks[taskName]
-        print(f'Task {taskName} deleted')
+        #print(f'Task {taskName} deleted')
 
     def inputTaskDone(self, taskName):
         if not self.signalSent:
@@ -357,7 +354,7 @@ class NidaqManager(SignalInterface):
         self.signalSent = True
         self.busy = False
         print('Nidaq scan finished!')
-        self.scanDoneSignal.emit()
+        self.sigScanDone.emit()
 
     def runContinuous(self, digital_targets, digital_signals):
         pass
@@ -384,9 +381,6 @@ class WaitThread(Thread):
 
     def close(self):
         self.running = False
-        if self.task is not None:
-            self.task.stop()
-            self.task.close()
         self.sigWaitDone.emit()
         self.quit()
 

@@ -328,7 +328,7 @@
     "width": 792,
     "height": 600,
     "wavelength": 775,
-    "pixelsize": 0.02,
+    "pixelSize": 0.02,
     "angleMount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },

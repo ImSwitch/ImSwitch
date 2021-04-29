@@ -26,6 +26,7 @@ class Widget(QtWidgets.QWidget):
         self._options = options
         super().__init__(*args, **kwargs)
 
+
 # Copyright (C) 2020, 2021TestaLab
 # This file is part of ImSwitch.
 #

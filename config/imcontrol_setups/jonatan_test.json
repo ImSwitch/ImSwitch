@@ -192,17 +192,11 @@
         }
     },
     "scan": {
-        "stage": {
-            "sampleRate": 100000.0,
-            "returnTime": 0.01
-        },
-        "ttl": {
-            "sampleRate": 100000.0
-        }
-    },
-    "designers": {
         "scanDesigner": "GalvoScanDesigner",
-        "TTLCycleDesigner": "PointScanTTLCycleDesigner"
+        "scanDesignerParams": {},
+        "TTLCycleDesigner": "PointScanTTLCycleDesigner",
+        "TTLCycleDesignerParams": {},
+        "sampleRate": 100000
     },
     "rois": {
         "Full chip": {

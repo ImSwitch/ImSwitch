@@ -285,15 +285,6 @@
       }
     }
   },
-  "scan": {
-    "stage": {
-      "sampleRate": 100000,
-      "returnTime": 0.01
-    },
-    "ttl": {
-      "sampleRate": 100000
-    }
-  },
   "rois": {
     "Fast scan": {
       "x": 256,
@@ -319,9 +310,12 @@
       "SLM",
       "FocusLock"
   ],
-  "designers": {
+  "scan": {
     "scanDesigner": "GalvoScanDesigner",
-    "TTLCycleDesigner": "BetaTTLCycleDesigner"
+    "scanDesignerParams": {},
+    "TTLCycleDesigner": "BetaTTLCycleDesigner",
+    "TTLCycleDesignerParams": {},
+    "sampleRate": 100000
   },
   "slm": {
     "monitorIdx": 1,

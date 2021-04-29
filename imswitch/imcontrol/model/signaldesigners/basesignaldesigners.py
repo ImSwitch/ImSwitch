@@ -73,9 +73,7 @@ class SignalDesignerFactory:
     that the new object is compatible with the parameters that will we
     be sent to its make_signal method."""
 
-    def __new__(cls, setupInfo, configKeyName):
-        designerName = getattr(setupInfo.designers, configKeyName)
-
+    def __new__(cls, designerName):
         currentPackage = '.'.join(__name__.split('.')[:-1])
         package = importlib.import_module(f'{currentPackage}.{designerName}')
         signalDesigner = getattr(package, designerName)()

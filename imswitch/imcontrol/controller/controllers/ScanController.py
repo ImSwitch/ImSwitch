@@ -34,13 +34,8 @@ class ScanController(SuperScanController):
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
 
-        self._analogParameterDict = {
-            'sample_rate': self._setupInfo.scan.stage.sampleRate,
-            'return_time': self._setupInfo.scan.stage.returnTime
-        }
-        self._digitalParameterDict = {
-            'sample_rate': self._setupInfo.scan.ttl.sampleRate
-        }
+        self._analogParameterDict = {}
+        self._digitalParameterDict = {}
 
         self.getParameters()
         self.updatePixels()
@@ -68,17 +63,6 @@ class ScanController(SuperScanController):
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
         print('Init Scan Controller')
-
-        # Check widget compatibility
-        self._master.scanManager._parameterCompatibility(self.parameterDict)
-
-    @property
-    def parameterDict(self):
-        stageParameterList = [*self._analogParameterDict]
-        TTLParameterList = [*self._digitalParameterDict]
-
-        return {'stageParameterList': stageParameterList,
-                'TTLParameterList': TTLParameterList}
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -251,19 +235,25 @@ class ScanController(SuperScanController):
             self._digitalParameterDict
         )
 
+        sampleRate = self._master.scanManager.sampleRate
+
         areas = []
         signals = []
         colors = []
         for deviceName, signal in TTLCycleSignalsDict.items():
             isLaser = deviceName in self._setupInfo.lasers
-            areas.append(np.linspace(0, self._digitalParameterDict['sequence_time'] * self._widget.sampleRate, len(signal))),
+            areas.append(
+                np.linspace(
+                    0, self._digitalParameterDict['sequence_time'] * sampleRate, len(signal)
+                )
+            )
             signals.append(signal.astype(np.uint8))
             colors.append(
                 guitools.colorutils.wavelengthToHex(
                     self._setupInfo.lasers[deviceName].wavelength
                 ) if isLaser else '#ffffff'
             )
-        self._widget.plotSignalGraph(areas, signals, colors)
+        self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 2:

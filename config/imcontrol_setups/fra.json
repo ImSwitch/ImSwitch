@@ -147,17 +147,13 @@
         }
     },
     "scan": {
-        "stage": {
-            "sampleRate": 100000,
-            "returnTime": 0.01
-        },
-        "ttl": {
-            "sampleRate": 100000
-        }
-    },
-    "designers": {
         "scanDesigner": "BetaScanDesigner",
-        "TTLCycleDesigner": "BetaTTLCycleDesigner"
+        "scanDesignerParams": {
+            "return_time": 0.01
+        },
+        "TTLCycleDesigner": "BetaTTLCycleDesigner",
+        "TTLCycleDesignerParams": {},
+        "sampleRate": 100000
     },
     "rois": {
         "Imaging_green": {

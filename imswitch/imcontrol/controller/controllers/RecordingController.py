@@ -52,7 +52,7 @@ class RecordingController(ImConWidgetController):
         try:
             ostools.openFolderInOS(self._widget.getRecFolder())
         except ostools.OSToolsError:
-            ostools.openFolderInOS(self._widget.dataDir)
+            ostools.openFolderInOS(self._widget.initialDir)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """

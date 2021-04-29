@@ -130,7 +130,7 @@ class FocusLockController(ImConWidgetController):
         #    self.lockingPI()
         #4 Update image and focusSignalPosition in FocusLockWidget
         self.updateSetPointData()
-        #self._widget.camImg.setImage(img)
+        self._widget.camImg.setImage(img)
         if self.currPoint < self.buffer:
             self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint], self.setPointData[1:self.currPoint])
         else:

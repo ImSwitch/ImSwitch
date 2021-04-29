@@ -26,6 +26,8 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         self._currentDetectorName = None
         for detectorName, detectorInfo in detectorInfos.items():
+            if not self._subManagers[detectorName].forAcquisition:
+                continue
             # Connect signals
             self._subManagers[detectorName].sigImageUpdated.connect(
                 lambda image, init, detectorName=detectorName: self.sigImageUpdated.emit(
@@ -103,7 +105,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # Do actual enabling
         if enableAcq:
-            self.execOnAll(lambda c: c.startAcquisition())
+            self.execOnAll(lambda c: c.startAcquisition(), condition = lambda c: c.forAcquisition)
             self.sigAcquisitionStarted.emit()
         if enableLV:
             sleep(0.3)
@@ -139,7 +141,7 @@ class DetectorsManager(MultiManager, SignalInterface):
             self._thread.quit()
             self._thread.wait()
         if disableAcq:
-            self.execOnAll(lambda c: c.stopAcquisition())
+            self.execOnAll(lambda c: c.stopAcquisition(), condition = lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
 
 
@@ -151,10 +153,10 @@ class LVWorker(Worker):
         self._vtimer = None
 
     def run(self):
-        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False))
+        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False), condition = lambda c: c.forAcquisition)
         self._vtimer = Timer()
         self._vtimer.timeout.connect(
-            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True))
+            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True), condition = lambda c: c.forAcquisition)
         )
         self._vtimer.start(self._updatePeriod)
 

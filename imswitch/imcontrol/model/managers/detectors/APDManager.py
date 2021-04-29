@@ -70,6 +70,9 @@ class APDManager(DetectorManager):
             pass
 
     def getLatestFrame(self):
+        #image = self._image
+        #image.reshape(image.shape[1], image.shape[0]).T
+        #return image
         return self._image
 
     def updateImage(self, line_pixels, line_count):

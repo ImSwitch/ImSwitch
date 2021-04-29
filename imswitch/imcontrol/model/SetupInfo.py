@@ -73,10 +73,10 @@ class FocusLockInfo:
     camera: str  # detector name
     positioner: str  # positioner name
     updateFreq: int
-    frameCropLeft: int
-    frameCropRight: int
-    frameCropTop: int
-    frameCropBottom: int
+    frameCropx: int
+    frameCropy: int
+    frameCropw: int
+    frameCroph: int
 
 
 @dataclass(frozen=True)

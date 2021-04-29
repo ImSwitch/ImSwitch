@@ -51,7 +51,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
         self.__recordingWorker.saveMode = saveMode
-        self.__detectorsManager.execOnAll(lambda c: c.flushBuffers())
+        self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(), condition = lambda c: c.forAcquisition)
         self.__thread.start()
 
     def endRecording(self, emitSignal=True, wait=True):

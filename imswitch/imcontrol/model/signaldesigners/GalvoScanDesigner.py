@@ -22,6 +22,7 @@ class GalvoScanDesigner(ScanDesigner):
         the acceptable scanner voltages."""
         fast_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
         slow_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+
         if (scanInfo['minmax_fast_axis'][0] < fast_positioner.managerProperties['minVolt'] or
                 scanInfo['minmax_fast_axis'][1] > fast_positioner.managerProperties['maxVolt']):
             return False
@@ -109,7 +110,7 @@ class GalvoScanDesigner(ScanDesigner):
         }
 
         print('Scanning curves generated.')
-        return sig_dict, scanInfoDict, axis_positions
+        return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
         t_initpos_vc_slow = abs(axis_centerpos[1]-axis_length[1]/2)/vel_max[1]

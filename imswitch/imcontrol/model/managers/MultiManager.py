@@ -23,9 +23,15 @@ class MultiManager(ABC):
         """ Returns whether this manager manages any devices. """
         return len(self._subManagers) > 0
 
-    def getAllDeviceNames(self):
+    def getAllDeviceNames(self, condition=None):
         """ Returns the names of all managed devices. """
-        return list(self._subManagers.keys())
+        if condition is None:
+            condition = lambda _: True
+
+        return list(managedDeviceName
+                for managedDeviceName, subManager in self._subManagers.items()
+                if condition(subManager))
+
 
     def execOn(self, managedDeviceName, func):
         """ Executes a function on a specific sub-manager and returns the

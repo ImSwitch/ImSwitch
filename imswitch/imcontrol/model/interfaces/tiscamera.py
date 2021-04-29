@@ -22,28 +22,47 @@ class CameraTIS:
 
         self.shape = (0,0)
         self.cam.colorenable = 0
-        self.cam.gain.auto = False
-        self.cam.exposure.auto = False
 
         self.cam.enable_continuous_mode(True)  # image in continuous mode
-        self.cam.start_live(show_display=False)  # start imaging
-        # self.cam.enable_trigger(True)  # camera will wait for trigger
-        # self.cam.send_trigger()
-        if not self.cam.callback_registered:
-            self.cam.register_frame_ready_callback()  # needed to wait for frame ready callback
+        self.cam.enable_trigger(False)  # camera will wait for trigger
+
+        self.roi_filter = self.cam.create_frame_filter('ROI'.encode('utf-8'))
+        self.cam.add_frame_filter_to_device(self.roi_filter)
+
+    def start_live(self):
+        self.cam.start_live()  # start imaging
+
+    def stop_live(self):
+        self.cam.stop_live()  # stop imaging
+
+    def suspend_live(self):
+        self.cam.suspend_live()  # suspend imaging into prepared state
+
+    def prepare_live(self):
+        self.cam.prepare_live()  # prepare prepared state for live imaging
 
     def grabFrame(self):
-        self.cam.reset_frame_ready()  # reset frame ready flag
-        self.cam.send_trigger()
-        # self.cam.wait_til_frame_ready(0)  # wait for frame ready due to trigger
-        frame = self.cam.get_image_data()
-        # Prev: averaging the RGB image to a grayscale. Very slow for the big camera (2480x2048).
-        #frame = np.average(frame, 2)
-        # New: just take the R-component, this should anyway contain most information in both cameras. Change this if we want to look at another color, like GFP!
-        frame = np.array(frame[0], dtype='float64')
+        self.cam.wait_til_frame_ready(20)  # wait for frame ready
+        frame, width, height, depth = self.cam.get_image_data()
+        frame = np.array(frame, dtype='float64')
         # Check if below is giving the right dimensions out
-        frame = np.reshape(frame,(self.shape[0],self.shape[1],3))[:,:,0]
+        #TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped 3D array and taking the first plane of that
+        frame = np.reshape(frame, (height, width, depth))[:,:,0]
         return frame
+
+    def setROI(self, hpos, vpos, hsize, vsize):
+        hsize = max(hsize, 256)  # minimum ROI size
+        vsize = max(vsize, 24)  # minimum ROI size
+        #print(f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width'.encode('utf-8'), hsize)
+        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top'.encode('utf-8'))
+        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
+        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
+        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
+        print(f'{self.model}: setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}')
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -54,16 +73,15 @@ class CameraTIS:
         elif property_name == "exposure":
             self.cam.exposure = property_value
         elif property_name == 'image_height':
-            self.shape = (property_value, self.shape[1])
-        elif property_name == 'image_width':
             self.shape = (self.shape[0], property_value)
+        elif property_name == 'image_width':
+            self.shape = (property_value, self.shape[1])
         else:
             print('Property', property_name, 'does not exist')
             return False
         return property_value
 
     def getPropertyValue(self, property_name):
-
         # Check if the property exists.
         if property_name == "gain":
             property_value = self.cam.gain.value

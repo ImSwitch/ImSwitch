@@ -455,8 +455,6 @@ class Mask(object):
             self.setAberrations(self.aberParamsTree)
 
     def __str__(self):
-        plt.figure()
-        plt.imshow(self.img)
         return "image of the mask"
 
     def __add__(self, other):

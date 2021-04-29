@@ -18,14 +18,29 @@ class LaserWidget(Widget):
         self.laserModules = {}
         self.digModule = DigitalModule()
 
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
+        self.scrollContainer = QtWidgets.QGridLayout()
+        self.scrollContainer.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.scrollContainer)
 
+        self.grid = QtWidgets.QGridLayout()
         self.digModule = DigitalModule()
         self.grid.addWidget(self.digModule, 4, 0, 2, -1)
 
+        self.gridContainer = QtWidgets.QWidget()
+        self.gridContainer.setLayout(self.grid)
+
+        self.scrollArea = QtWidgets.QScrollArea()
+        self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setWidget(self.gridContainer)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollContainer.addWidget(self.scrollArea)
+        self.gridContainer.installEventFilter(self)
+
         # Connect signals
         self.digModule.sigDigitalModToggled.connect(self.sigDigitalModToggled)
+        self.digModule.sigDigitalModToggled.connect(lambda: print(self.gridContainer.minimumSizeHint().height()))
         self.digModule.sigDigitalValueChanged.connect(self.sigDigitalValueChanged)
 
     def addLaser(self, laserName, valueUnits, wavelength, valueRange=None, valueRangeStep=1):
@@ -90,6 +105,15 @@ class LaserWidget(Widget):
         """ Sets the digital modulation value of the specified laser, in the
         units that the laser uses. """
         self.digModule.setValue(laserName, value)
+
+    def eventFilter(self, source, event):
+        if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
+            height = self.gridContainer.minimumSizeHint().height()\
+                     + self.scrollArea.horizontalScrollBar().height()
+            self.scrollArea.setMinimumHeight(height)
+            self.setMinimumHeight(height)
+
+        return False
 
 
 class DigitalModule(QtWidgets.QFrame):
@@ -176,6 +200,7 @@ class LaserModule(QtWidgets.QFrame):
 
         # Graphical elements
         self.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Raised)
+        self.setMinimumWidth(180)
 
         self.name = QtWidgets.QLabel(f'<h3>{name}<h3>')
         self.name.setTextFormat(QtCore.Qt.RichText)

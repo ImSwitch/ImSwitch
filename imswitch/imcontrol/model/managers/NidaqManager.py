@@ -219,7 +219,7 @@ class NidaqManager(SignalInterface):
                 try:
                     aotask.write(signal, auto_start=True)
                 except:
-                    print('Attempted writing analog data that is too large or too small.')
+                    print('Attempted writing analog data that is too large or too small, or other error when writing the task.')
                 aotask.wait_until_done()
                 aotask.stop()
                 aotask.close()

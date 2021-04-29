@@ -39,7 +39,7 @@ class ImConMainController(MainController):
 
         # Generate API
         self.__api = None
-        apiObjs = list(self.controllers) + [self.__commChannel]
+        apiObjs = list(self.controllers.values()) + [self.__commChannel]
         self.__api = generateAPI(apiObjs)
 
     @property

@@ -243,8 +243,6 @@ class RecordingController(ImConWidgetController):
         self.setSharedAttr(_timeAttr, 'null')
         self.setSharedAttr(_lapseTimeAttr, 'null')
         self.setSharedAttr(_freqAttr, 'null')
-        self.setSharedAttr(_slicesAttr, 'null')
-        self.setSharedAttr(_stepSizeAttr, 'null')
 
         if isSnapping:
             self.setSharedAttr(_recModeAttr, 'Snap')
@@ -333,8 +331,6 @@ _framesAttr = 'Frames'
 _timeAttr = 'Time'
 _lapseTimeAttr = 'LapseTime'
 _freqAttr = 'LapseFreq'
-_slicesAttr = 'DimSlices'
-_stepSizeAttr = 'DimStepSize'
 
 
 # Copyright (C) 2020, 2021 TestaLab

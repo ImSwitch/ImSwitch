@@ -1,16 +1,5 @@
 {
     "detectors": {
-        "APDred": {
-            "analogChannel": null,
-            "digitalLine": null,
-            "managerName": "APDManager",
-            "managerProperties": {
-                "ctrInputLine": 0,
-                "terminal": "PFI0",
-                "cameraListIndex": null
-            },
-            "forAcquisition": true
-        },
         "APDgreen": {
             "analogChannel": null,
             "digitalLine": null,
@@ -66,16 +55,6 @@
             "valueRangeMax": 1,
             "valueRangeStep": 1
         },
-        "640": {
-            "analogChannel": null,
-            "digitalLine": 2,
-            "managerName": "NidaqLaserManager",
-            "managerProperties": {},
-            "wavelength": 640,
-            "valueRangeMin": 0,
-            "valueRangeMax": 1,
-            "valueRangeStep": 1
-        },
         "561AOTF": {
             "analogChannel": null,
             "digitalLine": null,
@@ -85,19 +64,6 @@
                 "channel": 1
             },
             "wavelength": 561,
-            "valueRangeMin": 0,
-            "valueRangeMax": 1023,
-            "valueRangeStep": 1
-        },
-        "640AOTF": {
-            "analogChannel": null,
-            "digitalLine": null,
-            "managerName": "AAAOTFLaserManager",
-            "managerProperties": {
-                "rs232device": "aaaotf",
-                "channel": 2
-            },
-            "wavelength": 640,
             "valueRangeMin": 0,
             "valueRangeMax": 1023,
             "valueRangeStep": 1
@@ -231,11 +197,17 @@
         }
     },
     "scan": {
+        "stage": {
+            "sampleRate": 100000.0,
+            "returnTime": 0.01
+        },
+        "ttl": {
+            "sampleRate": 100000.0
+        }
+    },
+    "designers": {
         "scanDesigner": "GalvoScanDesigner",
-        "scanDesignerParams": {},
-        "TTLCycleDesigner": "PointScanTTLCycleDesigner",
-        "TTLCycleDesignerParams": {},
-        "sampleRate": 100000
+        "TTLCycleDesigner": "PointScanTTLCycleDesigner"
     },
     "rois": {
         "Full chip": {

@@ -20,7 +20,7 @@ both from the user perspective (GUI description and use cases) as
 well as for developers (scripting and API modules, and hardware control and JSON config files).
 
 .. image:: ./images/diagram.jpg
-    :width: 400
+    :width: 600
     :align: center
 
 .. toctree::

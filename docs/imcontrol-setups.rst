@@ -140,3 +140,26 @@ Available manager properties:
 - pixelSize -- pixel size/pixel pitch, in mm, of the SLM
 - angleMount -- the angle of incidence and reflection, in radians, of the laser line that is shaped by the SLM, for adding a blazed grating to create off-axis holography
 - correctionPatternsDir -- directory of .bmp images provided by Hamamatsu for flatness correction at various wavelengths, a combination will be chosen based on the wavelength
+
+
+Available widgets
+=================
+
+The following values are possible to include in the available widgets field (note: case sensitive):
+
+- ``Settings`` (detector settings widget)
+- ``View`` (image controls widget)
+- ``Recording`` (recording widget)
+- ``Image`` (image display widget)
+- ``FocusLock`` (focus lock widget)
+- ``SLM`` (SLM widget)
+- ``Laser`` (laser control widget)
+- ``Positioner`` (positioners widget)
+- ``Scan`` (scan widget)
+- ``BeadRec`` (bead reconstruction widget)
+- ``AlignAverage`` (axial alignment tool widget)
+- ``AlignXY`` (rotation alignment tool widget)
+- ``AlignmentLine`` (line alignment tool widget)
+- ``uLenses`` (uLenses tool widget)
+- ``FFT`` (FFT tool widget)
+- ``Console`` (Python console widget)

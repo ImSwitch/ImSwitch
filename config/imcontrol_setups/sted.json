@@ -255,17 +255,11 @@
     "defaultScanFile": null
   },
   "scan": {
-    "stage": {
-      "sampleRate": 100000.0,
-      "returnTime": 0.01
-    },
-    "ttl": {
-      "sampleRate": 100000.0
-    }
-  },
-  "designers": {
     "scanDesigner": "GalvoScanDesigner",
+    "scanDesignerParams": {},
     "TTLCycleDesigner": "PointScanTTLCycleDesigner",
+    "TTLCycleDesignerParams": {},
+    "sampleRate": 100000
   },
   "slm": {
     "monitorIdx": 2,

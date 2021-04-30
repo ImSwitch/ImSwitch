@@ -121,8 +121,14 @@ class SLMframe(wx.Frame):
                 self.eventLock.release()
         
     def SetMonitor(self, monitor):
-        if (monitor < 0 or monitor > wx.Display.GetCount()-1):
+        tryMonitor = monitor
+
+        while monitor > wx.Display.GetCount() - 1:
+            monitor -= 1  # Try other monitor
+
+        if tryMonitor < 0:
             raise ValueError('Invalid monitor (monitor %d).' % monitor)
+
         self._x0, self._y0, self._resX, self._resY = wx.Display(monitor).GetGeometry()
         
 

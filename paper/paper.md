@@ -19,7 +19,7 @@ authors:
   - name: Andreas Bodén
     orcid: 0000-0001-9302-7576
     affiliation: 1
-  - name: Ilaria Testa^[corresponding author ilaria.testa@scilifelab.se]
+  - name: Ilaria Testa
     orcid: 0000-0003-4005-4997
     affiliation: 1
 affiliations:

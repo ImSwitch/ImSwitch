@@ -21,6 +21,38 @@
         "cameraListIndex": null
       },
       "forAcquisition": true
+    },
+    "WidefieldCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "TISManager",
+      "managerProperties": {
+        "cameraListIndex": 1,
+        "tis": {
+          "exposure": 0,
+          "gain": 0,
+          "brightness": 0,
+          "image_width": 2448,
+          "image_height": 2048
+        }
+      },
+      "forAcquisition": true
+    },
+    "FocusLockCamera": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "TISManager",
+      "managerProperties": {
+        "cameraListIndex": 0,
+        "tis": {
+          "exposure": 0,
+          "gain": 0,
+          "brightness": 0,
+          "image_width": 1280,
+          "image_height": 1024
+        }
+      },
+      "forFocusLock": true
     }
   },
   "lasers": {
@@ -71,6 +103,29 @@
       "valueRangeMin": 0,
       "valueRangeMax": 1023,
       "valueRangeStep": 1
+    },
+    "775Katana": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "KatanaLaserManager",
+      "managerProperties": {
+          "rs232device": "katana"
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 3100,
+      "valueRangeStep": 1
+    },
+    "775AOM": {
+      "analogChannel": 3,
+      "digitalLine": 4,
+      "managerName": "NidaqLaserManager",
+      "managerProperties": {
+      },
+      "wavelength": 775,
+      "valueRangeMin": 0,
+      "valueRangeMax": 10,
+      "valueRangeStep": 1
     }
   },
   "positioners": {
@@ -82,8 +137,8 @@
         "conversionFactor": 17.44,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 100e-3,
-        "acc_max": 100e-6
+        "vel_max": 1e-1,
+        "acc_max": 1e-4
       },
       "axes": ["X"],
       "forScanning": true
@@ -96,8 +151,8 @@
         "conversionFactor": 16.63,
         "minVolt": -10,
         "maxVolt": 10,
-        "vel_max": 100e-3,
-        "acc_max": 100e-6
+        "vel_max": 1e-1,
+        "acc_max": 1e-4
       },
       "axes": ["Y"],
       "forScanning": true
@@ -159,45 +214,75 @@
         "dsrdtr": "false",
         "xonxoff": "false"
       }
+    },
+    "katana": {
+      "managerName": "RS232Manager",
+      "managerProperties": {
+        "port": "ASRL8::INSTR",
+        "encoding": "ascii",
+        "recv_termination": "\n",
+        "send_termination": "\n",
+        "baudrate": 38400,
+        "bytesize": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "rtscts": "false",
+        "dsrdtr": "false",
+        "xonxoff": "false"
+      }
     }
   },
   "rois": {
-    "Fast scan": {
-      "x": 256,
-      "y": 256,
-      "w": 200,
-      "h": 200
-    },
-    "Imaging": {
-      "x": 256,
-      "y": 256,
-      "w": 512,
-      "h": 512
+    "Full chip": {
+      "x": 0,
+      "y": 0,
+      "w": 2448,
+      "h": 2048
     }
   },
   "availableWidgets": [
-      "Settings",
-      "View",
-      "Recording",
-      "Image",
-      "Laser",
-      "Positioner",
-      "Scan"
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "Positioner",
+    "Scan",
+    "FocusLock",
+    "SLM"
   ],
+  "scanDefaults": {
+    "defaultScanFile": null
+  },
   "scan": {
+    "stage": {
+      "sampleRate": 100000.0,
+      "returnTime": 0.01
+    },
+    "ttl": {
+      "sampleRate": 100000.0
+    }
+  },
+  "designers": {
     "scanDesigner": "GalvoScanDesigner",
-    "scanDesignerParams": {},
     "TTLCycleDesigner": "PointScanTTLCycleDesigner",
-    "TTLCycleDesignerParams": {},
-    "sampleRate": 100000
+  },
+  "slm": {
+    "monitorIdx": 2,
+    "width": 792,
+    "height": 600,
+    "wavelength": 775,
+    "pixelSize": 0.02,
+    "angleMount": 0.15,
+    "correctionPatternsDir": "C:\\Users\\STEDRed\\Documents\\HamamatsuSLM\\deform_corr_patterns\\"
   },
   "focusLock": {
     "camera": "FocusLockCamera",
     "positioner": "PiezoZ",
     "updateFreq": 10,
-    "frameCropLeft": 0,
-    "frameCropRight": 500,
-    "frameCropTop": 0,
-    "frameCropBottom": 600
+    "frameCropx": 780,
+    "frameCropy": 400,
+    "frameCropw": 500,
+    "frameCroph": 100
   }
 }

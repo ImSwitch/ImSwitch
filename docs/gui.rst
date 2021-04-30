@@ -82,7 +82,7 @@ SLM widget
 -----------
 In the SLM widget you can control the phase masks which you use to shape the laser line that is incident on it. The SLM widget is configured to control two simultaneous phase masks applied on a beam, such as for shaping a STED laser beam into an overlayed donut and tophat pattern for 3DSTED, but can readily be reprogrammed to deal with other beam shaping for different methods. Through the widget you can control what type of mask you want to show in each of the two sides (donut, tophat, gaussian, half/quad/hex/split patterns for alignment purposes), the position of the masks, and their respective Zernike-polynomial-based aberration correction parameters for correcting stationary aberrations in the setup (implemented are tip/tilt, defocus, spherical, vertical/horizontal coma, and vertical/oblique astigmatism, additional polynomials can be readily implemented). It also has controls for saving/loading all the parameters to/from a pickled file. 
 
-.. image:: ./images/slm-widget.png
+.. image:: ./images/slm-widget.PNG
     :width: 400px
     :align: center
 
@@ -91,7 +91,7 @@ Focus lock widget
 ------------------
 In the focus lock widget you can control a reflection-based focus lock which operates by reflecting a laser beam off the cover slip in total internal reflection and is detected on a camera. Movement of the sample in z corresponds to lateral movement of the laser spot on the camera. The center of the spot is tracked and through a feedback loop (PI controller) commands is sent to the connect z-positioner to move the sample to counter-act the detected movement. The widget has controls for locking/unlocking the sample in the current position, setting the z-position of the connected z-positioner, a setting for handling double reflections from the sample, and settings for the proportional and integral gain of the PI controller.
 
-.. image:: ./images/focuslock-widget.png
+.. image:: ./images/focuslock-widget.PNG
     :width: 400px
     :align: center
 

@@ -49,8 +49,8 @@ class SLMManager:
         bmpsCorrection = glob.glob(self.__correctionPatternsDir + "\*.bmp")
         wavelengthCorrection = [int(x[-9: -6]) for x in bmpsCorrection]
         # Find the closest correction pattern within the list of patterns available
-        wavelengthCorrectionLoad = min(wavelengthCorrection, key=lambda x: abs(x - self.__wavelength))
-        self.__maskCorrection.loadBMP("CAL_LSH0701153_" + str(wavelengthCorrectionLoad) + "nm", self.__correctionPatternsDir)
+        #wavelengthCorrectionLoad = min(wavelengthCorrection, key=lambda x: abs(x - self.__wavelength))
+        #self.__maskCorrection.loadBMP("CAL_LSH0701153_" + str(wavelengthCorrectionLoad) + "nm", self.__correctionPatternsDir)
 
     def initTiltMask(self):
         # Add blazed grating tilting mask

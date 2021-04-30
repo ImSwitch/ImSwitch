@@ -47,6 +47,12 @@ class SLMManager:
         # Add correction mask with correction pattern
         self.__maskCorrection = Mask(self.__slmSize[1], int(self.__slmSize[0]), self.__wavelength)
         bmpsCorrection = glob.glob(self.__correctionPatternsDir + "\*.bmp")
+
+        if len(bmpsCorrection) < 1:
+            print('No BMP files found in correction patterns directory, cannot initialize'
+                  ' correction mask.')
+            return
+
         wavelengthCorrection = [int(x[-9: -6]) for x in bmpsCorrection]
         # Find the closest correction pattern within the list of patterns available
         wavelengthCorrectionLoad = min(wavelengthCorrection, key=lambda x: abs(x - self.__wavelength))

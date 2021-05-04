@@ -22,6 +22,8 @@ class NidaqManager(SignalInterface):
         self.__setupInfo = setupInfo
         self.tasks = {}
         self.busy = False
+        self.__counterChannel = setupInfo.nidaq.counterChannel
+        self.__startTrigger = setupInfo.nidaq.startTrigger
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []
@@ -272,18 +274,19 @@ class NidaqManager(SignalInterface):
             # create task waiters and change constants for beginning scan
             self.aoTaskWaiter = WaitThread()
             self.doTaskWaiter = WaitThread()
-            self.timerTaskWaiter = WaitThread()
-            # create timer counter output task, to control the acquisition timing (1 MHz)
-            sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
-            self.timerTask = self.__createChanCOTask(
-                'TimerTask', channel=2, rate=1e6, sampsInScan=sampsInScan,
-                starttrig=True, reference_trigger='ao/StartTrigger'
-            )
-            self.timerTaskWaiter.connect(self.timerTask)
-            self.timerTaskWaiter.sigWaitDone.connect(
-                lambda: self.taskDone('timer', self.timerTaskWaiter)
-            )
-            self.tasks['timer'] = self.timerTask
+            if self.__counterChannel is not None :
+                self.timerTaskWaiter = WaitThread()
+                # create timer counter output task, to control the acquisition timing (1 MHz)
+                sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
+                self.timerTask = self.__createChanCOTask(
+                    'TimerTask', channel=self.__counterChannel, rate=1e6, sampsInScan=sampsInScan,
+                    starttrig=self.__startTrigger, reference_trigger='ao/StartTrigger'
+                )
+                self.timerTaskWaiter.connect(self.timerTask)
+                self.timerTaskWaiter.sigWaitDone.connect(
+                    lambda: self.taskDone('timer', self.timerTaskWaiter)
+                )
+                self.tasks['timer'] = self.timerTask
             acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
             scanclock = r'100kHzTimebase'
             ref_trigger = 'ao/StartTrigger'
@@ -308,7 +311,7 @@ class NidaqManager(SignalInterface):
                 self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
                                                       acquisitionTypeFinite, clockDO,
                                                       100000, sampsInScan=sampsInScan,
-                                                      starttrig=True,
+                                                      starttrig=self.__startTrigger,
                                                       reference_trigger='ao/StartTrigger')
                 self.doTask.write(np.array(DOsignals), auto_start=False)
 
@@ -318,8 +321,9 @@ class NidaqManager(SignalInterface):
                 )
                 self.tasks['do'] = self.doTask
             self.sigScanInitiate.emit(scanInfoDict)
-            self.tasks['timer'].start()
-            self.timerTaskWaiter.start()
+            if self.__counterChannel is not None:
+                self.tasks['timer'].start()
+                self.timerTaskWaiter.start()
             if len(DOsignals) > 0:
                 self.tasks['do'].start()
                 #print('DO task started')

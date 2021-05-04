@@ -97,7 +97,7 @@ class SetupInfo:
         for deviceInfos in self.lasers, self.detectors:
             deviceInfosCopy = deviceInfos.copy()
             for item in list(deviceInfosCopy):
-                if not deviceInfosCopy[item].digitalLine:
+                if deviceInfosCopy[item].digitalLine is None:
                     del deviceInfosCopy[item]
             devices.update(deviceInfosCopy)
             i += 1

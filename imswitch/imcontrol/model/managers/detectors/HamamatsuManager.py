@@ -76,10 +76,10 @@ class HamamatsuManager(DetectorManager):
             self._camera.setPropertyValue('subarray_hsize', self.fullShape[0])
 
             if (hsize, vsize) != self.fullShape:
-                self._camera.setPropertyValue('subarray_vsize', hsize)
-                self._camera.setPropertyValue('subarray_hsize', vsize)
-                self._camera.setPropertyValue('subarray_vpos', hpos)
-                self._camera.setPropertyValue('subarray_hpos', vpos)
+                self._camera.setPropertyValue('subarray_vsize', vsize)
+                self._camera.setPropertyValue('subarray_hsize', hsize)
+                self._camera.setPropertyValue('subarray_vpos', vpos)
+                self._camera.setPropertyValue('subarray_hpos', hpos)
 
         self._performSafeCameraAction(cropAction)
 

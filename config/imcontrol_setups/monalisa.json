@@ -155,6 +155,10 @@
         "TTLCycleDesignerParams": {},
         "sampleRate": 100000
     },
+    "nidaq": {
+        "counterChannel" : null,
+        "startTrigger" : false
+   },
     "rois": {
         "Imaging_green": {
             "x": 283,

@@ -185,6 +185,9 @@ class DigitalModule(QtWidgets.QFrame):
         units that the laser uses. """
         self.powers[laserName].setText(str(value))
 
+    def setEditable(self, laserName, editable):
+        self.powers[laserName].setEnabled(editable)
+
 
 class LaserModule(QtWidgets.QFrame):
     """ Module from LaserWidget to handle a single laser. """

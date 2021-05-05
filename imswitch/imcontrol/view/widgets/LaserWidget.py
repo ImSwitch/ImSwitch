@@ -16,7 +16,6 @@ class LaserWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.laserModules = {}
-        self.digModule = DigitalModule()
 
         self.scrollContainer = QtWidgets.QGridLayout()
         self.scrollContainer.setContentsMargins(0, 0, 0, 0)

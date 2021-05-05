@@ -9,7 +9,7 @@ class LaserController(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.settingAttr = False
-        
+
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
             self._widget.addLaser(
@@ -70,11 +70,8 @@ class LaserController(ImConWidgetController):
         """ Start/stop digital modulation. """
         for laserName in laserNames:
             laserManager = self._master.lasersManager[laserName]
-
-            if laserManager.isBinary:
-                continue
-
             value = self._widget.getDigValue(laserName)
+            
             if laserManager.isDigital:
                 laserManager.setDigitalMod(digMod, value)
             else:

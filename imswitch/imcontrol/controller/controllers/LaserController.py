@@ -28,6 +28,8 @@ class LaserController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigScanStarted.connect(lambda: self.scanChanged(True))
+        self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
 
         # Connect LaserWidget signals
         self._widget.sigEnableChanged.connect(self.toggleLaser)
@@ -106,6 +108,12 @@ class LaserController(ImConWidgetController):
             self._commChannel.sharedAttrs[(_attrCategory, laserName, attr)] = value
         finally:
             self.settingAttr = False
+
+    def scanChanged(self, isScanning):
+        for lName, lManager in self._master.lasersManager:
+            print("Im inside scanChanged condition")
+            if not lManager.isDigital and not lManager.isBinary:
+                self._widget.digModule.setEditable(lName, not isScanning)
 
     @APIExport
     def getLaserNames(self):

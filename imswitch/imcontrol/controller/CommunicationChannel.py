@@ -37,6 +37,8 @@ class CommunicationChannel(SignalInterface):
 
     sigPrepareScan = Signal()
 
+    sigScanStarted = Signal()
+    
     sigScanEnded = Signal()
 
     @property

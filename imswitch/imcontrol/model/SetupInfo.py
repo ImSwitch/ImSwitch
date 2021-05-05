@@ -70,10 +70,11 @@ class ScanInfo:
     TTLCycleDesignerParams: Dict[str, Any]  # properties to be read by TTLCycleDesigner
     sampleRate: int  # scan sample rate
 
+
 @dataclass(frozen=True)
 class NidaqInfo:
-    counterChannel: int  # Output for Counter for timing purposes
-    startTrigger: bool = False # Boolean for start triggering for sync
+    timerCounterChannel: Optional[int] = None  # Output for Counter for timing purposes
+    startTrigger: bool = False  # Boolean for start triggering for sync
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
@@ -89,7 +90,7 @@ class SetupInfo:
 
     scan: ScanInfo = field(default_factory=ScanInfo)
 
-    nidaq: NidaqInfo = field(default_factory=dict)
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
 
     _catchAll: CatchAll = None
 

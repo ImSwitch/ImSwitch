@@ -262,7 +262,7 @@
     "sampleRate": 100000
   },
   "nidaq": {
-    "counterChannel" : 2,
+    "timerCounterChannel" : 2,
     "startTrigger" : true
   },
   "slm": {

@@ -156,9 +156,9 @@
         "sampleRate": 100000
     },
     "nidaq": {
-        "timerCounterChannel" : null,
-        "startTrigger" : false
-   },
+        "timerCounterChannel": null,
+        "startTrigger": false
+    },
     "rois": {
         "Imaging_green": {
             "x": 283,

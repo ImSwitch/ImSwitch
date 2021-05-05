@@ -57,10 +57,10 @@ class LaserController(ImConWidgetController):
 
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
-        if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
-            self._master.lasersManager[laserName].setValue(magnitude)
-            self._widget.setValue(laserName, magnitude)
-            self.setSharedAttr(laserName, _valueAttr, magnitude)
+        #if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
+        self._master.lasersManager[laserName].setValue(magnitude)
+        self._widget.setValue(laserName, magnitude)
+        self.setSharedAttr(laserName, _valueAttr, magnitude)
 
 
     def updateDigitalPowers(self, laserNames):

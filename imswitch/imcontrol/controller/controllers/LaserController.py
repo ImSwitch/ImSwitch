@@ -9,19 +9,15 @@ class LaserController(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.settingAttr = False
-
+        
         # Set up lasers
-        self.aotfLasers = {}
         for lName, lManager in self._master.lasersManager:
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
                 lManager.valueRangeStep if lManager.valueRangeStep is not None else None
             )
-
-            if not lManager.isDigital:
-                self.aotfLasers[lName] = False
-            elif not lManager.isBinary:
+            if not lManager.isBinary and not lManager.isDigital:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
             self.setSharedAttr(lName, _digModAttr, self._widget.isDigModActive())
@@ -57,7 +53,6 @@ class LaserController(ImConWidgetController):
 
     def valueChanged(self, laserName, magnitude):
         """ Change magnitude. """
-        #if laserName not in self.aotfLasers.keys() or not self.aotfLasers[laserName]:
         self._master.lasersManager[laserName].setValue(magnitude)
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
@@ -86,8 +81,7 @@ class LaserController(ImConWidgetController):
                 laserManager.setValue(value)
                 self._widget.setLaserActive(laserName, False)
                 self._widget.setLaserActivatable(laserName, not digMod)
-                self.aotfLasers[laserName] = digMod
-                laserManager.setEnabled(False)  # TODO: Correct?
+                laserManager.setEnabled(False)
             self._widget.setLaserEditable(laserName, not digMod)
 
             self.setSharedAttr(laserName, _digModAttr, digMod)

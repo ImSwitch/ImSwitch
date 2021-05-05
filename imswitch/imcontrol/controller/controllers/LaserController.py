@@ -17,7 +17,7 @@ class LaserController(ImConWidgetController):
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
                 lManager.valueRangeStep if lManager.valueRangeStep is not None else None
             )
-            if not lManager.isBinary and not lManager.isDigital:
+            if not lManager.isBinary and lManager.isDigital:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
             self.setSharedAttr(lName, _digModAttr, self._widget.isDigModActive())

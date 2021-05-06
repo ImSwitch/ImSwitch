@@ -66,13 +66,13 @@ class ScanWidget(Widget):
 
         self.scrollArea = QtWidgets.QScrollArea()
         self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidget(self.gridContainer)
         self.scrollArea.setWidgetResizable(True)
         self.scrollContainer.addWidget(self.scrollArea)
         self.gridContainer.installEventFilter(self)
-        
+
         # Connect signals
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)

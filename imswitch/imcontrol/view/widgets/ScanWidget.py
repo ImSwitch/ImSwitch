@@ -56,9 +56,23 @@ class ScanWidget(Widget):
         self.graph.setEnabled(False)
         self.graph.setFixedHeight(128)
 
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
+        self.scrollContainer = QtWidgets.QGridLayout()
+        self.scrollContainer.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.scrollContainer)
 
+        self.grid = QtWidgets.QGridLayout()
+        self.gridContainer = QtWidgets.QWidget()
+        self.gridContainer.setLayout(self.grid)
+
+        self.scrollArea = QtWidgets.QScrollArea()
+        self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.scrollArea.setWidget(self.gridContainer)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollContainer.addWidget(self.scrollArea)
+        self.gridContainer.installEventFilter(self)
+        
         # Connect signals
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)

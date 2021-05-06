@@ -111,7 +111,6 @@ class LaserController(ImConWidgetController):
 
     def scanChanged(self, isScanning):
         for lName, lManager in self._master.lasersManager:
-            print("Im inside scanChanged condition")
             if not lManager.isDigital and not lManager.isBinary:
                 self._widget.digModule.setEditable(lName, not isScanning)
 

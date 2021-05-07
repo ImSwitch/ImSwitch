@@ -16,7 +16,6 @@ class LaserWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.laserModules = {}
-        self.digModule = DigitalModule()
 
         self.scrollContainer = QtWidgets.QGridLayout()
         self.scrollContainer.setContentsMargins(0, 0, 0, 0)
@@ -185,6 +184,9 @@ class DigitalModule(QtWidgets.QFrame):
         """ Sets the digital modulation value of the specified laser, in the
         units that the laser uses. """
         self.powers[laserName].setText(str(value))
+
+    def setEditable(self, laserName, editable):
+        self.powers[laserName].setEnabled(editable)
 
 
 class LaserModule(QtWidgets.QFrame):

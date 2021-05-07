@@ -1,9 +1,3 @@
-"""
-Created on Wed Jan 13 10:35:00 2021
-
-@author: jonatanalvelid
-"""
-
 from .LaserManager import LaserManager
 
 

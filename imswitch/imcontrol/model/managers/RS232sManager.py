@@ -1,6 +1,3 @@
-from .MultiManager import MultiManager
-
-
 class RS232sManager(MultiManager):
     """ LasersManager is an interface for dealing with RS232 devices. It is a
     MultiManager for RS232 devices. """

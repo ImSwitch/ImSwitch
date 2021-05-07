@@ -1,9 +1,3 @@
-"""
-Created on Wed Jan 13 11:57:00 2021
-
-@author: jonatanalvelid
-"""
-
 from .PositionerManager import PositionerManager
 
 

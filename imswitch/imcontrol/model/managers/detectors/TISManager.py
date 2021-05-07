@@ -1,9 +1,3 @@
-"""
-Created on Fri Jan 08 14:00:00 2021
-
-@author: jonatanalvelid
-"""
-
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 import numpy as np

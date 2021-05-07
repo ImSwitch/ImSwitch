@@ -43,17 +43,7 @@ class TISManager(DetectorManager):
 
     def getLatestFrame(self):
         if not self._adjustingParameters:
-            #dt = datetime.now()
-            #time_curr_bef = round(dt.microsecond/1000)
-            frame = self._camera.grabFrame()
-            #dt = datetime.now()
-            #time_curr_mid = round(dt.microsecond/1000)
-            #frame = np.fliplr(frame)
-            self.__image = frame
-            #dt = datetime.now()
-            #time_curr_aft = round(dt.microsecond/1000)
-            #print(f'Time for grab: {time_curr_mid-time_curr_bef} ms')
-            #print(f'Time for flip: {time_curr_aft-time_curr_mid} ms')
+            self.__image = self._camera.grabFrame()
         return self.__image
 
     def setParameter(self, name, value):
@@ -84,7 +74,7 @@ class TISManager(DetectorManager):
         super().setBinning(binning)
     
     def getChunk(self):
-        pass
+        return self._camera.grabFrame()[np.newaxis,:,:]
 
     def flushBuffers(self):
         pass
@@ -93,16 +83,18 @@ class TISManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
+            print('startlive')
 
     def stopAcquisition(self):
         if self._running:
             self._running = False
             self._camera.suspend_live()
+            print('suspendlive')
     
     def stopAcquisitionForROIChange(self):
-        if self._running:
-            self._running = False
-            self._camera.stop_live()
+        self._running = False
+        self._camera.stop_live()
+        print('stoplive')
 
     @property
     def pixelSizeUm(self):
@@ -126,15 +118,10 @@ class TISManager(DetectorManager):
         """
         self._adjustingParameters = True
         wasrunning = self._running
-        if self._running:
-            self.stopAcquisitionForROIChange()
+        self.stopAcquisitionForROIChange()
         function()
         if wasrunning:
-            #print('TISManager: performSafe: camera was running')
-            #self._camera.cam.open()
             self.startAcquisition()
-        #else:
-            #print('TISManager: performSafe: camera was not running')
         self._adjustingParameters = False
 
     def openPropertiesDialog(self):

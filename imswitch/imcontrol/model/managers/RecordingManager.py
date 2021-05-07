@@ -202,7 +202,7 @@ class RecordingWorker(Worker):
                 self.__recordingManager.endRecording(wait=False)
 
     def _getNewFrames(self, detectorName):
-        newFrames, _ = self.__recordingManager.detectorsManager[detectorName].getChunk()
+        newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()
         newFrames = np.array(newFrames)
         return newFrames
 

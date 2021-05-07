@@ -61,7 +61,7 @@ class HamamatsuManager(DetectorManager):
         return self._camera.getLast()
 
     def getChunk(self):
-        return self._camera.getFrames()
+        return self._camera.getFrames()[0]
 
     def flushBuffers(self):
         self._camera.updateIndices()

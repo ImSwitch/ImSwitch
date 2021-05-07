@@ -42,12 +42,13 @@ class CameraTIS:
         self.cam.prepare_live()  # prepare prepared state for live imaging
 
     def grabFrame(self):
-        self.cam.wait_til_frame_ready(20)  # wait for frame ready
+        #self.cam.wait_til_frame_ready(20)  # wait for frame ready
         frame, width, height, depth = self.cam.get_image_data()
         frame = np.array(frame, dtype='float64')
         # Check if below is giving the right dimensions out
         #TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped 3D array and taking the first plane of that
         frame = np.reshape(frame, (height, width, depth))[:,:,0]
+        frame = np.transpose(frame)
         return frame
 
     def setROI(self, hpos, vpos, hsize, vsize):

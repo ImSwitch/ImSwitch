@@ -71,6 +71,12 @@ class ScanInfo:
     sampleRate: int  # scan sample rate
 
 
+@dataclass(frozen=True)
+class NidaqInfo:
+    timerCounterChannel: Optional[int] = None  # Output for Counter for timing purposes
+    startTrigger: bool = False  # Boolean for start triggering for sync
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class SetupInfo:
@@ -83,6 +89,8 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = None
 
     scan: ScanInfo = field(default_factory=ScanInfo)
+
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
 
     _catchAll: CatchAll = None
 
@@ -97,7 +105,7 @@ class SetupInfo:
         for deviceInfos in self.lasers, self.detectors:
             deviceInfosCopy = deviceInfos.copy()
             for item in list(deviceInfosCopy):
-                if not deviceInfosCopy[item].digitalLine:
+                if deviceInfosCopy[item].digitalLine is None:
                     del deviceInfosCopy[item]
             devices.update(deviceInfosCopy)
             i += 1

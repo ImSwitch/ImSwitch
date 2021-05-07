@@ -1,9 +1,3 @@
-"""
-Created on Wed Dec 16 16:37:00 2020
-
-@author: jonatanalvelid
-"""
-
 import os
 import glob
 import enum

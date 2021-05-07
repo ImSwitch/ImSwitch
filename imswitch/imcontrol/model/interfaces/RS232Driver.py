@@ -1,9 +1,3 @@
-"""
-Created on Thu Jan 13 10:00:00 2021
-
-@author: jonatanalvelid
-"""
-
 from pyvisa import constants
 
 from lantz.messagebased import MessageBasedDriver

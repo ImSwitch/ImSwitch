@@ -1,9 +1,3 @@
-"""
-Created on Thu Jan 07 14:11:00 2021
-
-@author: jonatanalvelid
-"""
-
 import numpy as np
 from pyicic import IC_ImagingControl
 

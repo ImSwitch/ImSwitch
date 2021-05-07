@@ -104,18 +104,6 @@
       "valueRangeMax": 1023,
       "valueRangeStep": 1
     },
-    "775Katana": {
-      "analogChannel": null,
-      "digitalLine": null,
-      "managerName": "KatanaLaserManager",
-      "managerProperties": {
-          "rs232device": "katana"
-      },
-      "wavelength": 775,
-      "valueRangeMin": 0,
-      "valueRangeMax": 3100,
-      "valueRangeStep": 1
-    },
     "775AOM": {
       "analogChannel": 3,
       "digitalLine": 4,
@@ -207,22 +195,6 @@
         "recv_termination": "\n",
         "send_termination": "\n",
         "baudrate": 115200,
-        "bytesize": 8,
-        "parity": "none",
-        "stopbits": 1,
-        "rtscts": "false",
-        "dsrdtr": "false",
-        "xonxoff": "false"
-      }
-    },
-    "katana": {
-      "managerName": "RS232Manager",
-      "managerProperties": {
-        "port": "ASRL8::INSTR",
-        "encoding": "ascii",
-        "recv_termination": "\n",
-        "send_termination": "\n",
-        "baudrate": 38400,
         "bytesize": 8,
         "parity": "none",
         "stopbits": 1,

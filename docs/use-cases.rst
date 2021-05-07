@@ -103,3 +103,43 @@ The user can choose to save the acquired image to a desired folder and with a de
 .. image:: ./images/sted-confocal-usecase.png
     :width: 600px
     :align: center
+
+
+CoolLED control through USB and TTLs using a NIDAQ
+----------------------------------------------------
+
+.. image:: ./images/coolLED_GUI.png
+    :width: 600px
+    :align: center
+
+We got a CoolLED (https://www.coolled.com/) in the lab and decided to try ImSwitch out in a setting where we want to control the 8 lasers of the device,
+both by doing it manually using the sliders and buttons (using a USB port and RS232 communication protocol), but also being able to design and perform a sequence of TTLs and a X-Y-Z Stage controlled by a National Instruments card. This use case could be combined with the Napari viewer and a camera,
+or a point scanning system, or any of the other widgets explained in the other Use Cases.
+
+Basically all the lasers are listed in the JSON file (https://github.com/kasasxav/ImSwitch/blob/master/config/imcontrol_setups/coolLED.json) by specifying:
+
+* Digital line of each laser in the NIDAQ.
+* Wavelength and range (0 to 100).
+* Channel name (A-H), each corresponding to the laser.
+
+The ``Positioners`` define the stage axis with the settings, such as:
+
+* Analog channel of the NIDAQ.
+* Conversion factors.
+* Min and Max voltages.
+* Axis (X, Y, or Z).
+
+Then, the ``CoolLEDLaserManager`` will communicate with the ``RS232Manager`` for sending the intensity and on/off commands. The parameters of the ``RS232Manager`` are the typical ones
+of a RS232 connection, such as:
+
+* Port (Usually COMx).
+* Encoding (ascii).
+* Baudrate (57600).
+* ByteSize (8)
+* Parity (None)
+* Stop bits (1)
+
+The pulses will be directly handled by the National Instruments card and our TTLDesigner.
+
+
+

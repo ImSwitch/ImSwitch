@@ -76,6 +76,15 @@ Available manager properties:
 - rs232device -- name of the defined rs232 communication channel through which the communication should take place
 - channel -- index of the channel in the acousto-optic device that should be controlled (indexing starts at 1)
 
+CoolLEDLaserManager
+---------------------
+
+LaserManager for controlling coolLED though RS232 communication.
+
+Available manager properties:
+
+- rs232device -- name of the defined rs232 communication channel through which the communication should take place
+- channel_index -- laser channel (A to H)
 
 KatanaLaserManager
 -------------------

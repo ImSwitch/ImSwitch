@@ -116,7 +116,7 @@ We got a CoolLED (https://www.coolled.com/) in the lab and decided to try ImSwit
 both by doing it manually using the sliders and buttons (using a USB port and RS232 communication protocol), but also being able to design and perform a sequence of TTLs and a X-Y-Z Stage controlled by a National Instruments card. This use case could be combined with the Napari viewer and a camera,
 or a point scanning system, or any of the other widgets explained in the other Use Cases.
 
-Basically all the lasers are listed in the JSON file (https://github.com/kasasxav/ImSwitch/blob/master/config/imcontrol_setups/coolLED.json) by specifying:
+Basically all the lasers are listed in the JSON file (https://github.com/kasasxav/ImSwitch/blob/dev/config/imcontrol_setups/coolLED.json) by specifying:
 
 * Digital line of each laser in the NIDAQ.
 * Wavelength and range (0 to 100).

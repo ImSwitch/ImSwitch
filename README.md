@@ -28,7 +28,7 @@ python -m imswitch
 
 ## Documentation and testing
 
-* ImSwitch has automated testing in Github, including ui and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
+* ImSwitch has automated testing through GitHub Actions, including UI and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
 
 * It is possible to implement, import and test user-defined scripts in the scripting module. 
 

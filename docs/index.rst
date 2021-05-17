@@ -30,6 +30,7 @@ well as for developers (scripting and API modules, and hardware control and JSON
     installation
     gui
     use-cases
+    modules
     imcontrol-setups
     scripting
 

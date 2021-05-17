@@ -12,7 +12,7 @@ that it is possible to integrate current state-of-the-art solutions into one uni
 
 ## Requirements and installation
 
-To run ImSwitch, you must have Python 3.7 or later as well as the required Python packages installed. Additionally, certain components such as support for TIS cameras require the software to be running on Windows.
+To run ImSwitch, you must have Python 3.7 or later as well as the required Python packages installed. Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows.
 
 The required Python packages are specified in the requirements.txt file. You can install them by running this command in the root directory of the repository:
 

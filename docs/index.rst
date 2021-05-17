@@ -33,7 +33,6 @@ well as for developers (scripting and API modules, and hardware control and JSON
     imcontrol-setups
     scripting
 
-
 .. toctree::
     :glob:
     :hidden:

@@ -9,7 +9,7 @@ class AlignXYController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.axis = 0
-        self.addROI()
+        self.roiAdded = False
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
@@ -29,11 +29,15 @@ class AlignXYController(LiveUpdatedController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+        if not self.roiAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+            self.roiAdded = True
 
     def toggleROI(self, show):
         """ Show or hide ROI."""
         if show:
+            self.addROI()
+
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 

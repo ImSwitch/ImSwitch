@@ -8,7 +8,7 @@ class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.running = False
-        self.addROI()
+        self.roiAdded = False
 
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
@@ -17,6 +17,8 @@ class BeadRecController(ImConWidgetController):
     def roiToggled(self, enabled):
         """ Show or hide ROI."""
         if enabled:
+            self.addROI()
+
             ROIsize = (64, 64)
             ROIcenter = self._commChannel.getCenterROI()
 
@@ -29,7 +31,9 @@ class BeadRecController(ImConWidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+        if not self.roiAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+            self.roiAdded = True
 
     def run(self):
         if not self.running:

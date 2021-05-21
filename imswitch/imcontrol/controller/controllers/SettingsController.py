@@ -48,7 +48,7 @@ class SettingsController(ImConWidgetController):
                 self._setupInfo.rois
             )
 
-        self.addROI()
+        self.roiAdded = False
         self.initParameters()
 
         execOnAll = self._master.detectorsManager.execOnAll
@@ -71,12 +71,15 @@ class SettingsController(ImConWidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+        if not self.roiAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+            self.roiAdded = True
 
-    def toggleROI(self, b):
+    def toggleROI(self, b, position=None, size=None):
         """ Show or hide ROI. """
         if b:
-            self._widget.showROI()
+            self.addROI()
+            self._widget.showROI(position, size)
         else:
             self._widget.hideROI()
 
@@ -346,7 +349,7 @@ class SettingsController(ImConWidgetController):
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
 
-            self._widget.showROI(ROIpos, ROIsize)
+            self.toggleROI(True, ROIpos, ROIsize)
             self.ROIchanged()
 
         else:

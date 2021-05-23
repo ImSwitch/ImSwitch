@@ -1,5 +1,3 @@
-from lantz import Q_
-
 from imswitch.imcontrol.model.interfaces import LantzLaser
 from .LaserManager import LaserManager
 
@@ -14,44 +12,18 @@ class LantzLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **_kwargs):
-        self._digitalMod = False
+        digitalDriver = laserInfo.managerProperties['digitalDriver']
+        digitalPorts = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
-        self._laser = LantzLaser(laserInfo.managerProperties['digitalDriver'],
-                                 laserInfo.managerProperties['digitalPorts'])
+        self._laser = LantzLaser(digitalDriver, digitalPorts)
+        self._numLasers = len(digitalPorts)
         print(self._laser.idn)
-        self._laser.digital_mod = False
-        self._laser.enabled = False
-        # self._laser.digital_mod = True  # TODO: What's the point of this?
-        self._laser.autostart = False
-        # self._laser.autostart = False  # TODO: What's the point of this?
 
         super().__init__(
             laserInfo, name, isBinary=False, isDigital=True, valueUnits='mW'
         )
 
-    def setEnabled(self, enabled):
-        self._laser.enabled = enabled
-
-    def setValue(self, power):
-        power = int(power)
-        if self._digitalMod:
-            self._laser.power_mod = power * Q_(1, 'mW')
-        else:
-            self._laser.power_sp = power * Q_(1, 'mW')
-
-    def setDigitalMod(self, digital, initialPower):
-        if digital:
-            self._laser.enter_mod_mode()
-            self._laser.power_mod = initialPower * Q_(1, 'mW')
-            print('Entered digital modulation mode with power :', initialPower)
-            print('Modulation mode is: ', self._laser.mod_mode)
-        else:
-            self._laser.digital_mod = False
-            self._laser.query('cp')
-            print('Exited digital modulation mode')
-        self._digitalMod = digital
-		
     def finalize(self):
         self._laser.finalize()
         

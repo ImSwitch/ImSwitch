@@ -33,94 +33,27 @@ class LinkedLantzLaser:
     def idn(self):
         return 'Linked Lasers ' + ' '.join([str(laser.idn) for laser in self.lasers])
 
-    @property
-    def autostart(self):
-        value = self.lasers[0].autostart
-        for laser in self.lasers:
-            if laser.autostart != value:
-                raise ValueError(f'Laser {laser.idn} autostart state is {laser.autostart} while laser'
-                                 f' {self.lasers[0]} autostart state is {value}')
-
-        return value
-
-    @autostart.setter
-    def autostart(self, value):
-        for laser in self.lasers:
-            laser.autostart = value
-
-    @property
-    def enabled(self):
-        value = self.lasers[0].enabled
-        for laser in self.lasers:
-            if laser.enabled != value:
-                raise ValueError(f'Laser {laser.idn} enabled state is {laser.enabled} while laser'
-                                 f' {self.lasers[0]} enabled state is {value}')
-
-        return value
-
-    @enabled.setter
-    def enabled(self, value):
-        for laser in self.lasers:
-            laser.enabled = value
-
-    @property
-    def power(self):
-        return sum([laser.power for laser in self.lasers])
-
-    @property
-    def power_sp(self):
-        return sum([laser.power_sp for laser in self.lasers])
-
-    @power_sp.setter
-    def power_sp(self, value):
-        for laser in self.lasers:
-            laser.power_sp = value / len(self.lasers)
-
-    @property
-    def digital_mod(self):
-        value = self.lasers[0].digital_mod
-        for laser in self.lasers:
-            if laser.digital_mod != value:
-                raise ValueError(f'Laser {laser.idn} digital_mod state is {laser.digital_mod} while'
-                                 f' laser {self.lasers[0]} digital_mod state is {value}')
-
-        return value
-
-    @digital_mod.setter
-    def digital_mod(self, value):
-        for laser in self.lasers:
-            laser.digital_mod = value
-
-    @property
-    def mod_mode(self):
-        return [laser.mod_mode for laser in self.lasers]
-
-    def enter_mod_mode(self):
-        for laser in self.lasers:
-            laser.enter_mod_mode()
-
-    def changeEdit(self):
-        for laser in self.lasers:
-            laser.changeEdit()
-
-    def query(self, value):
-        for laser in self.lasers:
-            laser.query(value)
-
-    @property
-    def power_mod(self):
-        """Laser modulated power (mW).
-        """
-        return sum([laser.power_mod for laser in self.lasers])
-
-    @power_mod.setter
-    def power_mod(self, value):
-        for laser in self.lasers:
-            laser.power_mod = value / len(self.lasers)
-
     def finalize(self):
         for laser in self.lasers:
             laser.finalize()
+
+    def __getattr__(self, item):
+        value = getattr(self.lasers[0], item)
+        if callable(value):
+            return lambda *args, **kwargs: [getattr(laser, item)(*args, **kwargs)
+                                            for laser in self.lasers]
+        else:
+            for laser in self.lasers:
+                valueInLaser = getattr(laser, item)
+                if valueInLaser != value:
+                    raise ValueError(f'Laser {laser.idn} value {item} is {valueInLaser} while laser'
+                                     f' {self.lasers[0]} value {item} is {value}')
+
+            return value
+
+    def __setattr__(self, key, value):
+        for laser in self.lasers:
+            setattr(laser, key, value)
 
 
 def getDriver(iName):

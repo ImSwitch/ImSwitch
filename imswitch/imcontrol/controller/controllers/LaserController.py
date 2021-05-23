@@ -20,11 +20,8 @@ class LaserController(ImConWidgetController):
             if not lManager.isBinary and lManager.isDigital:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
-            self.setSharedAttr(lName, _digModAttr, self._widget.isDigModActive())
             self.setSharedAttr(lName, _enabledAttr, self._widget.isLaserActive(lName))
-            self.setSharedAttr(lName, _valueAttr,
-                               self._widget.getValue(lName) if not self._widget.isDigModActive()
-                               else self._widget.getDigValue(lName))
+            self.setSharedAttr(lName, _valueAttr, self._widget.getValue(lName))
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -35,17 +32,8 @@ class LaserController(ImConWidgetController):
         self._widget.sigEnableChanged.connect(self.toggleLaser)
         self._widget.sigValueChanged.connect(self.valueChanged)
 
-        self._widget.sigDigitalModToggled.connect(
-            lambda digMod: self.GlobalDigitalMod(
-                digMod, [laser.name for _, laser in self._master.lasersManager]
-            )
-        )
-        self._widget.sigDigitalValueChanged.connect(
-            lambda laserName: self.updateDigitalPowers([laserName])
-        )
-
     def closeEvent(self):
-        self._master.lasersManager.execOnAll(lambda l: l.setDigitalMod(False, 0))
+        self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(False))
         self._master.lasersManager.execOnAll(lambda l: l.setValue(0))
 
     def toggleLaser(self, laserName, enabled):
@@ -59,35 +47,8 @@ class LaserController(ImConWidgetController):
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
 
-
-    def updateDigitalPowers(self, laserNames):
-        """ Update the powers if the digital mod is on. """
-        if self._widget.isDigModActive():
-            for laserName in laserNames:
-                value = self._widget.getDigValue(laserName)
-                self._master.lasersManager[laserName].setValue(value)
-                self.setSharedAttr(laserName, _valueAttr, value)
-
-    def GlobalDigitalMod(self, digMod, laserNames):
-        """ Start/stop digital modulation. """
-        for laserName in laserNames:
-            laserManager = self._master.lasersManager[laserName]
-            value = self._widget.getDigValue(laserName)
-            
-            if laserManager.isDigital:
-                laserManager.setDigitalMod(digMod, value)
-            else:
-                laserManager.setValue(value)
-                self._widget.setLaserActive(laserName, False)
-                self._widget.setLaserActivatable(laserName, not digMod)
-                laserManager.setEnabled(False)
-            self._widget.setLaserEditable(laserName, not digMod)
-
-            self.setSharedAttr(laserName, _digModAttr, digMod)
-            if not digMod:
-                self.valueChanged(laserName, self._widget.getValue(laserName))
-            else:
-                self.setSharedAttr(laserName, _valueAttr, value)
+    def scanChanged(self, isScanning):
+        self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:
@@ -96,11 +57,8 @@ class LaserController(ImConWidgetController):
         laserName = key[1]
         if key[2] == _enabledAttr:
             self.setLaserActive(laserName, value)
-        elif key[2] == _digModAttr:
-            self.setLaserDigModActive(value)
         elif key[2] == _valueAttr:
             self.setLaserValue(laserName, value)
-            self.setLaserDigValue(laserName, value)
 
     def setSharedAttr(self, laserName, attr, value):
         self.settingAttr = True
@@ -109,21 +67,11 @@ class LaserController(ImConWidgetController):
         finally:
             self.settingAttr = False
 
-    def scanChanged(self, isScanning):
-        for lName, lManager in self._master.lasersManager:
-            if not lManager.isDigital and not lManager.isBinary:
-                self._widget.digModule.setEditable(lName, not isScanning)
-
     @APIExport
     def getLaserNames(self):
         """ Returns the device names of all lasers. These device names can be
         passed to other laser-related functions. """
         return self._master.lasersManager.getAllDeviceNames()
-
-    @APIExport
-    def setLaserDigModActive(self, active):
-        """ Sets whether the laser digital modulation mode is active. """
-        self._widget.setDigModActive(active)
 
     @APIExport
     def setLaserActive(self, laserName, active):
@@ -136,16 +84,9 @@ class LaserController(ImConWidgetController):
         uses. """
         self._widget.setValue(laserName, value)
 
-    @APIExport
-    def setLaserDigValue(self, laserName, value):
-        """ Sets the digital modulation value of the specified laser, in the
-        units that the laser uses. """
-        self._widget.setDigValue(laserName, value)
-
 
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'
-_digModAttr = 'DigMod'
 _valueAttr = 'Value'
 
 

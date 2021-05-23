@@ -31,9 +31,6 @@ class AAAOTFLaserManager(LaserManager):
         cmd = 'L' + str(self._channel) + 'P' + str(valueaotf)
         self._rs232manager.send(cmd)
 
-    def setDigitalMod(self, digital, initialValue):
-        pass
-
     def blankingOn(self):
         """Switch on the blanking of all the channels"""
         cmd = 'L0' + 'I1' + 'O1'

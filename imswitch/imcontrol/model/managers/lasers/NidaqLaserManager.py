@@ -27,9 +27,6 @@ class NidaqLaserManager(LaserManager):
             min_val=self.valueRangeMin, max_val=self.valueRangeMax
         )
 
-    def setDigitalMod(self, digital, initialValue):
-        pass
-
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -39,9 +39,6 @@ class CoolLEDLaserManager(LaserManager):
         print(cmd)
         self._rs232manager.send(cmd)
 
-    def setDigitalMod(self, digital, initialValue):
-        pass
-
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #

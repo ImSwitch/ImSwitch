@@ -78,7 +78,7 @@ class NidaqInfo:
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
-@dataclass(frozen=True)
+@dataclass
 class SetupInfo:
     detectors: Dict[str, DetectorInfo] = field(default_factory=dict)  # map from device name to CameraInfo
     lasers: Dict[str, LaserInfo] = field(default_factory=dict)  # map from device name to LaserInfo

@@ -183,6 +183,8 @@ class LaserWidget(Widget):
 
     def eventFilter(self, source, event):
         if source is self.lasersGridContainer and event.type() == QtCore.QEvent.Resize:
+            # Set correct minimum width (otherwise things can go outside the widget because of the
+            # scroll area)
             width = self.lasersGridContainer.minimumSizeHint().width()\
                      + self.scrollArea.verticalScrollBar().width()
             self.scrollArea.setMinimumWidth(width)

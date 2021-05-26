@@ -208,13 +208,13 @@ class LaserModule(QtWidgets.QWidget):
         self.setPointLabel.setAlignment(QtCore.Qt.AlignCenter)
         self.setPointEdit = QtWidgets.QLineEdit(str(float(initialPower)))
         self.setPointEdit.setFixedWidth(50)
-        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         self.powerLabel = QtWidgets.QLabel('Power')
         self.powerLabel.setAlignment(QtCore.Qt.AlignCenter)
         self.powerIndicator = QtWidgets.QLabel(str(float(initialPower)))
         self.powerIndicator.setFixedWidth(50)
-        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
+        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         self.minpower = QtWidgets.QLabel()
         self.minpower.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)

@@ -45,7 +45,9 @@ class CoboltLaserManager(LantzLaserManager):
         self._digitalMod = active
 
     def _setModPower(self, power):
-        self._laser.power_mod = power / self._numLasers
+        power_mod = power / self._numLasers
+        self._laser.power_mod = power_mod
+        print(f'Set digital modulation mode power to: {power_mod}')
 
 
 # Copyright (C) 2020, 2021 TestaLab

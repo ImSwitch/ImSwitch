@@ -28,14 +28,14 @@ class CoboltLaserManager(LantzLaserManager):
         if self._digitalMod:
             self._setModPower(power * Q_(1, 'mW'))
         else:
-            self._laser.power_sp = power * Q_(1, 'mW')
+            self._setBasicPower(power * Q_(1, 'mW'))
 
     def setScanModeActive(self, active):
         if active:
-            powerQ = self._laser.power_sp
+            powerQ = self._laser.power_sp * self._numLasers
             self._laser.enter_mod_mode()
             self._setModPower(powerQ)
-            print(f'Entered digital modulation mode with power: {powerQ}')
+            print(f'Entered digital modulation mode')
             print(f'Modulation mode is: {self._laser.mod_mode}')
         else:
             self._laser.digital_mod = False
@@ -44,10 +44,12 @@ class CoboltLaserManager(LantzLaserManager):
 
         self._digitalMod = active
 
+    def _setBasicPower(self, power):
+        self._laser.power_sp = power / self._numLasers
+
     def _setModPower(self, power):
-        power_mod = power / self._numLasers
-        self._laser.power_mod = power_mod
-        print(f'Set digital modulation mode power to: {power_mod}')
+        self._laser.power_mod = power / self._numLasers
+        print(f'Set digital modulation mode power to: {power}')
 
 
 # Copyright (C) 2020, 2021 TestaLab

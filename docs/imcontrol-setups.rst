@@ -9,6 +9,17 @@ can also find some pre-made configuration files there.
 Detector managers
 =================
 
+APDManager
+----------------
+
+DetectorManager that deals with an avalanche photodiode connected to a counter input on a Nidaq card.
+
+Available manager properties:
+
+- ``terminal`` -- the physical input terminal on the Nidaq to which the APD is connected
+- ``ctrInputLine`` -- the counter that the physical input terminal is connected to
+
+
 HamamatsuManager
 ----------------
 
@@ -19,17 +30,6 @@ Available manager properties:
 
 - ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list (list indexing starts at 0); set this to an invalid value, e.g. the string "mock" to load a mocker
 - ``hamamatsu`` -- dictionary of DCAM API properties
-
-
-APDManager
-----------------
-
-DetectorManager that deals with an avalanche photodiode connected to a counter input on a Nidaq card.
-
-Available manager properties:
-
-- ``terminal`` -- the physical input terminal on the Nidaq to which the APD is connected
-- ``ctrInputLine`` -- the counter that the physical input terminal is connected to
 
 
 TISManager
@@ -46,6 +46,47 @@ Available manager properties:
 Laser managers
 ==============
 
+AAAOTFLaserManager
+-------------------
+
+LaserManager for controlling one channel of an AA Opto-Electronic acousto-optic modulator/tunable filter through RS232 communication.
+
+Available manager properties:
+
+- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
+- ``channel`` -- index of the channel in the acousto-optic device that should be controlled (indexing starts at 1)
+
+
+CoboltLaserManager
+------------------
+LaserManager for Cobolt lasers that are fully digitally controlled
+using drivers available through Lantz. Uses digital modulation mode when
+scanning.
+
+Available manager properties: Same as LantzLaserManager.
+
+
+CoolLEDLaserManager
+---------------------
+
+LaserManager for controlling coolLED though RS232 communication.
+
+Available manager properties:
+
+- rs232device -- name of the defined rs232 communication channel through which the communication should take place
+- channel_index -- laser channel (A to H)
+
+
+KatanaLaserManager
+-------------------
+
+LaserManager for controlling a OneFive Katana pulsed laser (NKT Photonics).
+
+Available manager properties:
+
+- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
+
+
 LantzLaserManager
 -----------------
 
@@ -58,51 +99,12 @@ Available manager properties:
 - ``digitalPorts`` -- a string array containing the COM ports to connect to, e.g. ["COM4"]
 
 
-CoboltLaserManager
-------------------
-LaserManager for Cobolt lasers that are fully digitally controlled
-using drivers available through Lantz. Uses digital modulation mode when
-scanning.
-
-Available manager properties: Same as LantzLaserManager.
-
-
 NidaqAOLaserManager
 -------------------
 
 LaserManager for analog NI-DAQ-controlled lasers.
 
 Available manager properties: None
-
-
-AAAOTFLaserManager
--------------------
-
-LaserManager for controlling one channel of an AA Opto-Electronic acousto-optic modulator/tunable filter through RS232 communication.
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
-- ``channel`` -- index of the channel in the acousto-optic device that should be controlled (indexing starts at 1)
-
-CoolLEDLaserManager
----------------------
-
-LaserManager for controlling coolLED though RS232 communication.
-
-Available manager properties:
-
-- rs232device -- name of the defined rs232 communication channel through which the communication should take place
-- channel_index -- laser channel (A to H)
-
-KatanaLaserManager
--------------------
-
-LaserManager for controlling a OneFive Katana pulsed laser (NKT Photonics).
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place 
 
 
 Positioner managers

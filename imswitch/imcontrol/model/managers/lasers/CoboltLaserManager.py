@@ -5,8 +5,8 @@ from .LantzLaserManager import LantzLaserManager
 
 class CoboltLaserManager(LantzLaserManager):
     """ LaserManager for Cobolt lasers that are fully digitally controlled
-    using drivers available through Lantz. Contains extra code to support
-    digital modulation mode when scanning.
+    using drivers available through Lantz. Uses digital modulation mode when
+    scanning.
 
     Available manager properties: Same as LantzLaserManager.
     """

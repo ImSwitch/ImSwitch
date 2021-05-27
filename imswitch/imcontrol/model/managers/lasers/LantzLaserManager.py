@@ -3,7 +3,7 @@ from .LaserManager import LaserManager
 
 
 class LantzLaserManager(LaserManager):
-    """ LaserManager for lasers that are fully digitally controlled using
+    """ Base LaserManager for lasers that are fully digitally controlled using
     drivers available through Lantz.
 
     Available manager properties:

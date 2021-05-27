@@ -47,15 +47,24 @@ Laser managers
 ==============
 
 LantzLaserManager
------------------------
+-----------------
 
-LaserManager for lasers that are fully digitally controlled using
+Base LaserManager for lasers that are fully digitally controlled using
 drivers available through Lantz.
 
 Available manager properties:
 
 - ``digitalDriver`` -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
 - ``digitalPorts`` -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+
+
+CoboltLaserManager
+------------------
+LaserManager for Cobolt lasers that are fully digitally controlled
+using drivers available through Lantz. Uses digital modulation mode when
+scanning.
+
+Available manager properties: Same as LantzLaserManager.
 
 
 NidaqAOLaserManager

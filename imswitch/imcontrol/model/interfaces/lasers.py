@@ -31,6 +31,9 @@ class LinkedLantzLaser:
             laser.finalize()
 
     def __getattr__(self, item):
+        if item == 'lasers':
+            return super().__getattribute__(item)  # Prevent infinite recursion on lasers object
+
         value = getattr(self.lasers[0], item)
         if callable(value):
             return lambda *args, **kwargs: [getattr(laser, item)(*args, **kwargs)
@@ -45,6 +48,9 @@ class LinkedLantzLaser:
             return value
 
     def __setattr__(self, key, value):
+        if key == 'lasers':
+            super().__setattr__(key, value)  # Prevent infinite recursion on lasers object
+
         for laser in self.lasers:
             setattr(laser, key, value)
 

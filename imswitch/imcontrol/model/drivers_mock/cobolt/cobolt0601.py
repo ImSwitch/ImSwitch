@@ -68,6 +68,7 @@ class Cobolt0601_f2(Driver):
     def digital_mod(self, value):
         self._digMod = value
 
+    @property
     def mod_mode(self):
         """Returns the current operating mode
         """

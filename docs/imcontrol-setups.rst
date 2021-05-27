@@ -99,8 +99,8 @@ Available manager properties:
 - ``digitalPorts`` -- a string array containing the COM ports to connect to, e.g. ["COM4"]
 
 
-NidaqAOLaserManager
--------------------
+NidaqLaserManager
+-----------------
 
 LaserManager for analog NI-DAQ-controlled lasers.
 

@@ -23,9 +23,9 @@ Both cameras are Hamamatsu, so they use ``HamamatsuManager``. All the required c
 like the DAQ digital line for external triggering, readout speed, exposure time, field of view, etc.
 
 There are five lasers in this setup, we use acousto-optic modulators (AOM) connected to the DAQ to control some of them,
-and others need the vendor interface as well, in this case Cobolt. The specific manager is defined for each type, ``LantzLaserManager`` or ``NidaqAOLaserManager``, (see Hardware Control Configuration). 
+and others need the vendor interface as well, in this case Cobolt. The specific manager is defined for each type, ``LantzLaserManager`` or ``NidaqLaserManager``, (see Hardware Control Configuration).
 
-We use a X-Y-Z stage that we control through the DAQ as well, so the axes are defined as positioners using ``NidaqAOPositionerManager``. The analog lines and conversion factors are specified as well.
+We use a X-Y-Z stage that we control through the DAQ as well, so the axes are defined as positioners using ``NidaqPositionerManager``. The analog lines and conversion factors are specified as well.
 The modules that will create the signals for the scan are ``BetaStageScanDesigner`` for the Stage, and ``BetaTTLCycleDesigner`` for the instrument synchronization.
 
 Other config parameters related to scanning, regions of interest (ROI) and a list of widgets to be loaded are added in this file. 

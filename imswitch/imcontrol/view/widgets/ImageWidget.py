@@ -62,7 +62,7 @@ class ImageWidget(QtWidgets.QWidget):
                     addImage(name, 'grayclip')
 
     def getCurrentImageName(self):
-        return self.napariViewer.active_layer.name
+        return self.napariViewer.layers.selection.active.name
 
     def getImage(self, name):
         return self.imgLayers[name].data

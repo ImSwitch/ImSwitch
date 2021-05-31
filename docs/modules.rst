@@ -14,17 +14,9 @@ ImSwitch consists of multiple different modules:
 | Scripting            | ``imscripting``   |
 +----------------------+-------------------+
 
-The list of enabled modules is defined in the /config/modules.json file. This file is automatically
-created the first time the program starts, but it is also possible to create or modify it manually
-according to this template:
+One can select which modules to enable through the "Set active modules…" option in the "Tools" menu
+of the menu bar. By default, the hardware control and scripting modules are enabled. Modules that
+are not enabled will not show up in the program.
 
-.. code-block:: json
-
-   {
-       "ID_of_module_1",
-       "ID_of_module_2",
-       ...
-   }
-
-Modules that are not enabled will not show up in the program. By default, the hardware control and
-scripting modules are enabled.
+Behind the scenes, the list of enabled modules is defined in the /config/modules.json file, which is
+automatically created the first time the program starts.

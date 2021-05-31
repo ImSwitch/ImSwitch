@@ -1,9 +1,12 @@
-import os as _os
-
-from imswitch.imcommon import constants as _constants
+__title__ = 'Image Reconstruction'
 
 
 def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
+    import os
+    from imswitch.imcommon import constants
+    os.environ['PATH'] = (os.environ['PATH'] + ';' +
+                          os.path.join(constants.rootFolderPath, 'libs'))
+
     from .controller import ImRecMainController
     from .view import ImRecMainView
 
@@ -15,10 +18,6 @@ def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
         raise e
 
     return view, controller
-
-
-_os.environ['PATH'] = (_os.environ['PATH'] + ';' +
-                       _os.path.join(_constants.rootFolderPath, 'libs'))
 
 
 # Copyright (C) 2020, 2021 TestaLab

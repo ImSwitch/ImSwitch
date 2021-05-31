@@ -1,3 +1,6 @@
+__title__ = 'Scripting'
+
+
 def getMainViewAndController(moduleCommChannel, multiModuleWindow, moduleMainControllers,
                              *_args, **_kwargs):
     from .controller import ImScrMainController

@@ -1,3 +1,6 @@
+__title__ = 'Hardware Control'
+
+
 def getMainViewAndController(moduleCommChannel, *_args,
                              overrideSetupInfo=None, overrideOptions=None, **_kwargs):
     from .controller import ImConMainController

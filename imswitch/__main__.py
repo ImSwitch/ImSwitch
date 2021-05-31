@@ -3,43 +3,44 @@ import os
 import traceback
 
 from .imcommon import constants, prepareApp, launchApp
-from .imcommon.controller import ModuleCommunicationChannel
+from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from .imcommon.model import modulesconfigtools
 from .imcommon.view import MultiModuleWindow
 
-
-moduleNames = {
-    'imcontrol': 'Hardware Control',
-    'imreconstruct': 'Image Reconstruction',
-    'imscripting': 'Scripting'
-}
 
 enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 if 'imscripting' in enabledModuleIds:
     # Ensure that imscripting is added last
     enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-modules = {}
-for moduleId in modulesconfigtools.getEnabledModuleIds():
-    module = importlib.import_module(f'imswitch.{moduleId}')
-    modules[module] = moduleNames[moduleId]
+modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
+              for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
 app = prepareApp()
 moduleCommChannel = ModuleCommunicationChannel()
 multiModuleWindow = MultiModuleWindow(
     'ImSwitch', os.path.join(constants.rootFolderPath, 'icon.png')
 )
+multiModuleWindowController = MultiModuleWindowController.create(
+    multiModuleWindow, moduleCommChannel
+)
 moduleMainControllers = dict()
 
-for modulePackage in modules.keys():
-    moduleCommChannel.register(modulePackage)
+# Register modules
+for modulePkg in modulePkgs:
+    moduleCommChannel.register(modulePkg)
 
-for modulePackage, moduleName in modules.items():
-    moduleId = modulePackage.__name__
+# Load modules
+for modulePkg in modulePkgs:
+    moduleId = modulePkg.__name__
     moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
 
+    # The displayed module name will be the module's __title__, or alternatively its ID if __title__
+    # is not set
+    moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+
     try:
-        view, controller = modulePackage.getMainViewAndController(
+        view, controller = modulePkg.getMainViewAndController(
             moduleCommChannel=moduleCommChannel,
             multiModuleWindow=multiModuleWindow,
             moduleMainControllers=moduleMainControllers
@@ -47,7 +48,7 @@ for modulePackage, moduleName in modules.items():
     except Exception:
         print(f'Failed to initialize module {moduleId}')
         print(traceback.format_exc())
-        moduleCommChannel.unregister(modulePackage)
+        moduleCommChannel.unregister(modulePkg)
     else:
         multiModuleWindow.addModule(moduleId, moduleName, view)
         moduleMainControllers[moduleId] = controller

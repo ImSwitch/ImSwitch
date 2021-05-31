@@ -5,5 +5,6 @@ from .imagetools import *
 from .naparitools import *
 from .pyqtgraphtools import *
 from .OptimizedImageItem import *
+from .PickModulesDialog import PickModulesDialog
 from .stylesheet import *
 from .texttools import *

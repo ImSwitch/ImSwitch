@@ -1,9 +1,12 @@
 import os
+import pkgutil
+import dataclasses
 from dataclasses import dataclass
 from typing import List
 
 from dataclasses_json import dataclass_json
 
+import imswitch
 from imswitch.imcommon import constants
 
 
@@ -15,6 +18,25 @@ class _Modules:
 
 def getEnabledModuleIds():
     return _modules.enabled.copy()
+
+
+def setEnabledModuleIds(moduleIds):
+    global _modules
+    _modules = dataclasses.replace(_modules, enabled=moduleIds)
+    with open(_modulesFilePath, 'w') as modulesFile:
+        modulesFile.write(_modules.to_json(indent=4))
+
+
+def getAvailableModules():
+    moduleIdsAndNamesDict = {}
+    for moduleInfo in pkgutil.iter_modules(imswitch.__path__):
+        if moduleInfo.ispkg and moduleInfo.name != 'imcommon':  # Exception for imcommon
+            moduleId = moduleInfo.name
+            modulePkg = moduleInfo.module_finder.find_spec(moduleId).loader.load_module(moduleId)
+            moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+            moduleIdsAndNamesDict[moduleInfo.name] = moduleName
+
+    return moduleIdsAndNamesDict
 
 
 _configFilesDir = os.path.join(constants.rootFolderPath, 'config')

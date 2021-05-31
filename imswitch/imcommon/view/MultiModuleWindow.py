@@ -1,9 +1,11 @@
-from pyqtgraph.Qt import QtGui, QtWidgets
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 from imswitch.imcommon.model import APIExport
 
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
+    sigPickModules = QtCore.Signal()
+
     def __init__(self, title, iconPath=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._moduleIdNameMap = {}
@@ -11,6 +13,9 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(title)
         if iconPath:
             self.setWindowIcon(QtGui.QIcon(iconPath))
+
+        # Create fallback menu bar
+        self._addItemsToMenuBar(self.menuBar())
 
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()
@@ -21,6 +26,29 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
     def addModule(self, moduleId, moduleName, moduleWidget):
         self._moduleIdNameMap[moduleId] = moduleName
         self.moduleTabs.addTab(moduleWidget, moduleName)
+
+        if hasattr(moduleWidget, 'menuBar') and callable(moduleWidget.menuBar):
+            # Module widget has menu bar; add common items and hide fallback menu bar
+            self._addItemsToMenuBar(moduleWidget.menuBar())
+            self.menuBar().hide()
+
+    def _addItemsToMenuBar(self, menuBar):
+        menuChildren = menuBar.findChildren(QtWidgets.QMenu, None, QtCore.Qt.FindDirectChildrenOnly)
+        toolsMenu = None
+        for menuChild in menuChildren:
+            if menuChild.title() == '&Tools':
+                toolsMenu = menuChild
+                break
+
+        if toolsMenu is None:
+            toolsMenu = menuBar.addMenu('&Tools')
+
+        if not toolsMenu.isEmpty():
+            toolsMenu.addSeparator()
+
+        pickModulesAction = QtWidgets.QAction('Set active modules…', self)
+        pickModulesAction.triggered.connect(self.sigPickModules)
+        toolsMenu.addAction(pickModulesAction)
 
     @APIExport
     def setCurrentModule(self, moduleId):

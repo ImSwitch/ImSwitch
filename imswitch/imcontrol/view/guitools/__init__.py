@@ -1,3 +1,3 @@
 from imswitch.imcommon.view.guitools import *  # noqa
-from .PickSetupDialog import *
-from .ViewSetupInfo import *
+from .PickSetupDialog import PickSetupDialog
+from .ViewSetupInfo import ROIInfo, LaserPresetInfo, ScanDefaultsInfo, ViewSetupInfo

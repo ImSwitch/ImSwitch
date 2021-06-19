@@ -1,6 +1,6 @@
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
 from vispy.visuals.transforms import STTransform

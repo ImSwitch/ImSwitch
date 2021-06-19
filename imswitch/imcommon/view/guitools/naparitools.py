@@ -1,9 +1,13 @@
+from abc import abstractmethod
+
 import napari
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
 from vispy.visuals.transforms import STTransform
+
+from .imagetools import minmaxLevels
 
 
 def addNapariGrayclipColormap():
@@ -19,39 +23,101 @@ def addNapariGrayclipColormap():
     )
 
 
-class NapariShiftWidget(QtWidgets.QWidget):
+class NapariBaseWidget(QtWidgets.QWidget):
+    """ Base class for Napari widgets. """
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
+
+    def __init__(self, napariViewer):
+        super().__init__()
+        self.viewer = napariViewer
+
+    @classmethod
+    def addToViewer(cls, napariViewer):
+        """ Adds this widget to the given Napari viewer. """
+
+        # Add dock for this widget
+        widget = cls(napariViewer)
+        napariViewer.window.add_dock_widget(widget, name=widget.name, area='left')
+
+        # Move layer list to bottom
+        napariViewer.window._qt_window.removeDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window._qt_window.addDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList.qt_area,
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window.qt_viewer.dockLayerList.show()
+
+
+class NapariUpdateLevelsWidget(NapariBaseWidget):
+    """ Napari widget for auto-levelling the currently selected layer with a
+    single click. """
+
+    @property
+    def name(self):
+        return 'update levels widget'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
+
+        # Update levels button
+        self.updateLevelsButton = QtWidgets.QPushButton('Update levels')
+        self.updateLevelsButton.clicked.connect(self._on_update_levels)
+
+        # Layout
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(self.updateLevelsButton)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+
+    def _on_update_levels(self):
+        layer = self.viewer.active_layer
+        layer.contrast_limits = minmaxLevels(layer.data)
+
+
+class NapariShiftWidget(NapariBaseWidget):
     """ Napari widget for shifting the currently selected layer by a
     user-defined number of pixels. """
 
-    def __init__(self, napari_viewer):
-        super().__init__()
-        self.viewer = napari_viewer
+    @property
+    def name(self):
+        return 'image shift controls'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
 
         # Title label
-        self.titleLabel = QtWidgets.QLabel('<h3>Shift layer</h3>')
+        self.titleLabel = QtWidgets.QLabel('<h3>Image shift controls</h3>')
 
         # Shift up button
         self.upButton = QtWidgets.QPushButton()
         self.upButton.setToolTip('Shift selected layer up')
-        self.upButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/up_arrow.svg'))
+        self.upButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/up_arrow.svg'))
         self.upButton.clicked.connect(self._on_up)
 
         # Shift right button
         self.rightButton = QtWidgets.QPushButton()
         self.rightButton.setToolTip('Shift selected layer right')
-        self.rightButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/right_arrow.svg'))
+        self.rightButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/right_arrow.svg'))
         self.rightButton.clicked.connect(self._on_right)
 
         # Shift down button
         self.downButton = QtWidgets.QPushButton()
         self.downButton.setToolTip('Shift selected layer down')
-        self.downButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/down_arrow.svg'))
+        self.downButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/down_arrow.svg'))
         self.downButton.clicked.connect(self._on_down)
 
         # Shift left button
         self.leftButton = QtWidgets.QPushButton()
         self.leftButton.setToolTip('Shift selected layer left')
-        self.leftButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/left_arrow.svg'))
+        self.leftButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/left_arrow.svg'))
         self.leftButton.clicked.connect(self._on_left)
 
         # Reset button
@@ -111,25 +177,6 @@ class NapariShiftWidget(QtWidgets.QWidget):
 
     def _get_shift_distance(self):
         return self.shiftDistanceInput.value()
-
-    @classmethod
-    def addToViewer(cls, napariViewer):
-        """ Adds this widget to the given Napari viewer. """
-
-        # Add dock for this widget
-        napariViewer.window.add_dock_widget(
-            cls(napariViewer), name='image shift controls', area='left'
-        )
-
-        # Move layer list to bottom
-        napariViewer.window._qt_window.removeDockWidget(
-            napariViewer.window.qt_viewer.dockLayerList
-        )
-        napariViewer.window._qt_window.addDockWidget(
-            napariViewer.window.qt_viewer.dockLayerList.qt_area,
-            napariViewer.window.qt_viewer.dockLayerList
-        )
-        napariViewer.window.qt_viewer.dockLayerList.show()
 
 
 class VispyBaseVisual(QtCore.QObject):

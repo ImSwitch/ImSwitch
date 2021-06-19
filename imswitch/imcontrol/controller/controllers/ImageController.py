@@ -1,5 +1,5 @@
 from .basecontrollers import LiveUpdatedController
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 
 
 class ImageController(LiveUpdatedController):
@@ -25,11 +25,6 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigCrosshairToggled.connect(self.crosshairToggle)
         self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
-
-        # Connect ImageWidget signals
-        self._widget.sigUpdateLevelsClicked.connect(
-            lambda: self.autoLevels(detectorNames=[self._widget.getCurrentImageName()])
-        )
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""

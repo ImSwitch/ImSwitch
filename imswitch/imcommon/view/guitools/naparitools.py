@@ -20,6 +20,9 @@ def addNapariGrayclipColormap():
 
 
 class NapariShiftWidget(QtWidgets.QWidget):
+    """ Napari widget for shifting the currently selected layer by a
+    user-defined number of pixels. """
+
     def __init__(self, napari_viewer):
         super().__init__()
         self.viewer = napari_viewer

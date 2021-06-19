@@ -1,5 +1,6 @@
 import ctypes
 import ctypes.util
+import time
 
 import numpy as np
 from lantz import Driver
@@ -69,6 +70,7 @@ class MockHamamatsu(Driver):
 
         self.mock_data_max_value = np.random.randint(65536)
         self.mock_acquisiton_running = False
+        self.mock_start_time = time.time_ns()
 
         self.s = Q_(1, 's')
 
@@ -80,7 +82,7 @@ class MockHamamatsu(Driver):
 #                         "dcam_open")
         # Get camera properties.
         self.properties = {'Name': 'MOCK Hamamatsu',
-                           'exposure_time': 9999,  # * self.s,
+                           'exposure_time': 10,  # * self.s,
                            'accumulation_time': 99999,  # * self.s,
                            'image_width': 2048,
                            'image_height': 2048,
@@ -88,9 +90,9 @@ class MockHamamatsu(Driver):
                            'subarray_hsize': 2048,
                            'subarray_vsize': 2048,
                            'subarray_mode': 'OFF',
-                           'timing_readout_time': 9999,
-                           'internal_frame_rate': 9999,
-                           'internal_frame_interval': 9999,
+                           'timing_readout_time': 10,
+                           'internal_frame_rate': 10,
+                           'internal_frame_interval': 10,
                            'trigger_source': 1,
                            'trigger_mode': 1}
 
@@ -129,7 +131,13 @@ class MockHamamatsu(Driver):
         frames = []
         frame_x, frame_y = self.frame_x, self.frame_y
 
-        for i in range(2):
+        cur_frame_number = int(
+            (time.time_ns() - self.mock_start_time) / 10e8 * self.properties['internal_frame_rate']
+        )
+        num_frames = cur_frame_number - self.last_frame_number
+        self.last_frame_number = cur_frame_number
+
+        for i in range(num_frames):
             # Create storage
             hc_data = HMockCamData(frame_x * frame_y, self.mock_data_max_value)
             frames.append(np.reshape(hc_data.getData(), (frame_y, frame_x)))
@@ -305,6 +313,7 @@ class MockHamamatsu(Driver):
                           for i in range(1, 2)]
 
         self.mock_acquisiton_running = True
+        self.mock_start_time = time.time_ns()
 
     # stopAcquisition
     #
@@ -312,10 +321,10 @@ class MockHamamatsu(Driver):
     #
     def stopAcquisition(self):
         self.mock_acquisiton_running = False
-        pass
 
     def updateIndices(self):
-        pass
+        self.mock_start_time = time.time_ns()
+        self.last_frame_number = 0
 
     # shutdown
     #

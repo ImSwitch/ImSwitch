@@ -577,6 +577,8 @@ class VispyCrosshairVisual(VispyBaseVisual):
             return
 
         self._paused = not self._paused
+        if not self._paused:
+            self.on_mouse_move(event)
 
 
 class VispyScatterVisual(VispyBaseVisual):

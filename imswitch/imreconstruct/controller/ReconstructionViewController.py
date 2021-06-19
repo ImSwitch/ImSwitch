@@ -8,6 +8,7 @@ class ReconstructionViewController(ImRecWidgetController):
         super().__init__(*args, **kwargs)
 
         self._currItemInd = None
+        self._prevSliceParameters = None
 
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
 
@@ -44,11 +45,14 @@ class ReconstructionViewController(ImRecWidgetController):
                 t=reconstructedShape[2] - 1
             )
             self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels, levels=levels)
-            self._widget.resetView()
+            if self._currItemInd is None or self.getViewId() != self._prevViewId:
+                self._widget.resetView()
         else:
             self._widget.setSliceParameters(s=0, base=0, t=0)
             self._widget.setSliceParameterMaximums(s=0, base=0, t=0)
             self._widget.clearImage()
+
+        self._prevViewId = self.getViewId()
 
     def setImgSlice(self, s, base, t, ds, autoLevels=False, levels=None):
         data = self._widget.getCurrentItemData().reconstructed

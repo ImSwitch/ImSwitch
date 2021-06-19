@@ -15,6 +15,7 @@ class ImageWidget(QtWidgets.QWidget):
         
         guitools.addNapariGrayclipColormap()
         self.napariViewer = napari.Viewer(show=False)
+        guitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
         self.levelsButton = guitools.BetterPushButton('Update Levels', minMinWidth=180)

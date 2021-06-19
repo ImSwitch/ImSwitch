@@ -1,6 +1,6 @@
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtCore
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
 from vispy.visuals.transforms import STTransform
@@ -17,6 +17,116 @@ def addNapariGrayclipColormap():
     napari.utils.colormaps.AVAILABLE_COLORMAPS['grayclip'] = napari.utils.Colormap(
         name='grayclip', colors=grayclip
     )
+
+
+class NapariShiftWidget(QtWidgets.QWidget):
+    def __init__(self, napari_viewer):
+        super().__init__()
+        self.viewer = napari_viewer
+
+        # Title label
+        self.titleLabel = QtWidgets.QLabel('<h3>Shift layer</h3>')
+
+        # Shift up button
+        self.upButton = QtWidgets.QPushButton()
+        self.upButton.setToolTip('Shift selected layer up')
+        self.upButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/up_arrow.svg'))
+        self.upButton.clicked.connect(self._on_up)
+
+        # Shift right button
+        self.rightButton = QtWidgets.QPushButton()
+        self.rightButton.setToolTip('Shift selected layer right')
+        self.rightButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/right_arrow.svg'))
+        self.rightButton.clicked.connect(self._on_right)
+
+        # Shift down button
+        self.downButton = QtWidgets.QPushButton()
+        self.downButton.setToolTip('Shift selected layer down')
+        self.downButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/down_arrow.svg'))
+        self.downButton.clicked.connect(self._on_down)
+
+        # Shift left button
+        self.leftButton = QtWidgets.QPushButton()
+        self.leftButton.setToolTip('Shift selected layer left')
+        self.leftButton.setIcon(QtGui.QIcon(f':/themes/{napari_viewer.theme}/left_arrow.svg'))
+        self.leftButton.clicked.connect(self._on_left)
+
+        # Reset button
+        self.resetButton = QtWidgets.QPushButton('Reset')
+        self.resetButton.clicked.connect(self._on_reset)
+
+        # Shift distance field
+        self.shiftDistanceLabel = QtWidgets.QLabel('Shift distance:')
+        self.shiftDistanceInput = QtWidgets.QSpinBox()
+        self.shiftDistanceInput.setMinimum(1)
+        self.shiftDistanceInput.setMaximum(9999)
+        self.shiftDistanceInput.setValue(1)
+        self.shiftDistanceInput.setSuffix(' px')
+
+        # Layout
+        self.buttonGrid = QtWidgets.QGridLayout()
+        self.buttonGrid.setSpacing(6)
+        self.buttonGrid.addWidget(self.upButton, 0, 1)
+        self.buttonGrid.addWidget(self.rightButton, 1, 2)
+        self.buttonGrid.addWidget(self.downButton, 2, 1)
+        self.buttonGrid.addWidget(self.leftButton, 1, 0)
+        self.buttonGrid.addWidget(self.resetButton, 1, 1)
+
+        self.shiftDistanceLayout = QtWidgets.QHBoxLayout()
+        self.shiftDistanceLayout.setSpacing(12)
+        self.shiftDistanceLayout.addWidget(self.shiftDistanceLabel)
+        self.shiftDistanceLayout.addWidget(self.shiftDistanceInput, 1)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setSpacing(24)
+        self.layout().addWidget(self.titleLabel)
+        self.layout().addLayout(self.buttonGrid)
+        self.layout().addLayout(self.shiftDistanceLayout)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+
+    def _on_up(self):
+        y, x = self.viewer.active_layer.translate
+        self.viewer.active_layer.translate = [y - self._get_shift_distance(), x]
+
+    def _on_right(self):
+        y, x = self.viewer.active_layer.translate
+        self.viewer.active_layer.translate = [y, x + self._get_shift_distance()]
+
+    def _on_down(self):
+        y, x = self.viewer.active_layer.translate
+        self.viewer.active_layer.translate = [y + self._get_shift_distance(), x]
+
+    def _on_left(self):
+        y, x = self.viewer.active_layer.translate
+        self.viewer.active_layer.translate = [y, x - self._get_shift_distance()]
+
+    def _on_reset(self):
+        self.viewer.active_layer.translate = [0, 0]
+
+    def _get_shift_distance(self):
+        return self.shiftDistanceInput.value()
+
+    @classmethod
+    def addToViewer(cls, napariViewer):
+        """ Adds this widget to the given Napari viewer. """
+
+        # Add dock for this widget
+        napariViewer.window.add_dock_widget(
+            cls(napariViewer), name='image shift controls', area='left'
+        )
+
+        # Move layer list to bottom
+        napariViewer.window._qt_window.removeDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window._qt_window.addDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList.qt_area,
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window.qt_viewer.dockLayerList.show()
 
 
 class VispyBaseVisual(QtCore.QObject):

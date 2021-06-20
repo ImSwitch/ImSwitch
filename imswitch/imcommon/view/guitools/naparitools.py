@@ -37,7 +37,7 @@ class NapariBaseWidget(QtWidgets.QWidget):
 
     @classmethod
     def addToViewer(cls, napariViewer):
-        """ Adds this widget to the given Napari viewer. """
+        """ Adds this widget to the specified Napari viewer. """
 
         # Add dock for this widget
         widget = cls(napariViewer)
@@ -78,8 +78,8 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
                                                  QtWidgets.QSizePolicy.Maximum))
 
     def _on_update_levels(self):
-        layer = self.viewer.active_layer
-        layer.contrast_limits = minmaxLevels(layer.data)
+        for layer in self.viewer.layers.selected:
+            layer.contrast_limits = minmaxLevels(layer.data)
 
 
 class NapariShiftWidget(NapariBaseWidget):
@@ -157,23 +157,25 @@ class NapariShiftWidget(NapariBaseWidget):
                                                  QtWidgets.QSizePolicy.Maximum))
 
     def _on_up(self):
-        y, x = self.viewer.active_layer.translate
-        self.viewer.active_layer.translate = [y - self._get_shift_distance(), x]
+        self._do_shift(0, -self._get_shift_distance())
 
     def _on_right(self):
-        y, x = self.viewer.active_layer.translate
-        self.viewer.active_layer.translate = [y, x + self._get_shift_distance()]
+        self._do_shift(self._get_shift_distance(), 0)
 
     def _on_down(self):
-        y, x = self.viewer.active_layer.translate
-        self.viewer.active_layer.translate = [y + self._get_shift_distance(), x]
+        self._do_shift(0, self._get_shift_distance())
 
     def _on_left(self):
-        y, x = self.viewer.active_layer.translate
-        self.viewer.active_layer.translate = [y, x - self._get_shift_distance()]
+        self._do_shift(-self._get_shift_distance(), 0)
 
     def _on_reset(self):
-        self.viewer.active_layer.translate = [0, 0]
+        for layer in self.viewer.layers.selected:
+            layer.translate = [0, 0]
+
+    def _do_shift(self, xDist, yDist):
+        for layer in self.viewer.layers.selected:
+            y, x = layer.translate
+            layer.translate = [y + yDist, x + xDist]
 
     def _get_shift_distance(self):
         return self.shiftDistanceInput.value()

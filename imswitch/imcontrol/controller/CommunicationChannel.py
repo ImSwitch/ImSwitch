@@ -29,6 +29,8 @@ class CommunicationChannel(SignalInterface):
 
     sigRemoveItemFromVb = Signal(object)  # (item)
 
+    sigRecordingStarted = Signal()
+
     sigRecordingEnded = Signal()
 
     sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
@@ -76,6 +78,7 @@ class CommunicationChannel(SignalInterface):
 
          - acquisitionStarted
          - acquisitionStopped
+         - recordingStarted
          - recordingEnded
          - scanEnded
         """
@@ -83,6 +86,7 @@ class CommunicationChannel(SignalInterface):
         return DotMap({
             'acquisitionStarted': self.sigAcquisitionStarted,
             'acquisitionStopped': self.sigAcquisitionStopped,
+            'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
             'scanEnded': self.sigScanEnded
         })

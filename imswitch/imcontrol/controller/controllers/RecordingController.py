@@ -29,6 +29,7 @@ class RecordingController(ImConWidgetController):
         self.untilStop()
 
         # Connect CommunicationChannel signals
+        self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
@@ -124,6 +125,9 @@ class RecordingController(ImConWidgetController):
         time.sleep(0.3)
         self._commChannel.sigPrepareScan.emit()
 
+    def recordingStarted(self):
+        self._widget.setFieldsEnabled(False)
+
     def recordingEnded(self):
         if (self._widget.isRecButtonChecked() and self.recMode == RecMode.ScanLapse and
                 0 < self.lapseCurrent + 1 < self.lapseTotal):
@@ -139,6 +143,7 @@ class RecordingController(ImConWidgetController):
             self._widget.updateRecTime(0)
             self._widget.updateRecLapseNum(0)
             self._widget.setRecButtonChecked(False)
+            self._widget.setFieldsEnabled(True)
 
     def updateRecFrameNum(self, recFrameNum):
         if self.recMode == RecMode.SpecFrames:

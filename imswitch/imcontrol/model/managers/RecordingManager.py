@@ -13,6 +13,7 @@ class RecordingManager(SignalInterface):
     """ RecordingManager handles single frame captures as well as continuous
     recordings of detector data. """
 
+    sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
     sigRecordingTimeUpdated = Signal(int)  # (recTime)
@@ -131,6 +132,7 @@ class RecordingWorker(Worker):
             for key, value in self.attrs[detectorName].items():
                 files[detectorName].attrs[key] = value
 
+        self.__recordingManager.sigRecordingStarted.emit()
         try:
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 recFrames = self.recFrames

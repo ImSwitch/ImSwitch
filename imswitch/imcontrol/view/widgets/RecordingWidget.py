@@ -161,6 +161,9 @@ class RecordingWidget(Widget):
     def getCustomFilename(self):
         return self.filenameEdit.text() if self.specifyfile.isChecked() else None
 
+    def isRecButtonChecked(self):
+        return self.recButton.isChecked()
+
     def getNumExpositions(self):
         return int(float(self.numExpositionsEdit.text()))
 
@@ -251,8 +254,8 @@ class RecordingWidget(Widget):
     def setTimelapseFreq(self, freqSeconds):
         self.freqEdit.setText(str(freqSeconds))
 
-    def updateRecFrameNum(self, frameNum):
-        self.currentFrame.setText(str(frameNum) + ' /')
+    def updateRecFrameNum(self, recFrameNum):
+        self.currentFrame.setText(str(recFrameNum) + ' /')
 
     def updateRecTime(self, recTime):
         self.currentTime.setText(str(recTime) + ' /')

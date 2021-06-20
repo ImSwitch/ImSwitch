@@ -63,6 +63,12 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
+    def getNumScanPositions(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumScanPositions()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
     @APIExport
     def signals(self):
         """ Returns signals that can be used with e.g. the getWaitForSignal

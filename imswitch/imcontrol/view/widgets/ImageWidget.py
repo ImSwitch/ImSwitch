@@ -17,16 +17,8 @@ class ImageWidget(QtWidgets.QWidget):
         guitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
-        self.toolboxLayout = QtWidgets.QHBoxLayout()
-        self.toolboxLayout.addSpacerItem(
-            QtWidgets.QSpacerItem(
-                40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-            )
-        )
-
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
         self.viewCtrlLayout.addWidget(self.napariViewer.window._qt_window)
-        self.viewCtrlLayout.addLayout(self.toolboxLayout)
         self.setLayout(self.viewCtrlLayout)
 
         self.grid = guitools.VispyGridVisual(color='yellow')

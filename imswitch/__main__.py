@@ -18,20 +18,24 @@ modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
 
 app = prepareApp()
 moduleCommChannel = ModuleCommunicationChannel()
+
 multiModuleWindow = MultiModuleWindow(
     'ImSwitch', os.path.join(constants.rootFolderPath, 'icon.png')
 )
 multiModuleWindowController = MultiModuleWindowController.create(
     multiModuleWindow, moduleCommChannel
 )
-moduleMainControllers = dict()
+multiModuleWindow.show(showLoadingScreen=True)
+app.processEvents()  # Draw window before continuing
 
 # Register modules
 for modulePkg in modulePkgs:
     moduleCommChannel.register(modulePkg)
 
 # Load modules
-for modulePkg in modulePkgs:
+moduleMainControllers = dict()
+
+for i, modulePkg in enumerate(modulePkgs):
     moduleId = modulePkg.__name__
     moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
 
@@ -42,7 +46,7 @@ for modulePkg in modulePkgs:
     try:
         view, controller = modulePkg.getMainViewAndController(
             moduleCommChannel=moduleCommChannel,
-            multiModuleWindow=multiModuleWindow,
+            multiModuleWindowController=multiModuleWindowController,
             moduleMainControllers=moduleMainControllers
         )
     except Exception:
@@ -50,8 +54,13 @@ for modulePkg in modulePkgs:
         print(traceback.format_exc())
         moduleCommChannel.unregister(modulePkg)
     else:
+        # Add module to window
         multiModuleWindow.addModule(moduleId, moduleName, view)
         moduleMainControllers[moduleId] = controller
+
+        # Update loading progress
+        multiModuleWindow.setLoadingProgress(i / len(modulePkgs))
+        app.processEvents()  # Draw window before continuing
 
 launchApp(app, multiModuleWindow, moduleMainControllers.values())
 

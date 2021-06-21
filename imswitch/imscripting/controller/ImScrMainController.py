@@ -11,10 +11,11 @@ from ..model import getActionsScope
 class ImScrMainController(MainController):
     """ Main controller of imscripting. """
 
-    def __init__(self, mainView, moduleCommChannel, multiModuleWindow, moduleMainControllers):
+    def __init__(self, mainView, moduleCommChannel, multiModuleWindowController,
+                 moduleMainControllers):
         self.__mainView = mainView
         self.__moduleCommChannel = moduleCommChannel
-        self.__scriptScope = self._createScriptScope(moduleCommChannel, multiModuleWindow,
+        self.__scriptScope = self._createScriptScope(moduleCommChannel, multiModuleWindowController,
                                                      moduleMainControllers)
 
         # Connect view signals
@@ -32,14 +33,15 @@ class ImScrMainController(MainController):
             ImScrMainViewController, self.__mainView
         )
 
-    def _createScriptScope(self, moduleCommChannel, multiModuleWindow, moduleMainControllers):
+    def _createScriptScope(self, moduleCommChannel, multiModuleWindowController,
+                           moduleMainControllers):
         """ Generates a scope of objects that are intended to be accessible by scripts. """
 
         scope = {}
         scope.update(getActionsScope())
         scope.update({
             'moduleCommChannel': moduleCommChannel,
-            'mainWindow': generateAPI([multiModuleWindow]),
+            'mainWindow': generateAPI([multiModuleWindowController]),
             'controllers': DotMap(moduleMainControllers),
             'api': DotMap({key: controller.api
                            for key, controller in moduleMainControllers.items()

@@ -67,8 +67,6 @@ class ImScrMainView(QtWidgets.QMainWindow):
 
         self.editorDock.setStretch(20, 30)
 
-        self.showMaximized()
-
     def closeEvent(self, event):
         self.sigClosing.emit()
         event.accept()

@@ -26,6 +26,7 @@ def launchApp(app, mainView, moduleMainControllers):
     """ Launches the app. The program will exit when the app is exited. """
 
     # Show app
+    mainView.showMaximized()
     mainView.show()
     exitCode = app.exec_()
 

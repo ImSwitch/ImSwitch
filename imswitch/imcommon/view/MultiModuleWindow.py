@@ -18,11 +18,12 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self.moduleTabs.setTabPosition(QtWidgets.QTabWidget.TabPosition.West)
 
         # Display loading screen until show(showLoadingScreen=False) is called
-        loadingLabel = QtWidgets.QLabel('<h1>Loading ImSwitch…</h1>')
+        loadingLabel = QtWidgets.QLabel('<h1>Starting ImSwitch…</h1>')
         loadingLabel.setAlignment(QtCore.Qt.AlignCenter)
         self.loadingProgressBar = QtWidgets.QProgressBar()
         self.loadingProgressBar.setMaximumWidth(480)
         self.loadingProgressBar.setValue(0)
+        self.loadingProgressBar.setTextVisible(False)
 
         loadingLayout = QtWidgets.QVBoxLayout()
         loadingLayout.setAlignment(QtCore.Qt.AlignCenter)

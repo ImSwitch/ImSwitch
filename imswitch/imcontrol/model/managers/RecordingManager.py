@@ -117,8 +117,10 @@ class RecordingWorker(Worker):
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
+            # Initial number of frames must not be 0; otherwise, too much disk space may get
+            # allocated. We remove this default frame later on if no frames are captured.
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (0, *shapes[detectorName]),
+                'data', (1, *shapes[detectorName]),
                 maxshape=(None, *shapes[detectorName]),
                 dtype='i2'
             )
@@ -218,6 +220,11 @@ class RecordingWorker(Worker):
                 raise ValueError('Unsupported recording mode specified')
         finally:
             for detectorName, file in files.items():
+                # Remove default frame if no frames have been captured
+                if currentFrame[detectorName] < 1:
+                    datasets[detectorName].resize(0, axis=0)
+
+                # Handle memory recordings
                 if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
                     filePath = filePaths[detectorName]
                     name = os.path.basename(filePath)

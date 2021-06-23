@@ -64,7 +64,7 @@ class ImageWidget(QtWidgets.QWidget):
     def setImageDisplayLevels(self, name, minimum, maximum):
         self.imgLayers[name].contrast_limits = (minimum, maximum)
 
-    def getCenterROI(self):
+    def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
         return (
             self.napariViewer.window.qt_viewer.camera.center[2],

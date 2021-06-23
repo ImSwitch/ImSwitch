@@ -69,9 +69,9 @@ class ImageController(LiveUpdatedController):
         self._lastWidth = width
         self._lastHeight = height
 
-    def getCenterROI(self):
+    def getCenterViewbox(self):
         """ Returns center of viewbox to center a ROI. """
-        return self._widget.getCenterROI()
+        return self._widget.getCenterViewbox()
 
     def gridToggle(self, enabled):
         """ Shows or hides grid. """

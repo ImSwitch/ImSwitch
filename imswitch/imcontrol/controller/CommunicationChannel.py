@@ -52,10 +52,10 @@ class CommunicationChannel(SignalInterface):
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
 
-    def getCenterROI(self):
+    def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
-            return self.__main.controllers['Image'].getCenterROI()
+            return self.__main.controllers['Image'].getCenterViewbox()
         else:
             raise RuntimeError('Required image widget not available')
 

@@ -344,7 +344,7 @@ class SettingsController(ImConWidgetController):
 
         if customFrame:
             ROIsize = (64, 64)
-            ROIcenter = self._commChannel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterViewbox()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])

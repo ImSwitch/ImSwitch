@@ -65,8 +65,11 @@ class ImageWidget(QtWidgets.QWidget):
         self.imgLayers[name].contrast_limits = (minimum, maximum)
 
     def getCenterROI(self):
-        """ Returns center of viewbox to center a ROI. """
-        return self.napariViewer.window.qt_viewer.camera.center[-2:]
+        """ Returns the center point of the viewbox, as an (x, y) tuple. """
+        return (
+            self.napariViewer.window.qt_viewer.camera.center[2],
+            self.napariViewer.window.qt_viewer.camera.center[1]
+        )
 
     def updateGrid(self, imShape):
         self.grid.update(imShape)

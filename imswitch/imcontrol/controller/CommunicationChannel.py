@@ -53,7 +53,7 @@ class CommunicationChannel(SignalInterface):
         self.__sharedAttrs = SharedAttributes()
 
     def getCenterROI(self):
-        # Returns the center of the VB to align the ROI
+        """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
             return self.__main.controllers['Image'].getCenterROI()
         else:

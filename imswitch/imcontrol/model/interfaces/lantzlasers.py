@@ -9,7 +9,6 @@ class LantzLaser:
         lasers = []
         for port in ports:
             laser = getLaser(iName, port)
-            laser.initialize()
             lasers.append(laser)
 
         return lasers[0] if len(ports) == 1 else LinkedLantzLaser(lasers)
@@ -63,27 +62,59 @@ def getLaser(iName, port):
         package = importlib.import_module('imswitch.imcontrol.model.drivers.' + pName)
         driver = getattr(package, driverName)
         laser = driver(port)
-    except:
+        laser.initialize()
+    except Exception as e1:
+        driverNotFound = isinstance(e1, ModuleNotFoundError) or isinstance(e1, AttributeError)
+
         try:
             # If that fails, try to load the driver from lantz
             package = importlib.import_module('lantz.drivers.' + pName)
             driver = getattr(package, driverName)
             laser = driver(port)
-        except:
+            laser.initialize()
+        except Exception as e2:
+            if driverNotFound:
+                driverNotFound = isinstance(e2, ModuleNotFoundError) or isinstance(e2, AttributeError)
+
+            if driverNotFound:
+                print(f'No lantz driver found matching "{iName}" for laser, loading mocker')
+            else:
+                if not isinstance(e1, ModuleNotFoundError) or isinstance(e1, AttributeError):
+                    errorDetails = str(e1)
+                else:
+                    errorDetails = str(e2)
+
+                print(f'Failed to initialize lantz driver "{iName}" for laser, loading mocker'
+                      f' (error details: {errorDetails})')
+
             try:
                 # If that also fails, try loading a mock driver
                 package = importlib.import_module('imswitch.imcontrol.model.drivers_mock.' + pName)
                 driver = getattr(package, driverName)
                 laser = driver(port)
-                print(f'Loading mocker for "{iName}"')
-            except:
-                raise NoSuchDriverError(f'No lantz driver or mocker found matching "{iName}"')
+                laser.initialize()
+            except Exception as e3:
+                if isinstance(e3, ModuleNotFoundError) or isinstance(e3, AttributeError):
+                    print(f'No mocker found matching "{iName}"')
+                else:
+                    print(f'Failed to initialize mocker for "{iName}"')
+
+                if driverNotFound:
+                    raise NoSuchDriverError(f'No lantz driver found matching "{iName}"')
+                else:
+                    raise DriverLoadError(f'Failed to initialize lantz driver "{iName}"')
 
     return laser
 
 
 class NoSuchDriverError(Exception):
     """ Exception raised when the specified driver is not found. """
+    def __init__(self, message):
+        self.message = message
+
+
+class DriverLoadError(Exception):
+    """ Exception raised when the specified driver fails to be initialized. """
     def __init__(self, message):
         self.message = message
 

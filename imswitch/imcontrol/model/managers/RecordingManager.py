@@ -234,7 +234,10 @@ class RecordingWorker(Worker):
                             name, h5py.File(fileHandles[detectorName]), filePath, False
                         )
                     else:
-                        self.__recordingManager.sigMemoryRecordingAvailable.emit(name, file, filePath, True)
+                        file.flush()
+                        self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                            name, file, filePath, True
+                        )
                 else:
                     file.close()
 

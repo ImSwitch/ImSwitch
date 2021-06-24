@@ -172,7 +172,7 @@ class RecordingWorker(Worker):
             elif self.recMode == RecMode.SpecTime:
                 recTime = self.recTime
                 if recTime is None:
-                    raise ValueError('recTime must be specified in SpecFrames or ScanLapse mode')
+                    raise ValueError('recTime must be specified in SpecTime mode')
 
                 start = time.time()
                 currentRecTime = 0

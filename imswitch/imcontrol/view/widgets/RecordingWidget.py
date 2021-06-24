@@ -95,8 +95,10 @@ class RecordingWidget(Widget):
                                    QtWidgets.QSizePolicy.Expanding)
         buttonGrid.addWidget(self.recButton, 0, 2)
 
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
         recGrid = QtWidgets.QGridLayout()
-        self.setLayout(recGrid)
 
         recGrid.addWidget(recTitle, 0, 0, 1, 3)
         recGrid.addWidget(QtWidgets.QLabel('Detector to capture'), 1, 0)
@@ -125,7 +127,12 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, -1)
         recGrid.addWidget(self.saveModeLabel, 12, 0)
         recGrid.addWidget(self.saveModeList, 12, 1, 1, -1)
-        recGrid.addWidget(buttonWidget, 13, 0, 1, -1)
+
+        self.recGridContainer = QtWidgets.QWidget()
+        self.recGridContainer.setLayout(recGrid)
+
+        layout.addWidget(self.recGridContainer)
+        layout.addWidget(buttonWidget)
 
         # Initial condition of fields and checkboxes.
         self.writable = True
@@ -160,6 +167,9 @@ class RecordingWidget(Widget):
 
     def getCustomFilename(self):
         return self.filenameEdit.text() if self.specifyfile.isChecked() else None
+
+    def isRecButtonChecked(self):
+        return self.recButton.isChecked()
 
     def getNumExpositions(self):
         return int(float(self.numExpositionsEdit.text()))
@@ -224,6 +234,9 @@ class RecordingWidget(Widget):
     def checkUntilStop(self):
         self.untilSTOPbtn.setChecked(True)
 
+    def setFieldsEnabled(self, enabled):
+        self.recGridContainer.setEnabled(enabled)
+
     def setEnabledParams(self, numExpositions=False, timeToRec=False,
                          timelapseTime=False, timelapseFreq=False):
         self.numExpositionsEdit.setEnabled(numExpositions)
@@ -251,8 +264,8 @@ class RecordingWidget(Widget):
     def setTimelapseFreq(self, freqSeconds):
         self.freqEdit.setText(str(freqSeconds))
 
-    def updateRecFrameNum(self, frameNum):
-        self.currentFrame.setText(str(frameNum) + ' /')
+    def updateRecFrameNum(self, recFrameNum):
+        self.currentFrame.setText(str(recFrameNum) + ' /')
 
     def updateRecTime(self, recTime):
         self.currentTime.setText(str(recTime) + ' /')

@@ -1,12 +1,13 @@
-from pyqtgraph.Qt import QtGui, QtWidgets
-
-from imswitch.imcommon.model import APIExport
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
+    sigPickModules = QtCore.Signal()
+    sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
+
     def __init__(self, title, iconPath=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._moduleIdNameMap = {}
+        self.moduleWidgets = {}
 
         self.setWindowTitle(title)
         if iconPath:
@@ -16,25 +17,74 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self.moduleTabs = QtWidgets.QTabWidget()
         self.moduleTabs.setTabPosition(QtWidgets.QTabWidget.TabPosition.West)
 
-        self.setCentralWidget(self.moduleTabs)
+        # Display loading screen until show(showLoadingScreen=False) is called
+        loadingLabel = QtWidgets.QLabel('<h1>Starting ImSwitch…</h1>')
+        loadingLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.loadingProgressBar = QtWidgets.QProgressBar()
+        self.loadingProgressBar.setMaximumWidth(480)
+        self.loadingProgressBar.setValue(0)
+        self.loadingProgressBar.setTextVisible(False)
+
+        loadingLayout = QtWidgets.QVBoxLayout()
+        loadingLayout.setAlignment(QtCore.Qt.AlignCenter)
+        loadingLayout.setSpacing(32)
+        loadingLayout.addWidget(loadingLabel)
+        loadingLayout.addWidget(self.loadingProgressBar)
+
+        loadingContainer = QtWidgets.QWidget()
+        loadingContainer.setLayout(loadingLayout)
+        self.setCentralWidget(loadingContainer)
 
     def addModule(self, moduleId, moduleName, moduleWidget):
-        self._moduleIdNameMap[moduleId] = moduleName
+        self.moduleWidgets[moduleName] = moduleWidget
         self.moduleTabs.addTab(moduleWidget, moduleName)
 
-    @APIExport
-    def setCurrentModule(self, moduleId):
+        if hasattr(moduleWidget, 'menuBar') and callable(moduleWidget.menuBar):
+            # Module widget has menu bar; add common items and hide fallback menu bar
+            self.addItemsToMenuBar(moduleWidget.menuBar())
+            self.menuBar().hide()
+
+        self.sigModuleAdded.emit(moduleId, moduleName)
+
+    def setSelectedModule(self, moduleName):
         """ Sets the currently displayed module to the module with the
-        specified ID (e.g. "imcontrol"). """
-        moduleName = self._moduleIdNameMap[moduleId]
+        specified display name. """
         for i in range(self.moduleTabs.count()):
             if self.moduleTabs.tabText(i) == moduleName:
                 self.moduleTabs.setCurrentIndex(i)
                 return
 
-    def show(self):
-        super().show()
+    def setLoadingProgress(self, progressFraction):
+        self.loadingProgressBar.setValue(progressFraction * 100)
+
+    def addItemsToMenuBar(self, menuBar):
+        menuChildren = menuBar.findChildren(QtWidgets.QMenu, None, QtCore.Qt.FindDirectChildrenOnly)
+        toolsMenu = None
+        for menuChild in menuChildren:
+            if menuChild.title() == '&Tools':
+                toolsMenu = menuChild
+                break
+
+        if toolsMenu is None:
+            toolsMenu = menuBar.addMenu('&Tools')
+
+        if not toolsMenu.isEmpty():
+            toolsMenu.addSeparator()
+
+        pickModulesAction = QtWidgets.QAction('Set active modules…', self)
+        pickModulesAction.triggered.connect(self.sigPickModules)
+        toolsMenu.addAction(pickModulesAction)
+
+    def show(self, showLoadingScreen=False):
+        if not showLoadingScreen:
+            # Create fallback menu bar
+            self.addItemsToMenuBar(self.menuBar())
+
+            # Show tabs
+            self.setCentralWidget(self.moduleTabs)
+
         self.showMaximized()
+        super().show()
 
 
 # Copyright (C) 2020, 2021 TestaLab

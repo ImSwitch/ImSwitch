@@ -29,6 +29,8 @@ class CommunicationChannel(SignalInterface):
 
     sigRemoveItemFromVb = Signal(object)  # (item)
 
+    sigRecordingStarted = Signal()
+
     sigRecordingEnded = Signal()
 
     sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
@@ -50,16 +52,22 @@ class CommunicationChannel(SignalInterface):
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
 
-    def getCenterROI(self):
-        # Returns the center of the VB to align the ROI
+    def getCenterViewbox(self):
+        """ Returns the center point of the viewbox, as an (x, y) tuple. """
         if 'Image' in self.__main.controllers:
-            return self.__main.controllers['Image'].getCenterROI()
+            return self.__main.controllers['Image'].getCenterViewbox()
         else:
             raise RuntimeError('Required image widget not available')
 
     def getDimsScan(self):
         if 'Scan' in self.__main.controllers:
             return self.__main.controllers['Scan'].getDimsScan()
+        else:
+            raise RuntimeError('Required scan widget not available')
+
+    def getNumScanPositions(self):
+        if 'Scan' in self.__main.controllers:
+            return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
 
@@ -70,6 +78,7 @@ class CommunicationChannel(SignalInterface):
 
          - acquisitionStarted
          - acquisitionStopped
+         - recordingStarted
          - recordingEnded
          - scanEnded
         """
@@ -77,6 +86,7 @@ class CommunicationChannel(SignalInterface):
         return DotMap({
             'acquisitionStarted': self.sigAcquisitionStarted,
             'acquisitionStopped': self.sigAcquisitionStopped,
+            'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
             'scanEnded': self.sigScanEnded
         })

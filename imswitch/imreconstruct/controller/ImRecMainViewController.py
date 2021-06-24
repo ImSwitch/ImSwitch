@@ -294,9 +294,6 @@ class ImRecMainViewController(ImRecWidgetController):
                     # Reconstructed image
                     reconstrData = copy.deepcopy(reconstructionObj.getReconstruction())
                     reconstrData = reconstrData[:, 0, :, :, :, :]
-                    reconstrData.shape = (reconstrData.shape[0], reconstrData.shape[1],
-                                          reconstrData.shape[2], reconstrData.shape[3],
-                                          reconstrData.shape[4], 1)
                     reconstrData = np.swapaxes(reconstrData, 1, 2)
                     tiff.imwrite(saveName, reconstrData,
                                  imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),

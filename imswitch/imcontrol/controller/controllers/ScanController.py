@@ -1,4 +1,5 @@
 import configparser
+import functools
 import os
 from ast import literal_eval
 from traceback import print_exc
@@ -71,6 +72,12 @@ class ScanController(SuperScanController):
         y = self._analogParameterDict['axis_length'][1] / self._analogParameterDict['axis_step_size'][1]
 
         return x, y
+
+    def getNumScanPositions(self):
+        """ Returns the number of scan positions for the configured scan. """
+        _, positions, _ = self._master.scanManager.getScanSignalsDict(self._analogParameterDict)
+        numPositions = functools.reduce(lambda x, y: x * y, positions)
+        return numPositions
 
     def saveScan(self):
         fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)

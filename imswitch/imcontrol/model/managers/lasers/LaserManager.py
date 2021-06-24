@@ -62,13 +62,11 @@ class LaserManager(ABC):
         pass
 
     @abstractmethod
-    def setDigitalMod(self, digital, initialValue):
-        """Sets whether the laser is in digital modulation mode. Does nothing
-        if the laser doesn't support this mode."""
+    def setValue(self, value):
         pass
 
-    @abstractmethod
-    def setValue(self, value):
+    def setScanModeActive(self, active):
+        """Sets whether the laser should be in scan mode (if supported)."""
         pass
 
     def finalize(self):

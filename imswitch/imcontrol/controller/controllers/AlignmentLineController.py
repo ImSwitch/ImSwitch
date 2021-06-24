@@ -6,7 +6,7 @@ class AlignmentLineController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.addLine()
+        self.lineAdded = False
 
         # Connect AlignmentLineWidget signals
         self._widget.sigAlignmentLineMakeClicked.connect(self.updateLine)
@@ -14,7 +14,9 @@ class AlignmentLineController(ImConWidgetController):
 
     def addLine(self):
         """ Adds alignmentLine to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.alignmentLine)
+        if not self.lineAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.alignmentLine)
+            self.lineAdded = True
 
     def updateLine(self):
         """ Updates line with new parameters. """
@@ -22,6 +24,8 @@ class AlignmentLineController(ImConWidgetController):
 
     def show(self, enabled):
         """ Shows or hides line. """
+        if enabled:
+            self.addLine()
         self._widget.setLineVisibility(enabled)
     
 

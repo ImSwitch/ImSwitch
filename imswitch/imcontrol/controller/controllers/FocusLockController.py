@@ -1,9 +1,3 @@
-"""
-Created on Fri Jan 08 16:53:00 2021
-
-@author: jonatanalvelid
-"""
-
 import time
 
 import numpy as np

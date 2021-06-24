@@ -1,4 +1,7 @@
-def getMainViewAndController(moduleCommChannel, multiModuleWindow, moduleMainControllers,
+__title__ = 'Scripting'
+
+
+def getMainViewAndController(moduleCommChannel, multiModuleWindowController, moduleMainControllers,
                              *_args, **_kwargs):
     from .controller import ImScrMainController
     from .view import ImScrMainView
@@ -8,7 +11,7 @@ def getMainViewAndController(moduleCommChannel, multiModuleWindow, moduleMainCon
         controller = ImScrMainController(
             view,
             moduleCommChannel=moduleCommChannel,
-            multiModuleWindow=multiModuleWindow,
+            multiModuleWindowController=multiModuleWindowController,
             moduleMainControllers=moduleMainControllers
         )
     except Exception as e:

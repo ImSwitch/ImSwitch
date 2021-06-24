@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.Qt import QtCore, QtWidgets
 
 
 def askYesNoQuestion(widget, title, question):
@@ -11,8 +11,11 @@ def askYesNoQuestion(widget, title, question):
 def askForTextInput(widget, title, label):
     """ Asks the user to enter a text string. Returns the string if "yes" is
     clicked, None otherwise. """
-    result, okClicked = QtWidgets.QInputDialog.getText(widget, title, label)
+    result, okClicked = QtWidgets.QInputDialog.getText(
+        widget, title, label, flags=QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint
+    )
     return result if okClicked else None
+
 
 def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, isSaving=False):
     """ Asks the user to pick a file path. Returns the file path if "OK" is

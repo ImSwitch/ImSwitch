@@ -125,8 +125,6 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         pg.setConfigOption('imageAxisOrder', 'row-major')
 
-        self.showMaximized()
-
     def requestFilePathFromUser(self, caption=None, defaultFolder=None, nameFilter=None,
                                 isSaving=False):
         func = (QtWidgets.QFileDialog().getOpenFileName if not isSaving

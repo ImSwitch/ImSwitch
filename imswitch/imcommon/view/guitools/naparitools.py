@@ -1,9 +1,13 @@
+from abc import abstractmethod
+
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore, QtGui, QtWidgets
 from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
 from vispy.visuals.transforms import STTransform
+
+from .imagetools import minmaxLevels
 
 
 def addNapariGrayclipColormap():
@@ -17,6 +21,164 @@ def addNapariGrayclipColormap():
     napari.utils.colormaps.AVAILABLE_COLORMAPS['grayclip'] = napari.utils.Colormap(
         name='grayclip', colors=grayclip
     )
+
+
+class NapariBaseWidget(QtWidgets.QWidget):
+    """ Base class for Napari widgets. """
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
+
+    def __init__(self, napariViewer):
+        super().__init__()
+        self.viewer = napariViewer
+
+    @classmethod
+    def addToViewer(cls, napariViewer):
+        """ Adds this widget to the specified Napari viewer. """
+
+        # Add dock for this widget
+        widget = cls(napariViewer)
+        napariViewer.window.add_dock_widget(widget, name=widget.name, area='left')
+
+        # Move layer list to bottom
+        napariViewer.window._qt_window.removeDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window._qt_window.addDockWidget(
+            napariViewer.window.qt_viewer.dockLayerList.qt_area,
+            napariViewer.window.qt_viewer.dockLayerList
+        )
+        napariViewer.window.qt_viewer.dockLayerList.show()
+
+
+class NapariUpdateLevelsWidget(NapariBaseWidget):
+    """ Napari widget for auto-levelling the currently selected layer with a
+    single click. """
+
+    @property
+    def name(self):
+        return 'update levels widget'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
+
+        # Update levels button
+        self.updateLevelsButton = QtWidgets.QPushButton('Update levels')
+        self.updateLevelsButton.clicked.connect(self._on_update_levels)
+
+        # Layout
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(self.updateLevelsButton)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+
+    def _on_update_levels(self):
+        for layer in self.viewer.layers.selected:
+            layer.contrast_limits = minmaxLevels(layer.data)
+
+
+class NapariShiftWidget(NapariBaseWidget):
+    """ Napari widget for shifting the currently selected layer by a
+    user-defined number of pixels. """
+
+    @property
+    def name(self):
+        return 'image shift controls'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
+
+        # Title label
+        self.titleLabel = QtWidgets.QLabel('<h3>Image shift controls</h3>')
+
+        # Shift up button
+        self.upButton = QtWidgets.QPushButton()
+        self.upButton.setToolTip('Shift selected layer up')
+        self.upButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/up_arrow.svg'))
+        self.upButton.clicked.connect(self._on_up)
+
+        # Shift right button
+        self.rightButton = QtWidgets.QPushButton()
+        self.rightButton.setToolTip('Shift selected layer right')
+        self.rightButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/right_arrow.svg'))
+        self.rightButton.clicked.connect(self._on_right)
+
+        # Shift down button
+        self.downButton = QtWidgets.QPushButton()
+        self.downButton.setToolTip('Shift selected layer down')
+        self.downButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/down_arrow.svg'))
+        self.downButton.clicked.connect(self._on_down)
+
+        # Shift left button
+        self.leftButton = QtWidgets.QPushButton()
+        self.leftButton.setToolTip('Shift selected layer left')
+        self.leftButton.setIcon(QtGui.QIcon(f':/themes/{self.viewer.theme}/left_arrow.svg'))
+        self.leftButton.clicked.connect(self._on_left)
+
+        # Reset button
+        self.resetButton = QtWidgets.QPushButton('Reset')
+        self.resetButton.clicked.connect(self._on_reset)
+
+        # Shift distance field
+        self.shiftDistanceLabel = QtWidgets.QLabel('Shift distance:')
+        self.shiftDistanceInput = QtWidgets.QSpinBox()
+        self.shiftDistanceInput.setMinimum(1)
+        self.shiftDistanceInput.setMaximum(9999)
+        self.shiftDistanceInput.setValue(1)
+        self.shiftDistanceInput.setSuffix(' px')
+
+        # Layout
+        self.buttonGrid = QtWidgets.QGridLayout()
+        self.buttonGrid.setSpacing(6)
+        self.buttonGrid.addWidget(self.upButton, 0, 1)
+        self.buttonGrid.addWidget(self.rightButton, 1, 2)
+        self.buttonGrid.addWidget(self.downButton, 2, 1)
+        self.buttonGrid.addWidget(self.leftButton, 1, 0)
+        self.buttonGrid.addWidget(self.resetButton, 1, 1)
+
+        self.shiftDistanceLayout = QtWidgets.QHBoxLayout()
+        self.shiftDistanceLayout.setSpacing(12)
+        self.shiftDistanceLayout.addWidget(self.shiftDistanceLabel)
+        self.shiftDistanceLayout.addWidget(self.shiftDistanceInput, 1)
+
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setSpacing(24)
+        self.layout().addWidget(self.titleLabel)
+        self.layout().addLayout(self.buttonGrid)
+        self.layout().addLayout(self.shiftDistanceLayout)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+
+    def _on_up(self):
+        self._do_shift(0, -self._get_shift_distance())
+
+    def _on_right(self):
+        self._do_shift(self._get_shift_distance(), 0)
+
+    def _on_down(self):
+        self._do_shift(0, self._get_shift_distance())
+
+    def _on_left(self):
+        self._do_shift(-self._get_shift_distance(), 0)
+
+    def _on_reset(self):
+        for layer in self.viewer.layers.selected:
+            layer.translate = [0, 0]
+
+    def _do_shift(self, xDist, yDist):
+        for layer in self.viewer.layers.selected:
+            y, x = layer.translate
+            layer.translate = [y + yDist, x + xDist]
+
+    def _get_shift_distance(self):
+        return self.shiftDistanceInput.value()
 
 
 class VispyBaseVisual(QtCore.QObject):
@@ -577,6 +739,8 @@ class VispyCrosshairVisual(VispyBaseVisual):
             return
 
         self._paused = not self._paused
+        if not self._paused:
+            self.on_mouse_move(event)
 
 
 class VispyScatterVisual(VispyBaseVisual):

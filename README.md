@@ -12,7 +12,7 @@ that it is possible to integrate current state-of-the-art solutions into one uni
 
 ## Requirements and installation
 
-To run ImSwitch, you must have Python 3.7 or later as well as the required Python packages installed. Additionally, certain components such as support for TIS cameras require the software to be running on Windows.
+To run ImSwitch, you must have Python 3.7 or later as well as the required Python packages installed. Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows.
 
 The required Python packages are specified in the requirements.txt file. You can install them by running this command in the root directory of the repository:
 
@@ -28,7 +28,7 @@ python -m imswitch
 
 ## Documentation and testing
 
-* ImSwitch has automated testing in Github, including ui and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
+* ImSwitch has automated testing through GitHub Actions, including UI and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
 
 * It is possible to implement, import and test user-defined scripts in the scripting module. 
 

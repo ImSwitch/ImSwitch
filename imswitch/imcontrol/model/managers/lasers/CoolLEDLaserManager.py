@@ -1,46 +1,43 @@
+"""
+Created on Wed Jan 13 09:40:00 2021
+
+@author: jonatanalvelid
+"""
+
+import numpy as np
 from .LaserManager import LaserManager
 
 
-class AAAOTFLaserManager(LaserManager):
-    def __init__(self, laserInfo, name, **kwargs):
-        print(type(laserInfo))
-        self._channel = int(laserInfo.managerProperties['channel'])
-        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+class CoolLEDLaserManager(LaserManager):
+    """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager instance controls one LED.
 
-        self.blankingOn()
-        self.internalControl()
+    Available manager properties: rs232device and channel_index
+    """
+    def __init__(self, laserInfo, name, **kwargs):
+        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+        self.__channel_index = laserInfo.managerProperties['channel_index']
+        self.__digital_mod = False 
 
         super().__init__(
-            laserInfo, name, isBinary=False, isDigital=True, valueUnits='arb'
+            laserInfo, name, isBinary=False, isDigital=True, valueUnits='mW'
         )
 
     def setEnabled(self, enabled):
-        """Turn on (1) or off (0) laser emission"""
+        """Turn on (N) or off (F) laser emission"""
         if enabled==True:
-            value = 1
+            value = "N"
         else:
-            value = 0
-        cmd = 'L' + str(self._channel) + 'O' + str(value)
+            value = "F"
+        cmd = "C" + self.__channel_index + value
         self._rs232manager.send(cmd)
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
-        """        
-        valueaotf = round(power)  # assuming input value is [0,1023]
-        cmd = 'L' + str(self._channel) + 'P' + str(valueaotf)
+        """  
+        cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
+        print(cmd)
         self._rs232manager.send(cmd)
-
-    def blankingOn(self):
-        """Switch on the blanking of all the channels"""
-        cmd = 'L0' + 'I1' + 'O1'
-        self._rs232manager.send(cmd)
-
-    def internalControl(self):
-        """Switch the channel to external control"""
-        cmd = 'L' + str(self._channel) + 'I1'
-        self._rs232manager.send(cmd)
-
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

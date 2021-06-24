@@ -8,7 +8,7 @@ class ULensesController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.addPlot()
+        self.plotAdded = False
 
         # Connect ULensesWidget signals
         self._widget.sigULensesClicked.connect(self.updateGrid)
@@ -16,7 +16,9 @@ class ULensesController(ImConWidgetController):
 
     def addPlot(self):
         """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
+        if not self.plotAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
+            self.plotAdded = True
 
     def updateGrid(self):
         """ Updates plot with new parameters. """
@@ -29,6 +31,8 @@ class ULensesController(ImConWidgetController):
 
     def toggleULenses(self, show):
         """ Shows or hides grid. """
+        if show:
+            self.addPlot()
         self._widget.setULensesVisible(show)
 
 

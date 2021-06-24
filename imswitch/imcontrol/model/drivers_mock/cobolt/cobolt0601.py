@@ -3,9 +3,9 @@ from lantz import Driver
 from lantz import Q_
 
 
-class MockLaser(Driver):
+class Cobolt0601_f2(Driver):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
         self.mW = Q_(1, 'mW')
@@ -68,6 +68,7 @@ class MockLaser(Driver):
     def digital_mod(self, value):
         self._digMod = value
 
+    @property
     def mod_mode(self):
         """Returns the current operating mode
         """

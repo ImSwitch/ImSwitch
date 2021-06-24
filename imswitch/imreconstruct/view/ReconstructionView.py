@@ -2,7 +2,7 @@ import napari
 import numpy as np
 from pyqtgraph.Qt import QtCore, QtWidgets
 
-from .guitools import BetterPushButton, addNapariGrayclipColormap
+from . import guitools
 
 
 class ReconstructionView(QtWidgets.QFrame):
@@ -18,8 +18,10 @@ class ReconstructionView(QtWidgets.QFrame):
         super().__init__(*args, **kwargs)
 
         # Image Widget
-        addNapariGrayclipColormap()
+        guitools.addNapariGrayclipColormap()
         self.napariViewer = napari.Viewer(show=False)
+        guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
+
         self.imgLayer = self.napariViewer.add_image(
             np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip'
         )
@@ -88,9 +90,9 @@ class ReconstructionView(QtWidgets.QFrame):
         self.reconList = QtWidgets.QListWidget()
         self.reconList.currentItemChanged.connect(self.sigItemSelected)
         self.reconList.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        removeReconBtn = BetterPushButton('Remove current')
+        removeReconBtn = guitools.BetterPushButton('Remove current')
         removeReconBtn.clicked.connect(self.removeRecon)
-        removeAllReconBtn = BetterPushButton('Remove all')
+        removeAllReconBtn = guitools.BetterPushButton('Remove all')
         removeAllReconBtn.clicked.connect(self.removeAllRecon)
 
         # Set initial states

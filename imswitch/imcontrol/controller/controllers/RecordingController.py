@@ -19,7 +19,9 @@ class RecordingController(ImConWidgetController):
 
         self.settingAttr = False
         self.recording = False
-        self.lapseCurrent = 0
+        self.endedScan = False
+        self.endedRecording = False
+        self.lapseCurrent = -1
         self.lapseTotal = 0
 
         imreconstructRegistered = self._moduleCommChannel.isModuleRegistered('imreconstruct')
@@ -29,10 +31,11 @@ class RecordingController(ImConWidgetController):
         self.untilStop()
 
         # Connect CommunicationChannel signals
+        self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigUpdateRecFrameNum.connect(self._widget.updateRecFrameNum)
-        self._commChannel.sigUpdateRecTime.connect(self._widget.updateRecTime)
-        self._commChannel.sigScanEnded.connect(self.scanDone)
+        self._commChannel.sigScanEnded.connect(self.scanEnded)
+        self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
+        self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect RecordingWidget signals
@@ -100,7 +103,9 @@ class RecordingController(ImConWidgetController):
                     *recordingArgs, recTime=self._widget.getTimeToRec()
                 )
             elif self.recMode == RecMode.ScanOnce:
-                self._master.recordingManager.startRecording(*recordingArgs)
+                self._master.recordingManager.startRecording(
+                    *recordingArgs, recFrames=self._commChannel.getNumScanPositions()
+                )
                 time.sleep(0.1)
                 self._commChannel.sigPrepareScan.emit()
             elif self.recMode == RecMode.ScanLapse:
@@ -114,36 +119,54 @@ class RecordingController(ImConWidgetController):
         else:
             self._master.recordingManager.endRecording()
 
-    def scanDone(self):
-        if self._widget.recButton.isChecked():
-            if self.recMode == RecMode.ScanOnce:
-                self._master.recordingManager.endRecording()
-            elif self.recMode == RecMode.ScanLapse:
-                self.lapseCurrent += 1
-                if self.lapseCurrent < self.lapseTotal:
-                    self._master.recordingManager.endRecording(emitSignal=False)
-                    self._widget.updateRecLapseNum(self.lapseCurrent)
-                    self.timer = Timer(singleShot=True)
-                    self.timer.timeout.connect(self.nextLapse)
-                    self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
-                else:
-                    self._master.recordingManager.endRecording()
-
     def nextLapse(self):
+        self.endedRecording = False
+        self.endedScan = False
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
         self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs
+            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs,
+            recFrames=self._commChannel.getNumScanPositions()
         )
         time.sleep(0.3)
         self._commChannel.sigPrepareScan.emit()
 
+    def recordingStarted(self):
+        self._widget.setFieldsEnabled(False)
+
+    def recordingCycleEnded(self):
+        if (self._widget.isRecButtonChecked() and self.recMode == RecMode.ScanLapse and
+                0 < self.lapseCurrent + 1 < self.lapseTotal):
+            self.lapseCurrent += 1
+            self._widget.updateRecLapseNum(self.lapseCurrent)
+            self.timer = Timer(singleShot=True)
+            self.timer.timeout.connect(self.nextLapse)
+            self.timer.start(int(self._widget.getTimelapseFreq() * 1000))
+        else:
+            self.recording = False
+            self.lapseCurrent = -1
+            self._widget.updateRecFrameNum(0)
+            self._widget.updateRecTime(0)
+            self._widget.updateRecLapseNum(0)
+            self._widget.setRecButtonChecked(False)
+            self._widget.setFieldsEnabled(True)
+            
+    def scanEnded(self):
+        self.endedScan = True
+        if self.endedRecording and (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+            self.recordingCycleEnded()
+            
     def recordingEnded(self):
-        self.recording = False
-        self.lapseCurrent = 0
-        self._widget.updateRecFrameNum(0)
-        self._widget.updateRecTime(0)
-        self._widget.updateRecLapseNum(0)
-        self._widget.setRecButtonChecked(False)
+        self.endedRecording = True
+        if self.endedScan or not (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+            self.recordingCycleEnded()
+            
+    def updateRecFrameNum(self, recFrameNum):
+        if self.recMode == RecMode.SpecFrames:
+            self._widget.updateRecFrameNum(recFrameNum)
+
+    def updateRecTime(self, recTime):
+        if self.recMode == RecMode.SpecTime:
+            self._widget.updateRecTime(recTime)
 
     def specFrames(self):
         self._widget.checkSpecFrames()

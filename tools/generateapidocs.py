@@ -6,8 +6,7 @@ import html2text
 import m2r
 
 from imswitch.imcommon import prepareApp, constants
-from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch.imcommon.view import MultiModuleWindow
+from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imscripting.model.actions import _Actions
 
 from imswitch import imcontrol, imreconstruct
@@ -76,8 +75,8 @@ class mainWindow:
     """ These functions are available in the mainWindow object. """
     pass
 
-for subObjName in dir(MultiModuleWindow):
-    subObj = getattr(MultiModuleWindow, subObjName)
+for subObjName in dir(MultiModuleWindowController):
+    subObj = getattr(MultiModuleWindowController, subObjName)
     if hasattr(subObj, '_APIExport') and subObj._APIExport:
         setattr(mainWindow, subObjName, subObj)
 

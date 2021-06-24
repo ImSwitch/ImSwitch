@@ -8,7 +8,7 @@ class BeadRecController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.running = False
-        self.addROI()
+        self.roiAdded = False
 
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
@@ -17,8 +17,10 @@ class BeadRecController(ImConWidgetController):
     def roiToggled(self, enabled):
         """ Show or hide ROI."""
         if enabled:
+            self.addROI()
+
             ROIsize = (64, 64)
-            ROIcenter = self._commChannel.getCenterROI()
+            ROIcenter = self._commChannel.getCenterViewbox()
 
             ROIpos = (ROIcenter[0] - 0.5 * ROIsize[0],
                       ROIcenter[1] - 0.5 * ROIsize[1])
@@ -29,7 +31,9 @@ class BeadRecController(ImConWidgetController):
 
     def addROI(self):
         """ Adds the ROI to ImageWidget viewbox through the CommunicationChannel. """
-        self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+        if not self.roiAdded:
+            self._commChannel.sigAddItemToVb.emit(self._widget.getROIGraphicsItem())
+            self.roiAdded = True
 
     def run(self):
         if not self.running:
@@ -65,7 +69,7 @@ class BeadWorker(Worker):
         i = 0
 
         while self.__controller.running:
-            newImages, _ = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
+            newImages = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
             n = len(newImages)
             if n > 0:
                 roiItem = self.__controller._widget.getROIGraphicsItem()
@@ -73,7 +77,7 @@ class BeadWorker(Worker):
 
                 for j in range(0, n):
                     img = newImages[j]
-                    img = img[x0:x1, y0:y1]
+                    img = img[y0:y1, x0:x1]
                     mean = np.mean(img)
                     self.__controller.recIm[i] = mean
                     i = i + 1

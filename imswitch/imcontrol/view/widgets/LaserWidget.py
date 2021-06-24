@@ -5,50 +5,81 @@ from .basewidgets import Widget
 
 
 class LaserWidget(Widget):
-    """ Laser widget containing digital modulation and normal control. """
+    """ Laser widget for setting laser powers etc. """
 
     sigEnableChanged = QtCore.Signal(str, bool)  # (laserName, enabled)
     sigValueChanged = QtCore.Signal(str, float)  # (laserName, value)
 
-    sigDigitalModToggled = QtCore.Signal(bool)  # (enabled)
-    sigDigitalValueChanged = QtCore.Signal(str, float)  # (laserName, value)
+    sigPresetSelected = QtCore.Signal(str)  # (presetName)
+    sigLoadPresetClicked = QtCore.Signal()
+    sigSavePresetClicked = QtCore.Signal()
+    sigDeletePresetClicked = QtCore.Signal()
+    sigPresetScanDefaultToggled = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.laserModules = {}
 
-        self.scrollContainer = QtWidgets.QGridLayout()
-        self.scrollContainer.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.scrollContainer)
+        self.setMinimumHeight(320)
 
-        self.grid = QtWidgets.QGridLayout()
-        self.digModule = DigitalModule()
-        self.grid.addWidget(self.digModule, 4, 0, 2, -1)
+        self.layout = QtWidgets.QGridLayout()
+        self.setLayout(self.layout)
 
-        self.gridContainer = QtWidgets.QWidget()
-        self.gridContainer.setLayout(self.grid)
+        # Lasers grid
+        self.lasersGrid = QtWidgets.QGridLayout()
+        self.lasersGrid.setContentsMargins(4, 4, 4, 4)
+
+        self.lasersGridContainer = QtWidgets.QWidget()
+        self.lasersGridContainer.setLayout(self.lasersGrid)
 
         self.scrollArea = QtWidgets.QScrollArea()
         self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.scrollArea.setWidget(self.gridContainer)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.scrollArea.setWidget(self.lasersGridContainer)
         self.scrollArea.setWidgetResizable(True)
-        self.scrollContainer.addWidget(self.scrollArea)
-        self.gridContainer.installEventFilter(self)
+        self.lasersGridContainer.installEventFilter(self)
 
-        # Connect signals
-        self.digModule.sigDigitalModToggled.connect(self.sigDigitalModToggled)
-        self.digModule.sigDigitalModToggled.connect(lambda: print(self.gridContainer.minimumSizeHint().height()))
-        self.digModule.sigDigitalValueChanged.connect(self.sigDigitalValueChanged)
+        self.layout.addWidget(self.scrollArea, 0, 0)
+
+        # Presets box
+        self.presetsBox = QtWidgets.QHBoxLayout()
+        self.presetsLabel = QtWidgets.QLabel('Presets: ')
+        self.presetsList = QtWidgets.QComboBox()
+        self.presetsList.currentIndexChanged.connect(
+            lambda i: self.sigPresetSelected.emit(self.presetsList.itemData(i))
+        )
+        self.loadPresetButton = guitools.BetterPushButton('Load selected')
+        self.loadPresetButton.clicked.connect(self.sigLoadPresetClicked)
+        self.savePresetButton = guitools.BetterPushButton('Save values…')
+        self.savePresetButton.clicked.connect(self.sigSavePresetClicked)
+        self.moreButton = QtWidgets.QToolButton()
+        self.moreButton.setText('More…')
+        self.moreButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.deletePresetAction = QtWidgets.QAction('Delete selected')
+        self.deletePresetAction.triggered.connect(self.sigDeletePresetClicked)
+        self.moreButton.addAction(self.deletePresetAction)
+        self.presetScanDefaultAction = QtWidgets.QAction('Make selected default for scanning')
+        self.presetScanDefaultAction.triggered.connect(self.sigPresetScanDefaultToggled)
+        self.moreButton.addAction(self.presetScanDefaultAction)
+
+        self.setCurrentPreset(None)
+        self.setScanDefaultPresetActive(False)
+
+        self.presetsBox.addWidget(self.presetsLabel)
+        self.presetsBox.addWidget(self.presetsList, 1)
+        self.presetsBox.addWidget(self.loadPresetButton)
+        self.presetsBox.addWidget(self.savePresetButton)
+        self.presetsBox.addWidget(self.moreButton)
+
+        self.layout.addLayout(self.presetsBox, 1, 0)
 
     def addLaser(self, laserName, valueUnits, wavelength, valueRange=None, valueRangeStep=1):
         """ Adds a laser module widget. valueRange is either a tuple
         (min, max), or None (if the laser can only be turned on/off). """
 
         control = LaserModule(
-            name=laserName, units=valueUnits, wavelength=wavelength,
-            valueRange=valueRange, tickInterval=5, singleStep=valueRangeStep,
+            units=valueUnits, valueRange=valueRange, tickInterval=5, singleStep=valueRangeStep,
             initialPower=valueRange[0] if valueRange is not None else 0
         )
         control.sigEnableChanged.connect(
@@ -58,14 +89,16 @@ class LaserWidget(Widget):
             lambda value: self.sigValueChanged.emit(laserName, value)
         )
 
-        self.grid.addWidget(control, 0, len(self.laserModules), 4, 1)
+        nameLabel = QtWidgets.QLabel(laserName)
+        color = guitools.colorutils.wavelengthToHex(wavelength)
+        nameLabel.setStyleSheet(
+            f'font-size: 16px; font-weight: bold; padding: 0 6px 0 12px;'
+            f'border-left: 4px solid {color}'
+        )
+
+        self.lasersGrid.addWidget(nameLabel, len(self.laserModules), 0)
+        self.lasersGrid.addWidget(control, len(self.laserModules), 1)
         self.laserModules[laserName] = control
-
-        self.digModule.addLaser(laserName, valueUnits, valueRange)
-
-    def isDigModActive(self):
-        """ Returns whether the digital modulation mode is active. """
-        return self.digModule.isActive()
 
     def isLaserActive(self, laserName):
         """ Returns whether the specified laser is powered on. """
@@ -76,23 +109,22 @@ class LaserWidget(Widget):
         laser uses. """
         return self.laserModules[laserName].getValue()
 
-    def getDigValue(self, laserName):
-        """ Returns the digital modulation value of the specified laser, in the
-        units that the laser uses. """
-        return self.digModule.getValue(laserName)
-
-    def setDigModActive(self, digMod):
-        """ Sets whether the digital modulation mode is active. """
-        self.digModule.setActive(digMod)
+    def setEditable(self, editable):
+        """ Sets whether the widget can be interacted with. """
+        self.setEnabled(editable)
 
     def setLaserActive(self, laserName, active):
         """ Sets whether the specified laser is powered on. """
         self.laserModules[laserName].setActive(active)
 
     def setLaserActivatable(self, laserName, activatable):
+        """ Sets whether the specified laser can be (de)activated by the user.
+        """
         self.laserModules[laserName].setActivatable(activatable)
 
     def setLaserEditable(self, laserName, editable):
+        """ Sets whether the specified laser's values can be edited by the
+        user. """
         self.laserModules[laserName].setEditable(editable)
 
     def setValue(self, laserName, value):
@@ -100,133 +132,96 @@ class LaserWidget(Widget):
         uses. """
         self.laserModules[laserName].setValue(value)
 
-    def setDigValue(self, laserName, value):
-        """ Sets the digital modulation value of the specified laser, in the
-        units that the laser uses. """
-        self.digModule.setValue(laserName, value)
+    def getCurrentPreset(self):
+        """ Returns the name of the currently selected preset. """
+        return self.presetsList.currentData()
+
+    def setCurrentPreset(self, name):
+        """ Sets the selected preset in the preset list. Pass None to unselect
+        all presets. """
+        anyPresetSelected = True if name else False
+
+        if anyPresetSelected:
+            nameIndex = self.presetsList.findData(name)
+            if nameIndex > -1:
+                self.presetsList.setCurrentIndex(nameIndex)
+        else:
+            self.presetsList.setCurrentIndex(-1)
+
+        self.loadPresetButton.setEnabled(anyPresetSelected)
+        self.deletePresetAction.setEnabled(anyPresetSelected)
+        self.presetScanDefaultAction.setEnabled(anyPresetSelected)
+        if not anyPresetSelected:
+            self.presetScanDefaultAction.setChecked(False)
+
+    def setScanDefaultPreset(self, name):
+        """ Sets which preset that is default for scanning. Pass None if there
+        is no default. """
+        for i in range(self.presetsList.count()):
+            self.presetsList.setItemText(i, self.presetsList.itemData(i))
+
+        nameIndex = self.presetsList.findData(name)
+        if nameIndex > -1:
+            self.presetsList.setItemText(nameIndex, f'{name} [scan default]')
+
+    def setScanDefaultPresetActive(self, active):
+        """ Sets whether the preset that is default for scanning is active. """
+        self.presetScanDefaultAction.setText(
+            'Make selected default for scanning' if not active else 'Unset default for scanning'
+        )
+
+    def addPreset(self, name):
+        """ Adds a preset to the preset list. """
+        self.presetsList.addItem(name, name)
+        self.presetsList.model().sort(0)
+
+    def removePreset(self, name):
+        """ Removes a preset from the preset list. """
+        nameIndex = self.presetsList.findData(name)
+        if nameIndex > -1:
+            self.presetsList.removeItem(nameIndex)
 
     def eventFilter(self, source, event):
-        if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
-            height = self.gridContainer.minimumSizeHint().height()\
-                     + self.scrollArea.horizontalScrollBar().height()
-            self.scrollArea.setMinimumHeight(height)
-            self.setMinimumHeight(height)
+        if source is self.lasersGridContainer and event.type() == QtCore.QEvent.Resize:
+            # Set correct minimum width (otherwise things can go outside the widget because of the
+            # scroll area)
+            width = self.lasersGridContainer.minimumSizeHint().width()\
+                     + self.scrollArea.verticalScrollBar().width()
+            self.scrollArea.setMinimumWidth(width)
+            self.setMinimumWidth(width)
 
         return False
 
 
-class DigitalModule(QtWidgets.QFrame):
-    """ Module from LaserWidget to handle digital modulation. """
-
-    sigDigitalModToggled = QtCore.Signal(bool)
-    sigDigitalValueChanged = QtCore.Signal(str, float)  # (laserName, value)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.powers = {}
-
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
-
-        title = QtWidgets.QLabel('<h3>Digital modulation<h3>')
-        title.setTextFormat(QtCore.Qt.RichText)
-        title.setAlignment(QtCore.Qt.AlignCenter)
-        title.setStyleSheet("font-size:12px")
-        title.setFixedHeight(20)
-        self.grid.addWidget(title, 0, 0, 1, -1)
-
-        self.DigitalControlButton = guitools.BetterPushButton('Enable')
-        self.DigitalControlButton.setCheckable(True)
-        self.grid.addWidget(self.DigitalControlButton, 2, 0, 1, -1)
-
-        # Connect signals
-        self.DigitalControlButton.toggled.connect(self.sigDigitalModToggled)
-
-    def addLaser(self, laserName, valueUnits, valueRange=None):
-        isBinary = valueRange is None
-
-        power = QtWidgets.QLineEdit(str(valueRange[0]) if valueRange is not None else '0')
-        unit = QtWidgets.QLabel(valueUnits)
-        modFrame = QtWidgets.QFrame()
-        modGrid = QtWidgets.QGridLayout()
-        modFrame.setLayout(modGrid)
-        modGrid.addWidget(power, 0, 0)
-        modGrid.addWidget(unit, 0, 1)
-
-        self.grid.addWidget(modFrame, 1, len(self.powers), 1, 1)
-        if isBinary:
-            sizePolicy = modFrame.sizePolicy()
-            sizePolicy.setRetainSizeWhenHidden(True)
-            modFrame.setSizePolicy(sizePolicy)
-            modFrame.hide()
-
-        self.powers[laserName] = power
-
-        # Connect signals
-        power.textChanged.connect(
-            lambda value: self.sigDigitalValueChanged.emit(laserName, float(value))
-        )
-
-    def isActive(self):
-        """ Returns whether the digital modulation mode is active. """
-        return self.DigitalControlButton.isChecked()
-
-    def getValue(self, laserName):
-        """ Returns the digital modulation value of the specified laser, in the
-        units that the laser uses. """
-        return float(self.powers[laserName].text())
-
-    def setActive(self, active):
-        """ Sets whether the digital modulation mode is active. """
-        self.DigitalControlButton.setChecked(active)
-
-    def setValue(self, laserName, value):
-        """ Sets the digital modulation value of the specified laser, in the
-        units that the laser uses. """
-        self.powers[laserName].setText(str(value))
-
-    def setEditable(self, laserName, editable):
-        self.powers[laserName].setEnabled(editable)
-
-
-class LaserModule(QtWidgets.QFrame):
+class LaserModule(QtWidgets.QWidget):
     """ Module from LaserWidget to handle a single laser. """
 
     sigEnableChanged = QtCore.Signal(bool)  # (enabled)
     sigValueChanged = QtCore.Signal(float)  # (value)
 
-    def __init__(self, name, units, wavelength, valueRange, tickInterval, singleStep,
-                 initialPower, *args, **kwargs):
+    def __init__(self, units, valueRange, tickInterval, singleStep, initialPower, *args, **kwargs):
         super().__init__(*args, **kwargs)
         isBinary = valueRange is None
 
         # Graphical elements
-        self.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Raised)
-        self.setMinimumWidth(180)
-
-        self.name = QtWidgets.QLabel(f'<h3>{name}<h3>')
-        self.name.setTextFormat(QtCore.Qt.RichText)
-        self.name.setAlignment(QtCore.Qt.AlignCenter)
-        color = guitools.colorutils.wavelengthToHex(wavelength)
-        self.name.setStyleSheet(f'font-size:16px; border-bottom: 4px solid {color}')
-        self.name.setFixedHeight(40)
-
         self.setPointLabel = QtWidgets.QLabel('Setpoint')
-        self.setPointEdit = QtWidgets.QLineEdit(str(initialPower))
+        self.setPointLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.setPointEdit = QtWidgets.QLineEdit(str(float(initialPower)))
         self.setPointEdit.setFixedWidth(50)
-        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight)
+        self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         self.powerLabel = QtWidgets.QLabel('Power')
-        self.powerIndicator = QtWidgets.QLabel(str(initialPower))
+        self.powerLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.powerIndicator = QtWidgets.QLabel(str(float(initialPower)))
         self.powerIndicator.setFixedWidth(50)
-        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight)
+        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         self.minpower = QtWidgets.QLabel()
-        self.minpower.setAlignment(QtCore.Qt.AlignCenter)
+        self.minpower.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.maxpower = QtWidgets.QLabel()
-        self.maxpower.setAlignment(QtCore.Qt.AlignCenter)
+        self.maxpower.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Vertical, self)
+        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:
@@ -246,30 +241,31 @@ class LaserModule(QtWidgets.QFrame):
         powerFrame.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Plain)
         powerFrame.setLayout(self.powerGrid)
 
-        self.powerGrid.addWidget(self.setPointLabel, 1, 0, 1, 2)
-        self.powerGrid.addWidget(self.setPointEdit, 2, 0)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 2, 1)
-        self.powerGrid.addWidget(self.powerLabel, 3, 0, 1, 2)
-        self.powerGrid.addWidget(self.powerIndicator, 4, 0)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 4, 1)
-        self.powerGrid.addWidget(self.maxpower, 0, 3)
-        self.powerGrid.addWidget(self.slider, 1, 3, 8, 1)
-        self.powerGrid.addWidget(self.minpower, 9, 3)
+        self.powerGrid.addWidget(self.setPointLabel, 0, 0, 1, 2)
+        self.powerGrid.addWidget(self.setPointEdit, 1, 0)
+        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 1)
+        self.powerGrid.addWidget(self.powerLabel, 0, 2, 1, 2)
+        self.powerGrid.addWidget(self.powerIndicator, 1, 2)
+        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 3)
+        self.powerGrid.addWidget(self.minpower, 0, 4, 2, 1)
+        self.powerGrid.addWidget(self.slider, 0, 5, 2, 5)
+        self.powerGrid.addWidget(self.maxpower, 0, 10, 2, 1)
 
         self.enableButton = guitools.BetterPushButton('ON')
+        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
 
-        # Add elements to GridLayout
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
-        self.grid.addWidget(self.name, 0, 0, 1, 2)
-        self.grid.addWidget(powerFrame, 1, 0, 1, 2)
+        # Add elements to QHBoxLayout
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+        self.layout.addWidget(powerFrame)
         if isBinary:
             sizePolicy = powerFrame.sizePolicy()
             sizePolicy.setRetainSizeWhenHidden(True)
             powerFrame.setSizePolicy(sizePolicy)
             powerFrame.hide()
-        self.grid.addWidget(self.enableButton, 8, 0, 1, 2)
+        self.layout.addWidget(self.enableButton)
 
         # Connect signals
         self.enableButton.toggled.connect(self.sigEnableChanged)
@@ -294,15 +290,17 @@ class LaserModule(QtWidgets.QFrame):
         self.enableButton.setChecked(active)
 
     def setActivatable(self, activatable):
+        """ Sets whether the laser can be (de)activated by the user. """
         self.enableButton.setEnabled(activatable)
 
     def setEditable(self, editable):
+        """ Sets whether the laser's values can be edited by the user. """
         self.setPointEdit.setEnabled(editable)
         self.slider.setEnabled(editable)
 
     def setValue(self, value):
         """ Sets the value of the laser, in the units that the laser uses. """
-        self.setPointEdit.setText(str(value))
+        self.setPointEdit.setText(str(float(value)))
         self.slider.setValue(value)
 
 

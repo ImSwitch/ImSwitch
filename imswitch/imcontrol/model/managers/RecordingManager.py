@@ -13,6 +13,7 @@ class RecordingManager(SignalInterface):
     """ RecordingManager handles single frame captures as well as continuous
     recordings of detector data. """
 
+    sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
     sigRecordingTimeUpdated = Signal(int)  # (recTime)
@@ -116,8 +117,10 @@ class RecordingWorker(Worker):
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
+            # Initial number of frames must not be 0; otherwise, too much disk space may get
+            # allocated. We remove this default frame later on if no frames are captured.
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (0, *shapes[detectorName]),
+                'data', (1, *shapes[detectorName]),
                 maxshape=(None, *shapes[detectorName]),
                 dtype='i2'
             )
@@ -131,33 +134,50 @@ class RecordingWorker(Worker):
             for key, value in self.attrs[detectorName].items():
                 files[detectorName].attrs[key] = value
 
+        self.__recordingManager.sigRecordingStarted.emit()
         try:
-            if self.recMode == RecMode.SpecFrames:
-                if len(self.detectorNames) > 1:
-                    raise ValueError('Only one detector can be recorded in SpecFrames mode')
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                recFrames = self.recFrames
+                if recFrames is None:
+                    raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
+                                     ' ScanLapse mode')
 
-                detectorName = self.detectorNames[0]
-                frames = self.recFrames
-                while self.__recordingManager.record and currentFrame[detectorName] < frames:
-                    newFrames = self._getNewFrames(detectorName)
-                    n = len(newFrames)
-                    if n > 0:
-                        it = currentFrame[detectorName]
-                        dataset = datasets[detectorName]
-                        if (it + n) <= frames:
-                            dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = newFrames
-                            currentFrame[detectorName] += n
-                        else:
-                            dataset.resize(frames, axis=0)
-                            dataset[it:frames, :, :] = newFrames[0:frames - it]
-                            currentFrame[detectorName] = frames
-                        self.__recordingManager.sigRecordingFrameNumUpdated.emit(it)
+                while self.__recordingManager.record and any([currentFrame[detectorName] < recFrames
+                                                              for detectorName in self.detectorNames]):
+                    for detectorName in self.detectorNames:
+                        if currentFrame[detectorName] >= recFrames:
+                            continue  # Reached requested number of frames with this detector, skip
+
+                        newFrames = self._getNewFrames(detectorName)
+                        n = len(newFrames)
+                        if n > 0:
+                            it = currentFrame[detectorName]
+                            dataset = datasets[detectorName]
+                            if (it + n) <= recFrames:
+                                dataset.resize(n + it, axis=0)
+                                dataset[it:it + n, :, :] = newFrames
+                                currentFrame[detectorName] += n
+                            else:
+                                dataset.resize(recFrames, axis=0)
+                                dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
+                                currentFrame[detectorName] = recFrames
+
+                            # Things get a bit weird if we have multiple detectors when we report
+                            # the current frame number, since the detectors may not be synchronized.
+                            # For now, we will report the lowest number.
+                            self.__recordingManager.sigRecordingFrameNumUpdated.emit(
+                                min(list(currentFrame.values()))
+                            )
                 self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
             elif self.recMode == RecMode.SpecTime:
+                recTime = self.recTime
+                if recTime is None:
+                    raise ValueError('recTime must be specified in SpecTime mode')
+
                 start = time.time()
                 currentRecTime = 0
-                while self.__recordingManager.record and currentRecTime < self.recTime:
+                shouldStop = False
+                while True:
                     for detectorName in self.detectorNames:
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
@@ -171,9 +191,16 @@ class RecordingWorker(Worker):
                                 np.around(currentRecTime, decimals=2)
                             )
                             currentRecTime = time.time() - start
+
+                    if shouldStop:
+                        break  # Enter loop one final time, then stop
+
+                    if not self.__recordingManager.record or currentRecTime >= recTime:
+                        shouldStop = True
                 self.__recordingManager.sigRecordingTimeUpdated.emit(0)
-            else:
-                while self.__recordingManager.record:
+            elif self.recMode == RecMode.UntilStop:
+                shouldStop = False
+                while True:
                     for detectorName in self.detectorNames:
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
@@ -183,8 +210,21 @@ class RecordingWorker(Worker):
                             dataset.resize(n + it, axis=0)
                             dataset[it:it + n, :, :] = newFrames
                             currentFrame[detectorName] += n
+
+                    if shouldStop:
+                        break
+
+                    if not self.__recordingManager.record:
+                        shouldStop = True  # Enter loop one final time, then stop
+            else:
+                raise ValueError('Unsupported recording mode specified')
         finally:
             for detectorName, file in files.items():
+                # Remove default frame if no frames have been captured
+                if currentFrame[detectorName] < 1:
+                    datasets[detectorName].resize(0, axis=0)
+
+                # Handle memory recordings
                 if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
                     filePath = filePaths[detectorName]
                     name = os.path.basename(filePath)
@@ -194,12 +234,14 @@ class RecordingWorker(Worker):
                             name, h5py.File(fileHandles[detectorName]), filePath, False
                         )
                     else:
-                        self.__recordingManager.sigMemoryRecordingAvailable.emit(name, file, filePath, True)
+                        file.flush()
+                        self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                            name, file, filePath, True
+                        )
                 else:
                     file.close()
 
-            if self.recMode == RecMode.SpecFrames or self.recMode == RecMode.SpecTime:
-                self.__recordingManager.endRecording(wait=False)
+            self.__recordingManager.endRecording(wait=False)
 
     def _getNewFrames(self, detectorName):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()

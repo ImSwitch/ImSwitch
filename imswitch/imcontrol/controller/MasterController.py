@@ -43,6 +43,7 @@ class MasterController:
         self.detectorsManager.sigDetectorSwitched.connect(self.__commChannel.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(self.__commChannel.sigUpdateImage)
 
+        self.recordingManager.sigRecordingStarted.connect(self.__commChannel.sigRecordingStarted)
         self.recordingManager.sigRecordingEnded.connect(self.__commChannel.sigRecordingEnded)
         self.recordingManager.sigRecordingFrameNumUpdated.connect(self.__commChannel.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(self.__commChannel.sigUpdateRecTime)

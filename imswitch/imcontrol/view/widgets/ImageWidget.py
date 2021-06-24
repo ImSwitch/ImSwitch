@@ -1,36 +1,24 @@
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtCore, QtWidgets
+from pyqtgraph.Qt import QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 
 
 class ImageWidget(QtWidgets.QWidget):
-    """ Widget containing viewbox that displays the new detector frames.  """
-
-    sigUpdateLevelsClicked = QtCore.Signal()
+    """ Widget containing viewbox that displays the new detector frames. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         guitools.addNapariGrayclipColormap()
         self.napariViewer = napari.Viewer(show=False)
+        guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
+        guitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
-
-        self.levelsButton = guitools.BetterPushButton('Update Levels', minMinWidth=180)
-        self.levelsButton.setMinimumHeight(40)
-
-        self.toolboxLayout = QtWidgets.QHBoxLayout()
-        self.toolboxLayout.addSpacerItem(
-            QtWidgets.QSpacerItem(
-                40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum
-            )
-        )
-        self.toolboxLayout.addWidget(self.levelsButton)
 
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
         self.viewCtrlLayout.addWidget(self.napariViewer.window._qt_window)
-        self.viewCtrlLayout.addLayout(self.toolboxLayout)
         self.setLayout(self.viewCtrlLayout)
 
         self.grid = guitools.VispyGridVisual(color='yellow')
@@ -40,9 +28,6 @@ class ImageWidget(QtWidgets.QWidget):
         self.crosshair = guitools.VispyCrosshairVisual(color='yellow')
         self.crosshair.hide()
         self.addItem(self.crosshair)
-
-        # Connect signals
-        self.levelsButton.clicked.connect(self.sigUpdateLevelsClicked)
 
     def setLayers(self, names):
         for name, img in self.imgLayers.items():
@@ -79,9 +64,12 @@ class ImageWidget(QtWidgets.QWidget):
     def setImageDisplayLevels(self, name, minimum, maximum):
         self.imgLayers[name].contrast_limits = (minimum, maximum)
 
-    def getCenterROI(self):
-        """ Returns center of viewbox to center a ROI. """
-        return self.napariViewer.window.qt_viewer.camera.center[-2:]
+    def getCenterViewbox(self):
+        """ Returns the center point of the viewbox, as an (x, y) tuple. """
+        return (
+            self.napariViewer.window.qt_viewer.camera.center[2],
+            self.napariViewer.window.qt_viewer.camera.center[1]
+        )
 
     def updateGrid(self, imShape):
         self.grid.update(imShape)

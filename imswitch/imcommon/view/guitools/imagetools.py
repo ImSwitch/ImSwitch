@@ -35,20 +35,12 @@ def bestLevels(arr):
 
     return bin_edges[hmin], bin_edges[hmax]
 
+
 def minmaxLevels(arr):
     minlevel = 0
     maxlevel = arr.max()+2
 
     return minlevel, maxlevel
-
-def setBestImageLimits(viewBox, width, height):
-    viewBox.setAspectLocked()
-    viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
-
-    viewBox.setRange(xRange=(-0.5, width - 0.5), yRange=(-0.5, height - 0.5), padding=0)
-    viewBounds = viewBox.viewRange()
-    viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1],
-                      yMin=viewBounds[1][0], yMax=viewBounds[1][1])
 
 
 # Copyright (C) 2017 Federico Barabas

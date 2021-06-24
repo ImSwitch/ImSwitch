@@ -16,6 +16,7 @@ def prepareApp():
 
     # Create app
     os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # Force Qt to use PyQt5
+    os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'  # Force HDF5 to not lock files
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     app = QtWidgets.QApplication([])
     app.setStyleSheet(getBaseStyleSheet())
@@ -26,6 +27,7 @@ def launchApp(app, mainView, moduleMainControllers):
     """ Launches the app. The program will exit when the app is exited. """
 
     # Show app
+    mainView.showMaximized()
     mainView.show()
     exitCode = app.exec_()
 

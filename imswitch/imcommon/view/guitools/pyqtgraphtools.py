@@ -4,6 +4,16 @@ import pyqtgraph.ptime as ptime
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 
+def setBestImageLimits(viewBox, width, height):
+    viewBox.setAspectLocked()
+    viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
+
+    viewBox.setRange(xRange=(-0.5, width - 0.5), yRange=(-0.5, height - 0.5), padding=0)
+    viewBounds = viewBox.viewRange()
+    viewBox.setLimits(xMin=viewBounds[0][0], xMax=viewBounds[0][1],
+                      yMin=viewBounds[1][0], yMax=viewBounds[1][1])
+
+
 class Grid:
     def __init__(self, viewBox):
         self.showed = False

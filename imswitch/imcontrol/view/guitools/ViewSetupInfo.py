@@ -13,21 +13,31 @@ class ROIInfo:
 
 
 @dataclass(frozen=True)
+class LaserPresetInfo:
+    value: float
+
+
+@dataclass(frozen=True)
 class ScanDefaultsInfo:
     defaultScanFile: Optional[str] = None
 
 
-@dataclass(frozen=True)
+@dataclass
 class ViewSetupInfo(SetupInfo):
-    # additional ROIs available to select in detector settings
+    # Additional ROIs available to select in detector settings
     rois: Dict[str, ROIInfo] = field(default_factory=dict)
 
-    # which widgets are available
+    # Laser presets available to select (map preset name -> laser name -> laser preset info)
+    laserPresets: Dict[str, Dict[str, LaserPresetInfo]] = field(default_factory=dict)
+
+    # Default laser preset for scanning
+    defaultLaserPresetForScan: Optional[str] = None
+
+    # Which widgets are available
     availableWidgets: List[str] = field(default_factory=list)
 
-    # scan defaults
+    # Scan defaults
     scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)
-
 
     def setROI(self, name, x, y, width, height):
         self.rois[name] = ROIInfo(x=x, y=y, w=width, h=height)
@@ -37,6 +47,20 @@ class ViewSetupInfo(SetupInfo):
             del self.rois[name]
         except KeyError:
             pass
+
+    def setLaserPreset(self, name, laserPresetInfos):
+        self.laserPresets[name] = laserPresetInfos
+
+    def removeLaserPreset(self, name):
+        try:
+            del self.laserPresets[name]
+            if self.defaultLaserPresetForScan == name:
+                self.setDefaultLaserPresetForScan(None)
+        except KeyError:
+            pass
+
+    def setDefaultLaserPresetForScan(self, presetNameOrNone):
+        self.defaultLaserPresetForScan = presetNameOrNone
 
 
 # Copyright (C) 2020, 2021 TestaLab

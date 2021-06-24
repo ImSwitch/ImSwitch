@@ -121,8 +121,9 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Maximize window
         self.showMaximized()
+        self.hide()  # Minimize time the window is displayed while loading multi module window
 
-        # Adjust dock sizes
+        # Adjust dock sizes (the window has to be maximized first for this to work properly)
         if 'Settings' in self.docks:
             self.docks['Settings'].setStretch(1, 10)
             self.docks['Settings'].container().setStretch(3, 1)

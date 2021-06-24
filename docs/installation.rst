@@ -7,6 +7,7 @@ then install the requirements from a shell:
 
 .. code-block:: bash
 
+   cd /path_of_imswitch
    pip install -r requirements.txt
 
 We recommend having a designated environment, for example with conda:
@@ -23,3 +24,6 @@ Then run ImSwitch by typing:
 .. code-block:: bash
 
    python -m imswitch
+
+Note: Certain components (the image reconstruction module and support for TIS cameras) require the
+software to be running on Windows.

@@ -21,6 +21,13 @@ class WidgetController(SignalInterface):
     def closeEvent(self):
         pass
 
+    @classmethod
+    def create(cls, widget, moduleCommChannel):
+        """ Initialize a factory and create this controller with it. Returns
+        the created controller. """
+        factory = WidgetControllerFactory(moduleCommChannel)
+        return factory.createController(cls, widget)
+
 
 class WidgetControllerFactory:
     """ Factory class for creating a WidgetController object. """

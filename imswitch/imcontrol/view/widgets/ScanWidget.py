@@ -20,6 +20,8 @@ class ScanWidget(Widget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.setMinimumHeight(200)
+
         self.scanInLiveviewWar = QtWidgets.QMessageBox()
         self.scanInLiveviewWar.setInformativeText(
             "You need to be in liveview to scan")
@@ -66,7 +68,7 @@ class ScanWidget(Widget):
 
         self.scrollArea = QtWidgets.QScrollArea()
         self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
-        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.scrollArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.scrollArea.setWidget(self.gridContainer)
         self.scrollArea.setWidgetResizable(True)
@@ -292,6 +294,17 @@ class ScanWidget(Widget):
 
         self.graph.plot.setYRange(-0.1, 1.1)
         self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
+
+    def eventFilter(self, source, event):
+        if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
+            # Set correct minimum width (otherwise things can go outside the widget because of the
+            # scroll area)
+            width = self.gridContainer.minimumSizeHint().width()\
+                     + self.scrollArea.verticalScrollBar().width()
+            self.scrollArea.setMinimumWidth(width)
+            self.setMinimumWidth(width)
+
+        return False
 
 
 class GraphFrame(pg.GraphicsLayoutWidget):

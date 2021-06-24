@@ -181,7 +181,7 @@ class MultiDataFrame(QtWidgets.QFrame):
         self.saveAllDataBtn.setEnabled(value)
 
     def updateMemBar(self, percentUsed):
-        self.memBar.setValue(percentUsed)
+        self.memBar.setValue(round(percentUsed))
 
 
 # Copyright (C) 2020, 2021 TestaLab

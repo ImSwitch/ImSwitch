@@ -23,6 +23,7 @@ well as for developers (scripting and API modules, and hardware control and JSON
     contributing
     gui
     use-cases
+    HDF5datafile
     modules
     imcontrol-setups
     scripting

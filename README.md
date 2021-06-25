@@ -33,3 +33,7 @@ python -m imswitch
 * It is possible to implement, import and test user-defined scripts in the scripting module. 
 
 * Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).
+
+## Contributing
+
+Read the [contributing section](https://imswitch.readthedocs.io/en/latest/contributing.html) if you want to help us improve and further develop ImSwitch!

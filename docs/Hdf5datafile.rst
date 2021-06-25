@@ -3,12 +3,14 @@ HDF5 datafile
 *****************
 
 In ImSwitch we use `HDF5 files <https://www.hdfgroup.org/solutions/hdf5/>`_ to store the images and metadata containing the experiment's parameters.
-`ImageJ <https://imagej.net>`_, Matlab, Python, among others, can open ImageJ files with the right extensions. For the metadata, `HDFview <https://www.hdfgroup.org/downloads/>`_ can display the attributes and datasets of the file. 
+The HDF5 files can be opened in for example `ImageJ <https://imagej.net>`_ and Matlab with the right extensions. For the metadata, `HDFView <https://www.hdfgroup.org/downloads/>`_ can display the attributes and datasets of the file.
+
 It is possible to import the experiment parameters in ImSwitch from the File menu (File -> Load parameters from saved HDF5 file...), and the GUI will load and display all the parameters directly in the widgets.
+When recording multiple detectors simultaneously, one file will be created for each recorded detector.
 
 Datasets
 =========
-Each image recording is saved in a dataset (data), with dimensions Z X Y, where Z is the number of frames. 
+Each image recording is saved in a dataset named ``data``, with dimensions Z × X × Y, where Z is the number of frames while X and Y represent the dimensions of each individual image.
 Two extra parameters are stored in the dataset:
 
 * ``detector_name``: name of the detector (camera or point-detector) that provided the images.

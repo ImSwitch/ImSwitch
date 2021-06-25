@@ -1,6 +1,6 @@
-*****************************
-How to contribute to ImSwitch
-*****************************
+******************
+How to contribute
+******************
 
 We want to encourage users and developers to give active feedback on their experience and feel free to contribute. 
 

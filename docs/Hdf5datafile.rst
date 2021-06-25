@@ -25,17 +25,20 @@ There is one attribute for each detector property that is listed in the Detector
 For example, for HamamatsuManager: Binning, model, camera pixel size, readout time, ROI, etc.
 
 The detector's attributes follow the form:
+
 ``Detector:NameDetector:DetectorProperty``
 
 Lasers
 -------
 The power and whether it was ON/OFF for each laser is stored in the form:
+
 ``Laser:LaserName:Enabled`` (boolean)
 ``Laser:LaserName:Value``
 
 Positioners
 ------------
 The value for each positioner is stored to encode in which area the image was taken:
+
 ``Positioner:PostionerName:PostionerAxis:Position``
 
 Recording and scanning

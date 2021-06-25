@@ -16,6 +16,7 @@ We recommend having a designated environment, for example with conda:
 
    conda create -n imswitch python=3.8
    conda activate imswitch
+   conda install pip
    cd /path_of_imswitch
    pip install -r requirements.txt
 

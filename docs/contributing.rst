@@ -11,22 +11,22 @@ There are different ways you can contribute:
 
 User feedback
 ==============
-We would like to hear about your experience when using ImSwitch and suggestions for improvement. You can do that by starting a thread in the `Discussion section <https://github.com/kasasxav/ImSwitch/discussions/>`_ of the repository. 
+We would like to hear about your experience when using ImSwitch and suggestions for improvement. You can do that by starting a thread in the `discussion section <https://github.com/kasasxav/ImSwitch/discussions/>`_ of the repository. 
 
 Improving documentation
 ========================
 We would like to include your use-case into the documentation!
-Feel free to open a discussion thread about what you wish to include and offer help with regarding the documentation.
+Feel free to open a discussion thread about what you wish to include or improve.
 
 Reporting bugs
 ===============
-If you experience a bug, you can directly report it in the `Issues section <https://github.com/kasasxav/ImSwitch/issues/>`_ and add a bug label. Describe how to reproduce the bug and as much information as possible to fix it more efficiently. 
+If you experience a bug, you can directly report it in the `issues section <https://github.com/kasasxav/ImSwitch/issues/>`_ and add a bug label. Describe how to reproduce the bug and as much information as possible to fix it more efficiently. 
 
 Have you written a code that fixes the bug? You can open a new Pull Request or write your suggestion in Discussions.
 
 Suggest a new feature 
 ======================
-If you are missing features and want to develop ImSwitch further, you can start a Discussion and brainstorm your suggestions. Feel free to open a pull request, but we believe it’s essential to have feedback from the community if you want to add new functionality.
+If you are missing features and want to develop ImSwitch further, you can start a discussion and brainstorm your suggestions. Feel free to open a pull request, but we believe it’s essential to have feedback from the community if you want to add new functionality.
 
 Adding device support
 ======================

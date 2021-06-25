@@ -36,4 +36,4 @@ python -m imswitch
 
 ## Contributing
 
-Read the [contributing section](https://imswitch.readthedocs.io/en/latest/contributing.html) if you want to help us improve and further develop ImSwitch!
+Read the [contributing section](https://imswitch.readthedocs.io/en/latest/contributing.html) in the documentation if you want to help us improve and further develop ImSwitch!

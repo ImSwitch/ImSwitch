@@ -22,7 +22,7 @@ Reporting bugs
 ===============
 If you experience a bug, you can directly report it in the `issues section <https://github.com/kasasxav/ImSwitch/issues/>`_ and add a bug label. Describe how to reproduce the bug and as much information as possible to fix it more efficiently. 
 
-Have you written a code that fixes the bug? You can open a new pull request or write your suggestion in Discussions.
+Have you written a code that fixes the bug? You can open a new pull request or write your suggestion in discussions.
 
 Suggest a new feature 
 ======================

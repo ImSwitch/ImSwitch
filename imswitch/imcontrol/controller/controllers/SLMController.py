@@ -76,9 +76,9 @@ class SLMController(ImConWidgetController):
             print('You have to choose an objective from the drop down menu.')
             return
         elif obj == 'Oil':
-            filename = 'info_oil.slm'
+            filename = 'info_oil.json'
         elif obj == 'Glycerol':
-            filename = 'info_glyc.slm'
+            filename = 'info_glyc.json'
         else:
             raise ValueError(f'Unsupported objective "{obj}"')
 
@@ -102,9 +102,9 @@ class SLMController(ImConWidgetController):
             print('You have to choose an objective from the drop down menu.')
             return
         elif obj == 'Oil':
-            filename = 'info_oil.slm'
+            filename = 'info_oil.json'
         elif obj == 'Glycerol':
-            filename = 'info_glyc.slm'
+            filename = 'info_glyc.json'
         else:
             raise ValueError(f'Unsupported objective "{obj}"')
 

@@ -5,6 +5,10 @@ import qdarkstyle
 def getBaseStyleSheet():
     baseStyleSheet = qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB'))
     baseStyleSheet += '''
+        QWidget:disabled {
+            color: #54687A;
+        }
+
         QComboBox {
             padding-right: 4px;
             min-width: 40px;
@@ -14,11 +18,23 @@ def getBaseStyleSheet():
             min-width: 20px;
         }
         
+        QPushButton:disabled {
+            color: #788D9C;
+        }
+        
         QPushButton:checked {
-            background-color: #29353D;
+            background-color: #2B333D;
             border: 2px solid #1464A0;
         }
-            
+        
+        QPushButton:pressed {
+            background-color: #262E38;
+        }
+        
+        QSplitter {
+            background-color: #37414F;
+        }
+
         QLabel {
             background-color: transparent;
         }

@@ -1,6 +1,6 @@
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from . import guitools
 

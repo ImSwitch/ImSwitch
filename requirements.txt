@@ -13,6 +13,7 @@ pyqtgraph == 0.11.0  # pinned because we use some internal code that has changed
 pyserial >= 3.5, < 4
 QDarkStyle >= 2.8, < 4
 QScintilla >= 2.12, < 3
+qtpy >= 1.9, < 2
 scikit-image >= 0.18, < 0.19
 tifffile >= 2020.11.26
 wxPython >= 4.1, < 5

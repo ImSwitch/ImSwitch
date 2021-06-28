@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyqtgraph.dockarea import Dock, DockArea
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from .guitools import BetterPushButton
 from .DataFrame import DataFrame

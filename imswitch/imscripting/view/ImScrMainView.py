@@ -1,5 +1,5 @@
-from PyQt5 import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
+from qtpy import QtCore, QtWidgets
 
 from .ConsoleView import ConsoleView
 from .EditorView import EditorView

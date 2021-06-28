@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 
 from . import widgets

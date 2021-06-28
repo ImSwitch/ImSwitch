@@ -1,7 +1,9 @@
 import os
 import pickle
+from dataclasses import dataclass, field
 
 import numpy as np
+from dataclasses_json import dataclass_json, Undefined, CatchAll
 
 from imswitch.imcommon import constants
 from imswitch.imcontrol.model.managers.SLMManager import MaskMode, Direction
@@ -83,6 +85,7 @@ class SLMController(ImConWidgetController):
         state_general = general_paramtree.p.saveState()
         state_aber = aber_paramtree.p.saveState()
         state_pos = center_coords
+        #TODO: fix this to save as .json instead of pickling
         with open(os.path.join(self.slmDir, filename), 'wb') as f:
             pickler = pickle.Pickler(f)
             pickler.dump(state_general)
@@ -106,16 +109,20 @@ class SLMController(ImConWidgetController):
             raise ValueError(f'Unsupported objective "{obj}"')
 
         with open(os.path.join(self.slmDir, filename), 'rb') as f:
-            unpickler = pickle.Unpickler(f)
-            state_general = unpickler.load()
-            state_pos = unpickler.load()
-            state_aber = unpickler.load()
+            #unpickler = pickle.Unpickler(f)
+            #state_general = unpickler.load()
+            #state_pos = unpickler.load()
+            #state_aber = unpickler.load()
+            slm_info = SLMInfo.from_json(f.read(), infer_missing=True)
+            state_general = slm_info.general
+            state_pos = slm_info.position
+            state_aber = slm_info.aber
 
         self._widget.slmParameterTree.p.restoreState(state_general)
         self._widget.aberParameterTree.p.restoreState(state_aber)
         self._master.slmManager.setCenters(state_pos)
-        self._master.slmManager.setAberrations(self._widget.aberParameterTree)
-        self._master.slmManager.setGeneral(self._widget.slmParameterTree)
+        self._master.slmManager.setAberrations(self._widget.aberParameterTree)  # TODO: fix this
+        self._master.slmManager.setGeneral(state_general)
         image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         # print(f'Loaded SLM parameters for {obj} objective.')
@@ -149,6 +156,66 @@ class SLMController(ImConWidgetController):
 
     # def loadPreset(self, preset):
     #    print('Loaded default SLM settings.')
+
+@dataclass(frozen=True)
+class GeneralInfo:
+    radius: float
+    sigma: float
+
+@dataclass(frozen=True)
+class PositionInfo:
+    centerx: int
+    centery: int
+        
+@dataclass(frozen=True)
+class PositionsInfo:
+    left: PositionInfo
+    right: PositionInfo
+
+@dataclass(frozen=True)
+class AberInfo:
+    tilt: float
+    tip: float
+    defocus: float
+    spherical: float
+    verticalComa: float
+    horizontalComa: float
+    verticalAstigmatism: float
+    obliqueAstigmatism: float
+        
+@dataclass(frozen=True)
+class AbersInfo:
+    left: AberInfo
+    right: AberInfo
+        
+@dataclass_json(undefined=Undefined.INCLUDE)
+@dataclass
+class SLMInfo:
+    general: GeneralInfo = field(default_factory=dict)
+    position: PositionsInfo = field(default_factory=dict)
+    aber: AbersInfo = field(default_factory=dict)
+
+    _catchAll: CatchAll = None
+        
+def to_dict(obj, classkey=None):
+    if isinstance(obj, dict):
+        data = {}
+        for (k, v) in obj.items():
+            data[k] = to_dict(v, classkey)
+        return data
+    elif hasattr(obj, "_ast"):
+        return to_dict(obj._ast())
+    elif hasattr(obj, "__iter__"):
+        return [to_dict(v, classkey) for v in obj]
+    elif hasattr(obj, "__dict__"):
+        data = dict([(key, to_dict(value, classkey))
+                     for key, value in obj.__dict__.items()
+                     if not callable(value) and not key.startswith('_') and key not in ['name']])
+        if classkey is not None and hasattr(obj, "__class__"):
+            data[classkey] = obj.__class__.__name__
+        return data
+    else:
+        return obj
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -6,7 +6,7 @@ lantzdev[qt]~=0.5.2
 napari[pyqt5]==0.4.7
 nidaqmx~=0.5.7
 numpy==1.19.3
-psutil~=5.7.3
+psutil>=5.4.8, <6
 git+https://github.com/morefigs/py-ic-imaging-control#egg=py-ic-imaging-control; platform_system == "Windows"
 PyQt5~=5.15.2
 pyqtgraph==0.11.0

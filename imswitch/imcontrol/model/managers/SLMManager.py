@@ -102,6 +102,7 @@ class SLMManager:
         self.__masksAber[mask].moveCenter(move_v)
 
     def setAberrations(self, treeAber):
+        #TODO: fix this
         dAberFactors = treeAber.p.param('Donut')
         tAberFactors = treeAber.p.param('Tophat')
         self.__masksAber[0].setAberrations(dAberFactors)
@@ -124,18 +125,16 @@ class SLMManager:
     def setCenters(self, centerCoords):
         for idx, (mask, masktilt, maskaber) in enumerate(zip(self.__masks, self.__masksTilt, self.__masksAber)):
             if idx == 0:
-                mask.setCenter(centerCoords["donut"])
-                masktilt.setCenter(centerCoords["donut"])
-                maskaber.setCenter(centerCoords["donut"])
+                center = (centerCoords["left"]["centerx"],centerCoords["left"]["centery"])
             elif idx == 1:
-                mask.setCenter(centerCoords["tophat"])
-                masktilt.setCenter(centerCoords["tophat"])
-                maskaber.setCenter(centerCoords["tophat"])
+                center = (centerCoords["right"]["centerx"],centerCoords["right"]["centery"])
+            mask.setCenter(center)
+            masktilt.setCenter(center)
+            maskaber.setCenter(center)
 
-    def setGeneral(self, treeGeneral):
-        genparam = treeGeneral.p.param('General parameters')
-        radius = genparam.param('Radius').value()
-        sigma = genparam.param('Sigma').value()
+    def setGeneral(self, general_info):
+        radius = general_info["radius"]
+        sigma = general_info["sigma"]
         self.setRadius(radius)
         self.setSigma(sigma)
 
@@ -285,6 +284,7 @@ class Mask(object):
         self.mask_type = MaskMode.Tilt
 
     def setAberrations(self, aberParamsTree):
+        #TODO: fix this
         #x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
         self.aberParamsTree = aberParamsTree
         fTilt = aberParamsTree.param("Tilt factor").value()

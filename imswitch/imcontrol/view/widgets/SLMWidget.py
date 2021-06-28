@@ -23,13 +23,10 @@ class SLMWidget(Widget):
 
         self.slmParameterTree = ParameterTree()
         self.generalparams = [{'name': 'General parameters', 'type': 'group', 'children': [
-            {'name': 'Radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
+            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
              'suffix': 'px'},
-            {'name': 'Sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
-             'suffix': 'px'},
-            # {'name': 'Angle', 'type': 'float', 'value': 0.15, 'limits': (0, 0.3), 'step': 0.01, 'suffix': 'rad'},
-            # {'name': 'Wavelength', 'type': 'float', 'value': 775, 'limits': (0, 1200), 'step': 1, 'suffix': 'nm'},
-            # {'name': 'Helix rotation', 'type': 'bool', 'value': True},
+            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+             'suffix': 'px'}
         ]},
                               {'name': 'Apply', 'type': 'action'}
                               ]
@@ -52,39 +49,39 @@ class SLMWidget(Widget):
         self.aberParameterTree = pg.parametertree.ParameterTree()
         aberlim = 2
         self.aberparams = [{'name': 'Donut', 'type': 'group', 'children': [
-            {'name': 'Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'tilt', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'tip', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'defocus', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'spherical', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Vertical coma factor', 'type': 'float', 'value': 0,
+            {'name': 'verticalComa', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0,
+            {'name': 'horizontalComa', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0,
+            {'name': 'verticalAstigmatism', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0,
+            {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01}
         ]},
                            {'name': 'Tophat', 'type': 'group', 'children': [
-                               {'name': 'Tilt factor', 'type': 'float', 'value': 0,
+                               {'name': 'tilt', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Tip factor', 'type': 'float', 'value': 0,
+                               {'name': 'tip', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Defocus factor', 'type': 'float', 'value': 0,
+                               {'name': 'defocus', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Spherical factor', 'type': 'float', 'value': 0,
+                               {'name': 'spherical', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Vertical coma factor', 'type': 'float', 'value': 0,
+                               {'name': 'verticalComa', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0,
+                               {'name': 'horizontalComa', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0,
+                               {'name': 'verticalAstigmatism', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0,
+                               {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01}
                            ]},
                            {'name': 'Apply', 'type': 'action'}

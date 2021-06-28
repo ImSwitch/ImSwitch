@@ -43,7 +43,6 @@ class FFTController(LiveUpdatedController):
         """ Show or hide FFT. """
         self.active = enabled
         self.init = False
-        self._widget.img.setOnlyRenderVisible(enabled, render=False)
 
     def setShowPos(self, enabled):
         """ Show or hide lines. """

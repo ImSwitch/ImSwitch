@@ -9,7 +9,7 @@ numpy >= 1.19, < 2
 psutil >= 5.4.8, < 6
 git+https://github.com/morefigs/py-ic-imaging-control#egg=py-ic-imaging-control; platform_system == "Windows"
 PyQt5 >= 5.15.2, < 6
-pyqtgraph == 0.11.0  # pinned because we use some internal code that has changed since 0.11.0
+git+https://github.com/pyqtgraph/pyqtgraph#egg=pyqtgraph  # TODO: Change to "pyqtgraph >= 0.12.2, < 0.13" when 0.12.2 releases
 pyserial >= 3.5, < 4
 QDarkStyle >= 2.8, < 4
 QScintilla >= 2.12, < 3

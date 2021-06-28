@@ -7,7 +7,6 @@ from .naparitools import (
     addNapariGrayclipColormap, NapariUpdateLevelsWidget, NapariShiftWidget, VispyROIVisual,
     VispyLineVisual, VispyGridVisual, VispyCrosshairVisual, VispyScatterVisual
 )
-from .OptimizedImageItem import OptimizedImageItem
 from .pyqtgraphtools import (
     setBestImageLimits, Grid, TwoColorGrid, Crosshair, ROI, cropROI, SumpixelsGraph, ProjectionGraph
 )

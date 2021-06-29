@@ -18,35 +18,31 @@ class PhotometricsManager(DetectorManager):
         self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
-        for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
-            self._camera.setParam( propertyName, propertyValue)
+        #for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
+        #    self._camera.setParam( propertyName, propertyValue)
 
         fullShape = self._camera.sensor_size
 
-        model = self._camera.pvc_get_pvcam_version()
+        model = self._camera.name
 
         # Prepare parameters
         parameters = {
             'Set exposure time': DetectorNumberParameter(group='Timings', value=0,
-                                                         valueUnits='s', editable=True),
+                                                         valueUnits='ms', editable=True),
             'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
-                                                          valueUnits='s', editable=False),
-            'Internal frame interval': DetectorNumberParameter(group='Timings', value=0,
-                                                               valueUnits='s', editable=False),
-            'Readout time': DetectorNumberParameter(group='Timings', value=0,
-                                                    valueUnits='s', editable=False),
-            'Internal frame rate': DetectorNumberParameter(group='Timings', value=0,
-                                                           valueUnits='fps', editable=False),
+                                                          valueUnits='ms', editable=False),
+            'Readout time' : DetectorNumberParameter(group='Timings', value=0,
+                                                          valueUnits='ms', editable=False),
             'Trigger source': DetectorListParameter(group='Acquisition mode',
                                                     value='Internal trigger',
                                                     options=['Internal trigger',
                                                              'External "start-trigger"',
-                                                             'External "frame-trigger"']),
+                                                             'External "frame-trigger"'], editable=True),
             'Readout port': DetectorListParameter(group='ports',
                                                     value='Sensitivity',
                                                     options=['Sensitivity',
                                                              'Speed"',
-                                                             'Dynamic range"'],                                        editable=True),
+                                                             'Dynamic range"'], editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
                                                          valueUnits='µm', editable=True)
         }
@@ -107,66 +103,67 @@ class PhotometricsManager(DetectorManager):
         self._camera.start_live()
 
     def stopAcquisition(self):
+        self._camera.abort()
         self._camera.finish()
 
     def _setExposure(self, time):
-        self._camera.exp_time = time
+        self._camera.exp_time = int(time)
 
     def _setTriggerSource(self, source):
         print("Change trigger source")
-        def triggerAction(mode):
-            self._camera.exp_mode = mode
+        def triggerAction():
+            self._camera.exp_mode = trigger_value
         if source == 'Internal trigger':
-            self._performSafeCameraAction(lambda: triggerAction(1792))
+            trigger_value = 1792
+            self._performSafeCameraAction(triggerAction)
 
         elif source == 'External "start-trigger"':
-            self._performSafeCameraAction(lambda: triggerAction(2304))
+            trigger_value = 2304
+            self._performSafeCameraAction(triggerAction)
 
         elif source == 'External "frame-trigger"':
-            self._performSafeCameraAction(lambda: triggerAction(2048))
+            trigger_value = 2048
+            self._performSafeCameraAction(triggerAction)
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
 
     def _setReadoutPort(self, port):
         print("Change readout port")
-        def portAction(mode):
-            self._camera.readout_port = mode
+        def portAction():
+            self._camera.readout_port = port_value
         if port == 'Sensitivity':
-            self._performSafeCameraAction(lambda: portAction(0))
+            port_value = 0
+            self._performSafeCameraAction(portAction)
 
         elif port == 'Speed"':
-            self._performSafeCameraAction(lambda: portAction(1))
+            port_value = 1
+            self._performSafeCameraAction(portAction)
 
         elif port == 'Dynamic range"':
-            self._performSafeCameraAction(lambda: portAction(2))
+            port_value = 2
+            self._performSafeCameraAction(portAction)
         else:
             raise ValueError(f'Invalid readout port "{port}"')
+        #self.setParameter('Readout time', self._camera.readout_time/1000)
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
         """
-        try:
-            function()
-        except:
-            self.stopAcquisition()
-            function()
-            self.startAcquisition()
+        self.stopAcquisition()
+        function()
+        self.startAcquisition()
 
     def _updatePropertiesFromCamera(self):
-        self.setParameter('Real exposure time', self._camera.exp_time)
-        #self.setParameter('Internal frame interval', self._camera.getPropertyValue('internal_frame_interval')[0])
-        #self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
-        #self.setParameter('Internal frame rate', self._camera.getPropertyValue('internal_frame_rate')[0])
+        self.setParameter('Real exposure time', self._camera.exp_time/1000)
+       # self.setParameter('Readout time', self._camera.readout_time/1000)
 
         triggerSource = self._camera.exp_mode
         if triggerSource == 1792:
             self.setParameter('Trigger source', 'Internal trigger')
         elif triggerSource == 2304:
-            # Trigger-First Mode
             self.setParameter('Trigger source', 'External "start-trigger"')
         elif triggerSource == 2048:
-            # Strobbed Mode
             self.setParameter('Trigger source', 'External "frame-trigger"')
         
         readoutPort = self._camera.readout_port
@@ -178,7 +175,7 @@ class PhotometricsManager(DetectorManager):
             self.setParameter('Readout port', 'Dynamic range')
                 
 def getCameraObj(cameraId):
-    try:
+    #try:
         from pyvcam import pvc
         from pyvcam.camera import Camera
 
@@ -186,12 +183,12 @@ def getCameraObj(cameraId):
         print('Trying to import camera', cameraId)
         camera = next(Camera.detect_camera())
         camera.open()
-        print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
+        print('Initialized Hamamatsu Camera Object, model: ', camera.name)
         return camera
-    except:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
+    #except:
+    #    print('Initializing Mock Hamamatsu')
+    #    from imswitch.imcontrol.model.interfaces import MockHamamatsu
+    #    return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

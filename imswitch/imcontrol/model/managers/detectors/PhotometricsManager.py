@@ -1,3 +1,5 @@
+import numpy as np
+
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -16,13 +18,13 @@ class PhotometricsManager(DetectorManager):
         self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
-        for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
-            self._camera.setParam( propertyName, propertyValue)
-
+        #for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
+        #    print(propertyName)
+        #    self._camera.set_param( propertyName, propertyValue)
+        #self._camera.exp_time = detectorInfo.managerProperties['hamamatsu']['exp_time']
         fullShape = self._camera.sensor_size
 
-        model = self._camera.pvc_get_pvcam_version()
-
+        model = self._camera.name
         # Prepare parameters
         parameters = {
             'Set exposure time': DetectorNumberParameter(group='Timings', value=0,
@@ -56,7 +58,7 @@ class PhotometricsManager(DetectorManager):
         return [1, umxpx, umxpx]
 
     def getLatestFrame(self):
-        return self._camera.poll_frame()
+         return np.asarray(self._camera.poll_frame()[0]['pixel_data'])
 
     def getChunk(self):
         return self.getLatestFrame()
@@ -68,10 +70,9 @@ class PhotometricsManager(DetectorManager):
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
         roi = (hpos, hpos+hsize, vpos, vpos+vsize)
-        self._performSafeCameraAction(
-            lambda: self._camera.set_param('roi', self._camera.set_param('roi', roi))
-        )
-       
+        def setRoi():
+            self._camera.roi = roi
+        self._performSafeCameraAction(setRoi)
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
@@ -82,10 +83,9 @@ class PhotometricsManager(DetectorManager):
 
         binstring = f'{binning}x{binning}'
         coded = binstring.encode('ascii')
-
-        self._performSafeCameraAction(
-            lambda: self._camera.set_param('binning', coded)
-        )
+        def setBinning():
+            self._camera.binning = binning
+        self._performSafeCameraAction(setBinning)
 
     def setParameter(self, name, value):
         super().setParameter(name, value)
@@ -161,20 +161,20 @@ class PhotometricsManager(DetectorManager):
 
 
 def getCameraObj(cameraId):
-    try:
-        from pyvcam import pvc
-        from pyvcam.camera import Camera
+    #try:
+    from pyvcam import pvc
+    from pyvcam.camera import Camera
 
-        pvc.init_pvcam()
-        print('Trying to import camera', cameraId)
-        camera = next(Camera.detect_camera())
-        camera.open()
-        print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
-        return camera
-    except:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
+    pvc.init_pvcam()
+    print('Trying to import camera', cameraId)
+    camera = next(Camera.detect_camera())
+    camera.open()
+    print('Initialized Photometrics Camera Object, model: ', camera.name)
+    return camera
+    #except:
+     #   print('Initializing Mock Hamamatsu')
+      #  from imswitch.imcontrol.model.interfaces import MockHamamatsu
+       # return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -5,7 +5,7 @@ import traceback
 from .imcommon import constants, prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from .imcommon.model import modulesconfigtools
-from .imcommon.view import MultiModuleWindow
+from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
 enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
@@ -49,10 +49,11 @@ for i, modulePkg in enumerate(modulePkgs):
             multiModuleWindowController=multiModuleWindowController,
             moduleMainControllers=moduleMainControllers
         )
-    except Exception:
+    except Exception as e:
         print(f'Failed to initialize module {moduleId}')
         print(traceback.format_exc())
         moduleCommChannel.unregister(modulePkg)
+        multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
     else:
         # Add module to window
         multiModuleWindow.addModule(moduleId, moduleName, view)

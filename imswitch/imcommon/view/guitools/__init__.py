@@ -1,4 +1,5 @@
 from .BetterPushButton import BetterPushButton
+from .BetterSlider import BetterSlider
 from .colorutils import wavelengthToHex
 from .dialogtools import askYesNoQuestion, askForFilePath, askForFolderPath, askForTextInput
 from .imagetools import bestLevels, minmaxLevels

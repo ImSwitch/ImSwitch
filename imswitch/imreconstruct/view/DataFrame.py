@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from .guitools import BetterPushButton
 from .DataEditDialog import DataEditDialog

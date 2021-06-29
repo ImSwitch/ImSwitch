@@ -8,7 +8,7 @@ Based on pyqtgraph 0.11.0 code.
 import math
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
+from qtpy import QtCore, QtGui
 from pyqtgraph import debug, functions as fn, Point
 
 try:

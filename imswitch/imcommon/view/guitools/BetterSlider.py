@@ -1,18 +1,20 @@
-from qtpy import QtGui
-from pyqtgraph.console import ConsoleWidget
+from qtpy import QtCore, QtWidgets
 
 
-class ConsoleView(ConsoleWidget):
-    """ View that contains a console where the user can run commands. """
+class BetterSlider(QtWidgets.QSlider):
+    """ BetterSlider is a QSlider that allows disabling the slider's reactions
+    to the mouse scroll wheel. """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, allowScrollChanges=True, **kwargs):
         super().__init__(*args, **kwargs)
+        self._allowScrollChanges = allowScrollChanges
+        self.installEventFilter(self)
 
-        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
-        self.output.document().setDefaultFont(font)
+    def eventFilter(self, source, event):
+        if not self._allowScrollChanges and source is self and event.type() == QtCore.QEvent.Wheel:
+            return True  # Don't change value
 
-    def setScriptScope(self, scope):
-        self.localNamespace.update(scope)
+        return False
 
 
 # Copyright (C) 2020, 2021 TestaLab

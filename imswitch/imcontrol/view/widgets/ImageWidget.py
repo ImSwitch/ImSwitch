@@ -1,6 +1,6 @@
 import napari
 import numpy as np
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 

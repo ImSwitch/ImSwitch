@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -221,7 +221,7 @@ class LaserModule(QtWidgets.QWidget):
         self.maxpower = QtWidgets.QLabel()
         self.maxpower.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
+        self.slider = guitools.BetterSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:

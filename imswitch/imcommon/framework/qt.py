@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 import imswitch.imcommon.framework.base as base
 
 

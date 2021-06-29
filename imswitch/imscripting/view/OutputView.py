@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 
 
 class OutputView(QtWidgets.QWidget):

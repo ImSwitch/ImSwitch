@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.ptime as ptime
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 
 def setBestImageLimits(viewBox, width, height):

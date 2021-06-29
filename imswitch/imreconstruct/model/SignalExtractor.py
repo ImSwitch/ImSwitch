@@ -14,6 +14,10 @@ class SignalExtractor:
     """
 
     def __init__(self):
+        if os.name != 'nt':
+            raise RuntimeError('This module does unfortunately currently not support non-Windows'
+                               ' operating systems.')
+
         # TODO: Support non-Windows OS
         # This is needed by the DLL containing CUDA code.
         # ctypes.cdll.LoadLibrary(os.environ['CUDA_PATH_V9_0'] + '\\bin\\cudart64_90.dll')

@@ -37,6 +37,11 @@ class SLMManager:
 
         self.updateSLMDisplay()
 
+    def saveState(self, state_general, state_pos, state_aber):
+        self.state_general = state_general
+        self.state_pos = state_pos
+        self.state_aber = state_aber
+
     def initCorrectionMask(self):
         # Add correction mask with correction pattern
         self.__maskCorrection = Mask(self.__slmSize[1], int(self.__slmSize[0]), self.__wavelength)
@@ -101,10 +106,9 @@ class SLMManager:
         self.__masksTilt[mask].moveCenter(move_v)
         self.__masksAber[mask].moveCenter(move_v)
 
-    def setAberrations(self, treeAber):
-        #TODO: fix this
-        dAberFactors = treeAber.p.param('Donut')
-        tAberFactors = treeAber.p.param('Tophat')
+    def setAberrations(self, aber_info):
+        dAberFactors = aber_info["left"]
+        tAberFactors = aber_info["right"]
         self.__masksAber[0].setAberrations(dAberFactors)
         self.__masksAber[1].setAberrations(tAberFactors)
         #print(f'Set aberrations on both phase mask.')
@@ -118,8 +122,8 @@ class SLMManager:
         self.__slm.updateArray(self.maskCombined)
 
     def getCenters(self):
-        centerCoords = {"donut": self.__masks[0].getCenter(),
-                        "tophat": self.__masks[1].getCenter()}
+        centerCoords = {"left": self.__masks[0].getCenter(),
+                        "right": self.__masks[1].getCenter()}
         return centerCoords
     
     def setCenters(self, centerCoords):
@@ -283,18 +287,16 @@ class Mask(object):
         self.img = tilt
         self.mask_type = MaskMode.Tilt
 
-    def setAberrations(self, aberParamsTree):
-        #TODO: fix this
-        #x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
-        self.aberParamsTree = aberParamsTree
-        fTilt = aberParamsTree.param("Tilt factor").value()
-        fTip = aberParamsTree.param("Tip factor").value()
-        fDefoc = aberParamsTree.param("Defocus factor").value()
-        fSph = aberParamsTree.param("Spherical factor").value()
-        fVertComa = aberParamsTree.param("Vertical coma factor").value()
-        fHozComa = aberParamsTree.param("Horizontal coma factor").value()
-        fVertAst = aberParamsTree.param("Vertical astigmatism factor").value()
-        fOblAst = aberParamsTree.param("Oblique astigmatism factor").value()
+    def setAberrations(self, aber_params_info):
+        self.aber_params_info = aber_params_info
+        fTilt = aber_params_info["tilt"]
+        fTip = aber_params_info["tip"]
+        fDefoc = aber_params_info["defocus"]
+        fSph = aber_params_info["spherical"]
+        fVertComa = aber_params_info["verticalComa"]
+        fHozComa = aber_params_info["horizontalComa"]
+        fVertAst = aber_params_info["verticalAstigmatism"]
+        fOblAst = aber_params_info["obliqueAstigmatism"]
         
         tiltMask = np.fromfunction(lambda i, j: fTilt * 2 * np.sqrt(((i - self.centerx) / self.radius)**2 + ((j - self.centery) / self.radius)**2) * np.sin(np.arctan2(((j - self.centery) / self.radius), ((i - self.centerx) / self.radius))), (self.height, self.width), dtype="float")
         tipMask = np.fromfunction(lambda i, j: fTip * 2 * np.sqrt(((i - self.centerx) / self.radius)**2 + ((j - self.centery) / self.radius)**2) * np.cos(np.arctan2(((j - self.centery) / self.radius), ((i - self.centerx) / self.radius))), (self.height, self.width), dtype="float")
@@ -452,7 +454,7 @@ class Mask(object):
         elif self.mask_type == MaskMode.Tilt:
             self.setTilt(self.angle_tilt, self.pixelSize)
         elif self.mask_type == MaskMode.Aber:
-            self.setAberrations(self.aberParamsTree)
+            self.setAberrations(self.aber_params_info)
 
     def __str__(self):
         return "image of the mask"

@@ -52,10 +52,7 @@ class SLMController(ImConWidgetController):
             lambda: self.setMask(MaskMode.Split))
 
         # Connect SLMWidget parameter tree updates
-        self.applySlmParam = self._widget.slmParameterTree.p.param('Apply')
-        self.applySlmParam.sigStateChanged.connect(self.applyGeneral)
-        self.applyAberParam = self._widget.aberParameterTree.p.param('Apply')
-        self.applyAberParam.sigStateChanged.connect(self.applyAberrations)
+        self._widget.applyChangesButton.clicked.connect(self.applyParams)
 
     # Button pressed functions
     def moveMask(self, direction):
@@ -68,9 +65,9 @@ class SLMController(ImConWidgetController):
 
     def saveParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
-        general_paramtree = self._widget.slmParameterTree
-        aber_paramtree = self._widget.aberParameterTree
-        center_coords = self._master.slmManager.getCenters()
+        #general_paramtree = self._widget.slmParameterTree
+        #aber_paramtree = self._widget.aberParameterTree
+        #center_coords = self._master.slmManager.getCenters()
 
         if obj == 'No objective':
             print('You have to choose an objective from the drop down menu.')
@@ -82,21 +79,52 @@ class SLMController(ImConWidgetController):
         else:
             raise ValueError(f'Unsupported objective "{obj}"')
 
-        state_general = general_paramtree.p.saveState()
-        state_aber = aber_paramtree.p.saveState()
-        state_pos = center_coords
-        #TODO: fix this to save as .json instead of pickling
-        with open(os.path.join(self.slmDir, filename), 'wb') as f:
-            pickler = pickle.Pickler(f)
-            pickler.dump(state_general)
-            pickler.dump(state_pos)
-            pickler.dump(state_aber)
-        # print(f'Saved SLM parameters for {obj} objective.')
+        slm_info_dict = self.getInfoDict(self._widget.slmParameterTree.p, self._widget.aberParameterTree.p, self._master.slmManager.getCenters())
+        print(slm_info_dict)
+        slm_info = SLMInfo()
+        slm_info = slm_info.from_dict_impl(slm_info_dict)
+        with open(os.path.join(self.slmDir, filename), 'w') as f:
+            f.write(slm_info.to_json(indent=4))
+        print(f'Saved SLM parameters for {obj} objective.')
+
+    def getInfoDict(self, generalParams, aberParams, centers):
+        state_general = {
+            "radius": generalParams.getValues()["general"][1]["radius"][0],
+            "sigma": generalParams.getValues()["general"][1]["sigma"][0]
+        }
+        state_aber = {
+            "left": {
+                "tilt": aberParams.getValues()["left"][1]["tilt"][0],
+                "tip": aberParams.getValues()["left"][1]["tip"][0],
+                "defocus": aberParams.getValues()["left"][1]["defocus"][0],
+                "spherical": aberParams.getValues()["left"][1]["spherical"][0],
+                "verticalComa": aberParams.getValues()["left"][1]["verticalComa"][0],
+                "horizontalComa": aberParams.getValues()["left"][1]["horizontalComa"][0],
+                "verticalAstigmatism": aberParams.getValues()["left"][1]["verticalAstigmatism"][0],
+                "obliqueAstigmatism": aberParams.getValues()["left"][1]["obliqueAstigmatism"][0]
+            },
+            "right": {
+                "tilt": aberParams.getValues()["right"][1]["tilt"][0],
+                "tip": aberParams.getValues()["right"][1]["tip"][0],
+                "defocus": aberParams.getValues()["right"][1]["defocus"][0],
+                "spherical": aberParams.getValues()["right"][1]["spherical"][0],
+                "verticalComa": aberParams.getValues()["right"][1]["verticalComa"][0],
+                "horizontalComa": aberParams.getValues()["right"][1]["horizontalComa"][0],
+                "verticalAstigmatism": aberParams.getValues()["right"][1]["verticalAstigmatism"][0],
+                "obliqueAstigmatism": aberParams.getValues()["right"][1]["obliqueAstigmatism"][0]                
+            }
+        }
+        info_dict = {
+                    "general": state_general,
+                    "position": centers,
+                    "aber": state_aber
+        }
+        return info_dict
 
     def loadParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
-        general_paramtree = self._widget.slmParameterTree
-        aber_paramtree = self._widget.aberParameterTree
+        #general_paramtree = self._widget.slmParameterTree
+        #aber_paramtree = self._widget.aberParameterTree
 
         if obj == 'No objective':
             print('You have to choose an objective from the drop down menu.')
@@ -109,20 +137,20 @@ class SLMController(ImConWidgetController):
             raise ValueError(f'Unsupported objective "{obj}"')
 
         with open(os.path.join(self.slmDir, filename), 'rb') as f:
-            #unpickler = pickle.Unpickler(f)
-            #state_general = unpickler.load()
-            #state_pos = unpickler.load()
-            #state_aber = unpickler.load()
             slm_info = SLMInfo.from_json(f.read(), infer_missing=True)
-            state_general = slm_info.general
-            state_pos = slm_info.position
-            state_aber = slm_info.aber
+            state_general = to_dict(slm_info.general)
+            state_pos = to_dict(slm_info.position)
+            state_aber = to_dict(slm_info.aber)
 
+        print(state_general)
+        print(state_pos)
+        print(state_aber)
         self._widget.slmParameterTree.p.restoreState(state_general)
         self._widget.aberParameterTree.p.restoreState(state_aber)
-        self._master.slmManager.setCenters(state_pos)
-        self._master.slmManager.setAberrations(self._widget.aberParameterTree)  # TODO: fix this
         self._master.slmManager.setGeneral(state_general)
+        self._master.slmManager.setCenters(state_pos)
+        self._master.slmManager.setAberrations(state_aber)
+        self._master.slmManager.saveState(state_general, state_pos, state_aber)
         image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         # print(f'Loaded SLM parameters for {obj} objective.')
@@ -130,12 +158,15 @@ class SLMController(ImConWidgetController):
     def setMask(self, maskMode):
         mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
         angle = np.float(self._widget.controlPanel.rotationEdit.text())
-        sigma = np.float(
-            self._widget.slmParameterTree.p.param('General parameters').param('Sigma').value())
+        sigma = np.float(self._master.slmManager.state_general["sigma"])
         self._master.slmManager.setMask(mask, angle, sigma, maskMode)
         image = self._master.slmManager.update()
         self.updateDisplayImage(image)
         # print("Updated image on SLM")
+
+    def applyParams(self):
+        self.applyGeneral()
+        self.applyAberrations()
 
     def applyGeneral(self):
         self._master.slmManager.setGeneral(self._widget.slmParameterTree)
@@ -164,13 +195,15 @@ class GeneralInfo:
 
 @dataclass(frozen=True)
 class PositionInfo:
-    centerx: int
-    centery: int
+    centerx: float
+    centery: float
         
 @dataclass(frozen=True)
 class PositionsInfo:
-    left: PositionInfo
-    right: PositionInfo
+    left: PositionInfo = field(default_factory=dict)
+    right: PositionInfo = field(default_factory=dict)
+
+    _catchAll: CatchAll = None
 
 @dataclass(frozen=True)
 class AberInfo:
@@ -185,8 +218,10 @@ class AberInfo:
         
 @dataclass(frozen=True)
 class AbersInfo:
-    left: AberInfo
-    right: AberInfo
+    left: AberInfo = field(default_factory=dict)
+    right: AberInfo = field(default_factory=dict)
+
+    _catchAll: CatchAll = None
         
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -196,6 +231,38 @@ class SLMInfo:
     aber: AbersInfo = field(default_factory=dict)
 
     _catchAll: CatchAll = None
+
+    def from_dict_impl(self, infodict):
+        print(self)
+        #print(infodict["general"])
+        #print(infodict["general"]["radius"])
+        self.general["radius"] = infodict["general"]["radius"]
+        self.general["sigma"] = infodict["general"]["sigma"]
+        print(self)
+        print(infodict["position"]["left"][0])
+        print(self.position.left["centerx"])
+        self.position["left"]["centerx"] = infodict["position"]["left"][0]
+        self.position.left.centery = infodict["position"]["left"][1]
+        self.position.right.centerx = infodict["position"]["right"][0]
+        self.position.right.centery = infodict["position"]["right"][1]
+        print(self)
+        self.aber.left.tilt = infodict["aber"]["left"]["tilt"]
+        self.aber.left.tip = infodict["aber"]["left"]["tip"]
+        self.aber.left.defocus = infodict["aber"]["left"]["defocus"]
+        self.aber.left.spherical = infodict["aber"]["left"]["spherical"]
+        self.aber.left.verticalComa = infodict["aber"]["left"]["verticalComa"]
+        self.aber.left.horizontalComa = infodict["aber"]["left"]["horizontalComa"]
+        self.aber.left.verticalAstigmatism = infodict["aber"]["left"]["verticalAstigmatism"]
+        self.aber.left.obliqueAstigmatism = infodict["aber"]["left"]["obliqueAstigmatism"]
+        self.aber.right.tilt = infodict["aber"]["right"]["tilt"]
+        self.aber.right.tip = infodict["aber"]["right"]["tip"]
+        self.aber.right.defocus = infodict["aber"]["right"]["defocus"]
+        self.aber.right.spherical = infodict["aber"]["right"]["spherical"]
+        self.aber.right.verticalComa = infodict["aber"]["right"]["verticalComa"]
+        self.aber.right.horizontalComa = infodict["aber"]["right"]["horizontalComa"]
+        self.aber.right.verticalAstigmatism = infodict["aber"]["right"]["verticalAstigmatism"]
+        self.aber.right.obliqueAstigmatism = infodict["aber"]["right"]["obliqueAstigmatism"]
+
         
 def to_dict(obj, classkey=None):
     if isinstance(obj, dict):

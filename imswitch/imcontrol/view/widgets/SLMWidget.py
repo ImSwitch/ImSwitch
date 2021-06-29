@@ -22,14 +22,12 @@ class SLMWidget(Widget):
         self.vb.setAspectLocked(True)
 
         self.slmParameterTree = ParameterTree()
-        self.generalparams = [{'name': 'General parameters', 'type': 'group', 'children': [
-            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
-             'suffix': 'px'},
-            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
-             'suffix': 'px'}
-        ]},
-                              {'name': 'Apply', 'type': 'action'}
-                              ]
+        self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
+                            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
+                            'suffix': 'px'},
+                            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+                            'suffix': 'px'}
+                            ]}]
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -48,7 +46,7 @@ class SLMWidget(Widget):
 
         self.aberParameterTree = pg.parametertree.ParameterTree()
         aberlim = 2
-        self.aberparams = [{'name': 'Donut', 'type': 'group', 'children': [
+        self.aberparams = [{'name': 'left', 'type': 'group', 'children': [
             {'name': 'tilt', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
             {'name': 'tip', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
@@ -66,7 +64,7 @@ class SLMWidget(Widget):
             {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01}
         ]},
-                           {'name': 'Tophat', 'type': 'group', 'children': [
+                           {'name': 'right', 'type': 'group', 'children': [
                                {'name': 'tilt', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
                                {'name': 'tip', 'type': 'float', 'value': 0,
@@ -83,9 +81,7 @@ class SLMWidget(Widget):
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
                                {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01}
-                           ]},
-                           {'name': 'Apply', 'type': 'action'}
-                           ]
+                           ]}]
         self.aberParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -109,6 +105,10 @@ class SLMWidget(Widget):
         abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
+        
+        # Button to apply changes
+        self.applyChangesButton = guitools.BetterPushButton('Apply changes')
+        #self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -221,8 +221,9 @@ class SLMWidget(Widget):
 
     def initControls(self):
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0)
-        self.grid.addWidget(self.controlPanel, 1, 1)
+        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
+        self.grid.addWidget(self.applyChangesButton, 2, 0, 1, 1)
+        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
 
 
 # Copyright (C) 2020, 2021 TestaLab

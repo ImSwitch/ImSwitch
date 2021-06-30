@@ -28,8 +28,8 @@ jobs:
             wxPython
 
         python3 -m pip install --upgrade pip
-        python3 -m pip install flake8
-        python3 -m pip install -r requirements-dev.txt
+        python3 -m pip install .
+        python3 -m pip install flake8 pytest pytest-qt
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -40,4 +40,4 @@ jobs:
         --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest -v
+        xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest --pyargs imswitch -v

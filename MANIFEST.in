@@ -1,1 +1,7 @@
 graft imswitch/_data
+graft imswitch/imcommon/_test
+graft imswitch/imcontrol/_test
+graft imswitch/imreconstruct/_test
+graft imswitch/imscripting/_test
+global-exclude __pycache__
+global-exclude *.py[co]

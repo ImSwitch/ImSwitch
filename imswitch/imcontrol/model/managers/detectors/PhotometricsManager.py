@@ -172,6 +172,9 @@ class PhotometricsManager(DetectorManager):
             self.setParameter('Readout port', 'Speed')
         elif readoutPort == 2:
             self.setParameter('Readout port', 'Dynamic range')
+
+    def finalize(self):
+        self._camera.close()
                 
 def getCameraObj(cameraId):
     try:
@@ -188,7 +191,6 @@ def getCameraObj(cameraId):
         print('Initializing Mock Hamamatsu')
         from imswitch.imcontrol.model.interfaces import MockHamamatsu
         return MockHamamatsu()
-
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

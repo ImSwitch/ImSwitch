@@ -25,7 +25,7 @@ class PhotometricsManager(DetectorManager):
 
         model = self._camera.name
         self.scanLineTime = self._camera.scan_line_time
-
+        self.__acquisition = False
         # Prepare parameters
         parameters = {
             'Set exposure time': DetectorNumberParameter(group='Timings', value=0,
@@ -59,10 +59,23 @@ class PhotometricsManager(DetectorManager):
         return [1, umxpx, umxpx]
 
     def getLatestFrame(self):
-         return np.asarray(self._camera.poll_frame()[0]['pixel_data'])
+        try:
+            status = self._camera.check_frame_status()
+            if status == "READOUT_NOT_ACTIVE":
+                return self.image
+            else:
+                return np.array(self._camera.poll_frame()[0]['pixel_data'])
+        except RuntimeError:
+            return self.image
 
     def getChunk(self):
-        return self.getLatestFrame()
+        frames = []
+        status = self._camera.check_frame_status()
+        if not status == "READOUT_NOT_ACTIVE":
+            im = np.array(self._camera.poll_frame()[0]['pixel_data'])
+            print('OK')
+            frames.append(im)
+        return frames
 
     def flushBuffers(self):
         pass
@@ -98,9 +111,11 @@ class PhotometricsManager(DetectorManager):
         return self.parameters
 
     def startAcquisition(self):
+        self.__acquisition = True
         self._camera.start_live()
 
     def stopAcquisition(self):
+        self.__acquisition = False
         self._camera.abort()
         self._camera.finish()
 
@@ -151,9 +166,12 @@ class PhotometricsManager(DetectorManager):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
         """
-        self.stopAcquisition()
-        function()
-        self.startAcquisition()
+        if self.__acquisition:
+            self.stopAcquisition()
+            function()
+            self.startAcquisition()
+        else:
+            function()
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.exp_time)

@@ -1,8 +1,7 @@
 import mimetypes
 import os
 
-from imswitch.imcommon import constants
-from imswitch.imcommon.model import ostools
+from imswitch.imcommon.model import dirtools, ostools
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
 
@@ -13,7 +12,7 @@ class FilesController(ImScrWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._rootPath = os.path.join(constants.rootFolderPath, 'scripts')
+        self._rootPath = os.path.join(dirtools.UserFileDirs.Root, 'scripts')
         self._widget.setRootPath(self._rootPath)
 
         # Connect FilesView signals

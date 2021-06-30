@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 
-from imswitch.imcommon import constants
+from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.model.managers.SLMManager import MaskMode, Direction
 from .basecontrollers import ImConWidgetController
 
@@ -14,7 +14,7 @@ class SLMController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.slmDir = os.path.join(constants.rootFolderPath, 'save/slm')
+        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 

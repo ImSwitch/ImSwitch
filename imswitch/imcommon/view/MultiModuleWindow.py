@@ -3,6 +3,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
     sigPickModules = QtCore.Signal()
+    sigOpenUserDir = QtCore.Signal()
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
     def __init__(self, title, iconPath=None, *args, **kwargs):
@@ -74,6 +75,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         pickModulesAction = QtWidgets.QAction('Set active modules…', self)
         pickModulesAction.triggered.connect(self.sigPickModules)
         toolsMenu.addAction(pickModulesAction)
+
+        openUserDirAction = QtWidgets.QAction('Open user files folder', self)
+        openUserDirAction.triggered.connect(self.sigOpenUserDir)
+        toolsMenu.addAction(openUserDirAction)
 
     def show(self, showLoadingScreen=False):
         if not showLoadingScreen:

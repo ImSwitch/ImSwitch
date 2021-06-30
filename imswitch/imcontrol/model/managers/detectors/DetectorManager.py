@@ -1,3 +1,4 @@
+import traceback
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, List
@@ -66,8 +67,12 @@ class DetectorManager(SignalInterface):
         self.setBinning(supportedBinnings[0])
 
     def updateLatestFrame(self, init):
-        self.__image = self.getLatestFrame()
-        self.sigImageUpdated.emit(self.__image, init)
+        try:
+            self.__image = self.getLatestFrame()
+        except Exception:
+            print(traceback.format_exc())
+        else:
+            self.sigImageUpdated.emit(self.__image, init)
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the updated list of parameters.

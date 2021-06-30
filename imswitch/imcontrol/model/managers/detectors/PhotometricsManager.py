@@ -24,6 +24,7 @@ class PhotometricsManager(DetectorManager):
         fullShape = self._camera.sensor_size
 
         model = self._camera.name
+        self.scanLineTime = self._camera.scan_line_time
 
         # Prepare parameters
         parameters = {
@@ -41,8 +42,8 @@ class PhotometricsManager(DetectorManager):
             'Readout port': DetectorListParameter(group='ports',
                                                     value='Sensitivity',
                                                     options=['Sensitivity',
-                                                             'Speed"',
-                                                             'Dynamic range"'], editable=True),
+                                                             'Speed',
+                                                             'Dynamic range'], editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
                                                          valueUnits='µm', editable=True)
         }
@@ -64,8 +65,7 @@ class PhotometricsManager(DetectorManager):
         return self.getLatestFrame()
 
     def flushBuffers(self):
-        #self._camera.updateIndices()
-        print("Nothing")
+        pass
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
@@ -77,12 +77,10 @@ class PhotometricsManager(DetectorManager):
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
         self._shape = (hsize, vsize)
+        self.setParameter('Readout time', self.__scanLineTime*vsize/1e6)
 
     def setBinning(self, binning):
         super().setBinning(binning)
-
-        binstring = f'{binning}x{binning}'
-        coded = binstring.encode('ascii')
         def binningAction():
             self._camera.binning = binning
         self._performSafeCameraAction(binningAction)
@@ -131,21 +129,24 @@ class PhotometricsManager(DetectorManager):
         print("Change readout port")
         def portAction():
             self._camera.readout_port = port_value
+        def getScanTimeAction():
+            self.__scanLineTime = self._camera.scan_line_time
         if port == 'Sensitivity':
             port_value = 0
             self._performSafeCameraAction(portAction)
 
-        elif port == 'Speed"':
+        elif port == 'Speed':
             port_value = 1
             self._performSafeCameraAction(portAction)
 
-        elif port == 'Dynamic range"':
+        elif port == 'Dynamic range':
             port_value = 2
             self._performSafeCameraAction(portAction)
         else:
             raise ValueError(f'Invalid readout port "{port}"')
-        #self.setParameter('Readout time', self._camera.readout_time/1000)
-
+        self._performSafeCameraAction(getScanTimeAction)
+        self.setParameter('Readout time', self.__scanLineTime*self._shape[0]/1e6)
+    
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
@@ -155,9 +156,7 @@ class PhotometricsManager(DetectorManager):
         self.startAcquisition()
 
     def _updatePropertiesFromCamera(self):
-        self.setParameter('Real exposure time', self._camera.exp_time/1000)
-       # self.setParameter('Readout time', self._camera.readout_time/1000)
-
+        self.setParameter('Real exposure time', self._camera.exp_time)
         triggerSource = self._camera.exp_mode
         if triggerSource == 1792:
             self.setParameter('Trigger source', 'Internal trigger')
@@ -175,7 +174,7 @@ class PhotometricsManager(DetectorManager):
             self.setParameter('Readout port', 'Dynamic range')
                 
 def getCameraObj(cameraId):
-    #try:
+    try:
         from pyvcam import pvc
         from pyvcam.camera import Camera
 
@@ -185,10 +184,10 @@ def getCameraObj(cameraId):
         camera.open()
         print('Initialized Hamamatsu Camera Object, model: ', camera.name)
         return camera
-    #except:
-    #    print('Initializing Mock Hamamatsu')
-    #    from imswitch.imcontrol.model.interfaces import MockHamamatsu
-    #    return MockHamamatsu()
+    except:
+        print('Initializing Mock Hamamatsu')
+        from imswitch.imcontrol.model.interfaces import MockHamamatsu
+        return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

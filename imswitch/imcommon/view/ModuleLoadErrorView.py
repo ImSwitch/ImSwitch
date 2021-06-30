@@ -1,7 +1,9 @@
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 
-class ModuleLoadErrorView(QtWidgets.QWidget):
+class ModuleLoadErrorView(QtWidgets.QMainWindow):
+    """ Widget that explains that a module failed to load. """
+
     def __init__(self, error, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -30,7 +32,9 @@ class ModuleLoadErrorView(QtWidgets.QWidget):
             )
         )
 
-        self.setLayout(layout)
+        container = QtWidgets.QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
 
 
 # Copyright (C) 2020, 2021 TestaLab

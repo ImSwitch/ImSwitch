@@ -240,7 +240,7 @@
     "wavelength": 775,
     "pixelSize": 0.02,
     "angleMount": 0.15,
-    "correctionPatternsDir": "C:\\Users\\STEDRed\\Documents\\HamamatsuSLM\\deform_corr_patterns\\"
+    "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
   "focusLock": {
     "camera": "FocusLockCamera",

@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtCore, QtWidgets
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from qtpy import QtWidgets
+from pyqtgraph.parametertree import ParameterTree
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -22,17 +22,14 @@ class SLMWidget(Widget):
         self.vb.setAspectLocked(True)
 
         self.slmParameterTree = ParameterTree()
-        self.generalparams = [{'name': 'General parameters', 'type': 'group', 'children': [
-            {'name': 'Radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
-             'suffix': 'px'},
-            {'name': 'Sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
-             'suffix': 'px'},
-            # {'name': 'Angle', 'type': 'float', 'value': 0.15, 'limits': (0, 0.3), 'step': 0.01, 'suffix': 'rad'},
-            # {'name': 'Wavelength', 'type': 'float', 'value': 775, 'limits': (0, 1200), 'step': 1, 'suffix': 'nm'},
-            # {'name': 'Helix rotation', 'type': 'bool', 'value': True},
-        ]},
-                              {'name': 'Apply', 'type': 'action'}
-                              ]
+        self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
+                            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
+                            'suffix': 'px'},
+                            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+                            'suffix': 'px'},
+                            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832), 'step': 0.1,
+                            'suffix': 'rad'}
+                            ]}]
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -51,44 +48,42 @@ class SLMWidget(Widget):
 
         self.aberParameterTree = pg.parametertree.ParameterTree()
         aberlim = 2
-        self.aberparams = [{'name': 'Donut', 'type': 'group', 'children': [
-            {'name': 'Tilt factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+        self.aberparams = [{'name': 'left', 'type': 'group', 'children': [
+            {'name': 'tilt', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Tip factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'tip', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Defocus factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'defocus', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Spherical factor', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
+            {'name': 'spherical', 'type': 'float', 'value': 0, 'limits': (-aberlim, aberlim),
              'step': 0.01},
-            {'name': 'Vertical coma factor', 'type': 'float', 'value': 0,
+            {'name': 'verticalComa', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0,
+            {'name': 'horizontalComa', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0,
+            {'name': 'verticalAstigmatism', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01},
-            {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0,
+            {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
              'limits': (-aberlim, aberlim), 'step': 0.01}
         ]},
-                           {'name': 'Tophat', 'type': 'group', 'children': [
-                               {'name': 'Tilt factor', 'type': 'float', 'value': 0,
+                           {'name': 'right', 'type': 'group', 'children': [
+                               {'name': 'tilt', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Tip factor', 'type': 'float', 'value': 0,
+                               {'name': 'tip', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Defocus factor', 'type': 'float', 'value': 0,
+                               {'name': 'defocus', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Spherical factor', 'type': 'float', 'value': 0,
+                               {'name': 'spherical', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Vertical coma factor', 'type': 'float', 'value': 0,
+                               {'name': 'verticalComa', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Horizontal coma factor', 'type': 'float', 'value': 0,
+                               {'name': 'horizontalComa', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Vertical astigmatism factor', 'type': 'float', 'value': 0,
+                               {'name': 'verticalAstigmatism', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01},
-                               {'name': 'Oblique astigmatism factor', 'type': 'float', 'value': 0,
+                               {'name': 'obliqueAstigmatism', 'type': 'float', 'value': 0,
                                 'limits': (-aberlim, aberlim), 'step': 0.01}
-                           ]},
-                           {'name': 'Apply', 'type': 'action'}
-                           ]
+                           ]}]
         self.aberParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -112,6 +107,10 @@ class SLMWidget(Widget):
         abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
+        
+        # Button to apply changes
+        self.applyChangesButton = guitools.BetterPushButton('Apply changes')
+        #self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -162,15 +161,6 @@ class SLMWidget(Widget):
         self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementlabel)
         self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementSpinBox)
 
-        # Interface to change the rotation angle of phase pattern
-        self.controlPanel.rotationInterface = QtWidgets.QWidget()
-        self.controlPanel.rotationInterfaceLayout = QtWidgets.QVBoxLayout()
-        self.controlPanel.rotationInterface.setLayout(self.controlPanel.rotationInterfaceLayout)
-        self.controlPanel.rotationLabel = QtWidgets.QLabel('Pattern angle (rad)')
-        self.controlPanel.rotationEdit = QtWidgets.QLineEdit('0')
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationLabel)
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationEdit)
-
         # Buttons for saving, loading, and controlling the various phase patterns
         self.controlPanel.saveButton = guitools.BetterPushButton("Save")
         self.controlPanel.loadButton = guitools.BetterPushButton("Load")
@@ -200,17 +190,14 @@ class SLMWidget(Widget):
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
 
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 4, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussianButton, 4, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 5, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 5, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 6, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 6, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rotationInterface, 5, 2, 2, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 4, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussianButton, 4, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 5, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 5, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 6, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 6, 2)
 
         # Definition of the box layout:
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
@@ -224,8 +211,9 @@ class SLMWidget(Widget):
 
     def initControls(self):
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0)
-        self.grid.addWidget(self.controlPanel, 1, 1)
+        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
+        self.grid.addWidget(self.applyChangesButton, 2, 0, 1, 1)
+        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
 
 
 # Copyright (C) 2020, 2021 TestaLab

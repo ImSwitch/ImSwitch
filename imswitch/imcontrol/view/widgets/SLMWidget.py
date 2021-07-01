@@ -28,7 +28,7 @@ class SLMWidget(Widget):
                             {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
                             'suffix': 'px'},
                             {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832), 'step': 0.1,
-                            'suffix': 'px'}
+                            'suffix': 'rad'}
                             ]}]
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {

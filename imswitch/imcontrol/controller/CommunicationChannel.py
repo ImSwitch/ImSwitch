@@ -29,7 +29,7 @@ class CommunicationChannel(SignalInterface):
 
     sigRemoveItemFromVb = Signal(object)  # (item)
 
-    sigRecordingStarting = Signal()
+    sigRecordingStarted = Signal()
 
     sigRecordingEnded = Signal()
 

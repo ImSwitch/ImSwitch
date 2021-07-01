@@ -1,38 +1,39 @@
 {
-  "general": {
-    "radius": 60.0,
-    "sigma": 100.0
-  },
-  "position": {
-    "left": {
-      "centerx": 100,
-      "centery": 100
-    }, 
-    "right": {
-      "centerx": 100,
-      "centery": 100
-    }
-  },
-  "aber": {
-    "left": {
-      "tilt": 1.0,
-      "tip": 1.0,
-      "defocus": 1.1,
-      "spherical": 1.0,
-      "verticalComa": 0.0,
-      "horizontalComa": 0.0,
-      "verticalAstigmatism": 1.0,
-      "obliqueAstigmatism": 1.0
+    "general": {
+        "radius": 100.0,
+        "sigma": 65.0,
+        "rotationAngle": 0.0
     },
-    "right": {
-      "tilt": 1.0,
-      "tip": 1.0,
-      "defocus": 1.1,
-      "spherical": 1.0,
-      "verticalComa": 0.0,
-      "horizontalComa": 0.0,
-      "verticalAstigmatism": 1.0,
-      "obliqueAstigmatism": 1.0
+    "position": {
+        "left": {
+            "xcenter": 200,
+            "ycenter": 200
+        },
+        "right": {
+            "xcenter": 200,
+            "ycenter": 200
+        }
+    },
+    "aber": {
+        "left": {
+            "tilt": 0.0,
+            "tip": 0.0,
+            "defocus": 0.0,
+            "spherical": 0.0,
+            "verticalComa": 0.0,
+            "horizontalComa": 0.0,
+            "verticalAstigmatism": 0.0,
+            "obliqueAstigmatism": 0.0
+        },
+        "right": {
+            "tilt": 0.0,
+            "tip": 0.0,
+            "defocus": 0.0,
+            "spherical": 0.0,
+            "verticalComa": 0.0,
+            "horizontalComa": 0.0,
+            "verticalAstigmatism": 0.0,
+            "obliqueAstigmatism": 0.0
+        }
     }
-  }
 }

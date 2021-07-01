@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.Qt import QtWidgets
+from pyqtgraph.parametertree import ParameterTree
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -26,6 +26,8 @@ class SLMWidget(Widget):
                             {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
                             'suffix': 'px'},
                             {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+                            'suffix': 'px'},
+                            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832), 'step': 0.1,
                             'suffix': 'px'}
                             ]}]
         self.slmParameterTree.setStyleSheet("""
@@ -159,15 +161,6 @@ class SLMWidget(Widget):
         self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementlabel)
         self.controlPanel.incrementInterfaceLayout.addWidget(self.controlPanel.incrementSpinBox)
 
-        # Interface to change the rotation angle of phase pattern
-        self.controlPanel.rotationInterface = QtWidgets.QWidget()
-        self.controlPanel.rotationInterfaceLayout = QtWidgets.QVBoxLayout()
-        self.controlPanel.rotationInterface.setLayout(self.controlPanel.rotationInterfaceLayout)
-        self.controlPanel.rotationLabel = QtWidgets.QLabel('Pattern angle (rad)')
-        self.controlPanel.rotationEdit = QtWidgets.QLineEdit('0')
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationLabel)
-        self.controlPanel.rotationInterfaceLayout.addWidget(self.controlPanel.rotationEdit)
-
         # Buttons for saving, loading, and controlling the various phase patterns
         self.controlPanel.saveButton = guitools.BetterPushButton("Save")
         self.controlPanel.loadButton = guitools.BetterPushButton("Load")
@@ -197,17 +190,14 @@ class SLMWidget(Widget):
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
 
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 4, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussianButton, 4, 1)
-
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 5, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 5, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 6, 0)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 6, 1)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.rotationInterface, 5, 2, 2, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.donutButton, 3, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.tophatButton, 3, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.blackButton, 4, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.gaussianButton, 4, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.halfButton, 5, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.quadrantButton, 5, 2)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.hexButton, 6, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.splitbullButton, 6, 2)
 
         # Definition of the box layout:
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()

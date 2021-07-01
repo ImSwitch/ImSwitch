@@ -64,17 +64,20 @@ class PhotometricsManager(DetectorManager):
             if status == "READOUT_NOT_ACTIVE":
                 return self.image
             else:
-                return np.array(self._camera.poll_frame()[0]['pixel_data'])
+                return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
         except RuntimeError:
             return self.image
 
     def getChunk(self):
         frames = []
         status = self._camera.check_frame_status()
-        if not status == "READOUT_NOT_ACTIVE":
-            im = np.array(self._camera.poll_frame()[0]['pixel_data'])
-            print('OK')
-            frames.append(im)
+        try:
+            if not status == "READOUT_NOT_ACTIVE":
+                while True:
+                    im = np.array(self._camera.poll_frame()[0]['pixel_data'])
+                    frames.append(im)
+        except RuntimeError:
+            pass
         return frames
 
     def flushBuffers(self):
@@ -131,11 +134,11 @@ class PhotometricsManager(DetectorManager):
             self._performSafeCameraAction(triggerAction)
 
         elif source == 'External "start-trigger"':
-            trigger_value = 2304
+            trigger_value = 2048
             self._performSafeCameraAction(triggerAction)
 
         elif source == 'External "frame-trigger"':
-            trigger_value = 2048
+            trigger_value = 2560
             self._performSafeCameraAction(triggerAction)
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
@@ -195,20 +198,20 @@ class PhotometricsManager(DetectorManager):
         self._camera.close()
                 
 def getCameraObj(cameraId):
-    try:
-        from pyvcam import pvc
-        from pyvcam.camera import Camera
+    #try:
+    from pyvcam import pvc
+    from pyvcam.camera import Camera
 
-        pvc.init_pvcam()
-        print('Trying to import camera', cameraId)
-        camera = next(Camera.detect_camera())
-        camera.open()
-        print('Initialized Hamamatsu Camera Object, model: ', camera.name)
-        return camera
-    except:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
+    pvc.init_pvcam()
+    print('Trying to import camera', cameraId)
+    camera = next(Camera.detect_camera())
+    camera.open()
+    print('Initialized Hamamatsu Camera Object, model: ', camera.name)
+    return camera
+  #  except:
+   #     print('Initializing Mock Hamamatsu')
+    #    from imswitch.imcontrol.model.interfaces import MockHamamatsu
+     #   return MockHamamatsu()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

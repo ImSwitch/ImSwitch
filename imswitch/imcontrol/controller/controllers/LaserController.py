@@ -35,7 +35,7 @@ class LaserController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigScanStarted.connect(lambda: self.scanChanged(True))
+        self._commChannel.sigScanStarting.connect(lambda: self.scanChanged(True))
         self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
 
         # Connect LaserWidget signals

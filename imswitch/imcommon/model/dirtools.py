@@ -7,7 +7,7 @@ from shutil import copy2
 import imswitch
 
 
-def getUserDir():
+def getSystemUserDir():
     """ Returns the user's documents folder if they are using a Windows system,
     or their home folder if they are using another operating system. """
 
@@ -28,7 +28,7 @@ def getUserDir():
 
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-_baseUserFilesDir = os.path.join(getUserDir(), 'ImSwitch')
+_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitch')
 
 
 def initUserFilesIfNeeded():

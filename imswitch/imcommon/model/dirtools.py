@@ -47,15 +47,19 @@ def initUserFilesIfNeeded():
             continue
 
         if filePath.name.lower() == 'readme.txt':
-            continue  # skip readme.txt files
+            continue  # Skip readme.txt files
 
         relativeFilePath = filePath.relative_to(DataFileDirs.Examples)
         copyDestination = _baseUserFilesDir / relativeFilePath
 
         if os.path.exists(copyDestination):
-            continue  # don't overwrite existing files
+            continue  # Don't overwrite existing files
 
-        os.makedirs(copyDestination.parent, exist_ok=True)
+        try:
+            os.makedirs(copyDestination.parent, exist_ok=True)
+        except FileExistsError:  # Directory path (or part of it) exists as a file
+            continue
+
         copy2(filePath, copyDestination)
 
 

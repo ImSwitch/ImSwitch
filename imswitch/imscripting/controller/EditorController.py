@@ -1,6 +1,6 @@
 import os
 
-from imswitch.imcommon import constants
+from imswitch.imcommon.model import dirtools
 from imswitch.imscripting.model import ScriptExecutor, ScriptStore, ScriptEntry
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
@@ -165,7 +165,7 @@ class EditorController(ImScrWidgetController):
 
 
 _untitledFileName = '(untitled)'
-_scriptsFolderPath = os.path.join(constants.rootFolderPath, 'scripts')
+_scriptsFolderPath = os.path.join(dirtools.UserFileDirs.Root, 'scripts')
 
 
 # Copyright (C) 2020, 2021 TestaLab

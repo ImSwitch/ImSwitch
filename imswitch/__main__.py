@@ -2,68 +2,73 @@ import importlib
 import os
 import traceback
 
-from .imcommon import constants, prepareApp, launchApp
+from .imcommon import prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from .imcommon.model import modulesconfigtools
+from .imcommon.model import dirtools, modulesconfigtools
 from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
-enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
-if 'imscripting' in enabledModuleIds:
-    # Ensure that imscripting is added last
-    enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
+def main():
+    enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
+    if 'imscripting' in enabledModuleIds:
+        # Ensure that imscripting is added last
+        enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
-              for moduleId in modulesconfigtools.getEnabledModuleIds()]
+    modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
+                  for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
-app = prepareApp()
-moduleCommChannel = ModuleCommunicationChannel()
+    app = prepareApp()
+    moduleCommChannel = ModuleCommunicationChannel()
 
-multiModuleWindow = MultiModuleWindow(
-    'ImSwitch', os.path.join(constants.rootFolderPath, 'icon.png')
-)
-multiModuleWindowController = MultiModuleWindowController.create(
-    multiModuleWindow, moduleCommChannel
-)
-multiModuleWindow.show(showLoadingScreen=True)
-app.processEvents()  # Draw window before continuing
+    multiModuleWindow = MultiModuleWindow(
+        'ImSwitch', os.path.join(dirtools.DataFileDirs.Root, 'icon.png')
+    )
+    multiModuleWindowController = MultiModuleWindowController.create(
+        multiModuleWindow, moduleCommChannel
+    )
+    multiModuleWindow.show(showLoadingScreen=True)
+    app.processEvents()  # Draw window before continuing
 
-# Register modules
-for modulePkg in modulePkgs:
-    moduleCommChannel.register(modulePkg)
+    # Register modules
+    for modulePkg in modulePkgs:
+        moduleCommChannel.register(modulePkg)
 
-# Load modules
-moduleMainControllers = dict()
+    # Load modules
+    moduleMainControllers = dict()
 
-for i, modulePkg in enumerate(modulePkgs):
-    moduleId = modulePkg.__name__
-    moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+    for i, modulePkg in enumerate(modulePkgs):
+        moduleId = modulePkg.__name__
+        moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
 
-    # The displayed module name will be the module's __title__, or alternatively its ID if __title__
-    # is not set
-    moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+        # The displayed module name will be the module's __title__, or alternatively its ID if
+        # __title__ is not set
+        moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
 
-    try:
-        view, controller = modulePkg.getMainViewAndController(
-            moduleCommChannel=moduleCommChannel,
-            multiModuleWindowController=multiModuleWindowController,
-            moduleMainControllers=moduleMainControllers
-        )
-    except Exception as e:
-        print(f'Failed to initialize module {moduleId}')
-        print(traceback.format_exc())
-        moduleCommChannel.unregister(modulePkg)
-        multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
-    else:
-        # Add module to window
-        multiModuleWindow.addModule(moduleId, moduleName, view)
-        moduleMainControllers[moduleId] = controller
+        try:
+            view, controller = modulePkg.getMainViewAndController(
+                moduleCommChannel=moduleCommChannel,
+                multiModuleWindowController=multiModuleWindowController,
+                moduleMainControllers=moduleMainControllers
+            )
+        except Exception as e:
+            print(f'Failed to initialize module {moduleId}')
+            print(traceback.format_exc())
+            moduleCommChannel.unregister(modulePkg)
+            multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+        else:
+            # Add module to window
+            multiModuleWindow.addModule(moduleId, moduleName, view)
+            moduleMainControllers[moduleId] = controller
 
-        # Update loading progress
-        multiModuleWindow.setLoadingProgress(i / len(modulePkgs))
-        app.processEvents()  # Draw window before continuing
+            # Update loading progress
+            multiModuleWindow.setLoadingProgress(i / len(modulePkgs))
+            app.processEvents()  # Draw window before continuing
 
-launchApp(app, multiModuleWindow, moduleMainControllers.values())
+    launchApp(app, multiModuleWindow, moduleMainControllers.values())
+
+
+if __name__ == '__main__':
+    main()
 
 
 # Copyright (C) 2020, 2021 TestaLab

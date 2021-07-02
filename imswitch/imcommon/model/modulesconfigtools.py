@@ -7,7 +7,7 @@ from typing import List
 from dataclasses_json import dataclass_json
 
 import imswitch
-from imswitch.imcommon import constants
+from imswitch.imcommon.model import dirtools
 
 
 @dataclass_json
@@ -39,8 +39,8 @@ def getAvailableModules():
     return moduleIdsAndNamesDict
 
 
-_configFilesDir = os.path.join(constants.rootFolderPath, 'config')
-_modulesFilePath = os.path.join(_configFilesDir, 'modules.json')
+dirtools.initUserFilesIfNeeded()
+_modulesFilePath = os.path.join(dirtools.UserFileDirs.Config, 'modules.json')
 
 if not os.path.isfile(_modulesFilePath):
     # Modules file doesn't exist, create it.

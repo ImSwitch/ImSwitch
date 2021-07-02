@@ -3,9 +3,8 @@ __title__ = 'Image Reconstruction'
 
 def getMainViewAndController(moduleCommChannel, *_args, **_kwargs):
     import os
-    from imswitch.imcommon import constants
-    os.environ['PATH'] = (os.environ['PATH'] + ';' +
-                          os.path.join(constants.rootFolderPath, 'libs'))
+    from imswitch.imcommon.model import dirtools
+    os.environ['PATH'] = os.environ['PATH'] + ';' + dirtools.DataFileDirs.Libs
 
     from .controller import ImRecMainController
     from .view import ImRecMainView

@@ -1,6 +1,10 @@
 name: imswitch-test
 
-on: [ push, pull_request ]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '30 7 * * *'
 
 jobs:
   build:
@@ -28,16 +32,16 @@ jobs:
             wxPython
 
         python3 -m pip install --upgrade pip
-        python3 -m pip install flake8
-        python3 -m pip install -r requirements-dev.txt
+        python3 -m pip install .
+        python3 -m pip install flake8 pytest pytest-qt
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --exclude=scripts/* \
+        flake8 . --count --exclude=imswitch/_data/* \
         --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exclude=scripts/* \
+        flake8 . --count --exclude=imswitch/_data/* \
         --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest -v
+        xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest --pyargs imswitch -v

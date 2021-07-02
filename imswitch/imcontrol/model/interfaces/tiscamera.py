@@ -1,5 +1,5 @@
 import numpy as np
-from pyicic import IC_ImagingControl
+from .pyicic import IC_ImagingControl
 
 
 class CameraTIS:

@@ -5,7 +5,7 @@ import re
 import html2text
 import m2r
 
-from imswitch.imcommon import prepareApp, constants
+from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imscripting.model.actions import _Actions
 
@@ -27,7 +27,7 @@ def writeDocs(cls):
 
 
 # Create and set working directory
-docsDir = os.path.join(constants.rootFolderPath, 'docs')
+docsDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../docs')
 apiDocsDir = os.path.join(docsDir, 'api')
 os.makedirs(apiDocsDir, exist_ok=True)
 

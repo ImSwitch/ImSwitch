@@ -2,8 +2,11 @@
 Hardware Control Configuration
 ******************************
 
-Hardware control configurations are to be placed in the /config/imcontrol_setups/ directory. You
-can also find some pre-made configuration files there.
+Hardware control configurations are to be placed in the ``imcontrol_setups`` directory,
+which is created automatically inside your user directory for ImSwitch the first time the hardware control module starts.
+The user directory is located at ``<your user's documents folder>\ImSwitch`` on Windows and ``~/ImSwitch`` on macOS/Linux.
+
+The ``imcontrol_setups`` directory contains some pre-made configuration files by default.
 
 
 Detector managers

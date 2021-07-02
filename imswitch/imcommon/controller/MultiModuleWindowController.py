@@ -1,5 +1,5 @@
 from imswitch.imcommon.view import guitools
-from imswitch.imcommon.model import modulesconfigtools, ostools, APIExport
+from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from .basecontrollers import WidgetController
 
 
@@ -10,6 +10,7 @@ class MultiModuleWindowController(WidgetController):
 
         # Connect signals
         self._widget.sigPickModules.connect(self.pickModules)
+        self._widget.sigOpenUserDir.connect(self.openUserDir)
         self._widget.sigModuleAdded.connect(self.moduleAdded)
 
     def pickModules(self):
@@ -29,6 +30,10 @@ class MultiModuleWindowController(WidgetController):
 
         modulesconfigtools.setEnabledModuleIds(moduleIds)
         ostools.restartSoftware()
+
+    def openUserDir(self):
+        """ Shows the user files directory in system file explorer. """
+        ostools.openFolderInOS(dirtools.UserFileDirs.Root)
 
     def moduleAdded(self, moduleId, moduleName):
         self._moduleIdNameMap[moduleId] = moduleName

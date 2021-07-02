@@ -7,28 +7,39 @@ def getMainViewAndController(moduleCommChannel, *_args,
     from .model import configfiletools
     from .view import ViewSetupInfo, ImConMainView
 
+
+    def pickSetup(options):
+        import dataclasses
+        import sys
+        from imswitch.imcontrol.view.guitools import PickSetupDialog
+
+        # Let user pick the setup to use
+        setupFileName = PickSetupDialog.showAndWaitForResult(
+            parent=None,  setupList=configfiletools.getSetupList()
+        )
+        if not setupFileName:
+            print('User did not pick a setup to use')
+            sys.exit()
+        return dataclasses.replace(options, setupFileName=setupFileName)
+
+
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()
         if optionsDidNotExist:
-            import dataclasses
-            import sys
-            from imswitch.imcontrol.view.guitools import PickSetupDialog
-
-            # Let user pick the setup to use
-            setupFileName = PickSetupDialog.showAndWaitForResult(
-                parent=None,  setupList=configfiletools.getSetupList()
-            )
-            if not setupFileName:
-                print('User did not pick a setup to use')
-                sys.exit()
-            options = dataclasses.replace(options, setupFileName=setupFileName)
+            options = pickSetup(options)  # Setup to use not set, let user pick
 
         configfiletools.saveOptions(options)
     else:
         options = overrideOptions
 
     if overrideSetupInfo is None:
-        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+        try:
+            setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
+        except FileNotFoundError:
+            # Have user pick setup anyway
+            options = pickSetup(options)
+            configfiletools.saveOptions(options)
+            setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
     else:
         setupInfo = overrideSetupInfo
 

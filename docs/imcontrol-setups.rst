@@ -32,6 +32,15 @@ Available manager properties:
 - ``hamamatsu`` -- dictionary of DCAM API properties
 
 
+PhotometricsManager
+------------------
+
+DetectorManager that deals with frame extraction for a Photometrics camera.
+
+Available manager properties:
+- ``cameraListIndex`` -- the camera's index in the Photometrics camera list (list indexing starts at 0)
+
+
 TISManager
 ----------------
 

@@ -129,7 +129,7 @@ def getTISObj(cameraId):
         camera = CameraTIS(cameraId)
         print('Initialized TIS Camera Object, model: ', camera.model)
         return camera
-    except (OSError, IndexError):
+    except:
         print('Initializing Mock TIS')
         from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
         return MockCameraTIS()

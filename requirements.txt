@@ -7,7 +7,6 @@ napari[pyqt5] == 0.4.7  # pinned because of napari issue 2897
 nidaqmx >= 0.5.7, < 0.6
 numpy >= 1.19, < 2
 psutil >= 5.4.8, < 6
-git+https://github.com/morefigs/py-ic-imaging-control#egg=py-ic-imaging-control; platform_system == "Windows"
 PyQt5 >= 5.15.2, < 6
 pyqtgraph == 0.11.0  # pinned because we use some internal code that has changed since 0.11.0
 pyserial >= 3.5, < 4

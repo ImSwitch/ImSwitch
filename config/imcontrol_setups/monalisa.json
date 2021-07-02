@@ -5,10 +5,7 @@
             "digitalLine": 4,
             "managerName": "PhotometricsManager",
             "managerProperties": {
-                "cameraListIndex": 1,
-                "hamamatsu": {
-                    "exp_time": 30
-                }
+                "cameraListIndex": 1
             },
             "forAcquisition": true
         },

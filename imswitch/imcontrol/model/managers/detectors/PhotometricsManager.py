@@ -4,22 +4,18 @@ from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
 
+
 class PhotometricsManager(DetectorManager):
-    """ DetectorManager that deals with the Hamamatsu parameters and frame
-    extraction for a Hamamatsu camera.
+    """ DetectorManager that deals with frame extraction for a Photometrics camera.
 
     Available manager properties:
-    * cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at
-                         0); set this to an invalid value, e.g. the string "mock" to load a mocker
-    * hamamatsu -- dictionary of DCAM API properties
+    * cameraListIndex -- the camera's index in the Photometrics camera list (list indexing starts at
+                         0)
     """
 
     def __init__(self, detectorInfo, name, **_kwargs):
         self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
-
-        #for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
-        #    self._camera.setParam( propertyName, propertyValue)
 
         fullShape = self._camera.sensor_size
 
@@ -33,17 +29,17 @@ class PhotometricsManager(DetectorManager):
             'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
                                                           valueUnits='ms', editable=False),
             'Readout time' : DetectorNumberParameter(group='Timings', value=0,
-                                                          valueUnits='ms', editable=False),
+                                                     valueUnits='ms', editable=False),
             'Trigger source': DetectorListParameter(group='Acquisition mode',
                                                     value='Internal trigger',
                                                     options=['Internal trigger',
                                                              'External "start-trigger"',
                                                              'External "frame-trigger"'], editable=True),
             'Readout port': DetectorListParameter(group='ports',
-                                                    value='Sensitivity',
-                                                    options=['Sensitivity',
-                                                             'Speed',
-                                                             'Dynamic range'], editable=True),
+                                                  value='Sensitivity',
+                                                  options=['Sensitivity',
+                                                           'Speed',
+                                                           'Dynamic range'], editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
                                                          valueUnits='µm', editable=True)
         }
@@ -86,8 +82,10 @@ class PhotometricsManager(DetectorManager):
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
         roi = (hpos, hpos+hsize, vpos, vpos+vsize)
+
         def cropAction():
             self._camera.roi = roi
+
         self._performSafeCameraAction(cropAction)
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
@@ -97,8 +95,10 @@ class PhotometricsManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning)
+
         def binningAction():
             self._camera.binning = binning
+
         self._performSafeCameraAction(binningAction)
 
     def setParameter(self, name, value):
@@ -127,8 +127,10 @@ class PhotometricsManager(DetectorManager):
 
     def _setTriggerSource(self, source):
         print("Change trigger source")
+
         def triggerAction():
             self._camera.exp_mode = trigger_value
+
         if source == 'Internal trigger':
             trigger_value = 1792
             self._performSafeCameraAction(triggerAction)
@@ -145,10 +147,13 @@ class PhotometricsManager(DetectorManager):
 
     def _setReadoutPort(self, port):
         print("Change readout port")
+
         def portAction():
             self._camera.readout_port = port_value
+
         def getScanTimeAction():
             self.__scanLineTime = self._camera.scan_line_time
+
         if port == 'Sensitivity':
             port_value = 0
             self._performSafeCameraAction(portAction)
@@ -196,9 +201,9 @@ class PhotometricsManager(DetectorManager):
 
     def finalize(self):
         self._camera.close()
-                
+
+
 def getCameraObj(cameraId):
-    #try:
     from pyvcam import pvc
     from pyvcam.camera import Camera
 
@@ -206,12 +211,9 @@ def getCameraObj(cameraId):
     print('Trying to import camera', cameraId)
     camera = next(Camera.detect_camera())
     camera.open()
-    print('Initialized Hamamatsu Camera Object, model: ', camera.name)
+    print('Initialized Photometrics Camera Object, model: ', camera.name)
     return camera
-  #  except:
-   #     print('Initializing Mock Hamamatsu')
-    #    from imswitch.imcontrol.model.interfaces import MockHamamatsu
-     #   return MockHamamatsu()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
@@ -228,4 +230,3 @@ def getCameraObj(cameraId):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

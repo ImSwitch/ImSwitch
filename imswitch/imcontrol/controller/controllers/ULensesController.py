@@ -9,7 +9,7 @@ class ULensesController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.plotAdded = False
-
+        self.grid = []
         # Connect ULensesWidget signals
         self._widget.sigULensesClicked.connect(self.updateGrid)
         self._widget.sigUShowLensesChanged.connect(self.toggleULenses)
@@ -19,17 +19,19 @@ class ULensesController(ImConWidgetController):
         if not self.plotAdded:
             #self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
             item = self._widget.getPlotGraphicsItem()
-            self._widget.addItemToViewer(item)
+            #self._widget.addItemToViewer(item)
+            self._widget.viewer.add_points(self.grid, size=2)
             self.plotAdded = True
 
     def updateGrid(self):
         """ Updates plot with new parameters. """
         x, y, px, up = self._widget.getParameters()
+        #size_x, size_y = self._widget.viewer.layers.data.shape
         size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         pattern_x = np.arange(x, size_x, up / px)
         pattern_y = np.arange(y, size_y, up / px)
-        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
-        self._widget.setData(x=grid[:, 0], y=grid[:, 1])
+        self.grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
+        self._widget.setData(x=self.grid[:, 0], y=self.grid[:, 1])
 
     def toggleULenses(self, show):
         """ Shows or hides grid. """

@@ -49,12 +49,13 @@ class ULensesWidget(guitools.NapariBaseWidget):
                 np.float(self.pxEdit.text()),
                 np.float(self.upEdit.text()))
 
-    def getPlotGraphicsItem(self):
-        return self.ulensesPlot
-
-    def setData(self, x, y):
-        """ Updates plot with new parameters. """
-        self.ulensesPlot.setData(x=x, y=y)
+    def toggleULenses(self, show):
+        """ Shows or hides grid. """
+        x, y, px, up = self.getParameters()
+        size_x, size_y = image = next(iter(self.viewer.layers.selection)).data.shape
+        pattern_x = np.arange(x, size_x, up / px)
+        pattern_y = np.arange(y, size_y, up / px)
+        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
 
     def setULensesVisible(self, visible):
         """ Updates visibility of plot. """

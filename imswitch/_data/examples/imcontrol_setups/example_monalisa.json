@@ -5,13 +5,13 @@
             "digitalLine": 4,
             "managerName": "HamamatsuManager",
             "managerProperties": {
-                "cameraListIndex": 1,
+                "cameraListIndex": 0,
                 "hamamatsu": {
                     "readout_speed": 3,
                     "trigger_global_exposure": 5,
                     "trigger_active": 2,
                     "trigger_polarity": 2,
-                    "exposure_time": 0.03,
+                    "exposure_time": 0.01,
                     "trigger_source": 1,
                     "subarray_hpos": 0,
                     "subarray_vpos": 0,
@@ -26,7 +26,7 @@
             "digitalLine": 5,
             "managerName": "HamamatsuManager",
             "managerProperties": {
-                "cameraListIndex": 0,
+                "cameraListIndex": 1,
                 "hamamatsu": {
                     "readout_speed": 3,
                     "trigger_global_exposure": 5,

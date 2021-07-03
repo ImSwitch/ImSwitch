@@ -6,8 +6,7 @@ from traceback import print_exc
 
 import numpy as np
 
-from imswitch.imcommon import constants
-from imswitch.imcommon.model import APIExport
+from imswitch.imcommon.model import APIExport, dirtools
 from imswitch.imcontrol.view import guitools
 from .basecontrollers import SuperScanController
 
@@ -31,7 +30,7 @@ class ScanController(SuperScanController):
             self._master.scanManager.TTLTimeUnits
         )
 
-        self.scanDir = os.path.join(constants.rootFolderPath, 'save/scans')
+        self.scanDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_scans')
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
 
@@ -169,8 +168,8 @@ class ScanController(SuperScanController):
             print_exc()
             return
 
+        self._commChannel.sigScanStarting.emit()
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
-        self._commChannel.sigScanStarted.emit()
 
     def scanDone(self):
         print('Scan done')

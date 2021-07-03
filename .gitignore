@@ -64,11 +64,3 @@ target/
 
 # Visual Studio Code
 .vscode/
-
-# Generated config files
-config/modules.json
-config/*_options.json
-
-# Scripts folder (except examples)
-/scripts/
-!/scripts/examples/

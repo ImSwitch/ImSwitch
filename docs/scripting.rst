@@ -12,5 +12,5 @@ documented :doc:`here <api/_actions>`.
 The API modules may provide signals – events that can be bound to through e.g. the global
 getWaitForSignal scripting function.
 
-There are a few example scripts in the /scripts/examples/ directory that you can check out to see
-how the scripting works in action.
+There are a few example scripts that you can check out in the scripting module to see how the
+scripting functionality works in action.

@@ -39,7 +39,7 @@ class CommunicationChannel(SignalInterface):
 
     sigPrepareScan = Signal()
 
-    sigScanStarted = Signal()
+    sigScanStarting = Signal()
     
     sigScanEnded = Signal()
 

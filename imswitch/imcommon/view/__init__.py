@@ -1,1 +1,2 @@
+from .ModuleLoadErrorView import ModuleLoadErrorView
 from .MultiModuleWindow import MultiModuleWindow

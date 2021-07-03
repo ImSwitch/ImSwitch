@@ -1,5 +1,8 @@
-# NOTE: This file is not intended to be run by itself; it is intended to be
-#       imported by example_import.py
+"""
+This script is not intended to be run by itself; it is intended to be imported
+by example_import.py
+"""
+
 
 def printMessage():
     print('Running code from another file!')

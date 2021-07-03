@@ -5,7 +5,7 @@ from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
 
-class ULensesWidget(Widget):
+class ULensesWidget(guitools.NapariBaseWidget):
     """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
 
     sigULensesClicked = QtCore.Signal()

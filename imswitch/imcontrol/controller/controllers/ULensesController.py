@@ -17,7 +17,9 @@ class ULensesController(ImConWidgetController):
     def addPlot(self):
         """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
         if not self.plotAdded:
-            self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
+            #self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
+            item = self._widget.getPlotGraphicsItem()
+            self._widget.addItemToViewer(item)
             self.plotAdded = True
 
     def updateGrid(self):

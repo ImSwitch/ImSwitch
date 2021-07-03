@@ -8,7 +8,7 @@ nidaqmx >= 0.5.7, < 0.6
 numpy >= 1.19, < 2
 psutil >= 5.4.8, < 6
 PyQt5 >= 5.15.2, < 6
-git+https://github.com/pyqtgraph/pyqtgraph#egg=pyqtgraph  # TODO: Change to "pyqtgraph >= 0.12.2, < 0.13" when 0.12.2 releases
+pyqtgraph >= 0.12.1, < 0.13
 pyserial >= 3.5, < 4
 QDarkStyle >= 2.8, < 4
 QScintilla >= 2.12, < 3

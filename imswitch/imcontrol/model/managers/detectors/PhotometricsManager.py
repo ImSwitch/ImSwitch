@@ -204,15 +204,20 @@ class PhotometricsManager(DetectorManager):
 
 
 def getCameraObj(cameraId):
-    from pyvcam import pvc
-    from pyvcam.camera import Camera
+    try:
+        from pyvcam import pvc
+        from pyvcam.camera import Camera
 
-    pvc.init_pvcam()
-    print('Trying to import camera', cameraId)
-    camera = next(Camera.detect_camera())
-    camera.open()
-    print('Initialized Photometrics Camera Object, model: ', camera.name)
-    return camera
+        pvc.init_pvcam()
+        print('Trying to import camera', cameraId)
+        camera = next(Camera.detect_camera())
+        camera.open()
+        print('Initialized Photometrics Camera Object, model: ', camera.name)
+        return camera
+    except:
+        print('Initializing Mock Hamamatsu')
+        from imswitch.imcontrol.model.interfaces import MockHamamatsu
+        return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

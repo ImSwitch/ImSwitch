@@ -1,3 +1,6 @@
+__version__ = '1.1.0'
+
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #

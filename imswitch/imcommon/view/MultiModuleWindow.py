@@ -1,9 +1,13 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
+from .CheckUpdatesDialog import CheckUpdatesDialog
+
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
     sigPickModules = QtCore.Signal()
     sigOpenUserDir = QtCore.Signal()
+    sigCheckUpdates = QtCore.Signal()
+
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
     def __init__(self, title, iconPath=None, *args, **kwargs):
@@ -13,6 +17,8 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(title)
         if iconPath:
             self.setWindowIcon(QtGui.QIcon(iconPath))
+
+        self.checkUpdatesDialog = CheckUpdatesDialog(self)
 
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()
@@ -58,19 +64,29 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
     def setLoadingProgress(self, progressFraction):
         self.loadingProgressBar.setValue(progressFraction * 100)
 
+    def showCheckUpdatesDialog(self):
+        self.checkUpdatesDialog.exec_()
+
     def addItemsToMenuBar(self, menuBar):
         menuChildren = menuBar.findChildren(QtWidgets.QMenu, None, QtCore.Qt.FindDirectChildrenOnly)
+
         toolsMenu = None
+        helpMenu = None
         for menuChild in menuChildren:
             if menuChild.title() == '&Tools':
                 toolsMenu = menuChild
-                break
+            if menuChild.title() == '&Help':
+                helpMenu = menuChild
 
         if toolsMenu is None:
             toolsMenu = menuBar.addMenu('&Tools')
+        if helpMenu is None:
+            helpMenu = menuBar.addMenu('&Help')
 
         if not toolsMenu.isEmpty():
             toolsMenu.addSeparator()
+        if not helpMenu.isEmpty():
+            helpMenu.addSeparator()
 
         pickModulesAction = QtWidgets.QAction('Set active modules…', self)
         pickModulesAction.triggered.connect(self.sigPickModules)
@@ -79,6 +95,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         openUserDirAction = QtWidgets.QAction('Open user files folder', self)
         openUserDirAction.triggered.connect(self.sigOpenUserDir)
         toolsMenu.addAction(openUserDirAction)
+
+        checkUpdatesAction = QtWidgets.QAction('Check for updates…', self)
+        checkUpdatesAction.triggered.connect(self.sigCheckUpdates)
+        helpMenu.addAction(checkUpdatesAction)
 
     def show(self, showLoadingScreen=False):
         if not showLoadingScreen:

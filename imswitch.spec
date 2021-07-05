@@ -25,6 +25,8 @@ datas += collect_data_files('vispy')
 
 hiddenImports = []
 hiddenImports += collect_submodules('imswitch')
+hiddenImports += collect_submodules('napari.utils')
+hiddenImports += collect_submodules('pyqtgraph.console')
 hiddenImports += ['vispy.ext._bundled.six']
 hiddenImports += ['vispy.app.backends.' + b[1] for b in CORE_BACKENDS]
 hiddenImports += ['vispy.app.backends._test']

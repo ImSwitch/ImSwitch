@@ -66,6 +66,7 @@ try:
               [],
               exclude_binaries=True,
               name='ImSwitch',
+              icon='imswitch/_data/icon.ico',
               debug=False,
               bootloader_ignore_signals=False,
               strip=False,

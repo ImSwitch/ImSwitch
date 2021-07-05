@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .CheckUpdatesDialog import CheckUpdatesDialog
+from .PickModulesDialog import PickModulesDialog
 
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
@@ -18,6 +19,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         if iconPath:
             self.setWindowIcon(QtGui.QIcon(iconPath))
 
+        self.pickModulesDialog = PickModulesDialog(self)
         self.checkUpdatesDialog = CheckUpdatesDialog(self)
 
         # Add tabs
@@ -64,8 +66,9 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
     def setLoadingProgress(self, progressFraction):
         self.loadingProgressBar.setValue(progressFraction * 100)
 
-    def showCheckUpdatesDialog(self):
-        self.checkUpdatesDialog.exec_()
+    def showCheckUpdatesDialogBlocking(self):
+        result = self.checkUpdatesDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
 
     def addItemsToMenuBar(self, menuBar):
         menuChildren = menuBar.findChildren(QtWidgets.QMenu, None, QtCore.Qt.FindDirectChildrenOnly)

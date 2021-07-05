@@ -1,4 +1,4 @@
-from .basecontrollers import LiveUpdatedController
+from ..basecontrollers import LiveUpdatedController
 from imswitch.imcontrol.view import guitools
 
 

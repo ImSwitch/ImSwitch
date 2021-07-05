@@ -8,7 +8,7 @@ import numpy as np
 
 from imswitch.imcommon.model import APIExport, dirtools
 from imswitch.imcontrol.view import guitools
-from .basecontrollers import SuperScanController
+from ..basecontrollers import SuperScanController
 
 
 class ScanController(SuperScanController):

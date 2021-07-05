@@ -2,6 +2,7 @@ from imswitch.imcommon.view import guitools
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from .basecontrollers import WidgetController
 from .CheckUpdatesController import CheckUpdatesController
+from .PickModulesController import PickModulesController
 
 
 class MultiModuleWindowController(WidgetController):
@@ -22,11 +23,12 @@ class MultiModuleWindowController(WidgetController):
     def pickModules(self):
         """ Let the user change which modules are active. """
 
-        moduleIds = guitools.PickModulesDialog.showAndWaitForResult(
-            parent=self._widget, moduleIdsAndNamesDict=modulesconfigtools.getAvailableModules(),
-            preselectedModules=modulesconfigtools.getEnabledModuleIds()
-        )
-        if moduleIds is None:
+        self.pickModulesController.setModules(modulesconfigtools.getAvailableModules())
+        self.pickModulesController.setSelectedModules(modulesconfigtools.getEnabledModuleIds())
+        if not self._widget.showPickModulesDialogBlocking():
+            return
+        moduleIds = self.pickModulesController.getSelectedModules()
+        if not moduleIds:
             return
 
         proceed = guitools.askYesNoQuestion(self._widget, 'Warning',
@@ -45,7 +47,7 @@ class MultiModuleWindowController(WidgetController):
         """ Checks if there are any updates to ImSwitch available and notifies
         the user. """
         self.checkUpdatesController.checkForUpdates()
-        self._widget.showCheckUpdatesDialog()
+        self._widget.showCheckUpdatesDialogBlocking()
 
     def moduleAdded(self, moduleId, moduleName):
         self._moduleIdNameMap[moduleId] = moduleName

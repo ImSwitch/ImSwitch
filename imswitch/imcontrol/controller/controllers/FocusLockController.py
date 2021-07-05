@@ -8,7 +8,7 @@ from lantz import Q_
 from qtpy import QtCore
 from skimage.feature import peak_local_max
 
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class FocusLockController(ImConWidgetController):

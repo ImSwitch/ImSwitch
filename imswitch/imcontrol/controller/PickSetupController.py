@@ -1,10 +1,19 @@
-from ..basecontrollers import ImConWidgetController
+from .basecontrollers import ImConWidgetController
 
 
-class ConsoleController(ImConWidgetController):
-    """ Linked to ConsoleWidget."""
-    pass
-    
+class PickSetupController(ImConWidgetController):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def setSetups(self, setupList):
+        self._widget.setSetups(setupList)
+
+    def getSelectedSetup(self):
+        return self._widget.getSelectedSetup()
+
+    def setSelectedSetup(self, setup):
+        self._widget.setSelectedSetup(setup)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

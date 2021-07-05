@@ -5,7 +5,7 @@ import numpy as np
 
 from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.model.managers.SLMManager import MaskMode, Direction
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class SLMController(ImConWidgetController):

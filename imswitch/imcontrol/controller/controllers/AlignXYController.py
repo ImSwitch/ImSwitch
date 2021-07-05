@@ -1,6 +1,6 @@
 import numpy as np
 
-from .basecontrollers import LiveUpdatedController
+from ..basecontrollers import LiveUpdatedController
 
 
 class AlignXYController(LiveUpdatedController):

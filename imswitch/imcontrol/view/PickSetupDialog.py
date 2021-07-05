@@ -33,26 +33,13 @@ class PickSetupDialog(QtWidgets.QDialog):
         for setup in setupList:
             self.setupPicker.addItem(setup)
 
+    def getSelectedSetup(self):
+        return self.setupPicker.currentText()
+
     def setSelectedSetup(self, setup):
         index = self.setupPicker.findText(setup)
         if index > -1:
             self.setupPicker.setCurrentIndex(index)
-
-    @classmethod
-    def showAndWaitForResult(cls, parent, setupList, preselectedSetup=None):
-        dialog = cls(parent)
-        dialog.setSetups(setupList)
-        if preselectedSetup is not None:
-            dialog.setSelectedSetup(preselectedSetup)
-        result = dialog.exec_()
-
-        if result == QtWidgets.QDialog.Accepted:
-            value = dialog.setupPicker.currentText()
-        else:
-            value = None
-
-        dialog.deleteLater()  # Prevent memory leak
-        return value
 
 
 # Copyright (C) 2020, 2021 TestaLab

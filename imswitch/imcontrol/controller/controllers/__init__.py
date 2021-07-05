@@ -1,4 +1,3 @@
-from .basecontrollers import ImConWidgetControllerFactory
 from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController

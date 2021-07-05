@@ -1,7 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from .basecontrollers import LiveUpdatedController
+from ..basecontrollers import LiveUpdatedController
 from imswitch.imcontrol.view import guitools as guitools
 
 

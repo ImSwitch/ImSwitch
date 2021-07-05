@@ -10,6 +10,5 @@ from .naparitools import (
 from .pyqtgraphtools import (
     setBestImageLimits, Grid, TwoColorGrid, Crosshair, ROI, cropROI, SumpixelsGraph, ProjectionGraph
 )
-from .PickModulesDialog import PickModulesDialog
 from .stylesheet import getBaseStyleSheet
 from .texttools import ordinalSuffix

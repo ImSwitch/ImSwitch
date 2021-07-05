@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from qtpy import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 
+from .PickSetupDialog import PickSetupDialog
 from . import widgets
 
 
@@ -13,6 +14,8 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.pickSetupDialog = PickSetupDialog(self)
 
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
@@ -131,6 +134,10 @@ class ImConMainView(QtWidgets.QMainWindow):
             prevRightDock.setStretch(1, 10)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
+
+    def showPickSetupDialogBlocking(self):
+        result = self.pickSetupDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):
         self.sigClosing.emit()

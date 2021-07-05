@@ -11,13 +11,15 @@ def getMainViewAndController(moduleCommChannel, *_args,
     def pickSetup(options):
         import dataclasses
         import sys
-        from imswitch.imcontrol.view.guitools import PickSetupDialog
+        from qtpy import QtWidgets
+        from imswitch.imcontrol.view import PickSetupDialog
 
         # Let user pick the setup to use
-        setupFileName = PickSetupDialog.showAndWaitForResult(
-            parent=None,  setupList=configfiletools.getSetupList()
-        )
-        if not setupFileName:
+        pickSetupDialog = PickSetupDialog()
+        pickSetupDialog.setSetups(configfiletools.getSetupList())
+        result = pickSetupDialog.exec_()
+        setupFileName = pickSetupDialog.getSelectedSetup()
+        if result != QtWidgets.QDialog.Accepted or not setupFileName:
             print('User did not pick a setup to use')
             sys.exit()
         return dataclasses.replace(options, setupFileName=setupFileName)

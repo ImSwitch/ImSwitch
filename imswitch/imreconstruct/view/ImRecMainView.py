@@ -47,7 +47,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         file = menuBar.addMenu('&File')
 
         saveReconAction = QtWidgets.QAction('Save reconstruction', self)
-        saveReconAction.setShortcut('Ctrl+S')
+        saveReconAction.setShortcut('Ctrl+D')
         saveReconAction.triggered.connect(self.sigSaveReconstruction)
         file.addAction(saveReconAction)
         saveCoeffsAction = QtWidgets.QAction('Save coefficients', self)

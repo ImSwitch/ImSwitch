@@ -39,8 +39,8 @@ def initUserFilesIfNeeded():
     for userFileDir in UserFileDirs.list():
         os.makedirs(userFileDir, exist_ok=True)
 
-    # Copy example files
-    for file in glob.glob(os.path.join(DataFileDirs.Examples, '**'), recursive=True):
+    # Copy default user files
+    for file in glob.glob(os.path.join(DataFileDirs.UserDefaults, '**'), recursive=True):
         filePath = Path(file)
 
         if not filePath.is_file():
@@ -49,7 +49,7 @@ def initUserFilesIfNeeded():
         if filePath.name.lower() == 'readme.txt':
             continue  # Skip readme.txt files
 
-        relativeFilePath = filePath.relative_to(DataFileDirs.Examples)
+        relativeFilePath = filePath.relative_to(DataFileDirs.UserDefaults)
         copyDestination = _baseUserFilesDir / relativeFilePath
 
         if os.path.exists(copyDestination):
@@ -78,8 +78,8 @@ class DataFileDirs(FileDirs):
     """ Catalog of directories that contain program data/library/resource
     files. """
     Root = _baseDataFilesDir
-    Examples = os.path.join(_baseDataFilesDir, 'examples')
     Libs = os.path.join(_baseDataFilesDir, 'libs')
+    UserDefaults = os.path.join(_baseDataFilesDir, 'user_defaults')
 
 
 class UserFileDirs(FileDirs):

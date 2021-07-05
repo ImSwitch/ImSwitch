@@ -1,5 +1,6 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
+from .AboutDialog import AboutDialog
 from .CheckUpdatesDialog import CheckUpdatesDialog
 from .PickModulesDialog import PickModulesDialog
 
@@ -7,7 +8,9 @@ from .PickModulesDialog import PickModulesDialog
 class MultiModuleWindow(QtWidgets.QMainWindow):
     sigPickModules = QtCore.Signal()
     sigOpenUserDir = QtCore.Signal()
+    sigShowDocs = QtCore.Signal()
     sigCheckUpdates = QtCore.Signal()
+    sigShowAbout = QtCore.Signal()
 
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
@@ -21,6 +24,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
         self.pickModulesDialog = PickModulesDialog(self)
         self.checkUpdatesDialog = CheckUpdatesDialog(self)
+        self.aboutDialog = AboutDialog(self)
 
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()
@@ -66,8 +70,16 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
     def setLoadingProgress(self, progressFraction):
         self.loadingProgressBar.setValue(progressFraction * 100)
 
+    def showPickModulesDialogBlocking(self):
+        result = self.pickModulesDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
     def showCheckUpdatesDialogBlocking(self):
         result = self.checkUpdatesDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showAboutDialogBlocking(self):
+        result = self.aboutDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def addItemsToMenuBar(self, menuBar):
@@ -99,9 +111,17 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         openUserDirAction.triggered.connect(self.sigOpenUserDir)
         toolsMenu.addAction(openUserDirAction)
 
+        showDocsAction = QtWidgets.QAction('Documentation', self)
+        showDocsAction.triggered.connect(self.sigShowDocs)
+        helpMenu.addAction(showDocsAction)
+
         checkUpdatesAction = QtWidgets.QAction('Check for updates…', self)
         checkUpdatesAction.triggered.connect(self.sigCheckUpdates)
         helpMenu.addAction(checkUpdatesAction)
+
+        aboutAction = QtWidgets.QAction('About', self)
+        aboutAction.triggered.connect(self.sigShowAbout)
+        helpMenu.addAction(aboutAction)
 
     def show(self, showLoadingScreen=False):
         if not showLoadingScreen:

@@ -1,3 +1,5 @@
+import webbrowser
+
 from imswitch.imcommon.view import guitools
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from .basecontrollers import WidgetController
@@ -9,6 +11,7 @@ class MultiModuleWindowController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.pickModulesController = self._factory.createController(PickModulesController, self._widget.pickModulesDialog)
         self.checkUpdatesController = self._factory.createController(CheckUpdatesController, self._widget.checkUpdatesDialog)
 
         self._moduleIdNameMap = {}
@@ -16,7 +19,9 @@ class MultiModuleWindowController(WidgetController):
         # Connect signals
         self._widget.sigPickModules.connect(self.pickModules)
         self._widget.sigOpenUserDir.connect(self.openUserDir)
+        self._widget.sigShowDocs.connect(self.showDocs)
         self._widget.sigCheckUpdates.connect(self.checkUpdates)
+        self._widget.sigShowAbout.connect(self.showAbout)
 
         self._widget.sigModuleAdded.connect(self.moduleAdded)
 
@@ -43,11 +48,19 @@ class MultiModuleWindowController(WidgetController):
         """ Shows the user files directory in system file explorer. """
         ostools.openFolderInOS(dirtools.UserFileDirs.Root)
 
+    def showDocs(self):
+        """ Opens the ImSwitch documentation in a web browser. """
+        webbrowser.open('https://imswitch.readthedocs.io')
+
     def checkUpdates(self):
         """ Checks if there are any updates to ImSwitch available and notifies
         the user. """
         self.checkUpdatesController.checkForUpdates()
         self._widget.showCheckUpdatesDialogBlocking()
+
+    def showAbout(self):
+        """ Shows an "about" dialog. """
+        self._widget.showAboutDialogBlocking()
 
     def moduleAdded(self, moduleId, moduleName):
         self._moduleIdNameMap[moduleId] = moduleName

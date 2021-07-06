@@ -7,6 +7,8 @@ import m2r
 
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
+from imswitch.imcontrol.model import Options
+from imswitch.imcontrol.view import ViewSetupInfo
 from imswitch.imscripting.model.actions import _Actions
 
 from imswitch import imcontrol, imreconstruct
@@ -37,7 +39,33 @@ dummyModuleCommChannel = ModuleCommunicationChannel()
 
 modules = [imcontrol, imreconstruct]  # imscripting excluded
 for modulePackage in modules:
-    _, mainController = modulePackage.getMainViewAndController(dummyModuleCommChannel)
+    kwargs = {}
+    if modulePackage == imcontrol:
+        kwargs['overrideSetupInfo'] = ViewSetupInfo.from_json(
+            """
+            {
+                "scan": {
+                    "scanDesigner": "BetaScanDesigner",
+                    "scanDesignerParams": {
+                        "return_time": 0.01
+                    },
+                    "TTLCycleDesigner": "BetaTTLCycleDesigner",
+                    "TTLCycleDesignerParams": {},
+                    "sampleRate": 100000
+                },
+                "availableWidgets": true
+            }
+            """
+        )
+        kwargs['overrideOptions'] = Options.from_json(
+            """
+            {
+                "setupFileName": ""
+            }
+            """
+        )
+
+    _, mainController = modulePackage.getMainViewAndController(dummyModuleCommChannel, **kwargs)
     if not hasattr(mainController, 'api'):
         continue
 

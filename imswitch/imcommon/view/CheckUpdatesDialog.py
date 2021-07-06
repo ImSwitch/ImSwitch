@@ -17,6 +17,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         self.informationLabel.setStyleSheet('font-size: 10pt')
 
         self.linkLabel = QtWidgets.QLabel()
+        self.linkLabel.setWordWrap(True)
         self.linkLabel.setTextFormat(QtCore.Qt.RichText)
         self.linkLabel.setOpenExternalLinks(True)
         self.linkLabel.setVisible(False)

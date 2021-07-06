@@ -155,7 +155,7 @@ class ScanController(SuperScanController):
             self.plotSignalGraph()
 
     @APIExport
-    def runScan(self):
+    def runScan(self, hasStarted = False):
         """ Runs a scan with the set scanning parameters. """
         self.getParameters()
         try:
@@ -168,7 +168,7 @@ class ScanController(SuperScanController):
             print_exc()
             return
 
-        self._commChannel.sigScanStarting.emit()
+        if not hasStarted: self._commChannel.sigScanStarting.emit()
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
@@ -178,7 +178,7 @@ class ScanController(SuperScanController):
             self._commChannel.sigScanEnded.emit()
         else:
             print('Repeat scan')
-            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+            self.runScan(hasStarted=True)
 
     def getParameters(self):
         if self.settingParameters:

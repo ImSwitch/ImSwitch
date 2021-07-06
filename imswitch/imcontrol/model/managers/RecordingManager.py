@@ -74,7 +74,7 @@ class RecordingManager(SignalInterface):
             file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 
             shape = self.__detectorsManager[detectorName].shape
-            dataset = file.create_dataset('data', (shape[0], shape[1]), dtype='i2')
+            dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
             for key, value in attrs[detectorName].items():
                 file.attrs[key] = value
@@ -120,8 +120,8 @@ class RecordingWorker(Worker):
             # Initial number of frames must not be 0; otherwise, too much disk space may get
             # allocated. We remove this default frame later on if no frames are captured.
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (1, *shapes[detectorName]),
-                maxshape=(None, *shapes[detectorName]),
+                'data', (1, *reversed(shapes[detectorName])),
+                maxshape=(None, *reversed(shapes[detectorName])),
                 dtype='i2'
             )
 

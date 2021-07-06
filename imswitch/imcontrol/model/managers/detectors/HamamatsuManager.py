@@ -20,8 +20,8 @@ class HamamatsuManager(DetectorManager):
         for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.getPropertyValue('image_height')[0],
-                     self._camera.getPropertyValue('image_width')[0])
+        fullShape = (self._camera.getPropertyValue('image_width')[0],
+                     self._camera.getPropertyValue('image_height')[0])
 
         model = self._camera.camera_model.decode('utf-8')
 

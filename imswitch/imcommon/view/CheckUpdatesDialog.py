@@ -10,7 +10,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         super().__init__(parent, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint,
                          *args, **kwargs)
         self.setWindowTitle('Check for updates')
-        self.setMinimumWidth(480)
+        self.setMinimumWidth(540)
 
         self.informationLabel = QtWidgets.QLabel()
         self.informationLabel.setWordWrap(True)

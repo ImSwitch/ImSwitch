@@ -26,13 +26,13 @@ You will then be able to start ImSwitch with this command:
 imswitch
 ```
 
-## Documentation and testing
+## Documentation
 
-* ImSwitch has automated testing through GitHub Actions, including UI and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
+Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).
 
-* It is possible to implement, import and test user-defined scripts in the scripting module. 
+## Testing
 
-* Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).
+ImSwitch has automated testing through GitHub Actions, including UI and unit tests. It is also possible to manually inspect and test the software without any device since it contains mockers that are automatically initialized if the instrumentation specified in the config file is not detected.
 
 ## Contributing
 

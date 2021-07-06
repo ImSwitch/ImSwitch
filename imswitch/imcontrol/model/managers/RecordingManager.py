@@ -168,6 +168,8 @@ class RecordingWorker(Worker):
                             self.__recordingManager.sigRecordingFrameNumUpdated.emit(
                                 min(list(currentFrame.values()))
                             )
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+
                 self.__recordingManager.sigRecordingFrameNumUpdated.emit(0)
             elif self.recMode == RecMode.SpecTime:
                 recTime = self.recTime
@@ -197,6 +199,9 @@ class RecordingWorker(Worker):
 
                     if not self.__recordingManager.record or currentRecTime >= recTime:
                         shouldStop = True
+
+                    time.sleep(0.0001)  # Prevents freezing for some reason
+
                 self.__recordingManager.sigRecordingTimeUpdated.emit(0)
             elif self.recMode == RecMode.UntilStop:
                 shouldStop = False
@@ -216,6 +221,8 @@ class RecordingWorker(Worker):
 
                     if not self.__recordingManager.record:
                         shouldStop = True  # Enter loop one final time, then stop
+
+                    time.sleep(0.0001)  # Prevents freezing for some reason
             else:
                 raise ValueError('Unsupported recording mode specified')
         finally:

@@ -10,14 +10,20 @@ specific design of individual custom-built microscopes, all while using the same
 would like to involve the community in further developing ImSwitch in this direction, believing
 that it is possible to integrate current state-of-the-art solutions into one unified software.
 
-## Requirements and installation
+## Installation
 
-To run ImSwitch, you must have Python 3.7 or later as well as the required Python packages installed. Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows.
+### Option A: Standalone bundles for Windows
 
-Install ImSwitch by running this command in the root directory of the repository:
+Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/kasasxav/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
+
+### Option B: Install using pip
+
+ImSwitch is also published on PyPI and can be installed using pip. Python 3.7 or later is required. Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows, but most of the functionality is available on other operating systems as well.
+
+To install ImSwitch from PyPI, run the following command:
 
 ```
-pip install .
+pip install ImSwitch
 ```
 
 You will then be able to start ImSwitch with this command:

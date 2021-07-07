@@ -73,7 +73,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
             f'\n\nTo update, run the command: pip install --upgrade imswitch'
         )
         self.linkLabel.setText(
-            'The changelog is available on <a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">the GitHub releases page</a>.'
+            'The changelog is available <a href="https://imswitch.readthedocs.io/en/stable/changelog.html" style="color: orange">here</a>.'
         )
         self.linkLabel.setVisible(True)
 

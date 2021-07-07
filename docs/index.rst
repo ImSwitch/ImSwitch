@@ -20,6 +20,7 @@ well as for developers (scripting and API modules, and hardware control and JSON
     :caption: Basics
 
     installation
+    changelog
     contributing
     gui
     use-cases

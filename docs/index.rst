@@ -17,17 +17,27 @@ well as for developers (scripting and API modules, and hardware control and JSON
 
 .. toctree::
     :hidden:
-    :caption: Basics
+    :caption: Software info
 
     installation
     changelog
     contributing
+
+.. toctree::
+    :hidden:
+    :caption: Usage
+
     gui
     use-cases
+    scripting
+
+.. toctree::
+    :hidden:
+    :caption: Internals and specifications
+
     Hdf5datafile
     modules
     imcontrol-setups
-    scripting
 
 .. toctree::
     :glob:

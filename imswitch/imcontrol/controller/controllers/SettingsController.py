@@ -6,7 +6,7 @@ import numpy as np
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools as guitools
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 @dataclass

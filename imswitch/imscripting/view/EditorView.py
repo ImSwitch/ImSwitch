@@ -1,6 +1,7 @@
 import uuid
 
-from PyQt5 import QtCore, QtGui, QtWidgets, Qsci
+from PyQt5 import Qsci
+from qtpy import QtCore, QtGui, QtWidgets
 
 from .guitools import BetterPushButton
 

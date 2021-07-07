@@ -1,8 +1,12 @@
-# NOTE: This file is not intended to be run by itself; it is intended to be
-#       imported by example_import.py
+"""
+This script demonstrates how one can import another script and use its
+functionality. The imported script is specified by its file path relative
+to the main script (which in this case is this file).
+"""
 
-def printMessage():
-    print('Running code from another file!')
+
+imported = importScript('example_imported.py')
+imported.printMessage()
 
 
 # Copyright (C) 2020, 2021 TestaLab

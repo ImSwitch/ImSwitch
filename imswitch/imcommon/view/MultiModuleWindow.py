@@ -1,8 +1,17 @@
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
+
+from .AboutDialog import AboutDialog
+from .CheckUpdatesDialog import CheckUpdatesDialog
+from .PickModulesDialog import PickModulesDialog
 
 
 class MultiModuleWindow(QtWidgets.QMainWindow):
     sigPickModules = QtCore.Signal()
+    sigOpenUserDir = QtCore.Signal()
+    sigShowDocs = QtCore.Signal()
+    sigCheckUpdates = QtCore.Signal()
+    sigShowAbout = QtCore.Signal()
+
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
     def __init__(self, title, iconPath=None, *args, **kwargs):
@@ -12,6 +21,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(title)
         if iconPath:
             self.setWindowIcon(QtGui.QIcon(iconPath))
+
+        self.pickModulesDialog = PickModulesDialog(self)
+        self.checkUpdatesDialog = CheckUpdatesDialog(self)
+        self.aboutDialog = AboutDialog(self)
 
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()
@@ -57,23 +70,58 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
     def setLoadingProgress(self, progressFraction):
         self.loadingProgressBar.setValue(progressFraction * 100)
 
+    def showPickModulesDialogBlocking(self):
+        result = self.pickModulesDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showCheckUpdatesDialogBlocking(self):
+        result = self.checkUpdatesDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showAboutDialogBlocking(self):
+        result = self.aboutDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
     def addItemsToMenuBar(self, menuBar):
         menuChildren = menuBar.findChildren(QtWidgets.QMenu, None, QtCore.Qt.FindDirectChildrenOnly)
+
         toolsMenu = None
+        helpMenu = None
         for menuChild in menuChildren:
             if menuChild.title() == '&Tools':
                 toolsMenu = menuChild
-                break
+            if menuChild.title() == '&Help':
+                helpMenu = menuChild
 
         if toolsMenu is None:
             toolsMenu = menuBar.addMenu('&Tools')
+        if helpMenu is None:
+            helpMenu = menuBar.addMenu('&Help')
 
         if not toolsMenu.isEmpty():
             toolsMenu.addSeparator()
+        if not helpMenu.isEmpty():
+            helpMenu.addSeparator()
 
         pickModulesAction = QtWidgets.QAction('Set active modules…', self)
         pickModulesAction.triggered.connect(self.sigPickModules)
         toolsMenu.addAction(pickModulesAction)
+
+        openUserDirAction = QtWidgets.QAction('Open user files folder', self)
+        openUserDirAction.triggered.connect(self.sigOpenUserDir)
+        toolsMenu.addAction(openUserDirAction)
+
+        showDocsAction = QtWidgets.QAction('Documentation', self)
+        showDocsAction.triggered.connect(self.sigShowDocs)
+        helpMenu.addAction(showDocsAction)
+
+        checkUpdatesAction = QtWidgets.QAction('Check for updates…', self)
+        checkUpdatesAction.triggered.connect(self.sigCheckUpdates)
+        helpMenu.addAction(checkUpdatesAction)
+
+        aboutAction = QtWidgets.QAction('About', self)
+        aboutAction.triggered.connect(self.sigShowAbout)
+        helpMenu.addAction(aboutAction)
 
     def show(self, showLoadingScreen=False):
         if not showLoadingScreen:

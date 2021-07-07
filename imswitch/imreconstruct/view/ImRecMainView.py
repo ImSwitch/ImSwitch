@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyqtgraph.dockarea import Dock, DockArea
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from .guitools import BetterPushButton
 from .DataFrame import DataFrame
@@ -47,7 +47,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         file = menuBar.addMenu('&File')
 
         saveReconAction = QtWidgets.QAction('Save reconstruction', self)
-        saveReconAction.setShortcut('Ctrl+S')
+        saveReconAction.setShortcut('Ctrl+D')
         saveReconAction.triggered.connect(self.sigSaveReconstruction)
         file.addAction(saveReconAction)
         saveCoeffsAction = QtWidgets.QAction('Save coefficients', self)

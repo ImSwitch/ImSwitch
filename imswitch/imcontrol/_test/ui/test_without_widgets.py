@@ -1,5 +1,5 @@
 import pytest
-from PyQt5 import QtTest
+from qtpy import QtTest
 
 from .. import optionsBasic, setupInfoWithoutWidgets
 from . import getApp, prepareUI

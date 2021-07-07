@@ -6,10 +6,9 @@ from traceback import print_exc
 
 import numpy as np
 
-from imswitch.imcommon import constants
-from imswitch.imcommon.model import APIExport
+from imswitch.imcommon.model import APIExport, dirtools
 from imswitch.imcontrol.view import guitools
-from .basecontrollers import SuperScanController
+from ..basecontrollers import SuperScanController
 
 
 class ScanController(SuperScanController):
@@ -31,7 +30,7 @@ class ScanController(SuperScanController):
             self._master.scanManager.TTLTimeUnits
         )
 
-        self.scanDir = os.path.join(constants.rootFolderPath, 'save/scans')
+        self.scanDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_scans')
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
 
@@ -156,7 +155,7 @@ class ScanController(SuperScanController):
             self.plotSignalGraph()
 
     @APIExport
-    def runScan(self):
+    def runScan(self, hasStarted = False):
         """ Runs a scan with the set scanning parameters. """
         self.getParameters()
         try:
@@ -169,7 +168,7 @@ class ScanController(SuperScanController):
             print_exc()
             return
 
-        self._commChannel.sigScanStarting.emit()
+        if not hasStarted: self._commChannel.sigScanStarting.emit()
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
@@ -179,7 +178,7 @@ class ScanController(SuperScanController):
             self._commChannel.sigScanEnded.emit()
         else:
             print('Repeat scan')
-            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+            self.runScan(hasStarted=True)
 
     def getParameters(self):
         if self.settingParameters:

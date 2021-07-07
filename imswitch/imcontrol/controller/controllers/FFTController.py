@@ -1,7 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from .basecontrollers import LiveUpdatedController
+from ..basecontrollers import LiveUpdatedController
 from imswitch.imcontrol.view import guitools as guitools
 
 
@@ -43,7 +43,6 @@ class FFTController(LiveUpdatedController):
         """ Show or hide FFT. """
         self.active = enabled
         self.init = False
-        self._widget.img.setOnlyRenderVisible(enabled, render=False)
 
     def setShowPos(self, enabled):
         """ Show or hide lines. """

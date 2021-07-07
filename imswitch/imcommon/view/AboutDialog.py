@@ -1,21 +1,29 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
+
+import imswitch
 
 
-class PickSetupDialog(QtWidgets.QDialog):
-    """ Dialog for picking the setup to use for imcontrol. """
+class AboutDialog(QtWidgets.QDialog):
+    """ Dialog showing information about ImSwitch. """
 
     def __init__(self, parent=None, *args, **kwargs):
         super().__init__(parent, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint,
                          *args, **kwargs)
-        self.setWindowTitle('Select hardware setup')
+        self.setWindowTitle('About ImSwitch')
+        self.setMinimumWidth(480)
 
-        self.informationLabel = QtWidgets.QLabel(
-            'Select the configuration file for your hardware setup:'
+        self.label = QtWidgets.QLabel(
+            f'<strong>ImSwitch {imswitch.__version__}</strong>'
+            f'<br /><br />Code available at: <a href="https://github.com/kasasxav/ImSwitch" style="color: orange">https://github.com/kasasxav/ImSwitch</a>'
+            f'<br />Licensed under the GNU General Public License v3.0.'
         )
-        self.setupPicker = QtWidgets.QComboBox()
+        self.label.setWordWrap(True)
+        self.label.setTextFormat(QtCore.Qt.RichText)
+        self.label.setOpenExternalLinks(True)
+        self.label.setStyleSheet('font-size: 10pt')
 
         self.buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
+            QtWidgets.QDialogButtonBox.Ok,
             QtCore.Qt.Horizontal,
             self
         )
@@ -23,36 +31,16 @@ class PickSetupDialog(QtWidgets.QDialog):
         self.buttons.rejected.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self.informationLabel)
-        layout.addWidget(self.setupPicker)
+        layout.setSpacing(16)
+        layout.addWidget(self.label)
         layout.addWidget(self.buttons)
         self.setLayout(layout)
 
-    def setSetups(self, setupList):
-        self.setupPicker.clear()
-        for setup in setupList:
-            self.setupPicker.addItem(setup)
-
-    def setSelectedSetup(self, setup):
-        index = self.setupPicker.findText(setup)
-        if index > -1:
-            self.setupPicker.setCurrentIndex(index)
-
     @classmethod
-    def showAndWaitForResult(cls, parent, setupList, preselectedSetup=None):
+    def showDialog(cls, parent):
         dialog = cls(parent)
-        dialog.setSetups(setupList)
-        if preselectedSetup is not None:
-            dialog.setSelectedSetup(preselectedSetup)
-        result = dialog.exec_()
-
-        if result == QtWidgets.QDialog.Accepted:
-            value = dialog.setupPicker.currentText()
-        else:
-            value = None
-
+        dialog.exec_()
         dialog.deleteLater()  # Prevent memory leak
-        return value
 
 
 # Copyright (C) 2020, 2021 TestaLab

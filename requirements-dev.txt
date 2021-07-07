@@ -1,6 +1,6 @@
 -r requirements.txt
 
-html2text
-m2r
-pytest~=6.2.2
-pytest-qt~=3.3.0
+html2text >= 2020.1.16
+m2r >= 0.2
+pytest >= 6.2, < 7
+pytest-qt >= 3.3, < 5

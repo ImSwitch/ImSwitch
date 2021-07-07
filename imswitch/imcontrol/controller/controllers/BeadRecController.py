@@ -1,7 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.framework import Thread, Worker, Signal
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class BeadRecController(ImConWidgetController):

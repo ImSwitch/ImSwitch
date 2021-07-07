@@ -1,13 +1,19 @@
 name: imswitch-test
 
-on: [ push, pull_request ]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '30 7 * * *'
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.7, 3.8, 3.9]
 
     steps:
@@ -20,24 +26,39 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        sudo apt install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
-            libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 build-essential \
-            libgtk-3-dev
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+              libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 build-essential \
+              libgtk-3-dev
 
-        pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 \
-            wxPython
+          pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 \
+              wxPython
+        fi
 
         python3 -m pip install --upgrade pip
-        python3 -m pip install flake8
-        python3 -m pip install -r requirements-dev.txt
+        python3 -m pip install .
+        python3 -m pip install flake8 pytest pytest-qt
+      shell: bash
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --exclude=scripts/* \
+        flake8 . --count --exclude=imswitch/_data/* \
         --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exclude=scripts/* \
+        flake8 . --count --exclude=imswitch/_data/* \
         --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      shell: bash
     - name: Test with pytest
       run: |
-        xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest -v
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          xvfb-run --server-args "-screen 0 1920x1080x24" python3 -m pytest --pyargs imswitch -v
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          # LiveView test fails on GitHub actions on Windows with napari 0.4.7. This is likely a
+          # problem specific to this GitHub action, as it does not appear when testing manually on
+          # Windows. Therefore, we ignore the LiveView tests on Windows for now.
+          # TODO: Remove this special case when napari is unpinned
+          python3 -m pytest --pyargs imswitch -v --ignore=imswitch/imcontrol/_test/ui/test_liveview.py
+        else
+          python3 -m pytest --pyargs imswitch -v
+        fi
+      shell: bash

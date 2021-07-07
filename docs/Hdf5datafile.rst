@@ -10,7 +10,7 @@ When recording multiple detectors simultaneously, one file will be created for e
 
 Datasets
 =========
-Each image recording is saved in a dataset named ``data``, with dimensions Z × X × Y, where Z is the number of frames while X and Y represent the dimensions of each individual image.
+Each image recording is saved in a dataset named ``data``, with dimensions Z × Y × X, where Z is the number of frames while Y and X are the vertical and horizontal axes respectively.
 Two extra parameters are stored in the dataset:
 
 * ``detector_name``: name of the detector (camera or point-detector) that provided the images.

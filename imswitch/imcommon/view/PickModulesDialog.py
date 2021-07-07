@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 
 class PickModulesDialog(QtWidgets.QDialog):
@@ -35,7 +35,7 @@ class PickModulesDialog(QtWidgets.QDialog):
             listItem.setCheckState(QtCore.Qt.Unchecked)
             self.modulesPicker.addItem(listItem)
 
-    def getCheckedModules(self):
+    def getSelectedModules(self):
         moduleIds = []
         for i in range(self.modulesPicker.count()):
             item = self.modulesPicker.item(i)
@@ -44,27 +44,11 @@ class PickModulesDialog(QtWidgets.QDialog):
 
         return moduleIds
 
-    def setCheckedModules(self, moduleIds):
+    def setSelectedModules(self, moduleIds):
         for i in range(self.modulesPicker.count()):
             item = self.modulesPicker.item(i)
             item.setCheckState(QtCore.Qt.Checked if item.data(1) in moduleIds
                                else QtCore.Qt.Unchecked)
-
-    @classmethod
-    def showAndWaitForResult(cls, parent, moduleIdsAndNamesDict, preselectedModules=None):
-        dialog = cls(parent)
-        dialog.setModules(moduleIdsAndNamesDict)
-        if preselectedModules is not None:
-            dialog.setCheckedModules(preselectedModules)
-        result = dialog.exec_()
-
-        if result == QtWidgets.QDialog.Accepted:
-            value = dialog.getCheckedModules()
-        else:
-            value = None
-
-        dialog.deleteLater()  # Prevent memory leak
-        return value
 
 
 # Copyright (C) 2020, 2021 TestaLab

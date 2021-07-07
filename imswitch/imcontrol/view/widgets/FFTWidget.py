@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -38,7 +38,7 @@ class FFTWidget(Widget):
         self.cwidget = pg.GraphicsLayoutWidget()
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = guitools.OptimizedImageItem(axisOrder='row-major')
+        self.img = pg.ImageItem(axisOrder='row-major')
         self.img.translate(-0.5, -0.5)
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)

@@ -1,4 +1,4 @@
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class ConsoleController(ImConWidgetController):

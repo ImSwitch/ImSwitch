@@ -1,30 +1,31 @@
-*************
+************
 Installation
-*************
+************
 
-In general it is only needed to have a Python 3.7+ environment with pip,
-then install the requirements from a shell:
 
-.. code-block:: bash
+Option A: Standalone bundles for Windows
+========================================
 
-   cd /path_of_imswitch
-   pip install -r requirements.txt
+Windows users can download ImSwitch in standalone format from the
+`releases page on GitHub <https://github.com/kasasxav/ImSwitch/releases>`_.
+Further information is available there. An existing Python installation is *not* required.
 
-We recommend having a designated environment, for example with conda:
 
-.. code-block:: bash
+Option B: Install using pip
+===========================
 
-   conda create -n imswitch python=3.8
-   conda activate imswitch
-   conda install pip
-   cd /path_of_imswitch
-   pip install -r requirements.txt
+ImSwitch is also published on PyPI and can be installed using pip. Python 3.7 or later is required.
+Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows,
+but most of the functionality is available on other operating systems as well.
 
-Then run ImSwitch by typing:
+To install ImSwitch from PyPI, run the following command:
 
 .. code-block:: bash
 
-   python -m imswitch
+   pip install ImSwitch
 
-Note: Certain components (the image reconstruction module and support for TIS cameras) require the
-software to be running on Windows.
+You will then be able to start ImSwitch with this command:
+
+.. code-block:: bash
+
+   imswitch

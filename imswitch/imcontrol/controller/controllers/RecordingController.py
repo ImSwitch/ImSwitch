@@ -4,7 +4,7 @@ import time
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import filetools, ostools, APIExport
 from imswitch.imcontrol.model import SaveMode, RecMode
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class RecordingController(ImConWidgetController):

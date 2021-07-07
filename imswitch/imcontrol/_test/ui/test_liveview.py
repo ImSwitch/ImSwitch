@@ -1,5 +1,5 @@
 import pytest
-from PyQt5 import QtCore, QtTest
+from qtpy import QtCore, QtTest
 
 from .. import optionsBasic, setupInfoBasic
 from . import getApp, prepareUI

@@ -16,7 +16,7 @@ class _Actions:
     @APIExport
     def importScript(self, path):
         """ Imports the script at the specified path (either absolute or
-        relative to the script) and returns it as a module variable. """
+        relative to the main script) and returns it as a module variable. """
 
         if self._scriptPath is not None:
             path = os.path.join(os.path.dirname(self._scriptPath), path)

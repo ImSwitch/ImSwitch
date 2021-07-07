@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from .view.guitools import getBaseStyleSheet
 

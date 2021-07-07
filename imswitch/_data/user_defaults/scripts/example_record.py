@@ -1,6 +1,15 @@
+"""
+This script demonstrates some basic functions for recording, changing what
+module is displayed, and waiting for signals to be emitted. Note that the
+recording does not stop automatically if the script is terminated before it
+finishes.
+"""
+
+
 import time
 
-print('Starting recording...')
+print('Starting recording in "until stop" mode...')
+api.imcontrol.setRecModeUntilStop()
 api.imcontrol.startRecording()
 
 print('Recording started. Showing hardware control tab for a few seconds before stopping.')

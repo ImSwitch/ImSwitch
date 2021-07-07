@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
-from pyqtgraph.Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 
+from .PickSetupDialog import PickSetupDialog
 from . import widgets
 
 
@@ -13,6 +14,8 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.pickSetupDialog = PickSetupDialog(self)
 
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
@@ -42,8 +45,34 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.setCentralWidget(self.cwidget)
 
         # Dock area
+        rightDocks = {
+            'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
+            'SLM': _DockInfo(name='SLM', yPosition=0),
+            'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Scan': _DockInfo(name='Scan', yPosition=2),
+            'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
+            'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
+            'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
+            'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
+            'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
+            'FFT': _DockInfo(name='FFT Tool', yPosition=3)
+        }
+        leftDocks = {
+            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
+            'View': _DockInfo(name='Image Controls', yPosition=1),
+            'Recording': _DockInfo(name='Recording', yPosition=2),
+            'Console': _DockInfo(name='Console', yPosition=3)
+        }
+        otherDockKeys = ['Image']
+        allDockKeys = list(rightDocks.keys()) + list(leftDocks.keys()) + otherDockKeys
+
         dockArea = DockArea()
         enabledDockKeys = viewSetupInfo.availableWidgets
+        if enabledDockKeys is False:
+            enabledDockKeys = []
+        elif enabledDockKeys is True:
+            enabledDockKeys = allDockKeys
 
         prevRightDock = None
         prevRightDockYPosition = -1
@@ -62,20 +91,6 @@ class ImConMainView(QtWidgets.QMainWindow):
                 dockArea.addDock(self.docks[widgetKey], 'above', prevRightDock)
             prevRightDock = self.docks[widgetKey]
             prevRightDockYPosition = dockInfo.yPosition
-
-        rightDocks = {
-            'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
-            'SLM': _DockInfo(name='SLM', yPosition=0),
-            'Laser': _DockInfo(name='Laser Control', yPosition=0),
-            'Positioner': _DockInfo(name='Positioner', yPosition=1),
-            'Scan': _DockInfo(name='Scan', yPosition=2),
-            'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
-            'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
-            'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
-            'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
-            'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
-            'FFT': _DockInfo(name='FFT Tool', yPosition=3)
-        }
 
         for widgetKey, dockInfo in rightDocks.items():
             if widgetKey in enabledDockKeys:
@@ -105,13 +120,6 @@ class ImConMainView(QtWidgets.QMainWindow):
             prevLeftDock = self.docks[widgetKey]
             prevLeftDockYPosition = dockInfo.yPosition
 
-        leftDocks = {
-            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
-            'View': _DockInfo(name='Image Controls', yPosition=1),
-            'Recording': _DockInfo(name='Recording', yPosition=2),
-            'Console': _DockInfo(name='Console', yPosition=3)
-        }
-
         for widgetKey, dockInfo in leftDocks.items():
             if widgetKey in enabledDockKeys:
                 addLeftDock(widgetKey, dockInfo)
@@ -131,6 +139,10 @@ class ImConMainView(QtWidgets.QMainWindow):
             prevRightDock.setStretch(1, 10)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
+
+    def showPickSetupDialogBlocking(self):
+        result = self.pickSetupDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):
         self.sigClosing.emit()

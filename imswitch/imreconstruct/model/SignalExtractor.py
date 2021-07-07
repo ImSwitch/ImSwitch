@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 
-from imswitch.imcommon import constants
+from imswitch.imcommon.model import dirtools
 
 
 class SignalExtractor:
@@ -14,14 +14,18 @@ class SignalExtractor:
     """
 
     def __init__(self):
+        if os.name != 'nt':
+            raise RuntimeError('This module does unfortunately currently not support non-Windows'
+                               ' operating systems.')
+
         # TODO: Support non-Windows OS
         # This is needed by the DLL containing CUDA code.
         # ctypes.cdll.LoadLibrary(os.environ['CUDA_PATH_V9_0'] + '\\bin\\cudart64_90.dll')
         ctypes.cdll.LoadLibrary(
-            os.path.join(constants.rootFolderPath, 'libs/cudart64_90.dll')
+            os.path.join(dirtools.DataFileDirs.Libs, 'cudart64_90.dll')
         )
         self.ReconstructionDLL = ctypes.cdll.LoadLibrary(
-            os.path.join(constants.rootFolderPath, 'libs/GPU_acc_recon.dll')
+            os.path.join(dirtools.DataFileDirs.Libs, 'GPU_acc_recon.dll')
         )
 
     def make3dPtrArray(self, inData):

@@ -5,8 +5,10 @@ import re
 import html2text
 import m2r
 
-from imswitch.imcommon import prepareApp, constants
+from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
+from imswitch.imcontrol.model import Options
+from imswitch.imcontrol.view import ViewSetupInfo
 from imswitch.imscripting.model.actions import _Actions
 
 from imswitch import imcontrol, imreconstruct
@@ -27,7 +29,7 @@ def writeDocs(cls):
 
 
 # Create and set working directory
-docsDir = os.path.join(constants.rootFolderPath, 'docs')
+docsDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../docs')
 apiDocsDir = os.path.join(docsDir, 'api')
 os.makedirs(apiDocsDir, exist_ok=True)
 
@@ -37,7 +39,33 @@ dummyModuleCommChannel = ModuleCommunicationChannel()
 
 modules = [imcontrol, imreconstruct]  # imscripting excluded
 for modulePackage in modules:
-    _, mainController = modulePackage.getMainViewAndController(dummyModuleCommChannel)
+    kwargs = {}
+    if modulePackage == imcontrol:
+        kwargs['overrideSetupInfo'] = ViewSetupInfo.from_json(
+            """
+            {
+                "scan": {
+                    "scanDesigner": "BetaScanDesigner",
+                    "scanDesignerParams": {
+                        "return_time": 0.01
+                    },
+                    "TTLCycleDesigner": "BetaTTLCycleDesigner",
+                    "TTLCycleDesignerParams": {},
+                    "sampleRate": 100000
+                },
+                "availableWidgets": true
+            }
+            """
+        )
+        kwargs['overrideOptions'] = Options.from_json(
+            """
+            {
+                "setupFileName": ""
+            }
+            """
+        )
+
+    _, mainController = modulePackage.getMainViewAndController(dummyModuleCommChannel, **kwargs)
     if not hasattr(mainController, 'api'):
         continue
 

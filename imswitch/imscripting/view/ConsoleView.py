@@ -1,4 +1,4 @@
-from PyQt5 import QtGui
+from qtpy import QtGui
 from pyqtgraph.console import ConsoleWidget
 
 

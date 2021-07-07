@@ -1,3 +1,4 @@
+import traceback
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, List
@@ -66,8 +67,12 @@ class DetectorManager(SignalInterface):
         self.setBinning(supportedBinnings[0])
 
     def updateLatestFrame(self, init):
-        self.__image = self.getLatestFrame()
-        self.sigImageUpdated.emit(self.__image, init)
+        try:
+            self.__image = self.getLatestFrame()
+        except Exception:
+            print(traceback.format_exc())
+        else:
+            self.sigImageUpdated.emit(self.__image, init)
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the updated list of parameters.
@@ -83,30 +88,38 @@ class DetectorManager(SignalInterface):
 
     @property
     def name(self):
+        """ Detector name (same as in detector setup info). """
         return self.__name
 
     @property
     def model(self):
+        """ Detector model name. """
         return self.__model
 
     @property
     def binning(self):
+        """ Current binning. """
         return self._binning
 
     @property
     def supportedBinnings(self):
+        """ Supported binnings as a list. """
         return self.__supportedBinnings
 
     @property
     def frameStart(self):
+        """ Position of the top left corner of the current frame as a tuple
+        (width, height). """
         return self._frameStart
 
     @property
     def shape(self):
+        """ Current frame size as a tuple (width, height). """
         return self._shape
 
     @property
     def fullShape(self):
+        """ Full image size as a tuple (width, height). """
         return self.__fullShape
 
     @property
@@ -115,22 +128,27 @@ class DetectorManager(SignalInterface):
 
     @property
     def parameters(self):
+        """ Dictionary { str: DetectorParameter } of available parameters. """
         return self.__parameters
 
     @property
     def actions(self):
+        """ Dictionary { str: DetectorAction } of available actions. """
         return self.__actions
 
     @property
     def croppable(self):
+        """ Whether the detector supports frame cropping. """
         return self.__croppable
 
     @property
     def forAcquisition(self):
+        """ Whether the detector is used for acquisition. """
         return self.__forAcquisition
 
     @property
     def forFocusLock(self):
+        """ Whether the detector is used for focus lock. """
         return self.__forFocusLock
 
     @property

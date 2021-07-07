@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets
 
 
 class BetterPushButton(QtWidgets.QPushButton):

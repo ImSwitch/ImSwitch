@@ -1,6 +1,6 @@
 import numpy as np
 
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class ULensesController(ImConWidgetController):

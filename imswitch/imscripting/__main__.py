@@ -1,5 +1,10 @@
-raise RuntimeError('imscripting cannot be run by itself -- it is designed to run as a part of the'
-                   ' ImSwitch suite to offer scripting capabilities for it.')
+def main():
+    raise RuntimeError('imscripting cannot be run by itself -- it is designed to run as a part of'
+                       ' the ImSwitch suite to offer scripting capabilities for it.')
+
+
+if __name__ == '__main__':
+    main()
 
 
 # Copyright (C) 2020, 2021 TestaLab

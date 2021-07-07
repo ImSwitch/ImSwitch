@@ -14,7 +14,7 @@ about the setup and how the data is reconstructed.
 
 Configuration file and hardware specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-For this microscope use case, we created the JSON file ``monalisa.json``, located at ``imswitch/config/imcontrol_setups/monalisa.json``
+For this microscope use case, we created the JSON file ``example_monalisa.json``, located at ``/imswitch/_data/imcontrol_setups/example_monalisa.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices.
 
@@ -67,7 +67,7 @@ Here we explain how we implemented ImSwitch for a `custom-built STED setup <http
 
 Configuration file and hardware specifications
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-For this microscope use case, we created the JSON file ``sted.json``, located at ``imswitch/config/imcontrol_setups/sted.json``
+For this microscope use case, we created the JSON file ``example_sted.json``, located at ``/imswitch/_data/imcontrol_setups/example_sted.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices and image acquisition.
 
@@ -116,7 +116,7 @@ We got a CoolLED (https://www.coolled.com/) in the lab and decided to try ImSwit
 both by doing it manually using the sliders and buttons (using a USB port and RS232 communication protocol), but also being able to design and perform a sequence of TTLs and a X-Y-Z Stage controlled by a National Instruments card. This use case could be combined with the Napari viewer and a camera,
 or a point scanning system, or any of the other widgets explained in the other Use Cases.
 
-Basically all the lasers are listed in the JSON file (https://github.com/kasasxav/ImSwitch/blob/dev/config/imcontrol_setups/coolLED.json) by specifying:
+All the lasers are listed in the JSON file ``example_coolLED.json``, located at ``/imswitch/_data/imcontrol_setups/example_coolLED.json``, by specifying:
 
 * Digital line of each laser in the NIDAQ.
 * Wavelength and range (0 to 100).

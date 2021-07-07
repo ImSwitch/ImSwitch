@@ -2,7 +2,7 @@ import glob
 import os
 from pathlib import Path
 
-from imswitch.imcommon import constants
+from imswitch.imcommon.model import dirtools
 from .Options import Options
 
 
@@ -47,9 +47,10 @@ def saveOptions(options):
         optionsFile.write(_options.to_json(indent=4))
 
 
-_configFilesDir = os.path.join(constants.rootFolderPath, 'config')
-_setupFilesDir = os.path.join(_configFilesDir, 'imcontrol_setups')
-_optionsFilePath = os.path.join(_configFilesDir, 'imcontrol_options.json')
+dirtools.initUserFilesIfNeeded()
+_setupFilesDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_setups')
+os.makedirs(_setupFilesDir, exist_ok=True)
+_optionsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options.json')
 
 _options = None
 

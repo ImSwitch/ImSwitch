@@ -2,11 +2,17 @@ from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
 from imswitch import imreconstruct
 
-app = prepareApp()
-moduleCommChannel = ModuleCommunicationChannel()
-moduleCommChannel.register(imreconstruct)
-mainView, mainController = imreconstruct.getMainViewAndController(moduleCommChannel)
-launchApp(app, mainView, [mainController])
+
+def main():
+    app = prepareApp()
+    moduleCommChannel = ModuleCommunicationChannel()
+    moduleCommChannel.register(imreconstruct)
+    mainView, mainController = imreconstruct.getMainViewAndController(moduleCommChannel)
+    launchApp(app, mainView, [mainController])
+
+
+if __name__ == '__main__':
+    main()
 
 
 # Copyright (C) 2020, 2021 TestaLab

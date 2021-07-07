@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 from pyqtgraph.parametertree import ParameterTree
 
 from imswitch.imcontrol.view import guitools as guitools

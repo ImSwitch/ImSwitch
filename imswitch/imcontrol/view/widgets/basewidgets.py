@@ -1,5 +1,5 @@
 import weakref
-from pyqtgraph.Qt import QtWidgets
+from qtpy import QtWidgets
 
 
 class WidgetFactory:

@@ -4,8 +4,10 @@ from imswitch.imcommon.controller import MainController
 from imswitch.imcommon.model import ostools, generateAPI, SharedAttributes
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
+from .basecontrollers import ImConWidgetControllerFactory
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
+from .PickSetupController import PickSetupController
 from . import controllers
 
 
@@ -27,9 +29,11 @@ class ImConMainController(MainController):
                                                    self.__moduleCommChannel)
 
         # List of Controllers for the GUI Widgets
-        self.__factory = controllers.ImConWidgetControllerFactory(
+        self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
         )
+        self.pickSetupController = self.__factory.createController(PickSetupController, self.__mainView.pickSetupDialog)
+
         self.controllers = {}
 
         for widgetKey, widget in self.__mainView.widgets.items():
@@ -62,10 +66,11 @@ class ImConMainController(MainController):
 
         options, _ = configfiletools.loadOptions()
 
-        setupFileName = guitools.PickSetupDialog.showAndWaitForResult(
-            parent=self.__mainView, setupList=configfiletools.getSetupList(),
-            preselectedSetup=options.setupFileName
-        )
+        self.pickSetupController.setSetups(configfiletools.getSetupList())
+        self.pickSetupController.setSelectedSetup(options.setupFileName)
+        if not self.__mainView.showPickSetupDialogBlocking():
+            return
+        setupFileName = self.pickSetupController.getSelectedSetup()
         if not setupFileName:
             return
 

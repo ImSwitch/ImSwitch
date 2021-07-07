@@ -5,10 +5,10 @@ import numpy as np
 import pyqtgraph.ptime as ptime
 import scipy.ndimage as ndi
 from lantz import Q_
-from pyqtgraph.Qt import QtCore
+from qtpy import QtCore
 from skimage.feature import peak_local_max
 
-from .basecontrollers import ImConWidgetController
+from ..basecontrollers import ImConWidgetController
 
 
 class FocusLockController(ImConWidgetController):

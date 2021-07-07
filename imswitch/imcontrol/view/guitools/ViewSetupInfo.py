@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from imswitch.imcontrol.model import SetupInfo
 
@@ -33,8 +33,8 @@ class ViewSetupInfo(SetupInfo):
     # Default laser preset for scanning
     defaultLaserPresetForScan: Optional[str] = None
 
-    # Which widgets are available
-    availableWidgets: List[str] = field(default_factory=list)
+    # Which widgets are available (special values: True for all, False for none)
+    availableWidgets: Union[List[str], bool] = field(default_factory=list)
 
     # Scan defaults
     scanDefaults: ScanDefaultsInfo = field(default_factory=ScanDefaultsInfo)

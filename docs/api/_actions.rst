@@ -19,7 +19,7 @@ second, and can be customized.
 **importScript**\ (self, path)
 
 Imports the script at the specified path (either absolute or\ :raw-html-m2r:`<br>`
-relative to the script) and returns it as a module variable.
+relative to the main script) and returns it as a module variable.
 
 ----
 

@@ -1,3 +1,4 @@
+__imswitch_module__ = True
 __title__ = 'Image Reconstruction'
 
 

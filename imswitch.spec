@@ -13,8 +13,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 print('!IMPORTANT! This will create a bundle based on the current ImSwitch installation. If'
       ' ImSwitch is not installed to your site packages, or if you have an old version, this may'
-      ' lead to unexpected results. You should always run "pip uninstall imswitch && pip install ."'
-      ' before running this. [Continuing in 5 seconds.]')
+      ' lead to unexpected results. You should always have ImSwitch installed in editable mode'
+      ' ("pip install -e .") before running this. [Continuing in 5 seconds.]')
 
 time.sleep(5)
 

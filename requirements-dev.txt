@@ -1,4 +1,4 @@
--r requirements.txt
+-e .
 
 html2text >= 2020.1.16
 m2r >= 0.2

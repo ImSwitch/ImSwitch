@@ -16,13 +16,14 @@ from imswitch import imcontrol, imreconstruct
 
 def writeDocs(cls):
     obj, name = pydoc.resolve(cls)
-    html = pydoc.html.page(pydoc.describe(obj), pydoc.html.document(obj, name))
+    html = pydoc.html.page(pydoc.describe(obj), pydoc.html.document(obj, name))  # Get Pydoc HTML
+    html = re.sub(r'<a[^>]*>(.*?)</a>', r'\1', html)  # Remove links
 
-    markdown = html2text.html2text(html)
-    markdown = markdown.replace('`', '')
-    markdown = re.sub(r'^[ \t|]+', '', markdown, flags=re.MULTILINE)
+    markdown = html2text.html2text(html)  # Convert to markdown
+    markdown = markdown.replace('`', '')  # Remove unnecessary backticks
+    markdown = re.sub(r'^[ \t|]+', '', markdown, flags=re.MULTILINE)  # Remove unnecessary pipes
 
-    rst = m2r.convert(markdown)
+    rst = m2r.convert(markdown)  # Convert to reStructuredText
 
     with open(os.path.join(apiDocsDir, f'{cls.__name__}.rst'), 'w') as file:
         file.write(rst)

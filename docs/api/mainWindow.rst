@@ -2,14 +2,14 @@
    :format: html
 
 
-class **mainWindow**\ (\ `builtins.object <builtins.html#object>`_\ )  
--------------------------------------------------------------------------
+class **mainWindow** (builtins.object)  
+--------------------------------------------
 
 These functions are available in the mainWindow object.  
 
 Methods defined here:  
 
-**setCurrentModule**\ (self, moduleId)
+**setCurrentModule** (self, moduleId)
 
 Sets the currently displayed module to the module with the\ :raw-html-m2r:`<br>`
 specified ID (e.g. "imcontrol").

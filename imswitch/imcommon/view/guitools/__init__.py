@@ -8,7 +8,8 @@ from .naparitools import (
     VispyLineVisual, VispyGridVisual, VispyCrosshairVisual, VispyScatterVisual
 )
 from .pyqtgraphtools import (
-    setBestImageLimits, Grid, TwoColorGrid, Crosshair, ROI, cropROI, SumpixelsGraph, ProjectionGraph
+    setPGBestImageLimits, PGGrid, PGTwoColorGrid, PGCrosshair, PGROI, PGCropROI, SumpixelsGraph,
+    ProjectionGraph
 )
 from .stylesheet import getBaseStyleSheet
 from .texttools import ordinalSuffix

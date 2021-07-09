@@ -98,7 +98,7 @@ class FFTWidget(Widget):
         self.img.setImage(im, autoLevels=False)
 
     def updateImageLimits(self, imgWidth, imgHeight):
-        guitools.setBestImageLimits(self.vb, imgWidth, imgHeight)
+        guitools.setBestPyQtGraphImageLimits(self.vb, imgWidth, imgHeight)
 
     def getImageDisplayLevels(self):
         return self.hist.getLevels()

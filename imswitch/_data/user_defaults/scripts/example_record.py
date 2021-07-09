@@ -3,6 +3,9 @@ This script demonstrates some basic functions for recording, changing what
 module is displayed, and waiting for signals to be emitted. Note that the
 recording does not stop automatically if the script is terminated before it
 finishes.
+
+NOTE: This script will only work if the recording widget is enabled in your
+current hardware control setup.
 """
 
 

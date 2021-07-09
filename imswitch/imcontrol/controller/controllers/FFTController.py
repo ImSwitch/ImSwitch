@@ -2,7 +2,7 @@ import numpy as np
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from ..basecontrollers import LiveUpdatedController
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 
 
 class FFTController(LiveUpdatedController):
@@ -63,21 +63,21 @@ class FFTController(LiveUpdatedController):
 
     def displayImage(self, im):
         """ Displays the image in the view. """
-        shapeChanged = self._widget.img.image is None or im.shape != self._widget.img.image.shape
-        self._widget.img.setImage(im, autoLevels=False)
+        prevIm = self._widget.getImage()
+        shapeChanged = prevIm is None or im.shape != prevIm.shape
+        self._widget.setImage(im)
 
         if shapeChanged or not self.init:
             self.adjustFrame()
-            self._widget.hist.setLevels(*guitools.bestLevels(im))
-            self._widget.hist.vb.autoRange()
+            self._widget.setImageDisplayLevels(*guitools.bestLevels(im))
             self.init = True
 
     def adjustFrame(self):
-        width, height = self._widget.img.width(), self._widget.img.height()
-        if width is None or height is None:
+        im = self._widget.getImage()
+        if im is None:
             return
 
-        guitools.setBestImageLimits(self._widget.vb, width, height)
+        self._widget.updateImageLimits(im.shape[1], im.shape[0])
 
     def changeRate(self, updateRate):
         """ Change update rate. """
@@ -87,34 +87,17 @@ class FFTController(LiveUpdatedController):
     def changePos(self, pos):
         """ Change positions of lines.  """
         if not self.showPos or pos == 0:
-            self._widget.vline.hide()
-            self._widget.hline.hide()
-            self._widget.rvline.hide()
-            self._widget.lvline.hide()
-            self._widget.uhline.hide()
-            self._widget.dhline.hide()
+            self._widget.setPosLinesVisible(False)
         else:
+            im = self._widget.getImage()
+            if im is None:
+                return
+
             pos = float(1 / pos)
-            imgWidth = self._widget.img.width()
-            imgHeight = self._widget.img.height()
-            # self._widget.vb.setAspectLocked()
-            # self._widget.vb.setLimits(xMin=-0.5, xMax=imgWidth, minXRange=4,
-            #                           yMin=-0.5, yMax=imgHeight, minYRange=4)
-            self._widget.vline.setValue(0.5 * imgWidth)
-            self._widget.hline.setAngle(0)
-            self._widget.hline.setValue(0.5 * imgHeight)
-            self._widget.rvline.setValue((0.5 + pos) * imgWidth)
-            self._widget.lvline.setValue((0.5 - pos) * imgWidth)
-            self._widget.dhline.setAngle(0)
-            self._widget.dhline.setValue((0.5 - pos) * imgHeight)
-            self._widget.uhline.setAngle(0)
-            self._widget.uhline.setValue((0.5 + pos) * imgHeight)
-            self._widget.vline.show()
-            self._widget.hline.show()
-            self._widget.rvline.show()
-            self._widget.lvline.show()
-            self._widget.uhline.show()
-            self._widget.dhline.show()
+            imgWidth = im.shape[1]
+            imgHeight = im.shape[0]
+            self._widget.updatePosLines(pos, imgWidth, imgHeight)
+            self._widget.setPosLinesVisible(True)
 
     class FFTImageComputationWorker(Worker):
         sigFftImageComputed = Signal(np.ndarray)
@@ -143,7 +126,7 @@ class FFTController(LiveUpdatedController):
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

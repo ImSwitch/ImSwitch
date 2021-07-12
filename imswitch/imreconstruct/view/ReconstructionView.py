@@ -19,7 +19,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
         # Image Widget
         guitools.addNapariGrayclipColormap()
-        self.napariViewer = napari.Viewer(show=False)
+        self.napariViewer = guitools.EmbeddedNapari()
         guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
 
         self.imgLayer = self.napariViewer.add_image(
@@ -103,7 +103,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
         self.setLayout(layout)
 
-        layout.addWidget(self.napariViewer.window._qt_window, 0, 0, 2, 1)
+        layout.addWidget(self.napariViewer.getWidget(), 0, 0, 2, 1)
         layout.addWidget(self.chooseViewBox, 0, 1, 1, 2)
         layout.addWidget(self.reconList, 0, 3, 2, 1)
         layout.addWidget(self.sliceSlider, 2, 0)

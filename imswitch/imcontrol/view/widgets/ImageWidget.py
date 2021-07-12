@@ -1,8 +1,7 @@
-import napari
 import numpy as np
 from qtpy import QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 
 
 class ImageWidget(QtWidgets.QWidget):
@@ -12,13 +11,13 @@ class ImageWidget(QtWidgets.QWidget):
         super().__init__(*args, **kwargs)
         
         guitools.addNapariGrayclipColormap()
-        self.napariViewer = napari.Viewer(show=False)
+        self.napariViewer = guitools.EmbeddedNapari()
         guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
         guitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
-        self.viewCtrlLayout.addWidget(self.napariViewer.window._qt_window)
+        self.viewCtrlLayout.addWidget(self.napariViewer.getWidget())
         self.setLayout(self.viewCtrlLayout)
 
         self.grid = guitools.VispyGridVisual(color='yellow')

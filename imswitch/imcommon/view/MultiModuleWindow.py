@@ -54,6 +54,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
         if hasattr(moduleWidget, 'menuBar') and callable(moduleWidget.menuBar):
             # Module widget has menu bar; add common items and hide fallback menu bar
+            moduleWidget.menuBar().setNativeMenuBar(False)
             self.addItemsToMenuBar(moduleWidget.menuBar())
             self.menuBar().hide()
 
@@ -133,6 +134,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
         self.showMaximized()
         super().show()
+
+    def closeEvent(self, event):
+        QtWidgets.QApplication.instance().quit()
+        event.accept()
 
 
 # Copyright (C) 2020, 2021 TestaLab

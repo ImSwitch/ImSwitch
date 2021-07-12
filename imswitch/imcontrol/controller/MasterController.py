@@ -58,6 +58,8 @@ class MasterController:
         for multiManager in (self.detectorsManager, self.lasersManager, self.positionersManager):
             multiManager.finalize()
 
+        self.slmManager.finalize()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

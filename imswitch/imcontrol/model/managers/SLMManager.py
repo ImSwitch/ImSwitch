@@ -12,6 +12,7 @@ class SLMManager:
     def __init__(self, slmInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if slmInfo is None:
+            self.__slm = None
             return
         self.__slm = getSLMObj(slmInfo.monitorIdx)
         self.__slmInfo = slmInfo
@@ -161,6 +162,10 @@ class SLMManager:
         self.updateSLMDisplay(maskChange=maskChange, tiltChange=tiltChange, aberChange=aberChange)
         returnmask = self.maskDouble + self.maskAber
         return returnmask.image()
+
+    def finalize(self):
+        if self.__slm is not None:
+            self.__slm.close()
 
 
 class Mask(object):

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from imswitch.imcommon.framework import Thread, Worker, Signal
@@ -84,6 +86,8 @@ class BeadWorker(Worker):
                     if i == N:
                         i = 0
                 self.sigNewChunk.emit()
+
+            time.sleep(0.0001)  # Prevents freezing
 
 
 # Copyright (C) 2020, 2021 TestaLab

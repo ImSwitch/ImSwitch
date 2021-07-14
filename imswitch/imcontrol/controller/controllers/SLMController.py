@@ -24,7 +24,7 @@ class SLMController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sigSLMMaskUpdated.connect(self.displayMask)
 
-        # Connect SLMWidget buttons
+        # Connect SLMWidget signals
         self._widget.controlPanel.upButton.clicked.connect(
             lambda: self.moveMask(Direction.Up))  # change 'up' to (x,y)=(0,1)
         self._widget.controlPanel.downButton.clicked.connect(
@@ -52,11 +52,14 @@ class SLMController(ImConWidgetController):
         self._widget.controlPanel.splitbullButton.clicked.connect(
             lambda: self.setMask(MaskMode.Split))
 
-        # Connect SLMWidget parameter tree updates
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
+        self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
 
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
+
+    def toggleSLMDisplay(self, enabled):
+        self._widget.setSLMDisplayVisible(enabled)
 
     def displayMask(self, maskCombined):
         """ Display the mask in the SLM display. Originates from slmPy:

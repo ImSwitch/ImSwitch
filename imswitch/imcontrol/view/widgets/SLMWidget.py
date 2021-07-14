@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 from pyqtgraph.parametertree import ParameterTree
 
 from imswitch.imcontrol.view import guitools
@@ -9,6 +9,8 @@ from .basewidgets import Widget
 
 class SLMWidget(Widget):
     """ Widget containing slm interface. """
+
+    sigSLMDisplayToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,6 +112,11 @@ class SLMWidget(Widget):
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
         
+        # Button for showing SLM display
+        self.slmDisplayButton = guitools.BetterPushButton('Show SLM display')
+        self.slmDisplayButton.setCheckable(True)
+        self.slmDisplayButton.toggled.connect(self.sigSLMDisplayToggled)
+
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         #self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
@@ -212,8 +219,9 @@ class SLMWidget(Widget):
         self.setLayout(self.grid)
 
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
-        self.grid.addWidget(self.applyChangesButton, 2, 0, 1, 1)
+        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
+        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        self.grid.addWidget(self.slmDisplayButton, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
 
     def initSLMDisplay(self, monitor):
@@ -222,6 +230,9 @@ class SLMWidget(Widget):
 
     def updateSLMDisplay(self, imgArr):
         self.slmDisplay.updateImage(imgArr)
+
+    def setSLMDisplayVisible(self, visible):
+        self.slmDisplay.setVisible(visible)
 
 
 # Copyright (C) 2020, 2021 TestaLab

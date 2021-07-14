@@ -10,12 +10,11 @@ class SLMDisplay(QtWidgets.QLabel):
     def __init__(self, monitor):
         super().__init__()
         self.setWindowTitle('SLM display')
+        self.setWindowFlags(QtCore.Qt.Tool)
+        self.setWindowState(QtCore.Qt.WindowFullScreen)
 
         self.imgWidth, self.imgHeight = self.setMonitor(monitor)
         self.imgArr = np.zeros((2, 2))
-
-        self.showFullScreen()
-        self.setFocus()
 
     def setMonitor(self, monitor):
         app = QtWidgets.QApplication.instance()
@@ -34,6 +33,10 @@ class SLMDisplay(QtWidgets.QLabel):
         
     def updateImage(self, imgArr):
         self.imgArr = imgArr
+
+        if not self.isVisible():
+            return
+
         imgScaled = skimage.img_as_ubyte(
             skimage.transform.resize(self.imgArr, (self.imgHeight, self.imgWidth), order=0)
         )
@@ -45,6 +48,12 @@ class SLMDisplay(QtWidgets.QLabel):
 
         qpixmap = QtGui.QPixmap(qimage)
         self.setPixmap(qpixmap)
+
+    def setVisible(self, visible):
+        super().setVisible(visible)
+
+        if visible:
+            self.updateImage(self.imgArr)
 
 
 # Copyright (C) 2020, 2021 TestaLab

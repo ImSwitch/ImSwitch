@@ -3,7 +3,7 @@ import pyqtgraph as pg
 from qtpy import QtWidgets
 from pyqtgraph.parametertree import ParameterTree
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -12,6 +12,8 @@ class SLMWidget(Widget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.slmDisplay = None
 
         self.slmFrame = pg.GraphicsLayoutWidget()
         self.vb = self.slmFrame.addViewBox(row=1, col=1)
@@ -209,11 +211,17 @@ class SLMWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def initControls(self):
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
         self.grid.addWidget(self.applyChangesButton, 2, 0, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+
+    def initSLMDisplay(self, monitor):
+        from imswitch.imcontrol.view import SLMDisplay
+        self.slmDisplay = SLMDisplay(monitor)
+
+    def updateSLMDisplay(self, imgArr):
+        self.slmDisplay.updateImage(imgArr)
 
 
 # Copyright (C) 2020, 2021 TestaLab

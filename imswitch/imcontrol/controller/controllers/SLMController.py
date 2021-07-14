@@ -18,8 +18,11 @@ class SLMController(ImConWidgetController):
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
-        self._widget.initControls()
+        self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
         # self.loadPreset(self._defaultPreset)
+
+        # Connect CommunicationChannel signals
+        self._commChannel.sigSLMMaskUpdated.connect(self.displayMask)
 
         # Connect SLMWidget buttons
         self._widget.controlPanel.upButton.clicked.connect(
@@ -51,6 +54,32 @@ class SLMController(ImConWidgetController):
 
         # Connect SLMWidget parameter tree updates
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
+
+        # Initial SLM display
+        self.displayMask(self._master.slmManager.maskCombined)
+
+    def displayMask(self, maskCombined):
+        """ Display the mask in the SLM display. Originates from slmPy:
+        https://github.com/wavefrontshaping/slmPy """
+
+        arr = maskCombined.image()
+
+        # Padding: Like they do in the software
+        pad = np.zeros((600, 8), dtype=np.uint8)
+        arr = np.append(arr, pad, 1)
+
+        # Create final image array
+        h, w = arr.shape[0], arr.shape[1]
+
+        if len(arr.shape) == 2:
+            # Array is grayscale
+            arrGray = arr.copy()
+            arrGray.shape = h, w, 1
+            img = np.concatenate((arrGray, arrGray, arrGray), axis=2)
+        else:
+            img = arr
+
+        self._widget.updateSLMDisplay(img)
 
     # Button pressed functions
     def moveMask(self, direction):

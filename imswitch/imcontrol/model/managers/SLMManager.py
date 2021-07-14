@@ -8,13 +8,16 @@ import numpy as np
 
 from scipy import signal as sg
 
-class SLMManager:
+from imswitch.imcommon.framework import Signal, SignalInterface
+
+
+class SLMManager(SignalInterface):
+    sigSLMMaskUpdated = Signal(object)  # (maskCombined)
+
     def __init__(self, slmInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if slmInfo is None:
-            self.__slm = None
             return
-        self.__slm = getSLMObj(slmInfo.monitorIdx)
         self.__slmInfo = slmInfo
         self.__wavelength = self.__slmInfo.wavelength
         self.__pixelsize = self.__slmInfo.pixelSize
@@ -32,7 +35,7 @@ class SLMManager:
         self.__masksAber = [self.__maskAberLeft, self.__maskAberRight]
         self.__masksTilt = [self.__maskTiltLeft, self.__maskTiltRight]
 
-        self.updateSLMDisplay(maskChange=True, tiltChange=True, aberChange=True)
+        self.update(maskChange=True, tiltChange=True, aberChange=True)
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general != None:
@@ -106,17 +109,6 @@ class SLMManager:
         self.__masksTilt[mask].moveCenter(move_v)
         self.__masksAber[mask].moveCenter(move_v)
 
-    def updateSLMDisplay(self, maskChange=False, tiltChange=False, aberChange=False):
-        """Update the SLM monitor with the left and right mask, with correction masks added on."""
-        if maskChange:
-            self.maskDouble = self.__masks[0].concat(self.__masks[1])
-        if tiltChange:
-            self.maskTilt = self.__masksTilt[0].concat(self.__masksTilt[1])
-        if aberChange:
-            self.maskAber = self.__masksAber[0].concat(self.__masksAber[1])
-        self.maskCombined = self.maskDouble + self.maskAber + self.maskTilt + self.__maskCorrection
-        self.__slm.updateArray(self.maskCombined)
-
     def getCenters(self):
         centerCoords = {"left": self.__masks[0].getCenter(),
                         "right": self.__masks[1].getCenter()}
@@ -159,13 +151,17 @@ class SLMManager:
             mask.setRotationAngle(rotation_angle)
 
     def update(self, maskChange=False, tiltChange=False, aberChange=False):
-        self.updateSLMDisplay(maskChange=maskChange, tiltChange=tiltChange, aberChange=aberChange)
+        if maskChange:
+            self.maskDouble = self.__masks[0].concat(self.__masks[1])
+        if tiltChange:
+            self.maskTilt = self.__masksTilt[0].concat(self.__masksTilt[1])
+        if aberChange:
+            self.maskAber = self.__masksAber[0].concat(self.__masksAber[1])
+        self.maskCombined = self.maskDouble + self.maskAber + self.maskTilt + self.__maskCorrection
+        self.sigSLMMaskUpdated.emit(self.maskCombined)
+
         returnmask = self.maskDouble + self.maskAber
         return returnmask.image()
-
-    def finalize(self):
-        if self.__slm is not None:
-            self.__slm.close()
 
 
 class Mask(object):
@@ -476,19 +472,6 @@ class Mask(object):
             return out
         else:
             raise TypeError("Cannot add two masks with different shapes")
-
-
-def getSLMObj(slmIdx):
-    try:
-        from ..interfaces.SLM import SLMdisplay
-        print('Trying to display SLM in monitor', slmIdx)
-        slm = SLMdisplay(slmIdx)
-        return slm
-    except OSError:
-        print('Failed to load SLM')
-    #    print('Initializing Mock SLM')
-    #    from model.interfaces import MockSLM
-    #    return MockSLM()
 
 
 class MaskMode(enum.Enum):

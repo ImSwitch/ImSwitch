@@ -94,7 +94,7 @@ class SLMframe(QtWidgets.QLabel):
     def InitBuffer(self):
         self.clientSize = self._resX, self._resY
         self.bmp = skimage.img_as_ubyte(
-            skimage.transform.resize(self.img, (self.clientSize[1], self.clientSize[0]))
+            skimage.transform.resize(self.img, (self.clientSize[1], self.clientSize[0]), order=0)
         )
         qimage = QtGui.QImage(
             self.bmp, self.bmp.shape[1], self.bmp.shape[0], self.bmp.shape[1] * 3,

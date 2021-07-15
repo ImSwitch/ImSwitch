@@ -113,7 +113,7 @@ class SLMWidget(Widget):
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
         
         # Button for showing SLM display
-        self.slmDisplayButton = guitools.BetterPushButton('Show SLM display')
+        self.slmDisplayButton = guitools.BetterPushButton('Show SLM display (fullscreen)')
         self.slmDisplayButton.setCheckable(True)
         self.slmDisplayButton.toggled.connect(self.sigSLMDisplayToggled)
 
@@ -226,13 +226,15 @@ class SLMWidget(Widget):
 
     def initSLMDisplay(self, monitor):
         from imswitch.imcontrol.view import SLMDisplay
-        self.slmDisplay = SLMDisplay(monitor)
+        self.slmDisplay = SLMDisplay(self, monitor)
+        self.slmDisplay.sigClosed.connect(lambda: self.sigSLMDisplayToggled.emit(False))
 
     def updateSLMDisplay(self, imgArr):
         self.slmDisplay.updateImage(imgArr)
 
     def setSLMDisplayVisible(self, visible):
         self.slmDisplay.setVisible(visible)
+        self.slmDisplayButton.setChecked(visible)
 
 
 # Copyright (C) 2020, 2021 TestaLab

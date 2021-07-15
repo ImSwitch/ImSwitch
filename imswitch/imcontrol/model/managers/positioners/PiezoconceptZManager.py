@@ -2,6 +2,15 @@ from .PositionerManager import PositionerManager
 
 
 class PiezoconceptZManager(PositionerManager):
+    """ PositionerManager for control of a Piezoconcept Z-piezo through RS232
+    communication.
+
+    Available manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    """
+
     def __init__(self, positionerInfo, name, *args, **kwargs):
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'

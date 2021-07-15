@@ -8,7 +8,12 @@ class CoboltLaserManager(LantzLaserManager):
     using drivers available through Lantz. Uses digital modulation mode when
     scanning.
 
-    Available manager properties: Same as LantzLaserManager.
+    Available manager properties:
+
+    - ``digitalDriver`` -- a string containing a Lantz driver name, e.g.
+      "cobolt.cobolt0601.Cobolt0601"
+    - ``digitalPorts`` -- a string array containing the COM ports to connect
+      to, e.g. ["COM4"]
     """
 
     def __init__(self, *args, **kwargs):

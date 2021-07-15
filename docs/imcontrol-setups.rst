@@ -12,136 +12,35 @@ The ``imcontrol_setups`` directory contains some pre-made configuration files by
 Detector managers
 =================
 
-APDManager
-----------------
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.APDManager.APDManager
 
-DetectorManager that deals with an avalanche photodiode connected to a counter input on a Nidaq card.
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.HamamatsuManager.HamamatsuManager
 
-Available manager properties:
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.PhotometricsManager.PhotometricsManager
 
-- ``terminal`` -- the physical input terminal on the Nidaq to which the APD is connected
-- ``ctrInputLine`` -- the counter that the physical input terminal is connected to
-
-
-HamamatsuManager
-----------------
-
-DetectorManager that deals with the Hamamatsu parameters and frame extraction for a Hamamatsu
-camera.
-
-Available manager properties:
-
-- ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list (list indexing starts at 0); set this to an invalid value, e.g. the string "mock" to load a mocker
-- ``hamamatsu`` -- dictionary of DCAM API properties
-
-
-PhotometricsManager
-------------------
-
-DetectorManager that deals with frame extraction for a Photometrics camera.
-
-Available manager properties:
-- ``cameraListIndex`` -- the camera's index in the Photometrics camera list (list indexing starts at 0)
-
-
-TISManager
-----------------
-
-DetectorManager that deals with TheImagingSource cameras and the parameters for frame extraction from them.
-
-Available manager properties:
-
-- ``cameraListIndex`` -- the camera's index in the TIS camera list (list indexing starts at 0); set this string to an invalid value to load a mocker
-- ``tis`` -- dictionary of TIS camera properties
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.TISManager.TISManager
 
 
 Laser managers
 ==============
 
-AAAOTFLaserManager
--------------------
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.AAAOTFLaserManager.AAAOTFLaserManager
 
-LaserManager for controlling one channel of an AA Opto-Electronic acousto-optic modulator/tunable filter through RS232 communication.
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.CoboltLaserManager.CoboltLaserManager
 
-Available manager properties:
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.CoolLEDLaserManager.CoolLEDLaserManager
 
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
-- ``channel`` -- index of the channel in the acousto-optic device that should be controlled (indexing starts at 1)
-
-
-CoboltLaserManager
-------------------
-LaserManager for Cobolt lasers that are fully digitally controlled
-using drivers available through Lantz. Uses digital modulation mode when
-scanning.
-
-Available manager properties: Same as LantzLaserManager.
-
-
-CoolLEDLaserManager
----------------------
-
-LaserManager for controlling coolLED though RS232 communication.
-
-Available manager properties:
-
-- rs232device -- name of the defined rs232 communication channel through which the communication should take place
-- channel_index -- laser channel (A to H)
-
-
-KatanaLaserManager
--------------------
-
-LaserManager for controlling a OneFive Katana pulsed laser (NKT Photonics).
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
-
-
-LantzLaserManager
------------------
-
-Base LaserManager for lasers that are fully digitally controlled using
-drivers available through Lantz.
-
-Available manager properties:
-
-- ``digitalDriver`` -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-- ``digitalPorts`` -- a string array containing the COM ports to connect to, e.g. ["COM4"]
-
-
-NidaqLaserManager
------------------
-
-LaserManager for analog NI-DAQ-controlled lasers.
-
-Available manager properties: None
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.NidaqLaserManager.NidaqLaserManager
 
 
 Positioner managers
 ===================
 
-NidaqPositionerManager
-------------------------
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.MHXYStageManager.MHXYStageManager
 
-PositionerManager for analog NI-DAQ-controlled positioners.
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.NidaqPositionerManager.NidaqPositionerManager
 
-Available manager properties:
-
-- ``conversionFactor`` -- float
-- ``minVolt`` -- minimum voltage
-- ``maxVolt`` -- maximum voltage
-
-
-PiezoconceptZManager
-------------------------
-
-PositionerManager for control of a Piezoconcept Z-piezo through RS232-communication.
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place 
+.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.PiezoconceptZManager.PiezoconceptZManager
 
 
 RS232 manager

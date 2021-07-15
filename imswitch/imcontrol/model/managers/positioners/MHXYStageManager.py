@@ -2,6 +2,15 @@ from .PositionerManager import PositionerManager
 
 
 class MHXYStageManager(PositionerManager):
+    """ PositionerManager for control of a Marzhauser XY-stage through RS232
+    communication.
+
+    Available manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    """
+
     def __init__(self, positionerInfo, name, *args, **kwargs):
         if (len(positionerInfo.axes) != 2
                 or 'X' not in positionerInfo.axes or 'Y' not in positionerInfo.axes):

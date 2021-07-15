@@ -5,9 +5,10 @@ class NidaqPositionerManager(PositionerManager):
     """ PositionerManager for analog-value NI-DAQ-controlled positioners.
 
     Available manager properties:
-    * conversionFactor -- float
-    * minVolt -- minimum voltage
-    * maxVolt -- maximum voltage
+
+    - ``conversionFactor`` -- float value
+    - ``minVolt`` -- minimum voltage
+    - ``maxVolt`` -- maximum voltage
     """
 
     def __init__(self, positionerInfo, name, **kwargs):

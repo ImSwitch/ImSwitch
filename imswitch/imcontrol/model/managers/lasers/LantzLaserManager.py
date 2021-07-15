@@ -7,8 +7,11 @@ class LantzLaserManager(LaserManager):
     drivers available through Lantz.
 
     Available manager properties:
-    * digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-    * digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+
+    - ``digitalDriver`` -- a string containing a Lantz driver name, e.g.
+      "cobolt.cobolt0601.Cobolt0601"
+    - ``digitalPorts`` -- a string array containing the COM ports to connect
+      to, e.g. ["COM4"]
     """
 
     def __init__(self, laserInfo, name, **_kwargs):

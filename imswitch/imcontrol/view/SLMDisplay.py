@@ -13,7 +13,7 @@ class SLMDisplay(QtWidgets.QLabel):
         self.setWindowFlags(QtCore.Qt.Tool)
         self.setWindowState(QtCore.Qt.WindowFullScreen)
 
-        self.imgWidth, self.imgHeight = self.setMonitor(monitor)
+        self.monitor, self.imgWidth, self.imgHeight = self.setMonitor(monitor)
         self.imgArr = np.zeros((2, 2))
 
     def setMonitor(self, monitor):
@@ -28,8 +28,9 @@ class SLMDisplay(QtWidgets.QLabel):
         while tryMonitor > len(screens) - 1:
             tryMonitor -= 1  # Try other monitor
 
-        screenSize = screens[tryMonitor].size()
-        return screenSize.width(), screenSize.height()
+        screenGeom = screens[tryMonitor].geometry()
+        self.move(screenGeom.left(), screenGeom.top())
+        return tryMonitor, screenGeom.width(), screenGeom.height()
         
     def updateImage(self, imgArr):
         self.imgArr = imgArr

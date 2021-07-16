@@ -18,10 +18,13 @@ class SLMController(ImConWidgetController):
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
-        self._widget.initControls()
+        self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
         # self.loadPreset(self._defaultPreset)
 
-        # Connect SLMWidget buttons
+        # Connect CommunicationChannel signals
+        self._commChannel.sigSLMMaskUpdated.connect(self.displayMask)
+
+        # Connect SLMWidget signals
         self._widget.controlPanel.upButton.clicked.connect(
             lambda: self.moveMask(Direction.Up))  # change 'up' to (x,y)=(0,1)
         self._widget.controlPanel.downButton.clicked.connect(
@@ -49,8 +52,41 @@ class SLMController(ImConWidgetController):
         self._widget.controlPanel.splitbullButton.clicked.connect(
             lambda: self.setMask(MaskMode.Split))
 
-        # Connect SLMWidget parameter tree updates
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
+        self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
+        self._widget.sigSLMMonitorChanged.connect(self.monitorChanged)
+
+        # Initial SLM display
+        self.displayMask(self._master.slmManager.maskCombined)
+
+    def toggleSLMDisplay(self, enabled):
+        self._widget.setSLMDisplayVisible(enabled)
+
+    def monitorChanged(self, monitor):
+        self._widget.setSLMDisplayMonitor(monitor)
+
+    def displayMask(self, maskCombined):
+        """ Display the mask in the SLM display. Originates from slmPy:
+        https://github.com/wavefrontshaping/slmPy """
+
+        arr = maskCombined.image()
+
+        # Padding: Like they do in the software
+        pad = np.zeros((600, 8), dtype=np.uint8)
+        arr = np.append(arr, pad, 1)
+
+        # Create final image array
+        h, w = arr.shape[0], arr.shape[1]
+
+        if len(arr.shape) == 2:
+            # Array is grayscale
+            arrGray = arr.copy()
+            arrGray.shape = h, w, 1
+            img = np.concatenate((arrGray, arrGray, arrGray), axis=2)
+        else:
+            img = arr
+
+        self._widget.updateSLMDisplay(img)
 
     # Button pressed functions
     def moveMask(self, direction):

@@ -20,9 +20,7 @@ def main():
     app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
 
-    multiModuleWindow = MultiModuleWindow(
-        'ImSwitch', os.path.join(dirtools.DataFileDirs.Root, 'icon.png')
-    )
+    multiModuleWindow = MultiModuleWindow('ImSwitch')
     multiModuleWindowController = MultiModuleWindowController.create(
         multiModuleWindow, moduleCommChannel
     )

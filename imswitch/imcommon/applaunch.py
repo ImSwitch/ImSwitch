@@ -2,8 +2,9 @@ import logging
 import os
 import sys
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
+from .model import dirtools
 from .view.guitools import getBaseStyleSheet
 
 
@@ -19,6 +20,7 @@ def prepareApp():
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'  # Force HDF5 to not lock files
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     app = QtWidgets.QApplication([])
+    app.setWindowIcon(QtGui.QIcon(os.path.join(dirtools.DataFileDirs.Root, 'icon.png')))
     app.setStyleSheet(getBaseStyleSheet())
     return app
 

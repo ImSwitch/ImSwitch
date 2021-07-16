@@ -14,13 +14,11 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
-    def __init__(self, title, iconPath=None, *args, **kwargs):
+    def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.moduleWidgets = {}
 
         self.setWindowTitle(title)
-        if iconPath:
-            self.setWindowIcon(QtGui.QIcon(iconPath))
 
         self.pickModulesDialog = PickModulesDialog(self)
         self.checkUpdatesDialog = CheckUpdatesDialog(self)

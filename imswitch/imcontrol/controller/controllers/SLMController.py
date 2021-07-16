@@ -54,12 +54,16 @@ class SLMController(ImConWidgetController):
 
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.sigSLMDisplayToggled.connect(self.toggleSLMDisplay)
+        self._widget.sigSLMMonitorChanged.connect(self.monitorChanged)
 
         # Initial SLM display
         self.displayMask(self._master.slmManager.maskCombined)
 
     def toggleSLMDisplay(self, enabled):
         self._widget.setSLMDisplayVisible(enabled)
+
+    def monitorChanged(self, monitor):
+        self._widget.setSLMDisplayMonitor(monitor)
 
     def displayMask(self, maskCombined):
         """ Display the mask in the SLM display. Originates from slmPy:

@@ -15,17 +15,15 @@ class SLMDisplay(QtWidgets.QLabel):
         self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowState(QtCore.Qt.WindowFullScreen)
 
-        self.preferredMonitor = preferredMonitor
-        self.monitor, self.monitorName, self.imgWidth, self.imgHeight = self.setMonitor(
-            preferredMonitor
-        )
+        self.setMonitor(preferredMonitor)
         self.imgArr = np.zeros((2, 2))
         self.hasShownMonitorWarning = False
 
-    def setMonitor(self, monitor):
+    def setMonitor(self, monitor, updateImage=False):
         app = QtWidgets.QApplication.instance()
         screens = app.screens()
 
+        self.preferredMonitor = monitor
         tryMonitor = monitor
 
         if len(screens) < 1:
@@ -36,7 +34,14 @@ class SLMDisplay(QtWidgets.QLabel):
 
         screenGeom = screens[tryMonitor].geometry()
         self.setGeometry(screenGeom)
-        return tryMonitor, screens[tryMonitor].name(), screenGeom.width(), screenGeom.height()
+
+        self.monitor = tryMonitor
+        self.monitorName = screens[tryMonitor].name()
+        self.imgWidth = screenGeom.width()
+        self.imgHeight = screenGeom.height()
+
+        if updateImage:
+            self.updateImage(self.imgArr)
 
     def updateImage(self, imgArr):
         self.imgArr = imgArr
@@ -61,9 +66,7 @@ class SLMDisplay(QtWidgets.QLabel):
 
         if visible:
             # Update monitor to display on (in case the user has (dis)connected a monitor)
-            self.monitor, self.monitorName, self.imgWidth, self.imgHeight = self.setMonitor(
-                self.preferredMonitor
-            )
+            self.setMonitor(self.preferredMonitor)
 
             # Show warning if SLM display is shown over ImSwitch
             parentMonitorName = self.parentWidget().screen().name()
@@ -72,8 +75,8 @@ class SLMDisplay(QtWidgets.QLabel):
                 QtWidgets.QMessageBox.information(
                     self, 'SLM display information',
                     f'The SLM display will be displayed over ImSwitch, since it is configured to be'
-                    f' displayed on monitor {self.monitor}, which is the same monitor that ImSwitch'
-                    f' is currently displayed on. You can close the SLM display by pressing the'
+                    f' displayed on screen {self.monitor}, which is the same screen that ImSwitch'
+                    f' currently is displayed on. You can close the SLM display by pressing the'
                     f' escape key on your keyboard.'
                 )
                 self.hasShownMonitorWarning = True
@@ -90,6 +93,7 @@ class SLMDisplay(QtWidgets.QLabel):
 
     def closeEvent(self, event):
         self.sigClosed.emit()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

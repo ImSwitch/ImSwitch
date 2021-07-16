@@ -49,6 +49,8 @@ class MasterController:
         self.recordingManager.sigRecordingTimeUpdated.connect(self.__commChannel.sigUpdateRecTime)
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
+        self.slmManager.sigSLMMaskUpdated.connect(self.__commChannel.sigSLMMaskUpdated)
+
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = DataItem(
             data=file, filePath=filePath, savedToDisk=savedToDisk

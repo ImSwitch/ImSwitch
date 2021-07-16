@@ -74,7 +74,7 @@ A manager for that deals with a Hamamatsu SLM, connected with a video input conn
 
 Available manager properties:
 
-- ``monitorIdx`` -- index of the monitor in a list of monitors from wxPython (indexing starts at 0)
+- ``monitorIdx`` -- index of the monitor in the system list of monitors (indexing starts at 0)
 - ``width`` -- width, in pixels, of SLM
 - ``height`` -- height, in pixels, of SLM
 - ``wavelength`` -- wavelength of the laser line used with the SLM

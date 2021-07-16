@@ -12,7 +12,7 @@ class SLMDisplay(QtWidgets.QLabel):
     def __init__(self, parent, preferredMonitor):
         super().__init__(parent)
         self.setWindowTitle('SLM display')
-        self.setWindowFlags(QtCore.Qt.Tool)
+        self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowState(QtCore.Qt.WindowFullScreen)
 
         self.preferredMonitor = preferredMonitor
@@ -35,9 +35,9 @@ class SLMDisplay(QtWidgets.QLabel):
             tryMonitor -= 1  # Try other monitor
 
         screenGeom = screens[tryMonitor].geometry()
-        self.move(screenGeom.left(), screenGeom.top())
+        self.setGeometry(screenGeom)
         return tryMonitor, screens[tryMonitor].name(), screenGeom.width(), screenGeom.height()
-        
+
     def updateImage(self, imgArr):
         self.imgArr = imgArr
 
@@ -68,7 +68,7 @@ class SLMDisplay(QtWidgets.QLabel):
             # Show warning if SLM display is shown over ImSwitch
             parentMonitorName = self.parentWidget().screen().name()
             if (not self.hasShownMonitorWarning and
-                parentMonitorName and parentMonitorName == self.monitorName):
+                    parentMonitorName and parentMonitorName == self.monitorName):
                 QtWidgets.QMessageBox.information(
                     self, 'SLM display information',
                     f'The SLM display will be displayed over ImSwitch, since it is configured to be'
@@ -86,9 +86,10 @@ class SLMDisplay(QtWidgets.QLabel):
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Escape:
-            self.hide()
-            self.sigClosed.emit()
+            self.close()
 
+    def closeEvent(self, event):
+        self.sigClosed.emit()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

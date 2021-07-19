@@ -18,7 +18,7 @@ class CoolLEDLaserManager(LaserManager):
         self.__channel_index = laserInfo.managerProperties['channel_index']
         self.__digital_mod = False 
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW')
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""

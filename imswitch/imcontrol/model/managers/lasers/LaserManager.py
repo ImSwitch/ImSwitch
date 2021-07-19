@@ -6,7 +6,7 @@ class LaserManager(ABC):
     extended for each type of laser. """
 
     @abstractmethod
-    def __init__(self, laserInfo, name, isBinary, valueUnits):
+    def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals):
         self._laserInfo = laserInfo
         self.__name = name
         self.__isBinary = isBinary
@@ -15,6 +15,7 @@ class LaserManager(ABC):
         self.__valueRangeMax = laserInfo.valueRangeMax
         self.__valueRangeStep = laserInfo.valueRangeStep
         self.__valueUnits = valueUnits
+        self.__valueDecimals = valueDecimals
 
     @property
     def name(self):
@@ -49,6 +50,11 @@ class LaserManager(ABC):
     def valueUnits(self):
         """The units of the laser value, e.g. "mW" or "V"."""
         return self.__valueUnits
+
+    @property
+    def valueDecimals(self):
+        """ How many decimals are accepted in the laser value. """
+        return self.__valueDecimals
 
     @abstractmethod
     def setEnabled(self, enabled):

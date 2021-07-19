@@ -12,7 +12,7 @@ class LantzLaserManager(LaserManager):
       to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, isBinary, valueUnits, driver, **_kwargs):
+    def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals, driver, **_kwargs):
         ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
@@ -20,7 +20,8 @@ class LantzLaserManager(LaserManager):
         self._numLasers = len(ports)
         print(self._laser.idn)
 
-        super().__init__(laserInfo, name, isBinary=isBinary, valueUnits=valueUnits)
+        super().__init__(laserInfo, name, isBinary=isBinary, valueUnits=valueUnits,
+                         valueDecimals=valueDecimals)
 
     def finalize(self):
         self._laser.finalize()

@@ -20,9 +20,9 @@ class DetectorInfo(DeviceInfo):
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
-    valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
     wavelength: Union[int, float]  # nanometres
+    valueRangeMin: Optional[Union[int, float]]  # null if auto-detector or laser is binary
+    valueRangeMax: Optional[Union[int, float]]  # null if auto-detector or laser is binary
     valueRangeStep: float = 1.0
 
 

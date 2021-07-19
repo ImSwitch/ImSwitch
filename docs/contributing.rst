@@ -54,3 +54,9 @@ Automated tests
 We want to keep including automated tests into the development process,
 so if you have contributed to the project by fixing a bug or providing new functionality,
 we encourage you to write code that tests your contribution as well.
+
+ImSwitch's pytests are located inside the ``_test/unit/`` and ``_test/ui/`` folders under each ImSwitch module's directory.
+So if you have added a new widget to the hardware control module and want to write UI tests for it,
+you should place the UI test files in the ``/imswitch/imcontrol/_test/ui/`` folder.
+
+You can run the test suite by executing the command ``python -m pytest --pyargs imswitch`` in the root directory of the repository.

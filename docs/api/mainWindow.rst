@@ -1,27 +1,13 @@
-.. role:: raw-html-m2r(raw)
-   :format: html
+**********
+mainWindow
+**********
 
+.. class:: mainWindow
 
-class **mainWindow** (builtins.object)  
---------------------------------------------
+   These functions are available in the mainWindow object. 
 
-These functions are available in the mainWindow object.  
+   .. method:: setCurrentModule(self, moduleId)
 
-Methods defined here:  
+      Sets the currently displayed module to the module with the
+      specified ID (e.g. "imcontrol"). 
 
-**setCurrentModule** (self, moduleId)
-
-Sets the currently displayed module to the module with the\ :raw-html-m2r:`<br>`
-specified ID (e.g. "imcontrol").
-
-----
-
-Data descriptors defined here:  
-
-**\ **dict**\ **
-
-dictionary for instance variables (if defined)
-
-**\ **weakref**\ **
-
-list of weak references to the object (if defined)

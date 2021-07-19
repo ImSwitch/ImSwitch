@@ -1,9 +1,5 @@
+import inspect
 import os
-import pydoc
-import re
-
-import html2text
-import m2r
 
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
@@ -14,17 +10,54 @@ from imswitch.imscripting.model.actions import _Actions
 from imswitch import imcontrol, imreconstruct
 
 
-def writeDocs(cls):
-    obj, name = pydoc.resolve(cls)
-    html = pydoc.html.page(pydoc.describe(obj), pydoc.html.document(obj, name))  # Get Pydoc HTML
-    html = re.sub(r'<a[^>]*>(.*?)</a>', r'\1', html)  # Remove links
+def writeDocs(cls, isClass=True, displayName=None):
+    def fixIndent(docstring, indent):
+        lines = docstring.splitlines()
+        for i in range(len(lines)):
+            lines[i] = f'{" " * indent}{lines[i].lstrip()}'
+        return '\n'.join(lines)
 
-    markdown = html2text.html2text(html)  # Convert to markdown
-    markdown = markdown.replace('`', '')  # Remove unnecessary backticks
-    markdown = re.sub(r'^[ \t|]+', '', markdown, flags=re.MULTILINE)  # Remove unnecessary pipes
+    rst = ''
+    indent = 0
 
-    rst = m2r.convert(markdown)  # Convert to reStructuredText
+    if not displayName:
+        displayName = cls.__name__
 
+    # Title
+    title = displayName
+    rst += f'{"*" * len(title)}\n'
+    rst += f'{title}\n'
+    rst += f'{"*" * len(title)}\n'
+    rst += f'\n'
+
+    # Class
+    if isClass:
+        rst += f'.. class:: {displayName}\n'
+        indent += 3
+        rst += f'\n'
+        rst += f'{fixIndent(cls.__doc__, indent)}\n'
+        rst += f'\n'
+
+    # Attributes
+    for attrName in dir(cls):
+        if attrName.startswith('_'):
+            continue  # Skip private members
+
+        attr = getattr(cls, attrName)
+        if callable(attr):
+            # Method
+            rst += f'{" " * indent}.. method:: {attr.__name__}{inspect.signature(attr)}\n'
+            indent += 3
+            rst += f'\n'
+            rst += f'{fixIndent(attr.__doc__, indent)}\n'
+            rst += f'\n'
+            indent -= 3
+
+    # End class
+    if isClass:
+        indent -= 3
+
+    # Write rst file
     with open(os.path.join(apiDocsDir, f'{cls.__name__}.rst'), 'w') as file:
         file.write(rst)
 
@@ -97,7 +130,7 @@ for subObjName in dir(_Actions):
     if hasattr(subObj, '_APIExport') and subObj._APIExport:
         setattr(_actions, subObjName, subObj)
 
-writeDocs(_actions)
+writeDocs(_actions, isClass=False, displayName='Global-level functions')
 
 # Generate docs for mainWindow
 class mainWindow:

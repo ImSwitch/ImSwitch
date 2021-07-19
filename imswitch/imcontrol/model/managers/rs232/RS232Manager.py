@@ -19,8 +19,7 @@ class RS232Manager:
         string encoded from the received bytes. """
         return self._rs232port.query(arg)
 
-    def close(self) -> None:
-        """ Closes the RS232 port. """
+    def finalize(self):
         self._rs232port.close()
 
 

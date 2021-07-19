@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, Undefined, CatchAll
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass(frozen=True)
@@ -20,9 +20,9 @@ class DetectorInfo(DeviceInfo):
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    wavelength: str  # hex code
     valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
     valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
+    wavelength: Union[int, float]  # nanometres
     valueRangeStep: float = 1.0
 
 

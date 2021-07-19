@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import DataItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager,
-    RS232sManager, ScanManager, SLMManager
+    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
+    RecordingManager, RS232sManager, ScanManager, SLMManager
 )
 
 
@@ -57,8 +57,10 @@ class MasterController:
         )
 
     def closeEvent(self):
-        for multiManager in (self.detectorsManager, self.lasersManager, self.positionersManager):
-            multiManager.finalize()
+        for attrName in dir(self):
+            attr = getattr(self, attrName)
+            if isinstance(attr, MultiManager):
+                attr.finalize()
 
 
 # Copyright (C) 2020, 2021 TestaLab

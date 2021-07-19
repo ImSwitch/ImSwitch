@@ -7,6 +7,10 @@ There are three main device types that ImSwitch supports:
 In order to add support for a new detector, laser or positioner,
 a corresponding device manager class must be implemented in ImSwitch's code.
 
+
+How device managers are implemented
+===================================
+
 Detector support is implemented in device manager classes derived from the abstract base class ``DetectorManager``.
 The corresponding parent class for lasers is ``LaserManager``,
 and for positioners it is ``PositionerManager``.

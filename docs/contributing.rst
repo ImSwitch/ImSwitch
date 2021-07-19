@@ -57,4 +57,5 @@ ImSwitch's pytests are located inside the ``_test/unit/`` and ``_test/ui/`` fold
 So if you have added a new widget to the hardware control module and want to write UI tests for it,
 you should place the UI test files in the ``/imswitch/imcontrol/_test/ui/`` folder.
 
-You can run the test suite by executing the command ``python -m pytest --pyargs imswitch`` in the root directory of the repository.
+The test suite will automatically be run on commits and pull requests on GitHub.
+You can also run it manually by executing the command ``python -m pytest --pyargs imswitch`` in the root directory of the repository.

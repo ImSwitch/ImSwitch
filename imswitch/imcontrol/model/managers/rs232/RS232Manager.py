@@ -16,7 +16,7 @@ class RS232Manager:
     def send(self, arg):
         return self._rs232port.query(arg)
 
-    def close(self):
+    def finalize(self):
         self._rs232port.close()
 
 

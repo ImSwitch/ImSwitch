@@ -26,6 +26,14 @@ class Widget(QtWidgets.QWidget):
         self._options = options
         super().__init__(*args, **kwargs)
 
+    def replaceWithError(self, errorText):
+        errorLabel = QtWidgets.QLabel(errorText)
+
+        grid = QtWidgets.QGridLayout()
+        QtWidgets.QWidget().setLayout(self.layout())  # unset layout
+        self.setLayout(grid)
+        grid.addWidget(errorLabel)
+
 
 # Copyright (C) 2020, 2021TestaLab
 # This file is part of ImSwitch.

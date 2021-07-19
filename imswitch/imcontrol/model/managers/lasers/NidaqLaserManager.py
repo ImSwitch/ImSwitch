@@ -9,11 +9,7 @@ class NidaqLaserManager(LaserManager):
 
     def __init__(self, laserInfo, name, **kwargs):
         self._nidaqManager = kwargs['nidaqManager']
-
-        super().__init__(
-            laserInfo, name, isBinary=laserInfo.analogChannel is None, isDigital=False,
-            valueUnits='V'
-        )
+        super().__init__(laserInfo, name, isBinary=laserInfo.analogChannel is None, valueUnits='V')
 
     def setEnabled(self, enabled):
         self._nidaqManager.setDigital(self.name, enabled)

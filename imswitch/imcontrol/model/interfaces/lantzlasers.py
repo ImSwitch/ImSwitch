@@ -59,7 +59,7 @@ def getLaser(iName, port):
 
     try:
         # Try our included drivers first
-        package = importlib.import_module('imswitch.imcontrol.model.drivers.' + pName)
+        package = importlib.import_module('imswitch.imcontrol.model.lantzdrivers.' + pName)
         driver = getattr(package, driverName)
         laser = driver(port)
         laser.initialize()
@@ -89,7 +89,7 @@ def getLaser(iName, port):
 
             try:
                 # If that also fails, try loading a mock driver
-                package = importlib.import_module('imswitch.imcontrol.model.drivers_mock.' + pName)
+                package = importlib.import_module('imswitch.imcontrol.model.lantzdrivers_mock.' + pName)
                 driver = getattr(package, driverName)
                 laser = driver(port)
                 laser.initialize()

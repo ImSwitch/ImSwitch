@@ -42,9 +42,8 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         "405": {
             "analogChannel": null,
             "digitalLine": 0,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM9"
                 ]
@@ -56,9 +55,8 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         "488": {
             "analogChannel": null,
             "digitalLine": 1,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM4",
                     "COM14"
@@ -218,9 +216,8 @@ setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
         "405": {
             "analogChannel": null,
             "digitalLine": 0,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM9"
                 ]
@@ -232,9 +229,8 @@ setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
         "488": {
             "analogChannel": null,
             "digitalLine": 1,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM4",
                     "COM14"

@@ -7,22 +7,20 @@ class LantzLaserManager(LaserManager):
     drivers available through Lantz.
 
     Available manager properties:
-    * digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-    * digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+
+    - ``digitalPorts`` -- a string array containing the COM ports to connect
+      to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, **_kwargs):
-        digitalDriver = laserInfo.managerProperties['digitalDriver']
-        digitalPorts = laserInfo.managerProperties['digitalPorts']
+    def __init__(self, laserInfo, name, isBinary, valueUnits, driver, **_kwargs):
+        ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
-        self._laser = LantzLaser(digitalDriver, digitalPorts)
-        self._numLasers = len(digitalPorts)
+        self._laser = LantzLaser(driver, ports)
+        self._numLasers = len(ports)
         print(self._laser.idn)
 
-        super().__init__(
-            laserInfo, name, isBinary=False, isDigital=True, valueUnits='mW'
-        )
+        super().__init__(laserInfo, name, isBinary=isBinary, valueUnits=valueUnits)
 
     def finalize(self):
         self._laser.finalize()

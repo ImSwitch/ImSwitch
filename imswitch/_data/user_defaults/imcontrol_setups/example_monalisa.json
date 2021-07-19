@@ -47,9 +47,8 @@
         "488 (OFF)": {
             "analogChannel": null,
             "digitalLine": 3,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM12"
                 ]
@@ -61,9 +60,8 @@
         "488 (EXC)": {
             "analogChannel": null,
             "digitalLine": 1,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM4"
                 ]
@@ -75,9 +73,8 @@
         "405 (ON)": {
             "analogChannel": null,
             "digitalLine": 2,
-            "managerName": "CoboltLaserManager",
+            "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
-                "digitalDriver": "cobolt.cobolt0601.Cobolt0601_f2",
                 "digitalPorts": [
                     "COM11"
                 ]

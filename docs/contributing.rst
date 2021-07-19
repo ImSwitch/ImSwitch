@@ -43,9 +43,7 @@ Feel free to open a discussion thread about what you wish to include or improve.
 
 Adding device support
 ======================
-For adding support to new devices,
-we encourage you to follow the software architecture diagram provided in the `paper <https://github.com/kasasxav/ImSwitch/blob/master/paper/paper.md>`_ and create the necessary classes
-(driver, device manager, etc.).
+See :doc:`this page <adding-device-support>` for information on adding support for new devices.
 You can start a discussion if you want to get advice and help to get started.
 
 

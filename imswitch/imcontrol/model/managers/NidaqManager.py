@@ -367,8 +367,8 @@ class NidaqManager(SignalInterface):
 class WaitThread(Thread):
     sigWaitDone = Signal()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **lowLevelManagers):
+        super().__init__(*args, **lowLevelManagers)
         self.task = None
         self.running = False
 

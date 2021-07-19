@@ -7,7 +7,7 @@ class MultiManager(ABC):
     Intended to be extended for each type of manager. """
 
     @abstractmethod
-    def __init__(self, managedDeviceInfos, subManagersPackage, **kwargs):
+    def __init__(self, managedDeviceInfos, subManagersPackage, **lowLevelManagers):
         self._subManagers = {}
         currentPackage = '.'.join(__name__.split('.')[:-1])
         for managedDeviceName, managedDeviceInfo in managedDeviceInfos.items():
@@ -17,7 +17,7 @@ class MultiManager(ABC):
             )
             manager = getattr(package, managedDeviceInfo.managerName)
             self._subManagers[managedDeviceName] = manager(
-                managedDeviceInfo, managedDeviceName, **kwargs)
+                managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
     def hasDevices(self):
         """ Returns whether this manager manages any devices. """

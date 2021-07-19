@@ -11,7 +11,7 @@ class PiezoconceptZManager(PositionerManager):
       through which the communication should take place
     """
 
-    def __init__(self, positionerInfo, name, *args, **kwargs):
+    def __init__(self, positionerInfo, name, *args, **lowLevelManagers):
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
                                f' {len(positionerInfo.axes)} provided.')
@@ -19,7 +19,7 @@ class PiezoconceptZManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self._rs232Manager = kwargs['rs232sManager'][positionerInfo.managerProperties['rs232device']]
+        self._rs232Manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         #print('ZPiezo fake reply')
 
     def move(self, value, axis):

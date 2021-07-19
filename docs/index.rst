@@ -40,6 +40,13 @@ well as for developers (scripting and API modules, and hardware control and JSON
     imcontrol-setups
 
 .. toctree::
+    :hidden:
+    :caption: Extending ImSwitch
+
+    adding-device-support
+    low-level-managers
+
+.. toctree::
     :glob:
     :hidden:
     :caption: Scripting API reference

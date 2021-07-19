@@ -12,35 +12,35 @@ The ``imcontrol_setups`` directory contains some pre-made configuration files by
 Detector managers
 =================
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.APDManager.APDManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.APDManager.APDManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.HamamatsuManager.HamamatsuManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.HamamatsuManager.HamamatsuManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.PhotometricsManager.PhotometricsManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.PhotometricsManager.PhotometricsManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.detectors.TISManager.TISManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.TISManager.TISManager
 
 
 Laser managers
 ==============
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.AAAOTFLaserManager.AAAOTFLaserManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.AAAOTFLaserManager.AAAOTFLaserManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.CoboltLaserManager.CoboltLaserManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.Cobolt0601LaserManager.Cobolt0601LaserManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.CoolLEDLaserManager.CoolLEDLaserManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.CoolLEDLaserManager.CoolLEDLaserManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.lasers.NidaqLaserManager.NidaqLaserManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.NidaqLaserManager.NidaqLaserManager
 
 
 Positioner managers
 ===================
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.MHXYStageManager.MHXYStageManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.MHXYStageManager.MHXYStageManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.NidaqPositionerManager.NidaqPositionerManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.NidaqPositionerManager.NidaqPositionerManager
 
-.. autoclassdocstr:: imswitch.imcontrol.model.managers.positioners.PiezoconceptZManager.PiezoconceptZManager
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.PiezoconceptZManager.PiezoconceptZManager
 
 
 RS232 manager

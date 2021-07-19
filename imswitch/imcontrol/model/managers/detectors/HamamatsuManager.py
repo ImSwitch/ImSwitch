@@ -15,7 +15,7 @@ class HamamatsuManager(DetectorManager):
     - ``hamamatsu`` -- dictionary of DCAM API properties to pass to the driver
     """
 
-    def __init__(self, detectorInfo, name, **_kwargs):
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 

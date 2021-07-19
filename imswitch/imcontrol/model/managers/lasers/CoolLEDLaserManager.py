@@ -19,8 +19,8 @@ class CoolLEDLaserManager(LaserManager):
     - ``channel_index`` -- laser channel (A to H)
     """
 
-    def __init__(self, laserInfo, name, **kwargs):
-        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+    def __init__(self, laserInfo, name, **lowLevelManagers):
+        self._rs232manager = lowLevelManagers['rs232sManager'][laserInfo.managerProperties['rs232device']]
         self.__channel_index = laserInfo.managerProperties['channel_index']
         self.__digital_mod = False 
 

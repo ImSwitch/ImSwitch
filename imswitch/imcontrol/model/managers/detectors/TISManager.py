@@ -15,7 +15,7 @@ class TISManager(DetectorManager):
     - ``tis`` -- dictionary of TIS camera properties
     """
 
-    def __init__(self, detectorInfo, name, **_kwargs):
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self._camera = getTISObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model

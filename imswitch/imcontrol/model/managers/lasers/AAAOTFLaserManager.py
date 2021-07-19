@@ -13,10 +13,10 @@ class AAAOTFLaserManager(LaserManager):
       should be controlled (indexing starts at 1)
     """
 
-    def __init__(self, laserInfo, name, **kwargs):
+    def __init__(self, laserInfo, name, **lowLevelManagers):
         print(type(laserInfo))
         self._channel = int(laserInfo.managerProperties['channel'])
-        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+        self._rs232manager = lowLevelManagers['rs232sManager'][laserInfo.managerProperties['rs232device']]
 
         self.blankingOn()
         self.internalControl()

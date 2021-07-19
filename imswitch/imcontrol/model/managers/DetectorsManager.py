@@ -16,8 +16,8 @@ class DetectorsManager(MultiManager, SignalInterface):
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
     sigImageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
 
-    def __init__(self, detectorInfos, updatePeriod, **kwargs):
-        MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
+    def __init__(self, detectorInfos, updatePeriod, **lowLevelManagers):
+        MultiManager.__init__(self, detectorInfos, 'detectors', **lowLevelManagers)
         SignalInterface.__init__(self)
 
         self._activeAcqHandles = []

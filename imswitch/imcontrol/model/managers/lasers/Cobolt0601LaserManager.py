@@ -13,9 +13,9 @@ class Cobolt0601LaserManager(LantzLaserManager):
       to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, **_kwargs):
+    def __init__(self, laserInfo, name, **_lowLevelManagers):
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW',
-                         driver='cobolt.cobolt0601.Cobolt0601_f2', **_kwargs)
+                         driver='cobolt.cobolt0601.Cobolt0601_f2', **_lowLevelManagers)
 
         self._digitalMod = False
 

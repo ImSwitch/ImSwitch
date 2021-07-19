@@ -6,17 +6,21 @@ Created on Thu Jan 13 10:23:00 2021
 
 
 class RS232Manager:
-    """General RS232Manager."""
-    def __init__(self, rs232Info, name, **kwargs):
+    """ General RS232Manager. """
+
+    def __init__(self, rs232Info, name, **_lowLevelManagers):
         self._settings = rs232Info.managerProperties
         self._name = name
         self._port = rs232Info.managerProperties['port']
         self._rs232port = getRS232port(self._port, self._settings)
 
-    def send(self, arg):
+    def send(self, arg: str) -> str:
+        """ Sends the specified command to the RS232 device and returns a
+        string encoded from the received bytes. """
         return self._rs232port.query(arg)
 
-    def close(self):
+    def close(self) -> None:
+        """ Closes the RS232 port. """
         self._rs232port.close()
 
 

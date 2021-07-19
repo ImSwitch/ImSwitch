@@ -16,7 +16,7 @@ class APDManager(DetectorManager):
       connected to
     """
 
-    def __init__(self, detectorInfo, name, nidaqManager, **_kwargs):
+    def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
         # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
 
         model = name

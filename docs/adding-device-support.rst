@@ -33,7 +33,8 @@ Overriding non-abstract methods is generally fine,
 but you should make sure that they continue to work as expected.
 The device manager class must be placed in a .py file with the same name as the class,
 in the appropriate location as outlined above.
-No other action is required for the device manager to be available to use.
+No other action is required for the device manager to be available to use;
+it will automatically be managed by a multi-manager as outlined in `the paper <https://github.com/kasasxav/ImSwitch/blob/master/paper/paper.md>`_.
 
 You can find a simple example of a positioner manager implementation `here <https://github.com/kasasxav/ImSwitch/blob/master/imswitch/imcontrol/model/managers/positioners/NidaqPositionerManager.py>`_.
 

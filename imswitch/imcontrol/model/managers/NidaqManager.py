@@ -3,11 +3,14 @@ Created on Tue Apr  7 16:46:33 2020
 
 """
 import operator
-import time
+import warnings
+
 import nidaqmx
+import nidaqmx.constants
+import nidaqmx._lib
 import numpy as np
 
-from imswitch.imcommon.framework import Signal, SignalInterface, Timer, Thread
+from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 
 
 class NidaqManager(SignalInterface):
@@ -180,25 +183,29 @@ class NidaqManager(SignalInterface):
         else:
             if not self.busy:
                 self.busy = True
-                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-                tasklen = 100
-                dotask = self.__createLineDOTask('setDigitalTask',
-                                                 line,
-                                                 acquisitionTypeFinite,
-                                                 r'100kHzTimebase',
-                                                 100000,
-                                                 tasklen,
-                                                 False)
-                # signal = np.array([enable])
-                signal = enable * np.ones(tasklen, dtype=bool)
                 try:
-                    dotask.write(signal, auto_start=True)
-                except:
-                    print(' Attempted writing analog data that is too large or too small.')
-                dotask.wait_until_done()
-                dotask.stop()
-                dotask.close()
-                self.busy = False
+                    acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+                    tasklen = 100
+                    dotask = self.__createLineDOTask('setDigitalTask',
+                                                     line,
+                                                     acquisitionTypeFinite,
+                                                     r'100kHzTimebase',
+                                                     100000,
+                                                     tasklen,
+                                                     False)
+                    # signal = np.array([enable])
+                    signal = enable * np.ones(tasklen, dtype=bool)
+                    try:
+                        dotask.write(signal, auto_start=True)
+                    except:
+                        print(' Attempted writing analog data that is too large or too small.')
+                    dotask.wait_until_done()
+                    dotask.stop()
+                    dotask.close()
+                except nidaqmx._lib.DaqNotFoundError as e:
+                    warnings.warn(str(e), RuntimeWarning)
+                finally:
+                    self.busy = False
 
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
@@ -209,23 +216,27 @@ class NidaqManager(SignalInterface):
         else:
             if not self.busy:
                 self.busy = True
-                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-                tasklen = 10
-                aotask = self.__createChanAOTask('setAnalogTask',
-                                                 channel,
-                                                 acquisitionTypeFinite,
-                                                 r'100kHzTimebase',
-                                                 100000, min_val, max_val, tasklen, False)
-
-                signal = voltage*np.ones(tasklen, dtype=np.float)
                 try:
-                    aotask.write(signal, auto_start=True)
-                except:
-                    print('Attempted writing analog data that is too large or too small, or other error when writing the task.')
-                aotask.wait_until_done()
-                aotask.stop()
-                aotask.close()
-                self.busy = False
+                    acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+                    tasklen = 10
+                    aotask = self.__createChanAOTask('setAnalogTask',
+                                                     channel,
+                                                     acquisitionTypeFinite,
+                                                     r'100kHzTimebase',
+                                                     100000, min_val, max_val, tasklen, False)
+
+                    signal = voltage*np.ones(tasklen, dtype=np.float)
+                    try:
+                        aotask.write(signal, auto_start=True)
+                    except:
+                        print('Attempted writing analog data that is too large or too small, or other error when writing the task.')
+                    aotask.wait_until_done()
+                    aotask.stop()
+                    aotask.close()
+                except nidaqmx._lib.DaqNotFoundError as e:
+                    warnings.warn(str(e), RuntimeWarning)
+                finally:
+                    self.busy = False
 
     def runScan(self, signalDic, scanInfoDict):
         """ Function assuming that the user wants to run a full scan with a stage 

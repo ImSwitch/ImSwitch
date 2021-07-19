@@ -6,11 +6,10 @@ class LaserManager(ABC):
     extended for each type of laser. """
 
     @abstractmethod
-    def __init__(self, laserInfo, name, isBinary, isDigital, valueUnits):
+    def __init__(self, laserInfo, name, isBinary, valueUnits):
         self._laserInfo = laserInfo
         self.__name = name
         self.__isBinary = isBinary
-        self.__isDigital = isDigital
         self.__wavelength = laserInfo.wavelength
         self.__valueRangeMin = laserInfo.valueRangeMin
         self.__valueRangeMax = laserInfo.valueRangeMax
@@ -26,11 +25,6 @@ class LaserManager(ABC):
         """Whether the laser can only be turned on and off, and its value
         cannot be changed."""
         return self.__isBinary
-
-    @property
-    def isDigital(self):
-        """Whether the laser is digital."""
-        return self.__isDigital
 
     @property
     def wavelength(self):

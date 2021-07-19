@@ -1,60 +1,10 @@
-from lantz import Q_
-
-from .LantzLaserManager import LantzLaserManager
+from .Cobolt0601LaserManager import Cobolt0601LaserManager
 
 
-class CoboltLaserManager(LantzLaserManager):
-    """ LaserManager for Cobolt lasers that are fully digitally controlled
-    using drivers available through Lantz. Uses digital modulation mode when
-    scanning.
-
-    Available manager properties:
-
-    - ``digitalDriver`` -- a string containing a Lantz driver name, e.g.
-      "cobolt.cobolt0601.Cobolt0601"
-    - ``digitalPorts`` -- a string array containing the COM ports to connect
-      to, e.g. ["COM4"]
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._digitalMod = False
-
-        self._laser.digital_mod = False
-        self._laser.enabled = False
-        self._laser.autostart = False
-
-    def setEnabled(self, enabled):
-        self._laser.enabled = enabled
-
-    def setValue(self, power):
-        power = int(power)
-        if self._digitalMod:
-            self._setModPower(power * Q_(1, 'mW'))
-        else:
-            self._setBasicPower(power * Q_(1, 'mW'))
-
-    def setScanModeActive(self, active):
-        if active:
-            powerQ = self._laser.power_sp * self._numLasers
-            self._laser.enter_mod_mode()
-            self._setModPower(powerQ)
-            print(f'Entered digital modulation mode')
-            print(f'Modulation mode is: {self._laser.mod_mode}')
-        else:
-            self._laser.digital_mod = False
-            self._laser.query('cp')
-            print('Exited digital modulation mode')
-
-        self._digitalMod = active
-
-    def _setBasicPower(self, power):
-        self._laser.power_sp = power / self._numLasers
-
-    def _setModPower(self, power):
-        self._laser.power_mod = power / self._numLasers
-        print(f'Set digital modulation mode power to: {power}')
+class CoboltLaserManager(Cobolt0601LaserManager):
+    """ Alias for Cobolt0601LaserManager. Preserved for backwards
+    compatibility. """
+    pass
 
 
 # Copyright (C) 2020, 2021 TestaLab

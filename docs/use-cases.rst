@@ -1,6 +1,7 @@
-****************
-Use Cases
-****************
+*********
+Use cases
+*********
+
 The first time the hardware control module is initialized,
 it will show a dialog to choose the hardware setup to be loaded.
 The user can change the setup option during execution in "Tools" -> "Pick hardware setup…" in the hardware control module's menu bar.

@@ -1,5 +1,5 @@
 *******************************
-Hardware Control Configurations
+Hardware control configurations
 *******************************
 
 ImSwitch's hardware control module is designed to be flexible and be usable in a wide variety of microscopy setups.

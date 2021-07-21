@@ -1,6 +1,6 @@
-*****************
-HDF5 datafile
-*****************
+**************
+HDF5 datafiles
+**************
 
 In ImSwitch we use `HDF5 files <https://www.hdfgroup.org/solutions/hdf5/>`_ to store the images and metadata containing the experiment's parameters.
 The HDF5 files can be opened in for example `ImageJ <https://imagej.net>`_ and Matlab with the right extensions. For the metadata, `HDFView <https://www.hdfgroup.org/downloads/>`_ can display the attributes and datasets of the file.

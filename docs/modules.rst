@@ -1,5 +1,5 @@
 ********************
-Module Configuration
+Module configuration
 ********************
 
 ImSwitch consists of multiple different modules:

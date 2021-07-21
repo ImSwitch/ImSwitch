@@ -1,6 +1,7 @@
 ************************
-Graphical User Interface
+Graphical user interface
 ************************
+
 .. image:: ./images/gui.png 
 
 The ImSwitch GUI is divided in different modules in order to make it intuitive to explore

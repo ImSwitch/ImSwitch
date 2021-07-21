@@ -2,7 +2,7 @@
 Adding support for more devices
 *******************************
 
-There are three main device types that ImSwitch supports:
+There are three main device types that ImSwitch's hardware control module supports:
 **detectors**, **lasers** and **positioners**.
 In order to add support for a new detector, laser or positioner,
 a corresponding device manager class must be implemented in ImSwitch's code.
@@ -23,7 +23,7 @@ Inside it, the ``managerProperties`` dict field may contain manager-specific pro
 ``name`` is a unique name that is used to identify the device,
 which is defined by the key of the device's entry in the setup file.
 ``lowLevelManagers`` is a dict containing objects that facilitate low-level device interaction,
-which are documented :doc:`here <low-level-managers>`.
+which are documented :ref:`here <Available low-level managers>`.
 Note that ``super().__init__`` has a different signature, depending on which base class is used.
 
 When creating a new device manager,
@@ -80,3 +80,23 @@ PositionerManager
 .. autoclass:: imswitch.imcontrol.model.managers.positioners.PositionerManager.PositionerManager
    :members:
    :special-members: __init__
+
+
+Available low-level managers
+============================
+
+lowLevelManagers['nidaqManager']
+--------------------------------
+
+.. autoclass:: imswitch.imcontrol.model.managers.NidaqManager.NidaqManager
+   :members: setAnalog, setDigital
+
+
+lowLevelManagers['rs232sManager']
+---------------------------------
+
+.. autoclass:: imswitch.imcontrol.model.managers.RS232sManager.RS232sManager
+   :members:
+
+.. autoclass:: imswitch.imcontrol.model.managers.rs232.RS232Manager.RS232Manager
+   :members:

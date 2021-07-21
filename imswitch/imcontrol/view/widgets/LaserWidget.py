@@ -74,12 +74,14 @@ class LaserWidget(Widget):
 
         self.layout.addLayout(self.presetsBox, 1, 0)
 
-    def addLaser(self, laserName, valueUnits, wavelength, valueRange=None, valueRangeStep=1):
+    def addLaser(self, laserName, valueUnits, valueDecimals, wavelength, valueRange=None,
+                 valueRangeStep=1):
         """ Adds a laser module widget. valueRange is either a tuple
         (min, max), or None (if the laser can only be turned on/off). """
 
         control = LaserModule(
-            units=valueUnits, valueRange=valueRange, tickInterval=5, singleStep=valueRangeStep,
+            valueUnits=valueUnits, valueDecimals=valueDecimals, valueRange=valueRange,
+            tickInterval=5, singleStep=valueRangeStep,
             initialPower=valueRange[0] if valueRange is not None else 0
         )
         control.sigEnableChanged.connect(
@@ -199,14 +201,17 @@ class LaserModule(QtWidgets.QWidget):
     sigEnableChanged = QtCore.Signal(bool)  # (enabled)
     sigValueChanged = QtCore.Signal(float)  # (value)
 
-    def __init__(self, units, valueRange, tickInterval, singleStep, initialPower, *args, **kwargs):
+    def __init__(self, valueUnits, valueDecimals, valueRange, tickInterval, singleStep,
+                 initialPower, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.valueDecimals = valueDecimals
+
         isBinary = valueRange is None
 
         # Graphical elements
         self.setPointLabel = QtWidgets.QLabel('Setpoint')
         self.setPointLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.setPointEdit = QtWidgets.QLineEdit(str(float(initialPower)))
+        self.setPointEdit = QtWidgets.QLineEdit(str(initialPower))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
@@ -215,7 +220,12 @@ class LaserModule(QtWidgets.QWidget):
         self.maxpower = QtWidgets.QLabel()
         self.maxpower.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        self.slider = guitools.BetterSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False)
+        if valueDecimals > 0:
+            self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                               decimals=valueDecimals)
+        else:
+            self.slider = guitools.BetterSlider(QtCore.Qt.Horizontal, self,
+                                                allowScrollChanges=False)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:
@@ -237,7 +247,7 @@ class LaserModule(QtWidgets.QWidget):
 
         self.powerGrid.addWidget(self.setPointLabel, 0, 0, 1, 2)
         self.powerGrid.addWidget(self.setPointEdit, 1, 0)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 1)
+        self.powerGrid.addWidget(QtWidgets.QLabel(valueUnits), 1, 1)
         self.powerGrid.addWidget(self.minpower, 0, 2, 2, 1)
         self.powerGrid.addWidget(self.slider, 0, 3, 2, 4)
         self.powerGrid.addWidget(self.maxpower, 0, 8, 2, 1)
@@ -260,8 +270,8 @@ class LaserModule(QtWidgets.QWidget):
 
         # Connect signals
         self.enableButton.toggled.connect(self.sigEnableChanged)
-        self.slider.valueChanged[int].connect(
-            lambda value: self.sigValueChanged.emit(float(value))
+        self.slider.valueChanged.connect(
+            lambda value: self.sigValueChanged.emit(value)
         )
         self.setPointEdit.returnPressed.connect(
             lambda: self.sigValueChanged.emit(self.getValue())
@@ -291,7 +301,7 @@ class LaserModule(QtWidgets.QWidget):
 
     def setValue(self, value):
         """ Sets the value of the laser, in the units that the laser uses. """
-        self.setPointEdit.setText(str(float(value)))
+        self.setPointEdit.setText(f'%.{self.valueDecimals}f' % value)
         self.slider.setValue(value)
 
 

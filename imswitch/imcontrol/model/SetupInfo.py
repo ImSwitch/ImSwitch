@@ -31,11 +31,11 @@ class DetectorInfo(DeviceInfo):
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    valueRangeMin: Optional[int]
+    valueRangeMin: Optional[Union[int, float]]
     """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
     """
 
-    valueRangeMax: Optional[int]
+    valueRangeMax: Optional[Union[int, float]]
     """ maximum value of the laser. ``null`` if laser doesn't setting a value.
     """
 

@@ -21,7 +21,7 @@ class AAAOTFLaserManager(LaserManager):
         self.blankingOn()
         self.internalControl()
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='arb')
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (1) or off (0) laser emission"""

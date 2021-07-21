@@ -14,7 +14,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
     """
 
     def __init__(self, laserInfo, name, **_lowLevelManagers):
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW',
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0,
                          driver='cobolt.cobolt0601.Cobolt0601_f2', **_lowLevelManagers)
 
         self._digitalMod = False

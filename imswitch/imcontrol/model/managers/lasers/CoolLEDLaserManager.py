@@ -9,12 +9,18 @@ from .LaserManager import LaserManager
 
 
 class CoolLEDLaserManager(LaserManager):
-    """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager instance controls one LED.
+    """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager
+    instance controls one LED.
 
-    Available manager properties: rs232device and channel_index
+    Manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    - ``channel_index`` -- laser channel (A to H)
     """
-    def __init__(self, laserInfo, name, **kwargs):
-        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+
+    def __init__(self, laserInfo, name, **lowLevelManagers):
+        self._rs232manager = lowLevelManagers['rs232sManager'][laserInfo.managerProperties['rs232device']]
         self.__channel_index = laserInfo.managerProperties['channel_index']
         self.__digital_mod = False 
 
@@ -36,6 +42,7 @@ class CoolLEDLaserManager(LaserManager):
         cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
         print(cmd)
         self._rs232manager.send(cmd)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

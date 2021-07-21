@@ -1,204 +1,160 @@
-.. role:: raw-html-m2r(raw)
-   :format: html
+*************
+api.imcontrol
+*************
 
+.. class:: api.imcontrol
 
-class **api.imcontrol** (builtins.object)  
------------------------------------------------
+   These functions are available in the api.imcontrol object. 
 
-These functions are available in the api.imcontrol object.  
+   .. method:: getDetectorNames()
 
-Methods defined here:  
+      Returns the device names of all detectors. These device names can
+      be passed to other detector-related functions. 
 
-**getDetectorNames** () from
-imswitch.imcontrol.controller.controllers.SettingsController.SettingsController
+   .. method:: getLaserNames()
 
-Returns the device names of all detectors. These device names can\ :raw-html-m2r:`<br>`
-be passed to other detector-related functions.
+      Returns the device names of all lasers. These device names can be
+      passed to other laser-related functions. 
 
-**getLaserNames** () from
-imswitch.imcontrol.controller.controllers.LaserController.LaserController
+   .. method:: getPositionerNames()
 
-Returns the device names of all lasers. These device names can be\ :raw-html-m2r:`<br>`
-passed to other laser-related functions.
+      Returns the device names of all positioners. These device names can
+      be passed to other positioner-related functions. 
 
-**getPositionerNames** () from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: getPositionerPositions()
 
-Returns the device names of all positioners. These device names can\ :raw-html-m2r:`<br>`
-be passed to other positioner-related functions.
+      Returns the positions of all positioners. 
 
-**getPositionerPositions** () from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: loadScanParamsFromFile(filePath)
 
-Returns the positions of all positioners.
+      Loads scanning parameters from the specified file. 
 
-**loadScanParamsFromFile** (filePath) from
-imswitch.imcontrol.controller.controllers.ScanController.ScanController
+   .. method:: movePositioner(positionerName, axis, dist)
 
-Loads scanning parameters from the specified file.
+      Moves the specified positioner axis by the specified number of
+      micrometers. 
 
-**movePositioner** (positionerName, axis, dist) from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: runScan(hasStarted=False)
 
-Moves the specified positioner axis by the specified number of\ :raw-html-m2r:`<br>`
-micrometers.
+      Runs a scan with the set scanning parameters. 
 
-**runScan** (hasStarted=False) from
-imswitch.imcontrol.controller.controllers.ScanController.ScanController
+   .. method:: saveScanParamsToFile(filePath)
 
-Runs a scan with the set scanning parameters.
+      Saves the set scanning parameters to the specified file. 
 
-**saveScanParamsToFile** (filePath) from
-imswitch.imcontrol.controller.controllers.ScanController.ScanController
+   .. method:: setDetectorBinning(detectorName, binning)
 
-Saves the set scanning parameters to the specified file.
+      Sets binning value for the specified detector. 
 
-**setDetectorBinning** (detectorName, binning) from
-imswitch.imcontrol.controller.controllers.SettingsController.SettingsController
+   .. method:: setDetectorParameter(detectorName, parameterName, value)
 
-Sets binning value for the specified detector.
+      Sets the specified detector-specific parameter to the specified
+      value. 
 
-**setDetectorParameter** (detectorName, parameterName, value) from
-imswitch.imcontrol.controller.controllers.SettingsController.SettingsController
+   .. method:: setDetectorROI(detectorName, frameStart, shape)
 
-Sets the specified detector-specific parameter to the specified\ :raw-html-m2r:`<br>`
-value.
+      Sets the ROI for the specified detector. frameStart is a tuple
+      (x0, y0) and shape is a tuple (width, height). 
 
-**setDetectorROI** (detectorName, frameStart, shape) from
-imswitch.imcontrol.controller.controllers.SettingsController.SettingsController
+   .. method:: setDetectorToRecord(detectorName)
 
-Sets the ROI for the specified detector. frameStart is a tuple\ :raw-html-m2r:`<br>`
-(x0, y0) and shape is a tuple (width, height).
+      Sets which detectors to record. One can also pass -1 as the
+      argument to record the current detector, or -2 to record all detectors.
+      
 
-**setDetectorToRecord** (detectorName) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setLaserActive(laserName, active)
 
-Sets which detectors to record. One can also pass -1 as the\ :raw-html-m2r:`<br>`
-argument to record the current detector, or -2 to record all detectors.
+      Sets whether the specified laser is powered on. 
 
-**setLaserActive** (laserName, active) from
-imswitch.imcontrol.controller.controllers.LaserController.LaserController
+   .. method:: setLaserValue(laserName, value)
 
-Sets whether the specified laser is powered on.
+      Sets the value of the specified laser, in the units that the laser
+      uses. 
 
-**setLaserValue** (laserName, value) from
-imswitch.imcontrol.controller.controllers.LaserController.LaserController
+   .. method:: setLiveViewActive(active)
 
-Sets the value of the specified laser, in the units that the laser\ :raw-html-m2r:`<br>`
-uses.
+      Sets whether the LiveView is active and updating. 
 
-**setLiveViewActive** (active) from
-imswitch.imcontrol.controller.controllers.ViewController.ViewController
+   .. method:: setLiveViewCrosshairVisible(visible)
 
-Sets whether the LiveView is active and updating.
+      Sets whether the LiveView crosshair is visible. 
 
-**setLiveViewCrosshairVisible** (visible) from
-imswitch.imcontrol.controller.controllers.ViewController.ViewController
+   .. method:: setLiveViewGridVisible(visible)
 
-Sets whether the LiveView crosshair is visible.
+      Sets whether the LiveView grid is visible. 
 
-**setLiveViewGridVisible** (visible) from
-imswitch.imcontrol.controller.controllers.ViewController.ViewController
+   .. method:: setPositioner(positionerName, axis, position)
 
-Sets whether the LiveView grid is visible.
+      Moves the specified positioner axis to the specified position. 
 
-**setPositioner** (positionerName, axis, position) from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: setPositionerStepSize(positionerName, stepSize)
 
-Moves the specified positioner axis to the specified position.
+      Sets the step size of the specified positioner to the specified
+      number of micrometers. 
 
-**setPositionerStepSize** (positionerName, stepSize) from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: setRecFilename(filename)
 
-Sets the step size of the specified positioner to the specified\ :raw-html-m2r:`<br>`
-number of micrometers.
+      Sets the name of the file to record to. This only sets the name of
+      the file, not the full path. One can also pass None as the argument to
+      use a default time-based filename. 
 
-**setRecFilename** (filename) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecFolder(folderPath)
 
-Sets the name of the file to record to. This only sets the name of\ :raw-html-m2r:`<br>`
-the file, not the full path. One can also pass None as the argument to\ :raw-html-m2r:`<br>`
-use a default time-based filename.
+      Sets the folder to save recordings into. 
 
-**setRecFolder** (folderPath) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecModeScanOnce()
 
-Sets the folder to save recordings into.
+      Sets the recording mode to record a single scan. 
 
-**setRecModeScanOnce** () from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecModeScanTimelapse(secondsToRec, freqSeconds)
 
-Sets the recording mode to record a single scan.
+      Sets the recording mode to record a timelapse of scans. 
 
-**setRecModeScanTimelapse** (secondsToRec, freqSeconds) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecModeSpecFrames(numFrames)
 
-Sets the recording mode to record a timelapse of scans.
+      Sets the recording mode to record a specific number of frames. 
 
-**setRecModeSpecFrames** (numFrames) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecModeSpecTime(secondsToRec)
 
-Sets the recording mode to record a specific number of frames.
+      Sets the recording mode to record for a specific amount of time.
+      
 
-**setRecModeSpecTime** (secondsToRec) from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: setRecModeUntilStop()
 
-Sets the recording mode to record for a specific amount of time.
+      Sets the recording mode to record until recording is manually
+      stopped. 
 
-**setRecModeUntilStop** () from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: signals()
 
-Sets the recording mode to record until recording is manually\ :raw-html-m2r:`<br>`
-stopped.
+      Returns signals that can be used with e.g. the getWaitForSignal
+      action. Currently available signals are:
+      
+      - acquisitionStarted
+      - acquisitionStopped
+      - recordingStarted
+      - recordingEnded
+      - scanEnded
+      
 
-**signals** () from
-imswitch.imcontrol.controller.CommunicationChannel.CommunicationChannel
+   .. method:: snapImage()
 
-Returns signals that can be used with e.g. the getWaitForSignal\ :raw-html-m2r:`<br>`
-action. Currently available signals are:  
+      Take a snap and save it to a .tiff file at the set file path. 
 
+   .. method:: startRecording()
 
-* acquisitionStarted  
-* acquisitionStopped  
-* recordingStarted  
-* recordingEnded  
-* scanEnded
+      Starts recording with the set settings to the set file path. 
 
-**snapImage** () from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: stepPositionerDown(positionerName, axis)
 
-Take a snap and save it to a .tiff file at the set file path.
+      Moves the specified positioner axis in negative direction by its
+      set step size. 
 
-**startRecording** () from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
+   .. method:: stepPositionerUp(positionerName, axis)
 
-Starts recording with the set settings to the set file path.
+      Moves the specified positioner axis in positive direction by its
+      set step size. 
 
-**stepPositionerDown** (positionerName, axis) from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
+   .. method:: stopRecording()
 
-Moves the specified positioner axis in negative direction by its\ :raw-html-m2r:`<br>`
-set step size.
+      Stops recording. 
 
-**stepPositionerUp** (positionerName, axis) from
-imswitch.imcontrol.controller.controllers.PositionerController.PositionerController
-
-Moves the specified positioner axis in positive direction by its\ :raw-html-m2r:`<br>`
-set step size.
-
-**stopRecording** () from
-imswitch.imcontrol.controller.controllers.RecordingController.RecordingController
-
-Stops recording.
-
-----
-
-Data descriptors defined here:  
-
-**\ **dict**\ **
-
-dictionary for instance variables (if defined)
-
-**\ **weakref**\ **
-
-list of weak references to the object (if defined)

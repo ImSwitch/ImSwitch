@@ -6,13 +6,13 @@ class LantzLaserManager(LaserManager):
     """ Base LaserManager for lasers that are fully digitally controlled using
     drivers available through Lantz.
 
-    Available manager properties:
+    Manager properties:
 
     - ``digitalPorts`` -- a string array containing the COM ports to connect
       to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, isBinary, valueUnits, driver, **_kwargs):
+    def __init__(self, laserInfo, name, isBinary, valueUnits, driver, **_lowLevelManagers):
         ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser

@@ -5,6 +5,11 @@ from .basesignaldesigners import ScanDesigner
 
 
 class GalvoScanDesigner(ScanDesigner):
+    """ Scan designer for scan systems with galvanometric mirrors.
+
+    Designer params: None
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

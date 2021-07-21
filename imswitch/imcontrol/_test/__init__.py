@@ -179,10 +179,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         "BeadRec",
         "FFT",
         "ULenses"
-    ],
-    "scanDefaults": {
-        "defaultScanFile": null
-    }
+    ]
 }
 """, infer_missing=True)
 
@@ -338,10 +335,7 @@ setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
             "h": 1308
         }
     },
-    "availableWidgets": [],
-    "scanDefaults": {
-        "defaultScanFile": null
-    }
+    "availableWidgets": []
 }
 """, infer_missing=True)
 

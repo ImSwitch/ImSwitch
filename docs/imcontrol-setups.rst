@@ -1,207 +1,174 @@
-******************************
-Hardware Control Configuration
-******************************
+*******************************
+Hardware control configurations
+*******************************
 
-Hardware control configurations are to be placed in the ``imcontrol_setups`` directory,
-which is created automatically inside your user directory for ImSwitch the first time the hardware control module starts.
-The user directory is located at ``<your user's documents folder>\ImSwitch`` on Windows and ``~/ImSwitch`` on macOS/Linux.
+ImSwitch's hardware control module is designed to be flexible and be usable in a wide variety of microscopy setups.
+In order to provide this flexibility,
+hardware configurations are defined in .json files that are loaded when the hardware control module starts.
 
-The ``imcontrol_setups`` directory contains some pre-made configuration files by default.
+Hardware configuration files are loaded from the ``imcontrol_setups`` directory,
+which is automatically created inside your user directory for ImSwitch the first time the hardware control module starts.
+It contains some pre-made configuration files by default.
+The user directory is located at ``%USERPROFILE%\Documents\ImSwitch`` on Windows and ``~/ImSwitch`` on macOS/Linux.
 
+The first time you start the hardware control module,
+you will be prompted to select a setup file to load.
+If you want to switch to another hardware configuration later,
+select "Tools" -> "Pick hardware setup…" in the hardware control module's menu bar.
+
+
+How configurations are defined
+==============================
+
+Hardware configurations are defined in JSON format.
+Behind the scenes,
+they are automatically translated to Python class instances when loaded into the software.
+
+A central concept in ImSwitch is that of device managers.
+Device managers define what kind of device you have, and how ImSwitch communicates with it.
+For example, if you have a Hamamatsu camera that you would like to control,
+you would define a detector that uses the ``HamamatsuManager`` in the hardware setup file and set its appropriate properties.
+The list of available managers and their properties can be found :ref:`here <Available managers>`.
+
+Signal designers, which are relevant for users who use the scan functionality, are similar.
+Microscopy scans can be set up in different ways; in a point-scanning setup, for instance,
+you might want to set your scan settings to use the ``PointScanTTLCycleDesigner`` to generate the appropriate TTL signals.
+They are documented :ref:`here <Available signal designers>`.
+
+As a very simple example,
+a hardware configuration file that allows you to control a single Cobolt 06-01 (non-DPL) laser connected to COM port 11 can look like this:
+
+.. code-block:: json
+
+   {
+       "lasers": {
+           "Cobolt405nm": {
+               "managerName": "Cobolt0601LaserManager",
+               "managerProperties": {
+                   "digitalPorts": ["COM11"]
+               },
+               "valueRangeMin": 0,
+               "valueRangeMax": 200,
+               "wavelength": 405
+           }
+       },
+       "availableWidgets": [
+           "Laser"
+       ]
+   }
+
+Note that the ``digitalPorts`` property is specific to ``Cobolt0601LaserManager``.
+
+
+Configuration file specification
+================================
+
+.. autoclassconheader:: imswitch.imcontrol.view.guitools.ViewSetupInfo.ViewSetupInfo
+   :members:
+   :inherited-members:
+
+
+Item types that may be included
+===============================
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.DetectorInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.LaserInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.PositionerInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.RS232Info
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.SLMInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.FocusLockInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.ScanInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.NidaqInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.view.guitools.ViewSetupInfo.ROIInfo
+   :members:
+   :inherited-members:
+
+.. autoclassconheader:: imswitch.imcontrol.view.guitools.ViewSetupInfo.LaserPresetInfo
+   :members:
+   :inherited-members:
+
+
+Available managers
+==================
 
 Detector managers
-=================
+-----------------
 
-APDManager
-----------------
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.APDManager.APDManager
 
-DetectorManager that deals with an avalanche photodiode connected to a counter input on a Nidaq card.
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.HamamatsuManager.HamamatsuManager
 
-Available manager properties:
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.PhotometricsManager.PhotometricsManager
 
-- ``terminal`` -- the physical input terminal on the Nidaq to which the APD is connected
-- ``ctrInputLine`` -- the counter that the physical input terminal is connected to
-
-
-HamamatsuManager
-----------------
-
-DetectorManager that deals with the Hamamatsu parameters and frame extraction for a Hamamatsu
-camera.
-
-Available manager properties:
-
-- ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list (list indexing starts at 0); set this to an invalid value, e.g. the string "mock" to load a mocker
-- ``hamamatsu`` -- dictionary of DCAM API properties
-
-
-PhotometricsManager
-------------------
-
-DetectorManager that deals with frame extraction for a Photometrics camera.
-
-Available manager properties:
-- ``cameraListIndex`` -- the camera's index in the Photometrics camera list (list indexing starts at 0)
-
-
-TISManager
-----------------
-
-DetectorManager that deals with TheImagingSource cameras and the parameters for frame extraction from them.
-
-Available manager properties:
-
-- ``cameraListIndex`` -- the camera's index in the TIS camera list (list indexing starts at 0); set this string to an invalid value to load a mocker
-- ``tis`` -- dictionary of TIS camera properties
+.. autoclassconheader:: imswitch.imcontrol.model.managers.detectors.TISManager.TISManager
 
 
 Laser managers
-==============
+--------------
 
-AAAOTFLaserManager
--------------------
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.AAAOTFLaserManager.AAAOTFLaserManager
 
-LaserManager for controlling one channel of an AA Opto-Electronic acousto-optic modulator/tunable filter through RS232 communication.
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.Cobolt0601LaserManager.Cobolt0601LaserManager
 
-Available manager properties:
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.CoolLEDLaserManager.CoolLEDLaserManager
 
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
-- ``channel`` -- index of the channel in the acousto-optic device that should be controlled (indexing starts at 1)
-
-
-CoboltLaserManager
-------------------
-LaserManager for Cobolt lasers that are fully digitally controlled
-using drivers available through Lantz. Uses digital modulation mode when
-scanning.
-
-Available manager properties: Same as LantzLaserManager.
-
-
-CoolLEDLaserManager
----------------------
-
-LaserManager for controlling coolLED though RS232 communication.
-
-Available manager properties:
-
-- rs232device -- name of the defined rs232 communication channel through which the communication should take place
-- channel_index -- laser channel (A to H)
-
-
-KatanaLaserManager
--------------------
-
-LaserManager for controlling a OneFive Katana pulsed laser (NKT Photonics).
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place
-
-
-LantzLaserManager
------------------
-
-Base LaserManager for lasers that are fully digitally controlled using
-drivers available through Lantz.
-
-Available manager properties:
-
-- ``digitalDriver`` -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-- ``digitalPorts`` -- a string array containing the COM ports to connect to, e.g. ["COM4"]
-
-
-NidaqLaserManager
------------------
-
-LaserManager for analog NI-DAQ-controlled lasers.
-
-Available manager properties: None
+.. autoclassconheader:: imswitch.imcontrol.model.managers.lasers.NidaqLaserManager.NidaqLaserManager
 
 
 Positioner managers
-===================
+-------------------
 
-NidaqPositionerManager
-------------------------
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.MHXYStageManager.MHXYStageManager
 
-PositionerManager for analog NI-DAQ-controlled positioners.
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.NidaqPositionerManager.NidaqPositionerManager
 
-Available manager properties:
-
-- ``conversionFactor`` -- float
-- ``minVolt`` -- minimum voltage
-- ``maxVolt`` -- maximum voltage
+.. autoclassconheader:: imswitch.imcontrol.model.managers.positioners.PiezoconceptZManager.PiezoconceptZManager
 
 
-PiezoconceptZManager
-------------------------
+RS232 managers
+--------------
 
-PositionerManager for control of a Piezoconcept Z-piezo through RS232-communication.
-
-Available manager properties:
-
-- ``rs232device`` -- name of the defined rs232 communication channel through which the communication should take place 
+.. autoclassconheader:: imswitch.imcontrol.model.managers.rs232.RS232Manager.RS232Manager
 
 
-RS232 manager
-=============
+Available signal designers
+==========================
 
-A general-purpose RS232 manager that together with a general-purpose RS232Driver interface can handle an arbitrary RS232 communication channel,
-with all the standard serial communication protocol parameters as defined in the hardware control configuration. 
+Scan designers
+--------------
 
-Available manager properties:
+.. autoclassconheader:: imswitch.imcontrol.model.signaldesigners.BetaScanDesigner.BetaScanDesigner
 
-- ``port``
-- ``encoding``
-- ``recv_termination``
-- ``send_termination``
-- ``baudrate``
-- ``bytesize``
-- ``parity``
-- ``stopbits``
-- ``rtscts``
-- ``dsrdtr``
-- ``xonxoff``
+.. autoclassconheader:: imswitch.imcontrol.model.signaldesigners.GalvoScanDesigner.GalvoScanDesigner
 
 
-Misc. managers
-==============
+TTL cycle designers
+-------------------
 
-SLMManager
-----------
+.. autoclassconheader:: imswitch.imcontrol.model.signaldesigners.BetaTTLCycleDesigner.BetaTTLCycleDesigner
 
-A manager for that deals with a Hamamatsu SLM, connected with a video input connector.
-
-Available manager properties:
-
-- ``monitorIdx`` -- index of the monitor in the system list of monitors (indexing starts at 0)
-- ``width`` -- width, in pixels, of SLM
-- ``height`` -- height, in pixels, of SLM
-- ``wavelength`` -- wavelength of the laser line used with the SLM
-- ``pixelSize`` -- pixel size/pixel pitch, in mm, of the SLM
-- ``angleMount`` -- the angle of incidence and reflection, in radians, of the laser line that is shaped by the SLM, for adding a blazed grating to create off-axis holography
-- ``correctionPatternsDir`` -- directory of .bmp images provided by Hamamatsu for flatness correction at various wavelengths, a combination will be chosen based on the wavelength
-
-
-Available widgets
-=================
-
-The following values are possible to include in the available widgets field (note: case sensitive):
-
-- ``Settings`` (detector settings widget)
-- ``View`` (image controls widget)
-- ``Recording`` (recording widget)
-- ``Image`` (image display widget)
-- ``FocusLock`` (focus lock widget)
-- ``SLM`` (SLM widget)
-- ``Laser`` (laser control widget)
-- ``Positioner`` (positioners widget)
-- ``Scan`` (scan widget)
-- ``BeadRec`` (bead reconstruction widget)
-- ``AlignAverage`` (axial alignment tool widget)
-- ``AlignXY`` (rotation alignment tool widget)
-- ``AlignmentLine`` (line alignment tool widget)
-- ``uLenses`` (uLenses tool widget)
-- ``FFT`` (FFT tool widget)
-- ``Console`` (Python console widget)
+.. autoclassconheader:: imswitch.imcontrol.model.signaldesigners.PointScanTTLCycleDesigner.PointScanTTLCycleDesigner

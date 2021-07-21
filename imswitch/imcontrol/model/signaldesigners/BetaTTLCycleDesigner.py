@@ -4,6 +4,12 @@ from .basesignaldesigners import TTLCycleDesigner
 
 
 class BetaTTLCycleDesigner(TTLCycleDesigner):
+    """ TTL cycle designer for camera-based applications where each pulse
+    scheme is one frame.
+
+    Designer params: None
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

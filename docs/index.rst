@@ -35,9 +35,10 @@ well as for developers (scripting and API modules, and hardware control and JSON
     :hidden:
     :caption: Internals and specifications
 
-    Hdf5datafile
     modules
+    Hdf5datafile
     imcontrol-setups
+    adding-device-support
 
 .. toctree::
     :glob:

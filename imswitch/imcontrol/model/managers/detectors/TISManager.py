@@ -4,7 +4,18 @@ import numpy as np
 
 
 class TISManager(DetectorManager):
-    def __init__(self, detectorInfo, name, **_kwargs):
+    """ DetectorManager that deals with TheImagingSource cameras and the
+    parameters for frame extraction from them.
+
+    Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the TIS camera list (list
+      indexing starts at 0); set this string to an invalid value, e.g. the
+      string "mock" to load a mocker
+    - ``tis`` -- dictionary of TIS camera properties
+    """
+
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self._camera = getTISObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model

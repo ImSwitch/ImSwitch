@@ -7,13 +7,15 @@ class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
     extraction for a Hamamatsu camera.
 
-    Available manager properties:
-    * cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at
-                         0); set this to an invalid value, e.g. the string "mock" to load a mocker
-    * hamamatsu -- dictionary of DCAM API properties
+    Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list
+      (list indexing starts at 0); set this to an invalid value, e.g. the
+      string "mock" to load a mocker
+    - ``hamamatsu`` -- dictionary of DCAM API properties to pass to the driver
     """
 
-    def __init__(self, detectorInfo, name, **_kwargs):
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 

@@ -2,7 +2,16 @@ from .PositionerManager import PositionerManager
 
 
 class MHXYStageManager(PositionerManager):
-    def __init__(self, positionerInfo, name, *args, **kwargs):
+    """ PositionerManager for control of a Marzhauser XY-stage through RS232
+    communication.
+
+    Manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    """
+
+    def __init__(self, positionerInfo, name, *args, **lowLevelManagers):
         if (len(positionerInfo.axes) != 2
                 or 'X' not in positionerInfo.axes or 'Y' not in positionerInfo.axes):
             raise RuntimeError(f'{self.__class__.__name__} requires two axes named X and Y'
@@ -11,7 +20,7 @@ class MHXYStageManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self._rs232Manager = kwargs['rs232sManager'][positionerInfo.managerProperties['rs232device']]
+        self._rs232Manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         print(str(self._rs232Manager.send('?readsn')))  # print serial no of stage
 
     def move(self, value, axis):

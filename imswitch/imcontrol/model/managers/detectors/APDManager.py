@@ -5,8 +5,20 @@ from imswitch.imcommon.framework import Signal, Thread, Worker
 
 
 class APDManager(DetectorManager):
-    # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
-    def __init__(self, detectorInfo, name, nidaqManager, **_kwargs):
+    """ DetectorManager that deals with an avalanche photodiode connected to a
+    counter input on a Nidaq card.
+
+    Manager properties:
+
+    - ``terminal`` -- the physical input terminal on the Nidaq to which the APD
+      is connected
+    - ``ctrInputLine`` -- the counter that the physical input terminal is
+      connected to
+    """
+
+    def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
+        # TODO: use the same manager for the PMT, with the type of detector as an argument. NidaqPointDetectorManager
+
         model = name
         self._name = name
         #self.__pixelsizex = 1

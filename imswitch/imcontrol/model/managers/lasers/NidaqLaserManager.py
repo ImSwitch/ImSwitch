@@ -4,11 +4,11 @@ from .LaserManager import LaserManager
 class NidaqLaserManager(LaserManager):
     """ LaserManager for analog-value NI-DAQ-controlled lasers.
 
-    Available manager properties: None
+    Manager properties: None
     """
 
-    def __init__(self, laserInfo, name, **kwargs):
-        self._nidaqManager = kwargs['nidaqManager']
+    def __init__(self, laserInfo, name, **lowLevelManagers):
+        self._nidaqManager = lowLevelManagers['nidaqManager']
         super().__init__(laserInfo, name, isBinary=laserInfo.analogChannel is None, valueUnits='V')
 
     def setEnabled(self, enabled):

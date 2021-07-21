@@ -2,10 +2,21 @@ from .LaserManager import LaserManager
 
 
 class AAAOTFLaserManager(LaserManager):
-    def __init__(self, laserInfo, name, **kwargs):
+    """ LaserManager for controlling one channel of an AA Opto-Electronic
+    acousto-optic modulator/tunable filter through RS232 communication.
+
+    Manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    - ``channel`` -- index of the channel in the acousto-optic device that
+      should be controlled (indexing starts at 1)
+    """
+
+    def __init__(self, laserInfo, name, **lowLevelManagers):
         print(type(laserInfo))
         self._channel = int(laserInfo.managerProperties['channel'])
-        self._rs232manager = kwargs['rs232sManager'][laserInfo.managerProperties['rs232device']]
+        self._rs232manager = lowLevelManagers['rs232sManager'][laserInfo.managerProperties['rs232device']]
 
         self.blankingOn()
         self.internalControl()

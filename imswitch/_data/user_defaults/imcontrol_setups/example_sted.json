@@ -223,9 +223,6 @@
     "FocusLock",
     "SLM"
   ],
-  "scanDefaults": {
-    "defaultScanFile": null
-  },
   "scan": {
     "scanDesigner": "GalvoScanDesigner",
     "scanDesignerParams": {},

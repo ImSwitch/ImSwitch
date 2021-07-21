@@ -1,6 +1,6 @@
-******************
+*****************
 How to contribute
-******************
+*****************
 
 We want to encourage users and developers to give active feedback on their experience and feel free to contribute. 
 
@@ -43,9 +43,7 @@ Feel free to open a discussion thread about what you wish to include or improve.
 
 Adding device support
 ======================
-For adding support to new devices,
-we encourage you to follow the software architecture diagram provided in the `paper <https://github.com/kasasxav/ImSwitch/blob/master/paper/paper.md>`_ and create the necessary classes
-(driver, device manager, etc.).
+See :doc:`this page <adding-device-support>` for information on adding support for new devices.
 You can start a discussion if you want to get advice and help to get started.
 
 
@@ -59,4 +57,5 @@ ImSwitch's pytests are located inside the ``_test/unit/`` and ``_test/ui/`` fold
 So if you have added a new widget to the hardware control module and want to write UI tests for it,
 you should place the UI test files in the ``/imswitch/imcontrol/_test/ui/`` folder.
 
-You can run the test suite by executing the command ``python -m pytest --pyargs imswitch`` in the root directory of the repository.
+The test suite will automatically be run on commits and pull requests on GitHub.
+You can also run it manually by executing the command ``python -m pytest --pyargs imswitch`` in the root directory of the repository.

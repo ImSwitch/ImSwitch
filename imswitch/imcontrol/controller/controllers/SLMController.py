@@ -18,6 +18,10 @@ class SLMController(ImConWidgetController):
         if not os.path.exists(self.slmDir):
             os.makedirs(self.slmDir)
 
+        if self._setupInfo.slm is None:
+            self._widget.replaceWithError('SLM is not configured in your setup file.')
+            return
+
         self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
         # self.loadPreset(self._defaultPreset)
 

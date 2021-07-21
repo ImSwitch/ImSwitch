@@ -32,7 +32,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
         file.addAction(self.loadParamsAction)
 
-        self.pickSetupAction = QtWidgets.QAction('Pick setup…', self)
+        self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
         self.pickSetupAction.triggered.connect(self.sigPickSetup)
         tools.addAction(self.pickSetupAction)
 

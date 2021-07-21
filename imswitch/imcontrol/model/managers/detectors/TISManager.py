@@ -7,7 +7,7 @@ class TISManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
 
-    Available manager properties:
+    Manager properties:
 
     - ``cameraListIndex`` -- the camera's index in the TIS camera list (list
       indexing starts at 0); set this string to an invalid value, e.g. the

@@ -8,7 +8,7 @@ from .DetectorManager import (
 class PhotometricsManager(DetectorManager):
     """ DetectorManager that deals with frame extraction for a Photometrics camera.
 
-    Available manager properties:
+    Manager properties:
 
     - ``cameraListIndex`` -- the camera's index in the Photometrics camera list
       (list indexing starts at 0)

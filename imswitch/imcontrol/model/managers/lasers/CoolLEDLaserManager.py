@@ -12,7 +12,7 @@ class CoolLEDLaserManager(LaserManager):
     """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager
     instance controls one LED.
 
-    Available manager properties:
+    Manager properties:
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place

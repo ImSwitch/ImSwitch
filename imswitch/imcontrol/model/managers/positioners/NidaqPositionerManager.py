@@ -4,7 +4,7 @@ from .PositionerManager import PositionerManager
 class NidaqPositionerManager(PositionerManager):
     """ PositionerManager for analog-value NI-DAQ-controlled positioners.
 
-    Available manager properties:
+    Manager properties:
 
     - ``conversionFactor`` -- float value
     - ``minVolt`` -- minimum voltage

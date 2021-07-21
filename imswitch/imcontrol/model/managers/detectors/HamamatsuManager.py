@@ -7,7 +7,7 @@ class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
     extraction for a Hamamatsu camera.
 
-    Available manager properties:
+    Manager properties:
 
     - ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list
       (list indexing starts at 0); set this to an invalid value, e.g. the

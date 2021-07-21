@@ -6,7 +6,25 @@ Created on Thu Jan 13 10:23:00 2021
 
 
 class RS232Manager:
-    """ General RS232Manager. """
+    """ A general-purpose RS232 manager that together with a general-purpose
+    RS232Driver interface can handle an arbitrary RS232 communication channel,
+    with all the standard serial communication protocol parameters as defined
+    in the hardware control configuration.
+
+    Manager properties:
+
+    - ``port``
+    - ``encoding``
+    - ``recv_termination``
+    - ``send_termination``
+    - ``baudrate``
+    - ``bytesize``
+    - ``parity``
+    - ``stopbits``
+    - ``rtscts``
+    - ``dsrdtr``
+    - ``xonxoff``
+    """
 
     def __init__(self, rs232Info, name, **_lowLevelManagers):
         self._settings = rs232Info.managerProperties

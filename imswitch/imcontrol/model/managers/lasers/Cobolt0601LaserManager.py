@@ -7,7 +7,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
     """ LaserManager for Cobolt 06-01 lasers. Uses digital modulation mode when
     scanning. Does currently not support DPL type lasers.
 
-    Available manager properties:
+    Manager properties:
 
     - ``digitalPorts`` -- a string array containing the COM ports to connect
       to, e.g. ``["COM4"]``

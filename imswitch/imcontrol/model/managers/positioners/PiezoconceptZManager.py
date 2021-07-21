@@ -5,7 +5,7 @@ class PiezoconceptZManager(PositionerManager):
     """ PositionerManager for control of a Piezoconcept Z-piezo through RS232
     communication.
 
-    Available manager properties:
+    Manager properties:
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place

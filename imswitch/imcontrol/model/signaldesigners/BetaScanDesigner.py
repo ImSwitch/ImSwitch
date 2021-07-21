@@ -4,6 +4,14 @@ from .basesignaldesigners import ScanDesigner
 
 
 class BetaScanDesigner(ScanDesigner):
+    """ Scan designer for X/Y/Z stages that move a sample.
+
+    Designer params:
+
+    - ``return_time`` -- time to wait between lines for the stage to return to
+      the first position of the next line, in seconds.
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

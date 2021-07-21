@@ -6,7 +6,7 @@ class LantzLaserManager(LaserManager):
     """ Base LaserManager for lasers that are fully digitally controlled using
     drivers available through Lantz.
 
-    Available manager properties:
+    Manager properties:
 
     - ``digitalPorts`` -- a string array containing the COM ports to connect
       to, e.g. ``["COM4"]``

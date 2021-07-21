@@ -8,7 +8,7 @@ class APDManager(DetectorManager):
     """ DetectorManager that deals with an avalanche photodiode connected to a
     counter input on a Nidaq card.
 
-    Available manager properties:
+    Manager properties:
 
     - ``terminal`` -- the physical input terminal on the Nidaq to which the APD
       is connected

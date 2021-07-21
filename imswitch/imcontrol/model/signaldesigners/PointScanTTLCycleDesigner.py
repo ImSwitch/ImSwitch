@@ -4,8 +4,12 @@ from .basesignaldesigners import TTLCycleDesigner
 
 
 class PointScanTTLCycleDesigner(TTLCycleDesigner):
-    """ Line-based TTL cycle designer, for point-scanning applications.
-    Treat input ms as lines. """
+    """ Line-based TTL cycle designer, for point-scanning applications. Treats
+    input ms as lines.
+
+    Designer params: None
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

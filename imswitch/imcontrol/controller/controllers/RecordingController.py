@@ -81,7 +81,7 @@ class RecordingController(ImConWidgetController):
 
             folder = self._widget.getRecFolder()
             if not os.path.exists(folder):
-                os.mkdir(folder)
+                os.makedirs(folder)
             time.sleep(0.01)
             name = os.path.join(folder, self.getFileName()) + '_rec'
             self.savename = filetools.getUniqueName(name)

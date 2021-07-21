@@ -1,11 +1,14 @@
+import os
 from dataclasses import dataclass, field
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
 
+from imswitch.imcommon.model import dirtools
+
 
 @dataclass(frozen=True)
 class RecordingOptions:
-    outputFolder: str = 'D:\\Data\\'
+    outputFolder: str = os.path.join(dirtools.UserFileDirs.Root, 'recordings')
     includeDateInOutputFolder: bool = True
 
 

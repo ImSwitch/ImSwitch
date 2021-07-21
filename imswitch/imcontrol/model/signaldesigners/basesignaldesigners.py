@@ -1,5 +1,7 @@
 import importlib
 from abc import ABC, abstractmethod
+
+from imswitch.imcommon.model import pythontools
 from ..errors import InvalidChildClassError
 
 
@@ -75,7 +77,7 @@ class SignalDesignerFactory:
 
     def __new__(cls, designerName):
         currentPackage = '.'.join(__name__.split('.')[:-1])
-        package = importlib.import_module(f'{currentPackage}.{designerName}')
+        package = importlib.import_module(pythontools.joinModulePath(currentPackage, designerName))
         signalDesigner = getattr(package, designerName)()
 
         if signalDesigner.isValidSignalDesigner():

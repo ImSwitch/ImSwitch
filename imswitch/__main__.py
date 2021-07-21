@@ -1,10 +1,9 @@
 import importlib
-import os
 import traceback
 
 from .imcommon import prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from .imcommon.model import dirtools, modulesconfigtools
+from .imcommon.model import modulesconfigtools, pythontools
 from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
@@ -14,7 +13,7 @@ def main():
         # Ensure that imscripting is added last
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-    modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
+    modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
     app = prepareApp()

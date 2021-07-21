@@ -1,6 +1,8 @@
 import importlib
 from abc import ABC, abstractmethod
 
+from imswitch.imcommon.model import pythontools
+
 
 class MultiManager(ABC):
     """ Abstract class for a manager used to control a group of sub-managers.
@@ -13,7 +15,8 @@ class MultiManager(ABC):
         for managedDeviceName, managedDeviceInfo in managedDeviceInfos.items():
             # Create sub-manager
             package = importlib.import_module(
-                f'{currentPackage}.{subManagersPackage}.{managedDeviceInfo.managerName}'
+                pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
+                                           managedDeviceInfo.managerName)
             )
             manager = getattr(package, managedDeviceInfo.managerName)
             self._subManagers[managedDeviceName] = manager(

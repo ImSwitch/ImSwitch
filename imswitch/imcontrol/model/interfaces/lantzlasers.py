@@ -1,5 +1,7 @@
 import importlib
 
+from imswitch.imcommon.model import pythontools
+
 
 class LantzLaser:
     def __new__(cls, iName, ports):
@@ -59,7 +61,9 @@ def getLaser(iName, port):
 
     try:
         # Try our included drivers first
-        package = importlib.import_module('imswitch.imcontrol.model.lantzdrivers.' + pName)
+        package = importlib.import_module(
+            pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers', pName)
+        )
         driver = getattr(package, driverName)
         laser = driver(port)
         laser.initialize()
@@ -68,7 +72,9 @@ def getLaser(iName, port):
 
         try:
             # If that fails, try to load the driver from lantz
-            package = importlib.import_module('lantz.drivers.' + pName)
+            package = importlib.import_module(
+                pythontools.joinModulePath('lantz.drivers', pName)
+            )
             driver = getattr(package, driverName)
             laser = driver(port)
             laser.initialize()
@@ -89,7 +95,9 @@ def getLaser(iName, port):
 
             try:
                 # If that also fails, try loading a mock driver
-                package = importlib.import_module('imswitch.imcontrol.model.lantzdrivers_mock.' + pName)
+                package = importlib.import_module(
+                    pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', pName)
+                )
                 driver = getattr(package, driverName)
                 laser = driver(port)
                 laser.initialize()

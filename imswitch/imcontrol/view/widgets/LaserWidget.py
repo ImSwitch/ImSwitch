@@ -210,12 +210,6 @@ class LaserModule(QtWidgets.QWidget):
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-        self.powerLabel = QtWidgets.QLabel('Power')
-        self.powerLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.powerIndicator = QtWidgets.QLabel(str(float(initialPower)))
-        self.powerIndicator.setFixedWidth(50)
-        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
         self.minpower = QtWidgets.QLabel()
         self.minpower.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.maxpower = QtWidgets.QLabel()
@@ -244,12 +238,9 @@ class LaserModule(QtWidgets.QWidget):
         self.powerGrid.addWidget(self.setPointLabel, 0, 0, 1, 2)
         self.powerGrid.addWidget(self.setPointEdit, 1, 0)
         self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 1)
-        self.powerGrid.addWidget(self.powerLabel, 0, 2, 1, 2)
-        self.powerGrid.addWidget(self.powerIndicator, 1, 2)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 3)
-        self.powerGrid.addWidget(self.minpower, 0, 4, 2, 1)
-        self.powerGrid.addWidget(self.slider, 0, 5, 2, 5)
-        self.powerGrid.addWidget(self.maxpower, 0, 10, 2, 1)
+        self.powerGrid.addWidget(self.minpower, 0, 2, 2, 1)
+        self.powerGrid.addWidget(self.slider, 0, 3, 2, 4)
+        self.powerGrid.addWidget(self.maxpower, 0, 8, 2, 1)
 
         self.enableButton = guitools.BetterPushButton('ON')
         self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)

@@ -220,12 +220,8 @@ class LaserModule(QtWidgets.QWidget):
         self.maxpower = QtWidgets.QLabel()
         self.maxpower.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        if valueDecimals > 0:
-            self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                               decimals=valueDecimals)
-        else:
-            self.slider = guitools.BetterSlider(QtCore.Qt.Horizontal, self,
-                                                allowScrollChanges=False)
+        self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:

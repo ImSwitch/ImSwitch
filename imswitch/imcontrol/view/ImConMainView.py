@@ -21,11 +21,13 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.factory = widgets.WidgetFactory(options)
         self.docks = {}
         self.widgets = {}
+        self.shortcuts = {}
 
         # Menu Bar
         menuBar = self.menuBar()
         file = menuBar.addMenu('&File')
         tools = menuBar.addMenu('&Tools')
+        self.shortcuts = menuBar.addMenu('&Shortcuts')
 
         self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
         self.loadParamsAction.setShortcut('Ctrl+O')
@@ -148,7 +150,13 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.sigClosing.emit()
         event.accept()
 
-
+    def addShortcuts(self, shortcuts):
+        for s in shortcuts.values():
+            action = QtWidgets.QAction(s["name"], self)
+            action.setShortcut(s["key"])
+            action.triggered.connect(s["callback"])
+            self.shortcuts.addAction(action)
+            
 @dataclass
 class _DockInfo:
     name: str

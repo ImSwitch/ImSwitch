@@ -1,7 +1,7 @@
 import dataclasses
 
 from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import ostools, generateAPI, SharedAttributes
+from imswitch.imcommon.model import ostools, generateAPI, generateShortcuts, SharedAttributes
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
 from .basecontrollers import ImConWidgetControllerFactory
@@ -46,9 +46,19 @@ class ImConMainController(MainController):
         apiObjs = list(self.controllers.values()) + [self.__commChannel]
         self.__api = generateAPI(apiObjs)
 
+        # Generate Shorcuts
+        self.__shortcuts = None
+        shorcutObjs = list(self.__mainView.widgets.values()) 
+        self.__shortcuts = generateShortcuts(shorcutObjs)
+        self.__mainView.addShortcuts(self.__shortcuts)
+
     @property
     def api(self):
         return self.__api
+
+    @property  
+    def shortcuts(self):
+        return self.__shortcuts
 
     def loadParamsFromHDF5(self):
         """ Set detector, positioner, laser etc. params from values saved in a

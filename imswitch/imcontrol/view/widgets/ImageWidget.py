@@ -95,7 +95,7 @@ class ImageWidget(QtWidgets.QWidget):
         
     @shortcut('Shift+u', "Update levels")
     def updateLevelsButton(self):
-        self.updateLevelsWidget.toggleButton()
+        self.updateLevelsWidget.updateLevelsButton.click()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

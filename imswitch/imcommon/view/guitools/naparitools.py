@@ -82,9 +82,6 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
         for layer in self.viewer.layers.selected:
             layer.contrast_limits = minmaxLevels(layer.data)
 
-    def toggleButton(self):
-        self._on_update_levels()
-
 class NapariShiftWidget(NapariBaseWidget):
     """ Napari widget for shifting the currently selected layer by a
     user-defined number of pixels. """

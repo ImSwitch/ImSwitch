@@ -3,6 +3,9 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
+from imswitch.imcommon.model import shortcut
+
+import time
 
 class LaserWidget(Widget):
     """ Laser widget for setting laser powers etc. """
@@ -194,6 +197,29 @@ class LaserWidget(Widget):
 
         return False
 
+    @shortcut('Shift+0', 'Laser preset zero')
+    def setPresetZero(self):
+        try:
+            self.setCurrentPreset('zero')
+            self.loadPresetButton.click()
+        except:
+            pass
+
+    @shortcut('Shift+1', 'Laser preset screening')
+    def setPresetScrenning(self):
+        try:
+            self.setCurrentPreset('screening')
+            self.loadPresetButton.click()
+        except:
+            pass
+
+    @shortcut('Shift+2', 'Laser preset scan')
+    def setPresetScan(self):
+        try:
+            self.setCurrentPreset('scan')
+            self.loadPresetButton.click()
+        except:
+            pass
 
 class LaserModule(QtWidgets.QWidget):
     """ Module from LaserWidget to handle a single laser. """

@@ -52,10 +52,10 @@ class RecordingController(ImConWidgetController):
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """
-        try:
-            ostools.openFolderInOS(self._widget.getRecFolder())
-        except ostools.OSToolsError:
-            ostools.openFolderInOS(self._widget.initialDir)
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        ostools.openFolderInOS(folder)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
@@ -63,7 +63,7 @@ class RecordingController(ImConWidgetController):
 
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
-            os.mkdir(folder)
+            os.makedirs(folder)
         time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()

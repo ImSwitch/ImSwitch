@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 
@@ -72,41 +74,41 @@ class PositionerController(ImConWidgetController):
             self.settingAttr = False
 
     @APIExport
-    def getPositionerNames(self):
+    def getPositionerNames(self) -> List[str]:
         """ Returns the device names of all positioners. These device names can
         be passed to other positioner-related functions. """
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport
-    def getPositionerPositions(self):
+    def getPositionerPositions(self) -> Dict[str, Dict[str, float]]:
         """ Returns the positions of all positioners. """
         return self.getPos()
 
     @APIExport
-    def setPositionerStepSize(self, positionerName, stepSize):
+    def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:
         """ Sets the step size of the specified positioner to the specified
         number of micrometers. """
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport
-    def movePositioner(self, positionerName, axis, dist):
+    def movePositioner(self, positionerName: str, axis: str, dist: float) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         self.move(positionerName, axis, dist)
 
     @APIExport
-    def setPositioner(self, positionerName, axis, position):
+    def setPositioner(self, positionerName: str, axis: str, position: float) -> None:
         """ Moves the specified positioner axis to the specified position. """
         self.setPos(positionerName, axis, position)
 
     @APIExport
-    def stepPositionerUp(self, positionerName, axis):
+    def stepPositionerUp(self, positionerName: str, axis: str) -> None:
         """ Moves the specified positioner axis in positive direction by its
         set step size. """
         self.stepUp(positionerName, axis)
 
     @APIExport
-    def stepPositionerDown(self, positionerName, axis):
+    def stepPositionerDown(self, positionerName: str, axis: str) -> None:
         """ Moves the specified positioner axis in negative direction by its
         set step size. """
         self.stepDown(positionerName, axis)

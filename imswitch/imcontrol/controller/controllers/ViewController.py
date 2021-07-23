@@ -38,17 +38,17 @@ class ViewController(ImConWidgetController):
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
 
     @APIExport
-    def setLiveViewActive(self, active):
+    def setLiveViewActive(self, active: bool) -> None:
         """ Sets whether the LiveView is active and updating. """
         self._widget.setLiveViewActive(active)
 
     @APIExport
-    def setLiveViewGridVisible(self, visible):
+    def setLiveViewGridVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView grid is visible. """
         self._widget.setLiveViewGridVisible(visible)
 
     @APIExport
-    def setLiveViewCrosshairVisible(self, visible):
+    def setLiveViewCrosshairVisible(self, visible: bool) -> None:
         """ Sets whether the LiveView crosshair is visible. """
         self._widget.setLiveViewCrosshairVisible(visible)
 

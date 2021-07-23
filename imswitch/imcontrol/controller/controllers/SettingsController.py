@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List, Tuple
 
 import numpy as np
 
@@ -451,19 +451,20 @@ class SettingsController(ImConWidgetController):
                 self.setSharedAttr(dName, parameterName, parameter.value, isDetectorParameter=True)
 
     @APIExport
-    def getDetectorNames(self):
+    def getDetectorNames(self) -> List[str]:
         """ Returns the device names of all detectors. These device names can
         be passed to other detector-related functions. """
         return self._master.detectorsManager.getAllDeviceNames()
 
     @APIExport
-    def setDetectorBinning(self, detectorName, binning):
+    def setDetectorBinning(self, detectorName: str, binning: int) -> None:
         """ Sets binning value for the specified detector. """
         self.allParams[detectorName].binning.setValue(binning)
         self._master.detectorsManager[detectorName].setBinning(binning)
 
     @APIExport
-    def setDetectorROI(self, detectorName, frameStart, shape):
+    def setDetectorROI(self, detectorName: str, frameStart: Tuple[int, int],
+                       shape: Tuple[int, int]) -> None:
         """ Sets the ROI for the specified detector. frameStart is a tuple
         (x0, y0) and shape is a tuple (width, height). """
 
@@ -479,7 +480,7 @@ class SettingsController(ImConWidgetController):
         self.adjustFrame(detector=detector)
 
     @APIExport
-    def setDetectorParameter(self, detectorName, parameterName, value):
+    def setDetectorParameter(self, detectorName: str, parameterName: str, value: Any) -> None:
         """ Sets the specified detector-specific parameter to the specified
         value. """
 

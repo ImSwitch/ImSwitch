@@ -1,3 +1,5 @@
+from typing import Mapping
+
 import numpy as np
 from dotmap import DotMap
 
@@ -74,7 +76,7 @@ class CommunicationChannel(SignalInterface):
             raise RuntimeError('Required scan widget not available')
 
     @APIExport
-    def signals(self):
+    def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
         action. Currently available signals are:
 
@@ -83,6 +85,8 @@ class CommunicationChannel(SignalInterface):
          - recordingStarted
          - recordingEnded
          - scanEnded
+
+        They can be accessed like this: api.imcontrol.signals().scanEnded
         """
 
         return DotMap({

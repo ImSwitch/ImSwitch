@@ -66,7 +66,7 @@ class MultiModuleWindowController(WidgetController):
         self._moduleIdNameMap[moduleId] = moduleName
 
     @APIExport
-    def setCurrentModule(self, moduleId):
+    def setCurrentModule(self, moduleId: str) -> None:
         """ Sets the currently displayed module to the module with the
         specified ID (e.g. "imcontrol"). """
         moduleName = self._moduleIdNameMap[moduleId]

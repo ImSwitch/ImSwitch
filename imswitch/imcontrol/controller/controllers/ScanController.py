@@ -86,7 +86,7 @@ class ScanController(SuperScanController):
         self.saveScanParamsToFile(fileName)
 
     @APIExport
-    def saveScanParamsToFile(self, filePath):
+    def saveScanParamsToFile(self, filePath: str) -> None:
         """ Saves the set scanning parameters to the specified file. """
         self.getParameters()
         config = configparser.ConfigParser()
@@ -107,7 +107,7 @@ class ScanController(SuperScanController):
         self.loadScanParamsFromFile(fileName)
 
     @APIExport
-    def loadScanParamsFromFile(self, filePath):
+    def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
 
         config = configparser.ConfigParser()
@@ -155,7 +155,7 @@ class ScanController(SuperScanController):
             self.plotSignalGraph()
 
     @APIExport
-    def runScan(self, hasStarted = False):
+    def runScan(self, hasStarted: bool = False) -> None:
         """ Runs a scan with the set scanning parameters. """
         self.getParameters()
         try:

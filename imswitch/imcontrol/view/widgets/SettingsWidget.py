@@ -223,7 +223,7 @@ class SettingsWidget(Widget):
         
     @shortcut("Shift+n", "Next detector")
     def toggleNextButton(self):
-        self.nextDetectorButton.toggle()
+        self.nextDetectorButton.click()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

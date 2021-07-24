@@ -4,6 +4,7 @@ from qtpy import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 
 from .PickSetupDialog import PickSetupDialog
+from imswitch.imcontrol.view import guitools as guitools
 from . import widgets
 
 
@@ -79,9 +80,15 @@ class ImConMainView(QtWidgets.QMainWindow):
         def addRightDock(widgetKey, dockInfo):
             nonlocal prevRightDock, prevRightDockYPosition
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
-            self.widgets[widgetKey] = self.factory.createWidget(
-                getattr(widgets, f'{widgetKey}Widget')
-            )
+            widget = getattr(widgets, f'{widgetKey}Widget')
+            if issubclass(widget, guitools.NapariBaseWidget):
+                self.widgets[widgetKey] = self.factory.createWidget(
+                    widget, self.widgets['Image'].napariViewer
+                )
+            else:
+                self.widgets[widgetKey] = self.factory.createWidget(
+                    getattr(widgets, f'{widgetKey}Widget')
+                )
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])
             if prevRightDock is None:
                 dockArea.addDock(self.docks[widgetKey])
@@ -92,16 +99,18 @@ class ImConMainView(QtWidgets.QMainWindow):
             prevRightDock = self.docks[widgetKey]
             prevRightDockYPosition = dockInfo.yPosition
 
+        if 'Image' in enabledDockKeys:
+            self.docks['Image'] = Dock('Image Display', size=(1, 1))
+            self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
+            self.docks['Image'].addWidget(self.widgets['Image'])
+
         for widgetKey, dockInfo in rightDocks.items():
             if widgetKey in enabledDockKeys:
                 addRightDock(widgetKey, dockInfo)
 
         if 'Image' in enabledDockKeys:
-            self.docks['Image'] = Dock('Image Display', size=(1, 1))
-            self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
-            self.docks['Image'].addWidget(self.widgets['Image'])
             dockArea.addDock(self.docks['Image'], 'left')
-
+        
         prevLeftDock = None
         prevLeftDockYPosition = -1
         def addLeftDock(widgetKey, dockInfo):

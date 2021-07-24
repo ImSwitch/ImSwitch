@@ -7,7 +7,7 @@ from .FloatSlider import FloatSlider
 from .imagetools import bestLevels, minmaxLevels
 from .naparitools import (
     addNapariGrayclipColormap, NapariUpdateLevelsWidget, NapariShiftWidget, VispyROIVisual,
-    VispyLineVisual, VispyGridVisual, VispyCrosshairVisual, VispyScatterVisual
+    VispyLineVisual, VispyGridVisual, VispyCrosshairVisual, VispyScatterVisual, NapariBaseWidget
 )
 from .pyqtgraphtools import (
     setPGBestImageLimits, PGGrid, PGTwoColorGrid, PGCrosshair, PGROI, PGCropROI, SumpixelsGraph,

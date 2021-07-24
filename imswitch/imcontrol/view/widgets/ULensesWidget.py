@@ -45,23 +45,6 @@ class ULensesWidget(guitools.NapariBaseWidget):
                 np.float(self.pxEdit.text()),
                 np.float(self.upEdit.text()))
 
-    def toggleULenses(self, show):
-        """ Shows or hides grid. """
-        x, y, px, up = self.getParameters()
-        size_x, size_y = image = next(iter(self.viewer.layers.selection)).data.shape
-        pattern_x = np.arange(x, size_x, up / px)
-        pattern_y = np.arange(y, size_y, up / px)
-        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
-        if self.init:
-            if 'grid' in self.viewer.layers:
-                self.layer.data = grid
-            else:
-                self.layer = self.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
-        else:
-            self.layer = self.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
-            self.init = True
-
-
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #

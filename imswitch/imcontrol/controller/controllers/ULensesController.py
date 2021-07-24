@@ -8,36 +8,28 @@ class ULensesController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.plotAdded = False
-        self.grid = []
+        # Initialize variables
+        self.init = False
+        self.layer = []
+
         # Connect ULensesWidget signals
-        self._widget.sigULensesClicked.connect(self.updateGrid)
-        self._widget.sigUShowLensesChanged.connect(self.toggleULenses)
+        self._widget.sigULensesClicked.connect(self.toggleULenses)
 
-    def addPlot(self):
-        """ Adds ulensesPlot to ImageWidget viewbox through the CommunicationChannel. """
-        if not self.plotAdded:
-            #self._commChannel.sigAddItemToVb.emit(self._widget.getPlotGraphicsItem())
-            item = self._widget.getPlotGraphicsItem()
-            #self._widget.addItemToViewer(item)
-            self._widget.viewer.add_points(self.grid, size=2)
-            self.plotAdded = True
-
-    def updateGrid(self):
-        """ Updates plot with new parameters. """
+    def toggleULenses(self):
+        """ Shows or hides grid. """
         x, y, px, up = self._widget.getParameters()
-        #size_x, size_y = self._widget.viewer.layers.data.shape
-        size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
+        size_x, size_y = image = next(iter(self._widget.viewer.layers.selected)).data.shape
         pattern_x = np.arange(x, size_x, up / px)
         pattern_y = np.arange(y, size_y, up / px)
-        self.grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
-        self._widget.setData(x=self.grid[:, 0], y=self.grid[:, 1])
-
-    def toggleULenses(self, show):
-        """ Shows or hides grid. """
-        if show:
-            self.addPlot()
-        self._widget.setULensesVisible(show)
+        grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
+        if self.init:
+            if 'grid' in self._widget.viewer.layers:
+                self.layer.data = grid
+            else:
+                self.layer = self._widget.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
+        else:
+            self.layer = self._widget.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
+            self.init = True
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -14,7 +14,7 @@ class shortcut(object):
 
 
 def generateShortcuts(objs):
-    """ Generates an API from APIExport-decorated methods in the objects in the
+    """ Generates a dict from shortcut-decorated methods in the objects in the
     passed array objs. """
 
     exportedFuncs = {}

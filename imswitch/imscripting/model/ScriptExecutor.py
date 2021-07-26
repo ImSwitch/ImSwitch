@@ -1,3 +1,4 @@
+import os
 import sys
 import traceback
 from io import StringIO
@@ -61,6 +62,7 @@ class ExecutionThread(Worker):
             outputIO = SignaledStringIO(self.sigOutputAppended)
             sys.stdout = outputIO
             sys.stderr = outputIO
+            os.chdir(os.path.dirname(scriptPath))  # This is a permanent change, but should be fine
 
             print(f'Started script at {strftime("%Y-%m-%d %H:%M:%S")}\n')
             try:

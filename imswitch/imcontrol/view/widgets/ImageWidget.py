@@ -93,7 +93,7 @@ class ImageWidget(QtWidgets.QWidget):
     def removeItem(self, item):
         item.detach()
         
-    @shortcut('Shift+u', "Update levels")
+    @shortcut('Ctrl+U', "Update levels")
     def updateLevelsButton(self):
         self.updateLevelsWidget.updateLevelsButton.click()
 

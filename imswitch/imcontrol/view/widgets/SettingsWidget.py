@@ -221,7 +221,7 @@ class SettingsWidget(Widget):
     def hideROI(self):
         self.ROI.hide()
         
-    @shortcut("Shift+n", "Next detector")
+    @shortcut("Ctrl+N", "Next detector")
     def toggleNextButton(self):
         self.nextDetectorButton.click()
 

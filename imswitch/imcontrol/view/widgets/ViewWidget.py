@@ -66,17 +66,18 @@ class ViewWidget(Widget):
         """ Sets whether the LiveView crosshair is visible. """
         self.gridButton.setChecked(visible)
 
-    @shortcut('Shift+l', "Liveview")
+    @shortcut('Ctrl+L', "Liveview")
     def toggleLiveviewButton(self):
         self.liveviewButton.toggle()
 
-    @shortcut('Shift+g', "Grid")
+    @shortcut('Ctrl+G', "Grid")
     def toggleGridButton(self):
         self.gridButton.toggle()
     
-    @shortcut('Shift+c', "Crosshair")
+    @shortcut('Ctrl+H', "Crosshair")
     def toggleCrosshairButton(self):
         self.crosshairButton.toggle()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

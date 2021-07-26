@@ -275,7 +275,7 @@ class RecordingWidget(Widget):
     def updateRecLapseNum(self, lapseNum):
         self.currentLapse.setText(str(lapseNum) + ' /')
         
-    @shortcut('Shift+r', "Record")
+    @shortcut('Ctrl+R', "Record")
     def toggleRecButton(self):
         self.recButton.toggle()
 

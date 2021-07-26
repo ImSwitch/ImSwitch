@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import time
+from typing import Any, Callable
 
 from imswitch.imcommon.framework import Signal, FrameworkUtils
 from imswitch.imcommon.model import APIExport, generateAPI
@@ -14,7 +15,7 @@ class _Actions:
         self._scriptPath = scriptPath
 
     @APIExport
-    def importScript(self, path: str) -> None:
+    def importScript(self, path: str) -> Any:
         """ Imports the script at the specified path (either absolute or
         relative to the main script) and returns it as a module variable. """
 
@@ -27,7 +28,8 @@ class _Actions:
         return script
 
     @APIExport
-    def getWaitForSignal(self, signal: Signal, pollIntervalSeconds: float = 1.0) -> None:
+    def getWaitForSignal(self, signal: Signal,
+                         pollIntervalSeconds: float = 1.0) -> Callable[[], None]:
         """ Returns a function that will wait for the specified signal to emit.
         The returned function will continuously check whether the signal has
         been emitted since its creation. The polling interval defaults to one

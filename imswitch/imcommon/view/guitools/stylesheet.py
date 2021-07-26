@@ -31,6 +31,10 @@ def getBaseStyleSheet():
             background-color: #262E38;
         }
         
+        QScrollArea QWidget QPushButton:disabled {
+            background-color: #455364;
+        }
+        
         QSplitter {
             background-color: #37414F;
         }

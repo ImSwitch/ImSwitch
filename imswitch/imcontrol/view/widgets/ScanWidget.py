@@ -189,8 +189,8 @@ class ScanWidget(Widget):
         for deviceName in TTLDeviceNames:
             # TTL pulse params
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('0')
-            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('10')
+            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('')
+            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('')
             self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
             self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1
@@ -222,6 +222,10 @@ class ScanWidget(Widget):
 
     def getScanCenterPos(self, positionerName):
         return float(self.scanPar['center' + positionerName].text())
+
+    def getTTLIncluded(self, deviceName):
+        return (self.pxParameters['sta' + deviceName].text() != '' and
+                self.pxParameters['end' + deviceName].text() != '')
 
     def getTTLStarts(self, deviceName):
         return list(map(lambda s: float(s) / 1000 if s else None,
@@ -270,6 +274,10 @@ class ScanWidget(Widget):
         self.pxParameters['end' + deviceName].setText(
             ','.join(map(lambda e: str(round(1000 * e, 3)), ends))
         )
+
+    def unsetTTL(self, deviceName):
+        self.pxParameters['sta' + deviceName].setText('')
+        self.pxParameters['end' + deviceName].setText('')
 
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))

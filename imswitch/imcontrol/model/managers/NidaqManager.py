@@ -16,7 +16,7 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 class NidaqManager(SignalInterface):
     """ For interaction with NI-DAQ hardware interfaces. """
 
-    sigScanBuilt = Signal(object)  # (scanInfoDict)
+    sigScanBuilt = Signal(object, object)  # (scanInfoDict, deviceList)
     sigScanStarted = Signal()
     sigScanDone = Signal()
 
@@ -250,32 +250,37 @@ class NidaqManager(SignalInterface):
             # TODO: fill this
             stageDic = signalDic['scanSignalsDict']
             ttlDic = signalDic['TTLCycleSignalsDict']
-            AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
 
+            AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
+            AOdevices = []
             AOsignals = []
             AOchannels = []
 
-            for pair in AOTargetChanPairs:
+            for device, channel in AOTargetChanPairs:
                 try:
-                    signal = stageDic[pair[0]]
-                    channel = pair[1]
-                    AOsignals.append(signal)
+                    if device not in stageDic:
+                        continue
+
+                    AOdevices.append(device)
+                    AOsignals.append(stageDic[device])
                     AOchannels.append(channel)
-                except:
+                except Exception:
                     pass
 
             DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
-
+            DOdevices = []
             DOsignals = []
             DOlines = []
 
-            for pair in DOTargetChanPairs:
+            for device, line in DOTargetChanPairs:
                 try:
-                    signal = ttlDic[pair[0]]
-                    line = pair[1]
-                    DOsignals.append(signal)
+                    if device not in ttlDic:
+                        continue
+
+                    DOdevices.append(device)
+                    DOsignals.append(ttlDic[device])
                     DOlines.append(line)
-                except:
+                except Exception:
                     pass
 
             if len(AOsignals) < 1 and len(DOsignals) < 1:
@@ -285,7 +290,7 @@ class NidaqManager(SignalInterface):
             # create task waiters and change constants for beginning scan
             self.aoTaskWaiter = WaitThread()
             self.doTaskWaiter = WaitThread()
-            if self.__timerCounterChannel is not None :
+            if self.__timerCounterChannel is not None:
                 self.timerTaskWaiter = WaitThread()
                 # create timer counter output task, to control the acquisition timing (1 MHz)
                 sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
@@ -331,7 +336,9 @@ class NidaqManager(SignalInterface):
                     lambda: self.taskDone('do', self.doTaskWaiter)
                 )
                 self.tasks['do'] = self.doTask
-            self.sigScanBuilt.emit(scanInfoDict)
+
+            self.sigScanBuilt.emit(scanInfoDict, AOdevices + DOdevices)
+
             if self.__timerCounterChannel is not None:
                 self.tasks['timer'].start()
                 self.timerTaskWaiter.start()

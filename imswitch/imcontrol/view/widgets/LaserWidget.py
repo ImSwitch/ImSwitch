@@ -251,6 +251,7 @@ class LaserModule(QtWidgets.QWidget):
         self.enableButton = guitools.BetterPushButton('ON')
         self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
+        self.enableButton.setEnabled(False)
 
         # Add elements to QHBoxLayout
         self.layout = QtWidgets.QHBoxLayout()
@@ -294,6 +295,7 @@ class LaserModule(QtWidgets.QWidget):
         """ Sets whether the laser's values can be edited by the user. """
         self.setPointEdit.setEnabled(editable)
         self.slider.setEnabled(editable)
+        self.enableButton.setEnabled(editable)
 
     def setValue(self, value):
         """ Sets the value of the laser, in the units that the laser uses. """

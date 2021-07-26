@@ -3,6 +3,9 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
+from imswitch.imcommon.model import shortcut
+
+import time
 
 class LaserWidget(Widget):
     """ Laser widget for setting laser powers etc. """

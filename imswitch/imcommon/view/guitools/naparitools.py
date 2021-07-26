@@ -52,6 +52,7 @@ class NapariBaseWidget(QtWidgets.QWidget):
             napariViewer.window.qt_viewer.dockLayerList
         )
         napariViewer.window.qt_viewer.dockLayerList.show()
+        return widget
 
 
 class NapariUpdateLevelsWidget(NapariBaseWidget):
@@ -80,7 +81,6 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
     def _on_update_levels(self):
         for layer in self.viewer.layers.selected:
             layer.contrast_limits = minmaxLevels(layer.data)
-
 
 class NapariShiftWidget(NapariBaseWidget):
     """ Napari widget for shifting the currently selected layer by a

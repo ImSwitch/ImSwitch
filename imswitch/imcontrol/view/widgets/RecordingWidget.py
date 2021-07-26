@@ -6,6 +6,8 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
+from imswitch.imcommon.model.shortcut import shortcut
+
 
 class RecordingWidget(Widget):
     """ Widget to control image or sequence recording.
@@ -306,6 +308,9 @@ class RecordingWidget(Widget):
     def updateRecLapseNum(self, lapseNum):
         self.currentLapse.setText(str(lapseNum) + ' /')
         
+    @shortcut('Ctrl+R', "Record")
+    def toggleRecButton(self):
+        self.recButton.toggle()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

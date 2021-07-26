@@ -1,3 +1,4 @@
+from imswitch.imcommon.model.shortcut import shortcut
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -64,6 +65,18 @@ class ViewWidget(Widget):
     def setLiveViewCrosshairVisible(self, visible):
         """ Sets whether the LiveView crosshair is visible. """
         self.gridButton.setChecked(visible)
+
+    @shortcut('Ctrl+L', "Liveview")
+    def toggleLiveviewButton(self):
+        self.liveviewButton.toggle()
+
+    @shortcut('Ctrl+G', "Grid")
+    def toggleGridButton(self):
+        self.gridButton.toggle()
+    
+    @shortcut('Ctrl+H', "Crosshair")
+    def toggleCrosshairButton(self):
+        self.crosshairButton.toggle()
 
 
 # Copyright (C) 2020, 2021 TestaLab

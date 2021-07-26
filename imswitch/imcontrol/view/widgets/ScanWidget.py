@@ -241,6 +241,8 @@ class ScanWidget(Widget):
         self.contLaserPulsesRadio.setChecked(True)
 
     def setScanButtonChecked(self, checked):
+        self.scanButton.setEnabled(not checked)
+        self.scanButton.setCheckable(checked)
         self.scanButton.setChecked(checked)
 
     def setScanDim(self, index, positionerName):

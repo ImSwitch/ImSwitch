@@ -39,7 +39,7 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 
-    sigPrepareScan = Signal()
+    sigRunScan = Signal(bool)  # (sigScanStartingEmitted)
 
     sigScanStarting = Signal()
     

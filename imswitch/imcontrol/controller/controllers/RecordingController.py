@@ -89,6 +89,9 @@ class RecordingController(ImConWidgetController):
             self.savename = filetools.getUniqueName(name)
             self.saveMode = SaveMode(self._widget.getSaveMode())
 
+            if self.recMode == RecMode.ScanOnce:
+                self._commChannel.sigScanStarting.emit()  # To get correct values from sharedAttrs
+
             self.detectorsBeingCaptured = self.getDetectorNamesToCapture()
             self.attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in self.detectorsBeingCaptured}
@@ -109,7 +112,7 @@ class RecordingController(ImConWidgetController):
                     *recordingArgs, recFrames=self._commChannel.getNumScanPositions()
                 )
                 time.sleep(0.1)
-                self._commChannel.sigPrepareScan.emit()
+                self._commChannel.sigRunScan.emit(True)
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
@@ -125,12 +128,17 @@ class RecordingController(ImConWidgetController):
         self.endedRecording = False
         self.endedScan = False
         fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+
+        self._commChannel.sigScanStarting.emit()
+        self.attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                      for detectorName in self.detectorsBeingCaptured}
+
         self._master.recordingManager.startRecording(
             self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs,
             recFrames=self._commChannel.getNumScanPositions()
         )
         time.sleep(0.3)
-        self._commChannel.sigPrepareScan.emit()
+        self._commChannel.sigRunScan.emit(True)
 
     def recordingStarted(self):
         self._widget.setFieldsEnabled(False)

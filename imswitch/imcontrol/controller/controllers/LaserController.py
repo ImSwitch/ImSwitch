@@ -182,7 +182,7 @@ class LaserController(ImConWidgetController):
 
         defaultScanPresetName = self._setupInfo.defaultLaserPresetForScan
         if defaultScanPresetName in self._setupInfo.laserPresets:
-            if isScanning:
+            if isScanning and self.presetBeforeScan is None:
                 # Scan started, save current values and apply default scan preset
                 self.presetBeforeScan = self.makePreset()
                 self.applyPreset(self._setupInfo.laserPresets[defaultScanPresetName])

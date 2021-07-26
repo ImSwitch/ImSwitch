@@ -47,7 +47,7 @@ class ScanController(SuperScanController):
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigPrepareScan.connect(lambda: self.setScanButton(True))
+        self._commChannel.sigRunScan.connect(self.runScanAdvanced)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
@@ -154,31 +154,32 @@ class ScanController(SuperScanController):
             self.settingParameters = False
             self.plotSignalGraph()
 
-    @APIExport
-    def runScan(self, hasStarted: bool = False) -> None:
+    def runScanAdvanced(self, sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
+        self._widget.setScanButtonChecked(True)
         self.getParameters()
         try:
             self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
                 self._analogParameterDict, self._digitalParameterDict,
                 staticPositioner=self._widget.isContLaserMode()
             )
-        except:
+        except Exception:
             # TODO: should raise an error here probably, but that does not crash the program.
             print_exc()
             return
 
-        if not hasStarted: self._commChannel.sigScanStarting.emit()
+        if not sigScanStartingEmitted:
+            self._commChannel.sigScanStarting.emit()
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
         print('Scan done')
         if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
-            self.setScanButton(False)
+            self._widget.setScanButtonChecked(False)
             self._commChannel.sigScanEnded.emit()
         else:
             print('Repeat scan')
-            self.runScan(hasStarted=True)
+            self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def getParameters(self):
         if self.settingParameters:
@@ -220,10 +221,6 @@ class ScanController(SuperScanController):
             self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
             self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
             self._widget.setScanCenterPosEnabled(positionerName, not isContLaserPulses)
-
-    def setScanButton(self, b):
-        self._widget.setScanButtonChecked(b)
-        if b: self.runScan()
 
     def updatePixels(self):
         self.getParameters()
@@ -299,6 +296,11 @@ class ScanController(SuperScanController):
 
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
+
+    @APIExport
+    def runScan(self) -> None:
+        """ Runs a scan with the set scanning parameters. """
+        self.runScanAdvanced(sigScanStartingEmitted=False)
 
 
 _attrCategoryStage = 'ScanStage'

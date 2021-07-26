@@ -136,6 +136,9 @@ class RecordingWorker(Worker):
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
+            if len(self.detectorNames) < 1:
+                raise ValueError('No detectors to record specified')
+
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 recFrames = self.recFrames
                 if recFrames is None:

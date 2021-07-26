@@ -40,7 +40,8 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect RecordingWidget signals
-        self._widget.sigDetectorChanged.connect(self.detectorChanged)
+        self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
+        self._widget.sigDetectorSpecificChanged.connect(self.detectorChanged)
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
         self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
         self._widget.sigSnapRequested.connect(self.snap)
@@ -209,27 +210,32 @@ class RecordingController(ImConWidgetController):
             raise ValueError(f'Invalid RecMode {recMode} specified')
 
     def detectorChanged(self):
-        detectorListData = self._widget.getDetectorToCapture()
-        if detectorListData == -2:  # §
+        detectorMode = self._widget.getDetectorMode()
+
+        self._widget.setSpecificDetectorListVisible(detectorMode == -3)
+
+        if detectorMode == -2:
             # When recording all detectors, the SpecFrames mode isn't supported
             self._widget.setSpecifyFramesAllowed(False)
+        elif detectorMode == -3:
+            self._widget.setSpecifyFramesAllowed(len(self._widget.getSelectedSpecificDetectors()) < 2)
         else:
             self._widget.setSpecifyFramesAllowed(True)
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorListData = self._widget.getDetectorToCapture()
-        if detectorListData == -1:  # Current detector at start
+        detectorMode = self._widget.getDetectorMode()
+        if detectorMode == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
-        elif detectorListData == -2:  # All acquisition detectors
+        elif detectorMode == -2:  # All acquisition detectors
             return list(
                 self._master.detectorsManager.execOnAll(
                     lambda c: c.name,
                     condition=lambda c: c.forAcquisition
                 ).values()
             )
-        else:  # A specific detector
-            return [detectorListData]
+        elif detectorMode == -3:  # A specific detector
+            return self._widget.getSelectedSpecificDetectors()
 
     def getFileName(self):
         """ Gets the filename of the data to save. """
@@ -331,7 +337,7 @@ class RecordingController(ImConWidgetController):
         """ Sets which detectors to record. One can also pass -1 as the
         argument to record the current detector, or -2 to record all detectors.
         """
-        self._widget.setDetectorToCapture(detectorName)
+        self._widget.setDetectorMode(detectorName)
 
     @APIExport
     def setRecFilename(self, filename: Optional[str]) -> None:

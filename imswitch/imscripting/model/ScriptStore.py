@@ -15,7 +15,7 @@ class ScriptEntry:
         if not self.isSavedToFile():
             raise RuntimeError('Cannot save, no file path set in entry')
 
-        with open(self.filePath, 'w') as file:
+        with open(self.filePath, 'w', newline='\n') as file:
             file.write(self.code)
 
         self.unsaved = False

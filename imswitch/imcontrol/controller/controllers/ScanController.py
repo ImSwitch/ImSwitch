@@ -1,8 +1,8 @@
 import configparser
 import functools
 import os
+import traceback
 from ast import literal_eval
-from traceback import print_exc
 
 import numpy as np
 
@@ -45,6 +45,7 @@ class ScanController(SuperScanController):
 
         # Connect NidaqManager signals
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
+        self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigRunScan.connect(self.runScanAdvanced)
@@ -165,7 +166,7 @@ class ScanController(SuperScanController):
             )
         except Exception:
             # TODO: should raise an error here probably, but that does not crash the program.
-            print_exc()
+            print(traceback.format_exc())
             return
 
         if not sigScanStartingEmitted:
@@ -180,6 +181,10 @@ class ScanController(SuperScanController):
         else:
             print('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
+
+    def scanFailed(self):
+        self._widget.setScanButtonChecked(False)
+        self._commChannel.sigScanEnded.emit()
 
     def getParameters(self):
         if self.settingParameters:

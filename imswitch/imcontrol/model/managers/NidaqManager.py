@@ -3,6 +3,7 @@ Created on Tue Apr  7 16:46:33 2020
 
 """
 import operator
+import traceback
 import warnings
 
 import nidaqmx
@@ -19,6 +20,8 @@ class NidaqManager(SignalInterface):
     sigScanBuilt = Signal(object)  # (scanInfoDict)
     sigScanStarted = Signal()
     sigScanDone = Signal()
+    
+    sigScanBuildFailed = Signal()
 
     def __init__(self, setupInfo):
         super().__init__()
@@ -239,7 +242,7 @@ class NidaqManager(SignalInterface):
                     self.busy = False
 
     def runScan(self, signalDic, scanInfoDict):
-        """ Function assuming that the user wants to run a full scan with a stage 
+        """ Function assuming that the user wants to run a full scan with a stage
         controlled by analog voltage outputs and a cycle of TTL pulses continuously
         running. """
         if not self.busy:
@@ -247,105 +250,113 @@ class NidaqManager(SignalInterface):
             self.signalSent = False
             print('Create nidaq scan...')
 
-            # TODO: fill this
-            stageDic = signalDic['scanSignalsDict']
-            ttlDic = signalDic['TTLCycleSignalsDict']
-            AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
+            try:
+                # TODO: fill this
+                stageDic = signalDic['scanSignalsDict']
+                ttlDic = signalDic['TTLCycleSignalsDict']
+                AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
 
-            AOsignals = []
-            AOchannels = []
+                AOsignals = []
+                AOchannels = []
 
-            for pair in AOTargetChanPairs:
-                try:
-                    signal = stageDic[pair[0]]
-                    channel = pair[1]
-                    AOsignals.append(signal)
-                    AOchannels.append(channel)
-                except:
-                    pass
+                for pair in AOTargetChanPairs:
+                    try:
+                        signal = stageDic[pair[0]]
+                        channel = pair[1]
+                        AOsignals.append(signal)
+                        AOchannels.append(channel)
+                    except:
+                        pass
 
-            DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
+                DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
 
-            DOsignals = []
-            DOlines = []
+                DOsignals = []
+                DOlines = []
 
-            for pair in DOTargetChanPairs:
-                try:
-                    signal = ttlDic[pair[0]]
-                    line = pair[1]
-                    DOsignals.append(signal)
-                    DOlines.append(line)
-                except:
-                    pass
+                for pair in DOTargetChanPairs:
+                    try:
+                        signal = ttlDic[pair[0]]
+                        line = pair[1]
+                        DOsignals.append(signal)
+                        DOlines.append(line)
+                    except:
+                        pass
 
-            if len(AOsignals) < 1 and len(DOsignals) < 1:
+                if len(AOsignals) < 1 and len(DOsignals) < 1:
+                    raise NidaqManagerError('No signals to send')
+
+                # create task waiters and change constants for beginning scan
+                self.aoTaskWaiter = WaitThread()
+                self.doTaskWaiter = WaitThread()
+                if self.__timerCounterChannel is not None :
+                    self.timerTaskWaiter = WaitThread()
+                    # create timer counter output task, to control the acquisition timing (1 MHz)
+                    sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
+                    self.timerTask = self.__createChanCOTask(
+                        'TimerTask', channel=self.__timerCounterChannel, rate=1e6, sampsInScan=sampsInScan,
+                        starttrig=self.__startTrigger, reference_trigger='ao/StartTrigger'
+                    )
+                    self.timerTaskWaiter.connect(self.timerTask)
+                    self.timerTaskWaiter.sigWaitDone.connect(
+                        lambda: self.taskDone('timer', self.timerTaskWaiter)
+                    )
+                    self.tasks['timer'] = self.timerTask
+                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+                scanclock = r'100kHzTimebase'
+                ref_trigger = 'ao/StartTrigger'
+                clockDO = scanclock
+                if len(AOsignals) > 0:
+                    sampsInScan = len(AOsignals[0])
+                    self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
+                                                          acquisitionTypeFinite, scanclock,
+                                                          100000, min_val=-10, max_val=10,
+                                                          sampsInScan=sampsInScan,
+                                                          starttrig=False)
+                    self.tasks['ao'] = self.aoTask
+                    self.aoTask.write(np.array(AOsignals), auto_start=False)
+
+                    self.aoTaskWaiter.connect(self.aoTask)
+                    self.aoTaskWaiter.sigWaitDone.connect(
+                        lambda: self.taskDone('ao', self.aoTaskWaiter)
+                    )
+                    clockDO = r'ao/SampleClock'
+                if len(DOsignals) > 0:
+                    sampsInScan = len(DOsignals[0])
+                    self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
+                                                          acquisitionTypeFinite, clockDO,
+                                                          100000, sampsInScan=sampsInScan,
+                                                          starttrig=self.__startTrigger,
+                                                          reference_trigger='ao/StartTrigger')
+                    self.tasks['do'] = self.doTask
+                    self.doTask.write(np.array(DOsignals), auto_start=False)
+
+                    self.doTaskWaiter.connect(self.doTask)
+                    self.doTaskWaiter.sigWaitDone.connect(
+                        lambda: self.taskDone('do', self.doTaskWaiter)
+                    )
+            except Exception:
+                print(traceback.format_exc())
+                for task in self.tasks.values():
+                    task.close()
+                self.tasks = {}
                 self.busy = False
-                return
+                self.sigScanBuildFailed.emit()
+            else:
+                self.sigScanBuilt.emit(scanInfoDict)
+                if self.__timerCounterChannel is not None:
+                    self.tasks['timer'].start()
+                    self.timerTaskWaiter.start()
+                if len(DOsignals) > 0:
+                    self.tasks['do'].start()
+                    #print('DO task started')
+                    self.doTaskWaiter.start()
 
-            # create task waiters and change constants for beginning scan
-            self.aoTaskWaiter = WaitThread()
-            self.doTaskWaiter = WaitThread()
-            if self.__timerCounterChannel is not None :
-                self.timerTaskWaiter = WaitThread()
-                # create timer counter output task, to control the acquisition timing (1 MHz)
-                sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
-                self.timerTask = self.__createChanCOTask(
-                    'TimerTask', channel=self.__timerCounterChannel, rate=1e6, sampsInScan=sampsInScan,
-                    starttrig=self.__startTrigger, reference_trigger='ao/StartTrigger'
-                )
-                self.timerTaskWaiter.connect(self.timerTask)
-                self.timerTaskWaiter.sigWaitDone.connect(
-                    lambda: self.taskDone('timer', self.timerTaskWaiter)
-                )
-                self.tasks['timer'] = self.timerTask
-            acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-            scanclock = r'100kHzTimebase'
-            ref_trigger = 'ao/StartTrigger'
-            clockDO = scanclock
-            if len(AOsignals) > 0:
-                sampsInScan = len(AOsignals[0])
-                self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
-                                                      acquisitionTypeFinite, scanclock,
-                                                      100000, min_val=-10, max_val=10,
-                                                      sampsInScan=sampsInScan,
-                                                      starttrig=False)
-                self.aoTask.write(np.array(AOsignals), auto_start=False)
-
-                self.aoTaskWaiter.connect(self.aoTask)
-                self.aoTaskWaiter.sigWaitDone.connect(
-                    lambda: self.taskDone('ao', self.aoTaskWaiter)
-                )
-                self.tasks['ao'] = self.aoTask
-                clockDO = r'ao/SampleClock'
-            if len(DOsignals) > 0:
-                sampsInScan = len(DOsignals[0])
-                self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
-                                                      acquisitionTypeFinite, clockDO,
-                                                      100000, sampsInScan=sampsInScan,
-                                                      starttrig=self.__startTrigger,
-                                                      reference_trigger='ao/StartTrigger')
-                self.doTask.write(np.array(DOsignals), auto_start=False)
-
-                self.doTaskWaiter.connect(self.doTask)
-                self.doTaskWaiter.sigWaitDone.connect(
-                    lambda: self.taskDone('do', self.doTaskWaiter)
-                )
-                self.tasks['do'] = self.doTask
-            self.sigScanBuilt.emit(scanInfoDict)
-            if self.__timerCounterChannel is not None:
-                self.tasks['timer'].start()
-                self.timerTaskWaiter.start()
-            if len(DOsignals) > 0:
-                self.tasks['do'].start()
-                #print('DO task started')
-                self.doTaskWaiter.start()
-                
-            if len(AOsignals) > 0:
-                self.tasks['ao'].start()
-                #print('AO task started')
-                self.aoTaskWaiter.start()
-            self.sigScanStarted.emit()
-            print('Nidaq scan started!')
+                if len(AOsignals) > 0:
+                    self.tasks['ao'].start()
+                    #print('AO task started')
+                    self.aoTaskWaiter.start()
+                self.sigScanStarted.emit()
+                print('Nidaq scan started!')
 
     def stopTask(self, taskName):
         self.tasks[taskName].stop()

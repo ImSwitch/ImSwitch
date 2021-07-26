@@ -16,8 +16,8 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 class NidaqManager(SignalInterface):
     """ For interaction with NI-DAQ hardware interfaces. """
 
-    sigScanStart = Signal()
-    sigScanInitiate = Signal(object)  # (scanInfoDict)
+    sigScanBuilt = Signal(object)  # (scanInfoDict)
+    sigScanStarted = Signal()
     sigScanDone = Signal()
 
     def __init__(self, setupInfo):
@@ -331,7 +331,7 @@ class NidaqManager(SignalInterface):
                     lambda: self.taskDone('do', self.doTaskWaiter)
                 )
                 self.tasks['do'] = self.doTask
-            self.sigScanInitiate.emit(scanInfoDict)
+            self.sigScanBuilt.emit(scanInfoDict)
             if self.__timerCounterChannel is not None:
                 self.tasks['timer'].start()
                 self.timerTaskWaiter.start()
@@ -344,7 +344,7 @@ class NidaqManager(SignalInterface):
                 self.tasks['ao'].start()
                 #print('AO task started')
                 self.aoTaskWaiter.start()
-            self.sigScanStart.emit()
+            self.sigScanStarted.emit()
             print('Nidaq scan started!')
 
     def stopTask(self, taskName):

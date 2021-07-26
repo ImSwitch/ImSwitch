@@ -282,11 +282,6 @@ class RecordingWidget(Widget):
         self.timeLapseEdit.setEnabled(timelapseTime)
         self.freqEdit.setEnabled(timelapseFreq)
 
-    def setSpecifyFramesAllowed(self, allowed):
-        self.specifyFrames.setEnabled(allowed)
-        if not allowed and self.specifyFrames.isChecked():
-            self.untilSTOPbtn.setChecked(True)
-
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)
 

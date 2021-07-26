@@ -219,16 +219,7 @@ class RecordingController(ImConWidgetController):
 
     def detectorChanged(self):
         detectorMode = self._widget.getDetectorMode()
-
         self._widget.setSpecificDetectorListVisible(detectorMode == -3)
-
-        if detectorMode == -2:
-            # When recording all detectors, the SpecFrames mode isn't supported
-            self._widget.setSpecifyFramesAllowed(False)
-        elif detectorMode == -3:
-            self._widget.setSpecifyFramesAllowed(len(self._widget.getSelectedSpecificDetectors()) < 2)
-        else:
-            self._widget.setSpecifyFramesAllowed(True)
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """

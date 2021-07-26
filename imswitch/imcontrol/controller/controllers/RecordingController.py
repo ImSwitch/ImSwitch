@@ -111,7 +111,7 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(
                     *recordingArgs, recFrames=self._commChannel.getNumScanPositions()
                 )
-                time.sleep(0.1)
+                time.sleep(0.3)
                 self._commChannel.sigRunScan.emit(True)
             elif self.recMode == RecMode.ScanLapse:
                 self.lapseTotal = self._widget.getTimelapseTime()

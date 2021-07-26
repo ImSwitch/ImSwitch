@@ -17,7 +17,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.imgLayers = {}
 
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
-        self.viewCtrlLayout.addWidget(self.napariViewer.getWidget())
+        self.viewCtrlLayout.addWidget(self.napariViewer.get_widget())
         self.setLayout(self.viewCtrlLayout)
 
         self.grid = guitools.VispyGridVisual(color='yellow')
@@ -31,11 +31,12 @@ class ImageWidget(QtWidgets.QWidget):
     def setLayers(self, names):
         for name, img in self.imgLayers.items():
             if name not in names:
-                self.napariViewer.layers.remove(img)
+                self.napariViewer.layers.remove(img, force=True)
 
         def addImage(name, colormap=None):
             self.imgLayers[name] = self.napariViewer.add_image(
-                np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap
+                np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap,
+                protected=True
             )
 
         for name in names:

@@ -23,7 +23,7 @@ class ReconstructionView(QtWidgets.QFrame):
         guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
 
         self.imgLayer = self.napariViewer.add_image(
-            np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip'
+            np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip', protected=True
         )
 
         # Slider and edit box for choosing slice
@@ -103,7 +103,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
         self.setLayout(layout)
 
-        layout.addWidget(self.napariViewer.getWidget(), 0, 0, 2, 1)
+        layout.addWidget(self.napariViewer.get_widget(), 0, 0, 2, 1)
         layout.addWidget(self.chooseViewBox, 0, 1, 1, 2)
         layout.addWidget(self.reconList, 0, 3, 2, 1)
         layout.addWidget(self.sliceSlider, 2, 0)

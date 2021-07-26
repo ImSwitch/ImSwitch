@@ -28,7 +28,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         tools = menuBar.addMenu('&Tools')
 
         self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
-        self.loadParamsAction.setShortcut('Ctrl+O')
+        self.loadParamsAction.setShortcut('Ctrl+P')
         self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
         file.addAction(self.loadParamsAction)
 

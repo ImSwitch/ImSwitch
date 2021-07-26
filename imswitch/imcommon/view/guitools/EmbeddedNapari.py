@@ -12,18 +12,15 @@ class EmbeddedNapari(napari.Viewer):
         super().__init__(*args, show=show, **kwargs)
 
         # Monkeypatch layer removal methods
-        oldRemove = self.layers.remove
-        def newRemove(layer, force=False):
-            if not hasattr(layer, 'protected') or not layer.protected or force:
-                oldRemove(layer)
-        self.layers.remove = newRemove
-
-        oldPop = self.layers.pop
-        def newPop(index, force=False):
-            layer = self.layers[index]
-            if not hasattr(layer, 'protected') or not layer.protected or force:
-                oldPop(index)
-        self.layers.pop = newPop
+        oldDelitemIndices = self.layers._delitem_indices
+        def newDelitemIndices(key):
+            indices = oldDelitemIndices(key)
+            for index in indices[:]:
+                layer = index[0][index[1]]
+                if hasattr(layer, 'protected') and layer.protected:
+                    indices.remove(index)
+            return indices
+        self.layers._delitem_indices = newDelitemIndices
 
         # Make menu bar not native
         self.window._qt_window.menuBar().setNativeMenuBar(False)

@@ -29,6 +29,7 @@ Device managers define what kind of device you have, and how ImSwitch communicat
 For example, if you have a Hamamatsu camera that you would like to control,
 you would define a detector that uses the ``HamamatsuManager`` in the hardware setup file and set its appropriate properties.
 The list of available managers and their properties can be found :ref:`here <Available managers>`.
+Each device must have a unique name, which is represented by its object key in the JSON.
 
 Signal designers, which are relevant for users who use the scan functionality, are similar.
 Microscopy scans can be set up in different ways; in a point-scanning setup, for instance,

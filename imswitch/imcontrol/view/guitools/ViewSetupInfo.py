@@ -30,6 +30,8 @@ class ViewSetupInfo(SetupInfo):
     """ This is the object represented by the hardware configuration JSON file.
     All fields are optional, unless explicitly otherwise specified. """
 
+    # Quotes around type hints seem to be required for proper linking in the hardware control docs
+
     rois: Dict[str, 'ROIInfo'] = field(default_factory=dict)
     """ Additional ROIs available to select in detector settings. """
 
@@ -37,7 +39,7 @@ class ViewSetupInfo(SetupInfo):
     """ Laser presets available to select (map preset name -> laser name ->
     LaserPresetInfo). """
 
-    defaultLaserPresetForScan: Optional[str] = None
+    defaultLaserPresetForScan: Optional[str] = field(default_factory=lambda: None)
     """ Default laser preset for scanning. """
 
     availableWidgets: Union[List[str], bool] = field(default_factory=list)

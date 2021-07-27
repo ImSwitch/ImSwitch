@@ -154,33 +154,35 @@ class NidaqInfo:
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
-    detectors: Dict[str, 'DetectorInfo'] = field(default_factory=dict)
+    # default_factory seems to be required for the field to show up in autodocs for deriving classes
+
+    detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
     """ Detectors in this setup. This is a map from unique detector names to
     DetectorInfo objects. """
 
-    lasers: Dict[str, 'LaserInfo'] = field(default_factory=dict)
+    lasers: Dict[str, LaserInfo] = field(default_factory=dict)
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
 
-    positioners: Dict[str, 'PositionerInfo'] = field(default_factory=dict)
+    positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
     to DetectorInfo objects. """
 
-    rs232devices: Dict[str, 'RS232Info'] = field(default_factory=dict)
+    rs232devices: Dict[str, RS232Info] = field(default_factory=dict)
     """ RS232 connections in this setup. This is a map from unique RS232
     connection names to RS232Info objects. Some detector/laser/positioner
     managers will require a corresponding RS232 connection to be referenced in
     their properties.
     """
 
-    slm: Optional['SLMInfo'] = None
+    slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
 
-    focusLock: Optional['FocusLockInfo'] = None
+    focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
 
-    scan: Optional['ScanInfo'] = None
+    scan: Optional[ScanInfo] = field(default_factory=lambda: None)
     """ Scan settings. Required to be defined to use scan functionality. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)

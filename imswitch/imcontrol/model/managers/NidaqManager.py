@@ -205,7 +205,8 @@ class NidaqManager(SignalInterface):
                     dotask.wait_until_done()
                     dotask.stop()
                     dotask.close()
-                except nidaqmx._lib.DaqNotFoundError as e:
+                except (nidaqmx._lib.DaqNotFoundError, nidaqmx._lib.DaqFunctionNotSupportedError,
+                        nidaqmx.DaqError) as e:
                     warnings.warn(str(e), RuntimeWarning)
                 finally:
                     self.busy = False
@@ -236,7 +237,8 @@ class NidaqManager(SignalInterface):
                     aotask.wait_until_done()
                     aotask.stop()
                     aotask.close()
-                except nidaqmx._lib.DaqNotFoundError as e:
+                except (nidaqmx._lib.DaqNotFoundError, nidaqmx._lib.DaqFunctionNotSupportedError,
+                        nidaqmx.DaqError) as e:
                     warnings.warn(str(e), RuntimeWarning)
                 finally:
                     self.busy = False

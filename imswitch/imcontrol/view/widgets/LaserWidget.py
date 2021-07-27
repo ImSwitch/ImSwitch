@@ -254,7 +254,6 @@ class LaserModule(QtWidgets.QWidget):
         self.enableButton = guitools.BetterPushButton('ON')
         self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
-        self.enableButton.setEnabled(False)
 
         # Add elements to QHBoxLayout
         self.layout = QtWidgets.QHBoxLayout()

@@ -44,6 +44,10 @@ class ScanController(SuperScanController):
         self.updateScanTTLAttrs()
 
         # Connect NidaqManager signals
+        self._master.nidaqManager.sigScanBuilt.connect(
+            lambda _, deviceList: self._commChannel.sigScanBuilt.emit(deviceList)
+        )
+        self._master.nidaqManager.sigScanStarted.connect(self._commChannel.sigScanStarted)
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
         self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
 
@@ -138,17 +142,23 @@ class ScanController(SuperScanController):
     def setParameters(self):
         self.settingParameters = True
         try:
-            for i in range(len(self.positioners)):
+            for i in range(len(self._analogParameterDict['target_device'])):
                 positionerName = self._analogParameterDict['target_device'][i]
                 self._widget.setScanDim(i, positionerName)
                 self._widget.setScanSize(positionerName, self._analogParameterDict['axis_length'][i])
                 self._widget.setScanStepSize(positionerName, self._analogParameterDict['axis_step_size'][i])
                 self._widget.setScanCenterPos(positionerName, self._analogParameterDict['axis_centerpos'][i])
 
-            for i in range(len(self.TTLDevices)):
+            setTTLDevices = []
+            for i in range(len(self._digitalParameterDict['target_device'])):
                 deviceName = self._digitalParameterDict['target_device'][i]
                 self._widget.setTTLStarts(deviceName, self._digitalParameterDict['TTL_start'][i])
                 self._widget.setTTLEnds(deviceName, self._digitalParameterDict['TTL_end'][i])
+                setTTLDevices.append(deviceName)
+
+            for deviceName in self.TTLDevices:
+                if deviceName not in setTTLDevices:
+                    self._widget.unsetTTL(deviceName)
 
             self._widget.setSeqTimePar(self._digitalParameterDict['sequence_time'])
         finally:
@@ -212,6 +222,9 @@ class ScanController(SuperScanController):
         self._digitalParameterDict['TTL_start'] = []
         self._digitalParameterDict['TTL_end'] = []
         for deviceName, deviceInfo in self.TTLDevices.items():
+            if not self._widget.getTTLIncluded(deviceName):
+                continue
+
             self._digitalParameterDict['target_device'].append(deviceName)
             self._digitalParameterDict['TTL_start'].append(self._widget.getTTLStarts(deviceName))
             self._digitalParameterDict['TTL_end'].append(self._widget.getTTLEnds(deviceName))

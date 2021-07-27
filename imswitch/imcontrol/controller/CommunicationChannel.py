@@ -42,7 +42,11 @@ class CommunicationChannel(SignalInterface):
     sigRunScan = Signal(bool)  # (sigScanStartingEmitted)
 
     sigScanStarting = Signal()
-    
+
+    sigScanBuilt = Signal(object)  # (deviceList)
+
+    sigScanStarted = Signal()
+
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)

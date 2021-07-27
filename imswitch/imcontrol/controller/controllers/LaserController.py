@@ -38,6 +38,7 @@ class LaserController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigScanStarting.connect(lambda: self.scanChanged(True))
+        self._commChannel.sigScanBuilt.connect(self.scanBuilt)
         self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
 
         # Connect LaserWidget signals
@@ -177,7 +178,8 @@ class LaserController(ImConWidgetController):
 
     def scanChanged(self, isScanning):
         """ Handles what happens when a scan is started/stopped. """
-        self._widget.setEditable(not isScanning)
+        for lName, _ in self._master.lasersManager:
+            self._widget.setLaserEditable(lName, not isScanning)
         self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
 
         defaultScanPresetName = self._setupInfo.defaultLaserPresetForScan
@@ -190,6 +192,11 @@ class LaserController(ImConWidgetController):
                 # Scan finished, restore the values that were set before the scan started
                 self.applyPreset(self.presetBeforeScan)
                 self.presetBeforeScan = None
+
+    def scanBuilt(self, deviceList):
+        for lName, _ in self._master.lasersManager:
+            if lName not in deviceList:
+                self._widget.setLaserEditable(lName, True)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:

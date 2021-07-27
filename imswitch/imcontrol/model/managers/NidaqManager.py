@@ -17,10 +17,10 @@ from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 class NidaqManager(SignalInterface):
     """ For interaction with NI-DAQ hardware interfaces. """
 
-    sigScanBuilt = Signal(object)  # (scanInfoDict)
+    sigScanBuilt = Signal(object, object)  # (scanInfoDict, deviceList)
     sigScanStarted = Signal()
     sigScanDone = Signal()
-    
+
     sigScanBuildFailed = Signal()
 
     def __init__(self, setupInfo):
@@ -254,33 +254,30 @@ class NidaqManager(SignalInterface):
                 # TODO: fill this
                 stageDic = signalDic['scanSignalsDict']
                 ttlDic = signalDic['TTLCycleSignalsDict']
-                AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
 
+                AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
+                AOdevices = []
                 AOsignals = []
                 AOchannels = []
 
-                for pair in AOTargetChanPairs:
-                    try:
-                        signal = stageDic[pair[0]]
-                        channel = pair[1]
-                        AOsignals.append(signal)
-                        AOchannels.append(channel)
-                    except:
-                        pass
+                for device, channel in AOTargetChanPairs:
+                    if device not in stageDic:
+                        continue
+                    AOdevices.append(device)
+                    AOsignals.append(stageDic[device])
+                    AOchannels.append(channel)
 
                 DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
-
+                DOdevices = []
                 DOsignals = []
                 DOlines = []
 
-                for pair in DOTargetChanPairs:
-                    try:
-                        signal = ttlDic[pair[0]]
-                        line = pair[1]
-                        DOsignals.append(signal)
-                        DOlines.append(line)
-                    except:
-                        pass
+                for device, line in DOTargetChanPairs:
+                    if device not in ttlDic:
+                        continue
+                    DOdevices.append(device)
+                    DOsignals.append(ttlDic[device])
+                    DOlines.append(line)
 
                 if len(AOsignals) < 1 and len(DOsignals) < 1:
                     raise NidaqManagerError('No signals to send')
@@ -288,7 +285,7 @@ class NidaqManager(SignalInterface):
                 # create task waiters and change constants for beginning scan
                 self.aoTaskWaiter = WaitThread()
                 self.doTaskWaiter = WaitThread()
-                if self.__timerCounterChannel is not None :
+                if self.__timerCounterChannel is not None:
                     self.timerTaskWaiter = WaitThread()
                     # create timer counter output task, to control the acquisition timing (1 MHz)
                     sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
@@ -342,7 +339,8 @@ class NidaqManager(SignalInterface):
                 self.busy = False
                 self.sigScanBuildFailed.emit()
             else:
-                self.sigScanBuilt.emit(scanInfoDict)
+                self.sigScanBuilt.emit(scanInfoDict, AOdevices + DOdevices)
+
                 if self.__timerCounterChannel is not None:
                     self.tasks['timer'].start()
                     self.timerTaskWaiter.start()

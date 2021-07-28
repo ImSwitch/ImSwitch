@@ -48,7 +48,7 @@ class SLMManager(SignalInterface):
     def initCorrectionMask(self):
         # Add correction mask with correction pattern
         self.__maskCorrection = Mask(self.__slmSize[1], int(self.__slmSize[0]), self.__wavelength)
-        bmpsCorrection = glob.glob(self.__correctionPatternsDir + "\*.bmp")
+        bmpsCorrection = glob.glob(os.path.join(self.__correctionPatternsDir, "*.bmp"))
 
         if len(bmpsCorrection) < 1:
             print('No BMP files found in correction patterns directory, cannot initialize'

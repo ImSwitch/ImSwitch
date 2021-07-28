@@ -176,7 +176,7 @@ class HCamData:
     # @param size The size of the data object in bytes.
     #
     def __init__(self, size):
-        self.np_array = np.ascontiguousarray(np.empty(np.int(size/2), dtype=np.uint16))
+        self.np_array = np.ascontiguousarray(np.empty(int(size/2), dtype=np.uint16))
         self.size = size
 
     ## __getitem__

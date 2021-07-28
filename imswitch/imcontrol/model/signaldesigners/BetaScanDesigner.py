@@ -57,9 +57,9 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
 
-        fast_axis_positions = 1 + np.int(np.ceil(fast_axis_size / fast_axis_step_size))
-        middle_axis_positions = 1 + np.int(np.ceil(middle_axis_size / middle_axis_step_size))
-        slow_axis_positions = 1 + np.int(np.ceil(slow_axis_size / slow_axis_step_size))
+        fast_axis_positions = 1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
+        middle_axis_positions = 1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
+        slow_axis_positions = 1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
 
         sampleRate = setupInfo.scan.sampleRate
         sequenceSamples = parameterDict['sequence_time'] * sampleRate
@@ -67,10 +67,10 @@ class BetaScanDesigner(ScanDesigner):
         returnSamples = parameterDict['return_time'] * sampleRate
         if not sequenceSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
-        sequenceSamples = np.int(np.ceil(sequenceSamples))
+        sequenceSamples = int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
             print('WARNING: Non-integer number of return samples, rounding up')
-        returnSamples = np.int(np.ceil(returnSamples))
+        returnSamples = int(np.ceil(returnSamples))
 
         # Make fast axis signal
         rampSamples = fast_axis_positions * sequenceSamples
@@ -128,7 +128,7 @@ class BetaScanDesigner(ScanDesigner):
 
     def __smoothRamp(self, start, end, samples):
         curve_half = 0.6
-        n = np.int(np.floor(curve_half * samples))
+        n = int(np.floor(curve_half * samples))
         x = np.linspace(0, np.pi / 2, num=n, endpoint=True)
         signal = start + (end - start) * np.sin(x)
         signal = np.append(signal, end * np.ones(int(np.ceil((1 - curve_half) * samples))))

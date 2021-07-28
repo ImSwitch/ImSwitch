@@ -24,7 +24,7 @@ class DataFrame(QtWidgets.QFrame):
         self.imgVb = imageWidget.addViewBox(row=0, col=0)
         self.imgVb.setMouseMode(pg.ViewBox.PanMode)
         self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
+        self.img.setTransform(self.img.transform().translate(-0.5, -0.5))
         self.imgVb.addItem(self.img)
         self.imgVb.setAspectLocked(True)
         self.imgHist = pg.HistogramLUTItem(image=self.img)

@@ -35,14 +35,14 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
         #print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
-        cycleSamples = np.int(np.ceil(cycleSamples))
+        cycleSamples = int(np.ceil(cycleSamples))
         signalDict = {}
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
             for j, start in enumerate(parameterDict['TTL_start'][i]):
-                startSamp = np.int(np.round(start * sampleRate))
-                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sampleRate))
+                startSamp = int(np.round(start * sampleRate))
+                endSamp = int(np.round(parameterDict['TTL_end'][i][j] * sampleRate))
                 tmpSigArr[startSamp:endSamp] = True
 
             signalDict[target] = np.copy(tmpSigArr)
@@ -55,7 +55,7 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
             TTLZeroPadSamples = returnTime * sampleRate
             if not TTLZeroPadSamples.is_integer():
                 print('WARNING: Non-integer number of return samples, rounding up')
-            TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
+            TTLZeroPadSamples = int(np.ceil(TTLZeroPadSamples))
 
             # Tile and pad TTL signals according to sync parameters
             for target, signal in signalDict.items():

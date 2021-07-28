@@ -54,8 +54,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 for j, (start, end) in enumerate(zip(parameterDict['TTL_start'][i], parameterDict['TTL_end'][i])):
                     start = start*1e3
                     end = end*1e3
-                    start_on = min(np.int(np.round(start * samples_line)), samples_line)
-                    end_on =  min(np.int(np.round(end * samples_line)), samples_line)
+                    start_on = min(int(np.round(start * samples_line)), samples_line)
+                    end_on = min(int(np.round(end * samples_line)), samples_line)
                     signal_line[start_on:end_on] = True
 
                 if signal_line[0]:
@@ -89,15 +89,15 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         samples_cycle = parameterDict['sequence_time'] * sample_rate
         #if not samples_cycle.is_integer():
             #print('WARNING: Non-integer number of sequence samples, rounding up')
-        samples_cycle = np.int(np.ceil(samples_cycle))
+        samples_cycle = int(np.ceil(samples_cycle))
         #print(samples_cycle)
         signalDict = {}
         tmpSigArr = np.zeros(samples_cycle, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
             for j, start in enumerate(parameterDict['TTL_start'][i]):
-                startSamp = np.int(np.round(start * sample_rate))
-                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sample_rate))
+                startSamp = int(np.round(start * sample_rate))
+                endSamp = int(np.round(parameterDict['TTL_end'][i][j] * sample_rate))
                 tmpSigArr[startSamp:endSamp] = True
             signalDict[target] = np.copy(tmpSigArr)
         #TODO: add zero-padding and looping of this signal here, as was previously done in ScanManager?

@@ -229,7 +229,7 @@ class NidaqManager(SignalInterface):
                                                      r'100kHzTimebase',
                                                      100000, min_val, max_val, tasklen, False)
 
-                    signal = voltage*np.ones(tasklen, dtype=np.float)
+                    signal = voltage*np.ones(tasklen, dtype=float)
                     try:
                         aotask.write(signal, auto_start=True)
                     except:
@@ -290,7 +290,7 @@ class NidaqManager(SignalInterface):
                 if self.__timerCounterChannel is not None:
                     self.timerTaskWaiter = WaitThread()
                     # create timer counter output task, to control the acquisition timing (1 MHz)
-                    sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
+                    sampsInScan = int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
                     self.timerTask = self.__createChanCOTask(
                         'TimerTask', channel=self.__timerCounterChannel, rate=1e6, sampsInScan=sampsInScan,
                         starttrig=self.__startTrigger, reference_trigger='ao/StartTrigger'

@@ -127,7 +127,7 @@ class RecordingController(ImConWidgetController):
     def nextLapse(self):
         self.endedRecording = False
         self.endedScan = False
-        fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+        fileName = self.savename + "_scan" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
 
         self._commChannel.sigScanStarting.emit()
         self.attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()

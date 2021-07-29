@@ -71,7 +71,9 @@ class RecordingManager(SignalInterface):
         with the specified name prefix and attributes to save to the capture
         per detector. """
         for detectorName in detectorNames:
-            file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
+            file = h5py.File(
+                RecordingManager._getSaveFilePath(f'{savename}_{detectorName}.hdf5'), 'w'
+            )
 
             shape = self.__detectorsManager[detectorName].shape
             dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
@@ -86,6 +88,16 @@ class RecordingManager(SignalInterface):
 
             dataset[:, :] = self.__detectorsManager[detectorName].image
             file.close()
+
+    @staticmethod
+    def _getSaveFilePath(path):
+        newPath = path
+        numExisting = 0
+        while os.path.exists(newPath):
+            numExisting += 1
+            pathWithoutExt, pathExt = os.path.splitext(path)
+            newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
+        return newPath
 
 
 class RecordingWorker(Worker):
@@ -105,7 +117,9 @@ class RecordingWorker(Worker):
         fileHandles = {}
         filePaths = {}
         for detectorName in self.detectorNames:
-            filePaths[detectorName] = f'{self.savename}_{detectorName}.hdf5'
+            filePaths[detectorName] = RecordingManager._getSaveFilePath(
+                f'{self.savename}_{detectorName}.hdf5'
+            )
             fileHandles[detectorName] = BytesIO() if self.saveMode == SaveMode.RAM else filePaths[detectorName]
             files[detectorName] = h5py.File(fileHandles[detectorName], 'w')
 

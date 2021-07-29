@@ -162,7 +162,9 @@ class ScanWidget(Widget):
             self.scanPar['stepSize' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['pixels' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['center' + positionerName].textChanged.connect(self.sigStageParChanged)
-            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(self.sigStageParChanged)
+            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(
+                self.sigStageParChanged
+            )
 
         # Add dwell time parameter
         self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
@@ -300,7 +302,7 @@ class ScanWidget(Widget):
 
         self.graph.plot.clear()
         for i in range(len(areas)):
-            self.graph.plot.plot(areas[i], signals[i],  pen=pg.mkPen(colors[i]))
+            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
 
         self.graph.plot.setYRange(-0.1, 1.1)
         self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
@@ -309,8 +311,8 @@ class ScanWidget(Widget):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
             # Set correct minimum width (otherwise things can go outside the widget because of the
             # scroll area)
-            width = self.gridContainer.minimumSizeHint().width()\
-                     + self.scrollArea.verticalScrollBar().width()
+            width = self.gridContainer.minimumSizeHint().width() \
+                    + self.scrollArea.verticalScrollBar().width()
             self.scrollArea.setMinimumWidth(width)
             self.setMinimumWidth(width)
 

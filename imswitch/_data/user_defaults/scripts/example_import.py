@@ -4,7 +4,6 @@ functionality. The imported script is specified by its file path relative
 to the main script (which in this case is this file).
 """
 
-
 imported = importScript('example_imported.py')
 imported.printMessage()
 

@@ -29,7 +29,8 @@ class SignalExtractor:
         )
 
     def make3dPtrArray(self, inData):
-        assert len(np.shape(inData)) == 3, 'Trying to make 3D ctypes.POINTER array out of non-3D data'
+        assert len(np.shape(inData)) == 3, \
+            'Trying to make 3D ctypes.POINTER array out of non-3D data'
 
         data = inData
         slices = data.shape[0]
@@ -43,7 +44,8 @@ class SignalExtractor:
         return cPtrArray
 
     def make4dPtrArray(self, inData):
-        assert len(np.shape(inData)) == 4, 'Trying to make 4D ctypes.POINTER array out of non-4D data'
+        assert len(np.shape(inData)) == 4, \
+            'Trying to make 4D ctypes.POINTER array out of non-4D data'
 
         data = inData
         groups = data.shape[0]

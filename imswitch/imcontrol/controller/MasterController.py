@@ -38,18 +38,20 @@ class MasterController:
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals
-        self.detectorsManager.sigAcquisitionStarted.connect(self.__commChannel.sigAcquisitionStarted)
-        self.detectorsManager.sigAcquisitionStopped.connect(self.__commChannel.sigAcquisitionStopped)
-        self.detectorsManager.sigDetectorSwitched.connect(self.__commChannel.sigDetectorSwitched)
-        self.detectorsManager.sigImageUpdated.connect(self.__commChannel.sigUpdateImage)
+        cc = self.__commChannel
 
-        self.recordingManager.sigRecordingStarted.connect(self.__commChannel.sigRecordingStarted)
-        self.recordingManager.sigRecordingEnded.connect(self.__commChannel.sigRecordingEnded)
-        self.recordingManager.sigRecordingFrameNumUpdated.connect(self.__commChannel.sigUpdateRecFrameNum)
-        self.recordingManager.sigRecordingTimeUpdated.connect(self.__commChannel.sigUpdateRecTime)
+        self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
+        self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
+        self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
+        self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
+
+        self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
+        self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
+        self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
+        self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
-        self.slmManager.sigSLMMaskUpdated.connect(self.__commChannel.sigSLMMaskUpdated)
+        self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = DataItem(

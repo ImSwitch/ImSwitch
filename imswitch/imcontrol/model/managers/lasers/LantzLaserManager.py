@@ -12,7 +12,8 @@ class LantzLaserManager(LaserManager):
       to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals, driver, **_lowLevelManagers):
+    def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals, driver,
+                 **_lowLevelManagers):
         ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
@@ -25,7 +26,7 @@ class LantzLaserManager(LaserManager):
 
     def finalize(self):
         self._laser.finalize()
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

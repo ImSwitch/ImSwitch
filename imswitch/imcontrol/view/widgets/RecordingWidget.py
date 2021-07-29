@@ -3,10 +3,9 @@ import time
 
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model.shortcut import shortcut
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
-
-from imswitch.imcommon.model.shortcut import shortcut
 
 
 class RecordingWidget(Widget):
@@ -307,10 +306,11 @@ class RecordingWidget(Widget):
 
     def updateRecLapseNum(self, lapseNum):
         self.currentLapse.setText(str(lapseNum) + ' /')
-        
+
     @shortcut('Ctrl+R', "Record")
     def toggleRecButton(self):
         self.recButton.toggle()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

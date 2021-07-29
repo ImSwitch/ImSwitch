@@ -4,7 +4,6 @@ Created on Wed Jan 13 09:40:00 2021
 @author: jonatanalvelid
 """
 
-import numpy as np
 from .LaserManager import LaserManager
 
 
@@ -20,15 +19,17 @@ class CoolLEDLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
-        self._rs232manager = lowLevelManagers['rs232sManager'][laserInfo.managerProperties['rs232device']]
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            laserInfo.managerProperties['rs232device']
+        ]
         self.__channel_index = laserInfo.managerProperties['channel_index']
-        self.__digital_mod = False 
+        self.__digital_mod = False
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        if enabled==True:
+        if enabled:
             value = "N"
         else:
             value = "F"
@@ -38,7 +39,7 @@ class CoolLEDLaserManager(LaserManager):
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
-        """  
+        """
         cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
         print(cmd)
         self._rs232manager.send(cmd)

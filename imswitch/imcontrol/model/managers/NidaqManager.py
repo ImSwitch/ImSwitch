@@ -7,8 +7,8 @@ import traceback
 import warnings
 
 import nidaqmx
-import nidaqmx.constants
 import nidaqmx._lib
+import nidaqmx.constants
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread
@@ -87,7 +87,8 @@ class NidaqManager(SignalInterface):
             count_direction=nidaqmx.constants.CountDirection.COUNT_UP
         )
         citaskchannel.ci_count_edges_term = terminal
-        # not sure if below is needed/what is standard/if I should use DMA (seems to be preferred) or INTERRUPT (as in Imspector, more load on CPU)
+        # not sure if below is needed/what is standard/if I should use DMA (seems to be preferred)
+        # or INTERRUPT (as in Imspector, more load on CPU)
         citaskchannel.ci_data_xfer_mech = nidaqmx.constants.DataTransferActiveTransferMode.DMA
 
         if acquisitionType == 'finite':
@@ -96,8 +97,8 @@ class NidaqManager(SignalInterface):
                                           rate=rate,
                                           sample_mode=acqType,
                                           samps_per_chan=sampsInScan)
-        #ci_ctr_timebase_master_timebase_div
-        #citask.channels.ci_ctr_timebase_master_timebase_div = 20
+        # ci_ctr_timebase_master_timebase_div
+        # citask.channels.ci_ctr_timebase_master_timebase_div = 20
         if starttrig:
             citask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
             citask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
@@ -107,10 +108,10 @@ class NidaqManager(SignalInterface):
     def __createChanCOTask(self, name, channel, rate, sampsInScan=1000, starttrig=False,
                            reference_trigger='ai/StartTrigger'):
         cotask = nidaqmx.Task(name)
-        cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
+        self.cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
             'Dev1/ctr%s' % channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
         )
-        #cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
+        # cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
         cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
                                           samps_per_chan=sampsInScan)
 
@@ -138,9 +139,9 @@ class NidaqManager(SignalInterface):
     def __createChanCITaskLegacy(self, name, channel, acquisitionType, source, sampsInScan=1000,
                                  reference_trigger='PFI12'):
         """ Simplified function to create a counter input task """
-        #citask = nidaqmx.CounterInputTask(name)
+        # citask = nidaqmx.CounterInputTask(name)
         citask = nidaqmx.Task(name)
-        #for channel in channels:
+        # for channel in channels:
         citask.create_channel_count_edges('Dev1/ctr' % channel, init=0)
         citask.set_terminal_count_edges('Dev1/ctr' % channel, "PFI0")
 
@@ -152,7 +153,7 @@ class NidaqManager(SignalInterface):
         return citask
 
     def __createChanAITaskLegacy(self, name, channels, acquisitionType, source, min_val=-0.5,
-                           max_val=10.0, sampsInScan=1000, reference_trigger='PFI12'):
+                                 max_val=10.0, sampsInScan=1000, reference_trigger='PFI12'):
         """ Simplified function to create an analog input task """
         aitask = nidaqmx.AnalogInputTask(name)
         for channel in channels:
@@ -164,9 +165,9 @@ class NidaqManager(SignalInterface):
         return aitask
 
     def startInputTask(self, taskName, taskType, *args):
-        if taskType=='ai':
+        if taskType == 'ai':
             task = self.__createChanAITask(taskName, *args)
-        elif taskType=='ci':
+        elif taskType == 'ci':
             task = self.__createChanCITask(taskName, *args)
         task.start()
         self.tasks[taskName] = task
@@ -200,7 +201,7 @@ class NidaqManager(SignalInterface):
                     signal = enable * np.ones(tasklen, dtype=bool)
                     try:
                         dotask.write(signal, auto_start=True)
-                    except:
+                    except Exception:
                         print(' Attempted writing analog data that is too large or too small.')
                     dotask.wait_until_done()
                     dotask.stop()
@@ -229,11 +230,14 @@ class NidaqManager(SignalInterface):
                                                      r'100kHzTimebase',
                                                      100000, min_val, max_val, tasklen, False)
 
-                    signal = voltage*np.ones(tasklen, dtype=np.float)
+                    signal = voltage * np.ones(tasklen, dtype=np.float)
                     try:
                         aotask.write(signal, auto_start=True)
-                    except:
-                        print('Attempted writing analog data that is too large or too small, or other error when writing the task.')
+                    except Exception:
+                        print(
+                            'Attempted writing analog data that is too large or too small, or other'
+                            ' error when writing the task.'
+                        )
                     aotask.wait_until_done()
                     aotask.stop()
                     aotask.close()
@@ -290,10 +294,13 @@ class NidaqManager(SignalInterface):
                 if self.__timerCounterChannel is not None:
                     self.timerTaskWaiter = WaitThread()
                     # create timer counter output task, to control the acquisition timing (1 MHz)
-                    sampsInScan = np.int(len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10)
+                    sampsInScan = np.int(
+                        len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10
+                    )
                     self.timerTask = self.__createChanCOTask(
-                        'TimerTask', channel=self.__timerCounterChannel, rate=1e6, sampsInScan=sampsInScan,
-                        starttrig=self.__startTrigger, reference_trigger='ao/StartTrigger'
+                        'TimerTask', channel=self.__timerCounterChannel, rate=1e6,
+                        sampsInScan=sampsInScan, starttrig=self.__startTrigger,
+                        reference_trigger='ao/StartTrigger'
                     )
                     self.timerTaskWaiter.connect(self.timerTask)
                     self.timerTaskWaiter.sigWaitDone.connect(
@@ -302,7 +309,6 @@ class NidaqManager(SignalInterface):
                     self.tasks['timer'] = self.timerTask
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 scanclock = r'100kHzTimebase'
-                ref_trigger = 'ao/StartTrigger'
                 clockDO = scanclock
                 if len(AOsignals) > 0:
                     sampsInScan = len(AOsignals[0])
@@ -348,12 +354,12 @@ class NidaqManager(SignalInterface):
                     self.timerTaskWaiter.start()
                 if len(DOsignals) > 0:
                     self.tasks['do'].start()
-                    #print('DO task started')
+                    # print('DO task started')
                     self.doTaskWaiter.start()
 
                 if len(AOsignals) > 0:
                     self.tasks['ao'].start()
-                    #print('AO task started')
+                    # print('AO task started')
                     self.aoTaskWaiter.start()
                 self.sigScanStarted.emit()
                 print('Nidaq scan started!')
@@ -362,7 +368,7 @@ class NidaqManager(SignalInterface):
         self.tasks[taskName].stop()
         self.tasks[taskName].close()
         del self.tasks[taskName]
-        #print(f'Task {taskName} deleted')
+        # print(f'Task {taskName} deleted')
 
     def inputTaskDone(self, taskName):
         if not self.signalSent:
@@ -413,6 +419,7 @@ class WaitThread(Thread):
 
 class NidaqManagerError(Exception):
     """ Exception raised when error occurs in NidaqManager """
+
     def __init__(self, message):
         self.message = message
 

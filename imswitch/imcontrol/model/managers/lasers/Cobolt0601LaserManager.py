@@ -38,7 +38,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
             powerQ = self._laser.power_sp * self._numLasers
             self._laser.enter_mod_mode()
             self._setModPower(powerQ)
-            print(f'Entered digital modulation mode')
+            print('Entered digital modulation mode')
             print(f'Modulation mode is: {self._laser.mod_mode}')
         else:
             self._laser.digital_mod = False

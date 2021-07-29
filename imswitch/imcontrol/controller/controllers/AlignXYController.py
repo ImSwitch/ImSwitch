@@ -58,7 +58,7 @@ class AlignXYController(LiveUpdatedController):
         """ Returns the cropped image within the ROI. """
         x0, y0, x1, y1 = roiItem.bounds
         return image[x0:x1, y0:y1]
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

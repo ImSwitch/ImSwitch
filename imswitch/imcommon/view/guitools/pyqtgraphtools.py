@@ -143,7 +143,7 @@ class PGCrosshair:
     def mouseClicked(self):
         try:
             self.vb.scene().sigMouseMoved.disconnect(self.mouseMoved)
-        except:
+        except Exception:
             pass
 
     def toggle(self):

@@ -20,7 +20,9 @@ class MHXYStageManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self._rs232Manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
+        self._rs232Manager = lowLevelManagers['rs232sManager'][
+            positionerInfo.managerProperties['rs232device']
+        ]
         print(str(self._rs232Manager.send('?readsn')))  # print serial no of stage
 
     def move(self, value, axis):

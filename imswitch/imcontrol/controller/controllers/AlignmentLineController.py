@@ -27,7 +27,7 @@ class AlignmentLineController(ImConWidgetController):
         if enabled:
             self.addLine()
         self._widget.setLineVisibility(enabled)
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

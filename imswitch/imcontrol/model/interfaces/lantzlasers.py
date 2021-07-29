@@ -80,7 +80,8 @@ def getLaser(iName, port):
             laser.initialize()
         except Exception as e2:
             if driverNotFound:
-                driverNotFound = isinstance(e2, ModuleNotFoundError) or isinstance(e2, AttributeError)
+                driverNotFound = (isinstance(e2, ModuleNotFoundError) or
+                                  isinstance(e2, AttributeError))
 
             if driverNotFound:
                 print(f'No lantz driver found matching "{iName}" for laser, loading mocker')
@@ -117,12 +118,14 @@ def getLaser(iName, port):
 
 class NoSuchDriverError(Exception):
     """ Exception raised when the specified driver is not found. """
+
     def __init__(self, message):
         self.message = message
 
 
 class DriverLoadError(Exception):
     """ Exception raised when the specified driver fails to be initialized. """
+
     def __init__(self, message):
         self.message = message
 

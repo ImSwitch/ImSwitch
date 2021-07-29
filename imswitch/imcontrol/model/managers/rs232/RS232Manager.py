@@ -43,12 +43,12 @@ class RS232Manager:
 
 def getRS232port(port, settings):
     try:
-        from imswitch.imcontrol.model.interfaces.RS232Driver import RS232Driver, generateDriverClass
+        from imswitch.imcontrol.model.interfaces.RS232Driver import generateDriverClass
         DriverClass = generateDriverClass(settings)
         rs232port = DriverClass(port)
         rs232port.initialize()
         return rs232port
-    except:
+    except Exception:
         print('Initializing mock RS232 port')
         from imswitch.imcontrol.model.interfaces.RS232Driver_mock import MockRS232Driver
         return MockRS232Driver(port, settings)

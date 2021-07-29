@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, Undefined, CatchAll
 from typing import Any, Dict, List, Optional, Union
+
+from dataclasses_json import dataclass_json, Undefined, CatchAll
 
 
 @dataclass(frozen=True)
@@ -229,7 +230,7 @@ class SetupInfo:
             devices.update(deviceInfos)
 
         return devices
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

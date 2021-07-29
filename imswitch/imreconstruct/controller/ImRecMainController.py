@@ -1,7 +1,7 @@
 from imswitch.imcommon.controller import MainController
 from .CommunicationChannel import CommunicationChannel
-from .basecontrollers import ImRecWidgetControllerFactory
 from .ImRecMainViewController import ImRecMainViewController
+from .basecontrollers import ImRecWidgetControllerFactory
 
 
 class ImRecMainController(MainController):

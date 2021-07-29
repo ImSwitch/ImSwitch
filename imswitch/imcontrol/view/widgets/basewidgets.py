@@ -1,4 +1,5 @@
 import weakref
+
 from qtpy import QtWidgets
 
 

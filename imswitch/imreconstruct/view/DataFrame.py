@@ -1,8 +1,8 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from .guitools import BetterPushButton
 from .DataEditDialog import DataEditDialog
+from .guitools import BetterPushButton
 
 
 class DataFrame(QtWidgets.QFrame):

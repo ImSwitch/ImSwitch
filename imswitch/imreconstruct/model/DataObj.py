@@ -1,7 +1,7 @@
 import os
 
-import numpy as np
 import h5py
+import numpy as np
 import tifffile as tiff
 
 
@@ -51,7 +51,7 @@ class DataObj:
                 self._file = loadFromPath(self.dataPath)
                 if self.data is not None:
                     print('Data loaded')
-            except:
+            except Exception:
                 pass
 
     def checkAndLoadDarkFrame(self):
@@ -61,7 +61,7 @@ class DataObj:
         if self._file is not None:
             try:
                 self._file.close()
-            except:
+            except Exception:
                 print('Error closing file')
 
         self._file = None
@@ -86,7 +86,7 @@ def loadFromPath(path):
             return tiff.TiffFile(path)
         else:
             raise ValueError(f'Unsupported file extension "{ext}"')
-    except:
+    except Exception:
         print('Error while loading data')
         return None
 

@@ -71,7 +71,9 @@ class BeadWorker(Worker):
         i = 0
 
         while self.__controller.running:
-            newImages = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
+            newImages = self.__controller._master.detectorsManager.execOnCurrent(
+                lambda c: c.getChunk()
+            )
             n = len(newImages)
             if n > 0:
                 roiItem = self.__controller._widget.getROIGraphicsItem()

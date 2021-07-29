@@ -1,7 +1,7 @@
+import dataclasses
 import importlib
 import os
 import pkgutil
-import dataclasses
 from dataclasses import dataclass
 from typing import List
 
@@ -54,7 +54,9 @@ def getAvailableModules():
         if not modulePkgPath.startswith('imswitch.') or modulePkgPath.count('.') != 1:
             continue
 
-        moduleId = modulePkgPath[modulePkgPath.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        # E.g. "imswitch.imcontrol" -> "imcontrol"
+        moduleId = modulePkgPath[modulePkgPath.rindex('.') + 1:]
+
         modulePkg = importlib.import_module(modulePkgPath)
 
         if (not hasattr(modulePkg, '__imswitch_module__') or

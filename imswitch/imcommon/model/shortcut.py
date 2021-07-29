@@ -1,6 +1,5 @@
-
-class shortcut(object):
-    """ Decotrator for shortcuts """
+class shortcut:
+    """ Decorator for shortcuts. """
 
     def __init__(self, key, name):
         self.key = key
@@ -21,7 +20,7 @@ def generateShortcuts(objs):
     for obj in objs:
         for subObjName in dir(obj):
             subObj = getattr(obj, subObjName)
-            
+
             if not callable(getattr(obj, subObjName)):
                 continue
 
@@ -29,9 +28,11 @@ def generateShortcuts(objs):
                 continue
 
             if subObjName in exportedFuncs:
-                raise NameError(f'Shorcut for method name "{subObjName}" is already in use')
+                raise NameError(f'Shortcut for method name "{subObjName}" is already in use')
 
-            exportedFuncs[subObjName] = {"callback": subObj, "key": subObj._Key, "name": subObj._Name}
+            exportedFuncs[subObjName] = {'callback': subObj,
+                                         'key': subObj._Key,
+                                         'name': subObj._Name}
 
     return exportedFuncs
 

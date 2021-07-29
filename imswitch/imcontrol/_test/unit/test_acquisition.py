@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from imswitch.imcontrol.model import DetectorsManager
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 

@@ -29,12 +29,11 @@ class MultiManager(ABC):
     def getAllDeviceNames(self, condition=None):
         """ Returns the names of all managed devices. """
         if condition is None:
-            condition = lambda _: True
+            def condition(_): return True
 
         return list(managedDeviceName
-                for managedDeviceName, subManager in self._subManagers.items()
-                if condition(subManager))
-
+                    for managedDeviceName, subManager in self._subManagers.items()
+                    if condition(subManager))
 
     def execOn(self, managedDeviceName, func):
         """ Executes a function on a specific sub-manager and returns the
@@ -46,7 +45,7 @@ class MultiManager(ABC):
         """ Executes a function on all sub-managers and returns the
         results. """
         if condition is None:
-            condition = lambda _: True
+            def condition(_): return True
 
         return {managedDeviceName: func(subManager)
                 for managedDeviceName, subManager in self._subManagers.items()

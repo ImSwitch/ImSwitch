@@ -1,4 +1,3 @@
-import napari
 import numpy as np
 from qtpy import QtCore, QtWidgets
 

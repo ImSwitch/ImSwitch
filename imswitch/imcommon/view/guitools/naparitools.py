@@ -82,6 +82,7 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
         for layer in self.viewer.layers.selected:
             layer.contrast_limits = minmaxLevels(layer.data)
 
+
 class NapariShiftWidget(NapariBaseWidget):
     """ Napari widget for shifting the currently selected layer by a
     user-defined number of pixels. """
@@ -375,8 +376,10 @@ class VispyROIVisual(VispyBaseVisual):
         pos_start = self.position
         pos_end = self.position + self._size
 
-        if (pos_end[0] <= mouse_pos[0] < pos_end[0] + self._world_scale * self._handle_side_length and
-            pos_end[1] <= mouse_pos[1] < pos_end[1] + self._world_scale * self._handle_side_length):
+        if (pos_end[0] <= mouse_pos[0] <
+                pos_end[0] + self._world_scale * self._handle_side_length and
+            pos_end[1] <= mouse_pos[1] <
+                pos_end[1] + self._world_scale * self._handle_side_length):
             self._drag_mode = 'scale'
         elif (pos_start[0] <= mouse_pos[0] < pos_end[0] and
               pos_start[1] <= mouse_pos[1] < pos_end[1]):
@@ -482,9 +485,10 @@ class VispyLineVisual(VispyBaseVisual):
         if not self._attached:
             return
 
+        angleRad = np.deg2rad(self._angle)
         self.node.transform.translate = [
-            self._position[0] - self._line_length / 2 * self._world_scale * (np.cos(np.deg2rad(self._angle))),
-            self._position[1] - self._line_length / 2 * self._world_scale * (np.sin(np.deg2rad(self._angle))),
+            self._position[0] - self._line_length / 2 * self._world_scale * (np.cos(angleRad)),
+            self._position[1] - self._line_length / 2 * self._world_scale * (np.sin(angleRad)),
             0, 0
         ]
 
@@ -527,7 +531,7 @@ class VispyLineVisual(VispyBaseVisual):
 
         # Determine whether the line was clicked
         mouse_pos = np.array(self._view.scene.node_transform(self._view).imap(event.pos)[0:2])
-        
+
         s = np.sin(np.deg2rad(-self.angle))
         c = np.cos(np.deg2rad(-self.angle))
 
@@ -535,7 +539,7 @@ class VispyLineVisual(VispyBaseVisual):
 
         mouse_pos_rot = mouse_pos - center
         mouse_pos_rot = np.array([mouse_pos_rot[0] * c - mouse_pos_rot[1] * s,
-                                 mouse_pos_rot[0] * s + mouse_pos_rot[1] * c])
+                                  mouse_pos_rot[0] * s + mouse_pos_rot[1] * c])
         mouse_pos_rot = mouse_pos_rot + center
 
         x_start = self.position[0] - self._line_length / 2

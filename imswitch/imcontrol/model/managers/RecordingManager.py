@@ -17,7 +17,9 @@ class RecordingManager(SignalInterface):
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
     sigRecordingTimeUpdated = Signal(int)  # (recTime)
-    sigMemoryRecordingAvailable = Signal(str, object, object, bool)  # (name, file, filePath, savedToDisk)
+    sigMemoryRecordingAvailable = Signal(
+        str, object, object, bool
+    )  # (name, file, filePath, savedToDisk)
 
     def __init__(self, detectorsManager):
         super().__init__()
@@ -27,7 +29,7 @@ class RecordingManager(SignalInterface):
         self.__thread = Thread()
         self.__recordingWorker.moveToThread(self.__thread)
         self.__thread.started.connect(self.__recordingWorker.run)
-        
+
     @property
     def record(self):
         """ Whether a recording is currently being recorded. """
@@ -44,7 +46,7 @@ class RecordingManager(SignalInterface):
         In SpecFrames mode, recFrames (the number of frames) must be specified,
         and in SpecTime mode, recTime (the recording time in seconds) must be
         specified. """
-        self.__record = True    
+        self.__record = True
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
@@ -52,7 +54,8 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
         self.__recordingWorker.saveMode = saveMode
-        self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(), condition = lambda c: c.forAcquisition)
+        self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
+                                          condition=lambda c: c.forAcquisition)
         self.__thread.start()
 
     def endRecording(self, emitSignal=True, wait=True):
@@ -65,7 +68,7 @@ class RecordingManager(SignalInterface):
             self.sigRecordingEnded.emit()
         if wait:
             self.__thread.wait()
-    
+
     def snap(self, detectorNames, savename, attrs):
         """ Saves a single frame capture with the specified detectors to a file
         with the specified name prefix and attributes to save to the capture
@@ -106,7 +109,8 @@ class RecordingWorker(Worker):
         filePaths = {}
         for detectorName in self.detectorNames:
             filePaths[detectorName] = f'{self.savename}_{detectorName}.hdf5'
-            fileHandles[detectorName] = BytesIO() if self.saveMode == SaveMode.RAM else filePaths[detectorName]
+            fileHandles[detectorName] = (BytesIO() if self.saveMode == SaveMode.RAM
+                                         else filePaths[detectorName])
             files[detectorName] = h5py.File(fileHandles[detectorName], 'w')
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
@@ -128,7 +132,7 @@ class RecordingWorker(Worker):
             datasets[detectorName].attrs['detector_name'] = detectorName
 
             # For ImageJ compatibility
-            datasets[detectorName].attrs['element_size_um']\
+            datasets[detectorName].attrs['element_size_um'] \
                 = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
             for key, value in self.attrs[detectorName].items():
@@ -145,8 +149,9 @@ class RecordingWorker(Worker):
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
 
-                while self.__recordingManager.record and any([currentFrame[detectorName] < recFrames
-                                                              for detectorName in self.detectorNames]):
+                while (self.__recordingManager.record and
+                       any([currentFrame[detectorName] < recFrames
+                            for detectorName in self.detectorNames])):
                     for detectorName in self.detectorNames:
                         if currentFrame[detectorName] >= recFrames:
                             continue  # Reached requested number of frames with this detector, skip
@@ -271,7 +276,7 @@ class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2
     DiskAndRAM = 3
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

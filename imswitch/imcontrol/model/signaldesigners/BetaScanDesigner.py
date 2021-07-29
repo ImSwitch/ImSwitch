@@ -31,7 +31,8 @@ class BetaScanDesigner(ScanDesigner):
         if not self.parameterCompatibility(parameterDict):
             print([*parameterDict])
             print(self._expectedParameters)
-            print('Stage scan parameters seem incompatible, this error should not be since this should be checked at program start-up')
+            print('Stage scan parameters seem incompatible,'
+                  ' this error should not be since this should be checked at program start-up')
             return None
 
         if len(parameterDict['target_device']) != 3:
@@ -116,7 +117,8 @@ class BetaScanDesigner(ScanDesigner):
                     parameterDict['target_device'][1]: middleAxisSignal,
                     parameterDict['target_device'][2]: slowAxisSignal}
 
-        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image acquisition managers
+        # scanInfoDict, for parameters that are important to relay to TTLCycleDesigner and/or image
+        # acquisition managers
         scanInfoDict = {
             'positions': [fast_axis_positions, middle_axis_positions, slow_axis_positions],
             'return_time': parameterDict['return_time']

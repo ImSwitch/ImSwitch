@@ -125,7 +125,7 @@ class FFTWidget(Widget):
         self.dhline.setValue((0.5 - pos) * imgHeight)
         self.uhline.setAngle(0)
         self.uhline.setValue((0.5 + pos) * imgHeight)
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -150,16 +150,18 @@ class HamamatsuManager(DetectorManager):
         """
         try:
             function()
-        except:
+        except Exception:
             self.stopAcquisition()
             function()
             self.startAcquisition()
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
-        self.setParameter('Internal frame interval', self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Internal frame interval',
+                          self._camera.getPropertyValue('internal_frame_interval')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
-        self.setParameter('Internal frame rate', self._camera.getPropertyValue('internal_frame_rate')[0])
+        self.setParameter('Internal frame rate',
+                          self._camera.getPropertyValue('internal_frame_rate')[0])
 
         triggerSource = self._camera.getPropertyValue('trigger_source')
         if triggerSource == 1:
@@ -179,7 +181,7 @@ def getCameraObj(cameraId):
         camera = HamamatsuCameraMR(cameraId)
         print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
         return camera
-    except:
+    except Exception:
         print('Initializing Mock Hamamatsu')
         from imswitch.imcontrol.model.interfaces import MockHamamatsu
         return MockHamamatsu()
@@ -200,4 +202,3 @@ def getCameraObj(cameraId):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

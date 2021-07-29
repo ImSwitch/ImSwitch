@@ -29,13 +29,14 @@ class PhotometricsManager(DetectorManager):
                                                          valueUnits='ms', editable=True),
             'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
                                                           valueUnits='ms', editable=False),
-            'Readout time' : DetectorNumberParameter(group='Timings', value=0,
-                                                     valueUnits='ms', editable=False),
+            'Readout time': DetectorNumberParameter(group='Timings', value=0,
+                                                    valueUnits='ms', editable=False),
             'Trigger source': DetectorListParameter(group='Acquisition mode',
                                                     value='Internal trigger',
                                                     options=['Internal trigger',
                                                              'External "start-trigger"',
-                                                             'External "frame-trigger"'], editable=True),
+                                                             'External "frame-trigger"'],
+                                                    editable=True),
             'Readout port': DetectorListParameter(group='ports',
                                                   value='Sensitivity',
                                                   options=['Sensitivity',
@@ -82,7 +83,7 @@ class PhotometricsManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
-        roi = (hpos, hpos+hsize, vpos, vpos+vsize)
+        roi = (hpos, hpos + hsize, vpos, vpos + vsize)
 
         def cropAction():
             self._camera.roi = roi
@@ -92,7 +93,7 @@ class PhotometricsManager(DetectorManager):
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
         self._shape = (hsize, vsize)
-        self.setParameter('Readout time', self.__scanLineTime*vsize/1e6)
+        self.setParameter('Readout time', self.__scanLineTime * vsize / 1e6)
 
     def setBinning(self, binning):
         super().setBinning(binning)
@@ -169,8 +170,8 @@ class PhotometricsManager(DetectorManager):
         else:
             raise ValueError(f'Invalid readout port "{port}"')
         self._performSafeCameraAction(getScanTimeAction)
-        self.setParameter('Readout time', self.__scanLineTime*self._shape[0]/1e6)
-    
+        self.setParameter('Readout time', self.__scanLineTime * self._shape[0] / 1e6)
+
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
@@ -191,7 +192,7 @@ class PhotometricsManager(DetectorManager):
             self.setParameter('Trigger source', 'External "start-trigger"')
         elif triggerSource == 2048:
             self.setParameter('Trigger source', 'External "frame-trigger"')
-        
+
         readoutPort = self._camera.readout_port
         if readoutPort == 0:
             self.setParameter('Readout port', 'Sensitivity')
@@ -215,7 +216,7 @@ def getCameraObj(cameraId):
         camera.open()
         print('Initialized Photometrics Camera Object, model: ', camera.name)
         return camera
-    except:
+    except Exception:
         print('Initializing Mock Hamamatsu')
         from imswitch.imcontrol.model.interfaces import MockHamamatsu
         return MockHamamatsu()

@@ -1,8 +1,8 @@
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
-from ..basecontrollers import LiveUpdatedController
 from imswitch.imcontrol.view import guitools
+from ..basecontrollers import LiveUpdatedController
 
 
 class FFTController(LiveUpdatedController):

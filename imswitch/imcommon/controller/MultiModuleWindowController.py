@@ -1,18 +1,22 @@
 import webbrowser
 
-from imswitch.imcommon.view import guitools
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
-from .basecontrollers import WidgetController
+from imswitch.imcommon.view import guitools
 from .CheckUpdatesController import CheckUpdatesController
 from .PickModulesController import PickModulesController
+from .basecontrollers import WidgetController
 
 
 class MultiModuleWindowController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.pickModulesController = self._factory.createController(PickModulesController, self._widget.pickModulesDialog)
-        self.checkUpdatesController = self._factory.createController(CheckUpdatesController, self._widget.checkUpdatesDialog)
+        self.pickModulesController = self._factory.createController(
+            PickModulesController, self._widget.pickModulesDialog
+        )
+        self.checkUpdatesController = self._factory.createController(
+            CheckUpdatesController, self._widget.checkUpdatesDialog
+        )
 
         self._moduleIdNameMap = {}
 

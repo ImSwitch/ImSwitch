@@ -1,13 +1,12 @@
 import inspect
 import os
 
+from imswitch import imcontrol, imreconstruct
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcontrol.model import Options
 from imswitch.imcontrol.view import ViewSetupInfo
 from imswitch.imscripting.model.actions import _Actions
-
-from imswitch import imcontrol, imreconstruct
 
 
 def writeDocs(cls, isClass=True, displayName=None):
@@ -28,15 +27,15 @@ def writeDocs(cls, isClass=True, displayName=None):
     rst += f'{"*" * len(title)}\n'
     rst += f'{title}\n'
     rst += f'{"*" * len(title)}\n'
-    rst += f'\n'
+    rst += '\n'
 
     # Class
     if isClass:
         rst += f'.. class:: {displayName}\n'
         indent += 3
-        rst += f'\n'
+        rst += '\n'
         rst += f'{fixIndent(cls.__doc__, indent)}\n'
-        rst += f'\n'
+        rst += '\n'
 
     # Attributes
     for attrName in dir(cls):
@@ -48,9 +47,9 @@ def writeDocs(cls, isClass=True, displayName=None):
             # Method
             rst += f'{" " * indent}.. method:: {attr.__name__}{inspect.signature(attr)}\n'
             indent += 3
-            rst += f'\n'
+            rst += '\n'
             rst += f'{fixIndent(attr.__doc__, indent)}\n'
-            rst += f'\n'
+            rst += '\n'
             indent -= 3
 
     # End class
@@ -120,10 +119,12 @@ for modulePackage in modules:
 
 dummyApp.exit(0)
 
+
 # Generate docs for actions
 class _actions:
     """ These functions are available at the global level. """
     pass
+
 
 for subObjName in dir(_Actions):
     subObj = getattr(_Actions, subObjName)
@@ -132,10 +133,12 @@ for subObjName in dir(_Actions):
 
 writeDocs(_actions, isClass=False, displayName='Global-level functions')
 
+
 # Generate docs for mainWindow
 class mainWindow:
     """ These functions are available in the mainWindow object. """
     pass
+
 
 for subObjName in dir(MultiModuleWindowController):
     subObj = getattr(MultiModuleWindowController, subObjName)

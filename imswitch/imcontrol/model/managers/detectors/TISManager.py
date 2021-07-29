@@ -1,6 +1,6 @@
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
-
 import numpy as np
+
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 
 class TISManager(DetectorManager):
@@ -32,9 +32,12 @@ class TISManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms', editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+                                                editable=True),
+            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                            editable=True),
+            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                                  editable=True),
         }
 
         # Prepare actions
@@ -77,9 +80,9 @@ class TISManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning)
-    
+
     def getChunk(self):
-        return self._camera.grabFrame()[np.newaxis,:,:]
+        return self._camera.grabFrame()[np.newaxis, :, :]
 
     def flushBuffers(self):
         pass
@@ -95,7 +98,7 @@ class TISManager(DetectorManager):
             self._running = False
             self._camera.suspend_live()
             print('suspendlive')
-    
+
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
@@ -107,11 +110,11 @@ class TISManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
-            #print(f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.')
+            # print(f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.')
             self._camera.setROI(hpos, vpos, hsize, vsize)
-        
+
         self._performSafeCameraAction(cropAction)
-        #TODO: unsure if frameStart is needed? Try without.
+        # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
@@ -140,7 +143,7 @@ def getTISObj(cameraId):
         camera = CameraTIS(cameraId)
         print('Initialized TIS Camera Object, model: ', camera.model)
         return camera
-    except:
+    except Exception:
         print('Initializing Mock TIS')
         from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
         return MockCameraTIS()

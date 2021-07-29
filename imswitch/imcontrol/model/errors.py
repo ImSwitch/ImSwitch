@@ -6,7 +6,7 @@ class InvalidChildClassError(Exception):
 
 
 class IncompatibilityError(Exception):
-    """Exception raised when initialized object is not compatibile with 
+    """Exception raised when initialized object is not compatibile with
     other module/s"""
 
     def __init__(self, message):

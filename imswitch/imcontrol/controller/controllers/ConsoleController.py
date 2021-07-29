@@ -4,7 +4,7 @@ from ..basecontrollers import ImConWidgetController
 class ConsoleController(ImConWidgetController):
     """ Linked to ConsoleWidget."""
     pass
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -63,10 +63,10 @@ class ViewSetupInfo(SetupInfo):
     - ``uLenses`` (uLenses tool widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
-    
+
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.
-    
+
     This field is required.
     """
 

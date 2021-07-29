@@ -1,5 +1,3 @@
-import textwrap
-
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -70,7 +68,7 @@ class PositionerWidget(Widget):
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

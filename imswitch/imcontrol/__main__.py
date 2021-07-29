@@ -1,6 +1,6 @@
+from imswitch import imcontrol
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch import imcontrol
 
 
 def main():

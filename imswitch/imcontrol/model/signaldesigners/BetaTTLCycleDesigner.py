@@ -32,7 +32,7 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
         sampleRate = setupInfo.scan.sampleRate
         targets = parameterDict['target_device']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
-        #print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
+        # print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
             print('WARNING: Non-integer number of sequence samples, rounding up')
         cycleSamples = np.int(np.ceil(cycleSamples))

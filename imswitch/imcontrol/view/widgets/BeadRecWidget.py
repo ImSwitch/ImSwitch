@@ -58,7 +58,7 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

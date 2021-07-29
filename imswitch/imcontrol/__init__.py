@@ -8,7 +8,6 @@ def getMainViewAndController(moduleCommChannel, *_args,
     from .model import configfiletools
     from .view import ViewSetupInfo, ImConMainView
 
-
     def pickSetup(options):
         import dataclasses
         import sys
@@ -24,7 +23,6 @@ def getMainViewAndController(moduleCommChannel, *_args,
             print('User did not pick a setup to use')
             sys.exit()
         return dataclasses.replace(options, setupFileName=setupFileName)
-
 
     if overrideOptions is None:
         options, optionsDidNotExist = configfiletools.loadOptions()

@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 import numpy as np
 
@@ -113,7 +113,9 @@ class SLMController(ImConWidgetController):
         else:
             raise ValueError(f'Unsupported objective "{obj}"')
 
-        slm_info_dict = self.getInfoDict(self._widget.slmParameterTree.p, self._widget.aberParameterTree.p, self._master.slmManager.getCenters())
+        slm_info_dict = self.getInfoDict(self._widget.slmParameterTree.p,
+                                         self._widget.aberParameterTree.p,
+                                         self._master.slmManager.getCenters())
         with open(os.path.join(self.slmDir, filename), 'w') as f:
             json.dump(slm_info_dict, f, indent=4)
         print(f'Saved SLM parameters for {obj} objective.')
@@ -123,33 +125,38 @@ class SLMController(ImConWidgetController):
         state_pos = None
         state_aber = None
 
-        if generalParams != None:
+        if generalParams is not None:
             # create dict for general params
             generalparamnames = ["radius", "sigma", "rotationAngle"]
-            state_general = {generalparamname: float(generalParams.param("general").param(generalparamname).value()) for generalparamname in generalparamnames}
+            state_general = {generalparamname: float(
+                generalParams.param("general").param(generalparamname).value()) for generalparamname
+                             in generalparamnames}
 
-        if aberParams != None:
+        if aberParams is not None:
             # create dict for aberration params
             masknames = ["left", "right"]
-            aberparamnames = ["tilt", "tip", "defocus", "spherical", "verticalComa", "horizontalComa", "verticalAstigmatism", "obliqueAstigmatism"]
+            aberparamnames = ["tilt", "tip", "defocus", "spherical", "verticalComa",
+                              "horizontalComa", "verticalAstigmatism", "obliqueAstigmatism"]
             state_aber = dict.fromkeys(masknames)
             for maskname in masknames:
-                state_aber[maskname] = {aberparamname: float(aberParams.param(maskname).param(aberparamname).value()) for aberparamname in aberparamnames}
+                state_aber[maskname] = {
+                    aberparamname: float(aberParams.param(maskname).param(aberparamname).value())
+                    for aberparamname in aberparamnames}
 
-        if centers != None:
+        if centers is not None:
             # create dict for position params
             state_pos = dict.fromkeys(masknames)
             for maskname in masknames:
                 state_pos[maskname] = {
-                                    "xcenter": int(centers[maskname][0]),
-                                    "ycenter": int(centers[maskname][1])
-                                    }
+                    "xcenter": int(centers[maskname][0]),
+                    "ycenter": int(centers[maskname][1])
+                }
 
         info_dict = {
-                    "general": state_general,
-                    "position": state_pos,
-                    "aber": state_aber
-                    }
+            "general": state_general,
+            "position": state_pos,
+            "aber": state_aber
+        }
         return info_dict
 
     def loadParams(self):
@@ -185,26 +192,34 @@ class SLMController(ImConWidgetController):
 
         generalparamnames = ["radius", "sigma", "rotationAngle"]
         for generalparamname in generalparamnames:
-             generalParams.param("general").param(generalparamname).setValue(float(state_general[generalparamname]))
+            generalParams.param("general").param(generalparamname).setValue(
+                float(state_general[generalparamname])
+            )
 
         masknames = ["left", "right"]
-        aberparamnames = ["tilt", "tip", "defocus", "spherical", "verticalComa", "horizontalComa", "verticalAstigmatism", "obliqueAstigmatism"]
+        aberparamnames = ["tilt", "tip", "defocus", "spherical", "verticalComa", "horizontalComa",
+                          "verticalAstigmatism", "obliqueAstigmatism"]
         for maskname in masknames:
             for aberparamname in aberparamnames:
-                aberParams.param(maskname).param(aberparamname).setValue(float(state_aber[maskname][aberparamname]))
+                aberParams.param(maskname).param(aberparamname).setValue(
+                    float(state_aber[maskname][aberparamname])
+                )
 
     def setMask(self, maskMode):
-        mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
+        # 0 = donut (left), 1 = tophat (right)
+        mask = self._widget.controlPanel.maskComboBox.currentIndex()
         self._master.slmManager.setMask(mask, maskMode)
         image = self._master.slmManager.update(maskChange=True)
         self.updateDisplayImage(image)
         # print("Updated image on SLM")
 
     def applyParams(self):
-        slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p, aberParams=self._widget.aberParameterTree.p)
+        slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
+                                         aberParams=self._widget.aberParameterTree.p)
         self.applyGeneral(slm_info_dict["general"])
         self.applyAberrations(slm_info_dict["aber"])
-        self._master.slmManager.saveState(state_general=slm_info_dict["general"], state_aber=slm_info_dict["aber"])
+        self._master.slmManager.saveState(state_general=slm_info_dict["general"],
+                                          state_aber=slm_info_dict["aber"])
 
     def applyGeneral(self, info_dict):
         self._master.slmManager.setGeneral(info_dict)

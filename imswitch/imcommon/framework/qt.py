@@ -1,5 +1,7 @@
 from abc import ABCMeta
+
 from qtpy import QtCore
+
 import imswitch.imcommon.framework.base as base
 
 

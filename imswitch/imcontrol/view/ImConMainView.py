@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 
-from qtpy import QtCore, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
+from qtpy import QtCore, QtWidgets
 
-from .PickSetupDialog import PickSetupDialog
 from . import widgets
+from .PickSetupDialog import PickSetupDialog
 
 
 class ImConMainView(QtWidgets.QMainWindow):
@@ -78,6 +78,7 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         prevRightDock = None
         prevRightDockYPosition = -1
+
         def addRightDock(widgetKey, dockInfo):
             nonlocal prevRightDock, prevRightDockYPosition
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
@@ -106,6 +107,7 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         prevLeftDock = None
         prevLeftDockYPosition = -1
+
         def addLeftDock(widgetKey, dockInfo):
             nonlocal prevLeftDock, prevLeftDockYPosition
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
@@ -156,7 +158,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             action.setShortcut(s["key"])
             action.triggered.connect(s["callback"])
             self.shortcuts.addAction(action)
-            
+
+
 @dataclass
 class _DockInfo:
     name: str

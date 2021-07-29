@@ -17,12 +17,12 @@ class MockMHXYStage(Driver):
     @Feat()
     def absX(self):
         """ Read absolute X position, in um. """
-        print(f"Mock MHXY: Absolute position, X.")
+        print("Mock MHXY: Absolute position, X.")
 
     @Feat()
     def absY(self):
         """ Read absolute Y position, in um. """
-        print(f"Mock MHXY: Absolute position, Y.")
+        print("Mock MHXY: Absolute position, Y.")
 
     @Action()
     def move_relX(self, value):
@@ -49,7 +49,7 @@ class MockMHXYStage(Driver):
     @Feat()
     def circLimit(self):
         """ Circular limits, in terms of X,Y center and radius. """
-        print(f"Mock MHXY: Ask circular limits.")
+        print("Mock MHXY: Ask circular limits.")
 
     @circLimit.setter
     def circLimit(self, xpos, ypos, radius):
@@ -59,7 +59,7 @@ class MockMHXYStage(Driver):
     @Action()
     def function_press(self):
         """ Check function button presses. """
-        print(f"Mock MHXY: Check button presses.")
+        print("Mock MHXY: Check button presses.")
 
     def close(self):
         self.finalize()

@@ -35,7 +35,7 @@ def main():
 
     for i, modulePkg in enumerate(modulePkgs):
         moduleId = modulePkg.__name__
-        moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        moduleId = moduleId[moduleId.rindex('.') + 1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
 
         # The displayed module name will be the module's __title__, or alternatively its ID if
         # __title__ is not set

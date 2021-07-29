@@ -33,29 +33,34 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         else:
             signal_dict = {}
 
-            sample_rate = setupInfo.scan.sampleRate
+            # sample_rate = setupInfo.scan.sampleRate
             targets = parameterDict['target_device']
-            samples_pixel = parameterDict['sequence_time'] * sample_rate
-            pixels_line = scanInfoDict['pixels_line']
+            # samples_pixel = parameterDict['sequence_time'] * sample_rate
+            # pixels_line = scanInfoDict['pixels_line']
             samples_line = scanInfoDict['scan_samples_line']
             samples_total = scanInfoDict['scan_samples_total']
 
-            onepad_extraon = 2  # extra ON to make sure the laser is on at the start and end of the line (due to rise/fall time) (if it is ON there initially)
+            # extra ON to make sure the laser is on at the start and end of the line (due to
+            # rise/fall time) (if it is ON there initially)
+            onepad_extraon = 2
             zeropad_syncdelay = 0  # extra delay to sync with actual galvo positions
-            zeropad_lineflyback = scanInfoDict['scan_samples_period'] - scanInfoDict['scan_samples_line'] - onepad_extraon
+            zeropad_lineflyback = (scanInfoDict['scan_samples_period'] -
+                                   scanInfoDict['scan_samples_line'] -
+                                   onepad_extraon)
             zeropad_initpos = scanInfoDict['scan_throw_initpos']
             zeropad_settling = scanInfoDict['scan_throw_settling']
             zeropad_start = scanInfoDict['scan_throw_startzero']
             zeropad_startacc = scanInfoDict['scan_throw_startacc']
-            zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
+            # zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
             # Tile and pad TTL signals according to fast axis scan parameters
             for i, target in enumerate(targets):
                 signal_line = np.zeros(samples_line, dtype='bool')
-                for j, (start, end) in enumerate(zip(parameterDict['TTL_start'][i], parameterDict['TTL_end'][i])):
-                    start = start*1e3
-                    end = end*1e3
-                    start_on = min(np.int(np.round(start * samples_line)), samples_line)
-                    end_on =  min(np.int(np.round(end * samples_line)), samples_line)
+                for j, (start, end) in enumerate(zip(parameterDict['TTL_start'][i],
+                                                     parameterDict['TTL_end'][i])):
+                    start = start * 1e3
+                    end = end * 1e3
+                    start_on = min(int(np.round(start * samples_line)), samples_line)
+                    end_on = min(int(np.round(end * samples_line)), samples_line)
                     signal_line[start_on:end_on] = True
 
                 if signal_line[0]:
@@ -63,17 +68,24 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 else:
                     signal_line = np.append(np.zeros(onepad_extraon, dtype='bool'), signal_line)
                 signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))
-                #TODO: # only do 2D-scan for now, fix for 3D-scan
-                signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)  # all lines except last
-                signal = np.append(signal, signal_line)  # add last line (does without flyback)
+                # TODO: # only do 2D-scan for now, fix for 3D-scan
 
-                signal = np.append(np.zeros(zeropad_syncdelay, dtype='bool'), signal)  # pad a delay for synchronizing scan position with TTL
-                signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)  # pad first line acceleration
-                signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)  # pad start settling
+                # all lines except last
+                signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)
+                # add last line (does without flyback)
+                signal = np.append(signal, signal_line)
+
+                # pad a delay for synchronizing scan position with TTL
+                signal = np.append(np.zeros(zeropad_syncdelay, dtype='bool'), signal)
+                # pad first line acceleration
+                signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)
+                # pad start settling
+                signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)
                 signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)  # pad initpos
                 signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zeros
                 zeropad_end = samples_total - len(signal)
-                signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))  # pad end zeros to same length as analog scanning
+                # pad end zeros to same length as analog scanning
+                signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))
 
                 signal_dict[target] = signal
 
@@ -87,20 +99,21 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
     def __pixel_stationary(self, parameterDict, sample_rate):
         targets = parameterDict['target_device']
         samples_cycle = parameterDict['sequence_time'] * sample_rate
-        #if not samples_cycle.is_integer():
-            #print('WARNING: Non-integer number of sequence samples, rounding up')
-        samples_cycle = np.int(np.ceil(samples_cycle))
-        #print(samples_cycle)
+        # if not samples_cycle.is_integer():
+        #     print('WARNING: Non-integer number of sequence samples, rounding up')
+        samples_cycle = int(np.ceil(samples_cycle))
+        # print(samples_cycle)
         signalDict = {}
         tmpSigArr = np.zeros(samples_cycle, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
             for j, start in enumerate(parameterDict['TTL_start'][i]):
-                startSamp = np.int(np.round(start * sample_rate))
-                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sample_rate))
+                startSamp = int(np.round(start * sample_rate))
+                endSamp = int(np.round(parameterDict['TTL_end'][i][j] * sample_rate))
                 tmpSigArr[startSamp:endSamp] = True
             signalDict[target] = np.copy(tmpSigArr)
-        #TODO: add zero-padding and looping of this signal here, as was previously done in ScanManager?
+        # TODO: add zero-padding and looping of this signal here, as was previously done in
+        #       ScanManager?
         return signalDict
 
 

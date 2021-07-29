@@ -1,9 +1,6 @@
-import pytest
-
+from imswitch import imcontrol
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel
-from imswitch import imcontrol
-
 
 app = None
 

@@ -69,9 +69,8 @@ class FileDirs(ABC):
     @classmethod
     def list(cls):
         """ Returns all directories in the catalog. """
-        return [cls.__dict__.get(name) for name in dir(cls) if (
-            not callable(getattr(cls, name)) and not name.startswith('_')
-        )]
+        return [cls.__dict__.get(name) for name in dir(cls)
+                if not callable(getattr(cls, name)) and not name.startswith('_')]
 
 
 class DataFileDirs(FileDirs):

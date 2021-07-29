@@ -19,7 +19,7 @@ class BeadRecWidget(Widget):
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
         self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
+        self.img.setTransform(self.img.transform().translate(-0.5, -0.5))
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
@@ -58,7 +58,7 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

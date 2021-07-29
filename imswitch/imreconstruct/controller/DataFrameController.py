@@ -1,7 +1,7 @@
 import numpy as np
 
-from .basecontrollers import ImRecWidgetController
 from .DataEditController import DataEditController
+from .basecontrollers import ImRecWidgetController
 
 
 class DataFrameController(ImRecWidgetController):

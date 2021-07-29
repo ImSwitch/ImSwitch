@@ -3,8 +3,8 @@ from dotmap import DotMap
 from imswitch.imcommon.controller import MainController
 from imswitch.imcommon.model import generateAPI
 from .CommunicationChannel import CommunicationChannel
-from .basecontrollers import ImScrWidgetControllerFactory
 from .ImScrMainViewController import ImScrMainViewController
+from .basecontrollers import ImScrWidgetControllerFactory
 from ..model import getActionsScope
 
 

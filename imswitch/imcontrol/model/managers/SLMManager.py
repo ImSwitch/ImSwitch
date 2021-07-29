@@ -1,11 +1,10 @@
-import os
-import glob
 import enum
+import glob
 import math
+import os
 
-from PIL import Image
 import numpy as np
-
+from PIL import Image
 from scipy import signal as sg
 
 from imswitch.imcommon.framework import Signal, SignalInterface
@@ -24,8 +23,8 @@ class SLMManager(SignalInterface):
         self.__angleMount = self.__slmInfo.angleMount
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)
         self.__correctionPatternsDir = self.__slmInfo.correctionPatternsDir
-        self.__maskLeft = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
-        self.__maskRight = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
+        self.__maskLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2), self.__wavelength)
+        self.__maskRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2), self.__wavelength)
         self.__masks = [self.__maskLeft, self.__maskRight]
 
         self.initCorrectionMask()
@@ -38,11 +37,11 @@ class SLMManager(SignalInterface):
         self.update(maskChange=True, tiltChange=True, aberChange=True)
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
-        if state_general != None:
+        if state_general is not None:
             self.state_general = state_general
-        if state_pos != None:
+        if state_pos is not None:
             self.state_pos = state_pos
-        if state_aber != None:
+        if state_aber is not None:
             self.state_aber = state_aber
 
     def initCorrectionMask(self):
@@ -57,21 +56,27 @@ class SLMManager(SignalInterface):
 
         wavelengthCorrection = [int(x[-9: -6]) for x in bmpsCorrection]
         # Find the closest correction pattern within the list of patterns available
-        wavelengthCorrectionLoad = min(wavelengthCorrection, key=lambda x: abs(x - self.__wavelength))
-        self.__maskCorrection.loadBMP("CAL_LSH0701153_" + str(wavelengthCorrectionLoad) + "nm", self.__correctionPatternsDir)
+        wavelengthCorrectionLoad = min(wavelengthCorrection,
+                                       key=lambda x: abs(x - self.__wavelength))
+        self.__maskCorrection.loadBMP("CAL_LSH0701153_" + str(wavelengthCorrectionLoad) + "nm",
+                                      self.__correctionPatternsDir)
 
     def initTiltMask(self):
         # Add blazed grating tilting mask
-        self.__maskTiltLeft = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
+        self.__maskTiltLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
+                                   self.__wavelength)
         self.__maskTiltLeft.setTilt(self.__angleMount, self.__pixelsize)
-        self.__maskTiltRight = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
+        self.__maskTiltRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
+                                    self.__wavelength)
         self.__maskTiltRight.setTilt(-self.__angleMount, self.__pixelsize)
 
     def initAberrationMask(self):
         # Add blazed grating tilting mask
-        self.__maskAberLeft = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
+        self.__maskAberLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
+                                   self.__wavelength)
         self.__maskAberLeft.setBlack()
-        self.__maskAberRight = Mask(self.__slmSize[1], int(self.__slmSize[0]/2), self.__wavelength)
+        self.__maskAberRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
+                                    self.__wavelength)
         self.__maskAberRight.setBlack()
 
     def setMask(self, mask, maskMode):
@@ -97,13 +102,13 @@ class SLMManager(SignalInterface):
 
     def moveMask(self, mask, direction, amount):
         if direction == direction.Up:
-            move_v = np.array([-1,0])*amount
+            move_v = np.array([-1, 0]) * amount
         elif direction == direction.Down:
-            move_v = np.array([1,0])*amount
+            move_v = np.array([1, 0]) * amount
         elif direction == direction.Left:
-            move_v = np.array([0,-1])*amount
+            move_v = np.array([0, -1]) * amount
         elif direction == direction.Right:
-            move_v = np.array([0,1])*amount
+            move_v = np.array([0, 1]) * amount
 
         self.__masks[mask].moveCenter(move_v)
         self.__masksTilt[mask].moveCenter(move_v)
@@ -113,9 +118,10 @@ class SLMManager(SignalInterface):
         centerCoords = {"left": self.__masks[0].getCenter(),
                         "right": self.__masks[1].getCenter()}
         return centerCoords
-    
+
     def setCenters(self, centerCoords):
-        for idx, (mask, masktilt, maskaber) in enumerate(zip(self.__masks, self.__masksTilt, self.__masksAber)):
+        for idx, (mask, masktilt, maskaber) in enumerate(zip(self.__masks, self.__masksTilt,
+                                                             self.__masksAber)):
             if idx == 0:
                 center = (centerCoords["left"]["xcenter"], centerCoords["left"]["ycenter"])
             elif idx == 1:
@@ -134,7 +140,7 @@ class SLMManager(SignalInterface):
         tAberFactors = aber_info["right"]
         self.__masksAber[0].setAberrations(dAberFactors)
         self.__masksAber[1].setAberrations(tAberFactors)
-        #print(f'Set aberrations on both phase mask.')
+        # print(f'Set aberrations on both phase mask.')
 
     def setRadius(self, radius):
         for mask, masktilt, maskaber in zip(self.__masks, self.__masksTilt, self.__masksAber):
@@ -166,6 +172,7 @@ class SLMManager(SignalInterface):
 
 class Mask(object):
     """Class creating a mask to be displayed by the SLM."""
+
     def __init__(self, height: int, width: int, wavelength: int):
         """initiates the mask as an empty array
         n,m corresponds to the width,height of the created image
@@ -187,7 +194,8 @@ class Mask(object):
         elif wavelength == 491:
             self.value_max = 129
         elif wavelength < 780 and wavelength > 800:
-            # Here we infer the value of the maximum with a linear approximation from the ones provided by the manufacturer
+            # Here we infer the value of the maximum with a linear approximation from the ones
+            # provided by the manufacturer
             # Better ask them in case you need another wavelength
             self.value_max = int(wavelength * 0.45 - 105)
             print("Caution: a linear approximation has been made")
@@ -196,7 +204,7 @@ class Mask(object):
         for mask in [self, maskOther]:
             mask.updateImage()
             mask.setCircular()
-        maskCombined = Mask(self.height, self.width*2, self.wavelength)
+        maskCombined = Mask(self.height, self.width * 2, self.wavelength)
         imgCombined = np.concatenate((self.img, maskOther.img), axis=1)
         maskCombined.loadArray(imgCombined)
         return maskCombined
@@ -237,11 +245,12 @@ class Mask(object):
         self.img = self.img.astype("uint8")
 
     def pi2uint8(self):
-        """Method converting a phase image (values from 0 to 2Pi) into a uint8 image"""
-        #print(np.max(np.max(self.img)))
+        """Method converting a phase image (values from 0 to 2Pi) into a uint8
+        image"""
+        # print(np.max(np.max(self.img)))
         self.img *= self.value_max / (2 * math.pi)
         self.img = np.round(self.img).astype(np.uint8)
-        #print(np.max(np.max(self.img)))
+        # print(np.max(np.max(self.img)))
 
     def load(self, img):
         """Initiates the mask with an existing image."""
@@ -256,11 +265,12 @@ class Mask(object):
         return
 
     def setCircular(self):
-        """This method sets to 0 all the values within Mask except the ones included
-        in a circle centered in (x,y) with a radius r"""
-        #self.centerx = np.max(x, self.height // 2)
-        #self.centery = np.max(y, self.width // 2)
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        """This method sets to 0 all the values within Mask except the ones
+        included in a circle centered in (x,y) with a radius r"""
+        # self.centerx = np.max(x, self.height // 2)
+        # self.centery = np.max(y, self.width // 2)
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         mask_bin = x * x + y * y <= self.radius * self.radius
         result = np.zeros((self.height, self.width))
         result[mask_bin] = self.img[mask_bin]
@@ -268,23 +278,25 @@ class Mask(object):
 
     def setTilt(self, angle=None, pixelsize=None):
         """Creates a tilt mask, blazed grating, for off-axis holography."""
-        #TODO: double check calculations
+        # TODO: double check calculations
         # Necessary inversion because going through 4f-system (for right mask)
-        #angle = -1 * angle  # angle in degrees
+        # angle = -1 * angle  # angle in degrees
         if angle:
             self.angle_tilt = angle
-            self.angle_tilt *= math.pi / 180  # conversion to radians, JA comment: but it is already in radians no?
+
+            # conversion to radians, JA comment: but it is already in radians no?
+            self.angle_tilt *= math.pi / 180
         if pixelsize:
             self.pixelSize = pixelsize
-        wavelength = self.wavelength * 10**-6  # conversion to mm
+        wavelength = self.wavelength * 10 ** -6  # conversion to mm
         mask = np.indices((self.height, self.width), dtype="float")[1, :, :]
-        #d_spat = wavelength / np.sin(angle)
-        #f_spat = 1 / d_spat
-        #f_spat_px = round(f_spat / self.pixelSize)
-        #np.round(wavelength / (self.pixelSize * np.sin(angle)))
+        # d_spat = wavelength / np.sin(angle)
+        # f_spat = 1 / d_spat
+        # f_spat_px = round(f_spat / self.pixelSize)
+        # np.round(wavelength / (self.pixelSize * np.sin(angle)))
         # Round spatial frequency to avoid aliasing
         f_spat = np.round(wavelength / (self.pixelSize * np.sin(self.angle_tilt)))
-        #f_spat = 10
+        # f_spat = 10
         if np.absolute(f_spat) < 3:
             print("spatial frequency:", f_spat, "pixels")
         period = 2 * math.pi / f_spat  # period
@@ -306,7 +318,7 @@ class Mask(object):
         fHozComa = self.aber_params_info["horizontalComa"]
         fVertAst = self.aber_params_info["verticalAstigmatism"]
         fOblAst = self.aber_params_info["obliqueAstigmatism"]
-        
+
         mask = np.fromfunction(lambda i, j: fTilt * 2 * np.sqrt(((i - self.centerx) / self.radius)**2 + ((j - self.centery) / self.radius)**2) * np.sin(np.arctan2(((j - self.centery) / self.radius), ((i - self.centerx) / self.radius))), (self.height, self.width), dtype="float")
         mask += np.fromfunction(lambda i, j: fTip * 2 * np.sqrt(((i - self.centerx) / self.radius)**2 + ((j - self.centery) / self.radius)**2) * np.cos(np.arctan2(((j - self.centery) / self.radius), ((i - self.centerx) / self.radius))), (self.height, self.width), dtype="float")
         mask += np.fromfunction(lambda i, j: fDefoc * np.sqrt(3) * (2 * (((i - self.centerx) / self.radius)**2 + ((j - self.centery) / self.radius)**2) - 1), (self.height, self.width), dtype="float")
@@ -349,9 +361,11 @@ class Mask(object):
         self.mask_type = MaskMode.Gauss
 
     def setDonut(self, rotation=True):
-        """This function generates a donut mask, with the center defined in the mask object."""
+        """This function generates a donut mask, with the center defined in the
+        mask object."""
         mask = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y)
 
         mask = theta % (2 * np.pi)
@@ -363,24 +377,29 @@ class Mask(object):
         self.mask_type = MaskMode.Donut
 
     def setTophat(self):
-        """This function generates a tophat mask with a mid-radius defined by sigma, and with the center defined in the mask object."""
+        """This function generates a tophat mask with a mid-radius defined by
+        sigma, and with the center defined in the mask object."""
         mask = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
-        d = x**2 + y**2
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
+        d = x ** 2 + y ** 2
 
-        mid_radius = self.sigma * np.sqrt(2 * np.log(2 / (1 + np.exp(-self.radius**2 / (2 * self.sigma**2)))))
-        tophat_bool = (d > mid_radius**2)
+        mid_radius = self.sigma * np.sqrt(
+            2 * np.log(2 / (1 + np.exp(-self.radius ** 2 / (2 * self.sigma ** 2))))
+        )
+        tophat_bool = (d > mid_radius ** 2)
         mask[tophat_bool] = np.pi
 
         self.img = mask
-        self.pi2uint8()   
-        self.mask_type = MaskMode.Tophat  
+        self.pi2uint8()
+        self.mask_type = MaskMode.Tophat
 
     def setHalf(self):
         """Sets the current masks to half masks, with the same center,
         for accurate center position determination."""
         mask = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y) + self.angle_rotation
 
         half_bool = (abs(theta) < np.pi / 2)
@@ -394,10 +413,11 @@ class Mask(object):
         """Transforms the current mask in a quadrant pattern mask for testing
         aberrations."""
         mask = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y) + self.angle_rotation
 
-        quad_bool = (theta < np.pi)*(theta > np.pi / 2) + (theta < 0 )*(theta > -np.pi / 2)
+        quad_bool = (theta < np.pi) * (theta > np.pi / 2) + (theta < 0) * (theta > -np.pi / 2)
         mask[quad_bool] = np.pi
 
         self.img = mask
@@ -408,10 +428,13 @@ class Mask(object):
         """Transforms the current mask in a hex pattern mask for testing
         aberrations."""
         mask = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y) + self.angle_rotation
 
-        hex_bool = (theta < np.pi / 3)*(theta > 0) + (theta > -2 * np.pi / 3)*(theta < -np.pi / 3) + (theta > 2 * np.pi / 3)*(theta < np.pi)
+        hex_bool = ((theta < np.pi / 3) * (theta > 0) +
+                    (theta > -2 * np.pi / 3) * (theta < -np.pi / 3) +
+                    (theta > 2 * np.pi / 3) * (theta < np.pi))
         mask[hex_bool] = np.pi
 
         self.img = mask
@@ -419,18 +442,19 @@ class Mask(object):
         self.mask_type = MaskMode.Hex
 
     def setSplit(self):
-        """Transforms the current mask in a split bullseye pattern mask for testing
-        aberrations."""
+        """Transforms the current mask in a split bullseye pattern mask for
+        testing aberrations."""
         mask = np.zeros((self.height, self.width), dtype="float")
         mask1 = np.zeros((self.height, self.width), dtype="float")
         mask2 = np.zeros((self.height, self.width), dtype="float")
-        x, y = np.ogrid[-self.centerx: self.height - self.centerx, -self.centery: self.width - self.centery]
+        x, y = np.ogrid[-self.centerx: self.height - self.centerx,
+                        -self.centery: self.width - self.centery]
         theta = np.arctan2(x, y) + self.angle_rotation
 
         radius_factor = 0.6
         mid_radius = radius_factor * self.radius
-        d = x**2 + y**2
-        ring = (d > mid_radius**2)
+        d = x ** 2 + y ** 2
+        ring = (d > mid_radius ** 2)
         mask1[ring] = np.pi
         midLine = (abs(theta) < np.pi / 2)
         mask2[midLine] = np.pi

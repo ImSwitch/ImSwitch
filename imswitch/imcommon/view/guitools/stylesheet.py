@@ -1,4 +1,5 @@
 import os
+
 import qdarkstyle
 
 
@@ -13,28 +14,28 @@ def getBaseStyleSheet():
             padding-right: 4px;
             min-width: 40px;
         }
-        
+
         QPushButton {
             min-width: 20px;
         }
-        
+
         QPushButton:disabled {
             color: #788D9C;
         }
-        
+
         QPushButton:checked {
             background-color: #2B333D;
             border: 2px solid #1464A0;
         }
-        
+
         QPushButton:pressed {
             background-color: #262E38;
         }
-        
+
         QScrollArea QWidget QPushButton:disabled {
             background-color: #455364;
         }
-        
+
         QSplitter {
             background-color: #37414F;
         }
@@ -42,11 +43,11 @@ def getBaseStyleSheet():
         QLabel {
             background-color: transparent;
         }
-            
+
         DockLabel {
             padding: 0;
         }
-        
+
         ParameterTree QTreeView::item, ParameterTree QAbstractSpinBox, ParameterTree QComboBox {
             padding-top: 0;
             padding-bottom: 0;
@@ -54,7 +55,7 @@ def getBaseStyleSheet():
             margin-bottom: 0;
             border: none;
         }
-        
+
         ParameterTree QComboBox QAbstractItemView {
             min-width: 128px;
         }

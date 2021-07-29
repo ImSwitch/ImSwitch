@@ -13,6 +13,7 @@ class EmbeddedNapari(napari.Viewer):
 
         # Monkeypatch layer removal methods
         oldDelitemIndices = self.layers._delitem_indices
+
         def newDelitemIndices(key):
             indices = oldDelitemIndices(key)
             for index in indices[:]:
@@ -20,6 +21,7 @@ class EmbeddedNapari(napari.Viewer):
                 if hasattr(layer, 'protected') and layer.protected:
                     indices.remove(index)
             return indices
+
         self.layers._delitem_indices = newDelitemIndices
 
         # Make menu bar not native

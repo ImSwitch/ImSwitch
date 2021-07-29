@@ -72,8 +72,12 @@ class ScanController(SuperScanController):
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()
-        x = self._analogParameterDict['axis_length'][0] / self._analogParameterDict['axis_step_size'][0]
-        y = self._analogParameterDict['axis_length'][1] / self._analogParameterDict['axis_step_size'][1]
+
+        lengths = self._analogParameterDict['axis_length']
+        stepSizes = self._analogParameterDict['axis_step_size']
+
+        x = lengths[0] / stepSizes[0]
+        y = lengths[1] / stepSizes[1]
 
         return x, y
 
@@ -145,9 +149,12 @@ class ScanController(SuperScanController):
             for i in range(len(self._analogParameterDict['target_device'])):
                 positionerName = self._analogParameterDict['target_device'][i]
                 self._widget.setScanDim(i, positionerName)
-                self._widget.setScanSize(positionerName, self._analogParameterDict['axis_length'][i])
-                self._widget.setScanStepSize(positionerName, self._analogParameterDict['axis_step_size'][i])
-                self._widget.setScanCenterPos(positionerName, self._analogParameterDict['axis_centerpos'][i])
+                self._widget.setScanSize(positionerName,
+                                         self._analogParameterDict['axis_length'][i])
+                self._widget.setScanStepSize(positionerName,
+                                             self._analogParameterDict['axis_step_size'][i])
+                self._widget.setScanCenterPos(positionerName,
+                                              self._analogParameterDict['axis_centerpos'][i])
 
             setTTLDevices = []
             for i in range(len(self._digitalParameterDict['target_device'])):
@@ -323,7 +330,7 @@ class ScanController(SuperScanController):
 
 _attrCategoryStage = 'ScanStage'
 _attrCategoryTTL = 'ScanTTL'
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

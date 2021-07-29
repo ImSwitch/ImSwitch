@@ -1,6 +1,6 @@
-from .BetterSlider import BetterSlider
-
 from qtpy import QtCore
+
+from .BetterSlider import BetterSlider
 
 
 class FloatSlider(BetterSlider):

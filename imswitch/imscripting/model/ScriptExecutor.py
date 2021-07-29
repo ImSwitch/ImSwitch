@@ -5,7 +5,7 @@ from io import StringIO
 from time import strftime
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from . import getActionsScope
+from .actions import getActionsScope
 
 
 class ScriptExecutor(SignalInterface):
@@ -67,7 +67,7 @@ class ExecutionThread(Worker):
             print(f'Started script at {strftime("%Y-%m-%d %H:%M:%S")}\n')
             try:
                 exec(code, scriptScope)
-            except:
+            except Exception:
                 print(traceback.format_exc())
             print(f'\nFinished script at {strftime("%Y-%m-%d %H:%M:%S")}')
         finally:

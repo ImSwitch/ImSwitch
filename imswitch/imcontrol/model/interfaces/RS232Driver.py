@@ -1,6 +1,5 @@
-from pyvisa import constants
-
 from lantz.messagebased import MessageBasedDriver
+from pyvisa import constants
 
 
 class RS232Driver(MessageBasedDriver):
@@ -16,16 +15,16 @@ class RS232Driver(MessageBasedDriver):
         if settings["stopbits"] == 1:
             set_stopb = constants.StopBits.one
         elif settings["stopbits"] == 2:
-            set_stopb = constants.StopBits.two 
+            set_stopb = constants.StopBits.two
 
         defaults = {'ASRL': {'write_termination': settings["send_termination"],
-                                 'read_termination': settings["recv_termination"],
-                                 'baud_rate': settings["baudrate"],
-                                 'bytesize': settings["bytesize"],
-                                 'parity': set_par,
-                                 'stop_bits': set_stopb,
-                                 'encoding': settings["encoding"],
-                                }}
+                             'read_termination': settings["recv_termination"],
+                             'baud_rate': settings["baudrate"],
+                             'bytesize': settings["bytesize"],
+                             'parity': set_par,
+                             'stop_bits': set_stopb,
+                             'encoding': settings["encoding"],
+                             }}
         return defaults
 
     def query(self, arg):
@@ -38,6 +37,7 @@ class RS232Driver(MessageBasedDriver):
     def close(self):
         self.finalize()
 
+
 def generateDriverClass(settings):
     class GeneratedDriver(RS232Driver):
         DEFAULTS = RS232Driver.getDefaults(settings)
@@ -48,19 +48,18 @@ def generateDriverClass(settings):
 
     return GeneratedDriver
 
-
-#settings = {'ASRL': {'write_termination': '\r',
-#                        'read_termination': '\r',
-#                        'baud_rate': 115200,
-#                        'bytesize': 8,
-#                        'parity': constants.Parity.none,
-#                        'stop_bits': constants.StopBits.one,
-#                        'encoding': 'ascii',
-#                        }}
+# settings = {'ASRL': {'write_termination': '\r',
+#                      'read_termination': '\r',
+#                      'baud_rate': 115200,
+#                      'bytesize': 8,
+#                      'parity': constants.Parity.none,
+#                      'stop_bits': constants.StopBits.one,
+#                      'encoding': 'ascii',
+#                      }}
 #
-#DriverClass = generateDriverClass(settings)
-#rs232port = DriverClass('TCPIP::localhost::5678::SOCKET')
-#rs232port.initialize()
+# DriverClass = generateDriverClass(settings)
+# rs232port = DriverClass('TCPIP::localhost::5678::SOCKET')
+# rs232port.initialize()
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,4 +1,5 @@
 import pytest
+
 from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode, SaveMode
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
@@ -16,9 +17,9 @@ def record(qtbot, detectorInfos, *args, **kwargs):
 
     recordingManager.startRecording(*args, **kwargs)
     with qtbot.waitSignals(
-        [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos],
-        check_params_cbs=[memoryRecordingAvailable for _ in detectorInfos],
-        timeout=30000
+            [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos],
+            check_params_cbs=[memoryRecordingAvailable for _ in detectorInfos],
+            timeout=30000
     ):
         pass
 

@@ -6,21 +6,29 @@ import tifffile as tiff
 
 import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
-from .basecontrollers import ImRecWidgetController
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
+from .basecontrollers import ImRecWidgetController
 
 
 class ImRecMainViewController(ImRecWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.dataFrameController = self._factory.createController(DataFrameController, self._widget.dataFrame)
-        self.multiDataFrameController = self._factory.createController(MultiDataFrameController, self._widget.multiDataFrame)
-        self.reconstructionController = self._factory.createController(ReconstructionViewController, self._widget.reconstructionWidget)
-        self.scanParamsController = self._factory.createController(ScanParamsController, self._widget.scanParamsDialog)
+        self.dataFrameController = self._factory.createController(
+            DataFrameController, self._widget.dataFrame
+        )
+        self.multiDataFrameController = self._factory.createController(
+            MultiDataFrameController, self._widget.multiDataFrame
+        )
+        self.reconstructionController = self._factory.createController(
+            ReconstructionViewController, self._widget.reconstructionWidget
+        )
+        self.scanParamsController = self._factory.createController(
+            ScanParamsController, self._widget.scanParamsDialog
+        )
 
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
@@ -129,7 +137,7 @@ class ImRecMainViewController(ImRecWidgetController):
             print(f'Loading data at: {dataPath}')
 
             name = os.path.split(dataPath)[1]
-            if not self._currentData is None:
+            if self._currentData is not None:
                 self._currentData.checkAndUnloadData()
             self._currentData = DataObj(name, path=dataPath)
             self._currentData.checkAndLoadData()
@@ -159,8 +167,10 @@ class ImRecMainViewController(ImRecWidgetController):
         try:
             positiveDirectionAttr = dataObj.attrs['ScanStage:positive_direction']
             for i in range(0, min(3, len(positiveDirectionAttr))):
-                self._scanParDict['directions'][i] = (self._widget.p_text if positiveDirectionAttr[i]
-                                                      else self._widget.n_text)
+                self._scanParDict['directions'][i] = (
+                    self._widget.p_text if positiveDirectionAttr[i]
+                    else self._widget.n_text
+                )
         except KeyError:
             pass
 
@@ -209,10 +219,10 @@ class ImRecMainViewController(ImRecWidgetController):
         if self._currentData is None:
             return
         elif np.prod(
-                np.array(self._scanParDict['steps'], dtype=np.int)) < self._currentData.numFrames:
+                np.array(self._scanParDict['steps'], dtype=int)) < self._currentData.numFrames:
             print('Too many frames in data')
         else:
-            if self._widget.bleachBool.value(): 
+            if self._widget.bleachBool.value():
                 self.bleachingCorrection()
             coeffs = self.extractData()
             reconObj = ReconObj(self._currentData.name,
@@ -252,9 +262,8 @@ class ImRecMainViewController(ImRecWidgetController):
         data = self._currentData.data
         energy = np.sum(data, axis=(1, 2))
         for i in range(data.shape[0]):
-            c = (energy[0]/energy[i])**4
-            self._currentData.data[i,:,:] = data[i, :, :]*c
-    
+            c = (energy[0] / energy[i]) ** 4
+            self._currentData.data[i, :, :] = data[i, :, :] * c
 
     def saveCurrent(self, dataType=None):
         """Saves the reconstructed image from self.reconstructor to specified
@@ -290,7 +299,8 @@ class ImRecMainViewController(ImRecWidgetController):
                         )]
                     ))
 
-                    print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez}')
+                    print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez},'
+                          f' dt: {dt}')
                     # Reconstructed image
                     reconstrData = copy.deepcopy(reconstructionObj.getReconstruction())
                     reconstrData = reconstrData[:, 0, :, :, :, :]
@@ -307,7 +317,7 @@ class ImRecMainViewController(ImRecWidgetController):
                         tiff.imwrite(saveName, coeffs,
                                      imagej=True, resolution=(1, 1),
                                      metadata={'spacing': 1, 'unit': 'px', 'axes': 'TZCYX'})
-                    except:
+                    except Exception:
                         pass
                 else:
                     print('Data type in saveCurrent not recognized')

@@ -4,11 +4,11 @@ from imswitch.imcommon.controller import MainController
 from imswitch.imcommon.model import ostools, generateAPI, generateShortcuts, SharedAttributes
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
-from .basecontrollers import ImConWidgetControllerFactory
+from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
-from . import controllers
+from .basecontrollers import ImConWidgetControllerFactory
 
 
 class ImConMainController(MainController):
@@ -32,7 +32,9 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(PickSetupController, self.__mainView.pickSetupDialog)
+        self.pickSetupController = self.__factory.createController(
+            PickSetupController, self.__mainView.pickSetupDialog
+        )
 
         self.controllers = {}
 
@@ -48,7 +50,7 @@ class ImConMainController(MainController):
 
         # Generate Shorcuts
         self.__shortcuts = None
-        shorcutObjs = list(self.__mainView.widgets.values()) 
+        shorcutObjs = list(self.__mainView.widgets.values())
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
 
@@ -56,7 +58,7 @@ class ImConMainController(MainController):
     def api(self):
         return self.__api
 
-    @property  
+    @property
     def shortcuts(self):
         return self.__shortcuts
 
@@ -113,4 +115,3 @@ class ImConMainController(MainController):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

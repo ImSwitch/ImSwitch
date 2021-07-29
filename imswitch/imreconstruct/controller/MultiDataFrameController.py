@@ -16,8 +16,12 @@ class MultiDataFrameController(ImRecWidgetController):
         self._dataFolder = None
 
         self._moduleCommChannel.memoryRecordings.sigDataSet.connect(self.memoryDataSet)
-        self._moduleCommChannel.memoryRecordings.sigDataSavedToDisk.connect(self.memoryDataSavedToDisk)
-        self._moduleCommChannel.memoryRecordings.sigDataWillRemove.connect(self.memoryDataWillRemove)
+        self._moduleCommChannel.memoryRecordings.sigDataSavedToDisk.connect(
+            self.memoryDataSavedToDisk
+        )
+        self._moduleCommChannel.memoryRecordings.sigDataWillRemove.connect(
+            self.memoryDataWillRemove
+        )
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
 

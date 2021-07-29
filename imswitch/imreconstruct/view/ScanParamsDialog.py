@@ -115,7 +115,7 @@ class ScanParamsDialog(QtWidgets.QDialog):
             self.dim3StepSizeEdit.setText(parDict['step_sizes'][3])
 
             self.unidirCheck.setChecked(parDict['unidirectional'])
-        except:
+        except Exception:
             print('Error setting initial values')
             self.dim0Changed()
 

@@ -14,7 +14,10 @@ class AboutDialog(QtWidgets.QDialog):
 
         self.label = QtWidgets.QLabel(
             f'<strong>ImSwitch {imswitch.__version__}</strong>'
-            f'<br /><br />Code available at: <a href="https://github.com/kasasxav/ImSwitch" style="color: orange">https://github.com/kasasxav/ImSwitch</a>'
+            f'<br /><br />Code available at: '
+            f'<a href="https://github.com/kasasxav/ImSwitch" style="color: orange">'
+            f'https://github.com/kasasxav/ImSwitch'
+            f'</a>'
             f'<br />Licensed under the GNU General Public License v3.0.'
         )
         self.label.setWordWrap(True)

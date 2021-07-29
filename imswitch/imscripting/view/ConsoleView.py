@@ -1,5 +1,5 @@
-from qtpy import QtGui
 from pyqtgraph.console import ConsoleWidget
+from qtpy import QtGui
 
 
 class ConsoleView(ConsoleWidget):

@@ -1,4 +1,3 @@
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -48,7 +47,7 @@ class AlignXYWidget(Widget):
 
     def updateGraph(self, value):
         self.graph.updateGraph(value)
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
 from imswitch.imcommon.framework import Signal, SignalInterface
 
 
@@ -248,7 +249,7 @@ class DetectorManager(SignalInterface):
     def finalize(self) -> None:
         """ Close/cleanup detector. """
         pass
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

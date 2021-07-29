@@ -52,7 +52,7 @@ class WidgetControllerFactory:
             if controller is not None:
                 try:
                     controller.closeEvent()
-                except:
+                except Exception:
                     print(f'Error closing {type(controller).__name__}')
                     print(traceback.format_exc())
 

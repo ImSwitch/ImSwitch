@@ -159,17 +159,19 @@ class RecordingController(ImConWidgetController):
             self._widget.updateRecLapseNum(0)
             self._widget.setRecButtonChecked(False)
             self._widget.setFieldsEnabled(True)
-            
+
     def scanEnded(self):
         self.endedScan = True
-        if self.endedRecording and (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+        if self.endedRecording and (self.recMode == RecMode.ScanLapse or
+                                    self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
-            
+
     def recordingEnded(self):
         self.endedRecording = True
-        if self.endedScan or not (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+        if self.endedScan or not (self.recMode == RecMode.ScanLapse or
+                                  self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
-            
+
     def updateRecFrameNum(self, recFrameNum):
         if self.recMode == RecMode.SpecFrames:
             self._widget.updateRecFrameNum(recFrameNum)

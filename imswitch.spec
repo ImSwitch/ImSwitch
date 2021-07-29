@@ -4,12 +4,10 @@ import os
 import sys
 import time
 
-from vispy.app.backends import CORE_BACKENDS
-
 from PyInstaller.building.api import TOC, PYZ, EXE, COLLECT
 from PyInstaller.building.build_main import Analysis, BUNDLE
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
-
+from vispy.app.backends import CORE_BACKENDS
 
 print('!IMPORTANT! This will create a bundle based on the current ImSwitch installation. If'
       ' ImSwitch is not installed to your site packages, or if you have an old version, this may'
@@ -17,7 +15,6 @@ print('!IMPORTANT! This will create a bundle based on the current ImSwitch insta
       ' ("pip install -e .") before running this. [Continuing in 5 seconds.]')
 
 time.sleep(5)
-
 
 mainFilePath = '.build_temp/__pyinstaller_main.py'
 mainFileScript = '''
@@ -61,12 +58,12 @@ try:
                  noarchive=False)
 
     a.binaries = TOC([x for x in a.binaries if (
-        not x[0].lower().startswith('api-ms-') and
-        not x[0].lower().startswith('d3dcompiler') and
-        not x[0].lower().startswith('msvcp') and
-        not x[0].lower().startswith('ucrtbase') and
-        not x[0].lower().startswith('vcomp') and
-        not x[0].lower().startswith('vcruntime')
+            not x[0].lower().startswith('api-ms-') and
+            not x[0].lower().startswith('d3dcompiler') and
+            not x[0].lower().startswith('msvcp') and
+            not x[0].lower().startswith('ucrtbase') and
+            not x[0].lower().startswith('vcomp') and
+            not x[0].lower().startswith('vcruntime')
     )])
 
     pyz = PYZ(a.pure, a.zipped_data,
@@ -102,8 +99,8 @@ try:
                      icon=None,
                      bundle_identifier=None,
                      info_plist={
-                        'NSPrincipalClass': 'NSApplication',
-                        'NSHighResolutionCapable': 'True'
+                         'NSPrincipalClass': 'NSApplication',
+                         'NSHighResolutionCapable': 'True'
                      })
 finally:
     try:

@@ -29,7 +29,8 @@ class ReconstructionViewController(ImRecWidgetController):
             if retrievedLevels is not None:
                 self._widget.setImageDisplayLevels(retrievedLevels[0], retrievedLevels[1])
         else:
-            self.fullUpdate(autoLevels=True, levels=self._widget.getCurrentItemData().getDispLevels())
+            self.fullUpdate(autoLevels=True,
+                            levels=self._widget.getCurrentItemData().getDispLevels())
 
         self._currItemInd = self._widget.getCurrentItemIndex()
 
@@ -44,7 +45,8 @@ class ReconstructionViewController(ImRecWidgetController):
                 base=reconstructedShape[1] - 1,
                 t=reconstructedShape[2] - 1
             )
-            self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels, levels=levels)
+            self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels,
+                             levels=levels)
             if self._currItemInd is None or self.getViewId() != self._prevViewId:
                 self._widget.resetView()
         else:

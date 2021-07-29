@@ -13,7 +13,9 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    sigUpdateImage = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
+    sigUpdateImage = Signal(
+        str, np.ndarray, bool, bool
+    )  # (detectorName, image, init, isCurrentDetector)
 
     sigAcquisitionStarted = Signal()
 
@@ -100,7 +102,6 @@ class CommunicationChannel(SignalInterface):
             'recordingEnded': self.sigRecordingEnded,
             'scanEnded': self.sigScanEnded
         })
-
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,6 +1,4 @@
-from lantz import Feat
-from lantz import Driver
-from lantz import Q_
+from lantz import Driver, Feat, Q_
 
 
 class Cobolt0601_f2(Driver):

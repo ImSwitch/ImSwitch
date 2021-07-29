@@ -30,7 +30,7 @@ class FilesView(QtWidgets.QWidget):
         self.tree.doubleClicked.connect(
             lambda index: self.sigItemDoubleClicked.emit(self.model.filePath(index))
         )
-        
+
         self.rootPickerLayout = QtWidgets.QHBoxLayout()
 
         self.rootPathEdit = QtWidgets.QLineEdit()

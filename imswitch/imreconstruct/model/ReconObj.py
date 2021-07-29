@@ -57,7 +57,10 @@ class ReconObj:
         if self.coeffs is not None:
             datasets = np.shape(self.coeffs)[0]
             bases = np.shape(self.coeffs)[1]
-            self.reconstructed = np.array([[self.coeffsToImage(self.coeffs[ds][b], self.scanParDict) for b in range(0, bases)] for ds in range(0, datasets)])
+            self.reconstructed = np.array([
+                [self.coeffsToImage(self.coeffs[ds][b], self.scanParDict) for b in range(0, bases)]
+                for ds in range(0, datasets)
+            ])
             print('shape of reconstructed is : ', np.shape(self.reconstructed))
         else:
             print('Cannot update images without coefficients')
@@ -79,37 +82,42 @@ class ReconObj:
         dim0Side = int(scanParDict['steps'][0])
         dim1Side = int(scanParDict['steps'][1])
         dim2Side = int(scanParDict['steps'][2])
-        dim3Side = int(scanParDict['steps'][3]) #Always timepoints
-        if not frames == dim0Side*dim1Side*dim2Side*dim3Side:
+        dim3Side = int(scanParDict['steps'][3])  # Always timepoints
+        if not frames == dim0Side * dim1Side * dim2Side * dim3Side:
             print('ERROR: Wrong dimensional data')
             pass
 
-        timepoints = int(scanParDict['steps'][scanParDict['dimensions'].index(self.timepoints_text)])
+        timepoints = int(
+            scanParDict['steps'][scanParDict['dimensions'].index(self.timepoints_text)]
+        )
         slices = int(scanParDict['steps'][scanParDict['dimensions'].index(self.b_f_text)])
         sqRows = int(scanParDict['steps'][scanParDict['dimensions'].index(self.u_d_text)])
         sqCols = int(scanParDict['steps'][scanParDict['dimensions'].index(self.r_l_text)])
 
-        im = np.zeros([timepoints, slices, sqRows*np.shape(coeffs)[1], sqCols*np.shape(coeffs)[2]], dtype=np.float32)
+        im = np.zeros(
+            [timepoints, slices, sqRows * np.shape(coeffs)[1], sqCols * np.shape(coeffs)[2]],
+            dtype=np.float32
+        )
         for i in np.arange(np.shape(coeffs)[0]):
 
-            t = int(np.floor(i/(frames/dim3Side)))
+            t = int(np.floor(i / (frames / dim3Side)))
 
-            slow = int(np.mod(i, frames/timepoints) / (dim0Side*dim1Side))
-            mid = int(np.mod(i, dim0Side*dim1Side) / dim0Side)
+            slow = int(np.mod(i, frames / timepoints) / (dim0Side * dim1Side))
+            mid = int(np.mod(i, dim0Side * dim1Side) / dim0Side)
             fast = np.mod(i, dim0Side)
 
             if not scanParDict['unidirectional']:
                 oddMidStep = np.mod(mid, 2)
-                fast = (1-oddMidStep)*fast + oddMidStep*(dim1Side - 1 - fast)
+                fast = (1 - oddMidStep) * fast + oddMidStep * (dim1Side - 1 - fast)
 
             neg = (int(scanParDict['directions'][0] == 'neg'),
                    int(scanParDict['directions'][1] == 'neg'),
                    int(scanParDict['directions'][2] == 'neg'))
 
             """Adjust for positive or negative direction"""
-            fast = (1-neg[0])*fast + neg[0]*(dim0Side - 1 - fast)
-            mid = (1-neg[1])*mid + neg[1]*(dim1Side - 1 - mid)
-            slow = (1-neg[2])*slow + neg[2]*(dim2Side - 1 - slow)
+            fast = (1 - neg[0]) * fast + neg[0] * (dim0Side - 1 - fast)
+            mid = (1 - neg[1]) * mid + neg[1] * (dim1Side - 1 - mid)
+            slow = (1 - neg[2]) * slow + neg[2] * (dim2Side - 1 - slow)
 
             """Place dimensions in correct row/col/slice"""
             if scanParDict['dimensions'][0] == self.r_l_text:

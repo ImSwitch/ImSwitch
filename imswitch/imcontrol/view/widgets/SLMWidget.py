@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtCore, QtWidgets
 from pyqtgraph.parametertree import ParameterTree
+from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
@@ -28,13 +28,14 @@ class SLMWidget(Widget):
 
         self.slmParameterTree = ParameterTree()
         self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
-                            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
-                            'suffix': 'px'},
-                            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
-                            'suffix': 'px'},
-                            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832), 'step': 0.1,
-                            'suffix': 'rad'}
-                            ]}]
+            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
+             'suffix': 'px'},
+            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+             'suffix': 'px'},
+            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832),
+             'step': 0.1,
+             'suffix': 'rad'}
+        ]}]
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -112,7 +113,7 @@ class SLMWidget(Widget):
         abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
-        
+
         # Button for showing SLM display and spinbox for monitor selection
         self.slmDisplayLayout = QtWidgets.QHBoxLayout()
 
@@ -130,7 +131,7 @@ class SLMWidget(Widget):
 
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
-        #self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
+        # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -150,7 +151,8 @@ class SLMWidget(Widget):
         self.controlPanel.objlensComboBox.addItem("No objective")
         self.controlPanel.objlensComboBox.addItem("Oil")
         self.controlPanel.objlensComboBox.addItem("Glycerol")
-        self.controlPanel.choiceInterfaceLayout.addWidget(QtWidgets.QLabel('Select objective:'), 1, 0)
+        self.controlPanel.choiceInterfaceLayout.addWidget(QtWidgets.QLabel('Select objective:'),
+                                                          1, 0)
         self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
 
         # Phase mask moving buttons

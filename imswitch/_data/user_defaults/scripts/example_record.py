@@ -8,7 +8,6 @@ NOTE: This script will only work if the recording widget is enabled in your
 current hardware control setup.
 """
 
-
 import time
 
 print('Starting recording in "until stop" mode...')

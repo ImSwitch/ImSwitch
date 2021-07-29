@@ -1,8 +1,8 @@
 import numpy as np
 from qtpy import QtWidgets
 
-from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import shortcut
+from imswitch.imcontrol.view import guitools
 
 
 class ImageWidget(QtWidgets.QWidget):
@@ -10,7 +10,7 @@ class ImageWidget(QtWidgets.QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         guitools.addNapariGrayclipColormap()
         self.napariViewer = guitools.EmbeddedNapari()
         self.updateLevelsWidget = guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
@@ -93,10 +93,11 @@ class ImageWidget(QtWidgets.QWidget):
 
     def removeItem(self, item):
         item.detach()
-        
+
     @shortcut('Ctrl+U', "Update levels")
     def updateLevelsButton(self):
         self.updateLevelsWidget.updateLevelsButton.click()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

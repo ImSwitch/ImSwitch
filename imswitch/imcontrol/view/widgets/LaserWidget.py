@@ -3,9 +3,6 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
-from imswitch.imcommon.model import shortcut
-
-import time
 
 class LaserWidget(Widget):
     """ Laser widget for setting laser powers etc. """
@@ -190,8 +187,8 @@ class LaserWidget(Widget):
         if source is self.lasersGridContainer and event.type() == QtCore.QEvent.Resize:
             # Set correct minimum width (otherwise things can go outside the widget because of the
             # scroll area)
-            width = self.lasersGridContainer.minimumSizeHint().width()\
-                     + self.scrollArea.verticalScrollBar().width()
+            width = self.lasersGridContainer.minimumSizeHint().width() \
+                    + self.scrollArea.verticalScrollBar().width()
             self.scrollArea.setMinimumWidth(width)
             self.setMinimumWidth(width)
 
@@ -252,7 +249,8 @@ class LaserModule(QtWidgets.QWidget):
         self.powerGrid.addWidget(self.maxpower, 0, 8, 2, 1)
 
         self.enableButton = guitools.BetterPushButton('ON')
-        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                        QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
 
         # Add elements to QHBoxLayout
@@ -320,4 +318,3 @@ class LaserModule(QtWidgets.QWidget):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

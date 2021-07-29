@@ -116,7 +116,7 @@ class PositionerController(ImConWidgetController):
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -44,18 +44,23 @@ class SettingsController(ImConWidgetController):
                 continue
 
             self._widget.addDetector(
-                dName, dManager.model, dManager.parameters, dManager.actions, dManager.supportedBinnings,
-                self._setupInfo.rois
+                dName, dManager.model, dManager.parameters, dManager.actions,
+                dManager.supportedBinnings, self._setupInfo.rois
             )
 
         self.roiAdded = False
         self.initParameters()
 
         execOnAll = self._master.detectorsManager.execOnAll
-        execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)), condition = lambda c: c.forAcquisition)
-        execOnAll(lambda c: (self.adjustFrame(detector=c)), condition = lambda c: c.forAcquisition)
-        execOnAll(lambda c: (self.updateFrame(detector=c)), condition = lambda c: c.forAcquisition)
-        execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)), condition = lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.updateParamsFromDetector(detector=c)),
+                  condition=lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.adjustFrame(detector=c)),
+                  condition=lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.updateFrame(detector=c)),
+                  condition=lambda c: c.forAcquisition)
+        execOnAll(lambda c: (self.updateFrameActionButtons(detector=c)),
+                  condition=lambda c: c.forAcquisition)
+
         self.detectorSwitched(self._master.detectorsManager.getCurrentDetectorName())
 
         self.updateSharedAttrs()
@@ -114,26 +119,34 @@ class SettingsController(ImConWidgetController):
                 params.saveMode.sigActivated.connect(self.saveMode)
                 params.deleteMode.sigActivated.connect(self.deleteMode)
 
-                syncFrameParamsWithoutUpdates = lambda: self.syncFrameParams(False, False)
+                def syncFrameParamsWithoutUpdates(): self.syncFrameParams(False, False)
                 params.x0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
                 params.y0.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
                 params.width.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
                 params.height.sigValueChanged.connect(syncFrameParamsWithoutUpdates)
                 params.allDetectorsFrame.sigValueChanged.connect(self.syncFrameParams)
 
-        detectorsParameters = self._master.detectorsManager.execOnAll(lambda c: c.parameters, condition = lambda c: c.forAcquisition)
+        detectorsParameters = self._master.detectorsManager.execOnAll(
+            lambda c: c.parameters, condition=lambda c: c.forAcquisition
+        )
         for detectorName, detectorParameters in detectorsParameters.items():
             for parameterName, parameter in detectorParameters.items():
-                paramInWidget = self._widget.trees[detectorName].p.param(parameter.group).param(parameterName)
+                paramInWidget = self._widget.trees[detectorName].p.param(parameter.group).param(
+                    parameterName
+                )
                 paramInWidget.sigValueChanged.connect(
                     lambda _, value, detectorName=detectorName, parameterName=parameterName:
-                        self.setDetectorParameter(detectorName, parameterName, value)
+                    self.setDetectorParameter(detectorName, parameterName, value)
                 )
 
-        detectorsActions = self._master.detectorsManager.execOnAll(lambda c: c.actions, condition = lambda c: c.forAcquisition)
+        detectorsActions = self._master.detectorsManager.execOnAll(
+            lambda c: c.actions, condition=lambda c: c.forAcquisition
+        )
         for detectorName, detectorActions in detectorsActions.items():
             for actionName, action in detectorActions.items():
-                paramInWidget = self._widget.trees[detectorName].p.param(action.group).param(actionName)
+                paramInWidget = self._widget.trees[detectorName].p.param(action.group).param(
+                    actionName
+                )
                 paramInWidget.sigActivated.connect(action.func)
 
     def adjustFrame(self, *, detector=None):
@@ -166,7 +179,8 @@ class SettingsController(ImConWidgetController):
 
         detector.crop(hpos, vpos, hsize, vsize)
 
-        # Final shape values might differ from the user-specified one because of detector limitation x128
+        # Final shape values might differ from the user-specified one because of detector limitation
+        # x128
         width, height = detector.shape
         if detector.name == self._master.detectorsManager.getCurrentDetectorName():
             self._commChannel.sigAdjustFrame.emit(width, height)
@@ -193,7 +207,9 @@ class SettingsController(ImConWidgetController):
         mode, and hides the others. """
 
         if detector is None:
-            self.getDetectorManagerFrameExecFunc()(lambda c: self.updateFrameActionButtons(detector=c))
+            self.getDetectorManagerFrameExecFunc()(
+                lambda c: self.updateFrameActionButtons(detector=c)
+            )
             return
 
         params = self.allParams[detector.name]
@@ -303,7 +319,9 @@ class SettingsController(ImConWidgetController):
 
         # Detector parameters
         for parameterName, parameter in detector.parameters.items():
-            paramInWidget = self._widget.trees[detector.name].p.param(parameter.group).param(parameterName)
+            paramInWidget = self._widget.trees[detector.name].p.param(parameter.group).param(
+                parameterName
+            )
             paramInWidget.setValue(parameter.value)
 
         # Frame
@@ -484,11 +502,12 @@ class SettingsController(ImConWidgetController):
         """ Sets the specified detector-specific parameter to the specified
         value. """
 
-        if parameterName in ['Trigger source'] and self.getCurrentParams().allDetectorsFrame.value():
+        if (parameterName in ['Trigger source'] and
+                self.getCurrentParams().allDetectorsFrame.value()):
             # Special case for certain parameters that will follow the "update all detectors" option
             execFunc = self._master.detectorsManager.execOnAll
         else:
-            execFunc = lambda f: self._master.detectorsManager.execOn(detectorName, f)
+            def execFunc(f): self._master.detectorsManager.execOn(detectorName, f)
 
         execFunc(
             lambda c: (c.setParameter(parameterName, value) and

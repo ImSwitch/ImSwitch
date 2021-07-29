@@ -1,7 +1,6 @@
 from imswitch.imcontrol.model import Options
 from imswitch.imcontrol.view import ViewSetupInfo
 
-
 optionsBasic = Options.from_json("""
 {
     "setupFileName": "",
@@ -11,7 +10,6 @@ optionsBasic = Options.from_json("""
     }
 }
 """)
-
 
 setupInfoBasic = ViewSetupInfo.from_json("""
 {
@@ -182,7 +180,6 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     ]
 }
 """, infer_missing=True)
-
 
 setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
 {

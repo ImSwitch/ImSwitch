@@ -1,3 +1,3 @@
-from .basecontrollers import MainController, WidgetController, WidgetControllerFactory
 from .ModuleCommunicationChannel import ModuleCommunicationChannel
 from .MultiModuleWindowController import MultiModuleWindowController
+from .basecontrollers import MainController, WidgetController, WidgetControllerFactory

@@ -3,7 +3,6 @@ import sys
 
 from sphinx.ext import autodoc
 
-
 sys.path.insert(0, os.path.abspath('..'))
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']

@@ -1,10 +1,10 @@
-from qtpy import QtCore, QtWidgets
 from pyqtgraph.parametertree import ParameterTree, Parameter
+from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model import shortcut
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
-from imswitch.imcommon.model import shortcut
 
 class CamParamTree(ParameterTree):
     """ Making the ParameterTree for configuration of the detector during imaging
@@ -220,10 +220,11 @@ class SettingsWidget(Widget):
 
     def hideROI(self):
         self.ROI.hide()
-        
+
     @shortcut("Ctrl+N", "Next detector")
     def toggleNextButton(self):
         self.nextDetectorButton.click()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

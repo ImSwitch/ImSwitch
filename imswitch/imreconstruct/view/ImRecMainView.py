@@ -1,15 +1,14 @@
 import numpy as np
-
 import pyqtgraph as pg
-from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyqtgraph.dockarea import Dock, DockArea
+from pyqtgraph.parametertree import Parameter, ParameterTree
 from qtpy import QtCore, QtWidgets
 
-from .guitools import BetterPushButton
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
 from .ReconstructionView import ReconstructionView
 from .ScanParamsDialog import ScanParamsDialog
+from .guitools import BetterPushButton
 
 
 class ImRecMainView(QtWidgets.QMainWindow):
@@ -175,7 +174,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         return self.parTree.p.param('Reconstruction options').param('BG modelling').value()
 
     def getBgGaussianSize(self):
-        return self.parTree.p.param('Reconstruction options').param('BG modelling')\
+        return self.parTree.p.param('Reconstruction options').param('BG modelling') \
             .param('BG Gaussian size').value()
 
     def closeEvent(self, event):

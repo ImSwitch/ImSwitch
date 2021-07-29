@@ -44,10 +44,10 @@ class ULensesWidget(Widget):
     def getParameters(self):
         """ Returns the X offset, Y offset, pixel size, and periodicity
         parameters respectively set by the user."""
-        return (np.float(self.xEdit.text()),
-                np.float(self.yEdit.text()),
-                np.float(self.pxEdit.text()),
-                np.float(self.upEdit.text()))
+        return (float(self.xEdit.text()),
+                float(self.yEdit.text()),
+                float(self.pxEdit.text()),
+                float(self.upEdit.text()))
 
     def getPlotGraphicsItem(self):
         return self.ulensesPlot

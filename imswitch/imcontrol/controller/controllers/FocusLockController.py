@@ -74,8 +74,8 @@ class FocusLockController(ImConWidgetController):
     def toggleFocus(self):
         if self._widget.lockButton.isChecked():
             absz = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(np.float(self._widget.kpEdit.text()),
-                           np.float(self._widget.kiEdit.text()),
+            self.lockFocus(float(self._widget.kpEdit.text()),
+                           float(self._widget.kiEdit.text()),
                            absz)
             self._widget.lockButton.setText('Unlock')
         else:
@@ -87,7 +87,7 @@ class FocusLockController(ImConWidgetController):
         print("Controller: Open camera settings dialog.")
 
     def moveZ(self):
-        abspos = np.float(self._widget.positionEdit.text())
+        abspos = float(self._widget.positionEdit.text())
         self._master.positionersManager[self.positioner].setPosition(abspos, 0)
         print(f"FL Controller: Move Z-piezo to absolute position {abspos} um.")
 
@@ -238,8 +238,8 @@ class FocusCalibThread(QtCore.QThread):
     def run(self):
         self.signalData = []
         self.positionData = []
-        self.start = np.float(self.focusWidget.CalibFromEdit.text())
-        self.end = np.float(self.focusWidget.CalibToEdit.text())
+        self.start = float(self.focusWidget.CalibFromEdit.text())
+        self.end = float(self.focusWidget.CalibToEdit.text())
         self.scan_list = np.round(np.linspace(self.start, self.end, 20), 2)
         for x in self.scan_list:
             self.z.move_absZ(x * self.um)

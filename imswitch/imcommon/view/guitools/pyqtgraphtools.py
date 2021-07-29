@@ -189,7 +189,7 @@ class PGROI(pg.ROI):
     def updateText(self):
         self.label.setPos(self.pos()[0] + self.size()[0],
                           self.pos()[1] + self.size()[1])
-        size = np.round(self.size()).astype(np.int)
+        size = np.round(self.size()).astype(int)
         self.label.setText('{}x{}'.format(size[0], size[1]))
 
     def hide(self, *args, **kwargs):

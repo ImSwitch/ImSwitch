@@ -72,7 +72,7 @@ class GalvoScanDesigner(ScanDesigner):
 
         axis_positions = []
         for i in range(axis_count):
-            axis_positions.append(np.int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
+            axis_positions.append(int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
         self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos,
                                                         vel_max, acc_max)
@@ -107,12 +107,12 @@ class GalvoScanDesigner(ScanDesigner):
         scanInfoDict = {
             'n_lines': int(self.axis_length[1] / self.axis_step_size[1]),
             'pixels_line': pixels_line,
-            'scan_samples_line': np.int(
+            'scan_samples_line': int(
                 round(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep)
             ),
             'scan_samples_period': samples_period - 1,
             'scan_samples_total': len(fast_axis_signal),
-            'scan_throw_startzero': np.int(round(self.__paddingtime / self.__timestep)),
+            'scan_throw_startzero': int(round(self.__paddingtime / self.__timestep)),
             'scan_throw_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
             'scan_throw_startacc': self._samples_startacc,
@@ -428,7 +428,7 @@ class GalvoScanDesigner(ScanDesigner):
         pos_pre1 = self.__init_positioning(initpos=np.min(pos), v_max=v_max, a_max=a_max)
         self._samples_initpos = len(pos_pre1)
         # initial settling time before first line
-        settlinglen = np.int(round(self.__settlingtime / self.__timestep))
+        settlinglen = int(round(self.__settlingtime / self.__timestep))
         pos_pre2 = np.repeat(np.min(pos), settlinglen)  # settling positions
         self._samples_settling = len(pos_pre2)
         pos_pre3 = pos[np.where(pos == np.min(pos))[0][-1]:]  # first half scan curve
@@ -447,7 +447,7 @@ class GalvoScanDesigner(ScanDesigner):
     def __zero_padding(self, parameterDict, pos1, pos2):
         """ Pad zeros to the end of two scanning curves, for initial and final
         settling of galvos """
-        padlen = np.int(round(self.__paddingtime / self.__timestep))
+        padlen = int(round(self.__paddingtime / self.__timestep))
         # check that the length of pos1 and pos2 are identical
         padlen1 = np.array([padlen, padlen])
         padlen2 = np.array([padlen, padlen])

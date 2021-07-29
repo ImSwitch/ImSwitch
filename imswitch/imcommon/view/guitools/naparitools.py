@@ -241,7 +241,7 @@ class VispyROIVisual(VispyBaseVisual):
 
     @position.setter
     def position(self, value):
-        self._position = np.array(value, dtype=np.int)
+        self._position = np.array(value, dtype=int)
         self._update_position()
         self.sigROIChanged.emit(self.position, self.size)
 
@@ -251,7 +251,7 @@ class VispyROIVisual(VispyBaseVisual):
 
     @size.setter
     def size(self, value):
-        self._size = np.array(value, dtype=np.int)
+        self._size = np.array(value, dtype=int)
         self._update_size()
         self.sigROIChanged.emit(self.position, self.size)
 
@@ -425,7 +425,7 @@ class VispyLineVisual(VispyBaseVisual):
 
     @position.setter
     def position(self, value):
-        self._position = np.array(value, dtype=np.int)
+        self._position = np.array(value, dtype=int)
         self._update_position()
 
     @property

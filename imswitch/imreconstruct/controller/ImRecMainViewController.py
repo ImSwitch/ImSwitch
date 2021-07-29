@@ -219,7 +219,7 @@ class ImRecMainViewController(ImRecWidgetController):
         if self._currentData is None:
             return
         elif np.prod(
-                np.array(self._scanParDict['steps'], dtype=np.int)) < self._currentData.numFrames:
+                np.array(self._scanParDict['steps'], dtype=int)) < self._currentData.numFrames:
             print('Too many frames in data')
         else:
             if self._widget.bleachBool.value():

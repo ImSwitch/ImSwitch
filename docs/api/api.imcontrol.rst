@@ -34,7 +34,7 @@ api.imcontrol
       Moves the specified positioner axis by the specified number of
       micrometers. 
 
-   .. method:: runScan(hasStarted: bool = False) -> None
+   .. method:: runScan() -> None
 
       Runs a scan with the set scanning parameters. 
 

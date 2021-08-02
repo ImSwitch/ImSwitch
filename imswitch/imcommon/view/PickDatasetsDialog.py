@@ -6,14 +6,18 @@ from qtpy import QtCore, QtWidgets
 class PickDatasetsDialog(QtWidgets.QDialog):
     """ Dialog for picking datasets to load from a file. """
 
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent, allowMultiSelect, *args, **kwargs):
         super().__init__(parent, QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowTitleHint,
                          *args, **kwargs)
-        self.setWindowTitle('Select datasets to load')
+        self.allowMultiSelect = allowMultiSelect
+
+        self.setWindowTitle('Select dataset(s) to load' if allowMultiSelect
+                            else 'Select dataset to load')
 
         self.informationLabel = QtWidgets.QLabel('')
         self.datasetsPicker = QtWidgets.QListWidget()
-        self.datasetsPicker.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
+        if allowMultiSelect:
+            self.datasetsPicker.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
 
         self.buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
@@ -30,8 +34,9 @@ class PickDatasetsDialog(QtWidgets.QDialog):
         self.setLayout(layout)
 
     def setDatasets(self, dataPath, datasetNames):
+        singularPlural = 'one(s)' if self.allowMultiSelect else 'one'
         self.informationLabel.setText(f'{os.path.basename(dataPath)} contains multiple datasets.'
-                                      f'\nPlease select the one(s) to load:')
+                                      f'\nPlease select the {singularPlural} to load:')
 
         self.datasetsPicker.clear()
         for datasetName in datasetNames:

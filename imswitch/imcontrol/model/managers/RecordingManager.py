@@ -86,7 +86,7 @@ class RecordingManager(SignalInterface):
             dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
             for key, value in attrs[detectorName].items():
-                file.attrs[key] = value
+                dataset.attrs[key] = value
 
             dataset.attrs['detector_name'] = detectorName
 
@@ -154,14 +154,14 @@ class RecordingWorker(Worker):
                 dtype='i2'
             )
 
+            for key, value in self.attrs[detectorName].items():
+                datasets[detectorName].attrs[key] = value
+
             datasets[detectorName].attrs['detector_name'] = detectorName
 
             # For ImageJ compatibility
             datasets[detectorName].attrs['element_size_um'] \
                 = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-
-            for key, value in self.attrs[detectorName].items():
-                files[detectorName].attrs[key] = value
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:

@@ -34,7 +34,9 @@ class DataObj:
             return self._attrs
 
         if isinstance(self._file, h5py.File):
-            self._attrs = dict(self._file.attrs)
+            attrs = dict(self._file.attrs)
+            attrs.update(dict(self._file[self.datasetName].attrs))
+            self._attrs = attrs
 
         return self._attrs
 

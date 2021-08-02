@@ -1,7 +1,5 @@
 import json
 
-import h5py
-
 from imswitch.imcommon.framework import Signal, SignalInterface
 
 
@@ -52,12 +50,11 @@ class SharedAttributes(SignalInterface):
         yield from self._data.items()
 
     @classmethod
-    def fromHDF5File(cls, filePath):
+    def fromHDF5File(cls, file, dataset):
         attrs = cls()
-        with h5py.File(filePath) as file:
-            for key, value in file.attrs.items():
-                keyTuple = tuple(key.split(':'))
-                attrs[keyTuple] = value
+        for key, value in file[dataset].attrs.items():
+            keyTuple = tuple(key.split(':'))
+            attrs[keyTuple] = value
         return attrs
 
     @staticmethod

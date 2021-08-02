@@ -1,7 +1,7 @@
-from .basecontrollers import ImRecWidgetController
+from .basecontrollers import WidgetController
 
 
-class PickDatasetsController(ImRecWidgetController):
+class PickDatasetsController(WidgetController):
     """ Connected to PickDatasetsDialog. """
 
     def __init__(self, *args, **kwargs):

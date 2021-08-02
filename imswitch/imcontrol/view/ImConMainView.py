@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
 
@@ -16,6 +17,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
+        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
@@ -146,6 +148,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickSetupDialogBlocking(self):
         result = self.pickSetupDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showPickDatasetsDialogBlocking(self):
+        result = self.pickDatasetsDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):

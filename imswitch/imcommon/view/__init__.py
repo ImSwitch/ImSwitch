@@ -1,2 +1,3 @@
 from .ModuleLoadErrorView import ModuleLoadErrorView
 from .MultiModuleWindow import MultiModuleWindow
+from .PickDatasetsDialog import PickDatasetsDialog

@@ -12,7 +12,7 @@ class MainController:
 class WidgetController(SignalInterface):
     """ Superclass for all WidgetControllers. """
 
-    def __init__(self, widget, factory, moduleCommChannel):
+    def __init__(self, widget, factory, moduleCommChannel, *args, **kwargs):
         self._widget = widget
         self._factory = factory
         self._moduleCommChannel = moduleCommChannel

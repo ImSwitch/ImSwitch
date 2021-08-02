@@ -4,9 +4,9 @@ from pyqtgraph.dockarea import Dock, DockArea
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view import PickDatasetsDialog
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
-from .PickDatasetsDialog import PickDatasetsDialog
 from .ReconstructionView import ReconstructionView
 from .ScanParamsDialog import ScanParamsDialog
 from .guitools import BetterPushButton
@@ -89,7 +89,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
             self.timepoints_text, self.p_text, self.n_text
         )
 
-        self.pickDatasetsDialog = PickDatasetsDialog(self)
+        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=True)
 
         parameterFrame = QtWidgets.QFrame()
         parameterGrid = QtWidgets.QGridLayout()

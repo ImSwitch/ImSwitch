@@ -5,10 +5,10 @@ import numpy as np
 import tifffile as tiff
 
 import imswitch.imreconstruct.view.guitools as guitools
+from imswitch.imcommon.controller import PickDatasetsController
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
-from .PickDatasetsController import PickDatasetsController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController

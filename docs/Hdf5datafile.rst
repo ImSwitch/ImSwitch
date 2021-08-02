@@ -10,8 +10,8 @@ When recording multiple detectors simultaneously, one file will be created for e
 
 Datasets
 =========
-Each image recording is saved in a dataset named ``data``, with dimensions Z × Y × X, where Z is the number of frames while Y and X are the vertical and horizontal axes respectively.
-Two extra parameters are stored in the dataset:
+Each image recording is saved in a dataset with dimensions Z × Y × X, where Z is the number of frames while Y and X are the vertical and horizontal axes respectively.
+Two special parameters are stored in the dataset:
 
 - ``detector_name``: name of the detector (camera or point-detector) that provided the images.
 - ``element_size_um``: pixel size of the image, this parameter will be automatically read by ImageJ when opening the file.
@@ -19,7 +19,7 @@ Two extra parameters are stored in the dataset:
 
 Object attributes
 ==================
-The rest of the metadata is stored as HDF5 attributes, containing information about the detectors, lasers, recording, and scanning.
+The rest of the metadata is also stored as HDF5 attributes in the datasets, containing information about the detectors, lasers, recording, and scanning.
 
 Detectors
 ----------

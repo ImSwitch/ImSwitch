@@ -35,6 +35,8 @@ class RecordingWidget(Widget):
         self.detectorList = guitools.CheckableComboBox()
         self.detectorList.setItemTypeName(singular='detector', plural='detectors')
         self.detectorList.setVisible(False)
+        self.singleFileMultiDetectorBox = QtWidgets.QCheckBox('Save in a single file')
+        self.singleFileMultiDetectorBox.setVisible(False)
 
         # Folder and filename fields
         baseOutputFolder = self._options.recording.outputFolder
@@ -110,10 +112,12 @@ class RecordingWidget(Widget):
         recGrid.addWidget(recTitle, gridRow, 0, 1, 3)
         gridRow += 1
 
-        recGrid.addWidget(QtWidgets.QLabel('Detector to capture'), gridRow, 0)
+        recGrid.addWidget(QtWidgets.QLabel('Detector(s) to capture'), gridRow, 0)
         recGrid.addWidget(self.detectorModeList, gridRow, 1, 1, 4)
         gridRow += 1
         recGrid.addWidget(self.detectorList, gridRow, 1, 1, 4)
+        gridRow += 1
+        recGrid.addWidget(self.singleFileMultiDetectorBox, gridRow, 1, 1, 4)
         gridRow += 1
 
         recGrid.addWidget(QtWidgets.QLabel('Folder'), gridRow, 0)
@@ -191,6 +195,9 @@ class RecordingWidget(Widget):
         detectors" list. """
         return self.detectorList.getCheckedItems()
 
+    def getMultiDetectorSingleFile(self):
+        return self.singleFileMultiDetectorBox.isChecked()
+
     def getSaveMode(self):
         return self.saveModeList.currentIndex() + 1
 
@@ -240,6 +247,12 @@ class RecordingWidget(Widget):
             if self.detectorModeList.itemData(i) == detectorMode:
                 self.detectorModeList.setCurrentIndex(i)
                 return
+
+    def setMultiDetectorSingleFile(self, singleFile):
+        self.singleFileMultiDetectorBox.setChecked(singleFile)
+
+    def setMultiDetectorSingleFileVisible(self, visible):
+        self.singleFileMultiDetectorBox.setVisible(visible)
 
     def setSaveMode(self, saveMode):
         self.saveModeList.setCurrentIndex(saveMode - 1)

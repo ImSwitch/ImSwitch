@@ -41,7 +41,8 @@ class RecordingManager(SignalInterface):
         return self.__detectorsManager
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
-                       recFrames=None, recTime=None, singleLapseFile=False):
+                       singleMultiDetectorFile=False, singleLapseFile=False,
+                       recFrames=None, recTime=None):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.
         In SpecFrames mode, recFrames (the number of frames) must be specified,
@@ -55,6 +56,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
+        self.__recordingWorker.singleMultiDetectorFile = singleMultiDetectorFile
         self.__recordingWorker.singleLapseFile = singleLapseFile
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
@@ -124,30 +126,7 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        singleLapseFile = self.recMode == RecMode.ScanLapse and self.singleLapseFile
-
-        files = {}
-        fileHandles = {}
-        filePaths = {}
-        for detectorName in self.detectorNames:
-            baseFilePath = f'{self.savename}_{detectorName}.hdf5'
-            if singleLapseFile:
-                filePaths[detectorName] = baseFilePath
-            else:
-                filePaths[detectorName] = self.__recordingManager.getSaveFilePath(baseFilePath,
-                                                                                  self.saveMode)
-
-            if self.saveMode == SaveMode.RAM:
-                memRecordings = self.__recordingManager._memRecordings
-                if (filePaths[detectorName] not in memRecordings or
-                        memRecordings[filePaths[detectorName]].closed):
-                    memRecordings[filePaths[detectorName]] = BytesIO()
-                fileHandles[detectorName] = memRecordings[filePaths[detectorName]]
-            else:
-                fileHandles[detectorName] = filePaths[detectorName]
-
-            files[detectorName] = h5py.File(fileHandles[detectorName],
-                                            'a' if singleLapseFile else 'w-')
+        files, fileHandles, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -157,8 +136,15 @@ class RecordingWorker(Worker):
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
-            datasetName = (f'scan{len(files[detectorName])}' if self.recMode == RecMode.ScanLapse
-                           else 'data')
+            datasetName = detectorName
+            if self.recMode == RecMode.ScanLapse and self.singleLapseFile:
+                # Add scan number to dataset name
+                scanNum = 0
+                datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                while datasetNameWithScan in files[detectorName]:
+                    scanNum += 1
+                    datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                datasetName = datasetNameWithScan
 
             # Initial number of frames must not be 0; otherwise, too much disk space may get
             # allocated. We remove this default frame later on if no frames are captured.
@@ -296,6 +282,43 @@ class RecordingWorker(Worker):
                     file.close()
 
             self.__recordingManager.endRecording(wait=False)
+
+    def _getFiles(self):
+        singleMultiDetectorFile = self.singleMultiDetectorFile
+        singleLapseFile = self.recMode == RecMode.ScanLapse and self.singleLapseFile
+
+        files = {}
+        fileHandles = {}
+        filePaths = {}
+        for detectorName in self.detectorNames:
+            if singleMultiDetectorFile:
+                baseFilePath = f'{self.savename}.hdf5'
+            else:
+                baseFilePath = f'{self.savename}_{detectorName}.hdf5'
+
+            if singleLapseFile:
+                filePaths[detectorName] = baseFilePath
+            else:
+                filePaths[detectorName] = self.__recordingManager.getSaveFilePath(baseFilePath,
+                                                                                  self.saveMode)
+
+        for detectorName in self.detectorNames:
+            if self.saveMode == SaveMode.RAM:
+                memRecordings = self.__recordingManager._memRecordings
+                if (filePaths[detectorName] not in memRecordings or
+                        memRecordings[filePaths[detectorName]].closed):
+                    memRecordings[filePaths[detectorName]] = BytesIO()
+                fileHandles[detectorName] = memRecordings[filePaths[detectorName]]
+            else:
+                fileHandles[detectorName] = filePaths[detectorName]
+
+            if singleMultiDetectorFile and len(files) > 0:
+                files[detectorName] = list(files.values())[0]
+            else:
+                files[detectorName] = h5py.File(fileHandles[detectorName],
+                                                'a' if singleLapseFile else 'w-')
+
+        return files, fileHandles, filePaths
 
     def _getNewFrames(self, detectorName):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()

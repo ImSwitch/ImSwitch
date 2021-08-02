@@ -12,15 +12,17 @@ def record(qtbot, detectorInfos, *args, **kwargs):
 
     filePerDetector, savedToDiskPerDetector = {}, {}
 
-    def memoryRecordingAvailable(name, file, _, savedToDisk):
+    def memoryRecordingAvailable(_, file, __, savedToDisk, detectorName):
         nonlocal filePerDetector, savedToDiskPerDetector
-        filePerDetector[name], savedToDiskPerDetector[name] = file, savedToDisk
+        filePerDetector[detectorName], savedToDiskPerDetector[detectorName] = file, savedToDisk
         return True
 
     recordingManager.startRecording(*args, **kwargs)
     with qtbot.waitSignals(
             [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos],
-            check_params_cbs=[memoryRecordingAvailable for _ in detectorInfos],
+            check_params_cbs=[(lambda *args, detectorName=detectorName, **kwargs:
+                               memoryRecordingAvailable(*args, detectorName=detectorName, **kwargs))
+                              for detectorName in detectorInfos],
             timeout=30000
     ):
         pass
@@ -45,12 +47,12 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
         recFrames=numFrames
     )
 
-    assert len(filePerDetector) == len(detectorInfos)
-    assert len(savedToDiskPerDetector) == len(detectorInfos)
+    assert filePerDetector.keys() == detectorInfos.keys()
+    assert savedToDiskPerDetector.keys() == detectorInfos.keys()
 
-    for file in filePerDetector.values():
+    for detectorName, file in filePerDetector.items():
         h5pyFile = h5py.File(file)
-        dataset = h5pyFile.get('data')
+        dataset = h5pyFile.get(detectorName)
         assert dataset.shape[0] == numFrames
         h5pyFile.close()  # Otherwise we can get segfaults
         file.close()  # Otherwise we can get segfaults
@@ -75,12 +77,12 @@ def test_recording_spec_time(qtbot, detectorInfos):
         recTime=5
     )
 
-    assert len(filePerDetector) == len(detectorInfos)
-    assert len(savedToDiskPerDetector) == len(detectorInfos)
+    assert filePerDetector.keys() == detectorInfos.keys()
+    assert savedToDiskPerDetector.keys() == detectorInfos.keys()
 
-    for file in filePerDetector.values():
+    for detectorName, file in filePerDetector.items():
         h5pyFile = h5py.File(file)
-        dataset = h5pyFile.get('data')
+        dataset = h5pyFile.get(detectorName)
         assert dataset.shape[0] > 0
         h5pyFile.close()  # Otherwise we can get segfaults
         file.close()  # Otherwise we can get segfaults

@@ -3,7 +3,7 @@ import time
 from typing import Optional, Union
 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import filetools, ostools, APIExport
+from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import SaveMode, RecMode
 from ..basecontrollers import ImConWidgetController
 
@@ -69,8 +69,7 @@ class RecordingController(ImConWidgetController):
         time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
-        name = os.path.join(folder, self.getFileName()) + '_snap'
-        savename = filetools.getUniqueName(name)
+        savename = os.path.join(folder, self.getFileName()) + '_snap'
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
 
@@ -85,8 +84,7 @@ class RecordingController(ImConWidgetController):
             if not os.path.exists(folder):
                 os.makedirs(folder)
             time.sleep(0.01)
-            name = os.path.join(folder, self.getFileName()) + '_rec'
-            self.savename = filetools.getUniqueName(name)
+            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
 
             if self.recMode == RecMode.ScanOnce:
                 self._commChannel.sigScanStarting.emit()  # To get correct values from sharedAttrs

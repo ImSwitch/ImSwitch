@@ -1,25 +1,17 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+from .basecontrollers import ImRecWidgetController
 
 
-class CommunicationChannel(SignalInterface):
-    """
-    Communication Channel is a class that handles the communication between Master Controller
-    and Widgets, or between Widgets.
-    """
+class PickDatasetsController(ImRecWidgetController):
+    """ Connected to PickDatasetsDialog. """
 
-    sigDataFolderChanged = Signal(object)  # (dataFolderPath)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    sigSaveFolderChanged = Signal(object)  # (saveFolderPath)
+    def setDatasets(self, dataPath, datasetNames):
+        self._widget.setDatasets(dataPath, datasetNames)
 
-    sigCurrentDataChanged = Signal(object)  # (dataObj)
-
-    sigScanParamsUpdated = Signal(object, bool)  # (scanParDict, applyOnCurrentRecon)
-
-    sigPatternUpdated = Signal(object)  # (pattern)
-
-    sigPatternVisibilityChanged = Signal(bool)  # (visible)
-
-    sigAddToMultiData = Signal(str, str)  # (path, datasetName)
+    def getSelectedDatasets(self):
+        return self._widget.getSelectedDatasets()
 
 
 # Copyright (C) 2020, 2021 TestaLab

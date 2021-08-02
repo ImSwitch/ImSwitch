@@ -24,6 +24,10 @@ class MultiDataFrameController(ImRecWidgetController):
         )
         self._commChannel.sigDataFolderChanged.connect(self.dataFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
+        self._commChannel.sigAddToMultiData.connect(
+            lambda path, datasetName: self.makeAndAddDataObj(os.path.basename(path), datasetName,
+                                                             path=path)
+        )
 
         self._widget.sigAddDataClicked.connect(self.addDataClicked)
         self._widget.sigLoadCurrentDataClicked.connect(self.loadCurrData)
@@ -58,8 +62,8 @@ class MultiDataFrameController(ImRecWidgetController):
 
         for datasetName in data.keys():
             self.makeAndAddDataObj(
-                name, path=dataItem.filePath if dataItem.savedToDisk else None, file=data,
-                datasetName=datasetName
+                name, datasetName, path=dataItem.filePath if dataItem.savedToDisk else None,
+                file=data
             )
 
     def memoryDataSavedToDisk(self, name, filePath):
@@ -74,8 +78,8 @@ class MultiDataFrameController(ImRecWidgetController):
         self._widget.delDataByName(name)
         self.updateInfo()
 
-    def makeAndAddDataObj(self, name, path=None, file=None, datasetName=None):
-        dataObj = DataObj(name, path=path, file=file, datasetName=datasetName)
+    def makeAndAddDataObj(self, name, datasetName, path=None, file=None):
+        dataObj = DataObj(name, datasetName, path=path, file=file)
         if dataObj in self._widget.getAllDataObjs():
             return  # Already added
 
@@ -86,7 +90,9 @@ class MultiDataFrameController(ImRecWidgetController):
     def addDataClicked(self):
         paths = self._widget.requestFilePathsFromUser(self._dataFolder)
         for path in paths:
-            self.makeAndAddDataObj(os.path.basename(path), path)
+            datasetsInFile = DataObj.getDatasetNames(path)
+            for datasetName in datasetsInFile:
+                self.makeAndAddDataObj(os.path.basename(path), datasetName, path=path)
 
     def loadCurrData(self):
         for dataObj in self._widget.getSelectedDataObjs():

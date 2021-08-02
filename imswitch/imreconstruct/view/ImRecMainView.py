@@ -6,6 +6,7 @@ from qtpy import QtCore, QtWidgets
 
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
+from .PickDatasetsDialog import PickDatasetsDialog
 from .ReconstructionView import ReconstructionView
 from .ScanParamsDialog import ScanParamsDialog
 from .guitools import BetterPushButton
@@ -88,6 +89,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
             self.timepoints_text, self.p_text, self.n_text
         )
 
+        self.pickDatasetsDialog = PickDatasetsDialog(self)
+
         parameterFrame = QtWidgets.QFrame()
         parameterGrid = QtWidgets.QGridLayout()
         parameterFrame.setLayout(parameterGrid)
@@ -95,13 +98,13 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         DataDock = DockArea()
 
-        MultiDataDock = Dock('Multidata management')
-        MultiDataDock.addWidget(self.multiDataFrame)
-        DataDock.addDock(MultiDataDock)
+        self.multiDataDock = Dock('Multidata management')
+        self.multiDataDock.addWidget(self.multiDataFrame)
+        DataDock.addDock(self.multiDataDock)
 
-        CurrentDataDock = Dock('Current data')
-        CurrentDataDock.addWidget(self.dataFrame)
-        DataDock.addDock(CurrentDataDock, 'above', MultiDataDock)
+        self.currentDataDock = Dock('Current data')
+        self.currentDataDock.addWidget(self.dataFrame)
+        DataDock.addDock(self.currentDataDock, 'above', self.multiDataDock)
 
         layout = QtWidgets.QHBoxLayout()
         self.cwidget = QtWidgets.QWidget()
@@ -134,6 +137,12 @@ class ImRecMainView(QtWidgets.QMainWindow):
     def requestFolderPathFromUser(self, caption=None, defaultFolder=None):
         return QtWidgets.QFileDialog.getExistingDirectory(caption=caption, directory=defaultFolder)
 
+    def raiseCurrentDataDock(self):
+        self.currentDataDock.raiseDock()
+
+    def raiseMultiDataDock(self):
+        self.multiDataDock.raiseDock()
+
     def addNewData(self, reconObj):
         self.reconstructionWidget.addNewData(reconObj)
 
@@ -142,8 +151,19 @@ class ImRecMainView(QtWidgets.QMainWindow):
         for i in range(dataList.count()):
             yield dataList.item(i).data(1)
 
-    def showScanParamsDialog(self):
-        self.scanParamsDialog.show()
+    def showScanParamsDialog(self, blocking=False):
+        if blocking:
+            result = self.scanParamsDialog.exec_()
+            return result == QtWidgets.QDialog.Accepted
+        else:
+            self.scanParamsDialog.show()
+
+    def showPickDatasetsDialog(self, blocking=False):
+        if blocking:
+            result = self.pickDatasetsDialog.exec_()
+            return result == QtWidgets.QDialog.Accepted
+        else:
+            self.pickDatasetsDialog.show()
 
     def getPatternParams(self):
         patternPars = self.parTree.p.param('Pattern')

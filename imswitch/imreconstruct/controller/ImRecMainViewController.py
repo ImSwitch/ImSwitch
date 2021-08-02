@@ -8,6 +8,7 @@ import imswitch.imreconstruct.view.guitools as guitools
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
+from .PickDatasetsController import PickDatasetsController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
@@ -28,6 +29,9 @@ class ImRecMainViewController(ImRecWidgetController):
         )
         self.scanParamsController = self._factory.createController(
             ScanParamsController, self._widget.scanParamsDialog
+        )
+        self.pickDatasetsController = self._factory.createController(
+            PickDatasetsController, self._widget.pickDatasetsDialog
         )
 
         self._signalExtractor = SignalExtractor()
@@ -136,14 +140,39 @@ class ImRecMainViewController(ImRecWidgetController):
         if dataPath:
             print(f'Loading data at: {dataPath}')
 
+            datasetsInFile = DataObj.getDatasetNames(dataPath)
+            datasetToLoad = None
+            if len(datasetsInFile) < 1:
+                # File does not contain any datasets
+                return
+            elif len(datasetsInFile) > 1:
+                # File contains multiple datasets
+                self.pickDatasetsController.setDatasets(dataPath, datasetsInFile)
+                if not self._widget.showPickDatasetsDialog(blocking=True):
+                    return
+
+                datasetsSelected = self.pickDatasetsController.getSelectedDatasets()
+                if len(datasetsSelected) < 1:
+                    # No datasets selected
+                    return
+                elif len(datasetsSelected) == 1:
+                    datasetToLoad = datasetsSelected[0]
+                else:
+                    # Load into multi-data list
+                    for datasetName in datasetsSelected:
+                        self._commChannel.sigAddToMultiData.emit(dataPath, datasetName)
+                    self._widget.raiseMultiDataDock()
+                    return
+
             name = os.path.split(dataPath)[1]
             if self._currentData is not None:
                 self._currentData.checkAndUnloadData()
-            self._currentData = DataObj(name, path=dataPath)
+            self._currentData = DataObj(name, datasetToLoad, path=dataPath)
             self._currentData.checkAndLoadData()
             if self._currentData.dataLoaded:
                 self._commChannel.sigCurrentDataChanged.emit(self._currentData)
                 print('Data loaded')
+                self._widget.raiseCurrentDataDock()
             else:
                 pass
 

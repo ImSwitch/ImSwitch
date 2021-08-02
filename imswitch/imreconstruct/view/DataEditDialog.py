@@ -37,9 +37,9 @@ class DataEditDialog(QtWidgets.QDialog):
         self.frameNum.textChanged.connect(self.frameNumberChanged)
         self.frameNum.setFixedWidth(45)
 
-        dataNameLabel = QtWidgets.QLabel('File name:')
-        self.dataName = QtWidgets.QLabel('')
-        numFramesLabel = QtWidgets.QLabel('Nr of frames:')
+        self.dataName = QtWidgets.QLabel('File:')
+        self.datasetName = QtWidgets.QLabel('Dataset:')
+        numFramesLabel = QtWidgets.QLabel('No. frames:')
         self.numFrames = QtWidgets.QLabel('')
 
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
@@ -66,17 +66,17 @@ class DataEditDialog(QtWidgets.QDialog):
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(dataNameLabel, 0, 0)
-        layout.addWidget(self.dataName, 0, 1)
-        layout.addWidget(numFramesLabel, 0, 2)
-        layout.addWidget(self.numFrames, 0, 3)
+        layout.addWidget(self.dataName, 0, 0, 1, 4)
+        layout.addWidget(self.datasetName, 0, 4, 1, 2)
         layout.addWidget(self.showMeanBtn, 1, 0)
-        layout.addWidget(self.slider, 1, 1)
-        layout.addWidget(frameLabel, 1, 2)
-        layout.addWidget(self.frameNum, 1, 3)
-        layout.addWidget(imageWidget, 2, 0, 1, 4)
-        layout.addWidget(self.actionBtns, 0, 4)
-        layout.addWidget(dfWidget, 0, 5, 3, 1)
+        layout.addWidget(self.slider, 1, 1, 1, 3)
+        layout.addWidget(frameLabel, 1, 4)
+        layout.addWidget(self.frameNum, 1, 5)
+        layout.addWidget(numFramesLabel, 2, 4)
+        layout.addWidget(self.numFrames, 2, 5)
+        layout.addWidget(imageWidget, 3, 0, 1, 6)
+        layout.addWidget(self.actionBtns, 0, 6)
+        layout.addWidget(dfWidget, 0, 7, -1, 1)
 
     def sliderMoved(self):
         frameNumber = self.slider.value()
@@ -96,8 +96,9 @@ class DataEditDialog(QtWidgets.QDialog):
     def setImage(self, image, autoLevels):
         self.img.setImage(image, autoLevels=autoLevels)
 
-    def updateDataProperties(self, dataName, numFrames):
-        self.dataName.setText(dataName)
+    def updateDataProperties(self, dataName, datasetName, numFrames):
+        self.dataName.setText(f'File: {dataName}')
+        self.datasetName.setText(f'Dataset: {datasetName}')
         self.numFrames.setText(str(numFrames))
         self.slider.setMaximum(numFrames - 1)
 

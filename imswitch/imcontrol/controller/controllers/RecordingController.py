@@ -114,6 +114,7 @@ class RecordingController(ImConWidgetController):
                 time.sleep(0.3)
                 self._commChannel.sigRunScan.emit(True)
             elif self.recMode == RecMode.ScanLapse:
+                self.singleLapseFile = self._widget.getTimelapseSingleFile()
                 self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
                 self.nextLapse()
@@ -127,7 +128,12 @@ class RecordingController(ImConWidgetController):
     def nextLapse(self):
         self.endedRecording = False
         self.endedScan = False
-        fileName = self.savename + "_scan" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+
+        if not self.singleLapseFile:
+            lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+            fileName = f'{self.savename}_scan{lapseCurrentStr}'
+        else:
+            fileName = self.savename
 
         self._commChannel.sigScanStarting.emit()
         self.attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
@@ -135,7 +141,7 @@ class RecordingController(ImConWidgetController):
 
         self._master.recordingManager.startRecording(
             self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs,
-            recFrames=self._commChannel.getNumScanPositions()
+            recFrames=self._commChannel.getNumScanPositions(), singleLapseFile=self.singleLapseFile
         )
         time.sleep(0.3)
         self._commChannel.sigRunScan.emit(True)
@@ -182,12 +188,12 @@ class RecordingController(ImConWidgetController):
 
     def specFrames(self):
         self._widget.checkSpecFrames()
-        self._widget.setEnabledParams(numExpositions=True)
+        self._widget.setEnabledParams(specFrames=True)
         self.recMode = RecMode.SpecFrames
 
     def specTime(self):
         self._widget.checkSpecTime()
-        self._widget.setEnabledParams(timeToRec=True)
+        self._widget.setEnabledParams(specTime=True)
         self.recMode = RecMode.SpecTime
 
     def recScanOnce(self):
@@ -197,7 +203,7 @@ class RecordingController(ImConWidgetController):
 
     def recScanLapse(self):
         self._widget.checkScanLapse()
-        self._widget.setEnabledParams(timelapseTime=True, timelapseFreq=True)
+        self._widget.setEnabledParams(scanLapse=True)
         self.recMode = RecMode.ScanLapse
 
     def untilStop(self):

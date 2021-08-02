@@ -27,14 +27,16 @@ class VFileCollection(SignalInterface):
         super().__init__()
         self._data = {}
 
+    def getSavePath(self, name):
+        return self._data[name].filePath
+
     def saveToDisk(self, name):
-        filePath = self._data[name].filePath
+        filePath = self.getSavePath(name)
 
         if isinstance(self._data[name].data, IOBase):
             with open(filePath, 'wb') as file:
                 file.write(self._data[name].data.getbuffer())
         elif isinstance(self._data[name].data, h5py.File):
-            # TODO: This seems to create files with incorrect headers
             with open(filePath, 'wb') as file:
                 file.write(self._data[name].data.id.get_file_image())
         else:
@@ -48,6 +50,9 @@ class VFileCollection(SignalInterface):
     def __setitem__(self, name, value):
         if not isinstance(value, DataItem):
             raise TypeError('Value must be a DataItem')
+
+        if name in self._data and self._data[name] != value:
+            del self._data[name]
 
         self._data[name] = value
         self.sigDataSet.emit(name, value)

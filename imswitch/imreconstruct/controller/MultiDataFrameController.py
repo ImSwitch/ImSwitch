@@ -52,26 +52,34 @@ class MultiDataFrameController(ImRecWidgetController):
             self._widget.setAllRowsHighlighted(False)
 
     def memoryDataSet(self, name, dataItem):
-        if not isinstance(dataItem.data, h5py.File):
-            raise TypeError(f'Data has unsupported type "{type(dataItem.data).__name__}"; should be'
-                            f' h5py.File')
+        data = dataItem.data
+        if not isinstance(data, h5py.File):
+            data = h5py.File(data)
 
-        self.makeAndAddDataObj(
-            name, path=dataItem.filePath if dataItem.savedToDisk else None, file=dataItem.data
-        )
+        for datasetName in data.keys():
+            self.makeAndAddDataObj(
+                name, path=dataItem.filePath if dataItem.savedToDisk else None, file=data,
+                datasetName=datasetName
+            )
 
     def memoryDataSavedToDisk(self, name, filePath):
-        self._widget.getDataObjByName(name).dataPath = filePath
+        for dataObj in self._widget.getDataObjsByName(name):
+            dataObj.dataPath = filePath
         self._widget.setDataObjMemoryFlag(name, False)
         self.updateInfo()
 
     def memoryDataWillRemove(self, name):
-        self._widget.getDataObjByName(name).checkAndUnloadData()
+        for dataObj in self._widget.getDataObjsByName(name):
+            dataObj.checkAndUnloadData()
         self._widget.delDataByName(name)
         self.updateInfo()
 
-    def makeAndAddDataObj(self, name, path=None, file=None):
-        self._widget.addDataObj(name, DataObj(name, path=path, file=file))
+    def makeAndAddDataObj(self, name, path=None, file=None, datasetName=None):
+        dataObj = DataObj(name, path=path, file=file, datasetName=datasetName)
+        if dataObj in self._widget.getAllDataObjs():
+            return  # Already added
+
+        self._widget.addDataObj(name, datasetName, dataObj)
         self._widget.setDataObjMemoryFlag(name, path is None)
         self.updateInfo()
 
@@ -108,11 +116,7 @@ class MultiDataFrameController(ImRecWidgetController):
 
         self.unloadCurrData()
         for dataObj in list(self._widget.getSelectedDataObjs()):
-            if dataObj.name in self._moduleCommChannel.memoryRecordings:
-                del self._moduleCommChannel.memoryRecordings[dataObj.name]
-                # No need to call delDataByName, it will be called in memoryDataWillRemove
-            else:
-                self._widget.delDataByName(dataObj.name)
+            self.deleteDataObj(dataObj)
         self.updateInfo()
 
     def deleteAllData(self):
@@ -121,22 +125,34 @@ class MultiDataFrameController(ImRecWidgetController):
 
         self.unloadAllData()
         for dataObj in list(self._widget.getAllDataObjs()):
-            if dataObj.name in self._moduleCommChannel.memoryRecordings:
-                del self._moduleCommChannel.memoryRecordings[dataObj.name]
-                # No need to call delDataByName, it will be called in memoryDataWillRemove
-            else:
-                self._widget.delDataByName(dataObj.name)
+            self.deleteDataObj(dataObj)
         self.updateInfo()
+
+    def deleteDataObj(self, dataObj):
+        if (dataObj.name in self._moduleCommChannel.memoryRecordings and
+                len(self._widget.getDataObjsByName(dataObj.name)) == 1):
+            del self._moduleCommChannel.memoryRecordings[dataObj.name]
+            # No need to call delDataByName, it will be called in memoryDataWillRemove
+        else:
+            self._widget.delDataByName(dataObj.name, dataObj.datasetName)
 
     def saveCurrData(self):
         for dataObj in self._widget.getSelectedDataObjs():
-            if dataObj.dataPath is None:  # Can't save data already on disk
-                self._moduleCommChannel.memoryRecordings.saveToDisk(dataObj.name)
+            self.saveDataObj(dataObj)
 
     def saveAllData(self):
         for dataObj in self._widget.getAllDataObjs():
-            if dataObj.dataPath is None:  # Can't save data already on disk
-                self._moduleCommChannel.memoryRecordings.saveToDisk(dataObj.name)
+            self.saveDataObj(dataObj)
+
+    def saveDataObj(self, dataObj):
+        if dataObj.dataPath is not None:
+            return  # Can't save data already on disk
+
+        if (os.path.exists(self._moduleCommChannel.memoryRecordings.getSavePath(dataObj.name)) and
+                not self._widget.requestOverwriteConfirmation(dataObj.name)):
+            return  # File exists, user does not wish to overwrite
+
+        self._moduleCommChannel.memoryRecordings.saveToDisk(dataObj.name)
 
     def setAsCurrentData(self):
         try:

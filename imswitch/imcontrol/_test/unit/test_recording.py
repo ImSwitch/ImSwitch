@@ -1,5 +1,7 @@
 import pytest
 
+import h5py
+
 from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode, SaveMode
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
@@ -34,7 +36,7 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
         detectorInfos,
         detectorNames=list(detectorInfos.keys()),
         recMode=RecMode.SpecFrames,
-        savename='test',
+        savename='test_spec_frames',
         saveMode=SaveMode.RAM,
         attrs={detectorName: {
             'testAttr1': 2,
@@ -47,8 +49,10 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
     assert len(savedToDiskPerDetector) == len(detectorInfos)
 
     for file in filePerDetector.values():
-        dataset = file.get('data')
+        h5pyFile = h5py.File(file)
+        dataset = h5pyFile.get('data')
         assert dataset.shape[0] == numFrames
+        h5pyFile.close()  # Otherwise we can get segfaults
         file.close()  # Otherwise we can get segfaults
     for savedToDisk in savedToDiskPerDetector.values():
         assert savedToDisk is False
@@ -62,7 +66,7 @@ def test_recording_spec_time(qtbot, detectorInfos):
         detectorInfos,
         detectorNames=list(detectorInfos.keys()),
         recMode=RecMode.SpecTime,
-        savename='test',
+        savename='test_spec_time',
         saveMode=SaveMode.RAM,
         attrs={detectorName: {
             'testAttr1': 2,
@@ -75,8 +79,10 @@ def test_recording_spec_time(qtbot, detectorInfos):
     assert len(savedToDiskPerDetector) == len(detectorInfos)
 
     for file in filePerDetector.values():
-        dataset = file.get('data')
+        h5pyFile = h5py.File(file)
+        dataset = h5pyFile.get('data')
         assert dataset.shape[0] > 0
+        h5pyFile.close()  # Otherwise we can get segfaults
         file.close()  # Otherwise we can get segfaults
     for savedToDisk in savedToDiskPerDetector.values():
         assert savedToDisk is False

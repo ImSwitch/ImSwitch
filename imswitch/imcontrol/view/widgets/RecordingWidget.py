@@ -85,7 +85,7 @@ class RecordingWidget(Widget):
         self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
                                       QtCore.Qt.AlignVCenter))
 
-        self.saveModeLabel = QtWidgets.QLabel('<strong>Save mode:</strong>')
+        self.saveModeLabel = QtWidgets.QLabel('<strong>Rec save mode:</strong>')
         self.saveModeList = QtWidgets.QComboBox()
         self.saveModeList.addItems(['Save on disk',
                                     'Save in memory for reconstruction',

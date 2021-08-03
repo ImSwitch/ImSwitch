@@ -73,22 +73,30 @@ class RecordingManager(SignalInterface):
         """ Saves a single frame capture with the specified detectors to a file
         with the specified name prefix and attributes to save to the capture
         per detector. """
-        for detectorName in detectorNames:
-            file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
+        acqHandle = self.__detectorsManager.startAcquisition()
+        try:
+            for detectorName in detectorNames:
+                file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
 
-            shape = self.__detectorsManager[detectorName].shape
-            dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+                shape = self.__detectorsManager[detectorName].shape
+                dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
-            for key, value in attrs[detectorName].items():
-                file.attrs[key] = value
+                for key, value in attrs[detectorName].items():
+                    file.attrs[key] = value
 
-            dataset.attrs['detector_name'] = detectorName
+                dataset.attrs['detector_name'] = detectorName
 
-            # For ImageJ compatibility
-            dataset.attrs['element_size_um'] = self.__detectorsManager[detectorName].pixelSizeUm
+                # For ImageJ compatibility
+                dataset.attrs['element_size_um'] = self.__detectorsManager[detectorName].pixelSizeUm
 
-            dataset[:, :] = self.__detectorsManager[detectorName].image
-            file.close()
+                latestFrame = self.__detectorsManager[detectorName].image
+                if latestFrame.size < 1:
+                    latestFrame = self.__detectorsManager[detectorName].getLatestFrame()
+
+                dataset[:, :] = latestFrame
+                file.close()
+        finally:
+            self.__detectorsManager.stopAcquisition(acqHandle)
 
 
 class RecordingWorker(Worker):

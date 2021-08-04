@@ -88,7 +88,7 @@ class RecordingWidget(Widget):
 
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
 
-        self.saveModeLabel = QtWidgets.QLabel('<strong>Save mode:</strong>')
+        self.saveModeLabel = QtWidgets.QLabel('<strong>Rec save mode:</strong>')
         self.saveModeList = QtWidgets.QComboBox()
         self.saveModeList.addItems(['Save on disk',
                                     'Save in memory for reconstruction',
@@ -226,8 +226,9 @@ class RecordingWidget(Widget):
         return self.singleFileLapseBox.isChecked()
 
     def setDetectorList(self, detectorModels):
+        self.detectorModeList.addItem('Current detector at start', -1)
+
         if len(detectorModels) > 1:
-            self.detectorModeList.addItem('Current detector at start', -1)
             self.detectorModeList.addItem('All acquisition detectors', -2)
             self.detectorModeList.addItem('Specific detector(s)', -3)
 

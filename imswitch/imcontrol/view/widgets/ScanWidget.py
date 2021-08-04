@@ -52,7 +52,7 @@ class ScanWidget(Widget):
 
         self.scanButton = guitools.BetterPushButton('Run Scan')
 
-        self.continuousCheck = QtWidgets.QCheckBox('Repeat')
+        self.repeatBox = QtWidgets.QCheckBox('Repeat')
 
         self.graph = GraphFrame()
         self.graph.setEnabled(False)
@@ -96,7 +96,7 @@ class ScanWidget(Widget):
                                   QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
             currentRow, 4
         )
-        self.grid.addWidget(self.continuousCheck, currentRow, 5)
+        self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
         currentRow += 1
 
@@ -210,8 +210,8 @@ class ScanWidget(Widget):
     def isContLaserMode(self):
         return self.contLaserPulsesRadio.isChecked()
 
-    def continuousCheckEnabled(self):
-        return self.continuousCheck.isChecked()
+    def repeatEnabled(self):
+        return self.repeatBox.isChecked()
 
     def getScanDim(self, index):
         return self.scanPar['scanDim' + str(index)].currentText()
@@ -245,6 +245,9 @@ class ScanWidget(Widget):
 
     def setContLaserMode(self):
         self.contLaserPulsesRadio.setChecked(True)
+
+    def setRepeatEnabled(self, enabled):
+        self.repeatBox.setChecked(enabled)
 
     def setScanButtonChecked(self, checked):
         self.scanButton.setEnabled(not checked)

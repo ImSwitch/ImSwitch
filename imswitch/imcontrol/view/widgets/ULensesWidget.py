@@ -1,4 +1,3 @@
-import numpy as np
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools

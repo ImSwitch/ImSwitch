@@ -45,14 +45,16 @@ class ScanController(SuperScanController):
 
         # Connect NidaqManager signals
         self._master.nidaqManager.sigScanBuilt.connect(
-            lambda _, deviceList: self._commChannel.sigScanBuilt.emit(deviceList)
+            lambda _, deviceList: self.emitScanSignal(self._commChannel.sigScanBuilt, deviceList)
         )
-        self._master.nidaqManager.sigScanStarted.connect(self._commChannel.sigScanStarted)
+        self._master.nidaqManager.sigScanStarted.connect(
+            lambda: self.emitScanSignal(self._commChannel.sigScanStarted)
+        )
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
         self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigRunScan.connect(self.runScanAdvanced)
+        self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
@@ -172,6 +174,11 @@ class ScanController(SuperScanController):
             self.settingParameters = False
             self.plotSignalGraph()
 
+    def runScanExternal(self):
+        self._widget.setScanMode()
+        self._widget.setRepeatEnabled(False)
+        self.runScanAdvanced(sigScanStartingEmitted=True)
+
     def runScanAdvanced(self, sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
         self._widget.setScanButtonChecked(True)
@@ -187,21 +194,21 @@ class ScanController(SuperScanController):
             return
 
         if not sigScanStartingEmitted:
-            self._commChannel.sigScanStarting.emit()
+            self.emitScanSignal(self._commChannel.sigScanStarting)
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
         print('Scan done')
-        if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
+        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
             self._widget.setScanButtonChecked(False)
-            self._commChannel.sigScanEnded.emit()
+            self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
             print('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def scanFailed(self):
         self._widget.setScanButtonChecked(False)
-        self._commChannel.sigScanEnded.emit()
+        self.emitScanSignal(self._commChannel.sigScanEnded)
 
     def getParameters(self):
         if self.settingParameters:
@@ -283,6 +290,10 @@ class ScanController(SuperScanController):
                 ) if isLaser else '#ffffff'
             )
         self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
+
+    def emitScanSignal(self, signal, *args):
+        if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
+            signal.emit(*args)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 2:

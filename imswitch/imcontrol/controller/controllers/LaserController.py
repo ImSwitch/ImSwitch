@@ -48,6 +48,7 @@ class LaserController(ImConWidgetController):
         self._widget.sigPresetSelected.connect(self.presetSelected)
         self._widget.sigLoadPresetClicked.connect(self.loadPreset)
         self._widget.sigSavePresetClicked.connect(self.savePreset)
+        self._widget.sigSavePresetAsClicked.connect(self.savePresetAs)
         self._widget.sigDeletePresetClicked.connect(self.deletePreset)
         self._widget.sigPresetScanDefaultToggled.connect(self.presetScanDefaultToggled)
 
@@ -64,7 +65,6 @@ class LaserController(ImConWidgetController):
         """ Change magnitude. """
         self._master.lasersManager[laserName].setValue(magnitude)
         self._widget.setValue(laserName, magnitude)
-        self._widget.setCurrentPreset(None)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
 
     def presetSelected(self, presetName):
@@ -90,12 +90,29 @@ class LaserController(ImConWidgetController):
         # Load values
         self.applyPreset(self._setupInfo.laserPresets[presetToLoad])
 
-        # Keep preset selected in GUI
-        self._widget.setCurrentPreset(presetToLoad)
+    def savePreset(self, name=None):
+        """ Saves current values to a preset. If the name parameter is None,
+        the values will be saved to the currently selected preset. """
 
-    def savePreset(self):
+        if not name:
+            name = self._widget.getCurrentPreset()
+            if not name:
+                return
+
+        # Add in GUI
+        if name not in self._setupInfo.laserPresets:
+            self._widget.addPreset(name)
+
+        # Set in setup info
+        self._setupInfo.setLaserPreset(name, self.makePreset())
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
+        # Update selected preset in GUI
+        self._widget.setCurrentPreset(name)
+
+    def savePresetAs(self):
         """ Handles what happens when the user requests the current laser
-        values to be saved as a preset. """
+        values to be saved as a new preset. """
 
         name = guitools.askForTextInput(self._widget, 'Add laser preset',
                                         'Enter a name for this preset:')
@@ -104,9 +121,7 @@ class LaserController(ImConWidgetController):
             return
 
         add = True
-        alreadyExists = False
         if name in self._setupInfo.laserPresets:
-            alreadyExists = True
             add = guitools.askYesNoQuestion(
                 self._widget,
                 'Laser preset already exists',
@@ -114,16 +129,7 @@ class LaserController(ImConWidgetController):
             )
 
         if add:
-            # Add in GUI
-            if not alreadyExists:
-                self._widget.addPreset(name)
-
-            # Set in setup info
-            self._setupInfo.setLaserPreset(name, self.makePreset())
-            configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
-
-            # Update selected preset in GUI
-            self._widget.setCurrentPreset(name)
+            self.savePreset(name)
 
     def deletePreset(self):
         """ Handles what happens when the user requests the selected preset to

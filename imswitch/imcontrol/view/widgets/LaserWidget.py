@@ -13,6 +13,7 @@ class LaserWidget(Widget):
     sigPresetSelected = QtCore.Signal(str)  # (presetName)
     sigLoadPresetClicked = QtCore.Signal()
     sigSavePresetClicked = QtCore.Signal()
+    sigSavePresetAsClicked = QtCore.Signal()
     sigDeletePresetClicked = QtCore.Signal()
     sigPresetScanDefaultToggled = QtCore.Signal()
 
@@ -51,8 +52,10 @@ class LaserWidget(Widget):
         )
         self.loadPresetButton = guitools.BetterPushButton('Load selected')
         self.loadPresetButton.clicked.connect(self.sigLoadPresetClicked)
-        self.savePresetButton = guitools.BetterPushButton('Save values…')
+        self.savePresetButton = guitools.BetterPushButton('Save to selected')
         self.savePresetButton.clicked.connect(self.sigSavePresetClicked)
+        self.savePresetAsButton = guitools.BetterPushButton('Save as…')
+        self.savePresetAsButton.clicked.connect(self.sigSavePresetAsClicked)
         self.moreButton = QtWidgets.QToolButton()
         self.moreButton.setText('More…')
         self.moreButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -70,6 +73,7 @@ class LaserWidget(Widget):
         self.presetsBox.addWidget(self.presetsList, 1)
         self.presetsBox.addWidget(self.loadPresetButton)
         self.presetsBox.addWidget(self.savePresetButton)
+        self.presetsBox.addWidget(self.savePresetAsButton)
         self.presetsBox.addWidget(self.moreButton)
 
         self.layout.addLayout(self.presetsBox, 1, 0)
@@ -151,6 +155,7 @@ class LaserWidget(Widget):
             self.presetsList.setCurrentIndex(-1)
 
         self.loadPresetButton.setEnabled(anyPresetSelected)
+        self.savePresetButton.setEnabled(anyPresetSelected)
         self.deletePresetAction.setEnabled(anyPresetSelected)
         self.presetScanDefaultAction.setEnabled(anyPresetSelected)
         if not anyPresetSelected:

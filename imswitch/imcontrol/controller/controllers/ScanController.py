@@ -194,7 +194,7 @@ class ScanController(SuperScanController):
 
     def scanDone(self):
         print('Scan done')
-        if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
+        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
             self._widget.setScanButtonChecked(False)
             self.emitScanSignal(self._commChannel.sigScanEnded)
         else:

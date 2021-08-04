@@ -37,7 +37,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
 
-        self._currentData = None
+        self._currentDataObj = None
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
         self._scanParDict = {
@@ -62,7 +62,12 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.sigSetSaveFolder.connect(self.setSaveFolder)
 
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
-        self._widget.sigReconstructMulti.connect(self.reconstructMulti)
+        self._widget.sigReconstructMultiConsolidated.connect(
+            lambda: self.reconstructMulti(consolidate=True)
+        )
+        self._widget.sigReconstructMultiIndividual.connect(
+            lambda: self.reconstructMulti(consolidate=False)
+        )
         self._widget.sigQuickLoadData.connect(self.quickLoadData)
         self._widget.sigUpdate.connect(lambda: self.updateScanParams(applyOnCurrentRecon=True))
 
@@ -92,10 +97,10 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def findPattern(self):
         print('Find pattern clicked')
-        if self._currentData is None:
+        if self._currentDataObj is None:
             return
 
-        meanData = self._currentData.getMeanData()
+        meanData = self._currentDataObj.getMeanData()
         if len(meanData) < 1:
             return
 
@@ -165,19 +170,19 @@ class ImRecMainViewController(ImRecWidgetController):
                     return
 
             name = os.path.split(dataPath)[1]
-            if self._currentData is not None:
-                self._currentData.checkAndUnloadData()
-            self._currentData = DataObj(name, datasetToLoad, path=dataPath)
-            self._currentData.checkAndLoadData()
-            if self._currentData.dataLoaded:
-                self._commChannel.sigCurrentDataChanged.emit(self._currentData)
+            if self._currentDataObj is not None:
+                self._currentDataObj.checkAndUnloadData()
+            self._currentDataObj = DataObj(name, datasetToLoad, path=dataPath)
+            self._currentDataObj.checkAndLoadData()
+            if self._currentDataObj.dataLoaded:
+                self._commChannel.sigCurrentDataChanged.emit(self._currentDataObj)
                 print('Data loaded')
                 self._widget.raiseCurrentDataDock()
             else:
                 pass
 
     def currentDataChanged(self, dataObj):
-        self._currentData = dataObj
+        self._currentDataObj = dataObj
 
         # Update scan params based on new data
         # TODO: What if the attribute names change in imcontrol?
@@ -216,7 +221,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.updateScanParams()
 
-    def extractData(self):
+    def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
         bgModelling = self._widget.getBgModelling()
         if bgModelling == 'Constant':
@@ -236,63 +241,64 @@ class ImRecMainViewController(ImRecWidgetController):
         device = self._widget.getComputeDevice()
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
-            coeffs = self._signalExtractor.extractSignal(
-                self._currentData.data, sigmas, pattern, device.lower()
-            )
+            coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())
         else:
             raise ValueError(f'Invalid device "{device}" specified; must be either "CPU" or "GPU"')
 
         return coeffs
 
     def reconstructCurrent(self):
-        if self._currentData is None:
+        if self._currentDataObj is None:
             return
         elif np.prod(
-                np.array(self._scanParDict['steps'], dtype=int)) < self._currentData.numFrames:
+                np.array(self._scanParDict['steps'], dtype=int)) < self._currentDataObj.numFrames:
             print('Too many frames in data')
         else:
+            self.reconstruct([self._currentDataObj], consolidate=False)
+
+    def reconstructMulti(self, consolidate):
+        self.reconstruct(self._widget.getMultiDatas(), consolidate)
+
+    def reconstruct(self, dataObjs, consolidate):
+        reconObj = None
+        for index, dataObj in enumerate(dataObjs):
+            if not consolidate or index == 0:
+                reconObj = ReconObj(dataObj.name,
+                                    self._scanParDict,
+                                    self._widget.r_l_text,
+                                    self._widget.u_d_text,
+                                    self._widget.b_f_text,
+                                    self._widget.timepoints_text,
+                                    self._widget.p_text,
+                                    self._widget.n_text)
+
+            preloaded = dataObj.dataLoaded
+            dataObj.checkAndLoadData()
+
+            data = dataObj.data
             if self._widget.bleachBool.value():
-                self.bleachingCorrection()
-            coeffs = self.extractData()
-            reconObj = ReconObj(self._currentData.name,
-                                self._scanParDict,
-                                self._widget.r_l_text,
-                                self._widget.u_d_text,
-                                self._widget.b_f_text,
-                                self._widget.timepoints_text,
-                                self._widget.p_text,
-                                self._widget.n_text)
-            reconObj.addCoeffsTP(coeffs)
-            reconObj.updateImages()
+                data = self.bleachingCorrection(data)
 
-            self._widget.addNewData(reconObj)
-
-    def reconstructMulti(self):
-        for data in self._widget.getMultiDatas():
-            self._currentData = data
-            preloaded = self._currentData.dataLoaded
-            data.checkAndLoadData()
-            coeffs = self.extractData()
-            reconObj = ReconObj(data.name,
-                                self._scanParDict,
-                                self._widget.r_l_text,
-                                self._widget.u_d_text,
-                                self._widget.b_f_text,
-                                self._widget.timepoints_text,
-                                self._widget.p_text,
-                                self._widget.n_text)
+            coeffs = self.extractData(data)
             if not preloaded:
-                data.checkAndUnloadData()
+                dataObj.checkAndUnloadData()
             reconObj.addCoeffsTP(coeffs)
-            reconObj.updateImages()
-            self._widget.addNewData(reconObj)
 
-    def bleachingCorrection(self):
-        data = self._currentData.data
+            if not consolidate:
+                reconObj.updateImages()
+                self._widget.addNewData(reconObj, reconObj.name)
+
+        if consolidate and reconObj is not None:
+            reconObj.updateImages()
+            self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
+
+    def bleachingCorrection(self, data):
+        correctedData = data.copy()
         energy = np.sum(data, axis=(1, 2))
         for i in range(data.shape[0]):
             c = (energy[0] / energy[i]) ** 4
-            self._currentData.data[i, :, :] = data[i, :, :] * c
+            correctedData[i, :, :] = data[i, :, :] * c
+        return correctedData
 
     def saveCurrent(self, dataType=None):
         """Saves the reconstructed image from self.reconstructor to specified
@@ -305,8 +311,8 @@ class ImRecMainViewController(ImRecWidgetController):
 
             if saveName:
                 if dataType == 'reconstruction':
-                    reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    scanParDict = reconstructionObj.getScanParams()
+                    reconObj = self.reconstructionController.getActiveReconObj()
+                    scanParDict = reconObj.getScanParams()
                     vxsizec = int(float(
                         scanParDict['step_sizes'][scanParDict['dimensions'].index(
                             self._widget.r_l_text
@@ -318,7 +324,7 @@ class ImRecMainViewController(ImRecWidgetController):
                         )]
                     ))
                     vxsizez = int(float(
-                        reconstructionObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                        reconObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
                             self._widget.b_f_text
                         )]
                     ))
@@ -331,15 +337,15 @@ class ImRecMainViewController(ImRecWidgetController):
                     print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez},'
                           f' dt: {dt}')
                     # Reconstructed image
-                    reconstrData = copy.deepcopy(reconstructionObj.getReconstruction())
+                    reconstrData = copy.deepcopy(reconObj.getReconstruction())
                     reconstrData = reconstrData[:, 0, :, :, :, :]
                     reconstrData = np.swapaxes(reconstrData, 1, 2)
                     tiff.imwrite(saveName, reconstrData,
                                  imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
                                  metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
                 elif dataType == 'coefficients':
-                    reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    coeffs = copy.deepcopy(reconstructionObj.getCoeffs())
+                    reconObj = self.reconstructionController.getActiveReconObj()
+                    coeffs = copy.deepcopy(reconObj.getCoeffs())
                     print('Shape of coeffs = ', coeffs.shape)
                     try:
                         coeffs = np.swapaxes(coeffs, 1, 2)

@@ -8,6 +8,7 @@ class ReconstructionViewController(ImRecWidgetController):
         super().__init__(*args, **kwargs)
 
         self._currItemInd = None
+        self._prevViewId = None
         self._prevSliceParameters = None
 
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
@@ -35,9 +36,9 @@ class ReconstructionViewController(ImRecWidgetController):
         self._currItemInd = self._widget.getCurrentItemIndex()
 
     def fullUpdate(self, autoLevels=False, levels=None):
-        currentItemData = self._widget.getCurrentItemData()
-        if currentItemData is not None:
-            reconstructedShape = np.shape(self._widget.getCurrentItemData().reconstructed)
+        reconObj = self._widget.getCurrentItemData()
+        if reconObj is not None:
+            reconstructedShape = np.shape(reconObj.reconstructed)
             self._widget.setSliceParameters(s=0, ds=0, base=0, t=0)
             self._widget.setSliceParameterMaximums(
                 s=reconstructedShape[self.getViewId()] - 1,
@@ -47,7 +48,8 @@ class ReconstructionViewController(ImRecWidgetController):
             )
             self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels,
                              levels=levels)
-            if self._currItemInd is None or self.getViewId() != self._prevViewId:
+            if (self._currItemInd is None or self._prevViewId is None or
+                    self.getViewId() != self._prevViewId):
                 self._widget.resetView()
         else:
             self._widget.setSliceParameters(s=0, base=0, t=0)
@@ -79,16 +81,18 @@ class ReconstructionViewController(ImRecWidgetController):
             raise ValueError(f'Unsupported view "{viewName}"')
 
     def updateRecon(self):
-        self._widget.getCurrentItemData().updateImages()
-        self.fullUpdate(levels=None)
+        reconObj = self._widget.getCurrentItemData()
+        if reconObj is not None:
+            reconObj.updateImages()
+            self.fullUpdate(levels=None)
 
     def scanParamsUpdated(self, scanParDict, applyOnCurrentRecon):
         if not applyOnCurrentRecon:
             return
 
-        currData = self._widget.getCurrentItemData()
-        if currData is not None:
-            currData.updateScanParams(scanParDict)
+        reconObj = self._widget.getCurrentItemData()
+        if reconObj is not None:
+            reconObj.updateScanParams(scanParDict)
             self.updateRecon()
 
 

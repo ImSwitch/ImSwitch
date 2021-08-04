@@ -19,7 +19,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
     sigSetSaveFolder = QtCore.Signal()
 
     sigReconstuctCurrent = QtCore.Signal()
-    sigReconstructMulti = QtCore.Signal()
+    sigReconstructMultiConsolidated = QtCore.Signal()
+    sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
 
@@ -68,7 +69,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         btnFrame = BtnFrame()
         btnFrame.sigReconstuctCurrent.connect(self.sigReconstuctCurrent)
-        btnFrame.sigReconstructMulti.connect(self.sigReconstructMulti)
+        btnFrame.sigReconstructMultiConsolidated.connect(self.sigReconstructMultiConsolidated)
+        btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
         btnFrame.sigUpdate.connect(self.sigUpdate)
 
@@ -143,8 +145,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
     def raiseMultiDataDock(self):
         self.multiDataDock.raiseDock()
 
-    def addNewData(self, reconObj):
-        self.reconstructionWidget.addNewData(reconObj)
+    def addNewData(self, reconObj, name):
+        self.reconstructionWidget.addNewData(reconObj, name)
 
     def getMultiDatas(self):
         dataList = self.multiDataFrame.dataList
@@ -233,29 +235,41 @@ class ReconParTree(ParameterTree):
 
 class BtnFrame(QtWidgets.QFrame):
     sigReconstuctCurrent = QtCore.Signal()
-    sigReconstructMulti = QtCore.Signal()
+    sigReconstructMultiConsolidated = QtCore.Signal()
+    sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        reconCurrBtn = BetterPushButton('Reconstruct current')
-        reconCurrBtn.clicked.connect(self.sigReconstuctCurrent)
-        reconMultiBtn = BetterPushButton('Reconstruct multidata')
-        reconMultiBtn.clicked.connect(self.sigReconstructMulti)
-        quickLoadDataBtn = BetterPushButton('Quick load data')
-        quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
-        updateBtn = BetterPushButton('Update reconstruction')
-        updateBtn.clicked.connect(self.sigUpdate)
+        self.reconCurrBtn = BetterPushButton('Reconstruct current')
+        self.reconCurrBtn.clicked.connect(self.sigReconstuctCurrent)
+        self.quickLoadDataBtn = BetterPushButton('Quick load data')
+        self.quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
+        self.updateBtn = BetterPushButton('Update reconstruction')
+        self.updateBtn.clicked.connect(self.sigUpdate)
+
+        self.reconMultiBtn = QtWidgets.QToolButton()
+        self.reconMultiBtn.setSizePolicy(
+            QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        )
+        self.reconMultiBtn.setText('Reconstruct multidata')
+        self.reconMultiBtn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.reconMultiConsolidated = QtWidgets.QAction('Consolidate into a single reconstruction')
+        self.reconMultiConsolidated.triggered.connect(self.sigReconstructMultiConsolidated)
+        self.reconMultiBtn.addAction(self.reconMultiConsolidated)
+        self.reconMultiIndividual = QtWidgets.QAction('Reconstruct data items individually')
+        self.reconMultiIndividual.triggered.connect(self.sigReconstructMultiIndividual)
+        self.reconMultiBtn.addAction(self.reconMultiIndividual)
 
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(quickLoadDataBtn, 0, 0, 1, 2)
-        layout.addWidget(reconCurrBtn, 1, 0)
-        layout.addWidget(reconMultiBtn, 1, 1)
-        layout.addWidget(updateBtn, 2, 0, 1, 2)
+        layout.addWidget(self.quickLoadDataBtn, 0, 0, 1, 2)
+        layout.addWidget(self.reconCurrBtn, 1, 0)
+        layout.addWidget(self.reconMultiBtn, 1, 1)
+        layout.addWidget(self.updateBtn, 2, 0, 1, 2)
 
 
 # Copyright (C) 2020, 2021 TestaLab

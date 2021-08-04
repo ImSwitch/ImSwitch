@@ -137,7 +137,7 @@ class ReconstructionView(QtWidgets.QFrame):
         self.sigImgSliceChanged.emit(*self.getSliceParameters())
 
     def datasetSliderMoved(self):
-        self.datasetNum.setText(str(self.timeSlider.value()))
+        self.datasetNum.setText(str(self.datasetSlider.value()))
         self.sigImgSliceChanged.emit(*self.getSliceParameters())
 
     def getSliceParameters(self):
@@ -164,14 +164,12 @@ class ReconstructionView(QtWidgets.QFrame):
         if ds is not None:
             self.datasetSlider.setMaximum(ds)
 
-    def addNewData(self, reconObj, name=None):
-        if name is None:
-            name = reconObj.name
-            ind = 0
-            for i in range(self.reconList.count()):
-                if name + '_' + str(ind) == self.reconList.item(i).data(0):
-                    ind += 1
-            name = name + '_' + str(ind)
+    def addNewData(self, reconObj, name):
+        ind = 0
+        for i in range(self.reconList.count()):
+            if name + '_' + str(ind) == self.reconList.item(i).data(0):
+                ind += 1
+        name = name + '_' + str(ind)
 
         listItem = QtWidgets.QListWidgetItem(name)
         listItem.setData(1, reconObj)

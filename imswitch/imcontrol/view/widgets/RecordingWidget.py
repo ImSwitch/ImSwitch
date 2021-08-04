@@ -217,8 +217,9 @@ class RecordingWidget(Widget):
         return float(self.freqEdit.text())
 
     def setDetectorList(self, detectorModels):
+        self.detectorModeList.addItem('Current detector at start', -1)
+
         if len(detectorModels) > 1:
-            self.detectorModeList.addItem('Current detector at start', -1)
             self.detectorModeList.addItem('All acquisition detectors', -2)
             self.detectorModeList.addItem('Specific detector(s)', -3)
 

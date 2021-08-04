@@ -121,7 +121,7 @@ class DataObj:
 
     def __eq__(self, other):
         try:
-            sameFile = self._file == other.file or self._file.filename == other._file.filename
+            sameFile = self._file == other._file or self._file.filename == other._file.filename
         except AttributeError:
             sameFile = False
 

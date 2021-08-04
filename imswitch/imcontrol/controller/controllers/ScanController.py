@@ -54,7 +54,7 @@ class ScanController(SuperScanController):
         self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigRunScan.connect(self.runScanAdvanced)
+        self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
@@ -174,6 +174,11 @@ class ScanController(SuperScanController):
             self.settingParameters = False
             self.plotSignalGraph()
 
+    def runScanExternal(self):
+        self._widget.setScanMode()
+        self._widget.setRepeatEnabled(False)
+        self.runScanAdvanced(sigScanStartingEmitted=True)
+
     def runScanAdvanced(self, sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
         self._widget.setScanButtonChecked(True)
@@ -287,7 +292,7 @@ class ScanController(SuperScanController):
         self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
 
     def emitScanSignal(self, signal, *args):
-        if not self._widget.isContLaserMode():  # Don't emit in cont. laser mode
+        if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
             signal.emit(*args)
 
     def attrChanged(self, key, value):

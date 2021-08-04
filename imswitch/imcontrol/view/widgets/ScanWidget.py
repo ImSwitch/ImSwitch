@@ -246,6 +246,9 @@ class ScanWidget(Widget):
     def setContLaserMode(self):
         self.contLaserPulsesRadio.setChecked(True)
 
+    def setRepeatEnabled(self, enabled):
+        self.repeatBox.setChecked(enabled)
+
     def setScanButtonChecked(self, checked):
         self.scanButton.setEnabled(not checked)
         self.scanButton.setCheckable(checked)

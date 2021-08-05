@@ -47,7 +47,13 @@ class ImRecMainView(QtWidgets.QMainWindow):
         menuBar = self.menuBar()
         file = menuBar.addMenu('&File')
 
-        saveReconAction = QtWidgets.QAction('Save reconstruction', self)
+        quickLoadAction = QtWidgets.QAction('Quick load data…', self)
+        quickLoadAction.setShortcut('Ctrl+T')
+        quickLoadAction.triggered.connect(self.sigQuickLoadData)
+        file.addAction(quickLoadAction)
+
+        file.addSeparator()
+
         saveReconAction.setShortcut('Ctrl+D')
         saveReconAction.triggered.connect(self.sigSaveReconstruction)
         file.addAction(saveReconAction)

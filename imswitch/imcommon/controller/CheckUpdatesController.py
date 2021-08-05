@@ -44,7 +44,7 @@ class CheckUpdatesThread(Thread):
                 releaseResponse = requests.get(
                     'https://api.github.com/repos/kasasxav/ImSwitch/releases/latest'
                 )
-                latestVersion = releaseResponse.json()['tag_name']
+                latestVersion = releaseResponse.json()['tag_name'].lstrip('v')
                 if version.parse(latestVersion) > version.parse(currentVersion):
                     self.sigNewVersionPyInstaller.emit(latestVersion)
                 else:

@@ -49,6 +49,7 @@ class DataFrameController(ImRecWidgetController):
         self.showMean()
         self._widget.setNumFrames(0)
         self._widget.setDataName('')
+        self._widget.setDatasetName('')
 
     def adjustData(self):
         print('In adjust data')
@@ -67,6 +68,7 @@ class DataFrameController(ImRecWidgetController):
         self.showMean()
         self._widget.setNumFrames(self._dataObj.numFrames)
         self._widget.setDataName(self._dataObj.name)
+        self._widget.setDatasetName(self._dataObj.datasetName)
 
     def makePatternGrid(self):
         """ Pattern is now [Row-offset, Col-offset, Row-period, Col-period] where

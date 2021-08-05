@@ -5,6 +5,7 @@ import numpy as np
 import tifffile as tiff
 
 import imswitch.imreconstruct.view.guitools as guitools
+from imswitch.imcommon.controller import PickDatasetsController
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
@@ -29,11 +30,14 @@ class ImRecMainViewController(ImRecWidgetController):
         self.scanParamsController = self._factory.createController(
             ScanParamsController, self._widget.scanParamsDialog
         )
+        self.pickDatasetsController = self._factory.createController(
+            PickDatasetsController, self._widget.pickDatasetsDialog
+        )
 
         self._signalExtractor = SignalExtractor()
         self._patternFinder = PatternFinder()
 
-        self._currentData = None
+        self._currentDataObj = None
         self._pattern = self._widget.getPatternParams()
         self._settingPatternParams = False
         self._scanParDict = {
@@ -53,12 +57,19 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
+        self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
         self._widget.sigSaveCoeffs.connect(lambda: self.saveCurrent('coefficients'))
+        self._widget.sigSaveCoeffsAll.connect(lambda: self.saveAll('coefficients'))
         self._widget.sigSetDataFolder.connect(self.setDataFolder)
         self._widget.sigSetSaveFolder.connect(self.setSaveFolder)
 
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
-        self._widget.sigReconstructMulti.connect(self.reconstructMulti)
+        self._widget.sigReconstructMultiConsolidated.connect(
+            lambda: self.reconstructMulti(consolidate=True)
+        )
+        self._widget.sigReconstructMultiIndividual.connect(
+            lambda: self.reconstructMulti(consolidate=False)
+        )
         self._widget.sigQuickLoadData.connect(self.quickLoadData)
         self._widget.sigUpdate.connect(lambda: self.updateScanParams(applyOnCurrentRecon=True))
 
@@ -88,10 +99,10 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def findPattern(self):
         print('Find pattern clicked')
-        if self._currentData is None:
+        if self._currentDataObj is None:
             return
 
-        meanData = self._currentData.getMeanData()
+        meanData = self._currentDataObj.getMeanData()
         if len(meanData) < 1:
             return
 
@@ -136,19 +147,44 @@ class ImRecMainViewController(ImRecWidgetController):
         if dataPath:
             print(f'Loading data at: {dataPath}')
 
+            datasetsInFile = DataObj.getDatasetNames(dataPath)
+            datasetToLoad = None
+            if len(datasetsInFile) < 1:
+                # File does not contain any datasets
+                return
+            elif len(datasetsInFile) > 1:
+                # File contains multiple datasets
+                self.pickDatasetsController.setDatasets(dataPath, datasetsInFile)
+                if not self._widget.showPickDatasetsDialog(blocking=True):
+                    return
+
+                datasetsSelected = self.pickDatasetsController.getSelectedDatasets()
+                if len(datasetsSelected) < 1:
+                    # No datasets selected
+                    return
+                elif len(datasetsSelected) == 1:
+                    datasetToLoad = datasetsSelected[0]
+                else:
+                    # Load into multi-data list
+                    for datasetName in datasetsSelected:
+                        self._commChannel.sigAddToMultiData.emit(dataPath, datasetName)
+                    self._widget.raiseMultiDataDock()
+                    return
+
             name = os.path.split(dataPath)[1]
-            if self._currentData is not None:
-                self._currentData.checkAndUnloadData()
-            self._currentData = DataObj(name, path=dataPath)
-            self._currentData.checkAndLoadData()
-            if self._currentData.dataLoaded:
-                self._commChannel.sigCurrentDataChanged.emit(self._currentData)
+            if self._currentDataObj is not None:
+                self._currentDataObj.checkAndUnloadData()
+            self._currentDataObj = DataObj(name, datasetToLoad, path=dataPath)
+            self._currentDataObj.checkAndLoadData()
+            if self._currentDataObj.dataLoaded:
+                self._commChannel.sigCurrentDataChanged.emit(self._currentDataObj)
                 print('Data loaded')
+                self._widget.raiseCurrentDataDock()
             else:
                 pass
 
     def currentDataChanged(self, dataObj):
-        self._currentData = dataObj
+        self._currentDataObj = dataObj
 
         # Update scan params based on new data
         # TODO: What if the attribute names change in imcontrol?
@@ -187,7 +223,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.updateScanParams()
 
-    def extractData(self):
+    def extractData(self, data):
         fwhmNm = self._widget.getFwhmNm()
         bgModelling = self._widget.getBgModelling()
         if bgModelling == 'Constant':
@@ -207,124 +243,154 @@ class ImRecMainViewController(ImRecWidgetController):
         device = self._widget.getComputeDevice()
         pattern = self._pattern
         if device == 'CPU' or device == 'GPU':
-            coeffs = self._signalExtractor.extractSignal(
-                self._currentData.data, sigmas, pattern, device.lower()
-            )
+            coeffs = self._signalExtractor.extractSignal(data, sigmas, pattern, device.lower())
         else:
             raise ValueError(f'Invalid device "{device}" specified; must be either "CPU" or "GPU"')
 
         return coeffs
 
     def reconstructCurrent(self):
-        if self._currentData is None:
+        if self._currentDataObj is None:
             return
-        elif np.prod(
-                np.array(self._scanParDict['steps'], dtype=int)) < self._currentData.numFrames:
-            print('Too many frames in data')
-        else:
-            if self._widget.bleachBool.value():
-                self.bleachingCorrection()
-            coeffs = self.extractData()
-            reconObj = ReconObj(self._currentData.name,
-                                self._scanParDict,
-                                self._widget.r_l_text,
-                                self._widget.u_d_text,
-                                self._widget.b_f_text,
-                                self._widget.timepoints_text,
-                                self._widget.p_text,
-                                self._widget.n_text)
+
+        self.reconstruct([self._currentDataObj], consolidate=False)
+
+    def reconstructMulti(self, consolidate):
+        self.reconstruct(self._widget.getMultiDatas(), consolidate)
+
+    def reconstruct(self, dataObjs, consolidate):
+        reconObj = None
+        for index, dataObj in enumerate(dataObjs):
+            preloaded = dataObj.dataLoaded
+            try:
+                dataObj.checkAndLoadData()
+
+                if np.prod(np.array(self._scanParDict['steps'], dtype=int)) < dataObj.numFrames:
+                    print('Too many frames in data')
+                    return
+
+                if not consolidate or index == 0:
+                    reconObj = ReconObj(dataObj.name,
+                                        self._scanParDict,
+                                        self._widget.r_l_text,
+                                        self._widget.u_d_text,
+                                        self._widget.b_f_text,
+                                        self._widget.timepoints_text,
+                                        self._widget.p_text,
+                                        self._widget.n_text)
+
+                data = dataObj.data
+                if self._widget.bleachBool.value():
+                    data = self.bleachingCorrection(data)
+
+                coeffs = self.extractData(data)
+            finally:
+                if not preloaded:
+                    dataObj.checkAndUnloadData()
+
             reconObj.addCoeffsTP(coeffs)
+            if not consolidate:
+                reconObj.updateImages()
+                self._widget.addNewData(reconObj, reconObj.name)
+
+        if consolidate and reconObj is not None:
             reconObj.updateImages()
+            self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
 
-            self._widget.addNewData(reconObj)
-
-    def reconstructMulti(self):
-        for data in self._widget.getMultiDatas():
-            self._currentData = data
-            preloaded = self._currentData.dataLoaded
-            data.checkAndLoadData()
-            coeffs = self.extractData()
-            reconObj = ReconObj(data.name,
-                                self._scanParDict,
-                                self._widget.r_l_text,
-                                self._widget.u_d_text,
-                                self._widget.b_f_text,
-                                self._widget.timepoints_text,
-                                self._widget.p_text,
-                                self._widget.n_text)
-            if not preloaded:
-                data.checkAndUnloadData()
-            reconObj.addCoeffsTP(coeffs)
-            reconObj.updateImages()
-            self._widget.addNewData(reconObj)
-
-    def bleachingCorrection(self):
-        data = self._currentData.data
+    def bleachingCorrection(self, data):
+        correctedData = data.copy()
         energy = np.sum(data, axis=(1, 2))
         for i in range(data.shape[0]):
             c = (energy[0] / energy[i]) ** 4
-            self._currentData.data[i, :, :] = data[i, :, :] * c
+            correctedData[i, :, :] = data[i, :, :] * c
+        return correctedData
 
-    def saveCurrent(self, dataType=None):
-        """Saves the reconstructed image from self.reconstructor to specified
-        destination"""
-        if dataType:
-            saveName = guitools.askForFilePath(self._widget,
-                                               caption='Save File',
-                                               defaultFolder=self._saveFolder,
-                                               nameFilter='*.tiff', isSaving=True)
+    def saveCurrent(self, dataType):
+        """ Saves the reconstructed image or coefficeints from the current
+        ReconObj to a user-specified destination. """
 
-            if saveName:
-                if dataType == 'reconstruction':
-                    reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    scanParDict = reconstructionObj.getScanParams()
-                    vxsizec = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.r_l_text
-                        )]
-                    ))
-                    vxsizer = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.u_d_text
-                        )]
-                    ))
-                    vxsizez = int(float(
-                        reconstructionObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.b_f_text
-                        )]
-                    ))
-                    dt = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.timepoints_text
-                        )]
-                    ))
+        filePath = guitools.askForFilePath(self._widget,
+                                           caption=f'Save {dataType}',
+                                           defaultFolder=self._saveFolder or self._dataFolder,
+                                           nameFilter='*.tiff', isSaving=True)
 
-                    print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez},'
-                          f' dt: {dt}')
-                    # Reconstructed image
-                    reconstrData = copy.deepcopy(reconstructionObj.getReconstruction())
-                    reconstrData = reconstrData[:, 0, :, :, :, :]
-                    reconstrData = np.swapaxes(reconstrData, 1, 2)
-                    tiff.imwrite(saveName, reconstrData,
-                                 imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
-                                 metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
-                elif dataType == 'coefficients':
-                    reconstructionObj = self.reconstructionController.getActiveReconObj()
-                    coeffs = copy.deepcopy(reconstructionObj.getCoeffs())
-                    print('Shape of coeffs = ', coeffs.shape)
-                    try:
-                        coeffs = np.swapaxes(coeffs, 1, 2)
-                        tiff.imwrite(saveName, coeffs,
-                                     imagej=True, resolution=(1, 1),
-                                     metadata={'spacing': 1, 'unit': 'px', 'axes': 'TZCYX'})
-                    except Exception:
-                        pass
-                else:
-                    print('Data type in saveCurrent not recognized')
+        if filePath:
+            reconObj = self.reconstructionController.getActiveReconObj()
+            if dataType == 'reconstruction':
+                self.saveReconstruction(reconObj, filePath)
+            elif dataType == 'coefficients':
+                self.saveCoefficients(reconObj, filePath)
             else:
-                print('No saving path given')
-        else:
-            print('No data type given in save current')
+                raise ValueError(f'Invalid save data type "{dataType}"')
+
+    def saveAll(self, dataType):
+        """ Saves the reconstructed image or coefficeints from all available
+        ReconObj objects to a user-specified directory. """
+
+        dirPath = guitools.askForFolderPath(self._widget,
+                                            caption=f'Save all {dataType}',
+                                            defaultFolder=self._saveFolder or self._dataFolder)
+
+        if dirPath:
+            for name, reconObj in self.reconstructionController.getAllReconObjs():
+                # Avoid overwriting
+                filePath = os.path.join(dirPath, f'{name}.{dataType}.tiff')
+                filePathNew = filePath
+                numExisting = 0
+                while os.path.exists(filePathNew):
+                    numExisting += 1
+                    pathWithoutExt, pathExt = os.path.splitext(filePath)
+                    filePathNew = f'{pathWithoutExt}_{numExisting}{pathExt}'
+                filePath = filePathNew
+
+                # Save
+                if dataType == 'reconstruction':
+                    self.saveReconstruction(reconObj, filePath)
+                elif dataType == 'coefficients':
+                    self.saveCoefficients(reconObj, filePath)
+                else:
+                    raise ValueError(f'Invalid save data type "{dataType}"')
+
+    def saveReconstruction(self, reconObj, filePath):
+        scanParDict = reconObj.getScanParams()
+        vxsizec = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.r_l_text
+            )]
+        ))
+        vxsizer = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.u_d_text
+            )]
+        ))
+        vxsizez = int(float(
+            reconObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.b_f_text
+            )]
+        ))
+        dt = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.timepoints_text
+            )]
+        ))
+
+        print(f'Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},'
+              f' dt: {dt}')
+        # Reconstructed image
+        reconstrData = copy.deepcopy(reconObj.getReconstruction())
+        reconstrData = reconstrData[:, 0, :, :, :, :]
+        reconstrData = np.swapaxes(reconstrData, 1, 2)
+        tiff.imwrite(filePath, reconstrData,
+                     imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
+                     metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
+
+    def saveCoefficients(self, reconObj, filePath):
+        coeffs = copy.deepcopy(reconObj.getCoeffs())
+        print('Shape of coeffs = ', coeffs.shape)
+        coeffs = np.swapaxes(coeffs, 1, 2)
+        tiff.imwrite(filePath, coeffs,
+                     imagej=True, resolution=(1, 1),
+                     metadata={'spacing': 1, 'unit': 'px', 'axes': 'TZCYX'})
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -6,13 +6,14 @@ import tifffile as tiff
 
 
 class DataObj:
-    def __init__(self, name, *, path=None, file=None):
+    def __init__(self, name, datasetName, *, path=None, file=None):
         self.name = name
         self.dataPath = path
         self.darkFrame = None
         self._meanData = None
         self._file = file
         self._data = None
+        self._datasetName = datasetName
         self._attrs = None
 
     @property
@@ -21,7 +22,7 @@ class DataObj:
             return self._data
 
         if isinstance(self._file, h5py.File):
-            self._data = np.array(self._file.get('data')[:])
+            self._data = np.array(self._file.get(self._datasetName)[:])
         elif isinstance(self._file, tiff.TiffFile):
             self._data = self._file.asarray()
 
@@ -33,7 +34,9 @@ class DataObj:
             return self._attrs
 
         if isinstance(self._file, h5py.File):
-            self._attrs = dict(self._file.attrs)
+            attrs = dict(self._file.attrs)
+            attrs.update(dict(self._file[self.datasetName].attrs))
+            self._attrs = attrs
 
         return self._attrs
 
@@ -42,13 +45,17 @@ class DataObj:
         return self.data is not None
 
     @property
+    def datasetName(self):
+        return self._datasetName
+
+    @property
     def numFrames(self):
         return np.shape(self.data)[0] if self.data is not None else None
 
     def checkAndLoadData(self):
         if not self.dataLoaded:
             try:
-                self._file = loadFromPath(self.dataPath)
+                self._file, self._datasetName = DataObj._open(self.dataPath, self._datasetName)
                 if self.data is not None:
                     print('Data loaded')
             except Exception:
@@ -75,20 +82,53 @@ class DataObj:
 
         return self._meanData
 
+    @staticmethod
+    def getDatasetNames(path):
+        file, _ = DataObj._open(path, allowMultipleDatasets=True)
+        try:
+            if isinstance(file, h5py.File):
+                return list(file.keys())
+            elif isinstance(file, tiff.TiffFile):
+                return ['default']
+            else:
+                raise ValueError(f'Unsupported file type "{type(file).__name__}"')
+        finally:
+            file.close()
 
-def loadFromPath(path):
-    path = os.path.abspath(path)
-    try:
-        ext = os.path.splitext(path)[1]
-        if ext in ['.hdf5', '.hdf']:
-            return h5py.File(path, 'r')
-        elif ext in ['.tiff', '.tif']:
-            return tiff.TiffFile(path)
-        else:
-            raise ValueError(f'Unsupported file extension "{ext}"')
-    except Exception:
-        print('Error while loading data')
-        return None
+    @staticmethod
+    def _open(path, datasetName=None, allowMultipleDatasets=False):
+        path = os.path.abspath(path)
+        try:
+            ext = os.path.splitext(path)[1]
+            if ext in ['.hdf5', '.hdf']:
+                file = h5py.File(path, 'r')
+                if len(file) < 1:
+                    raise RuntimeError('File does not contain any datasets')
+                elif len(file) > 1 and datasetName is None and not allowMultipleDatasets:
+                    raise RuntimeError('File contains multiple datasets')
+
+                if datasetName is None and not allowMultipleDatasets:
+                    datasetName = list(file.keys())[0]
+
+                return file, datasetName
+            elif ext in ['.tiff', '.tif']:
+                return tiff.TiffFile(path), None
+            else:
+                raise ValueError(f'Unsupported file extension "{ext}"')
+        except Exception:
+            print('Error while loading data')
+            return None, None
+
+    def __eq__(self, other):
+        try:
+            sameFile = self._file == other._file or self._file.filename == other._file.filename
+        except AttributeError:
+            sameFile = False
+
+        return (self.name == other.name and
+                self.dataPath == other.dataPath and
+                sameFile and
+                self.datasetName == other.datasetName)
 
 
 # Copyright (C) 2020, 2021 TestaLab

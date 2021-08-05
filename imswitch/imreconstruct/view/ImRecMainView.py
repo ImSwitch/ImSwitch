@@ -4,6 +4,7 @@ from pyqtgraph.dockarea import Dock, DockArea
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view import PickDatasetsDialog
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
 from .ReconstructionView import ReconstructionView
@@ -13,12 +14,15 @@ from .guitools import BetterPushButton
 
 class ImRecMainView(QtWidgets.QMainWindow):
     sigSaveReconstruction = QtCore.Signal()
+    sigSaveReconstructionAll = QtCore.Signal()
     sigSaveCoeffs = QtCore.Signal()
+    sigSaveCoeffsAll = QtCore.Signal()
     sigSetDataFolder = QtCore.Signal()
     sigSetSaveFolder = QtCore.Signal()
 
     sigReconstuctCurrent = QtCore.Signal()
-    sigReconstructMulti = QtCore.Signal()
+    sigReconstructMultiConsolidated = QtCore.Signal()
+    sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
 
@@ -45,20 +49,37 @@ class ImRecMainView(QtWidgets.QMainWindow):
         menuBar = self.menuBar()
         file = menuBar.addMenu('&File')
 
-        saveReconAction = QtWidgets.QAction('Save reconstruction', self)
+        quickLoadAction = QtWidgets.QAction('Quick load data…', self)
+        quickLoadAction.setShortcut('Ctrl+T')
+        quickLoadAction.triggered.connect(self.sigQuickLoadData)
+        file.addAction(quickLoadAction)
+
+        file.addSeparator()
+
+        saveReconAction = QtWidgets.QAction('Save reconstruction…', self)
         saveReconAction.setShortcut('Ctrl+D')
         saveReconAction.triggered.connect(self.sigSaveReconstruction)
         file.addAction(saveReconAction)
-        saveCoeffsAction = QtWidgets.QAction('Save coefficients', self)
+        saveReconAllAction = QtWidgets.QAction('Save all reconstructions…', self)
+        saveReconAllAction.setShortcut('Ctrl+Shift+D')
+        saveReconAllAction.triggered.connect(self.sigSaveReconstructionAll)
+        file.addAction(saveReconAllAction)
+        saveCoeffsAction = QtWidgets.QAction('Save coefficients of reconstruction…', self)
         saveCoeffsAction.setShortcut('Ctrl+A')
         saveCoeffsAction.triggered.connect(self.sigSaveCoeffs)
         file.addAction(saveCoeffsAction)
+        saveCoeffsAllAction = QtWidgets.QAction('Save all coefficients…', self)
+        saveCoeffsAllAction.setShortcut('Ctrl+Shift+A')
+        saveCoeffsAllAction.triggered.connect(self.sigSaveCoeffsAll)
+        file.addAction(saveCoeffsAllAction)
 
-        setDataFolder = QtWidgets.QAction('Set data folder', self)
+        file.addSeparator()
+
+        setDataFolder = QtWidgets.QAction('Set default data folder…', self)
         setDataFolder.triggered.connect(self.sigSetDataFolder)
         file.addAction(setDataFolder)
 
-        setSaveFolder = QtWidgets.QAction('Set save folder', self)
+        setSaveFolder = QtWidgets.QAction('Set default save folder…', self)
         setSaveFolder.triggered.connect(self.sigSetSaveFolder)
         file.addAction(setSaveFolder)
 
@@ -67,7 +88,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         btnFrame = BtnFrame()
         btnFrame.sigReconstuctCurrent.connect(self.sigReconstuctCurrent)
-        btnFrame.sigReconstructMulti.connect(self.sigReconstructMulti)
+        btnFrame.sigReconstructMultiConsolidated.connect(self.sigReconstructMultiConsolidated)
+        btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
         btnFrame.sigUpdate.connect(self.sigUpdate)
 
@@ -88,6 +110,8 @@ class ImRecMainView(QtWidgets.QMainWindow):
             self.timepoints_text, self.p_text, self.n_text
         )
 
+        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=True)
+
         parameterFrame = QtWidgets.QFrame()
         parameterGrid = QtWidgets.QGridLayout()
         parameterFrame.setLayout(parameterGrid)
@@ -95,13 +119,13 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         DataDock = DockArea()
 
-        MultiDataDock = Dock('Multidata management')
-        MultiDataDock.addWidget(self.multiDataFrame)
-        DataDock.addDock(MultiDataDock)
+        self.multiDataDock = Dock('Multidata management')
+        self.multiDataDock.addWidget(self.multiDataFrame)
+        DataDock.addDock(self.multiDataDock)
 
-        CurrentDataDock = Dock('Current data')
-        CurrentDataDock.addWidget(self.dataFrame)
-        DataDock.addDock(CurrentDataDock, 'above', MultiDataDock)
+        self.currentDataDock = Dock('Current data')
+        self.currentDataDock.addWidget(self.dataFrame)
+        DataDock.addDock(self.currentDataDock, 'above', self.multiDataDock)
 
         layout = QtWidgets.QHBoxLayout()
         self.cwidget = QtWidgets.QWidget()
@@ -134,16 +158,33 @@ class ImRecMainView(QtWidgets.QMainWindow):
     def requestFolderPathFromUser(self, caption=None, defaultFolder=None):
         return QtWidgets.QFileDialog.getExistingDirectory(caption=caption, directory=defaultFolder)
 
-    def addNewData(self, reconObj):
-        self.reconstructionWidget.addNewData(reconObj)
+    def raiseCurrentDataDock(self):
+        self.currentDataDock.raiseDock()
+
+    def raiseMultiDataDock(self):
+        self.multiDataDock.raiseDock()
+
+    def addNewData(self, reconObj, name):
+        self.reconstructionWidget.addNewData(reconObj, name)
 
     def getMultiDatas(self):
         dataList = self.multiDataFrame.dataList
         for i in range(dataList.count()):
             yield dataList.item(i).data(1)
 
-    def showScanParamsDialog(self):
-        self.scanParamsDialog.show()
+    def showScanParamsDialog(self, blocking=False):
+        if blocking:
+            result = self.scanParamsDialog.exec_()
+            return result == QtWidgets.QDialog.Accepted
+        else:
+            self.scanParamsDialog.show()
+
+    def showPickDatasetsDialog(self, blocking=False):
+        if blocking:
+            result = self.pickDatasetsDialog.exec_()
+            return result == QtWidgets.QDialog.Accepted
+        else:
+            self.pickDatasetsDialog.show()
 
     def getPatternParams(self):
         patternPars = self.parTree.p.param('Pattern')
@@ -213,29 +254,41 @@ class ReconParTree(ParameterTree):
 
 class BtnFrame(QtWidgets.QFrame):
     sigReconstuctCurrent = QtCore.Signal()
-    sigReconstructMulti = QtCore.Signal()
+    sigReconstructMultiConsolidated = QtCore.Signal()
+    sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
     sigUpdate = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        reconCurrBtn = BetterPushButton('Reconstruct current')
-        reconCurrBtn.clicked.connect(self.sigReconstuctCurrent)
-        reconMultiBtn = BetterPushButton('Reconstruct multidata')
-        reconMultiBtn.clicked.connect(self.sigReconstructMulti)
-        quickLoadDataBtn = BetterPushButton('Quick load data')
-        quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
-        updateBtn = BetterPushButton('Update reconstruction')
-        updateBtn.clicked.connect(self.sigUpdate)
+        self.reconCurrBtn = BetterPushButton('Reconstruct current')
+        self.reconCurrBtn.clicked.connect(self.sigReconstuctCurrent)
+        self.quickLoadDataBtn = BetterPushButton('Quick load data')
+        self.quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
+        self.updateBtn = BetterPushButton('Update reconstruction')
+        self.updateBtn.clicked.connect(self.sigUpdate)
+
+        self.reconMultiBtn = QtWidgets.QToolButton()
+        self.reconMultiBtn.setSizePolicy(
+            QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        )
+        self.reconMultiBtn.setText('Reconstruct multidata')
+        self.reconMultiBtn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.reconMultiConsolidated = QtWidgets.QAction('Consolidate into a single reconstruction')
+        self.reconMultiConsolidated.triggered.connect(self.sigReconstructMultiConsolidated)
+        self.reconMultiBtn.addAction(self.reconMultiConsolidated)
+        self.reconMultiIndividual = QtWidgets.QAction('Reconstruct data items individually')
+        self.reconMultiIndividual.triggered.connect(self.sigReconstructMultiIndividual)
+        self.reconMultiBtn.addAction(self.reconMultiIndividual)
 
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(quickLoadDataBtn, 0, 0, 1, 2)
-        layout.addWidget(reconCurrBtn, 1, 0)
-        layout.addWidget(reconMultiBtn, 1, 1)
-        layout.addWidget(updateBtn, 2, 0, 1, 2)
+        layout.addWidget(self.quickLoadDataBtn, 0, 0, 1, 2)
+        layout.addWidget(self.reconCurrBtn, 1, 0)
+        layout.addWidget(self.reconMultiBtn, 1, 1)
+        layout.addWidget(self.updateBtn, 2, 0, 1, 2)
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,6 +1,8 @@
 import dataclasses
 
-from imswitch.imcommon.controller import MainController
+import h5py
+
+from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import ostools, generateAPI, generateShortcuts, SharedAttributes
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
@@ -34,6 +36,9 @@ class ImConMainController(MainController):
         )
         self.pickSetupController = self.__factory.createController(
             PickSetupController, self.__mainView.pickSetupDialog
+        )
+        self.pickDatasetsController = self.__factory.createController(
+            PickDatasetsController, self.__mainView.pickDatasetsDialog
         )
 
         self.controllers = {}
@@ -70,8 +75,27 @@ class ImConMainController(MainController):
         if not filePath:
             return
 
-        attrs = SharedAttributes.fromHDF5File(filePath)
-        self.__commChannel.sharedAttrs.update(attrs)
+        with h5py.File(filePath) as file:
+            datasetsInFile = file.keys()
+            if len(datasetsInFile) < 1:
+                # File does not contain any datasets
+                return
+            elif len(datasetsInFile) == 1:
+                datasetToLoad = list(datasetsInFile)[0]
+            else:
+                # File contains multiple datasets
+                self.pickDatasetsController.setDatasets(filePath, datasetsInFile)
+                if not self.__mainView.showPickDatasetsDialogBlocking():
+                    return
+
+                datasetsSelected = self.pickDatasetsController.getSelectedDatasets()
+                if len(datasetsSelected) != 1:
+                    return
+
+                datasetToLoad = datasetsSelected[0]
+
+            attrs = SharedAttributes.fromHDF5File(file, datasetToLoad)
+            self.__commChannel.sharedAttrs.update(attrs)
 
     def pickSetup(self):
         """ Let the user change which setup is used. """

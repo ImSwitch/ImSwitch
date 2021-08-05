@@ -23,6 +23,7 @@ class RecordingManager(SignalInterface):
 
     def __init__(self, detectorsManager):
         super().__init__()
+        self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
         self.__recordingWorker = RecordingWorker(self)
@@ -40,6 +41,7 @@ class RecordingManager(SignalInterface):
         return self.__detectorsManager
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
+                       singleMultiDetectorFile=False, singleLapseFile=False,
                        recFrames=None, recTime=None):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.
@@ -50,10 +52,12 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
+        self.__recordingWorker.saveMode = saveMode
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
-        self.__recordingWorker.saveMode = saveMode
+        self.__recordingWorker.singleMultiDetectorFile = singleMultiDetectorFile
+        self.__recordingWorker.singleLapseFile = singleLapseFile
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
                                           condition=lambda c: c.forAcquisition)
         self.__thread.start()
@@ -76,13 +80,13 @@ class RecordingManager(SignalInterface):
         acqHandle = self.__detectorsManager.startAcquisition()
         try:
             for detectorName in detectorNames:
-                file = h5py.File(f'{savename}_{detectorName}.hdf5', 'w')
+                file = h5py.File(self.getSaveFilePath(f'{savename}_{detectorName}.hdf5'), 'w')
 
                 shape = self.__detectorsManager[detectorName].shape
                 dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                 for key, value in attrs[detectorName].items():
-                    file.attrs[key] = value
+                    dataset.attrs[key] = value
 
                 dataset.attrs['detector_name'] = detectorName
 
@@ -98,6 +102,23 @@ class RecordingManager(SignalInterface):
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
 
+    def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
+        newPath = path
+        numExisting = 0
+
+        def existsFunc(pathToCheck):
+            if not allowOverwriteDisk and os.path.exists(pathToCheck):
+                return True
+            if not allowOverwriteMem and pathToCheck in self._memRecordings:
+                return True
+            return False
+
+        while existsFunc(newPath):
+            numExisting += 1
+            pathWithoutExt, pathExt = os.path.splitext(path)
+            newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
+        return newPath
+
 
 class RecordingWorker(Worker):
     def __init__(self, recordingManager):
@@ -112,14 +133,7 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        files = {}
-        fileHandles = {}
-        filePaths = {}
-        for detectorName in self.detectorNames:
-            filePaths[detectorName] = f'{self.savename}_{detectorName}.hdf5'
-            fileHandles[detectorName] = (BytesIO() if self.saveMode == SaveMode.RAM
-                                         else filePaths[detectorName])
-            files[detectorName] = h5py.File(fileHandles[detectorName], 'w')
+        files, fileHandles, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -129,22 +143,32 @@ class RecordingWorker(Worker):
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
+            datasetName = detectorName
+            if self.recMode == RecMode.ScanLapse and self.singleLapseFile:
+                # Add scan number to dataset name
+                scanNum = 0
+                datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                while datasetNameWithScan in files[detectorName]:
+                    scanNum += 1
+                    datasetNameWithScan = f'{datasetName}_scan{scanNum}'
+                datasetName = datasetNameWithScan
+
             # Initial number of frames must not be 0; otherwise, too much disk space may get
             # allocated. We remove this default frame later on if no frames are captured.
             datasets[detectorName] = files[detectorName].create_dataset(
-                'data', (1, *reversed(shapes[detectorName])),
+                datasetName, (1, *reversed(shapes[detectorName])),
                 maxshape=(None, *reversed(shapes[detectorName])),
                 dtype='i2'
             )
+
+            for key, value in self.attrs[detectorName].items():
+                datasets[detectorName].attrs[key] = value
 
             datasets[detectorName].attrs['detector_name'] = detectorName
 
             # For ImageJ compatibility
             datasets[detectorName].attrs['element_size_um'] \
                 = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-
-            for key, value in self.attrs[detectorName].items():
-                files[detectorName].attrs[key] = value
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -254,7 +278,7 @@ class RecordingWorker(Worker):
                     if self.saveMode == SaveMode.RAM:
                         file.close()
                         self.__recordingManager.sigMemoryRecordingAvailable.emit(
-                            name, h5py.File(fileHandles[detectorName]), filePath, False
+                            name, fileHandles[detectorName], filePath, False
                         )
                     else:
                         file.flush()
@@ -265,6 +289,43 @@ class RecordingWorker(Worker):
                     file.close()
 
             self.__recordingManager.endRecording(wait=False)
+
+    def _getFiles(self):
+        singleMultiDetectorFile = self.singleMultiDetectorFile
+        singleLapseFile = self.recMode == RecMode.ScanLapse and self.singleLapseFile
+
+        files = {}
+        fileHandles = {}
+        filePaths = {}
+        for detectorName in self.detectorNames:
+            if singleMultiDetectorFile:
+                baseFilePath = f'{self.savename}.hdf5'
+            else:
+                baseFilePath = f'{self.savename}_{detectorName}.hdf5'
+
+            filePaths[detectorName] = self.__recordingManager.getSaveFilePath(
+                baseFilePath,
+                allowOverwriteDisk=singleLapseFile and self.saveMode != SaveMode.RAM,
+                allowOverwriteMem=singleLapseFile and self.saveMode == SaveMode.RAM
+            )
+
+        for detectorName in self.detectorNames:
+            if self.saveMode == SaveMode.RAM:
+                memRecordings = self.__recordingManager._memRecordings
+                if (filePaths[detectorName] not in memRecordings or
+                        memRecordings[filePaths[detectorName]].closed):
+                    memRecordings[filePaths[detectorName]] = BytesIO()
+                fileHandles[detectorName] = memRecordings[filePaths[detectorName]]
+            else:
+                fileHandles[detectorName] = filePaths[detectorName]
+
+            if singleMultiDetectorFile and len(files) > 0:
+                files[detectorName] = list(files.values())[0]
+            else:
+                files[detectorName] = h5py.File(fileHandles[detectorName],
+                                                'a' if singleLapseFile else 'w-')
+
+        return files, fileHandles, filePaths
 
     def _getNewFrames(self, detectorName):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()

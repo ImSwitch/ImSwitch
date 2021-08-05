@@ -9,7 +9,7 @@ class ReconstructionView(QtWidgets.QFrame):
 
     # Signals
     sigItemSelected = QtCore.Signal()
-    sigImgSliceChanged = QtCore.Signal(int, int, int, int)
+    sigAxisStepChanged = QtCore.Signal(tuple)
     sigViewChanged = QtCore.Signal()
 
     # Methods
@@ -19,48 +19,12 @@ class ReconstructionView(QtWidgets.QFrame):
         # Image Widget
         guitools.addNapariGrayclipColormap()
         self.napariViewer = guitools.EmbeddedNapari()
+        self.napariViewer.dims.events.connect(self.dimsChanged)
         guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
 
         self.imgLayer = self.napariViewer.add_image(
             np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip', protected=True
         )
-
-        # Slider and edit box for choosing slice
-        sliceLabel = QtWidgets.QLabel('Slice # ')
-        self.sliceNum = QtWidgets.QLabel('0')
-        self.sliceSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
-        self.sliceSlider.setMinimum(0)
-        self.sliceSlider.setMaximum(0)
-        self.sliceSlider.setTickInterval(5)
-        self.sliceSlider.setSingleStep(1)
-        self.sliceSlider.valueChanged[int].connect(self.sliceSliderMoved)
-
-        baseLabel = QtWidgets.QLabel('Base # ')
-        self.baseNum = QtWidgets.QLabel('0')
-        self.baseSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
-        self.baseSlider.setMinimum(0)
-        self.baseSlider.setMaximum(0)
-        self.baseSlider.setTickInterval(5)
-        self.baseSlider.setSingleStep(1)
-        self.baseSlider.valueChanged[int].connect(self.baseSliderMoved)
-
-        timeLabel = QtWidgets.QLabel('Time point # ')
-        self.timeNum = QtWidgets.QLabel('0')
-        self.timeSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
-        self.timeSlider.setMinimum(0)
-        self.timeSlider.setMaximum(0)
-        self.timeSlider.setTickInterval(5)
-        self.timeSlider.setSingleStep(1)
-        self.timeSlider.valueChanged[int].connect(self.timeSliderMoved)
-
-        datasetLabel = QtWidgets.QLabel('Dataset # ')
-        self.datasetNum = QtWidgets.QLabel('0')
-        self.datasetSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
-        self.datasetSlider.setMinimum(0)
-        self.datasetSlider.setMaximum(0)
-        self.datasetSlider.setTickInterval(5)
-        self.datasetSlider.setSingleStep(1)
-        self.datasetSlider.valueChanged[int].connect(self.datasetSliderMoved)
 
         # Button group for choosing view
         self.chooseViewGroup = QtWidgets.QButtonGroup()
@@ -102,21 +66,9 @@ class ReconstructionView(QtWidgets.QFrame):
 
         self.setLayout(layout)
 
-        layout.addWidget(self.napariViewer.get_widget(), 0, 0, 2, 1)
+        layout.addWidget(self.napariViewer.get_widget(), 0, 0, 4, 1)
         layout.addWidget(self.chooseViewBox, 0, 1, 1, 2)
         layout.addWidget(self.reconList, 0, 3, 2, 1)
-        layout.addWidget(self.sliceSlider, 2, 0)
-        layout.addWidget(sliceLabel, 2, 1)
-        layout.addWidget(self.sliceNum, 2, 2)
-        layout.addWidget(self.baseSlider, 3, 0)
-        layout.addWidget(baseLabel, 3, 1)
-        layout.addWidget(self.baseNum, 3, 2)
-        layout.addWidget(self.timeSlider, 4, 0)
-        layout.addWidget(timeLabel, 4, 1)
-        layout.addWidget(self.timeNum, 4, 2)
-        layout.addWidget(self.datasetSlider, 5, 0)
-        layout.addWidget(datasetLabel, 5, 1)
-        layout.addWidget(self.datasetNum, 5, 2)
         layout.addWidget(removeReconBtn, 2, 3)
         layout.addWidget(removeAllReconBtn, 3, 3)
 
@@ -124,54 +76,16 @@ class ReconstructionView(QtWidgets.QFrame):
         layout.setColumnStretch(0, 100)
         layout.setColumnStretch(2, 5)
 
-    def sliceSliderMoved(self):
-        self.sliceNum.setText(str(self.sliceSlider.value()))
-        self.sigImgSliceChanged.emit(*self.getSliceParameters())
+    def dimsChanged(self, event):
+        if event.type == 'current_step':
+            self.sigAxisStepChanged.emit(event.value)
 
-    def baseSliderMoved(self):
-        self.baseNum.setText(str(self.baseSlider.value()))
-        self.sigImgSliceChanged.emit(*self.getSliceParameters())
-
-    def timeSliderMoved(self):
-        self.timeNum.setText(str(self.timeSlider.value()))
-        self.sigImgSliceChanged.emit(*self.getSliceParameters())
-
-    def datasetSliderMoved(self):
-        self.datasetNum.setText(str(self.timeSlider.value()))
-        self.sigImgSliceChanged.emit(*self.getSliceParameters())
-
-    def getSliceParameters(self):
-        return (self.sliceSlider.value(), self.baseSlider.value(),
-                self.timeSlider.value(), self.datasetSlider.value())
-
-    def setSliceParameters(self, s=None, base=None, t=None, ds=None):
-        if s is not None:
-            self.sliceSlider.setValue(s)
-        if base is not None:
-            self.baseSlider.setValue(base)
-        if t is not None:
-            self.timeSlider.setValue(t)
-        if ds is not None:
-            self.datasetSlider.setValue(ds)
-
-    def setSliceParameterMaximums(self, s=None, base=None, t=None, ds=None):
-        if s is not None:
-            self.sliceSlider.setMaximum(s)
-        if base is not None:
-            self.baseSlider.setMaximum(base)
-        if t is not None:
-            self.timeSlider.setMaximum(t)
-        if ds is not None:
-            self.datasetSlider.setMaximum(ds)
-
-    def addNewData(self, reconObj, name=None):
-        if name is None:
-            name = reconObj.name
-            ind = 0
-            for i in range(self.reconList.count()):
-                if name + '_' + str(ind) == self.reconList.item(i).data(0):
-                    ind += 1
-            name = name + '_' + str(ind)
+    def addNewData(self, reconObj, name):
+        ind = 0
+        for i in range(self.reconList.count()):
+            if name + '.' + str(ind) == self.reconList.item(i).data(0):
+                ind += 1
+        name = name + '.' + str(ind)
 
         listItem = QtWidgets.QListWidgetItem(name)
         listItem.setData(1, reconObj)
@@ -188,19 +102,20 @@ class ReconstructionView(QtWidgets.QFrame):
         currentItem = self.reconList.currentItem()
         return currentItem.data(1) if currentItem is not None else None
 
+    def getAllItemDatas(self):
+        for i in range(self.reconList.count()):
+            item = self.reconList.item(i)
+            yield item.text(), item.data(1)
+
     def getViewName(self):
         return self.chooseViewGroup.checkedButton().viewName
 
     def getImage(self):
-        return self.imgLayer.data.T
+        return self.imgLayer.data
 
-    def setImage(self, im, autoLevels=False, levels=None):
-        self.imgLayer.data = im.T
-        self.imgLayer.contrast_limits_range = (im.min(), im.max())
-        if levels is not None:
-            self.setImageDisplayLevels(*levels)
-        elif autoLevels:
-            self.setImageDisplayLevels(*self.imgLayer.contrast_limits_range)
+    def setImage(self, im, axisLabels):
+        self.imgLayer.data = im
+        self.napariViewer.dims.axis_labels = tuple(axisLabels)
 
     def clearImage(self):
         self.setImage(np.zeros((1, 1)))
@@ -210,6 +125,9 @@ class ReconstructionView(QtWidgets.QFrame):
 
     def setImageDisplayLevels(self, minimum, maximum):
         self.imgLayer.contrast_limits = (minimum, maximum)
+
+    def setImageDisplayLevelsRange(self, minimum, maximum):
+        self.imgLayer.contrast_limits_range = (minimum, maximum)
 
     def removeRecon(self):
         numSelected = len(self.reconList.selectedIndexes())

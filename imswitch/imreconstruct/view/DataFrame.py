@@ -49,9 +49,9 @@ class DataFrame(QtWidgets.QFrame):
                                                      self.sigFrameNumberChanged.emit(int(x))))
         self.frameNum.setFixedWidth(45)
 
-        dataNameLabel = QtWidgets.QLabel('File name:')
-        self.dataName = QtWidgets.QLabel('')
-        numFramesLabel = QtWidgets.QLabel('Nr of frames:')
+        self.dataName = QtWidgets.QLabel('File:')
+        self.datasetName = QtWidgets.QLabel('Dataset:')
+        numFramesLabel = QtWidgets.QLabel('No. frames:')
         self.numFrames = QtWidgets.QLabel('')
 
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
@@ -75,17 +75,17 @@ class DataFrame(QtWidgets.QFrame):
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(dataNameLabel, 0, 0)
-        layout.addWidget(self.dataName, 0, 1)
-        layout.addWidget(numFramesLabel, 0, 2)
-        layout.addWidget(self.numFrames, 0, 3)
+        layout.addWidget(self.dataName, 0, 0, 1, 4)
+        layout.addWidget(self.datasetName, 0, 4, 1, 2)
         layout.addWidget(self.showMeanBtn, 1, 0)
-        layout.addWidget(self.slider, 1, 1)
-        layout.addWidget(frameLabel, 1, 2)
-        layout.addWidget(self.frameNum, 1, 3)
+        layout.addWidget(self.slider, 1, 1, 1, 3)
+        layout.addWidget(frameLabel, 1, 4)
+        layout.addWidget(self.frameNum, 1, 5)
         layout.addWidget(self.adjustDataBtn, 2, 0)
         layout.addWidget(self.unloadDataBtn, 2, 1)
-        layout.addWidget(imageWidget, 3, 0, 1, 4)
+        layout.addWidget(numFramesLabel, 2, 4)
+        layout.addWidget(self.numFrames, 2, 5)
+        layout.addWidget(imageWidget, 3, 0, 1, -1)
 
         self._showPattern = False
 
@@ -117,7 +117,10 @@ class DataFrame(QtWidgets.QFrame):
         self.slider.setMaximum(value - 1 if value > 0 else 0)
 
     def setDataName(self, value):
-        self.dataName.setText(value)
+        self.dataName.setText(f'File: {value}')
+
+    def setDatasetName(self, value):
+        self.datasetName.setText(f'Dataset: {value}')
 
 
 # Copyright (C) 2020, 2021 TestaLab

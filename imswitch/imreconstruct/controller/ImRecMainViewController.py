@@ -57,7 +57,9 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
+        self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
         self._widget.sigSaveCoeffs.connect(lambda: self.saveCurrent('coefficients'))
+        self._widget.sigSaveCoeffsAll.connect(lambda: self.saveAll('coefficients'))
         self._widget.sigSetDataFolder.connect(self.setDataFolder)
         self._widget.sigSetSaveFolder.connect(self.setSaveFolder)
 
@@ -303,66 +305,92 @@ class ImRecMainViewController(ImRecWidgetController):
             correctedData[i, :, :] = data[i, :, :] * c
         return correctedData
 
-    def saveCurrent(self, dataType=None):
-        """Saves the reconstructed image from self.reconstructor to specified
-        destination"""
-        if dataType:
-            saveName = guitools.askForFilePath(self._widget,
-                                               caption='Save File',
-                                               defaultFolder=self._saveFolder,
-                                               nameFilter='*.tiff', isSaving=True)
+    def saveCurrent(self, dataType):
+        """ Saves the reconstructed image or coefficeints from the current
+        ReconObj to a user-specified destination. """
 
-            if saveName:
-                if dataType == 'reconstruction':
-                    reconObj = self.reconstructionController.getActiveReconObj()
-                    scanParDict = reconObj.getScanParams()
-                    vxsizec = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.r_l_text
-                        )]
-                    ))
-                    vxsizer = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.u_d_text
-                        )]
-                    ))
-                    vxsizez = int(float(
-                        reconObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.b_f_text
-                        )]
-                    ))
-                    dt = int(float(
-                        scanParDict['step_sizes'][scanParDict['dimensions'].index(
-                            self._widget.timepoints_text
-                        )]
-                    ))
+        filePath = guitools.askForFilePath(self._widget,
+                                           caption=f'Save {dataType}',
+                                           defaultFolder=self._saveFolder or self._dataFolder,
+                                           nameFilter='*.tiff', isSaving=True)
 
-                    print(f'Trying to save to: {saveName}, Vx size: {vxsizec, vxsizer, vxsizez},'
-                          f' dt: {dt}')
-                    # Reconstructed image
-                    reconstrData = copy.deepcopy(reconObj.getReconstruction())
-                    reconstrData = reconstrData[:, 0, :, :, :, :]
-                    reconstrData = np.swapaxes(reconstrData, 1, 2)
-                    tiff.imwrite(saveName, reconstrData,
-                                 imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
-                                 metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
-                elif dataType == 'coefficients':
-                    reconObj = self.reconstructionController.getActiveReconObj()
-                    coeffs = copy.deepcopy(reconObj.getCoeffs())
-                    print('Shape of coeffs = ', coeffs.shape)
-                    try:
-                        coeffs = np.swapaxes(coeffs, 1, 2)
-                        tiff.imwrite(saveName, coeffs,
-                                     imagej=True, resolution=(1, 1),
-                                     metadata={'spacing': 1, 'unit': 'px', 'axes': 'TZCYX'})
-                    except Exception:
-                        pass
-                else:
-                    print('Data type in saveCurrent not recognized')
+        if filePath:
+            reconObj = self.reconstructionController.getActiveReconObj()
+            if dataType == 'reconstruction':
+                self.saveReconstruction(reconObj, filePath)
+            elif dataType == 'coefficients':
+                self.saveCoefficients(reconObj, filePath)
             else:
-                print('No saving path given')
-        else:
-            print('No data type given in save current')
+                raise ValueError(f'Invalid save data type "{dataType}"')
+
+    def saveAll(self, dataType):
+        """ Saves the reconstructed image or coefficeints from all available
+        ReconObj objects to a user-specified directory. """
+
+        dirPath = guitools.askForFolderPath(self._widget,
+                                            caption=f'Save all {dataType}',
+                                            defaultFolder=self._saveFolder or self._dataFolder)
+
+        if dirPath:
+            for name, reconObj in self.reconstructionController.getAllReconObjs():
+                # Avoid overwriting
+                filePath = os.path.join(dirPath, f'{name}.{dataType}.tiff')
+                filePathNew = filePath
+                numExisting = 0
+                while os.path.exists(filePathNew):
+                    numExisting += 1
+                    pathWithoutExt, pathExt = os.path.splitext(filePath)
+                    filePathNew = f'{pathWithoutExt}_{numExisting}{pathExt}'
+                filePath = filePathNew
+
+                # Save
+                if dataType == 'reconstruction':
+                    self.saveReconstruction(reconObj, filePath)
+                elif dataType == 'coefficients':
+                    self.saveCoefficients(reconObj, filePath)
+                else:
+                    raise ValueError(f'Invalid save data type "{dataType}"')
+
+    def saveReconstruction(self, reconObj, filePath):
+        scanParDict = reconObj.getScanParams()
+        vxsizec = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.r_l_text
+            )]
+        ))
+        vxsizer = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.u_d_text
+            )]
+        ))
+        vxsizez = int(float(
+            reconObj.scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.b_f_text
+            )]
+        ))
+        dt = int(float(
+            scanParDict['step_sizes'][scanParDict['dimensions'].index(
+                self._widget.timepoints_text
+            )]
+        ))
+
+        print(f'Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},'
+              f' dt: {dt}')
+        # Reconstructed image
+        reconstrData = copy.deepcopy(reconObj.getReconstruction())
+        reconstrData = reconstrData[:, 0, :, :, :, :]
+        reconstrData = np.swapaxes(reconstrData, 1, 2)
+        tiff.imwrite(filePath, reconstrData,
+                     imagej=True, resolution=(1 / vxsizec, 1 / vxsizer),
+                     metadata={'spacing': vxsizez, 'unit': 'nm', 'axes': 'TZCYX'})
+
+    def saveCoefficients(self, reconObj, filePath):
+        coeffs = copy.deepcopy(reconObj.getCoeffs())
+        print('Shape of coeffs = ', coeffs.shape)
+        coeffs = np.swapaxes(coeffs, 1, 2)
+        tiff.imwrite(filePath, coeffs,
+                     imagej=True, resolution=(1, 1),
+                     metadata={'spacing': 1, 'unit': 'px', 'axes': 'TZCYX'})
 
 
 # Copyright (C) 2020, 2021 TestaLab

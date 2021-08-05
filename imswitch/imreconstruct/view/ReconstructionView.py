@@ -167,9 +167,9 @@ class ReconstructionView(QtWidgets.QFrame):
     def addNewData(self, reconObj, name):
         ind = 0
         for i in range(self.reconList.count()):
-            if name + '_' + str(ind) == self.reconList.item(i).data(0):
+            if name + '.' + str(ind) == self.reconList.item(i).data(0):
                 ind += 1
-        name = name + '_' + str(ind)
+        name = name + '.' + str(ind)
 
         listItem = QtWidgets.QListWidgetItem(name)
         listItem.setData(1, reconObj)
@@ -185,6 +185,11 @@ class ReconstructionView(QtWidgets.QFrame):
     def getCurrentItemData(self):
         currentItem = self.reconList.currentItem()
         return currentItem.data(1) if currentItem is not None else None
+
+    def getAllItemDatas(self):
+        for i in range(self.reconList.count()):
+            item = self.reconList.item(i)
+            yield item.text(), item.data(1)
 
     def getViewName(self):
         return self.chooseViewGroup.checkedButton().viewName

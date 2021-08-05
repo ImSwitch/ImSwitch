@@ -14,7 +14,9 @@ from .guitools import BetterPushButton
 
 class ImRecMainView(QtWidgets.QMainWindow):
     sigSaveReconstruction = QtCore.Signal()
+    sigSaveReconstructionAll = QtCore.Signal()
     sigSaveCoeffs = QtCore.Signal()
+    sigSaveCoeffsAll = QtCore.Signal()
     sigSetDataFolder = QtCore.Signal()
     sigSetSaveFolder = QtCore.Signal()
 
@@ -54,19 +56,30 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         file.addSeparator()
 
+        saveReconAction = QtWidgets.QAction('Save reconstruction…', self)
         saveReconAction.setShortcut('Ctrl+D')
         saveReconAction.triggered.connect(self.sigSaveReconstruction)
         file.addAction(saveReconAction)
-        saveCoeffsAction = QtWidgets.QAction('Save coefficients', self)
+        saveReconAllAction = QtWidgets.QAction('Save all reconstructions…', self)
+        saveReconAllAction.setShortcut('Ctrl+Shift+D')
+        saveReconAllAction.triggered.connect(self.sigSaveReconstructionAll)
+        file.addAction(saveReconAllAction)
+        saveCoeffsAction = QtWidgets.QAction('Save coefficients of reconstruction…', self)
         saveCoeffsAction.setShortcut('Ctrl+A')
         saveCoeffsAction.triggered.connect(self.sigSaveCoeffs)
         file.addAction(saveCoeffsAction)
+        saveCoeffsAllAction = QtWidgets.QAction('Save all coefficients…', self)
+        saveCoeffsAllAction.setShortcut('Ctrl+Shift+A')
+        saveCoeffsAllAction.triggered.connect(self.sigSaveCoeffsAll)
+        file.addAction(saveCoeffsAllAction)
 
-        setDataFolder = QtWidgets.QAction('Set data folder', self)
+        file.addSeparator()
+
+        setDataFolder = QtWidgets.QAction('Set default data folder…', self)
         setDataFolder.triggered.connect(self.sigSetDataFolder)
         file.addAction(setDataFolder)
 
-        setSaveFolder = QtWidgets.QAction('Set save folder', self)
+        setSaveFolder = QtWidgets.QAction('Set default save folder…', self)
         setSaveFolder.triggered.connect(self.sigSetSaveFolder)
         file.addAction(setSaveFolder)
 

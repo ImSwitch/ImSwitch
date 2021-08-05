@@ -20,6 +20,9 @@ class ReconstructionViewController(ImRecWidgetController):
     def getActiveReconObj(self):
         return self._widget.getCurrentItemData()
 
+    def getAllReconObjs(self):
+        return self._widget.getAllItemDatas()
+
     def listItemChanged(self):
         if self._currItemInd is not None:
             currHistLevels = self._widget.getImageDisplayLevels()

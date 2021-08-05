@@ -9,12 +9,14 @@ class ReconstructionViewController(ImRecWidgetController):
 
         self._currItemInd = None
         self._prevViewId = None
-        self._prevSliceParameters = None
+
+        self._transposeOrder = [0, 1, 2, 3, 4, 5]
+        self._axisStep = (0, 0, 0, 0, 0, 0)
 
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
 
         self._widget.sigItemSelected.connect(self.listItemChanged)
-        self._widget.sigImgSliceChanged.connect(self.setImgSlice)
+        self._widget.sigAxisStepChanged.connect(self.axisStepChanged)
         self._widget.sigViewChanged.connect(lambda: self.fullUpdate(levels=None))
 
     def getActiveReconObj(self):
@@ -41,36 +43,34 @@ class ReconstructionViewController(ImRecWidgetController):
     def fullUpdate(self, autoLevels=False, levels=None):
         reconObj = self._widget.getCurrentItemData()
         if reconObj is not None:
-            reconstructedShape = np.shape(reconObj.reconstructed)
-            self._widget.setSliceParameters(s=0, ds=0, base=0, t=0)
-            self._widget.setSliceParameterMaximums(
-                s=reconstructedShape[self.getViewId()] - 1,
-                ds=reconstructedShape[0] - 1,
-                base=reconstructedShape[1] - 1,
-                t=reconstructedShape[2] - 1
-            )
-            self.setImgSlice(*self._widget.getSliceParameters(), autoLevels=autoLevels,
-                             levels=levels)
+            self.setImgSlice(autoLevels=autoLevels, levels=levels)
             if (self._currItemInd is None or self._prevViewId is None or
                     self.getViewId() != self._prevViewId):
                 self._widget.resetView()
         else:
-            self._widget.setSliceParameters(s=0, base=0, t=0)
-            self._widget.setSliceParameterMaximums(s=0, base=0, t=0)
             self._widget.clearImage()
 
         self._prevViewId = self.getViewId()
 
-    def setImgSlice(self, s, base, t, ds, autoLevels=False, levels=None):
+    def setImgSlice(self, autoLevels=False, levels=None):
         data = self._widget.getCurrentItemData().reconstructed
-        if self.getViewId() == 3:
-            im = data[ds, base, t, s, ::, ::]
-        elif self.getViewId() == 4:
-            im = data[ds, base, t, ::, s, ::]
-        else:
-            im = data[ds, t, base, ::, ::, s]
 
-        self._widget.setImage(im, autoLevels=autoLevels, levels=levels)
+        if self.getViewId() == 3:
+            transposeOrder = [0, 1, 2, 3, 5, 4]
+        elif self.getViewId() == 4:
+            transposeOrder = [0, 1, 2, 5, 3, 4]
+        else:
+            transposeOrder = [0, 2, 1, 5, 4, 3]
+
+        im = data.transpose(*transposeOrder)
+        axisLabels = np.array(['Dataset', 'Base', 'Time point', 'Slice', 'X', 'Y'])[transposeOrder]
+        self._transposeOrder = transposeOrder
+
+        self._widget.setImage(im, axisLabels)
+        if autoLevels:
+            self.updateLevelsRange()
+        elif levels is not None:
+            self._widget.setImageDisplayLevels(*levels)
 
     def getViewId(self):
         viewName = self._widget.getViewName()
@@ -82,6 +82,31 @@ class ReconstructionViewController(ImRecWidgetController):
             return 5
         else:
             raise ValueError(f'Unsupported view "{viewName}"')
+
+    def axisStepChanged(self, newAxisStep):
+        baseAxisIndex = self._transposeOrder.index(1)
+        newBase = newAxisStep[baseAxisIndex]
+        if newBase != self._axisStep[baseAxisIndex]:
+            # Base changed, update levels range
+            self.updateLevelsRange(newBase)
+
+        self._axisStep = newAxisStep
+
+    def updateLevelsRange(self, base=None):
+        baseAxisIndex = self._transposeOrder.index(1)
+        if base is None:
+            base = self._axisStep[baseAxisIndex]
+
+        # Find image at current base
+        im = self._widget.getImage()
+        indexForImage = [slice(None) for _ in range(len(im.shape))]
+        indexForImage[baseAxisIndex] = base
+        imAtBase = im[tuple(indexForImage)]
+
+        # Update levels
+        levels = imAtBase.min(), imAtBase.max()
+        self._widget.setImageDisplayLevelsRange(*levels)
+        self._widget.setImageDisplayLevels(*levels)
 
     def updateRecon(self):
         reconObj = self._widget.getCurrentItemData()

@@ -111,19 +111,10 @@ class MultiDataFrame(QtWidgets.QFrame):
         self.dataList.addItem(listItem)
         self.dataList.setCurrentItem(listItem)
 
-    def getDataObjsByName(self, name, datasetName=None):
-        dataObjs = []
-        for i in range(self.dataList.count()):
-            if (self.dataList.item(i).data(3) == name and
-                    (datasetName is None or self.dataList.item(i).data(4) == datasetName)):
-                dataObjs.append(self.dataList.item(i).data(1))
-
-        return dataObjs
-
-    def setDataObjMemoryFlag(self, name, inMemory):
+    def setDataObjMemoryFlag(self, dataObj, inMemory):
         for i in range(self.dataList.count()):
             item = self.dataList.item(i)
-            if item.data(3) == name:
+            if item.data(1) == dataObj:
                 itemText = self.getTextForItem(item)
                 if inMemory:
                     itemText += ' (MEMORY)'
@@ -132,7 +123,22 @@ class MultiDataFrame(QtWidgets.QFrame):
     def getTextForItem(self, item):
         name = item.data(3)
         datasetName = item.data(4)
-        return f'{name}: {datasetName}' if datasetName is not None else name
+
+        text = f'{name}: {datasetName}' if datasetName is not None else name
+
+        duplicateNum = item.data(5)
+        if duplicateNum is None:
+            duplicateNum = 0
+            for i in range(self.dataList.count()):
+                otherItem = self.dataList.item(i)
+                if (item is not otherItem and name == otherItem.data(3)
+                        and datasetName == otherItem.data(4) and duplicateNum <= otherItem.data(5)):
+                    duplicateNum += 1
+            item.setData(5, duplicateNum)
+        if duplicateNum > 0:
+            text = f'{name} [{duplicateNum}]: {datasetName}' if datasetName is not None else name
+
+        return text
 
     def getSelectedDataObj(self):
         currentItem = self.dataList.currentItem()
@@ -147,10 +153,9 @@ class MultiDataFrame(QtWidgets.QFrame):
         for i in range(self.dataList.count()):
             yield self.dataList.item(i).data(1)
 
-    def delDataByName(self, name, datasetName=None):
+    def delDataByDataObj(self, dataObj):
         for i in reversed(range(self.dataList.count())):
-            if (self.dataList.item(i) is not None and self.dataList.item(i).data(3) == name and
-                    (datasetName is None or self.dataList.item(i).data(4) == datasetName)):
+            if self.dataList.item(i) is not None and self.dataList.item(i).data(1) is dataObj:
                 self.dataList.takeItem(i)
 
     def setCurrentRowHighlighted(self, highlighted):

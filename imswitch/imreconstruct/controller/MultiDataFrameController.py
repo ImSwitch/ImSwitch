@@ -67,16 +67,26 @@ class MultiDataFrameController(ImRecWidgetController):
             )
 
     def memoryDataSavedToDisk(self, name, filePath):
-        for dataObj in self._widget.getDataObjsByName(name):
+        for dataObj in self.getDataObjsByMemRecordingName(name):
             dataObj.dataPath = filePath
-        self._widget.setDataObjMemoryFlag(name, False)
+            self._widget.setDataObjMemoryFlag(dataObj, False)
         self.updateInfo()
 
     def memoryDataWillRemove(self, name):
-        for dataObj in self._widget.getDataObjsByName(name):
+        for dataObj in self.getDataObjsByMemRecordingName(name):
             dataObj.checkAndUnloadData()
-        self._widget.delDataByName(name)
+            self._widget.delDataByDataObj(dataObj)
         self.updateInfo()
+
+    def getDataObjsByMemRecordingName(self, name):
+        for dataObj in self._widget.getAllDataObjs():
+            try:
+                expectedFilename = str(self._moduleCommChannel.memoryRecordings[name].data)
+            except KeyError:
+                pass
+            else:
+                if dataObj._file is not None and dataObj._file.filename == expectedFilename:
+                    yield dataObj
 
     def makeAndAddDataObj(self, name, datasetName, path=None, file=None):
         dataObj = DataObj(name, datasetName, path=path, file=file)
@@ -84,7 +94,7 @@ class MultiDataFrameController(ImRecWidgetController):
             return  # Already added
 
         self._widget.addDataObj(name, datasetName, dataObj)
-        self._widget.setDataObjMemoryFlag(name, path is None)
+        self._widget.setDataObjMemoryFlag(dataObj, path is None)
         self.updateInfo()
 
     def addDataClicked(self):
@@ -135,12 +145,11 @@ class MultiDataFrameController(ImRecWidgetController):
         self.updateInfo()
 
     def deleteDataObj(self, dataObj):
-        if (dataObj.name in self._moduleCommChannel.memoryRecordings and
-                len(self._widget.getDataObjsByName(dataObj.name)) == 1):
+        if len(list(self.getDataObjsByMemRecordingName(dataObj.name))) == 1:
             del self._moduleCommChannel.memoryRecordings[dataObj.name]
-            # No need to call delDataByName, it will be called in memoryDataWillRemove
+            # No need to call delDataByDataObj, it will be called in memoryDataWillRemove
         else:
-            self._widget.delDataByName(dataObj.name, dataObj.datasetName)
+            self._widget.delDataByDataObj(dataObj)
 
     def saveCurrData(self):
         for dataObj in self._widget.getSelectedDataObjs():

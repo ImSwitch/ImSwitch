@@ -80,9 +80,7 @@ class RecordingManager(SignalInterface):
         acqHandle = self.__detectorsManager.startAcquisition()
         try:
             for detectorName in detectorNames:
-                file = h5py.File(
-                    self.getSaveFilePath(f'{savename}_{detectorName}.hdf5', SaveMode.Disk), 'w'
-                )
+                file = h5py.File(self.getSaveFilePath(f'{savename}_{detectorName}.hdf5'), 'w')
 
                 shape = self.__detectorsManager[detectorName].shape
                 dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
@@ -104,15 +102,16 @@ class RecordingManager(SignalInterface):
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
 
-    def getSaveFilePath(self, path, saveMode):
+    def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
         newPath = path
         numExisting = 0
 
-        if saveMode == SaveMode.RAM:
-            def existsFunc(pathToCheck):
-                return os.path.exists(pathToCheck) or pathToCheck in self._memRecordings
-        else:
-            existsFunc = os.path.exists
+        def existsFunc(pathToCheck):
+            if not allowOverwriteDisk and os.path.exists(pathToCheck):
+                return True
+            if not allowOverwriteMem and pathToCheck in self._memRecordings:
+                return True
+            return False
 
         while existsFunc(newPath):
             numExisting += 1
@@ -304,11 +303,11 @@ class RecordingWorker(Worker):
             else:
                 baseFilePath = f'{self.savename}_{detectorName}.hdf5'
 
-            if singleLapseFile:
-                filePaths[detectorName] = baseFilePath
-            else:
-                filePaths[detectorName] = self.__recordingManager.getSaveFilePath(baseFilePath,
-                                                                                  self.saveMode)
+            filePaths[detectorName] = self.__recordingManager.getSaveFilePath(
+                baseFilePath,
+                allowOverwriteDisk=singleLapseFile and self.saveMode != SaveMode.RAM,
+                allowOverwriteMem=singleLapseFile and self.saveMode == SaveMode.RAM
+            )
 
         for detectorName in self.detectorNames:
             if self.saveMode == SaveMode.RAM:

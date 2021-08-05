@@ -250,11 +250,8 @@ class ImRecMainViewController(ImRecWidgetController):
     def reconstructCurrent(self):
         if self._currentDataObj is None:
             return
-        elif np.prod(
-                np.array(self._scanParDict['steps'], dtype=int)) < self._currentDataObj.numFrames:
-            print('Too many frames in data')
-        else:
-            self.reconstruct([self._currentDataObj], consolidate=False)
+
+        self.reconstruct([self._currentDataObj], consolidate=False)
 
     def reconstructMulti(self, consolidate):
         self.reconstruct(self._widget.getMultiDatas(), consolidate)
@@ -262,28 +259,34 @@ class ImRecMainViewController(ImRecWidgetController):
     def reconstruct(self, dataObjs, consolidate):
         reconObj = None
         for index, dataObj in enumerate(dataObjs):
-            if not consolidate or index == 0:
-                reconObj = ReconObj(dataObj.name,
-                                    self._scanParDict,
-                                    self._widget.r_l_text,
-                                    self._widget.u_d_text,
-                                    self._widget.b_f_text,
-                                    self._widget.timepoints_text,
-                                    self._widget.p_text,
-                                    self._widget.n_text)
-
             preloaded = dataObj.dataLoaded
-            dataObj.checkAndLoadData()
+            try:
+                dataObj.checkAndLoadData()
 
-            data = dataObj.data
-            if self._widget.bleachBool.value():
-                data = self.bleachingCorrection(data)
+                if np.prod(np.array(self._scanParDict['steps'], dtype=int)) < dataObj.numFrames:
+                    print('Too many frames in data')
+                    return
 
-            coeffs = self.extractData(data)
-            if not preloaded:
-                dataObj.checkAndUnloadData()
+                if not consolidate or index == 0:
+                    reconObj = ReconObj(dataObj.name,
+                                        self._scanParDict,
+                                        self._widget.r_l_text,
+                                        self._widget.u_d_text,
+                                        self._widget.b_f_text,
+                                        self._widget.timepoints_text,
+                                        self._widget.p_text,
+                                        self._widget.n_text)
+
+                data = dataObj.data
+                if self._widget.bleachBool.value():
+                    data = self.bleachingCorrection(data)
+
+                coeffs = self.extractData(data)
+            finally:
+                if not preloaded:
+                    dataObj.checkAndUnloadData()
+
             reconObj.addCoeffsTP(coeffs)
-
             if not consolidate:
                 reconObj.updateImages()
                 self._widget.addNewData(reconObj, reconObj.name)

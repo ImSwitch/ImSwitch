@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import colorutils
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -96,7 +97,7 @@ class LaserWidget(Widget):
         )
 
         nameLabel = QtWidgets.QLabel(laserName)
-        color = guitools.colorutils.wavelengthToHex(wavelength)
+        color = colorutils.wavelengthToHex(wavelength)
         nameLabel.setStyleSheet(
             f'font-size: 16px; font-weight: bold; padding: 0 6px 0 12px;'
             f'border-left: 4px solid {color}'

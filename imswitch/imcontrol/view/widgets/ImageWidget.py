@@ -2,7 +2,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from imswitch.imcommon.model import shortcut
-from imswitch.imcontrol.view import guitools
+from imswitch.imcommon.view.guitools import naparitools
 
 
 class ImageWidget(QtWidgets.QWidget):
@@ -11,21 +11,23 @@ class ImageWidget(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        guitools.addNapariGrayclipColormap()
-        self.napariViewer = guitools.EmbeddedNapari()
-        self.updateLevelsWidget = guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
-        self.NapariShiftWidget = guitools.NapariShiftWidget.addToViewer(self.napariViewer)
+        naparitools.addNapariGrayclipColormap()
+        self.napariViewer = naparitools.EmbeddedNapari()
+        self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
+            self.napariViewer
+        )
+        self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
         self.viewCtrlLayout.addWidget(self.napariViewer.get_widget())
         self.setLayout(self.viewCtrlLayout)
 
-        self.grid = guitools.VispyGridVisual(color='yellow')
+        self.grid = naparitools.VispyGridVisual(color='yellow')
         self.grid.hide()
         self.addItem(self.grid)
 
-        self.crosshair = guitools.VispyCrosshairVisual(color='yellow')
+        self.crosshair = naparitools.VispyCrosshairVisual(color='yellow')
         self.crosshair.hide()
         self.addItem(self.crosshair)
 

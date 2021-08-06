@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -20,7 +21,7 @@ class ULensesWidget(Widget):
         self.yEdit = QtWidgets.QLineEdit('0')
         self.pxEdit = QtWidgets.QLineEdit('157.5')
         self.upEdit = QtWidgets.QLineEdit('1182')
-        self.ulensesPlot = guitools.VispyScatterVisual(color='red', symbol='x')
+        self.ulensesPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
 
         # Add elements to GridLayout
         ulensesLayout = QtWidgets.QGridLayout()

@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools, pyqtgraphtools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -16,8 +17,8 @@ class AlignAverageWidget(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.resetButton = guitools.BetterPushButton('Reset graph')
-        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
-        self.graph = guitools.SumpixelsGraph()
+        self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
+        self.graph = pyqtgraphtools.SumpixelsGraph()
         self.resetButton.clicked.connect(self.graph.resetData)
 
         # Add items to GridLayout

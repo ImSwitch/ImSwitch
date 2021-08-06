@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -17,7 +18,7 @@ class AlignmentLineWidget(Widget):
         self.angleEdit = QtWidgets.QLineEdit('30')
         self.alignmentCheck = QtWidgets.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
-        self.alignmentLine = guitools.VispyLineVisual(movable=True)
+        self.alignmentLine = naparitools.VispyLineVisual(movable=True)
 
         # Add items to GridLayout
         alignmentLayout = QtWidgets.QGridLayout()

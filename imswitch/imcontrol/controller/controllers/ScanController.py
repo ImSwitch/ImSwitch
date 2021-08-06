@@ -7,6 +7,7 @@ from ast import literal_eval
 import numpy as np
 
 from imswitch.imcommon.model import APIExport, dirtools
+from imswitch.imcommon.view.guitools import colorutils
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import SuperScanController
 
@@ -285,7 +286,7 @@ class ScanController(SuperScanController):
             )
             signals.append(signal.astype(np.uint8))
             colors.append(
-                guitools.colorutils.wavelengthToHex(
+                colorutils.wavelengthToHex(
                     self._setupInfo.lasers[deviceName].wavelength
                 ) if isLaser else '#ffffff'
             )

@@ -2,7 +2,8 @@ from pyqtgraph.parametertree import ParameterTree, Parameter
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcommon.model import shortcut
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -151,7 +152,7 @@ class SettingsWidget(Widget):
         # Graphical elements
         detectorTitle = QtWidgets.QLabel('<h2><strong>Detector settings</strong></h2>')
         detectorTitle.setTextFormat(QtCore.Qt.RichText)
-        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
+        self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
         self.stack = QtWidgets.QStackedWidget()
         self.trees = {}
 

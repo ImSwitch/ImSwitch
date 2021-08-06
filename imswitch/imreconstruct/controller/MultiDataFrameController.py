@@ -1,9 +1,7 @@
 import os
 
 import h5py
-import psutil
 
-from imswitch.imcommon.framework import Timer
 from imswitch.imreconstruct.model import DataObj
 from .basecontrollers import ImRecWidgetController
 
@@ -41,11 +39,6 @@ class MultiDataFrameController(ImRecWidgetController):
         self._widget.sigSaveAllDataClicked.connect(self.saveAllData)
         self._widget.sigSelectedItemChanged.connect(self.updateInfo)
 
-        self._updateMemBarTimer = Timer()
-        self._updateMemBarTimer.timeout.connect(self.updateMemBar)
-        self._updateMemBarTimer.start(1000)
-
-        self.updateMemBar()
         self.updateInfo()
 
     def dataFolderChanged(self, dataFolder):
@@ -218,9 +211,6 @@ class MultiDataFrameController(ImRecWidgetController):
                                           for obj in allDataObjs])
         )
         self._widget.setDeleteAllButtonEnabled(len(allDataObjs) > 0)
-
-    def updateMemBar(self):
-        self._widget.updateMemBar(psutil.virtual_memory()[2])
 
 
 # Copyright (C) 2020, 2021 TestaLab

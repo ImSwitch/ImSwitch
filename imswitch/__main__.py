@@ -58,7 +58,7 @@ def main():
             moduleMainControllers[moduleId] = controller
 
             # Update loading progress
-            multiModuleWindow.setLoadingProgress(i / len(modulePkgs))
+            multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())

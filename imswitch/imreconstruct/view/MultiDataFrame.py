@@ -52,16 +52,10 @@ class MultiDataFrame(QtWidgets.QFrame):
         self.saveAllDataBtn = BetterPushButton('Save all')
         self.saveAllDataBtn.clicked.connect(self.sigSaveAllDataClicked)
 
-        ramUsageLabel = QtWidgets.QLabel('Current RAM usage')
-
-        self.memBar = QtWidgets.QProgressBar(self)
-        self.memBar.setMaximum(100)  # Percentage
-
         # Set layout
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(self.dataList, 0, 0, 4, 1)
         layout.addWidget(dataLoadedLabel, 0, 1)
         layout.addWidget(self.dataLoadedStatus, 0, 2)
         layout.addWidget(self.addDataBtn, 1, 1)
@@ -75,8 +69,7 @@ class MultiDataFrame(QtWidgets.QFrame):
         layout.addWidget(self.saveDataBtn, 5, 1)
         layout.addWidget(self.saveAllDataBtn, 5, 2)
         layout.addWidget(self.unloadAllDataBtn, 4, 2)
-        layout.addWidget(ramUsageLabel, 4, 0)
-        layout.addWidget(self.memBar, 5, 0)
+        layout.addWidget(self.dataList, 0, 0, -1, 1)
 
     def requestFilePathsFromUser(self, defaultFolder=None):
         return QtWidgets.QFileDialog().getOpenFileNames(directory=defaultFolder)[0]
@@ -201,9 +194,6 @@ class MultiDataFrame(QtWidgets.QFrame):
 
     def setSaveAllButtonEnabled(self, value):
         self.saveAllDataBtn.setEnabled(value)
-
-    def updateMemBar(self, percentUsed):
-        self.memBar.setValue(round(percentUsed))
 
 
 # Copyright (C) 2020, 2021 TestaLab

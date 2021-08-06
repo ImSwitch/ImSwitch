@@ -1,5 +1,8 @@
 import webbrowser
 
+import psutil
+
+from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.view import guitools
 from .CheckUpdatesController import CheckUpdatesController
@@ -19,6 +22,12 @@ class MultiModuleWindowController(WidgetController):
         )
 
         self._moduleIdNameMap = {}
+
+        self._updateMemBarTimer = Timer()
+        self._updateMemBarTimer.timeout.connect(self.updateRAMUsage)
+        self._updateMemBarTimer.start(1000)
+
+        self.updateRAMUsage()
 
         # Connect signals
         self._widget.sigPickModules.connect(self.pickModules)
@@ -68,6 +77,9 @@ class MultiModuleWindowController(WidgetController):
 
     def moduleAdded(self, moduleId, moduleName):
         self._moduleIdNameMap[moduleId] = moduleName
+
+    def updateRAMUsage(self):
+        self._widget.updateRAMUsage(psutil.virtual_memory()[2] / 100)
 
     @APIExport
     def setCurrentModule(self, moduleId: str) -> None:

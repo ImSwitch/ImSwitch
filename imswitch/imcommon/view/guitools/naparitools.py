@@ -54,6 +54,13 @@ class NapariBaseWidget(QtWidgets.QWidget):
         napariViewer.window.qt_viewer.dockLayerList.show()
         return widget
 
+    def addItemToViewer(self, item):
+        item.attach(self.viewer,
+                    canvas=self.viewer.window.qt_viewer.canvas,
+                    view=self.viewer.window.qt_viewer.view,
+                    parent=self.viewer.window.qt_viewer.view.scene,
+                    order=1e6 + 8000)
+
 
 class NapariUpdateLevelsWidget(NapariBaseWidget):
     """ Napari widget for auto-levelling the currently selected layer with a

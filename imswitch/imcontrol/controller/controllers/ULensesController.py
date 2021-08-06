@@ -8,28 +8,23 @@ class ULensesController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Initialize variables
-        self.init = False
-        self.layer = []
 
         # Connect ULensesWidget signals
-        self._widget.sigULensesClicked.connect(self.toggleULenses)
+        self._widget.sigULensesClicked.connect(self.updateGrid)
+        self._widget.sigUShowLensesChanged.connect(self.toggleULenses)
 
-    def toggleULenses(self):
-        """ Shows or hides grid. """
+    def updateGrid(self):
+        """ Updates plot with new parameters. """
         x, y, px, up = self._widget.getParameters()
-        size_x, size_y = image = next(iter(self._widget.viewer.layers.selected)).data.shape
+        size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         pattern_x = np.arange(x, size_x, up / px)
         pattern_y = np.arange(y, size_y, up / px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
-        if self.init:
-            if 'grid' in self._widget.viewer.layers:
-                self.layer.data = grid
-            else:
-                self.layer = self._widget.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
-        else:
-            self.layer = self._widget.viewer.add_points(grid, size=2, face_color='red', symbol='ring')
-            self.init = True
+        self._widget.setData(x=grid[:, 0], y=grid[:, 1])
+
+    def toggleULenses(self, show):
+        """ Shows or hides grid. """
+        self._widget.setULensesVisible(show)
 
 
 # Copyright (C) 2020, 2021 TestaLab

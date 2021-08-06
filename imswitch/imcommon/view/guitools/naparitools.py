@@ -60,6 +60,7 @@ class NapariBaseWidget(QtWidgets.QWidget):
                     parent=self.viewer.window.qt_viewer.view.scene,
                     order=1e6 + 8000)
 
+
 class NapariUpdateLevelsWidget(NapariBaseWidget):
     """ Napari widget for auto-levelling the currently selected layer with a
     single click. """

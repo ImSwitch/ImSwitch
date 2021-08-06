@@ -14,11 +14,17 @@ class ULensesWidget(NapariHybridWidget):
     def __post_init__(self):
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
+        self.ulensesCheck = QtWidgets.QCheckBox('Show uLenses')
         self.xEdit = QtWidgets.QLineEdit('0')
         self.yEdit = QtWidgets.QLineEdit('0')
         self.pxEdit = QtWidgets.QLineEdit('157.5')
         self.upEdit = QtWidgets.QLineEdit('1182')
-        
+
+        # Vispy visual to render in napari
+        self.ulensesPlot = guitools.VispyScatterVisual(color='red', symbol='x')
+        self.ulensesPlot.hide()
+        self.addItemToViewer(self.ulensesPlot)
+
         # Add elements to GridLayout
         ulensesLayout = QtWidgets.QGridLayout()
         self.setLayout(ulensesLayout)
@@ -31,9 +37,11 @@ class ULensesWidget(NapariHybridWidget):
         ulensesLayout.addWidget(QtWidgets.QLabel('Y offset'), 3, 0)
         ulensesLayout.addWidget(self.yEdit, 3, 1)
         ulensesLayout.addWidget(self.ulensesButton, 4, 0)
+        ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
 
         # Connect signals
         self.ulensesButton.clicked.connect(self.sigULensesClicked)
+        self.ulensesCheck.toggled.connect(self.sigUShowLensesChanged)
 
     def getParameters(self):
         """ Returns the X offset, Y offset, pixel size, and periodicity
@@ -42,6 +50,18 @@ class ULensesWidget(NapariHybridWidget):
                 np.float(self.yEdit.text()),
                 np.float(self.pxEdit.text()),
                 np.float(self.upEdit.text()))
+
+    def getPlotGraphicsItem(self):
+        return self.ulensesPlot
+
+    def setData(self, x, y):
+        """ Updates plot with new parameters. """
+        self.ulensesPlot.setData(x=x, y=y)
+
+    def setULensesVisible(self, visible):
+        """ Updates visibility of plot. """
+        self.ulensesPlot.setVisible(visible)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

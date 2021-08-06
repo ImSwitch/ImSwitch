@@ -1,5 +1,12 @@
 import weakref
-from qtpy import QtWidgets
+from abc import ABCMeta, abstractmethod
+from qtpy import QtCore, QtWidgets
+
+from imswitch.imcontrol.view import guitools
+
+
+class _QObjectABCMeta(type(QtCore.QObject), ABCMeta):
+    pass
 
 
 class WidgetFactory:
@@ -7,9 +14,13 @@ class WidgetFactory:
 
     def __init__(self, options):
         self._options = options
+        self._baseKwargs = {}
         self._createdWidgets = []
 
-    def createWidget(self, widgetClass, *args, **kwargs):
+    def createWidget(self, widgetClass, *args, **extraKwargs):
+        kwargs = self._baseKwargs.copy()
+        kwargs.update(extraKwargs)
+
         if issubclass(widgetClass, Widget):
             widget = widgetClass(self._options, *args, **kwargs)
         else:
@@ -18,21 +29,51 @@ class WidgetFactory:
         self._createdWidgets.append(weakref.ref(widget))
         return widget
 
+    def setArgument(self, name, value):
+        self._baseKwargs[name] = value
 
-class Widget(QtWidgets.QWidget):
+
+class Widget(QtWidgets.QWidget, metaclass=_QObjectABCMeta):
     """ Superclass for all Widgets. All Widgets are subclasses of QWidget. """
 
-    def __init__(self, options, *args, **kwargs):
+    @abstractmethod
+    def __init__(self, options, *_args, **_kwargs):
         self._options = options
-        super().__init__(*args, **kwargs)
+        QtWidgets.QWidget.__init__(self)
 
     def replaceWithError(self, errorText):
         errorLabel = QtWidgets.QLabel(errorText)
 
         grid = QtWidgets.QGridLayout()
-        QtWidgets.QWidget().setLayout(self.layout())  # unset layout
+        if self.layout() is not None:
+            QtWidgets.QWidget().setLayout(self.layout())  # unset layout
         self.setLayout(grid)
         grid.addWidget(errorLabel)
+
+
+class NapariHybridWidget(Widget, guitools.NapariBaseWidget, metaclass=_QObjectABCMeta):
+    """ Superclass for widgets that can use the functionality of
+    NapariBaseWidget. Derived classes should not implement __init__; instead,
+    they should implement __post_init__. """
+
+    def __init__(self, options, *_args, **kwargs):
+        Widget.__init__(self, options)
+
+        try:
+            napariViewer = kwargs['napariViewer']
+        except KeyError:
+            self.replaceWithError('Could not load widget; napariViewer not specified. This error is'
+                                  ' most likely happening because this widget requires the image'
+                                  ' display widget to also be enabled, but it is not enabled in'
+                                  ' your currently active hardware configuration.')
+            return
+
+        guitools.NapariBaseWidget.__init__(self, napariViewer)
+        self.__post_init__()
+
+    @abstractmethod
+    def __post_init__(self):
+        pass
 
 
 # Copyright (C) 2020, 2021TestaLab

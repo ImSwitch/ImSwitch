@@ -1,19 +1,17 @@
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
-from .basewidgets import Widget
+from imswitch.imcontrol.view import guitools
+from .basewidgets import NapariHybridWidget
 
 
-class ULensesWidget(guitools.NapariBaseWidget):
+class ULensesWidget(NapariHybridWidget):
     """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
 
     sigULensesClicked = QtCore.Signal()
     sigUShowLensesChanged = QtCore.Signal(bool)  # (enabled)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __post_init__(self):
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
         self.xEdit = QtWidgets.QLineEdit('0')

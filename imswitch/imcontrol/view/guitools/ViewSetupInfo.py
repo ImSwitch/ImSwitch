@@ -58,7 +58,7 @@ class ViewSetupInfo(SetupInfo):
     - ``AlignAverage`` (axial alignment tool widget)
     - ``AlignXY`` (rotation alignment tool widget)
     - ``AlignmentLine`` (line alignment tool widget)
-    - ``uLenses`` (uLenses tool widget)
+    - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
     

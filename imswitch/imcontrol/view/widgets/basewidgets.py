@@ -1,3 +1,4 @@
+import os
 import weakref
 from abc import ABCMeta, abstractmethod
 from qtpy import QtCore, QtWidgets
@@ -56,12 +57,14 @@ class NapariHybridWidget(Widget, guitools.NapariBaseWidget, metaclass=_QObjectAB
     NapariBaseWidget. Derived classes should not implement __init__; instead,
     they should implement __post_init__. """
 
-    def __init__(self, options, *_args, **kwargs):
+    def __init__(self, options, *, napariViewer=None):
         Widget.__init__(self, options)
 
-        try:
-            napariViewer = kwargs['napariViewer']
-        except KeyError:
+        if napariViewer is None:
+            if 'IMSWITCH_FULL_APP' not in os.environ or os.environ['IMSWITCH_FULL_APP'] != '1':
+                # ImSwitch components running as napari plugins - raise error
+                raise ValueError('napariViewer must be specified')
+
             self.replaceWithError('Could not load widget; napariViewer not specified. This error is'
                                   ' most likely happening because this widget requires the image'
                                   ' display widget to also be enabled, but it is not enabled in'
@@ -76,7 +79,7 @@ class NapariHybridWidget(Widget, guitools.NapariBaseWidget, metaclass=_QObjectAB
         pass
 
 
-# Copyright (C) 2020, 2021TestaLab
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

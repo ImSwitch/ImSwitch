@@ -1,64 +1,65 @@
 import os
 
 import qdarkstyle
+from qdarkstyle import DarkPalette
 
 
 def getBaseStyleSheet():
     baseStyleSheet = qdarkstyle.load_stylesheet(qt_api=os.environ.get('PYQTGRAPH_QT_LIB'))
-    baseStyleSheet += '''
-        QWidget:disabled {
-            color: #54687A;
-        }
+    baseStyleSheet += f'''
+        QWidget:disabled {{
+            color: {DarkPalette.COLOR_BACKGROUND_5};
+        }}
 
-        QComboBox {
+        QComboBox {{
             padding-right: 4px;
             min-width: 40px;
-        }
+        }}
 
-        QPushButton {
+        QPushButton {{
             min-width: 20px;
-        }
+        }}
 
-        QPushButton:disabled {
+        QPushButton:disabled {{
             color: #788D9C;
-        }
+        }}
 
-        QPushButton:checked {
+        QPushButton:checked {{
             background-color: #2B333D;
             border: 2px solid #1464A0;
-        }
+        }}
 
-        QPushButton:pressed {
+        QPushButton:pressed {{
             background-color: #262E38;
-        }
+        }}
 
-        QScrollArea QWidget QPushButton:disabled {
-            background-color: #455364;
-        }
+        QScrollArea QWidget QPushButton:disabled {{
+            background-color: {DarkPalette.COLOR_BACKGROUND_4};
+        }}
 
-        QSplitter {
-            background-color: #37414F;
-        }
+        QSplitter {{
+            background-color: {DarkPalette.COLOR_BACKGROUND_3};
+        }}
 
-        QLabel {
+        QLabel {{
             background-color: transparent;
-        }
+        }}
 
-        DockLabel {
+        DockLabel {{
             padding: 0;
-        }
+        }}
 
-        ParameterTree QTreeView::item, ParameterTree QAbstractSpinBox, ParameterTree QComboBox {
+        ParameterTree QTreeView::item, ParameterTree QAbstractSpinBox, ParameterTree QComboBox {{
             padding-top: 0;
             padding-bottom: 0;
             margin-top: 0;
             margin-bottom: 0;
             border: none;
-        }
+        }}
 
-        ParameterTree QComboBox QAbstractItemView {
+        ParameterTree QComboBox QAbstractItemView {{
             min-width: 128px;
-        }
+        }}
     '''
     return baseStyleSheet
 

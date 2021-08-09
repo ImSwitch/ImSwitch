@@ -2,6 +2,7 @@ import webbrowser
 
 import psutil
 
+import imswitch
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.view import guitools
@@ -63,7 +64,7 @@ class MultiModuleWindowController(WidgetController):
 
     def showDocs(self):
         """ Opens the ImSwitch documentation in a web browser. """
-        webbrowser.open('https://imswitch.readthedocs.io')
+        webbrowser.open(f'https://imswitch.readthedocs.io/en/v{imswitch.__version__}/')
 
     def checkUpdates(self):
         """ Checks if there are any updates to ImSwitch available and notifies

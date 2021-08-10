@@ -1,16 +1,18 @@
 import importlib
 
-from imswitch.imcommon.model import pythontools
+from imswitch.imcommon.model import pythontools, initLogger
 
 
 class LantzLaser:
     def __new__(cls, iName, ports):
+        logger = initLogger(cls, __name__, tryInheritParent=True)
+
         if len(ports) < 1:
             raise ValueError('LantzLaser requires at least one port, none passed')
 
         lasers = []
         for port in ports:
-            laser = getLaser(iName, port)
+            laser = getLaser(iName, port, logger)
             lasers.append(laser)
 
         return lasers[0] if len(ports) == 1 else LinkedLantzLaser(lasers)
@@ -56,7 +58,7 @@ class LinkedLantzLaser:
             setattr(laser, key, value)
 
 
-def getLaser(iName, port):
+def getLaser(iName, port, logger):
     pName, driverName = iName.rsplit('.', 1)
 
     try:
@@ -84,15 +86,19 @@ def getLaser(iName, port):
                                   isinstance(e2, AttributeError))
 
             if driverNotFound:
-                print(f'No lantz driver found matching "{iName}" for laser, loading mocker')
+                logger.warning(
+                    f'No lantz driver found matching "{iName}" for laser, loading mocker'
+                )
             else:
                 if not isinstance(e1, ModuleNotFoundError) or isinstance(e1, AttributeError):
                     errorDetails = str(e1)
                 else:
                     errorDetails = str(e2)
 
-                print(f'Failed to initialize lantz driver "{iName}" for laser, loading mocker'
-                      f' (error details: {errorDetails})')
+                logger.warning(
+                    f'Failed to initialize lantz driver "{iName}" for laser, loading mocker'
+                    f' (error details: {errorDetails})'
+                )
 
             try:
                 # If that also fails, try loading a mock driver
@@ -104,9 +110,9 @@ def getLaser(iName, port):
                 laser.initialize()
             except Exception as e3:
                 if isinstance(e3, ModuleNotFoundError) or isinstance(e3, AttributeError):
-                    print(f'No mocker found matching "{iName}"')
+                    logger.error(f'No mocker found matching "{iName}"')
                 else:
-                    print(f'Failed to initialize mocker for "{iName}"')
+                    logger.error(f'Failed to initialize mocker for "{iName}"')
 
                 if driverNotFound:
                     raise NoSuchDriverError(f'No lantz driver found matching "{iName}"')

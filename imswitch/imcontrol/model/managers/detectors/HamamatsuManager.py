@@ -1,3 +1,4 @@
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -16,7 +17,9 @@ class HamamatsuManager(DetectorManager):
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
-        self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+        self.__logger = initLogger(self, __name__, instanceName=name)
+
+        self._camera = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
         for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
@@ -173,18 +176,18 @@ class HamamatsuManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-
-def getCameraObj(cameraId):
-    try:
-        from imswitch.imcontrol.model.interfaces import HamamatsuCameraMR
-        print('Trying to import camera', cameraId)
-        camera = HamamatsuCameraMR(cameraId)
-        print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
-        return camera
-    except Exception:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
+    def _getCameraObj(self, cameraId):
+        try:
+            from imswitch.imcontrol.model.interfaces import HamamatsuCameraMR
+            self.__logger.debug(f'Trying to initialize Hamamatsu camera {cameraId}')
+            camera = HamamatsuCameraMR(cameraId)
+            self.__logger.info(f'Initialized Hamamatsu camera, model: {camera.camera_model}')
+            return camera
+        except Exception:
+            self.__logger.warning(f'Failed to initialize Hamamatsu camera {cameraId},'
+                                  f' loading mocker')
+            from imswitch.imcontrol.model.interfaces import MockHamamatsu
+            return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

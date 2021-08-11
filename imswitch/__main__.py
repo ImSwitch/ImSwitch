@@ -1,13 +1,19 @@
 import importlib
 import traceback
 
+import imswitch
 from .imcommon import prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from .imcommon.model import modulesconfigtools, pythontools
+from .imcommon.model import modulesconfigtools, pythontools, initLogger
 from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
 def main():
+    logger = initLogger('main')
+    logger.info(f'Starting ImSwitch {imswitch.__version__}')
+
+    app = prepareApp()
+
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
         # Ensure that imscripting is added last
@@ -16,7 +22,6 @@ def main():
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
-    app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
 
     multiModuleWindow = MultiModuleWindow('ImSwitch')
@@ -48,8 +53,8 @@ def main():
                 moduleMainControllers=moduleMainControllers
             )
         except Exception as e:
-            print(f'Failed to initialize module {moduleId}')
-            print(traceback.format_exc())
+            logger.error(f'Failed to initialize module {moduleId}')
+            logger.error(traceback.format_exc())
             moduleCommChannel.unregister(modulePkg)
             multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
         else:

@@ -6,7 +6,7 @@ from ast import literal_eval
 
 import numpy as np
 
-from imswitch.imcommon.model import APIExport, dirtools
+from imswitch.imcommon.model import APIExport, dirtools, initLogger
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import SuperScanController
 
@@ -14,6 +14,7 @@ from ..basecontrollers import SuperScanController
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         self.settingAttr = False
         self.settingParameters = False
@@ -68,8 +69,6 @@ class ScanController(SuperScanController):
         self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
-
-        print('Init Scan Controller')
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -190,7 +189,7 @@ class ScanController(SuperScanController):
             )
         except Exception:
             # TODO: should raise an error here probably, but that does not crash the program.
-            print(traceback.format_exc())
+            self.__logger.error(traceback.format_exc())
             return
 
         if not sigScanStartingEmitted:
@@ -198,12 +197,12 @@ class ScanController(SuperScanController):
         self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def scanDone(self):
-        print('Scan done')
+        self.__logger.debug('Scan done')
         if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
             self._widget.setScanButtonChecked(False)
             self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
-            print('Repeat scan')
+            self.__logger.debug('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def scanFailed(self):

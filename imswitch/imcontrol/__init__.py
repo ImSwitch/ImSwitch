@@ -4,9 +4,12 @@ __title__ = 'Hardware Control'
 
 def getMainViewAndController(moduleCommChannel, *_args,
                              overrideSetupInfo=None, overrideOptions=None, **_kwargs):
+    from imswitch.imcommon.model import initLogger
     from .controller import ImConMainController
     from .model import configfiletools
     from .view import ViewSetupInfo, ImConMainView
+
+    logger = initLogger('imcontrol init')
 
     def pickSetup(options):
         import dataclasses
@@ -20,7 +23,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
         result = pickSetupDialog.exec_()
         setupFileName = pickSetupDialog.getSelectedSetup()
         if result != QtWidgets.QDialog.Accepted or not setupFileName:
-            print('User did not pick a setup to use')
+            logger.critical('User did not pick a setup to use')
             sys.exit()
         return dataclasses.replace(options, setupFileName=setupFileName)
 

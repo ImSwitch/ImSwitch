@@ -14,7 +14,6 @@ class AAAOTFLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
-        print(type(laserInfo))
         self._channel = int(laserInfo.managerProperties['channel'])
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']

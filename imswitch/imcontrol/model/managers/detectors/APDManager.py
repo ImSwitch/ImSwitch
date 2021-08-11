@@ -1,6 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, Thread, Worker
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager
 
 
@@ -19,6 +20,7 @@ class APDManager(DetectorManager):
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
         # TODO: use the same manager for the PMT, with the type of detector as an argument.
         #       NidaqPointDetectorManager
+        self.__logger = initLogger(self, instanceName=name)
 
         model = name
         self._name = name
@@ -50,7 +52,7 @@ class APDManager(DetectorManager):
         self._nidaqManager.sigScanBuilt.connect(
             lambda scanInfoDict: self.initiateScan(scanInfoDict)
         )
-        print(f'{self._name}: sigScanInitiate is connected')
+        self.__logger.debug('sigScanInitiate is connected')
         self._nidaqManager.sigScanStarted.connect(self.startScan)
         self.__shape = fullShape
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
@@ -141,6 +143,8 @@ class ScanWorker(Worker):
 
     def __init__(self, manager, scanInfoDict):
         super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
+
         self._alldata = 0
         self._manager = manager
         self._name = self._manager._name
@@ -178,8 +182,8 @@ class ScanWorker(Worker):
         # scantimest = scanInfoDict['scan_time_step']
         # detsamprate = self._manager._detection_samplerate
         # samptotdet = round(samptot * scantimest * detsamprate)
-        # print(f'scansampltot: {samptot}, scantimestep: {scantimest}, '
-        #       f'detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
+        # self.__logger.debug(f'scansampltot: {samptot}, scantimestep: {scantimest}, '
+        #                     f'detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
 
         # # det samples in total signal: time for total scan * det sampling rate
         self._samples_total = round(
@@ -243,10 +247,10 @@ class ScanWorker(Worker):
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw)
         self._last_value = throwdata[-1]
         # self._alldata += len(throwdata)
-        # print(f'sw0: throw data shape: {np.shape(throwdata)}')
+        # self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
         while self._line_counter < self._n_lines:
             if self.scanning:
-                # print(f'sw1: line {self._line_counter} started')
+                # self.__logger.debug(f'sw1: line {self._line_counter} started')
                 if self._line_counter == self._n_lines - 1:
                     # read a line
                     data = self._manager._nidaqManager.readInputTask(self._name,
@@ -257,8 +261,10 @@ class ScanWorker(Worker):
                     data = self._manager._nidaqManager.readInputTask(self._name,
                                                                      self._samples_period)
                 # self._alldata += len(data)
-                # print(f'sw1.5: length of all data so far: {self._alldata}')
-                # print(f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}')
+                # self.__logger.debug(f'sw1.5: length of all data so far: {self._alldata}')
+                # self.__logger.debug(
+                #     f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}'
+                # )
                 # galvo-sensor-data reading
                 subtractionArray = np.concatenate(([self._last_value], data[:-1]))
                 self._last_value = data[-1]
@@ -270,31 +276,36 @@ class ScanWorker(Worker):
                 # only take the first samples that corresponds to the samples during the line
                 line_samples = data[:self._samples_line]
 
-                # print(f'sw3: line {self._line_counter}: samples per line: {self._samples_line}')
-                # print(f'sw4: line {self._line_counter}: save data shape: '
-                #       f'{np.shape(line_samples)}')
+                # self.__logger.debug(
+                #     f'sw3: line {self._line_counter}: samples per line: {self._samples_line}'
+                # )
+                # self.__logger.debug(
+                #     f'sw4: line {self._line_counter}: save data shape: '{np.shape(line_samples)}'
+                # )
 
                 # translate sample stream to an array where each value corresponds to a pixel count
                 line_pixels = self.samples_to_pixels(line_samples)
 
-                # print(f'sw5: line {self._line_counter}: line data shape: {np.shape(line_pixels)}')
+                # self.__logger.debug(
+                #     f'sw5: line {self._line_counter}: line data shape: {np.shape(line_pixels)}'
+                # )
                 self.newLine.emit(line_pixels, self._line_counter)
-                # print(f'sw6: line {self._line_counter} finished')
+                # self.__logger.debug(f'sw6: line {self._line_counter} finished')
                 self._line_counter += 1
             else:
-                print('CLOSE!')
+                self.__logger.debug('CLOSE!')
                 self.close()
 
-        # print('APD worker: read fin throwdata 1')
+        # self.__logger.debug('APD worker: read fin throwdata 1')
         throwdata = self._manager._nidaqManager.readInputTask(
             self._name, self._throw_startzero + self._throw_finalpos
         )
-        # print('APD worker: read fin throwdata 2')
+        # self.__logger.debug('APD worker: read fin throwdata 2')
         # self._alldata += len(throwdata)
-        # print(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
+        # self.__logger.debug(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()
-        # print(self._name)
-        # print(np.mean(self._manager._image))
+        # self.__logger.debug(self._name)
+        # self.__logger.debug(np.mean(self._manager._image))
         # self.close()
 
     def samples_to_pixels(self, line_samples):

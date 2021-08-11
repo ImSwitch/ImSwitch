@@ -1,4 +1,9 @@
+import re
 from .basecontrollers import ImScrWidgetController
+
+
+# ANSI escape sequence regex. Source: https://stackoverflow.com/a/38662876
+ansiEscape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
 
 
 class OutputController(ImScrWidgetController):
@@ -15,7 +20,8 @@ class OutputController(ImScrWidgetController):
         self._widget.clearText()
 
     def outputAppended(self, outputText):
-        self._widget.appendText(outputText)
+        textWithoutANSIEscape = ansiEscape.sub('', outputText)
+        self._widget.appendText(textWithoutANSIEscape)
 
 
 # Copyright (C) 2020, 2021 TestaLab

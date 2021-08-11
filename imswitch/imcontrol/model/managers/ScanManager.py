@@ -1,6 +1,7 @@
 import copy
 from abc import ABC, abstractmethod
 
+from imswitch.imcommon.model import initLogger
 from ..errors import IncompatibilityError
 from ..signaldesigners import SignalDesignerFactory
 
@@ -29,6 +30,8 @@ class ScanManager(SuperScanManager):
 
     def __init__(self, setupInfo):
         super().__init__()
+        self.__logger = initLogger(self)
+
         self._setupInfo = setupInfo
 
         if setupInfo.scan:
@@ -94,8 +97,10 @@ class ScanManager(SuperScanManager):
             if not self._scanDesigner.checkSignalComp(
                     scanParameters, self._setupInfo, scanInfoDict
             ):
-                print('Signal voltages outside scanner ranges: try scanning a smaller ROI or a'
-                      ' slower scan.')
+                self.__logger.error(
+                    'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
+                    ' scan.'
+                )
                 return
 
             TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)

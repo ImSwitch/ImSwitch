@@ -8,6 +8,7 @@ from PIL import Image
 from scipy import signal as sg
 
 from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.model import initLogger
 
 
 class SLMManager(SignalInterface):
@@ -15,8 +16,11 @@ class SLMManager(SignalInterface):
 
     def __init__(self, slmInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
+
         if slmInfo is None:
             return
+
         self.__slmInfo = slmInfo
         self.__wavelength = self.__slmInfo.wavelength
         self.__pixelsize = self.__slmInfo.pixelSize
@@ -50,8 +54,10 @@ class SLMManager(SignalInterface):
         bmpsCorrection = glob.glob(os.path.join(self.__correctionPatternsDir, "*.bmp"))
 
         if len(bmpsCorrection) < 1:
-            print('No BMP files found in correction patterns directory, cannot initialize'
-                  ' correction mask.')
+            self.__logger.error(
+                'No BMP files found in correction patterns directory, cannot initialize correction'
+                ' mask.'
+            )
             return
 
         wavelengthCorrection = [int(x[-9: -6]) for x in bmpsCorrection]
@@ -140,7 +146,7 @@ class SLMManager(SignalInterface):
         tAberFactors = aber_info["right"]
         self.__masksAber[0].setAberrations(dAberFactors)
         self.__masksAber[1].setAberrations(tAberFactors)
-        # print(f'Set aberrations on both phase mask.')
+        # self.__logger.debug(f'Set aberrations on both phase mask.')
 
     def setRadius(self, radius):
         for mask, masktilt, maskaber in zip(self.__masks, self.__masksTilt, self.__masksAber):
@@ -177,6 +183,8 @@ class Mask(object):
         """initiates the mask as an empty array
         n,m corresponds to the width,height of the created image
         wavelength is the illumination wavelength in nm"""
+        self.__logger = initLogger(self, tryInheritParent=True)
+
         self.img = np.zeros((height, width), dtype=np.uint8)
         self.height = height
         self.width = width
@@ -198,7 +206,7 @@ class Mask(object):
             # provided by the manufacturer
             # Better ask them in case you need another wavelength
             self.value_max = int(wavelength * 0.45 - 105)
-            print("Caution: a linear approximation has been made")
+            self.__logger.warning("Caution: a linear approximation has been made")
 
     def concat(self, maskOther):
         for mask in [self, maskOther]:
@@ -247,17 +255,17 @@ class Mask(object):
     def pi2uint8(self):
         """Method converting a phase image (values from 0 to 2Pi) into a uint8
         image"""
-        # print(np.max(np.max(self.img)))
+        # self.__logger.debug(np.max(np.max(self.img)))
         self.img *= self.value_max / (2 * math.pi)
         self.img = np.round(self.img).astype(np.uint8)
-        # print(np.max(np.max(self.img)))
+        # self.__logger.debug(np.max(np.max(self.img)))
 
     def load(self, img):
         """Initiates the mask with an existing image."""
         tp = img.dtype
         if tp != np.uint8:
             max_val = np.max(img)
-            print("input image is not of format uint8")
+            self.__logger.warning("Input image is not of format uint8")
             if max_val != 0:
                 img = self.value_max * img.astype('float64') / np.max(img)
             img = img.astype('uint8')
@@ -298,7 +306,7 @@ class Mask(object):
         f_spat = np.round(wavelength / (self.pixelSize * np.sin(self.angle_tilt)))
         # f_spat = 10
         if np.absolute(f_spat) < 3:
-            print("spatial frequency:", f_spat, "pixels")
+            self.__logger.debug(f"Spatial frequency: {f_spat} pixels")
         period = 2 * math.pi / f_spat  # period
         mask *= period  # getting a mask that is time along x-axis with a certain period
         tilt = sg.sawtooth(mask) + 1  # creating the blazed grating

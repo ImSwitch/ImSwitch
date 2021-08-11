@@ -46,6 +46,9 @@ import ctypes.util
 
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
+
+
 # Hamamatsu constants.
 DCAMCAP_EVENT_FRAMEREADY = int("0x0002", 0)
 
@@ -230,6 +233,8 @@ class HamamatsuCamera:
     # @param camera_id The id of the camera (an integer).
     #
     def __init__(self, camera_id):
+        self._logger = initLogger(self, tryInheritParent=True)
+
         initDcam()
 
         self.buffer_index = 0
@@ -430,7 +435,7 @@ class HamamatsuCamera:
                                                          ctypes.byref(p_attr)),
                                "dcam_getpropertyattr")
         if (ret == 0):
-            print(" property", property_name, "is not supported")
+            self._logger.warning(f"Property {property_name} is not supported")
             return False
         else:
             return p_attr
@@ -524,7 +529,7 @@ class HamamatsuCamera:
 
         # Check if the property exists.
         if not (property_name in self.properties):
-            print(" unknown property name:", property_name)
+            self._logger.warning(f"Unknown property name: {property_name}")
             return False
         prop_id = self.properties[property_name]
 
@@ -593,7 +598,7 @@ class HamamatsuCamera:
             cur_frame_number = f_count
             backlog = cur_frame_number - self.last_frame_number
             if (backlog > self.number_image_buffers):
-                print("warning: hamamatsu camera frame buffer overrun detected!")
+                self._logger.warning("Hamamatsu camera frame buffer overrun detected!")
             if (backlog > self.max_backlog):
                 self.max_backlog = backlog
             self.last_frame_number = cur_frame_number
@@ -613,7 +618,7 @@ class HamamatsuCamera:
             self.buffer_index = cur_buffer_index
 
             if self.debug:
-                print(new_frames)
+                self._logger.debug(new_frames)
 
             return new_frames
         except Exception:
@@ -646,7 +651,7 @@ class HamamatsuCamera:
 
         # Check if the property exists.
         if not (property_name in self.properties):
-            print(" unknown property name:", property_name)
+            self._logger.warning(f"Unknown property name: {property_name}")
             return False
 
         # If the value is text, figure out what the
@@ -656,18 +661,23 @@ class HamamatsuCamera:
             if (property_value in text_values):
                 property_value = float(text_values[property_value])
             else:
-                print(" unknown property text value:", property_value, "for", property_name)
+                self._logger.warning(
+                    f"Unknown property text value: {property_value} for {property_name}"
+                )
                 return False
 
         # Check that the property is within range.
         pv_min, pv_max = self.getPropertyRange(property_name)
         if (property_value < pv_min):
-            print(" set property value", property_value, "is less than minimum of", pv_min,
-                  property_name, "setting to minimum")
+            self._logger.warning(
+                f"Set property value {property_value} is less than minimum of {pv_min}"
+                f" {property_name}, setting to minimum"
+            )
             property_value = pv_min
         if (property_value > pv_max):
-            print(" set property value", property_value, "is greater than maximum of", pv_max,
-                  property_name, "setting to maximum")
+            self._logger.warning(
+                f"Set property value {property_value} is greater than maximum of {pv_max}"
+                f" {property_name}, setting to maximum")
             property_value = pv_max
 
         # Set the property value, return what it was set too.
@@ -730,7 +740,9 @@ class HamamatsuCamera:
         self.checkStatus(dcam.dcam_idle(self.camera_handle),
                          "dcam_idle")
 
-        print("max camera backlog was", self.max_backlog, "of", self.number_image_buffers)
+        self._logger.info(
+            f"Max camera backlog was {self.max_backlog} of {self.number_image_buffers}"
+        )
         self.max_backlog = 0
 
         # Free image buffers.
@@ -831,7 +843,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
     #
     def startAcquisition(self):
         self.captureSetup()
-        print(self.frame_bytes)
+        self._logger.debug(self.frame_bytes)
         #
         # Allocate new image buffers if necessary.
         # Allocate as many frames as can fit in 2GB of memory.
@@ -842,7 +854,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
         if (self.old_frame_bytes != self.frame_bytes):
             # Even number of frames
             n_buffers = 2 * int((4 * 1024 * 1024 * 1024) / (2 * self.frame_bytes))
-            print('Number of frames to buffer: ', n_buffers)
+            self._logger.debug(f'Number of frames to buffer: {n_buffers}')
             self.number_image_buffers = n_buffers
 
             # Allocate new image buffers.
@@ -857,7 +869,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
                 self.hcam_data.append(hc_data)
 
             self.old_frame_bytes = self.frame_bytes
-            print('Finished buffering frames')
+            self._logger.debug('Finished buffering frames')
         # Attach image buffers.
         #
         # We need to attach & release for each acquisition otherwise
@@ -886,7 +898,7 @@ class HamamatsuCameraMR(HamamatsuCamera):
             self.checkStatus(dcam.dcam_releasebuffer(self.camera_handle),
                              "dcam_releasebuffer")
 
-        print("max camera backlog was:", self.max_backlog)
+        self._logger.info(f"Max camera backlog was: {self.max_backlog}")
         self.max_backlog = 0
 
 

@@ -6,6 +6,8 @@ import numpy as np
 from lantz import Driver
 from lantz import Q_
 
+from imswitch.imcommon.model import initLogger
+
 
 class HMockCamData:
 
@@ -54,6 +56,7 @@ class HMockCamData:
 class MockHamamatsu(Driver):
 
     def __init__(self):
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         self.buffer_index = 0
         self.camera_id = 9999
@@ -273,12 +276,12 @@ class MockHamamatsu(Driver):
         # corresponding numerical property value is.
 
         self.properties[property_name] = property_value
-        # print(property_name, 'set to:', self.properties[property_name])
+        # self.__logger.debug(f'{property_name} set to: {self.properties[property_name]}')
         #     if (property_value in text_values):
         #         property_value = float(text_values[property_value])
         #     else:
-        #         print(" unknown property text value:", property_value, "for",
-        #               property_name)
+        #         self.__logger.warning(f'Unknown property text value {property_value} for
+        #                               f'{property_name}')
         #         return False
         return property_value
 

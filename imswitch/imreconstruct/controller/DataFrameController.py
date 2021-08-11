@@ -52,19 +52,19 @@ class DataFrameController(ImRecWidgetController):
         self._widget.setDatasetName('')
 
     def adjustData(self):
-        print('In adjust data')
+        self._logger.debug('In adjust data')
         if self._dataObj is not None:
             self.editWindowController.setData(self._dataObj)
             self._widget.showEditWindow()
         else:
-            print('No data to edit')
+            self._logger.error('No data to edit')
 
     def showMean(self):
         self._widget.setImage(self._dataObj.getMeanData(), autoLevels=True)
 
     def currentDataChanged(self, inDataObj):
         self._dataObj = inDataObj
-        print('Data shape = ', self._dataObj.data.shape)
+        self._logger.debug(f'Data shape: {self._dataObj.data.shape}')
         self.showMean()
         self._widget.setNumFrames(self._dataObj.numFrames)
         self._widget.setDataName(self._dataObj.name)
@@ -92,7 +92,7 @@ class DataFrameController(ImRecWidgetController):
         self._widget.setPatternGridData(x=self._patternGrid[0], y=self._patternGrid[1])
 
         self._patternGridMade = True
-        print('Made new pattern grid')
+        self._logger.debug('Made new pattern grid')
 
 
 # Copyright (C) 2020, 2021 TestaLab

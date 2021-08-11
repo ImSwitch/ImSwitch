@@ -83,8 +83,9 @@ class MultiDataFrameController(ImRecWidgetController):
 
     def makeAndAddDataObj(self, name, datasetName, path=None, file=None):
         dataObj = DataObj(name, datasetName, path=path, file=file)
-        if dataObj in self._widget.getAllDataObjs():
-            return  # Already added
+        for existingDataObj in self._widget.getAllDataObjs():
+            if dataObj.describesSameAs(existingDataObj):
+                return  # Already added
 
         self._widget.addDataObj(name, datasetName, dataObj)
         self._widget.setDataObjMemoryFlag(dataObj, path is None)

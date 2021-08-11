@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from imswitch.imcommon.model import dirtools
+from imswitch.imcommon.model import dirtools, initLogger
 from imswitch.imcontrol.model.managers.SLMManager import MaskMode, Direction
 from ..basecontrollers import ImConWidgetController
 
@@ -13,6 +13,7 @@ class SLMController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
         if not os.path.exists(self.slmDir):
@@ -99,12 +100,12 @@ class SLMController(ImConWidgetController):
         self._master.slmManager.moveMask(mask, direction, amount)
         image = self._master.slmManager.update(maskChange=True, aberChange=True, tiltChange=True)
         self.updateDisplayImage(image)
-        # print(f'Move {mask} phase mask {amount} pixels {direction}.')
+        # self._logger.debug(f'Move {mask} phase mask {amount} pixels {direction}.')
 
     def saveParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
         if obj == 'No objective':
-            print('You have to choose an objective from the drop down menu.')
+            self.__logger.error('You have to choose an objective from the drop down menu.')
             return
         elif obj == 'Oil':
             filename = 'info_oil.json'
@@ -118,7 +119,7 @@ class SLMController(ImConWidgetController):
                                          self._master.slmManager.getCenters())
         with open(os.path.join(self.slmDir, filename), 'w') as f:
             json.dump(slm_info_dict, f, indent=4)
-        print(f'Saved SLM parameters for {obj} objective.')
+        self.__logger.info(f'Saved SLM parameters for {obj} objective.')
 
     def getInfoDict(self, generalParams=None, aberParams=None, centers=None):
         state_general = None
@@ -162,7 +163,7 @@ class SLMController(ImConWidgetController):
     def loadParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
         if obj == 'No objective':
-            print('You have to choose an objective from the drop down menu.')
+            self.__logger.error('You have to choose an objective from the drop down menu.')
             return
         elif obj == 'Oil':
             filename = 'info_oil.json'
@@ -184,7 +185,7 @@ class SLMController(ImConWidgetController):
         self._master.slmManager.saveState(state_general, state_pos, state_aber)
         image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True)
         self.updateDisplayImage(image)
-        # print(f'Loaded SLM parameters for {obj} objective.')
+        # self._logger.debug(f'Loaded SLM parameters for {obj} objective.')
 
     def setParamTree(self, state_general, state_aber):
         generalParams = self._widget.slmParameterTree.p
@@ -211,7 +212,7 @@ class SLMController(ImConWidgetController):
         self._master.slmManager.setMask(mask, maskMode)
         image = self._master.slmManager.update(maskChange=True)
         self.updateDisplayImage(image)
-        # print("Updated image on SLM")
+        # self._logger.debug("Updated image on SLM")
 
     def applyParams(self):
         slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
@@ -225,21 +226,21 @@ class SLMController(ImConWidgetController):
         self._master.slmManager.setGeneral(info_dict)
         image = self._master.slmManager.update(maskChange=True)
         self.updateDisplayImage(image)
-        # print('Apply changes to general slm mask parameters.')
+        # self._logger.debug('Apply changes to general slm mask parameters.')
 
     def applyAberrations(self, info_dict):
         self._master.slmManager.setAberrations(info_dict)
         image = self._master.slmManager.update(aberChange=True)
         self.updateDisplayImage(image)
-        # print('Apply changes to aberration correction masks.')
+        # self._logger.debug('Apply changes to aberration correction masks.')
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
-        # print("Updated displayed image")
+        # self._logger.debug("Updated displayed image")
 
     # def loadPreset(self, preset):
-    #    print('Loaded default SLM settings.')
+    #    self._logger.debug('Loaded default SLM settings.')
 
 
 # Copyright (C) 2020, 2021 TestaLab

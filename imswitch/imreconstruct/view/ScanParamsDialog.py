@@ -33,7 +33,6 @@ class ScanParamsDialog(QtWidgets.QDialog):
         self.dim0DirEdit = QtWidgets.QComboBox()
         self.dim0DirEdit.addItems([self.p_text, self.n_text])
         self.dim0SizeEdit = QtWidgets.QLineEdit()
-        self.dim0SizeEdit.returnPressed.connect(lambda: self.checkForInt(self.dim0SizeEdit))
         self.dim0StepSizeEdit = QtWidgets.QLineEdit()
 
         dim1Label = QtWidgets.QLabel('Dimension 1')
@@ -42,7 +41,6 @@ class ScanParamsDialog(QtWidgets.QDialog):
         self.dim1DirEdit = QtWidgets.QComboBox()
         self.dim1DirEdit.addItems([self.p_text, self.n_text])
         self.dim1SizeEdit = QtWidgets.QLineEdit()
-        self.dim1SizeEdit.returnPressed.connect(lambda: self.checkForInt(self.dim1SizeEdit))
         self.dim1StepSizeEdit = QtWidgets.QLineEdit()
 
         dim2Label = QtWidgets.QLabel('Dimension 2')
@@ -50,13 +48,11 @@ class ScanParamsDialog(QtWidgets.QDialog):
         self.dim2DirEdit = QtWidgets.QComboBox()
         self.dim2DirEdit.addItems([self.p_text, self.n_text])
         self.dim2SizeEdit = QtWidgets.QLineEdit()
-        self.dim2SizeEdit.returnPressed.connect(lambda: self.checkForInt(self.dim2SizeEdit))
         self.dim2StepSizeEdit = QtWidgets.QLineEdit()
 
         dim3Label = QtWidgets.QLabel('Dimension 3')
         self.dim3DimLabel = QtWidgets.QLabel(self.timepoints_text)
         self.dim3SizeEdit = QtWidgets.QLineEdit()
-        self.dim3SizeEdit.returnPressed.connect(lambda: self.checkForInt(self.dim3SizeEdit))
         self.dim3StepSizeEdit = QtWidgets.QLineEdit()
 
         self.unidirCheck = QtWidgets.QCheckBox('Unidirectional scan')
@@ -115,16 +111,9 @@ class ScanParamsDialog(QtWidgets.QDialog):
             self.dim3StepSizeEdit.setText(parDict['step_sizes'][3])
 
             self.unidirCheck.setChecked(parDict['unidirectional'])
-        except Exception:
-            print('Error setting initial values')
+        except Exception as e:
             self.dim0Changed()
-
-    def checkForInt(self, parameter):
-        try:
-            int(parameter.text())
-        except ValueError:
-            parameter.setText('1')
-            print('Cannot interpret given value as integer')
+            raise e
 
     def dim0Changed(self):
         currText = self.dim0DimEdit.currentText()

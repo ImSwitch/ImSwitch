@@ -1,5 +1,6 @@
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 
@@ -16,7 +17,9 @@ class TISManager(DetectorManager):
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
-        self._camera = getTISObj(detectorInfo.managerProperties['cameraListIndex'])
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
         self._running = False
@@ -91,18 +94,18 @@ class TISManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            print('startlive')
+            self.__logger.debug('startlive')
 
     def stopAcquisition(self):
         if self._running:
             self._running = False
             self._camera.suspend_live()
-            print('suspendlive')
+            self.__logger.debug('suspendlive')
 
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
-        print('stoplive')
+        self.__logger.debug('stoplive')
 
     @property
     def pixelSizeUm(self):
@@ -110,7 +113,9 @@ class TISManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
-            # print(f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.')
+            # self.__logger.debug(
+            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+            # )
             self._camera.setROI(hpos, vpos, hsize, vsize)
 
         self._performSafeCameraAction(cropAction)
@@ -135,18 +140,18 @@ class TISManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
+    def _getTISObj(self, cameraId):
+        try:
+            from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
+            self.__logger.debug(f'Trying to initialize TIS camera {cameraId}')
+            camera = CameraTIS(cameraId)
+        except Exception:
+            self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
+            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
+            camera = MockCameraTIS()
 
-def getTISObj(cameraId):
-    try:
-        from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
-        print('Trying to import camera', cameraId)
-        camera = CameraTIS(cameraId)
-        print('Initialized TIS Camera Object, model: ', camera.model)
+        self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    except Exception:
-        print('Initializing Mock TIS')
-        from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-        return MockCameraTIS()
 
 
 # Copyright (C) 2020, 2021 TestaLab

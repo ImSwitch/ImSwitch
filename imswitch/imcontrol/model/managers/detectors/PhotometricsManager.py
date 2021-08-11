@@ -1,5 +1,6 @@
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -15,7 +16,9 @@ class PhotometricsManager(DetectorManager):
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
-        self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._camera = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
         fullShape = self._camera.sensor_size
@@ -128,7 +131,7 @@ class PhotometricsManager(DetectorManager):
         self._camera.exp_time = int(time)
 
     def _setTriggerSource(self, source):
-        print("Change trigger source")
+        self.__logger.debug("Change trigger source")
 
         def triggerAction():
             self._camera.exp_mode = trigger_value
@@ -148,7 +151,7 @@ class PhotometricsManager(DetectorManager):
             raise ValueError(f'Invalid trigger source "{source}"')
 
     def _setReadoutPort(self, port):
-        print("Change readout port")
+        self.__logger.debug("Change readout port")
 
         def portAction():
             self._camera.readout_port = port_value
@@ -204,22 +207,23 @@ class PhotometricsManager(DetectorManager):
     def finalize(self):
         self._camera.close()
 
+    def _getCameraObj(self, cameraId):
+        try:
+            from pyvcam import pvc
+            from pyvcam.camera import Camera
 
-def getCameraObj(cameraId):
-    try:
-        from pyvcam import pvc
-        from pyvcam.camera import Camera
+            pvc.init_pvcam()
+            self.__logger.debug(f'Trying to initialize Photometrics camera {cameraId}')
+            camera = next(Camera.detect_camera())
+            camera.open()
+        except Exception:
+            self.__logger.warning(f'Failed to initialize Photometrics camera {cameraId},'
+                                  f' loading mocker')
+            from imswitch.imcontrol.model.interfaces import MockHamamatsu
+            camera = MockHamamatsu()
 
-        pvc.init_pvcam()
-        print('Trying to import camera', cameraId)
-        camera = next(Camera.detect_camera())
-        camera.open()
-        print('Initialized Photometrics Camera Object, model: ', camera.name)
+        self.__logger.info(f'Initialized camera, model: {camera.name}')
         return camera
-    except Exception:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

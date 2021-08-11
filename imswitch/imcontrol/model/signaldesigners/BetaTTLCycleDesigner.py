@@ -25,16 +25,16 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
 
         if not self.parameterCompatibility(parameterDict):
-            print('TTL parameters seem incompatible, this error should not be \
-                  since this should be checked at program start-up')
+            self._logger.error('TTL parameters seem incompatible, this error should not be since'
+                               ' this should be checked at program start-up')
             return None
 
         sampleRate = setupInfo.scan.sampleRate
         targets = parameterDict['target_device']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
-        # print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
+        # self._logger.debug(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
-            print('WARNING: Non-integer number of sequence samples, rounding up')
+            self._logger.warning('Non-integer number of sequence samples, rounding up')
         cycleSamples = int(np.ceil(cycleSamples))
         signalDict = {}
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')
@@ -54,7 +54,7 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
             # Calculate samples to zero pad TTL signals with
             TTLZeroPadSamples = returnTime * sampleRate
             if not TTLZeroPadSamples.is_integer():
-                print('WARNING: Non-integer number of return samples, rounding up')
+                self._logger.warning('Non-integer number of return samples, rounding up')
             TTLZeroPadSamples = int(np.ceil(TTLZeroPadSamples))
 
             # Tile and pad TTL signals according to sync parameters

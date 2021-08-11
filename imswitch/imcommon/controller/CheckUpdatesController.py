@@ -7,12 +7,15 @@ from packaging import version
 
 import imswitch
 from imswitch.imcommon.framework import Signal, Thread
+from imswitch.imcommon.model import initLogger
 from .basecontrollers import WidgetController
 
 
 class CheckUpdatesController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
+
         self.thread = CheckUpdatesThread()
         self.thread.sigFailed.connect(self._widget.showFailed)
         self.thread.sigNoUpdate.connect(self._widget.showNoUpdateAvailable)
@@ -36,6 +39,10 @@ class CheckUpdatesThread(Thread):
     sigNewVersionPyInstaller = Signal(str)  # (latestVersion)
     sigNewVersionPyPI = Signal(str)  # (latestVersion)
 
+    def __init__(self):
+        super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
+
     def run(self):
         currentVersion = imswitch.__version__
         try:
@@ -57,7 +64,7 @@ class CheckUpdatesThread(Thread):
                 else:
                     self.sigNoUpdate.emit()
         except Exception:
-            print(traceback.format_exc())
+            self.__logger.warning(traceback.format_exc())
             self.sigFailed.emit()
 
 

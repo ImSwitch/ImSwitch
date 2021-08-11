@@ -1,11 +1,14 @@
 from lantz import Action, Feat, Driver
 
+from imswitch.imcommon.model import initLogger
+
 
 class MockPCZPiezo(Driver):
     """Mock driver for the PiezoConcept Z-piezo."""
 
     def __init__(self):
         super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
 
     @Feat(read_once=True)
     def idn(self):
@@ -27,27 +30,27 @@ class MockPCZPiezo(Driver):
     @absZ.setter
     def absZ(self, value):
         """ Absolute Z position movement, in um. """
-        print(f"Mock PCZ: setting Z position to {value} um")
+        self.__logger.debug(f"setting Z position to {value} um")
 
     def relZ(self, value):
         """ Relative Z position movement, in um. """
-        print(f"Mock PCZ: moving Z position {value} um")
+        self.__logger.debug(f"Moving Z position {value} um")
         pass
         if abs(float(value)) > 0.5:
-            print('Warning: Step bigger than 500 nm')
+            self.__logger.warning('Warning: Step bigger than 500 nm')
 
     @Action()
     def move_relZ(self, value):
         """ Relative Z position movement, in um. """
-        print(f"Mock PCZ: moving Z position {value} um")
+        self.__logger.debug(f"Moving Z position {value} um")
         pass
         if abs(float(value)) > 0.5:
-            print('Warning: Step bigger than 500 nm')
+            self.__logger.warning('Warning: Step bigger than 500 nm')
 
     @Action(limits=(100,))
     def move_absZ(self, value):
         """ Absolute Z position movement, in um. """
-        print(f"Mock PCZ: setting Z position to {value} um")
+        self.__logger.debug(f"Setting Z position to {value} um")
 
     # CONTROL/STATUS
 

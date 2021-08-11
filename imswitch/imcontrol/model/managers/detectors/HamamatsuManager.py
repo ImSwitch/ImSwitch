@@ -181,13 +181,14 @@ class HamamatsuManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces import HamamatsuCameraMR
             self.__logger.debug(f'Trying to initialize Hamamatsu camera {cameraId}')
             camera = HamamatsuCameraMR(cameraId)
-            self.__logger.info(f'Initialized Hamamatsu camera, model: {camera.camera_model}')
-            return camera
         except Exception:
             self.__logger.warning(f'Failed to initialize Hamamatsu camera {cameraId},'
                                   f' loading mocker')
             from imswitch.imcontrol.model.interfaces import MockHamamatsu
-            return MockHamamatsu()
+            camera = MockHamamatsu()
+
+        self.__logger.info(f'Initialized camera, model: {camera.camera_model}')
+        return camera
 
 
 # Copyright (C) 2020, 2021 TestaLab

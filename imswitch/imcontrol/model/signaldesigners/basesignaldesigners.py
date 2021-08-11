@@ -1,7 +1,7 @@
 import importlib
 from abc import ABC, abstractmethod
 
-from imswitch.imcommon.model import pythontools
+from imswitch.imcommon.model import pythontools, initLogger
 from ..errors import InvalidChildClassError
 
 
@@ -10,6 +10,8 @@ class SignalDesigner(ABC):
     self._expected_parameters and its own make_signal method."""
 
     def __init__(self):
+        self._logger = initLogger(self)
+
         self.lastSignal = None
         self.lastParameterDict = None
         self._expectedParameters = None

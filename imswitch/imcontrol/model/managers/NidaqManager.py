@@ -12,6 +12,7 @@ import nidaqmx.constants
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.model import initLogger
 
 
 class NidaqManager(SignalInterface):
@@ -25,6 +26,8 @@ class NidaqManager(SignalInterface):
 
     def __init__(self, setupInfo):
         super().__init__()
+        self.__logger = initLogger(self)
+
         self.__setupInfo = setupInfo
         self.tasks = {}
         self.busy = False
@@ -202,7 +205,9 @@ class NidaqManager(SignalInterface):
                     try:
                         dotask.write(signal, auto_start=True)
                     except Exception:
-                        print(' Attempted writing analog data that is too large or too small.')
+                        self.__logger.warning(
+                            'Attempted writing analog data that is too large or too small.'
+                        )
                     dotask.wait_until_done()
                     dotask.stop()
                     dotask.close()
@@ -234,7 +239,7 @@ class NidaqManager(SignalInterface):
                     try:
                         aotask.write(signal, auto_start=True)
                     except Exception:
-                        print(
+                        self.__logger.error(
                             'Attempted writing analog data that is too large or too small, or other'
                             ' error when writing the task.'
                         )
@@ -254,7 +259,7 @@ class NidaqManager(SignalInterface):
         if not self.busy:
             self.busy = True
             self.signalSent = False
-            print('Create nidaq scan...')
+            self.__logger.debug('Create nidaq scan...')
 
             try:
                 # TODO: fill this
@@ -340,7 +345,7 @@ class NidaqManager(SignalInterface):
                         lambda: self.taskDone('do', self.doTaskWaiter)
                     )
             except Exception:
-                print(traceback.format_exc())
+                self.__logger.error(traceback.format_exc())
                 for task in self.tasks.values():
                     task.close()
                 self.tasks = {}
@@ -354,21 +359,21 @@ class NidaqManager(SignalInterface):
                     self.timerTaskWaiter.start()
                 if len(DOsignals) > 0:
                     self.tasks['do'].start()
-                    # print('DO task started')
+                    # self.__logger.debug('DO task started')
                     self.doTaskWaiter.start()
 
                 if len(AOsignals) > 0:
                     self.tasks['ao'].start()
-                    # print('AO task started')
+                    # self.__logger.debug('AO task started')
                     self.aoTaskWaiter.start()
                 self.sigScanStarted.emit()
-                print('Nidaq scan started!')
+                self.__logger.info('Nidaq scan started!')
 
     def stopTask(self, taskName):
         self.tasks[taskName].stop()
         self.tasks[taskName].close()
         del self.tasks[taskName]
-        # print(f'Task {taskName} deleted')
+        # self.__logger.debug(f'Task {taskName} deleted')
 
     def inputTaskDone(self, taskName):
         if not self.signalSent:
@@ -385,7 +390,7 @@ class NidaqManager(SignalInterface):
     def scanDone(self):
         self.signalSent = True
         self.busy = False
-        print('Nidaq scan finished!')
+        self.__logger.info('Nidaq scan finished!')
         self.sigScanDone.emit()
 
     def runContinuous(self, digital_targets, digital_signals):

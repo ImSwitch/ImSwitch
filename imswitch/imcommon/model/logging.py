@@ -5,32 +5,36 @@ import weakref
 import coloredlogs
 
 
-loggerRefs = {}
+baseLogger = logging.getLogger('imswitch')
+coloredlogs.install(level='DEBUG', logger=baseLogger,
+                    fmt='%(asctime)s %(levelname)s %(message)s')
+objLoggers = {}
 
 
 class LoggerAdapter(logging.LoggerAdapter):
-    def __init__(self, logger, prefixes, instanceRef):
+    def __init__(self, logger, prefixes, objRef):
         super().__init__(logger, {})
         self.prefixes = prefixes
-        self.instanceRef = instanceRef
+        self.objRef = objRef
 
     def process(self, msg, kwargs):
         processedPrefixes = []
         for prefix in self.prefixes:
             if callable(prefix):
                 try:
-                    processedPrefixes.append(prefix(self.instanceRef()))
+                    processedPrefixes.append(prefix(self.objRef()))
                 except Exception:
                     pass
             else:
                 processedPrefixes.append(prefix)
 
-        return f'[{" -> ".join(processedPrefixes)}] {msg}', kwargs
+        processedMsg = f'[{" -> ".join(processedPrefixes)}] {msg}'
+        return processedMsg, kwargs
 
 
-def initLogger(obj, moduleName, *, instanceName=None, tryInheritParent=False):
-    """ Initializes a logger for the specified object. moduleName should always
-    be __name__. """
+def initLogger(obj, *, instanceName=None, tryInheritParent=False):
+    """ Initializes a logger for the specified object. obj should be either a
+    class, object or string. """
 
     logger = None
 
@@ -43,29 +47,30 @@ def initLogger(obj, moduleName, *, instanceName=None, tryInheritParent=False):
 
             parent = frameLocals['self']
             parentRef = weakref.ref(parent)
-            if parentRef not in loggerRefs:
+            if parentRef not in objLoggers:
                 continue
 
-            logger = loggerRefs[parentRef]
+            logger = objLoggers[parentRef]
             break
 
     if logger is None:
         # Create logger
         if inspect.isclass(obj):
-            cls = obj
+            objName = obj.__name__
+            objRef = weakref.ref(obj)
+        elif isinstance(obj, str):
+            objName = obj
+            objRef = None
         else:
-            cls = obj.__class__
+            objName = obj.__class__.__name__
+            objRef = weakref.ref(obj)
 
-        objRef = weakref.ref(obj)
-        logger = LoggerAdapter(logging.getLogger(moduleName),
-                               [cls.__name__, instanceName] if instanceName else [cls.__name__],
+        logger = LoggerAdapter(baseLogger,
+                               [objName, instanceName] if instanceName else [objName],
                                objRef)
 
-        # Install coloredlogs
-        coloredlogs.install(level='DEBUG', logger=logger.logger,
-                            fmt='%(asctime)s %(levelname)s %(message)s')
-
         # Save logger so it can be used by tryInheritParent requesters later
-        loggerRefs[objRef] = logger
+        if objRef is not None:
+            objLoggers[objRef] = logger
 
     return logger

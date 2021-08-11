@@ -5,14 +5,12 @@ from imswitch.imcommon.model import pythontools, initLogger
 
 class LantzLaser:
     def __new__(cls, iName, ports):
-        logger = initLogger(cls, __name__, tryInheritParent=True)
-
         if len(ports) < 1:
             raise ValueError('LantzLaser requires at least one port, none passed')
 
         lasers = []
         for port in ports:
-            laser = getLaser(iName, port, logger)
+            laser = getLaser(iName, port)
             lasers.append(laser)
 
         return lasers[0] if len(ports) == 1 else LinkedLantzLaser(lasers)
@@ -58,7 +56,8 @@ class LinkedLantzLaser:
             setattr(laser, key, value)
 
 
-def getLaser(iName, port, logger):
+def getLaser(iName, port):
+    logger = initLogger('getLaser', tryInheritParent=True)
     pName, driverName = iName.rsplit('.', 1)
 
     try:

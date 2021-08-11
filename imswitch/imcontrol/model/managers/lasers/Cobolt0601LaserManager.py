@@ -15,7 +15,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
     """
 
     def __init__(self, laserInfo, name, **_lowLevelManagers):
-        self.__logger = initLogger(self, __name__, instanceName=name)
+        self.__logger = initLogger(self, instanceName=name)
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0,
                          driver='cobolt.cobolt0601.Cobolt0601_f2', **_lowLevelManagers)

@@ -17,7 +17,7 @@ class HamamatsuManager(DetectorManager):
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
-        self.__logger = initLogger(self, __name__, instanceName=name)
+        self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1

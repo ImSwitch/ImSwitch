@@ -33,7 +33,7 @@ class ScriptExecutor(SignalInterface):
     def terminate(self):
         """ Terminates the currently running script. Does nothing if no script
         is running. """
-        if self._executionThread.isRunning():
+        if self.isExecuting():
             print(f'\nTerminated script at {strftime("%Y-%m-%d %H:%M:%S")}')
             self._executionThread.terminate()
 

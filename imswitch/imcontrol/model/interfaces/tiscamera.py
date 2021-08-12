@@ -1,11 +1,13 @@
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
 from .pyicic import IC_ImagingControl
 
 
 class CameraTIS:
     def __init__(self, cameraNo):
         super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         ic_ic = IC_ImagingControl.IC_ImagingControl()
         ic_ic.init_library()
@@ -50,7 +52,9 @@ class CameraTIS:
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
-        # print(f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
+        # self.__logger.debug(
+        #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
+        # )
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
@@ -59,7 +63,7 @@ class CameraTIS:
         left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
         hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
         wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
-        print(
+        self.__logger.debug(
             f'{self.model}: '
             f'setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}'
         )
@@ -77,7 +81,7 @@ class CameraTIS:
         elif property_name == 'image_width':
             self.shape = (property_value, self.shape[1])
         else:
-            print('Property', property_name, 'does not exist')
+            self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
@@ -94,7 +98,7 @@ class CameraTIS:
         elif property_name == "image_height":
             property_value = self.shape[1]
         else:
-            print('Property', property_name, 'does not exist')
+            self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 

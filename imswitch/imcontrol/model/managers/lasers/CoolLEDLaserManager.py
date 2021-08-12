@@ -3,7 +3,7 @@ Created on Wed Jan 13 09:40:00 2021
 
 @author: jonatanalvelid
 """
-
+from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
 
@@ -19,6 +19,8 @@ class CoolLEDLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
         ]
@@ -41,7 +43,7 @@ class CoolLEDLaserManager(LaserManager):
         Sends a RS232 command to the laser specifying the new intensity.
         """
         cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
-        print(cmd)
+        self.__logger.debug(cmd)
         self._rs232manager.send(cmd)
 
 

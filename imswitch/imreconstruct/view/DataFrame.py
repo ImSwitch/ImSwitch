@@ -93,10 +93,8 @@ class DataFrame(QtWidgets.QFrame):
         self._showPattern = value
 
         if value:
-            print('Showing pattern')
             self.imgVb.addItem(self.patternScatter)
         else:
-            print('Hiding pattern')
             self.imgVb.removeItem(self.patternScatter)
 
     def showEditWindow(self):

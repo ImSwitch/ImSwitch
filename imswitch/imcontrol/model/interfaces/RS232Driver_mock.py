@@ -1,13 +1,17 @@
+from imswitch.imcommon.model import initLogger
+
+
 class MockRS232Driver:
     """Mock RS232 driver"""
 
     def __init__(self, name, settings, **kwargs):
+        self.__logger = initLogger(self, instanceName=name)
         self._name = name
         self._settings = settings
         pass
 
     def query(self, arg):
-        print(f"Mock: sending the following to {self._settings['port']}: {arg}")
+        self.__logger.debug(f"Sending the following to {self._settings['port']}: {arg}")
         pass
 
     def initialize(self):

@@ -4,16 +4,19 @@ import sys
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from .model import dirtools
+from .model import dirtools, pythontools
 from .view.guitools import getBaseStyleSheet
 
 
 def prepareApp():
     """ This function must be called before any views are created. """
 
+    # Initialize exception handling
+    pythontools.installExceptHook()
+
     # Set logging levels
-    logging.getLogger("pyvisa").setLevel(logging.WARNING)
-    logging.getLogger("lantz").setLevel(logging.WARNING)
+    logging.getLogger('pyvisa').setLevel(logging.WARNING)
+    logging.getLogger('lantz').setLevel(logging.WARNING)
 
     # Create app
     os.environ['IMSWITCH_FULL_APP'] = '1'  # Indicator that non-plugin version of ImSwitch is used

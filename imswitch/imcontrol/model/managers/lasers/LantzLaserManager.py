@@ -1,3 +1,4 @@
+from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces import LantzLaser
 from .LaserManager import LaserManager
 
@@ -14,12 +15,14 @@ class LantzLaserManager(LaserManager):
 
     def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals, driver,
                  **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
         ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
         self._laser = LantzLaser(driver, ports)
         self._numLasers = len(ports)
-        print(self._laser.idn)
+        self.__logger.info(f'Initialized laser, model: {self._laser.idn}')
 
         super().__init__(laserInfo, name, isBinary=isBinary, valueUnits=valueUnits,
                          valueDecimals=valueDecimals)

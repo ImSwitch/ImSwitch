@@ -7,6 +7,7 @@ from lantz import Q_
 from qtpy import QtCore
 from skimage.feature import peak_local_max
 
+from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 
 
@@ -15,6 +16,7 @@ class FocusLockController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         if self._setupInfo.focusLock is None:
             return
@@ -84,18 +86,18 @@ class FocusLockController(ImConWidgetController):
 
     def cameraDialog(self):
         self._master.detectorsManager[self.camera].openPropertiesDialog()
-        print("Controller: Open camera settings dialog.")
+        self.__logger.debug('Open camera settings dialog')
 
     def moveZ(self):
         abspos = float(self._widget.positionEdit.text())
         self._master.positionersManager[self.positioner].setPosition(abspos, 0)
-        print(f"FL Controller: Move Z-piezo to absolute position {abspos} um.")
+        self.__logger.debug(f'Move Z-piezo to absolute position {abspos} um')
 
     def focusCalibrationStart(self):
-        print("Controller: Start focus calibration thread and calibrate.")
+        self.__logger.debug('Start focus calibration thread and calibrate')
 
     def showCalibrationCurve(self):
-        print("Controller: Show calibration curve.")
+        self.__logger.debug('Show calibration curve')
 
     def zStackVarChange(self):
         if self.zStackVar:
@@ -153,7 +155,7 @@ class FocusLockController(ImConWidgetController):
         self.lastZ = self.currentPosition
 
         if abs(distance) > 5 or abs(move) > 3:
-            print(f'Safety unlocking! Distance: {distance}, move: {move}.')
+            self.__logger.debug(f'Safety unlocking! Distance: {distance}, move: {move}.')
             self.unlockFocus()
 
         return move

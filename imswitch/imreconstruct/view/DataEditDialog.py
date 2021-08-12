@@ -87,7 +87,6 @@ class DataEditDialog(QtWidgets.QDialog):
         try:
             frameNumber = int(self.frameNum.text())
         except TypeError:
-            print('ERROR: Input must be an integer value')
             return
 
         self.slider.setValue(frameNumber)

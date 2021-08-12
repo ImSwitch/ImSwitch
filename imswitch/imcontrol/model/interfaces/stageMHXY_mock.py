@@ -1,11 +1,14 @@
 from lantz import Action, Feat, Driver
 
+from imswitch.imcommon.model import initLogger
+
 
 class MockMHXYStage(Driver):
 
     def __init__(self, SerialDriver=0):
         super().__init__()
-        print('Simulated Marzhauser XY-stage')
+        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger.debug('Simulated Marzhauser XY-stage')
 
     @Feat(read_once=True)
     def idn(self):
@@ -17,49 +20,49 @@ class MockMHXYStage(Driver):
     @Feat()
     def absX(self):
         """ Read absolute X position, in um. """
-        print("Mock MHXY: Absolute position, X.")
+        self.__logger.debug("Mock MHXY: Absolute position, X.")
 
     @Feat()
     def absY(self):
         """ Read absolute Y position, in um. """
-        print("Mock MHXY: Absolute position, Y.")
+        self.__logger.debug("Absolute position, Y.")
 
     @Action()
     def move_relX(self, value):
         """ Relative X position movement, in um. """
-        print(f"Mock MHXY: Move relative, X: {value} um.")
+        self.__logger.debug(f"Move relative, X: {value} um.")
 
     @Action()
     def move_relY(self, value):
         """ Relative Y position movement, in um. """
-        print(f"Mock MHXY: Move relative, Y: {value} um.")
+        self.__logger.debug(f"Move relative, Y: {value} um.")
 
     @Action(limits=(100,))
     def move_absX(self, value):
         """ Absolute X position movement, in um. """
-        print(f"Mock MHXY: Set position, X: {value} um.")
+        self.__logger.debug(f"Set position, X: {value} um.")
 
     @Action(limits=(100,))
     def move_absY(self, value):
         """ Absolute Y position movement, in um. """
-        print(f"Mock MHXY: Set position, Y: {value} um.")
+        self.__logger.debug(f"Set position, Y: {value} um.")
 
     # CONTROL/STATUS/LIMITS
 
     @Feat()
     def circLimit(self):
         """ Circular limits, in terms of X,Y center and radius. """
-        print("Mock MHXY: Ask circular limits.")
+        self.__logger.debug("Ask circular limits.")
 
     @circLimit.setter
     def circLimit(self, xpos, ypos, radius):
         """ Set circular limits, in terms of X,Y center and radius. """
-        print(f"Mock MHXY: Ask circular limits, X: {xpos}, Y: {ypos}, radius: {radius}.")
+        self.__logger.debug(f"Ask circular limits, X: {xpos}, Y: {ypos}, radius: {radius}.")
 
     @Action()
     def function_press(self):
         """ Check function button presses. """
-        print("Mock MHXY: Check button presses.")
+        self.__logger.debug("Check button presses.")
 
     def close(self):
         self.finalize()

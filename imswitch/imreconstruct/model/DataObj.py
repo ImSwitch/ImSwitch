@@ -4,9 +4,13 @@ import h5py
 import numpy as np
 import tifffile as tiff
 
+from imswitch.imcommon.model import initLogger
+
 
 class DataObj:
     def __init__(self, name, datasetName, *, path=None, file=None):
+        self.__logger = initLogger(self, instanceName=f'{name}/{datasetName}')
+
         self.name = name
         self.dataPath = path
         self.darkFrame = None
@@ -57,7 +61,7 @@ class DataObj:
             try:
                 self._file, self._datasetName = DataObj._open(self.dataPath, self._datasetName)
                 if self.data is not None:
-                    print('Data loaded')
+                    self.__logger.debug('Data loaded')
             except Exception:
                 pass
 
@@ -69,7 +73,7 @@ class DataObj:
             try:
                 self._file.close()
             except Exception:
-                print('Error closing file')
+                self.__logger.error('Error closing file')
 
         self._file = None
         self._data = None
@@ -97,29 +101,24 @@ class DataObj:
 
     @staticmethod
     def _open(path, datasetName=None, allowMultipleDatasets=False):
-        path = os.path.abspath(path)
-        try:
-            ext = os.path.splitext(path)[1]
-            if ext in ['.hdf5', '.hdf']:
-                file = h5py.File(path, 'r')
-                if len(file) < 1:
-                    raise RuntimeError('File does not contain any datasets')
-                elif len(file) > 1 and datasetName is None and not allowMultipleDatasets:
-                    raise RuntimeError('File contains multiple datasets')
+        ext = os.path.splitext(path)[1]
+        if ext in ['.hdf5', '.hdf']:
+            file = h5py.File(path, 'r')
+            if len(file) < 1:
+                raise RuntimeError('File does not contain any datasets')
+            elif len(file) > 1 and datasetName is None and not allowMultipleDatasets:
+                raise RuntimeError('File contains multiple datasets')
 
-                if datasetName is None and not allowMultipleDatasets:
-                    datasetName = list(file.keys())[0]
+            if datasetName is None and not allowMultipleDatasets:
+                datasetName = list(file.keys())[0]
 
-                return file, datasetName
-            elif ext in ['.tiff', '.tif']:
-                return tiff.TiffFile(path), None
-            else:
-                raise ValueError(f'Unsupported file extension "{ext}"')
-        except Exception:
-            print('Error while loading data')
-            return None, None
+            return file, datasetName
+        elif ext in ['.tiff', '.tif']:
+            return tiff.TiffFile(path), None
+        else:
+            raise ValueError(f'Unsupported file extension "{ext}"')
 
-    def __eq__(self, other):
+    def describesSameAs(self, other):  # Don't use __eq__, that makes the class unhashable
         try:
             sameFile = self._file == other._file or self._file.filename == other._file.filename
         except AttributeError:

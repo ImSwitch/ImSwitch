@@ -2,6 +2,7 @@ import traceback
 import weakref
 
 from imswitch.imcommon.framework import SignalInterface
+from imswitch.imcommon.model import initLogger
 
 
 class MainController:
@@ -16,6 +17,7 @@ class WidgetController(SignalInterface):
         self._widget = widget
         self._factory = factory
         self._moduleCommChannel = moduleCommChannel
+        self._logger = initLogger(self)
         super().__init__()
 
     def closeEvent(self):
@@ -38,6 +40,8 @@ class WidgetControllerFactory:
         self.__kwargs = kwargs
         self.__createdControllers = []
 
+        self.__logger = initLogger(self, tryInheritParent=True)
+
     def createController(self, controllerClass, widget, *args, **kwargs):
         controller = controllerClass(*self.__args, *args,
                                      widget=widget, factory=self,
@@ -53,8 +57,8 @@ class WidgetControllerFactory:
                 try:
                     controller.closeEvent()
                 except Exception:
-                    print(f'Error closing {type(controller).__name__}')
-                    print(traceback.format_exc())
+                    self.__logger.error(f'Error closing {type(controller).__name__}')
+                    self.__logger.error(traceback.format_exc())
 
 
 # Copyright (C) 2020, 2021 TestaLab

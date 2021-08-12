@@ -1,10 +1,13 @@
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
+
 
 class ReconObj:
     def __init__(self, name, scanParDict, r_l_text, u_d_text, b_f_text,
                  timepoints_text, p_text, n_text, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self, instanceName=name)
 
         self.r_l_text = r_l_text
         self.u_d_text = u_d_text
@@ -37,13 +40,13 @@ class ReconObj:
 
     def addCoeffsTP(self, inCoeffs):
         if self.coeffs is None:
-            # print('In if, shape is: ', np.shape(inCoeffs))
-            # print('coeffs are: ', inCoeffs)
+            # self.__logger.debug(f'In if, shape is: {np.shape(inCoeffs)}')
+            # self.__logger.debug(f'Coeffs are: {inCoeffs}')
             self.coeffs = np.array([inCoeffs])
         else:
-            # print('In else, shape self.data is: ', np.shape(inCoeffs))
-            # print('In else, shape inCoeffs is: ', np.shape(inCoeffs))
-            print('Max in coeffs = ', inCoeffs.max())
+            # self.__logger.debug(f'In else, shape self.data is: {np.shape(inCoeffs)}')
+            # self.__logger.debug(f'In else, shape inCoeffs is: {np.shape(inCoeffs)}')
+            self.__logger.debug(f'Max in coeffs: {inCoeffs.max()}')
             inCoeffs = np.expand_dims(inCoeffs, 0)
             self.coeffs = np.vstack((self.coeffs, inCoeffs))
 
@@ -61,18 +64,18 @@ class ReconObj:
                 [self.coeffsToImage(self.coeffs[ds][b], self.scanParDict) for b in range(0, bases)]
                 for ds in range(0, datasets)
             ])
-            print('shape of reconstructed is : ', np.shape(self.reconstructed))
+            self.__logger.debug(f'Shape of reconstructed: {np.shape(self.reconstructed)}')
         else:
-            print('Cannot update images without coefficients')
+            self.__logger.error('Cannot update images without coefficients')
 
     def addGridOfCoeffs(self, im, coeffs, t, s, r0, c0, pr, pc):
-        # print('Timepoint: ', t)
-        # print('shape if im: ', im.shape)
-        # print('shape if coeffts[i]: ', coeffs.shape)
-        # print('r0: ', r0)
-        # print('c0: ', c0)
-        # print('pr: ', pr)
-        # print('pc: ', pc)
+        # self.__logger.debug(f'Timepoint: {t}')
+        # self.__logger.debug(f'shape if im: {im.shape}')
+        # self.__logger.debug(f'shape if coeffts[i]: {coeffs.shape}')
+        # self.__logger.debug(f'r0: {r0}')
+        # self.__logger.debug(f'c0: {c0}')
+        # self.__logger.debug(f'pr: {pr}')
+        # self.__logger.debug(f'pc: {pc}')
         im[t, s, r0::pr, c0::pc] = coeffs
 
     def coeffsToImage(self, coeffs, scanParDict):
@@ -84,7 +87,7 @@ class ReconObj:
         dim2Side = int(scanParDict['steps'][2])
         dim3Side = int(scanParDict['steps'][3])  # Always timepoints
         if not frames == dim0Side * dim1Side * dim2Side * dim3Side:
-            print('ERROR: Wrong dimensional data')
+            self.__logger.error('Wrong dimensional data')
             pass
 
         timepoints = int(

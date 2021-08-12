@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.model import initLogger
 
 
 @dataclass
@@ -84,6 +85,7 @@ class DetectorManager(SignalInterface):
         """
 
         super().__init__()
+        self.__logger = initLogger(self, instanceName=name)
 
         self._detectorInfo = detectorInfo
 
@@ -113,7 +115,7 @@ class DetectorManager(SignalInterface):
         try:
             self.__image = self.getLatestFrame()
         except Exception:
-            print(traceback.format_exc())
+            self.__logger.error(traceback.format_exc())
         else:
             self.sigImageUpdated.emit(self.__image, init)
 

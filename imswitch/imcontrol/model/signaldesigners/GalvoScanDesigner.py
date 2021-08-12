@@ -125,7 +125,7 @@ class GalvoScanDesigner(ScanDesigner):
             'minmax_slow_axis': [min(slow_axis_signal), max(slow_axis_signal)]
         }
 
-        print('Scanning curves generated.')
+        self._logger.debug('Scanning curves generated.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):

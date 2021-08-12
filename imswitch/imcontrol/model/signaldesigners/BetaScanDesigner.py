@@ -29,10 +29,10 @@ class BetaScanDesigner(ScanDesigner):
     def make_signal(self, parameterDict, setupInfo):
 
         if not self.parameterCompatibility(parameterDict):
-            print([*parameterDict])
-            print(self._expectedParameters)
-            print('Stage scan parameters seem incompatible,'
-                  ' this error should not be since this should be checked at program start-up')
+            self._logger.error([*parameterDict])
+            self._logger.error(self._expectedParameters)
+            self._logger.error('Stage scan parameters seem incompatible, this error should not be'
+                               ' since this should be checked at program start-up')
             return None
 
         if len(parameterDict['target_device']) != 3:
@@ -64,13 +64,13 @@ class BetaScanDesigner(ScanDesigner):
 
         sampleRate = setupInfo.scan.sampleRate
         sequenceSamples = parameterDict['sequence_time'] * sampleRate
-        print(sequenceSamples)
+        self._logger.debug(sequenceSamples)
         returnSamples = parameterDict['return_time'] * sampleRate
         if not sequenceSamples.is_integer():
-            print('WARNING: Non-integer number of sequence samples, rounding up')
+            self._logger.warning('Non-integer number of sequence samples, rounding up')
         sequenceSamples = int(np.ceil(sequenceSamples))
         if not returnSamples.is_integer():
-            print('WARNING: Non-integer number of return samples, rounding up')
+            self._logger.warning('Non-integer number of return samples, rounding up')
         returnSamples = int(np.ceil(returnSamples))
 
         # Make fast axis signal

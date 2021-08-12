@@ -22,7 +22,6 @@ class PiezoconceptZManager(PositionerManager):
         self._rs232Manager = lowLevelManagers['rs232sManager'][
             positionerInfo.managerProperties['rs232device']
         ]
-        # print('ZPiezo fake reply')
 
     def move(self, value, axis):
         if value == 0:

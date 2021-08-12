@@ -98,7 +98,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._commChannel.sigSaveFolderChanged.emit(saveFolder)
 
     def findPattern(self):
-        print('Find pattern clicked')
+        self._logger.debug('Find pattern clicked')
         if self._currentDataObj is None:
             return
 
@@ -106,21 +106,21 @@ class ImRecMainViewController(ImRecWidgetController):
         if len(meanData) < 1:
             return
 
-        print('Finding pattern')
+        self._logger.debug('Finding pattern')
         pattern = self._patternFinder.findPattern(meanData)
-        print('Pattern found as: ', self._pattern)
+        self._logger.debug(f'Pattern found as: {self._pattern}')
         self.setPatternParams(pattern)
         self.updatePattern()
 
     def togglePattern(self, enabled):
-        print('Toggling pattern')
+        self._logger.debug('Toggling pattern')
         self._commChannel.sigPatternVisibilityChanged.emit(enabled)
 
     def updatePattern(self):
         if self._settingPatternParams:
             return
 
-        print('Updating pattern')
+        self._logger.debug('Updating pattern')
         self._pattern = self._widget.getPatternParams()
         self._commChannel.sigPatternUpdated.emit(self._pattern)
 
@@ -145,7 +145,7 @@ class ImRecMainViewController(ImRecWidgetController):
     def quickLoadData(self):
         dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
         if dataPath:
-            print(f'Loading data at: {dataPath}')
+            self._logger.debug(f'Loading data at: {dataPath}')
 
             datasetsInFile = DataObj.getDatasetNames(dataPath)
             datasetToLoad = None
@@ -178,7 +178,7 @@ class ImRecMainViewController(ImRecWidgetController):
             self._currentDataObj.checkAndLoadData()
             if self._currentDataObj.dataLoaded:
                 self._commChannel.sigCurrentDataChanged.emit(self._currentDataObj)
-                print('Data loaded')
+                self._logger.debug('Data loaded')
                 self._widget.raiseCurrentDataDock()
             else:
                 pass
@@ -231,9 +231,9 @@ class ImRecMainViewController(ImRecWidgetController):
         elif bgModelling == 'No background':
             fwhmNm = np.append(fwhmNm, 0)  # Code for zero bg
         elif bgModelling == 'Gaussian':
-            print('In Gaussian version')
+            self._logger.debug('In Gaussian version')
             fwhmNm = np.append(fwhmNm, self._widget.getBgGaussianSize())
-            print('Appended to sigmas')
+            self._logger.debug('Appended to sigmas')
         else:
             raise ValueError(f'Invalid BG modelling "{bgModelling}" specified; must be either'
                              f' "Constant", "Gaussian" or "No background".')
@@ -266,7 +266,7 @@ class ImRecMainViewController(ImRecWidgetController):
                 dataObj.checkAndLoadData()
 
                 if np.prod(np.array(self._scanParDict['steps'], dtype=int)) < dataObj.numFrames:
-                    print('Too many frames in data')
+                    self._logger.error('Too many frames in data')
                     return
 
                 if not consolidate or index == 0:
@@ -374,8 +374,8 @@ class ImRecMainViewController(ImRecWidgetController):
             )]
         ))
 
-        print(f'Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},'
-              f' dt: {dt}')
+        self._logger.debug(f'Trying to save to: {filePath}, Vx size: {vxsizec, vxsizer, vxsizez},'
+                           f' dt: {dt}')
         # Reconstructed image
         reconstrData = copy.deepcopy(reconObj.getReconstruction())
         reconstrData = reconstrData[:, 0, :, :, :, :]
@@ -386,7 +386,7 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def saveCoefficients(self, reconObj, filePath):
         coeffs = copy.deepcopy(reconObj.getCoeffs())
-        print('Shape of coeffs = ', coeffs.shape)
+        self._logger.debug(f'Shape of coeffs: {coeffs.shape}')
         coeffs = np.swapaxes(coeffs, 1, 2)
         tiff.imwrite(filePath, coeffs,
                      imagej=True, resolution=(1, 1),

@@ -24,8 +24,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
         if not self.parameterCompatibility(parameterDict):
-            print('TTL parameters seem incompatible, this error should not be \
-                  since this should be checked at program start-up')
+            self._logger.error('TTL parameters seem incompatible, this error should not be since'
+                               ' this should be checked at program start-up')
             return None
 
         if not scanInfoDict:
@@ -100,9 +100,9 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         targets = parameterDict['target_device']
         samples_cycle = parameterDict['sequence_time'] * sample_rate
         # if not samples_cycle.is_integer():
-        #     print('WARNING: Non-integer number of sequence samples, rounding up')
+        #     self._logger.warning('Non-integer number of sequence samples, rounding up')
         samples_cycle = int(np.ceil(samples_cycle))
-        # print(samples_cycle)
+        # self._logger.debug(samples_cycle)
         signalDict = {}
         tmpSigArr = np.zeros(samples_cycle, dtype='bool')
         for i, target in enumerate(targets):

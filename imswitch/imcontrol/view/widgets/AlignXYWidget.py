@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools, pyqtgraphtools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -18,8 +19,8 @@ class AlignXYWidget(Widget):
         self.roiButton.setCheckable(True)
         self.XButton = QtWidgets.QRadioButton('X dimension')
         self.YButton = QtWidgets.QRadioButton('Y dimension')
-        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
-        self.graph = guitools.ProjectionGraph()
+        self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
+        self.graph = pyqtgraphtools.ProjectionGraph()
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()

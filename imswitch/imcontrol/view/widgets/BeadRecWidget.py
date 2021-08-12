@@ -1,7 +1,8 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -32,7 +33,7 @@ class BeadRecWidget(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtWidgets.QCheckBox('Run')
-        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
+        self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()

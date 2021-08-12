@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view.guitools import pyqtgraphtools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
@@ -98,7 +99,7 @@ class FFTWidget(Widget):
         self.img.setImage(im, autoLevels=False)
 
     def updateImageLimits(self, imgWidth, imgHeight):
-        guitools.setPGBestImageLimits(self.vb, imgWidth, imgHeight)
+        pyqtgraphtools.setPGBestImageLimits(self.vb, imgWidth, imgHeight)
 
     def getImageDisplayLevels(self):
         return self.hist.getLevels()

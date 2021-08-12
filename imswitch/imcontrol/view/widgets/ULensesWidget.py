@@ -1,5 +1,6 @@
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view.guitools import naparitools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
@@ -20,7 +21,7 @@ class ULensesWidget(NapariHybridWidget):
         self.upEdit = QtWidgets.QLineEdit('1182')
 
         # Vispy visual to render in napari
-        self.ulensesPlot = guitools.VispyScatterVisual(color='red', symbol='x')
+        self.ulensesPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
         self.ulensesPlot.hide()
         self.addItemToViewer(self.ulensesPlot)
 

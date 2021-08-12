@@ -1,6 +1,7 @@
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.view.guitools import naparitools
 from . import guitools
 
 
@@ -17,10 +18,10 @@ class ReconstructionView(QtWidgets.QFrame):
         super().__init__(*args, **kwargs)
 
         # Image Widget
-        guitools.addNapariGrayclipColormap()
-        self.napariViewer = guitools.EmbeddedNapari()
+        naparitools.addNapariGrayclipColormap()
+        self.napariViewer = naparitools.EmbeddedNapari()
         self.napariViewer.dims.events.connect(self.dimsChanged)
-        guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
+        naparitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
 
         self.imgLayer = self.napariViewer.add_image(
             np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip', protected=True

@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools
+from imswitch.imcommon.view.guitools import naparitools
 
 
 class _QObjectABCMeta(type(QtCore.QObject), ABCMeta):
@@ -53,7 +53,7 @@ class Widget(QtWidgets.QWidget, metaclass=_QObjectABCMeta):
         grid.addWidget(errorLabel)
 
 
-class NapariHybridWidget(Widget, guitools.NapariBaseWidget, metaclass=_QObjectABCMeta):
+class NapariHybridWidget(Widget, naparitools.NapariBaseWidget, metaclass=_QObjectABCMeta):
     """ Superclass for widgets that can use the functionality of
     NapariBaseWidget. Derived classes should not implement __init__; instead,
     they should implement __post_init__. """
@@ -72,7 +72,7 @@ class NapariHybridWidget(Widget, guitools.NapariBaseWidget, metaclass=_QObjectAB
                                   ' your currently active hardware configuration.')
             return
 
-        guitools.NapariBaseWidget.__init__(self, napariViewer)
+        naparitools.NapariBaseWidget.__init__(self, napariViewer)
         self.__post_init__()
 
     @abstractmethod

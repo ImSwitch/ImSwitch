@@ -41,7 +41,7 @@ class RecordingWidget(Widget):
         self.detectorList = guitools.CheckableComboBox()
         self.detectorList.setItemTypeName(singular='detector', plural='detectors')
         self.detectorList.setVisible(False)
-        self.singleFileMultiDetectorBox = QtWidgets.QCheckBox('Save in a single file')
+        self.singleFileMultiDetectorBox = QtWidgets.QCheckBox('Save recordings in a single file')
         self.singleFileMultiDetectorBox.setVisible(False)
 
         # Folder and filename fields
@@ -90,7 +90,7 @@ class RecordingWidget(Widget):
         self.timeLapseEdit = QtWidgets.QLineEdit('5')
         self.freqLabel = QtWidgets.QLabel('Freq [s]')
         self.freqEdit = QtWidgets.QLineEdit('0')
-        self.singleFileLapseBox = QtWidgets.QCheckBox('Save scans in a single file')
+        self.singleFileLapseBox = QtWidgets.QCheckBox('Save all scans in a single file')
 
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
 

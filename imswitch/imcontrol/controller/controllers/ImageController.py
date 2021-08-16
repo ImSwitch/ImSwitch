@@ -11,12 +11,10 @@ class ImageController(LiveUpdatedController):
         if not self._master.detectorsManager.hasDevices():
             return
 
-        self._lastWidth, self._lastHeight = self._master.detectorsManager.execOnCurrent(
-            lambda c: c.shape
-        )
+        self._lastShape = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         self._shouldResetView = False
 
-        self._widget.setLayers(
+        self._widget.setLiveViewLayers(
             self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
         )
 
@@ -27,6 +25,7 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigCrosshairToggled.connect(self.crosshairToggle)
         self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
+        self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -59,19 +58,22 @@ class ImageController(LiveUpdatedController):
         self._widget.setImage(detectorName, im)
 
         if not init or self._shouldResetView:
-            self.adjustFrame(self._lastWidth, self._lastHeight, instantResetView=True)
+            self.adjustFrame(instantResetView=True)
 
-    def adjustFrame(self, width, height, instantResetView=False):
+    def adjustFrame(self, shape=None, instantResetView=False):
         """ Adjusts the viewbox to a new width and height. """
-        self._widget.updateGrid([width, height])
+
+        if shape is None:
+            shape = self._lastShape
+
+        self._widget.updateGrid(shape)
         if instantResetView:
             self._widget.resetView()
             self._shouldResetView = False
         else:
             self._shouldResetView = True
 
-        self._lastWidth = width
-        self._lastHeight = height
+        self._lastShape = shape
 
     def getCenterViewbox(self):
         """ Returns center of viewbox to center a ROI. """
@@ -84,6 +86,12 @@ class ImageController(LiveUpdatedController):
     def crosshairToggle(self, enabled):
         """ Shows or hides crosshair. """
         self._widget.setCrosshairVisible(enabled)
+
+    def memorySnapAvailable(self, name, image, _, __):
+        """ Adds captured image to widget. """
+        self._widget.addStaticLayer(name, image)
+        if self._shouldResetView:
+            self.adjustFrame(image.shape, instantResetView=True)
 
 
 # Copyright (C) 2020, 2021 TestaLab

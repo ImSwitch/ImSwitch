@@ -15,13 +15,19 @@ class RecordingWidget(Widget):
     sigDetectorSpecificChanged = QtCore.Signal()
     sigOpenRecFolderClicked = QtCore.Signal()
     sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
-    sigSnapRequested = QtCore.Signal()
-    sigRecToggled = QtCore.Signal(bool)  # (enabled)
+
     sigSpecFramesPicked = QtCore.Signal()
     sigSpecTimePicked = QtCore.Signal()
     sigScanOncePicked = QtCore.Signal()
     sigScanLapsePicked = QtCore.Signal()
     sigUntilStopPicked = QtCore.Signal()
+
+    sigSnapSaveFormatChanged = QtCore.Signal()
+    sigSnapSaveModeChanged = QtCore.Signal()
+    sigRecSaveModeChanged = QtCore.Signal()
+
+    sigSnapRequested = QtCore.Signal()
+    sigRecToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,11 +94,21 @@ class RecordingWidget(Widget):
 
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
 
-        self.saveModeLabel = QtWidgets.QLabel('<strong>Rec save mode:</strong>')
-        self.saveModeList = QtWidgets.QComboBox()
-        self.saveModeList.addItems(['Save on disk',
-                                    'Save in memory for reconstruction',
-                                    'Save on disk and keep in memory'])
+        self.snapSaveFormatLabel = QtWidgets.QLabel('<strong>Snap format:</strong>')
+        self.snapSaveFormatList = QtWidgets.QComboBox()
+        self.snapSaveFormatList.addItems(['HDF5', 'TIFF'])
+
+        self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
+        self.snapSaveModeList = QtWidgets.QComboBox()
+        self.snapSaveModeList.addItems(['Save on disk',
+                                        'Save to image display',
+                                        'Save on disk and to image display'])
+
+        self.recSaveModeLabel = QtWidgets.QLabel('<strong>Rec save mode:</strong>')
+        self.recSaveModeList = QtWidgets.QComboBox()
+        self.recSaveModeList.addItems(['Save on disk',
+                                       'Save in memory for reconstruction',
+                                       'Save on disk and keep in memory'])
 
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -157,8 +173,16 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.untilSTOPbtn, gridRow, 0, 1, -1)
         gridRow += 1
 
-        recGrid.addWidget(self.saveModeLabel, gridRow, 0)
-        recGrid.addWidget(self.saveModeList, gridRow, 1, 1, -1)
+        recGrid.addWidget(self.snapSaveFormatLabel, gridRow, 0)
+        recGrid.addWidget(self.snapSaveFormatList, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.snapSaveModeLabel, gridRow, 0)
+        recGrid.addWidget(self.snapSaveModeList, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.recSaveModeLabel, gridRow, 0)
+        recGrid.addWidget(self.recSaveModeList, gridRow, 1, 1, -1)
         gridRow += 1
 
         self.recGridContainer = QtWidgets.QWidget()
@@ -176,13 +200,19 @@ class RecordingWidget(Widget):
         self.detectorList.sigCheckedChanged.connect(self.sigDetectorSpecificChanged)
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
         self.specifyfile.toggled.connect(self.sigSpecFileToggled)
-        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
-        self.recButton.toggled.connect(self.sigRecToggled)
+
         self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
         self.specifyTime.clicked.connect(self.sigSpecTimePicked)
         self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
         self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
+
+        self.snapSaveFormatList.currentIndexChanged.connect(self.sigSnapSaveFormatChanged)
+        self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
+        self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
+
+        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
+        self.recButton.toggled.connect(self.sigRecToggled)
 
     def getDetectorMode(self):
         """ Returns -1 if "current detector at start" is selected, -2 if "all
@@ -198,8 +228,14 @@ class RecordingWidget(Widget):
     def getMultiDetectorSingleFile(self):
         return self.singleFileMultiDetectorBox.isChecked()
 
-    def getSaveMode(self):
-        return self.saveModeList.currentIndex() + 1
+    def getSnapSaveFormat(self):
+        return self.snapSaveFormatList.currentIndex() + 1
+
+    def getSnapSaveMode(self):
+        return self.snapSaveModeList.currentIndex() + 1
+
+    def getRecSaveMode(self):
+        return self.recSaveModeList.currentIndex() + 1
 
     def getRecFolder(self):
         return self.folderEdit.text()
@@ -255,12 +291,25 @@ class RecordingWidget(Widget):
     def setMultiDetectorSingleFileVisible(self, visible):
         self.singleFileMultiDetectorBox.setVisible(visible)
 
-    def setSaveMode(self, saveMode):
-        self.saveModeList.setCurrentIndex(saveMode - 1)
+    def setSnapSaveFormat(self, saveMode):
+        self.snapSaveFormatList.setCurrentIndex(saveMode - 1)
 
-    def setSaveModeVisible(self, value):
-        self.saveModeLabel.setVisible(value)
-        self.saveModeList.setVisible(value)
+    def setSnapSaveFormatEnabled(self, value):
+        self.snapSaveFormatList.setEnabled(value)
+
+    def setSnapSaveMode(self, saveMode):
+        self.snapSaveModeList.setCurrentIndex(saveMode - 1)
+
+    def setSnapSaveModeVisible(self, value):
+        self.snapSaveModeLabel.setVisible(value)
+        self.snapSaveModeList.setVisible(value)
+
+    def setRecSaveMode(self, saveMode):
+        self.recSaveModeList.setCurrentIndex(saveMode - 1)
+
+    def setRecSaveModeVisible(self, value):
+        self.recSaveModeLabel.setVisible(value)
+        self.recSaveModeList.setVisible(value)
 
     def setCustomFilenameEnabled(self, enabled):
         """ Enables the ability to type a specific filename for the data to. """

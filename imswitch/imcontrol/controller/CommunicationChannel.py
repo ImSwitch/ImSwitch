@@ -21,7 +21,7 @@ class CommunicationChannel(SignalInterface):
 
     sigAcquisitionStopped = Signal()
 
-    sigAdjustFrame = Signal(int, int)  # (width, height)
+    sigAdjustFrame = Signal(object)  # (shape)
 
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
@@ -40,6 +40,10 @@ class CommunicationChannel(SignalInterface):
     sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
 
     sigUpdateRecTime = Signal(int)  # (recTime)
+
+    sigMemorySnapAvailable = Signal(
+        str, np.ndarray, object, bool
+    )  # (name, image, filePath, savedToDisk)
 
     sigRunScan = Signal(bool)  # (sigScanStartingEmitted)
 

@@ -5,6 +5,7 @@ from io import BytesIO
 
 import h5py
 import numpy as np
+import tifffile as tiff
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 
@@ -17,6 +18,9 @@ class RecordingManager(SignalInterface):
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
     sigRecordingTimeUpdated = Signal(int)  # (recTime)
+    sigMemorySnapAvailable = Signal(
+        str, np.ndarray, object, bool
+    )  # (name, image, filePath, savedToDisk)
     sigMemoryRecordingAvailable = Signal(
         str, object, object, bool
     )  # (name, file, filePath, savedToDisk)
@@ -73,32 +77,50 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-    def snap(self, detectorNames, savename, attrs):
+    def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         """ Saves a single frame capture with the specified detectors to a file
-        with the specified name prefix and attributes to save to the capture
-        per detector. """
+        with the specified name prefix, save mode, file format and attributes
+        to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
         try:
+            images = {}
             for detectorName in detectorNames:
-                file = h5py.File(self.getSaveFilePath(f'{savename}_{detectorName}.hdf5'), 'w')
+                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame()
 
-                shape = self.__detectorsManager[detectorName].shape
-                dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+            for detectorName in detectorNames:
+                image = images[detectorName]
+                fileExtension = str(saveFormat.name).lower()
+                filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
 
-                for key, value in attrs[detectorName].items():
-                    dataset.attrs[key] = value
+                if saveMode != SaveMode.RAM:
+                    # Write file
+                    if saveFormat == SaveFormat.HDF5:
+                        file = h5py.File(filePath, 'w')
 
-                dataset.attrs['detector_name'] = detectorName
+                        shape = self.__detectorsManager[detectorName].shape
+                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
-                # For ImageJ compatibility
-                dataset.attrs['element_size_um'] = self.__detectorsManager[detectorName].pixelSizeUm
+                        for key, value in attrs[detectorName].items():
+                            dataset.attrs[key] = value
 
-                latestFrame = self.__detectorsManager[detectorName].image
-                if latestFrame.size < 1:
-                    latestFrame = self.__detectorsManager[detectorName].getLatestFrame()
+                        dataset.attrs['detector_name'] = detectorName
 
-                dataset[:, :] = latestFrame
-                file.close()
+                        # For ImageJ compatibility
+                        dataset.attrs['element_size_um'] =\
+                            self.__detectorsManager[detectorName].pixelSizeUm
+
+                        dataset[:, :] = image
+                        file.close()
+                    elif saveFormat == SaveFormat.TIFF:
+                        tiff.imwrite(filePath, image)
+                    else:
+                        raise ValueError(f'Unsupported save format "{saveFormat}"')
+
+                # Handle memory snaps
+                if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
+                    name = os.path.basename(f'{savename}_{detectorName}')
+                    self.sigMemorySnapAvailable.emit(name, image, filePath,
+                                                     saveMode == SaveMode.DiskAndRAM)
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
 
@@ -133,7 +155,7 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        files, fileHandles, filePaths = self._getFiles()
+        files, fileDests, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -278,7 +300,7 @@ class RecordingWorker(Worker):
                     if self.saveMode == SaveMode.RAM:
                         file.close()
                         self.__recordingManager.sigMemoryRecordingAvailable.emit(
-                            name, fileHandles[detectorName], filePath, False
+                            name, fileDests[detectorName], filePath, False
                         )
                     else:
                         file.flush()
@@ -295,7 +317,7 @@ class RecordingWorker(Worker):
         singleLapseFile = self.recMode == RecMode.ScanLapse and self.singleLapseFile
 
         files = {}
-        fileHandles = {}
+        fileDests = {}
         filePaths = {}
         for detectorName in self.detectorNames:
             if singleMultiDetectorFile:
@@ -315,17 +337,17 @@ class RecordingWorker(Worker):
                 if (filePaths[detectorName] not in memRecordings or
                         memRecordings[filePaths[detectorName]].closed):
                     memRecordings[filePaths[detectorName]] = BytesIO()
-                fileHandles[detectorName] = memRecordings[filePaths[detectorName]]
+                fileDests[detectorName] = memRecordings[filePaths[detectorName]]
             else:
-                fileHandles[detectorName] = filePaths[detectorName]
+                fileDests[detectorName] = filePaths[detectorName]
 
             if singleMultiDetectorFile and len(files) > 0:
                 files[detectorName] = list(files.values())[0]
             else:
-                files[detectorName] = h5py.File(fileHandles[detectorName],
+                files[detectorName] = h5py.File(fileDests[detectorName],
                                                 'a' if singleLapseFile else 'w-')
 
-        return files, fileHandles, filePaths
+        return files, fileDests, filePaths
 
     def _getNewFrames(self, detectorName):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()
@@ -345,6 +367,11 @@ class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2
     DiskAndRAM = 3
+
+
+class SaveFormat(enum.Enum):
+    HDF5 = 1
+    TIFF = 2
 
 
 # Copyright (C) 2020, 2021 TestaLab

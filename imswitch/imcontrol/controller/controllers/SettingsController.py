@@ -181,9 +181,8 @@ class SettingsController(ImConWidgetController):
 
         # Final shape values might differ from the user-specified one because of detector limitation
         # x128
-        width, height = detector.shape
         if detector.name == self._master.detectorsManager.getCurrentDetectorName():
-            self._commChannel.sigAdjustFrame.emit(width, height)
+            self._commChannel.sigAdjustFrame.emit(detector.shape)
             self._widget.hideROI()
 
         self.updateParamsFromDetector(detector=detector)
@@ -393,7 +392,7 @@ class SettingsController(ImConWidgetController):
         self._widget.setDisplayedDetector(newDetectorName)
         self._widget.setImageFrameVisible(self._master.detectorsManager[newDetectorName].croppable)
         newDetectorShape = self._master.detectorsManager[newDetectorName].shape
-        self._commChannel.sigAdjustFrame.emit(*newDetectorShape)
+        self._commChannel.sigAdjustFrame.emit(newDetectorShape)
 
     def detectorSwitchClicked(self, detectorName):
         """ Changes the current detector to the selected detector. """

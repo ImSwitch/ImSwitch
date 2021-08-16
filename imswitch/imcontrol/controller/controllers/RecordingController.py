@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
-from imswitch.imcontrol.model import SaveMode, RecMode
+from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
 
 
@@ -25,9 +25,14 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        imreconstructRegistered = self._moduleCommChannel.isModuleRegistered('imreconstruct')
-        self._widget.setSaveMode(SaveMode.Disk.value)
-        self._widget.setSaveModeVisible(imreconstructRegistered)
+        self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
+        self._widget.setSnapSaveMode(SaveMode.Disk.value)
+        self._widget.setSnapSaveModeVisible('Image' in self._setupInfo.availableWidgets)
+
+        self._widget.setRecSaveMode(SaveMode.Disk.value)
+        self._widget.setRecSaveModeVisible(
+            self._moduleCommChannel.isModuleRegistered('imreconstruct')
+        )
 
         self.untilStop()
 
@@ -44,13 +49,17 @@ class RecordingController(ImConWidgetController):
         self._widget.sigDetectorSpecificChanged.connect(self.detectorChanged)
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
         self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
-        self._widget.sigSnapRequested.connect(self.snap)
-        self._widget.sigRecToggled.connect(self.toggleREC)
+
+        self._widget.sigSnapSaveModeChanged.connect(self.snapSaveModeChanged)
+
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
         self._widget.sigScanOncePicked.connect(self.recScanOnce)
         self._widget.sigScanLapsePicked.connect(self.recScanLapse)
         self._widget.sigUntilStopPicked.connect(self.untilStop)
+
+        self._widget.sigSnapRequested.connect(self.snap)
+        self._widget.sigRecToggled.connect(self.toggleREC)
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """
@@ -58,6 +67,12 @@ class RecordingController(ImConWidgetController):
         if not os.path.exists(folder):
             os.makedirs(folder)
         ostools.openFolderInOS(folder)
+
+    def snapSaveModeChanged(self):
+        saveMode = SaveMode(self._widget.getSnapSaveMode())
+        self._widget.setSnapSaveFormatEnabled(saveMode != SaveMode.RAM)
+        if saveMode == SaveMode.RAM:
+            self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
@@ -73,7 +88,11 @@ class RecordingController(ImConWidgetController):
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
 
-        self._master.recordingManager.snap(detectorNames, savename, attrs)
+        self._master.recordingManager.snap(detectorNames,
+                                           savename,
+                                           SaveMode(self._widget.getSnapSaveMode()),
+                                           SaveFormat(self._widget.getSnapSaveFormat()),
+                                           attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """
@@ -95,7 +114,7 @@ class RecordingController(ImConWidgetController):
                 'detectorNames': detectorsBeingCaptured,
                 'recMode': self.recMode,
                 'savename': self.savename,
-                'saveMode': SaveMode(self._widget.getSaveMode()),
+                'saveMode': SaveMode(self._widget.getRecSaveMode()),
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and

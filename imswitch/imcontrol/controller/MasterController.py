@@ -1,4 +1,4 @@
-from imswitch.imcommon.model import DataItem
+from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
     RecordingManager, RS232sManager, ScanManager, SLMManager
@@ -54,7 +54,7 @@ class MasterController:
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
-        self.__moduleCommChannel.memoryRecordings[name] = DataItem(
+        self.__moduleCommChannel.memoryRecordings[name] = VFileItem(
             data=file, filePath=filePath, savedToDisk=savedToDisk
         )
 

@@ -48,14 +48,14 @@ class MultiDataFrameController(ImRecWidgetController):
         if not self._loadingData:
             self._widget.setAllRowsHighlighted(False)
 
-    def memoryDataSet(self, name, dataItem):
-        data = dataItem.data
+    def memoryDataSet(self, name, vFileItem):
+        data = vFileItem.data
         if not isinstance(data, h5py.File):
             data = h5py.File(data)
 
         for datasetName in data.keys():
             self.makeAndAddDataObj(
-                name, datasetName, path=dataItem.filePath if dataItem.savedToDisk else None,
+                name, datasetName, path=vFileItem.filePath if vFileItem.savedToDisk else None,
                 file=data
             )
 

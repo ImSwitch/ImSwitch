@@ -8,7 +8,7 @@ from imswitch.imcommon.framework import Signal, SignalInterface
 
 
 @dataclass
-class DataItem:
+class VFileItem:
     data: Union[IOBase, h5py.File]
     filePath: str
     savedToDisk: bool
@@ -18,7 +18,7 @@ class VFileCollection(SignalInterface):
     """ VFileCollection is a collection of virtual file-like objects. In
     addition to holding the data, it also handles saving it to the disk. """
 
-    sigDataSet = Signal(str, DataItem)  # (name, dataItem)
+    sigDataSet = Signal(str, VFileItem)  # (name, vFileItem)
     sigDataSavedToDisk = Signal(str, str)  # (name, filePath)
     sigDataWillRemove = Signal(str)  # (name)
     sigDataRemoved = Signal(str)  # (name)
@@ -48,8 +48,8 @@ class VFileCollection(SignalInterface):
         return self._data[name]
 
     def __setitem__(self, name, value):
-        if not isinstance(value, DataItem):
-            raise TypeError('Value must be a DataItem')
+        if not isinstance(value, VFileItem):
+            raise TypeError('Value must be a VFileItem')
 
         if name in self._data and self._data[name] != value:
             del self._data[name]

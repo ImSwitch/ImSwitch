@@ -18,6 +18,7 @@ class PickDatasetsDialog(QtWidgets.QDialog):
         self.datasetsPicker = QtWidgets.QListWidget()
         if allowMultiSelect:
             self.datasetsPicker.setSelectionMode(QtWidgets.QListWidget.ExtendedSelection)
+        self.datasetsPicker.itemDoubleClicked.connect(self.accept)
 
         self.buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
@@ -41,6 +42,10 @@ class PickDatasetsDialog(QtWidgets.QDialog):
         self.datasetsPicker.clear()
         for datasetName in datasetNames:
             self.datasetsPicker.addItem(datasetName)
+
+        if self.allowMultiSelect:
+            self.datasetsPicker.selectAll()
+            self.datasetsPicker.setFocus()
 
     def getSelectedDatasets(self):
         return [item.text() for item in self.datasetsPicker.selectedItems()]

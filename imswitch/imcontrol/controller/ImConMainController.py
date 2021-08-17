@@ -3,7 +3,9 @@ import dataclasses
 import h5py
 
 from imswitch.imcommon.controller import MainController, PickDatasetsController
-from imswitch.imcommon.model import ostools, generateAPI, generateShortcuts, SharedAttributes
+from imswitch.imcommon.model import (
+    ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
+)
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
 from . import controllers
@@ -15,6 +17,9 @@ from .basecontrollers import ImConWidgetControllerFactory
 
 class ImConMainController(MainController):
     def __init__(self, options, setupInfo, mainView, moduleCommChannel):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+
         self.__options = options
         self.__setupInfo = setupInfo
         self.__mainView = mainView
@@ -120,6 +125,7 @@ class ImConMainController(MainController):
         ostools.restartSoftware()
 
     def closeEvent(self):
+        self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
 

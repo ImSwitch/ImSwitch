@@ -176,7 +176,7 @@ class SLMManager(SignalInterface):
         return returnmask.image()
 
 
-class Mask(object):
+class Mask:
     """Class creating a mask to be displayed by the SLM."""
 
     def __init__(self, height: int, width: int, wavelength: int):

@@ -267,7 +267,7 @@ class FocusCalibThread(QtCore.QThread):
         np.savetxt('calibrationcurves.txt', self.savedCalibData)
 
 
-class PI(object):
+class PI:
     """Simple implementation of a discrete PI controller.
     Taken from http://code.activestate.com/recipes/577231-discrete-pid-controller/
     Author: Federico Barabas"""

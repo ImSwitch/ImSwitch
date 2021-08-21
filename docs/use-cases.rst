@@ -45,7 +45,7 @@ It contains all the scanning pulses and hardware parameters related to the exper
 
 * GUI while using two-color widefield:
 
-.. image:: ./images/monalisa-widefield.png
+.. image:: ./images/gui.png
     :width: 600px
     :align: center
 

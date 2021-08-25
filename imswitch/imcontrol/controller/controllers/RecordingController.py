@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
@@ -367,11 +367,19 @@ class RecordingController(ImConWidgetController):
         self.untilStop()
 
     @APIExport(runOnUIThread=True)
-    def setDetectorToRecord(self, detectorName: Union[str, int]) -> None:
+    def setDetectorToRecord(self, detectorName: Union[List[str], str, int],
+                            multiDetectorSingleFile: bool = False) -> None:
         """ Sets which detectors to record. One can also pass -1 as the
         argument to record the current detector, or -2 to record all detectors.
         """
-        self._widget.setDetectorMode(detectorName)
+        if isinstance(detectorName, int):
+            self._widget.setDetectorMode(detectorName)
+        else:
+            if isinstance(detectorName, str):
+                detectorName = [detectorName]
+            self._widget.setDetectorMode(-3)
+            self._widget.setSelectedSpecificDetectors(detectorName)
+            self._widget.setMultiDetectorSingleFile(multiDetectorSingleFile)
 
     @APIExport(runOnUIThread=True)
     def setRecFilename(self, filename: Optional[str]) -> None:

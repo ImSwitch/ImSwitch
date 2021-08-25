@@ -56,7 +56,7 @@ api.imcontrol
       Sets the ROI for the specified detector. frameStart is a tuple
       (x0, y0) and shape is a tuple (width, height). 
 
-   .. method:: setDetectorToRecord(detectorName: Union[str, int]) -> None
+   .. method:: setDetectorToRecord(detectorName: Union[List[str], str, int], multiDetectorSingleFile: bool = False) -> None
 
       Sets which detectors to record. One can also pass -1 as the
       argument to record the current detector, or -2 to record all detectors.

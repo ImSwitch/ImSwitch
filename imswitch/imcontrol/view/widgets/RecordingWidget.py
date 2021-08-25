@@ -285,6 +285,11 @@ class RecordingWidget(Widget):
                 self.detectorModeList.setCurrentIndex(i)
                 return
 
+    def setSelectedSpecificDetectors(self, detectors):
+        """ Sets the selected items in the "select specific detectors" list.
+        """
+        self.detectorList.setCheckedItems(detectors)
+
     def setMultiDetectorSingleFile(self, singleFile):
         self.singleFileMultiDetectorBox.setChecked(singleFile)
 

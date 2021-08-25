@@ -47,6 +47,15 @@ class CheckableComboBox(QtWidgets.QComboBox):
         self.itemTypeNameSingular = singular
         self.itemTypeNamePlural = plural
 
+    def setCheckedItems(self, itemIds):
+        for row in range(self.model().rowCount()):
+            item = self.model().item(row)
+            itemId = item.data(QtCore.Qt.UserRole)
+            item.setData(QtCore.Qt.Checked if itemId in itemIds else QtCore.Qt.Unchecked,
+                         QtCore.Qt.CheckStateRole)
+
+        self.repaint()  # Must be done to update the text
+
     def dataChanged(self, modelIndex, _, roles):
         self.repaint()  # Must be done to update the text
 

@@ -1,10 +1,11 @@
 import logging
 import os
 import sys
+import traceback
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from .model import dirtools, pythontools
+from .model import dirtools, pythontools, initLogger
 from .view.guitools import getBaseStyleSheet
 
 
@@ -32,6 +33,8 @@ def prepareApp():
 def launchApp(app, mainView, moduleMainControllers):
     """ Launches the app. The program will exit when the app is exited. """
 
+    logger = initLogger('launchApp')
+
     # Show app
     mainView.showMaximized()
     mainView.show()
@@ -39,7 +42,13 @@ def launchApp(app, mainView, moduleMainControllers):
 
     # Clean up
     for controller in moduleMainControllers:
-        controller.closeEvent()
+        try:
+            controller.closeEvent()
+        except Exception:
+            logger.error(f'Error closing {type(controller).__name__}')
+            logger.error(traceback.format_exc())
+
+    # Exit
     sys.exit(exitCode)
 
 

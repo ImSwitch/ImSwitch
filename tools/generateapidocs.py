@@ -33,8 +33,9 @@ def writeDocs(cls, isClass=True, displayName=None):
     if isClass:
         rst += f'.. class:: {displayName}\n'
         indent += 3
-        rst += '\n'
-        rst += f'{fixIndent(cls.__doc__, indent)}\n'
+        if cls.__doc__:
+            rst += '\n'
+            rst += f'{fixIndent(cls.__doc__, indent)}\n'
         rst += '\n'
 
     # Attributes
@@ -47,8 +48,9 @@ def writeDocs(cls, isClass=True, displayName=None):
             # Method
             rst += f'{" " * indent}.. method:: {attr.__name__}{inspect.signature(attr)}\n'
             indent += 3
-            rst += '\n'
-            rst += f'{fixIndent(attr.__doc__, indent)}\n'
+            if attr.__doc__:
+                rst += '\n'
+                rst += f'{fixIndent(attr.__doc__, indent)}\n'
             rst += '\n'
             indent -= 3
 

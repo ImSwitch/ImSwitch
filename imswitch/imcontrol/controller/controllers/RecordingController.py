@@ -27,7 +27,7 @@ class RecordingController(ImConWidgetController):
 
         self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
-        self._widget.setSnapSaveModeVisible('Image' in self._setupInfo.availableWidgets)
+        self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
         self._widget.setRecSaveMode(SaveMode.Disk.value)
         self._widget.setRecSaveModeVisible(

@@ -98,6 +98,12 @@ class ViewSetupInfo(SetupInfo):
         """ :meta private: """
         self.defaultLaserPresetForScan = presetNameOrNone
 
+    def hasWidget(self, widget):
+        """ :meta private: """
+        return self.availableWidgets is True or (
+            isinstance(self.availableWidgets, list) and widget in self.availableWidgets
+        )
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

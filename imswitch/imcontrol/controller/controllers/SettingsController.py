@@ -467,19 +467,19 @@ class SettingsController(ImConWidgetController):
             for parameterName, parameter in dManager.parameters.items():
                 self.setSharedAttr(dName, parameterName, parameter.value, isDetectorParameter=True)
 
-    @APIExport
+    @APIExport()
     def getDetectorNames(self) -> List[str]:
         """ Returns the device names of all detectors. These device names can
         be passed to other detector-related functions. """
         return self._master.detectorsManager.getAllDeviceNames()
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setDetectorBinning(self, detectorName: str, binning: int) -> None:
         """ Sets binning value for the specified detector. """
         self.allParams[detectorName].binning.setValue(binning)
         self._master.detectorsManager[detectorName].setBinning(binning)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setDetectorROI(self, detectorName: str, frameStart: Tuple[int, int],
                        shape: Tuple[int, int]) -> None:
         """ Sets the ROI for the specified detector. frameStart is a tuple
@@ -496,7 +496,7 @@ class SettingsController(ImConWidgetController):
         self.allParams[detectorName].height.setValue(shape[1])
         self.adjustFrame(detector=detector)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setDetectorParameter(self, detectorName: str, parameterName: str, value: Any) -> None:
         """ Sets the specified detector-specific parameter to the specified
         value. """

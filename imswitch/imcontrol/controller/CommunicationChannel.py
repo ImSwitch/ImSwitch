@@ -89,7 +89,7 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
-    @APIExport
+    @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
         action. Currently available signals are:

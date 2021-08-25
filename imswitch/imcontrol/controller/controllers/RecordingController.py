@@ -318,60 +318,60 @@ class RecordingController(ImConWidgetController):
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:
         """ Take a snap and save it to a .tiff file at the set file path. """
         self.snap()
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:
         """ Starts recording with the set settings to the set file path. """
         self._widget.setRecButtonChecked(True)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def stopRecording(self) -> None:
         """ Stops recording. """
         self._widget.setRecButtonChecked(False)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecModeSpecFrames(self, numFrames: int) -> None:
         """ Sets the recording mode to record a specific number of frames. """
         self.specFrames()
         self._widget.setNumExpositions(numFrames)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecModeSpecTime(self, secondsToRec: Union[int, float]) -> None:
         """ Sets the recording mode to record for a specific amount of time.
         """
         self.specTime()
         self._widget.setTimeToRec(secondsToRec)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecModeScanOnce(self) -> None:
         """ Sets the recording mode to record a single scan. """
         self.recScanOnce()
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecModeScanTimelapse(self, secondsToRec: float, freqSeconds: float) -> None:
         """ Sets the recording mode to record a timelapse of scans. """
         self.recScanLapse()
         self._widget.setTimelapseTime(secondsToRec)
         self._widget.setTimelapseFreq(freqSeconds)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecModeUntilStop(self) -> None:
         """ Sets the recording mode to record until recording is manually
         stopped. """
         self.untilStop()
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setDetectorToRecord(self, detectorName: Union[str, int]) -> None:
         """ Sets which detectors to record. One can also pass -1 as the
         argument to record the current detector, or -2 to record all detectors.
         """
         self._widget.setDetectorMode(detectorName)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecFilename(self, filename: Optional[str]) -> None:
         """ Sets the name of the file to record to. This only sets the name of
         the file, not the full path. One can also pass None as the argument to
@@ -381,7 +381,7 @@ class RecordingController(ImConWidgetController):
         else:
             self._widget.setCustomFilenameEnabled(False)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)

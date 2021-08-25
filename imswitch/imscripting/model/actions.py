@@ -14,7 +14,7 @@ class _Actions:
     def __init__(self, scriptPath=None):
         self._scriptPath = scriptPath
 
-    @APIExport
+    @APIExport()
     def importScript(self, path: str) -> Any:
         """ Imports the script at the specified path (either absolute or
         relative to the main script) and returns it as a module variable. """
@@ -27,7 +27,7 @@ class _Actions:
         spec.loader.exec_module(script)
         return script
 
-    @APIExport
+    @APIExport()
     def getWaitForSignal(self, signal: Signal,
                          pollIntervalSeconds: float = 1.0) -> Callable[[], None]:
         """ Returns a function that will wait for the specified signal to emit.

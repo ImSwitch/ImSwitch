@@ -82,7 +82,7 @@ class MultiModuleWindowController(WidgetController):
     def updateRAMUsage(self):
         self._widget.updateRAMUsage(psutil.virtual_memory()[2] / 100)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setCurrentModule(self, moduleId: str) -> None:
         """ Sets the currently displayed module to the module with the
         specified ID (e.g. "imcontrol"). """

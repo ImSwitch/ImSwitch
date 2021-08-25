@@ -1,21 +1,32 @@
+import inspect
+
 from dotmap import DotMap
 
+from imswitch.imcommon.framework import Mutex, Signal, SignalInterface
 
-def APIExport(func):
+
+class APIExport:
     """ Decorator for methods that should be exported to API. """
-    func._APIExport = True
-    return func
+
+    def __init__(self, *, runOnUIThread=False):
+        self._APIExport = True
+        self._APIRunOnUIThread = runOnUIThread
+
+    def __call__(self, func):
+        func._APIExport = self._APIExport
+        func._APIRunOnUIThread = self._APIRunOnUIThread
+        return func
 
 
 def generateAPI(objs):
     """ Generates an API from APIExport-decorated methods in the objects in the
-    passed array objs. """
+    passed array objs. Must be called from the main thread. """
 
     exportedFuncs = {}
     for obj in objs:
         for subObjName in dir(obj):
             subObj = getattr(obj, subObjName)
-            if not callable(getattr(obj, subObjName)):
+            if not callable(subObj):
                 continue
 
             if not hasattr(subObj, '_APIExport') or not subObj._APIExport:
@@ -24,9 +35,44 @@ def generateAPI(objs):
             if subObjName in exportedFuncs:
                 raise NameError(f'API method name "{subObjName}" is already in use')
 
-            exportedFuncs[subObjName] = subObj
+            runOnUIThread = hasattr(subObj, '_APIRunOnUIThread') and subObj._APIRunOnUIThread
+
+            if runOnUIThread:
+                wrapper = _UIThreadExecWrapper(subObj)
+                exportedFuncs[subObjName] = wrapper
+            else:
+                exportedFuncs[subObjName] = subObj
 
     return DotMap(exportedFuncs)
+
+
+class _UIThreadExecWrapper(SignalInterface):
+    """ Wrapper for executing the specified function on the UI thread. """
+
+    wrappingSignal = Signal()
+
+    def __init__(self, apiFunc):
+        super().__init__()
+
+        self.__name__ = apiFunc.__name__
+        self.__signature__ = inspect.signature(apiFunc)
+        self.__doc__ = apiFunc.__doc__
+
+        self._apiFunc = apiFunc
+        self._execMutex = Mutex()
+        self.wrappingSignal.connect(self._apiCall)
+
+    def __call__(self, *args, **kwargs):
+        self._execMutex.lock()
+        self._args = args
+        self._kwargs = kwargs
+        self.wrappingSignal.emit()
+
+    def _apiCall(self):
+        try:
+            self._apiFunc(*self._args, **self._kwargs)
+        finally:
+            self._execMutex.unlock()
 
 
 # Copyright (C) 2020, 2021 TestaLab

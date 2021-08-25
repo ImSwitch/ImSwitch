@@ -101,7 +101,7 @@ class ScanController(SuperScanController):
 
         self.saveScanParamsToFile(fileName)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def saveScanParamsToFile(self, filePath: str) -> None:
         """ Saves the set scanning parameters to the specified file. """
         self.getParameters()
@@ -122,7 +122,7 @@ class ScanController(SuperScanController):
 
         self.loadScanParamsFromFile(fileName)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
 
@@ -357,7 +357,7 @@ class ScanController(SuperScanController):
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def runScan(self) -> None:
         """ Runs a scan with the set scanning parameters. """
         self.runScanAdvanced(sigScanStartingEmitted=False)

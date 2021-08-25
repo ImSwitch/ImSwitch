@@ -221,18 +221,18 @@ class LaserController(ImConWidgetController):
         finally:
             self.settingAttr = False
 
-    @APIExport
+    @APIExport()
     def getLaserNames(self) -> List[str]:
         """ Returns the device names of all lasers. These device names can be
         passed to other laser-related functions. """
         return self._master.lasersManager.getAllDeviceNames()
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setLaserActive(self, laserName: str, active: bool) -> None:
         """ Sets whether the specified laser is powered on. """
         self._widget.setLaserActive(laserName, active)
 
-    @APIExport
+    @APIExport(runOnUIThread=True)
     def setLaserValue(self, laserName: str, value: Union[int, float]) -> None:
         """ Sets the value of the specified laser, in the units that the laser
         uses. """

@@ -352,11 +352,13 @@ class RecordingController(ImConWidgetController):
         self.recScanOnce()
 
     @APIExport(runOnUIThread=True)
-    def setRecModeScanTimelapse(self, secondsToRec: float, freqSeconds: float) -> None:
+    def setRecModeScanTimelapse(self, lapsesToRec: int, freqSeconds: float,
+                                timelapseSingleFile: bool = False) -> None:
         """ Sets the recording mode to record a timelapse of scans. """
         self.recScanLapse()
-        self._widget.setTimelapseTime(secondsToRec)
+        self._widget.setTimelapseTime(lapsesToRec)
         self._widget.setTimelapseFreq(freqSeconds)
+        self._widget.setTimelapseSingleFile(timelapseSingleFile)
 
     @APIExport(runOnUIThread=True)
     def setRecModeUntilStop(self) -> None:

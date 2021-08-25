@@ -106,7 +106,7 @@ api.imcontrol
 
       Sets the recording mode to record a single scan. 
 
-   .. method:: setRecModeScanTimelapse(secondsToRec: float, freqSeconds: float) -> None
+   .. method:: setRecModeScanTimelapse(lapsesToRec: int, freqSeconds: float, timelapseSingleFile: bool = False) -> None
 
       Sets the recording mode to record a timelapse of scans. 
 

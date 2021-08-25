@@ -44,10 +44,10 @@ class PositionerWidget(Widget):
 
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
-                lambda: self.sigStepUpClicked.emit(positionerName, axis)
+                lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
             )
             self.pars['DownButton' + parNameSuffix].clicked.connect(
-                lambda: self.sigStepDownClicked.emit(positionerName, axis)
+                lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
 
     def getStepSize(self, positionerName, axis):

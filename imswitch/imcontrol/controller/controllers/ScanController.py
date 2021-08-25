@@ -20,6 +20,13 @@ class ScanController(SuperScanController):
         self.settingAttr = False
         self.settingParameters = False
 
+        self._analogParameterDict = {}
+        self._digitalParameterDict = {}
+        self.signalDict = None
+        self.scanInfoDict = None
+        self.isRunning = False
+        self.doingNonFinalPartOfSequence = False
+
         self.positioners = {
             pName: pManager for pName, pManager in self._setupInfo.positioners.items()
             if pManager.forScanning
@@ -35,9 +42,6 @@ class ScanController(SuperScanController):
         self.scanDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_scans')
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
-
-        self._analogParameterDict = {}
-        self._digitalParameterDict = {}
 
         self.getParameters()
         self.updatePixels()
@@ -57,6 +61,7 @@ class ScanController(SuperScanController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sigRunScan.connect(self.runScanExternal)
+        self._commChannel.sigAbortScan.connect(self.abortScan)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
@@ -174,39 +179,58 @@ class ScanController(SuperScanController):
             self.settingParameters = False
             self.plotSignalGraph()
 
-    def runScanExternal(self):
+    def runScanExternal(self, recalculateSignals, isNonFinalPartOfSequence):
         self._widget.setScanMode()
         self._widget.setRepeatEnabled(False)
-        self.runScanAdvanced(sigScanStartingEmitted=True)
+        self.runScanAdvanced(recalculateSignals=recalculateSignals,
+                             isNonFinalPartOfSequence=isNonFinalPartOfSequence,
+                             sigScanStartingEmitted=True)
 
-    def runScanAdvanced(self, sigScanStartingEmitted):
+    def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
+                        sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
-        self._widget.setScanButtonChecked(True)
-        self.getParameters()
         try:
-            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                self._analogParameterDict, self._digitalParameterDict,
-                staticPositioner=self._widget.isContLaserMode()
-            )
-        except Exception:
-            # TODO: should raise an error here probably, but that does not crash the program.
-            self.__logger.error(traceback.format_exc())
-            return
+            self._widget.setScanButtonChecked(True)
+            self.isRunning = True
 
-        if not sigScanStartingEmitted:
-            self.emitScanSignal(self._commChannel.sigScanStarting)
-        self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+            if recalculateSignals or self.signalDict is None or self.scanInfoDict is None:
+                self.getParameters()
+                self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                    self._analogParameterDict, self._digitalParameterDict,
+                    staticPositioner=self._widget.isContLaserMode()
+                )
+
+            self.doingNonFinalPartOfSequence = isNonFinalPartOfSequence
+
+            if not sigScanStartingEmitted:
+                self.emitScanSignal(self._commChannel.sigScanStarting)
+            self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+        except Exception:
+            self.__logger.error(traceback.format_exc())
+            self.isRunning = False
+
+    def abortScan(self):
+        self.doingNonFinalPartOfSequence = False  # So that sigScanEnded is emitted
+        if not self.isRunning:
+            self.scanFailed()
 
     def scanDone(self):
         self.__logger.debug('Scan done')
+        self.isRunning = False
+
         if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
-            self._widget.setScanButtonChecked(False)
-            self.emitScanSignal(self._commChannel.sigScanEnded)
+            self.emitScanSignal(self._commChannel.sigScanDone)
+            if not self.doingNonFinalPartOfSequence:
+                self._widget.setScanButtonChecked(False)
+                self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
             self.__logger.debug('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def scanFailed(self):
+        self.__logger.error('Scan failed')
+        self.isRunning = False
+        self.doingNonFinalPartOfSequence = False
         self._widget.setScanButtonChecked(False)
         self.emitScanSignal(self._commChannel.sigScanEnded)
 

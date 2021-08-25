@@ -45,13 +45,17 @@ class CommunicationChannel(SignalInterface):
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
 
-    sigRunScan = Signal(bool)  # (sigScanStartingEmitted)
+    sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
+
+    sigAbortScan = Signal()
 
     sigScanStarting = Signal()
 
     sigScanBuilt = Signal(object)  # (deviceList)
 
     sigScanStarted = Signal()
+
+    sigScanDone = Signal()
 
     sigScanEnded = Signal()
 

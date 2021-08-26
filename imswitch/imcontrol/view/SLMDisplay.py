@@ -10,7 +10,10 @@ class SLMDisplay(QtWidgets.QLabel):
     sigClosed = QtCore.Signal()
 
     def __init__(self, parent, preferredMonitor):
-        super().__init__(parent)
+        super().__init__()
+
+        self._parent = parent
+
         self.setWindowTitle('SLM display')
         self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowState(QtCore.Qt.WindowFullScreen)
@@ -69,7 +72,7 @@ class SLMDisplay(QtWidgets.QLabel):
             self.setMonitor(self.preferredMonitor)
 
             # Show warning if SLM display is shown over ImSwitch
-            parentMonitorName = self.parentWidget().screen().name()
+            parentMonitorName = self._parent.screen().name()
             if (not self.hasShownMonitorWarning and
                     parentMonitorName and parentMonitorName == self.monitorName):
                 QtWidgets.QMessageBox.information(

@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article from preferred-citation."
+authors:
+- family-names: "Casas Moreno"
+  given-names: "Xavier"
+  orcid: "https://orcid.org/0000-0002-9583-9022"
+- family-names: "Al-Kadhimi"
+  given-names: "Staffan"
+  orcid: "https://orcid.org/0000-0002-3488-6845"
+- family-names: "Alvelid"
+  given-names: "Jonatan"
+  orcid: "https://orcid.org/0000-0002-3554-9322"
+- family-names: "Bodén"
+  given-names: "Andreas"
+  orcid: "https://orcid.org/0000-0001-9302-7576"
+- family-names: "Testa"
+  given-names: "Ilaria"
+  orcid: "https://orcid.org/0000-0003-4005-4997"
+title: "ImSwitch: Generalizing microscope control in Python"
+doi: "10.5281/zenodo.5196461"
+url: "https://github.com/kasasxav/ImSwitch"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Casas Moreno"
+    given-names: "Xavier"
+    orcid: "https://orcid.org/0000-0002-9583-9022"
+  - family-names: "Al-Kadhimi"
+    given-names: "Staffan"
+    orcid: "https://orcid.org/0000-0002-3488-6845"
+  - family-names: "Alvelid"
+    given-names: "Jonatan"
+    orcid: "https://orcid.org/0000-0002-3554-9322"
+  - family-names: "Bodén"
+    given-names: "Andreas"
+    orcid: "https://orcid.org/0000-0001-9302-7576"
+  - family-names: "Testa"
+    given-names: "Ilaria"
+    orcid: "https://orcid.org/0000-0003-4005-4997"
+  doi: "10.21105/joss.03394"
+  title: "ImSwitch: Generalizing microscope control in Python"
+  journal: "Journal of Open Source Software"
+  publisher:
+    name: "The Open Journal"
+  year: 2021
+  volume: 6
+  issue: 64
+  start: 3394

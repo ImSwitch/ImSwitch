@@ -1,7 +1,5 @@
 import inspect
 
-from dotmap import DotMap
-
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface
 
 
@@ -18,9 +16,11 @@ class APIExport:
         return func
 
 
-def generateAPI(objs):
+def generateAPI(objs, *, missingAttributeErrorMsg=None):
     """ Generates an API from APIExport-decorated methods in the objects in the
     passed array objs. Must be called from the main thread. """
+
+    from imswitch.imcommon.model import pythontools
 
     exportedFuncs = {}
     for obj in objs:
@@ -43,7 +43,8 @@ def generateAPI(objs):
             else:
                 exportedFuncs[subObjName] = subObj
 
-    return DotMap(exportedFuncs)
+    return pythontools.dictToROClass(exportedFuncs,
+                                     missingAttributeErrorMsg=missingAttributeErrorMsg)
 
 
 class _UIThreadExecWrapper(SignalInterface):

@@ -114,7 +114,7 @@ for modulePackage in modules:
     API.__name__ = moduleId
     API.__doc__ = f""" These functions are available in the {moduleId} object. """
 
-    for key, value in mainController.api.items():
+    for key, value in mainController.api._asdict().items():
         setattr(API, key, value)
 
     writeDocs(API)

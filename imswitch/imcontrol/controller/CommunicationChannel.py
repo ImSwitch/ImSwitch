@@ -1,10 +1,9 @@
 from typing import Mapping
 
 import numpy as np
-from dotmap import DotMap
 
 from imswitch.imcommon.framework import Signal, SignalInterface
-from imswitch.imcommon.model import APIExport, SharedAttributes
+from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -103,7 +102,7 @@ class CommunicationChannel(SignalInterface):
         They can be accessed like this: api.imcontrol.signals().scanEnded
         """
 
-        return DotMap({
+        return pythontools.dictToROClass({
             'acquisitionStarted': self.sigAcquisitionStarted,
             'acquisitionStopped': self.sigAcquisitionStopped,
             'recordingStarted': self.sigRecordingStarted,

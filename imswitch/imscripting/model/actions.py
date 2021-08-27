@@ -55,7 +55,7 @@ class _Actions:
 
 def getActionsScope(scriptPath=None):
     """ Returns the script scope for the actions. """
-    return generateAPI([_Actions(scriptPath)]).toDict()
+    return generateAPI([_Actions(scriptPath)])._asdict()
 
 
 # Copyright (C) 2020, 2021 TestaLab

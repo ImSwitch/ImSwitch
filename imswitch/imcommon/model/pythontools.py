@@ -24,6 +24,31 @@ def joinModulePath(segment1, segment2):
     return joinedPath
 
 
+def dictToROClass(src, *, missingAttributeErrorMsg=None):
+    """ Generates a read-only class from a dict. """
+
+    class ROClass:
+        def __getattr__(self, attr):
+            if attr in src:
+                return src[attr]
+
+            if not missingAttributeErrorMsg:
+                raise AttributeError(f'There is no attribute "{attr}"')
+            if callable(missingAttributeErrorMsg):
+                raise AttributeError(missingAttributeErrorMsg(attr))
+            else:
+                raise AttributeError(missingAttributeErrorMsg)
+
+        def __setattr__(self, _key, _value):
+            raise AttributeError('This object is read-only')
+
+        @staticmethod
+        def _asdict():
+            return src.copy()
+
+    return ROClass()
+
+
 def installExceptHook():
     if not (hasattr(sys.excepthook, 'implements')
             and sys.excepthook.implements('ExceptionHandler')):

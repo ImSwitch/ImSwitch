@@ -56,7 +56,13 @@ class ImConMainController(MainController):
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]
-        self.__api = generateAPI(apiObjs)
+        self.__api = generateAPI(
+            apiObjs,
+            missingAttributeErrorMsg=lambda attr: f'The imcontrol API does either not have any'
+                                                  f' method {attr}, or the widget that defines it'
+                                                  f' is not included in your currently active'
+                                                  f' hardware setup file.'
+        )
 
         # Generate Shorcuts
         self.__shortcuts = None

@@ -5,6 +5,7 @@ from scipy.signal import find_peaks
 
 class PatternFinder:
     def findPattern(self, image):
+        """ Finds the offsets and periods of the pattern in the image. """
         image = image - image.min()
         thresh = image.max() / 3
         image[image < thresh] = 0
@@ -80,6 +81,7 @@ class PatternFinder:
         return [offsetVert, offsetHori, optPerVertPx, optPerHoriPx]
 
     def findBestPeak(self, peaks):
+        """ Finds the best peak in a list of peaks. """
         bestTwoPeaks = peaks[1]['prominences'].argsort()[-2::][::-1]
         prom1 = peaks[1]['prominences'][bestTwoPeaks[0]]
         prom2 = peaks[1]['prominences'][bestTwoPeaks[1]]

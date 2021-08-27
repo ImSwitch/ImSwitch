@@ -28,9 +28,12 @@ class VFileCollection(SignalInterface):
         self._data = {}
 
     def getSavePath(self, name):
+        """ Returns the path to which the file associated with the given name
+        is saved. """
         return self._data[name].filePath
 
     def saveToDisk(self, name):
+        """ Saves the data with the given name to disk. """
         filePath = self.getSavePath(name)
 
         if isinstance(self._data[name].data, IOBase):

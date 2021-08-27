@@ -39,6 +39,7 @@ class ReconObj:
         return self.scanParDict
 
     def addCoeffsTP(self, inCoeffs):
+        """ Adds a set of coefficients to the existing set of coefficients. """
         if self.coeffs is None:
             # self.__logger.debug(f'In if, shape is: {np.shape(inCoeffs)}')
             # self.__logger.debug(f'Coeffs are: {inCoeffs}')

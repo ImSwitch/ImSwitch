@@ -11,6 +11,8 @@ class SharedAttributes(SignalInterface):
         self._data = {}
 
     def getHDF5Attributes(self):
+        """ Returns a dictionary of HDF5 attributes representing this object.
+        """
         attrs = {}
         for key, value in self._data.items():
             attrs[':'.join(key)] = value
@@ -18,6 +20,7 @@ class SharedAttributes(SignalInterface):
         return attrs
 
     def getJSON(self):
+        """ Returns a JSON representation of this instance. """
         attrs = {}
         for key, value in self._data.items():
             parent = attrs
@@ -31,6 +34,8 @@ class SharedAttributes(SignalInterface):
         return json.dumps(attrs)
 
     def update(self, data):
+        """ Updates this object with the data in the given dictionary or
+        SharedAttributes object. """
         if isinstance(data, SharedAttributes):
             data = data._data
 
@@ -51,6 +56,8 @@ class SharedAttributes(SignalInterface):
 
     @classmethod
     def fromHDF5File(cls, file, dataset):
+        """ Loads the attributes from a HDF5 file into a SharedAttributes
+        object. """
         attrs = cls()
         for key, value in file[dataset].attrs.items():
             keyTuple = tuple(key.split(':'))

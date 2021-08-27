@@ -4,6 +4,7 @@ import sys
 
 
 def openFolderInOS(folderPath):
+    """ Open a folder in the OS's default file browser. """
     try:
         if sys.platform == 'darwin':
             subprocess.check_call(['open', folderPath])

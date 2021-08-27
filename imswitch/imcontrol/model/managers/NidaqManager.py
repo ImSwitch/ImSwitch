@@ -323,7 +323,10 @@ class NidaqManager(SignalInterface):
                                                           sampsInScan=sampsInScan,
                                                           starttrig=False)
                     self.tasks['ao'] = self.aoTask
-                    self.aoTask.write(np.array(AOsignals), auto_start=False)
+
+                    # Important to squeeze the array, otherwise we might get an "invalid number of
+                    # channels" error
+                    self.aoTask.write(np.array(AOsignals).squeeze(), auto_start=False)
 
                     self.aoTaskWaiter.connect(self.aoTask)
                     self.aoTaskWaiter.sigWaitDone.connect(
@@ -338,7 +341,10 @@ class NidaqManager(SignalInterface):
                                                           starttrig=self.__startTrigger,
                                                           reference_trigger='ao/StartTrigger')
                     self.tasks['do'] = self.doTask
-                    self.doTask.write(np.array(DOsignals), auto_start=False)
+
+                    # Important to squeeze the array, otherwise we might get an "invalid number of
+                    # channels" error
+                    self.doTask.write(np.array(DOsignals).squeeze(), auto_start=False)
 
                     self.doTaskWaiter.connect(self.doTask)
                     self.doTaskWaiter.sigWaitDone.connect(

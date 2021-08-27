@@ -6,7 +6,9 @@ from .guitools import BetterPushButton
 class FilesView(QtWidgets.QWidget):
     """ View that displays a file tree. """
 
+    sigNewFileClicked = QtCore.Signal()
     sigItemDoubleClicked = QtCore.Signal(str)  # (itemPath)
+    sigItemDeleteClicked = QtCore.Signal(str)  # (itemPath)
     sigRootPathSubmit = QtCore.Signal(str)  # (rootPath)
     sigBrowseClicked = QtCore.Signal()
     sigOpenRootInOSClicked = QtCore.Signal()
@@ -30,6 +32,8 @@ class FilesView(QtWidgets.QWidget):
         self.tree.doubleClicked.connect(
             lambda index: self.sigItemDoubleClicked.emit(self.model.filePath(index))
         )
+        self.tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._openContextMenu)
 
         self.rootPickerLayout = QtWidgets.QHBoxLayout()
 
@@ -57,6 +61,22 @@ class FilesView(QtWidgets.QWidget):
         displayed. """
         self.tree.setRootIndex(self.model.index(path))
         self.rootPathEdit.setText(path)
+
+    def _openContextMenu(self, position):
+        index = self.tree.indexAt(position)
+        itemPath = self.model.fileInfo(index).absoluteFilePath()
+
+        menu = QtWidgets.QMenu(self)
+        newFileAction = menu.addAction('New file')
+        if itemPath:
+            moveToTrashAction = menu.addAction('Delete')
+
+        action = menu.exec_(self.tree.viewport().mapToGlobal(position))
+        if action == newFileAction:
+            self.sigNewFileClicked.emit()
+        elif itemPath:
+            if action == moveToTrashAction:
+                self.sigItemDeleteClicked.emit(itemPath)
 
 
 # Copyright (C) 2020, 2021 TestaLab

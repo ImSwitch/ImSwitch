@@ -1,6 +1,8 @@
 import mimetypes
 import os
 
+from send2trash import send2trash
+
 from imswitch.imcommon.model import dirtools, ostools
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
@@ -16,7 +18,9 @@ class FilesController(ImScrWidgetController):
         self._widget.setRootPath(self._rootPath)
 
         # Connect FilesView signals
+        self._widget.sigNewFileClicked.connect(self._commChannel.sigNewFile)
         self._widget.sigItemDoubleClicked.connect(self.checkAndOpenItem)
+        self._widget.sigItemDeleteClicked.connect(self.deleteItem)
         self._widget.sigRootPathSubmit.connect(self.setRootPath)
         self._widget.sigBrowseClicked.connect(self.browse)
         self._widget.sigOpenRootInOSClicked.connect(self.openRootInOS)
@@ -25,6 +29,14 @@ class FilesController(ImScrWidgetController):
         mime, _ = mimetypes.guess_type(itemPath)
         if mime is not None and mime.startswith('text/'):  # Only open text-like files
             self._commChannel.sigOpenFileFromPath.emit(itemPath)
+
+    def deleteItem(self, itemPath):
+        if guitools.askYesNoQuestion(self._widget,
+                                     'Delete?',
+                                     f'Are you sure you want to delete'
+                                     f' "{os.path.basename(itemPath)}"? It will be moved to your'
+                                     f' system\'s trash directory if possible.'):
+            send2trash(os.path.abspath(itemPath))
 
     def setRootPath(self, rootPath):
         if os.path.isdir(rootPath):

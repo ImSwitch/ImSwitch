@@ -31,13 +31,15 @@ class NidaqManager(SignalInterface):
         self.__setupInfo = setupInfo
         self.tasks = {}
         self.busy = False
-        self.__timerCounterChannel = setupInfo.nidaq.timerCounterChannel
+        self.__timerCounterChannel = setupInfo.nidaq.getTimerCounterChannel()
         self.__startTrigger = setupInfo.nidaq.startTrigger
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []
         for targetId, targetInfo in self.__setupInfo.getAllDevices().items():
             value = getattr(targetInfo, sortingKey)
+            if callable(value):
+                value = value()
             if value is not None:
                 pair = [targetId, value]
                 targetPairs.append(pair)
@@ -52,7 +54,7 @@ class NidaqManager(SignalInterface):
         channels = np.atleast_1d(channels)
 
         for channel in channels:
-            aotask.ao_channels.add_ao_voltage_chan('Dev1/ao%s' % channel,
+            aotask.ao_channels.add_ao_voltage_chan(channel,
                                                    min_val=min_val,
                                                    max_val=max_val)
         aotask.timing.cfg_samp_clk_timing(source=source,
@@ -71,7 +73,7 @@ class NidaqManager(SignalInterface):
         lines = np.atleast_1d(lines)
 
         for line in lines:
-            dotask.do_channels.add_do_chan('Dev1/port0/line%s' % line)
+            dotask.do_channels.add_do_chan(line)
         dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
                                           sample_mode=acquisitionType,
                                           samps_per_chan=sampsInScan)
@@ -84,7 +86,7 @@ class NidaqManager(SignalInterface):
         """ Simplified function to create a counter input task """
         citask = nidaqmx.Task(name)
         citaskchannel = citask.ci_channels.add_ci_count_edges_chan(
-            'Dev1/ctr%s' % channel,
+            channel,
             initial_count=0,
             edge=nidaqmx.constants.Edge.RISING,
             count_direction=nidaqmx.constants.CountDirection.COUNT_UP
@@ -112,7 +114,7 @@ class NidaqManager(SignalInterface):
                            reference_trigger='ai/StartTrigger'):
         cotask = nidaqmx.Task(name)
         self.cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
-            'Dev1/ctr%s' % channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
+            channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
         )
         # cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
         cotask.timing.cfg_implicit_timing(sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
@@ -130,7 +132,7 @@ class NidaqManager(SignalInterface):
         """ Simplified function to create an analog input task """
         aitask = nidaqmx.Task(name)
         for channel in channels:
-            aitask.ai_channels.add_ai_voltage_chan('Dev1/ai%s' % channel)
+            aitask.ai_channels.add_ai_voltage_chan(channel)
         aitask.timing.cfg_samp_clk_timing(source=source,
                                           rate=rate,
                                           sample_mode=acquisitionType,
@@ -145,8 +147,8 @@ class NidaqManager(SignalInterface):
         # citask = nidaqmx.CounterInputTask(name)
         citask = nidaqmx.Task(name)
         # for channel in channels:
-        citask.create_channel_count_edges('Dev1/ctr' % channel, init=0)
-        citask.set_terminal_count_edges('Dev1/ctr' % channel, "PFI0")
+        citask.create_channel_count_edges(channel, init=0)
+        citask.set_terminal_count_edges(channel, "PFI0")
 
         citask.configure_timing_sample_clock(source=source,
                                              sample_mode=acquisitionType,
@@ -184,7 +186,7 @@ class NidaqManager(SignalInterface):
     def setDigital(self, target, enable):
         """ Function to set the digital line to a specific target
         to either "high" or "low" voltage """
-        line = self.__setupInfo.getDevice(target).digitalLine
+        line = self.__setupInfo.getDevice(target).getDigitalLine()
         if line is None:
             raise NidaqManagerError('Target has no digital output assigned to it')
         else:
@@ -220,7 +222,7 @@ class NidaqManager(SignalInterface):
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target
         to a certain voltage """
-        channel = self.__setupInfo.getDevice(target).analogChannel
+        channel = self.__setupInfo.getDevice(target).getAnalogChannel()
         if channel is None:
             raise NidaqManagerError('Target has no analog output assigned to it')
         else:
@@ -266,7 +268,7 @@ class NidaqManager(SignalInterface):
                 stageDic = signalDic['scanSignalsDict']
                 ttlDic = signalDic['TTLCycleSignalsDict']
 
-                AOTargetChanPairs = self.__makeSortedTargets('analogChannel')
+                AOTargetChanPairs = self.__makeSortedTargets('getAnalogChannel')
                 AOdevices = []
                 AOsignals = []
                 AOchannels = []
@@ -278,7 +280,7 @@ class NidaqManager(SignalInterface):
                     AOsignals.append(stageDic[device])
                     AOchannels.append(channel)
 
-                DOTargetChanPairs = self.__makeSortedTargets('digitalLine')
+                DOTargetChanPairs = self.__makeSortedTargets('getDigitalLine')
                 DOdevices = []
                 DOsignals = []
                 DOlines = []

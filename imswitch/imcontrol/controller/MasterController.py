@@ -59,6 +59,8 @@ class MasterController:
         )
 
     def closeEvent(self):
+        self.recordingManager.endRecording(emitSignal=False, wait=True)
+
         for attrName in dir(self):
             attr = getattr(self, attrName)
             if isinstance(attr, MultiManager):

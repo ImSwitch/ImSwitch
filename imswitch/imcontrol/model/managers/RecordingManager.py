@@ -8,6 +8,7 @@ import numpy as np
 import tifffile as tiff
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
+from imswitch.imcommon.model import initLogger
 
 
 class RecordingManager(SignalInterface):
@@ -27,6 +28,8 @@ class RecordingManager(SignalInterface):
 
     def __init__(self, detectorsManager):
         super().__init__()
+        self.__logger = initLogger(self)
+
         self._memRecordings = {}  # { filePath: bytesIO }
         self.__detectorsManager = detectorsManager
         self.__record = False
@@ -52,6 +55,8 @@ class RecordingManager(SignalInterface):
         In SpecFrames mode, recFrames (the number of frames) must be specified,
         and in SpecTime mode, recTime (the recording time in seconds) must be
         specified. """
+
+        self.__logger.info('Starting recording')
         self.__record = True
         self.__recordingWorker.detectorNames = detectorNames
         self.__recordingWorker.recMode = recMode
@@ -70,6 +75,9 @@ class RecordingManager(SignalInterface):
         """ Ends the current recording. Unless emitSignal is false, the
         sigRecordingEnded signal will be emitted. Unless wait is False, this
         method will wait until the recording is complete before returning. """
+
+        if self.__record:
+            self.__logger.info('Stopping recording')
         self.__record = False
         self.__thread.quit()
         if emitSignal:

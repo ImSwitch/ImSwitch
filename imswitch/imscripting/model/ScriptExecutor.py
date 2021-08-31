@@ -62,9 +62,6 @@ class ExecutionThread(Worker):
             outputIO = SignaledStringIO(self.sigOutputAppended)
             sys.stdout = outputIO
             sys.stderr = outputIO
-            if scriptPath:
-                # This is a permanent change, but should be fine
-                os.chdir(os.path.dirname(scriptPath))
 
             print(f'Started script at {strftime("%Y-%m-%d %H:%M:%S")}\n')
             try:

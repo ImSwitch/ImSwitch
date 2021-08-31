@@ -2,6 +2,11 @@
 Global-level functions
 **********************
 
+.. method:: getScriptDirPath(self) -> str
+
+   Returns the path to the directory containing the running script.
+   
+
 .. method:: getWaitForSignal(self, signal: imswitch.imcommon.framework.qt.Signal, pollIntervalSeconds: float = 1.0) -> Callable[[], NoneType]
 
    Returns a function that will wait for the specified signal to emit.

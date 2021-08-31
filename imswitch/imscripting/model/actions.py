@@ -28,6 +28,12 @@ class _Actions:
         return script
 
     @APIExport()
+    def getScriptDirPath(self) -> str:
+        """ Returns the path to the directory containing the running script.
+        """
+        return os.path.dirname(self._scriptPath)
+
+    @APIExport()
     def getWaitForSignal(self, signal: Signal,
                          pollIntervalSeconds: float = 1.0) -> Callable[[], None]:
         """ Returns a function that will wait for the specified signal to emit.

@@ -1,10 +1,11 @@
 import importlib.util
+import logging
 import os
 import time
 from typing import Any, Callable
 
 from imswitch.imcommon.framework import Signal, FrameworkUtils
-from imswitch.imcommon.model import APIExport, generateAPI
+from imswitch.imcommon.model import APIExport, generateAPI, initLogger
 
 
 class _Actions:
@@ -14,6 +15,7 @@ class _Actions:
     def __init__(self, scriptScope, scriptPath=None):
         self._scriptScope = scriptScope
         self._scriptPath = scriptPath
+        self._scriptLogger = initLogger('script')
 
     @APIExport()
     def importScript(self, path: str) -> Any:
@@ -41,6 +43,12 @@ class _Actions:
         """ Returns the path to the directory containing the running script.
         """
         return os.path.dirname(self._scriptPath)
+
+    @APIExport()
+    def getLogger(self) -> logging.LoggerAdapter:
+        """ Returns a logger instance that can be used to print formatted
+        messages to the console. """
+        return self._scriptLogger
 
     @APIExport()
     def getWaitForSignal(self, signal: Signal,

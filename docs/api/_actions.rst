@@ -2,6 +2,11 @@
 Global-level functions
 **********************
 
+.. method:: getLogger(self) -> logging.LoggerAdapter
+
+   Returns a logger instance that can be used to print formatted
+   messages to the console. 
+
 .. method:: getScriptDirPath(self) -> str
 
    Returns the path to the directory containing the running script.

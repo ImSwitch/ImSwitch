@@ -1,10 +1,9 @@
-import os
 import sys
 import traceback
 from io import StringIO
-from time import strftime
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
+from imswitch.imcommon.model import initLogger
 from .actions import getActionsScope
 
 
@@ -16,6 +15,8 @@ class ScriptExecutor(SignalInterface):
 
     def __init__(self, scriptScope):
         super().__init__()
+        self.__logger = initLogger(self)
+
         self._executionWorker = ExecutionThread(scriptScope)
         self._executionWorker.sigOutputAppended.connect(self.sigOutputAppended)
         self._executionThread = Thread()
@@ -34,7 +35,8 @@ class ScriptExecutor(SignalInterface):
         """ Terminates the currently running script. Does nothing if no script
         is running. """
         if self.isExecuting():
-            print(f'\nTerminated script at {strftime("%Y-%m-%d %H:%M:%S")}')
+            print()  # Blank line
+            self.__logger.info('Terminated script')
             self._executionThread.terminate()
 
     def isExecuting(self):
@@ -47,6 +49,7 @@ class ExecutionThread(Worker):
 
     def __init__(self, scriptScope):
         super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
         self._scriptScope = scriptScope
         self._isWorking = False
 
@@ -63,12 +66,14 @@ class ExecutionThread(Worker):
             sys.stdout = outputIO
             sys.stderr = outputIO
 
-            print(f'Started script at {strftime("%Y-%m-%d %H:%M:%S")}\n')
+            self.__logger.info('Started script')
+            print()  # Blank line
             try:
                 exec(code, scriptScope)
             except Exception:
-                print(traceback.format_exc())
-            print(f'\nFinished script at {strftime("%Y-%m-%d %H:%M:%S")}')
+                self.__logger.error(traceback.format_exc())
+            print()  # Blank line
+            self.__logger.info('Finished script')
         finally:
             sys.stdout = oldStdout
             sys.stderr = oldStderr

@@ -10,25 +10,25 @@ current hardware control setup.
 
 import time
 
-print('Starting recording in "until stop" mode...')
+getLogger().info('Starting recording in "until stop" mode...')
 api.imcontrol.setRecModeUntilStop()
 api.imcontrol.startRecording()
 
-print('Recording started. Showing hardware control tab for a few seconds before stopping.')
+getLogger().info('Recording started. Showing hardware control tab for a few seconds before stopping.')
 time.sleep(3)
 mainWindow.setCurrentModule('imcontrol')
 time.sleep(5)
 
-print('Going back to scripting tab.')
+getLogger().info('Going back to scripting tab.')
 mainWindow.setCurrentModule('imscripting')
 time.sleep(2)
 
-print('Stopping recording...')
+getLogger().info('Stopping recording...')
 waitForRecordingToEnd = getWaitForSignal(api.imcontrol.signals().recordingEnded)
 api.imcontrol.stopRecording()  # It's important to call this after getWaitForSignal!
 waitForRecordingToEnd()
 
-print('Recording stopped.')
+getLogger().info('Recording stopped.')
 
 
 # Copyright (C) 2020, 2021 TestaLab

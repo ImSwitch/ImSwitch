@@ -36,7 +36,6 @@ class ImScrMainController(MainController):
         """ Generates a scope of objects that are intended to be accessible by scripts. """
 
         scope = {}
-        scope.update(getActionsScope())
         scope.update({
             'moduleCommChannel': moduleCommChannel,
             'mainWindow': generateAPI([multiModuleWindowController]),
@@ -47,6 +46,7 @@ class ImScrMainController(MainController):
                  if hasattr(controller, 'api')}
             )
         })
+        scope.update(getActionsScope(scope.copy()))
 
         return scope
 

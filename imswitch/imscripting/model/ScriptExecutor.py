@@ -53,7 +53,7 @@ class ExecutionThread(Worker):
     def execute(self, scriptPath, code):
         scriptScope = {}
         scriptScope.update(self._scriptScope)
-        scriptScope.update(getActionsScope(scriptPath))
+        scriptScope.update(getActionsScope(self._scriptScope, scriptPath))
 
         self._isWorking = True
         oldStdout = sys.stdout

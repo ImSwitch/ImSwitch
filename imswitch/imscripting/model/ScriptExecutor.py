@@ -22,6 +22,12 @@ class ScriptExecutor(SignalInterface):
         self._executionWorker.moveToThread(self._executionThread)
         self._sigExecute.connect(self._executionWorker.execute)
 
+    def __del__(self):
+        self._executionThread.quit()
+        self._executionThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
+
     def execute(self, scriptPath, code):
         """ Executes the specified script code. scriptPath is the path to the
         script file if if exists, or None if the script has not been saved to a

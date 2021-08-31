@@ -35,6 +35,11 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.moveToThread(self.__thread)
         self.__thread.started.connect(self.__recordingWorker.run)
 
+    def __del__(self):
+        self.endRecording(emitSignal=False, wait=True)
+        if hasattr(super(), '__del__'):
+            super().__del__()
+
     @property
     def record(self):
         """ Whether a recording is currently being recorded. """

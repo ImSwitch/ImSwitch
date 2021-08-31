@@ -12,9 +12,21 @@ class BeadRecController(ImConWidgetController):
         self.running = False
         self.roiAdded = False
 
+        self.beadWorker = BeadWorker(self)
+        self.beadWorker.sigNewChunk.connect(self.update)
+        self.thread = Thread()
+        self.beadWorker.moveToThread(self.thread)
+        self.thread.started.connect(self.beadWorker.run)
+
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
         self._widget.sigRunClicked.connect(self.run)
+
+    def __del__(self):
+        self.thread.quit()
+        self.thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def roiToggled(self, enabled):
         """ Show or hide ROI."""
@@ -41,11 +53,6 @@ class BeadRecController(ImConWidgetController):
         if not self.running:
             self.dims = np.array(self._commChannel.getDimsScan()).astype(int)
             self.running = True
-            self.beadWorker = BeadWorker(self)
-            self.beadWorker.sigNewChunk.connect(self.update)
-            self.thread = Thread()
-            self.beadWorker.moveToThread(self.thread)
-            self.thread.started.connect(self.beadWorker.run)
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
         else:

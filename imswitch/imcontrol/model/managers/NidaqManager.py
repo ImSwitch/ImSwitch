@@ -30,9 +30,20 @@ class NidaqManager(SignalInterface):
 
         self.__setupInfo = setupInfo
         self.tasks = {}
+        self.doTaskWaiter = None
+        self.aoTaskWaiter = None
+        self.timerTaskWaiter = None
         self.busy = False
         self.__timerCounterChannel = setupInfo.nidaq.timerCounterChannel
         self.__startTrigger = setupInfo.nidaq.startTrigger
+
+    def __del__(self):
+        for taskWaiter in [self.doTaskWaiter, self.aoTaskWaiter, self.timerTaskWaiter]:
+            if taskWaiter is not None:
+                taskWaiter.quit()
+                taskWaiter.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def __makeSortedTargets(self, sortingKey):
         targetPairs = []

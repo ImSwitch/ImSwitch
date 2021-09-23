@@ -238,6 +238,11 @@ class LaserController(ImConWidgetController):
         uses. """
         self._widget.setValue(laserName, value)
 
+    @APIExport()
+    def changeScanPower(self, laserName, laserValue):
+        defaultPreset = self._setupInfo.laserPresets[self._setupInfo.defaultLaserPresetForScan]
+        defaultPreset[laserName] = guitools.LaserPresetInfo(value=laserValue)
+
 
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'

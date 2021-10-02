@@ -60,6 +60,8 @@ class CommunicationChannel(SignalInterface):
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
 
+    sigBroadcast = Signal(str, str, object)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

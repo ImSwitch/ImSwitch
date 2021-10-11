@@ -18,7 +18,7 @@ class PulseStreamerManager(LaserManager):
     - ``channel_index`` -- streamer digital output (0 to 7)
     """
 
-    def __init__(self, laserInfo, name):
+    def __init__(self, laserInfo, name, **lowLevelManagers):
         self._logger = initLogger(self, instanceName=name)
 
         self._ip_hostname    = laserInfo.managerProperties['streamer_ip']

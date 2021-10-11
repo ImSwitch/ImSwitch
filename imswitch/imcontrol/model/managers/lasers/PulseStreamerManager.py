@@ -18,12 +18,8 @@ class PulseStreamerManager(LaserManager):
     - ``channel_index`` -- streamer digital output (0 to 7)
     """
 
-    def __init__(self, laserInfo, name, **lowLevelManagers):
+    def __init__(self, laserInfo, name):
         self._logger = initLogger(self, instanceName=name)
-
-        # todo: this should not be needed, but without it fails to load
-        # the manager; check on how to fix .json file to properly load it
-        self._rs232manager   = lowLevelManagers['rs232sManager']
 
         self._ip_hostname    = laserInfo.managerProperties['streamer_ip']
         self._channel_index  = laserInfo.managerProperties['channel_index']

@@ -4,12 +4,13 @@ Created on Mon Oct 11 09:48:00 2021
 @author: jacopoabramo
 """
 
-from pulsestreamer.sequence import OutputState
 from imswitch.imcommon.model import initLogger
-from pulsestreamer import PulseStreamer, findPulseStreamers
 from .LaserManager import LaserManager
 
-class PulseStreamerManager(LaserManager):
+from pulsestreamer import PulseStreamer
+from pulsestreamer.sequence import OutputState
+
+class PulseStreamerLaserManager(LaserManager):
     """ LaserManager for controlling Pulse Streamer 8/2 from Swabian Instruments.
 
     Manager properties:

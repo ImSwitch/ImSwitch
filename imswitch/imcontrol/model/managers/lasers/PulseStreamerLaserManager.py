@@ -7,36 +7,43 @@ Created on Mon Oct 11 09:48:00 2021
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
-from pulsestreamer import PulseStreamer
-from pulsestreamer.sequence import OutputState
-
 class PulseStreamerLaserManager(LaserManager):
     """ LaserManager for controlling Pulse Streamer 8/2 from Swabian Instruments.
 
     Manager properties:
 
-    - ``streamer_ip``   -- streamer IP address
-    - ``channel_index`` -- streamer digital output (0 to 7)
+    - ``digitalChannel`` -- streamer digital output (0 to 7)
+    - ``analogChannel"   -- streamer analog output (0 to 1)
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self._logger = initLogger(self, instanceName=name)
+        self._pulseStreamerManager = lowLevelManagers["pulseStreamerManager"]
+        
+        try:
+            self._digitalChannels = laserInfo.managerProperties["digitalChannels"]
+        except KeyError:
+            self._digitalChannels = None
+        
+        try:
+            self._analogChannels = laserInfo.managerProperties["analogChannels"]
+        except KeyError:
+            self._analogChannels = None
 
-        self._ip_hostname    = laserInfo.managerProperties['streamer_ip']
-        self._channel_index  = laserInfo.managerProperties['channel_index']
-        self._pulse_streamer = PulseStreamer(ip_hostname=self._ip_hostname)
-
-        super().__init__(laserInfo, name, isBinary=True, valueUnits="V", valueDecimals=1)
+        super().__init__(laserInfo, name, isBinary=laserInfo.analogChannel is None, valueUnits="V", valueDecimals=1)
 
     def setEnabled(self, enabled):
-        if enabled:
-            self._pulse_streamer.constant(OutputState([self._channel_index]))
-        else:
-            self._pulse_streamer.constant(OutputState.ZERO())
+        """Turns ON/OFF the digital channel handled by the manager.
+        """
+        self._pulseStreamerManager.setDigital(self._digitalChannels, enabled)
 
-    def setValue(self, value):
-        # todo: how to implement?
-        pass
+    def setValue(self, voltage):
+        """Sets the output voltage of the analog channel selected by the manager.
+        """
+        self._pulseStreamerManager.setAnalog(
+            channel=self._analogChannels, voltage=voltage,
+            min_val=self.valueRangeMin, max_val=self.valueRangeMax
+        )
 
 # Copyright (C) 2021 Eggeling Group
 # This file is part of ImSwitch.

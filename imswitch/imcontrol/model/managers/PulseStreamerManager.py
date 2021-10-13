@@ -7,6 +7,8 @@ Created on Tue Oct 12 15:05:00 2021
 from pulsestreamer import PulseStreamer, OutputState
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
+import sys
+import io
 
 DIG_CH_MAX_NUMBER = 8
 ANG_CH_MAX_NUMBER = 2
@@ -22,11 +24,20 @@ class PulseStreamerManager(SignalInterface):
 
     def __init__(self, setupInfo):
         super().__init__()
+
+        # redirecting stdout output
+        # to properly log enstablished connection
+        self.__stdOut = io.StringIO()
+        sys.stdout = self.__stdOut
+
         self.__logger = initLogger(self)
         self.__setupInfo = setupInfo
         self.__ipAddress = setupInfo.pulseStreamer.ipAddress
         try:
             self.__pulseStreamer = PulseStreamer(self.__ipAddress)
+            msg = self.__stdOut.getvalue()
+            msg = msg.split("\n")
+            [self.__logger.info(m) for m in msg if len(m) > 1]
         except:
             # todo: fill exception
             pass       
@@ -68,7 +79,7 @@ class PulseStreamerManager(SignalInterface):
             A0 = 0.0
             A1 = 0.0
             if voltage > 0.0:
-                voltage = max(voltage, max_val)
+                voltage = min(voltage, max_val)
             else:
                 voltage = max(voltage, min_val)
 

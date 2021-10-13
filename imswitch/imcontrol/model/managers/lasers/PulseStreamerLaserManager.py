@@ -19,18 +19,11 @@ class PulseStreamerLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self._logger = initLogger(self, instanceName=name)
         self._pulseStreamerManager = lowLevelManagers["pulseStreamerManager"]
+        self._digitalChannels = laserInfo.managerProperties["digitalChannels"]
+        self._analogChannels = laserInfo.managerProperties["analogChannels"]
         
-        try:
-            self._digitalChannels = laserInfo.managerProperties["digitalChannels"]
-        except KeyError:
-            self._digitalChannels = None
-        
-        try:
-            self._analogChannels = laserInfo.managerProperties["analogChannels"]
-        except KeyError:
-            self._analogChannels = None
 
-        super().__init__(laserInfo, name, isBinary=laserInfo.analogChannel is None, valueUnits="V", valueDecimals=1)
+        super().__init__(laserInfo, name, isBinary=self._analogChannels is None, valueUnits="V", valueDecimals=1)
 
     def setEnabled(self, enabled):
         """Turns ON/OFF the digital channel handled by the manager.

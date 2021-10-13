@@ -31,7 +31,6 @@ class PulseStreamerManager(SignalInterface):
         sys.stdout = self.__stdOut
 
         self.__logger = initLogger(self)
-        self.__setupInfo = setupInfo
         self.__ipAddress = setupInfo.pulseStreamer.ipAddress
         try:
             self.__pulseStreamer = PulseStreamer(self.__ipAddress)

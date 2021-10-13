@@ -151,6 +151,10 @@ class NidaqInfo:
     startTrigger: bool = False
     """ Boolean for start triggering for sync. """
 
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: str
+    """ IP address of Pulse Streamer hardware. """
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -188,6 +192,9 @@ class SetupInfo:
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """
+
+    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
+    """ Pulse Streamer settings. """
 
     _catchAll: CatchAll = None
 

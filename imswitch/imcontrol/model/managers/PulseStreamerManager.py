@@ -65,17 +65,28 @@ class PulseStreamerManager(SignalInterface):
         elif not self._areChannelsOk(channel, ANG_CH_MAX_NUMBER):
             raise PulseStreamerManagerError(f'Target analog channels are out of bounds (min. is 0, max. is {ANG_CH_MAX_NUMBER-1})')
         else:
+            A0 = 0.0
+            A1 = 0.0
             if voltage > 0.0:
                 voltage = max(voltage, max_val)
             else:
                 voltage = max(voltage, min_val)
+
+            # todo: verbose checks, can we make them more elegant?
             if isinstance(channel, list):
-                self.__pulseStreamer.constant(OutputState([], voltage, voltage))
+                if len(channel) < 2:
+                    if channel[0] == 0:
+                        A0 = voltage
+                    else:
+                        A1 = voltage
+                else:
+                    A0 = A1 = voltage
             else:
                 if channel == 0:
-                    self.__pulseStreamer.constant(OutputState([], voltage, 0.0))
+                    A0 = voltage
                 else:
-                    self.__pulseStreamer.constant(OutputState([], 0.0, voltage))
+                    A1 = voltage
+            self.__pulseStreamer.constant(OutputState([], A0, A1))
 
     def _areChannelsOk(self, channel, upper_bound) -> bool:
         """Checks the validity of the selected channel (or channels)

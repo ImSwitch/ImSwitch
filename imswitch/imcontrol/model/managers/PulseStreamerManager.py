@@ -32,6 +32,9 @@ class PulseStreamerManager(SignalInterface):
 
         self.__logger = initLogger(self)
         self.__ipAddress = setupInfo.pulseStreamer.ipAddress
+        self.__digitalChannels = []
+        self.__analogChannels = [0.0, 0.0]
+
         try:
             self.__pulseStreamer = PulseStreamer(self.__ipAddress)
             msg = self.__stdOut.getvalue()
@@ -55,11 +58,15 @@ class PulseStreamerManager(SignalInterface):
         else:
             if bool(enable):
                 if isinstance(channel, list):
-                    self.__pulseStreamer.constant(OutputState(channel))
+                    self.__digitalChannels = channel
                 else:
-                    self.__pulseStreamer.constant(OutputState([channel]))
+                    self.__digitalChannels = [channel]
             else:
-                self.__pulseStreamer.constant(OutputState.ZERO())
+                self.__digitalChannels = []
+        
+        self.__pulseStreamer.constant(OutputState(self.__digitalChannels, 
+                                                self.__analogChannels[0], 
+                                                self.__analogChannels[1]))
 
     def setAnalog(self, channel, voltage, min_val=-1.0, max_val=1.0):
         """Function to set an analog channel output level
@@ -75,8 +82,6 @@ class PulseStreamerManager(SignalInterface):
         elif not self._areChannelsOk(channel, ANG_CH_MAX_NUMBER):
             raise PulseStreamerManagerError(f'Target analog channels are out of bounds (min. is 0, max. is {ANG_CH_MAX_NUMBER-1})')
         else:
-            A0 = 0.0
-            A1 = 0.0
             if voltage > 0.0:
                 voltage = min(voltage, max_val)
             else:
@@ -86,17 +91,19 @@ class PulseStreamerManager(SignalInterface):
             if isinstance(channel, list):
                 if len(channel) < 2:
                     if channel[0] == 0:
-                        A0 = voltage
+                        self.__analogChannels[0] = voltage
                     else:
-                        A1 = voltage
+                        self.__analogChannels[1] = voltage
                 else:
-                    A0 = A1 = voltage
+                    self.__analogChannels[0] = self.__analogChannels[1] = voltage
             else:
                 if channel == 0:
-                    A0 = voltage
+                    self.__analogChannels[0] = voltage
                 else:
-                    A1 = voltage
-            self.__pulseStreamer.constant(OutputState([], A0, A1))
+                    self.__analogChannels[1] = voltage
+            self.__pulseStreamer.constant(OutputState(self.__digitalChannels, 
+                                                self.__analogChannels[0], 
+                                                self.__analogChannels[1]))
 
     def _areChannelsOk(self, channel, upper_bound) -> bool:
         """Checks the validity of the selected channel (or channels)

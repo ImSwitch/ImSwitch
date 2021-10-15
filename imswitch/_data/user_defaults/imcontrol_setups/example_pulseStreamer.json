@@ -4,6 +4,7 @@
             "analogChannel": 0,
             "digitalLine": 0,
             "managerName": "PulseStreamerLaserManager",
+            "managerProperties": {},
             "wavelength": 435,
             "valueRangeMin": -1.0,
             "valueRangeMax": 1.0

@@ -119,7 +119,7 @@ class ReconstructionView(QtWidgets.QFrame):
         self.napariViewer.dims.axis_labels = tuple(axisLabels)
 
     def clearImage(self):
-        self.setImage(np.zeros((1, 1)))
+        self.imgLayer.data = np.zeros((1, 1))
 
     def getImageDisplayLevels(self):
         return self.imgLayer.contrast_limits

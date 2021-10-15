@@ -30,7 +30,10 @@ class ReconstructionViewController(ImRecWidgetController):
             currHistLevels = self._widget.getImageDisplayLevels()
             prevItem = self._widget.getDataAtIndex(self._currItemInd)
             prevItem.setDispLevels(currHistLevels)
-            retrievedLevels = self._widget.getCurrentItemData().getDispLevels()
+
+            currItem = self._widget.getCurrentItemData()
+            retrievedLevels = \
+                self._widget.getCurrentItemData().getDispLevels() if currItem is not None else None
             self.fullUpdate(levels=retrievedLevels)
             if retrievedLevels is not None:
                 self._widget.setImageDisplayLevels(retrievedLevels[0], retrievedLevels[1])

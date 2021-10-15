@@ -24,6 +24,9 @@ class NidaqLaserManager(LaserManager):
             min_val=self.valueRangeMin, max_val=self.valueRangeMax
         )
 
+    def setScanModeActive(self, active):
+        if active:
+            self.setEnabled(False)
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

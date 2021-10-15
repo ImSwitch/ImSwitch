@@ -176,6 +176,12 @@ class NidaqInfo:
             return self.timerCounterChannel
 
 
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: Optional[str] = None
+    """ IP address of Pulse Streamer hardware. """
+
+    
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -212,6 +218,9 @@ class SetupInfo:
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """
+
+    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
+    """ Pulse Streamer settings. """
 
     _catchAll: CatchAll = None
 

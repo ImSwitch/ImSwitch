@@ -22,6 +22,12 @@ class CheckUpdatesController(WidgetController):
         self.thread.sigNewVersionPyInstaller.connect(self._widget.showPyInstallerUpdate)
         self.thread.sigNewVersionPyPI.connect(self._widget.showPyPIUpdate)
 
+    def __del__(self):
+        self.thread.quit()
+        self.thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
+
     def checkForUpdates(self):
         """ Check for updates on a separate thread. """
 

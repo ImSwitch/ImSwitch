@@ -49,6 +49,9 @@ class APDManager(DetectorManager):
 
         self._terminal = detectorInfo.managerProperties["terminal"]
 
+        self._scanWorker = None
+        self._scanThread = None
+
         # Prepare parameters and signal connections
         parameters = {}
         self._nidaqManager = nidaqManager
@@ -60,6 +63,13 @@ class APDManager(DetectorManager):
         self.__shape = fullShape
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, croppable=False)
+
+    def __del__(self):
+        if self._scanThread is not None:
+            self._scanThread.quit()
+            self._scanThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def initiateScan(self, scanInfoDict):
         if self.acquisition:

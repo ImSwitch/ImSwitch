@@ -153,7 +153,7 @@ class NidaqInfo:
 
 @dataclass(frozen=True)
 class PulseStreamerInfo:
-    ipAddress: str
+    ipAddress: Optional[str] = None
     """ IP address of Pulse Streamer hardware. """
 
 @dataclass_json(undefined=Undefined.INCLUDE)

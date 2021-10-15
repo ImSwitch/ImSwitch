@@ -1,12 +1,9 @@
 {
     "lasers": {
-        "Pulse Streamer": {
-            "analogChannel": null,
+        "435 Laser": {
+            "analogChannel": 0,
+            "digitalLine": 0,
             "managerName": "PulseStreamerLaserManager",
-            "managerProperties": {
-                "digitalChannels" : [0, 1],
-				"analogChannels" : 0
-            },
             "wavelength": 435,
             "valueRangeMin": -1.0,
             "valueRangeMax": 1.0

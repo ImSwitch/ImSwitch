@@ -19,9 +19,9 @@ class PulseStreamerLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self._logger = initLogger(self, instanceName=name)
         self._pulseStreamerManager = lowLevelManagers["pulseStreamerManager"]
-        self._digitalChannels = laserInfo.managerProperties["digitalChannels"]
-        self._analogChannels = laserInfo.managerProperties["analogChannels"]
-        
+        self._digitalChannels = laserInfo.digitalLine
+        self._analogChannels = laserInfo.analogChannel
+
 
         super().__init__(laserInfo, name, isBinary=self._analogChannels is None, valueUnits="V", valueDecimals=1)
 

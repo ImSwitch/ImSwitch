@@ -44,6 +44,9 @@ class APDManager(DetectorManager):
         self.acquisition = True
 
         self._channel = detectorInfo.managerProperties["ctrInputLine"]
+        if isinstance(self._channel, int):
+            self._channel = f'Dev1/ctr{self._channel}'  # for backwards compatibility
+
         self._terminal = detectorInfo.managerProperties["terminal"]
 
         # Prepare parameters and signal connections

@@ -27,20 +27,12 @@ class CameraAV:
         self.model = "AV Camera"
         self.shape = (0, 0)
 
-        self.blacklevel = 00
+        self.blacklevel = 100
         self.exposure_time = 0
         self.analog_gain = 0
-        self.frame_ID = -1
-        self.frame_ID_software = -1
-        self.frame_ID_offset_hardware_trigger = 0
-        self.timestamp = 0
 
         self.image_locked = False
         self.current_frame = None
-
-        self.callback_is_enabled = False
-        self.callback_was_enabled_before_autofocus = False
-        self.callback_was_enabled_before_multipoint = False
         self.is_streaming = False
 
         self.GAIN_MAX = 24
@@ -49,30 +41,27 @@ class CameraAV:
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
-        self.ROI_offset_x = CAMERA.ROI_OFFSET_X_DEFAULT
-        self.ROI_offset_y = CAMERA.ROI_OFFSET_X_DEFAULT
-        self.ROI_width = CAMERA.ROI_WIDTH_DEFAULT
-        self.ROI_height = CAMERA.ROI_HEIGHT_DEFAULT
-
     def start_live(self):
         # no camera thread open, generate one!
         self.camera = VimbaCameraThread()
         # temporary
         self.camera.start()
+        self.is_streaming = True
         self.camera.setExposureTime(1000)
 
     def stop_live(self):
-        self.camera.stop_preview()
-        self.camera.close()
-        self.device_info_list = None
-        self.camera = None
-        self.is_color = None
-        self.gamma_lut = None
-        self.contrast_lut = None
-        self.color_correction_param = None
-        self.last_raw_image = None
-        self.last_converted_image = None
-        self.last_numpy_image = None
+        if self.is_streaming:
+            self.camera.stop_preview()
+            self.camera.close()
+            self.device_info_list = None
+            self.camera = None
+            self.is_color = None
+            self.gamma_lut = None
+            self.contrast_lut = None
+            self.color_correction_param = None
+            self.last_raw_image = None
+            self.last_converted_image = None
+            self.last_numpy_image = None
 
     def suspend_live(self):
         pass
@@ -82,11 +71,13 @@ class CameraAV:
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.camera.setExposureTime(self.exposure_time*1000)
+        if self.is_streaming:
+            self.camera.setExposureTime(self.exposure_time*1000)
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
-        self.camera.setGain(self.analog_gain)
+        if self.is_streaming:
+            self.camera.setGain(self.analog_gain)
         
     def get_awb_ratios(self):
         '''

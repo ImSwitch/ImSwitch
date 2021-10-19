@@ -15,10 +15,10 @@
   "WidefieldCamera": {
     "analogChannel": null,
     "digitalLine": null,
-    "managerName": "AVManager",
+    "managerName": "TISManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "avcam": {
+      "tis": {
         "exposure": 0,
         "gain": 0,
         "brightness": 0,

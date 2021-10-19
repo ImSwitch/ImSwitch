@@ -61,7 +61,9 @@ class TISManager(DetectorManager):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an error will be
-        raised."""
+        raised."""        
+
+        super().setParameter(name, value)
 
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')

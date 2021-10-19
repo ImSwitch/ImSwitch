@@ -15,8 +15,8 @@ FRAME_QUEUE_SIZE = 1
 T_PERIODE = 0.5 # [s] - time between acquired frames
 
 # TODO: REMOVE THOSE PARAMETERS?
-FRAME_HEIGHT = 1088
-FRAME_WIDTH = 1456
+FRAME_HEIGHT = 1000
+FRAME_WIDTH = 1000
 
 WINDOW_START_FROM_LEFT = 80
 WINDOW_START_FROM_TOP = 80
@@ -153,19 +153,6 @@ class FrameConsumer(threading.Thread):
                 # resize to fit in the window
                 np_images = cv2.resize(np_images_raw, (self.resolution_preview[0], self.resolution_preview[1]), interpolation=cv2.INTER_NEAREST)
 
-                '''
-#                from scipy.ndimage import median_filter
-#                np_images = median_filter(np_images, size=2, mode="mirror")
-#                print("pre: "+ str(np.min(np_images))+"/"+str(np.max(np_images))+"/"+str(np.mean(np_images))+"/"+str(np_images.shape))
-                
-                
-                try:
-                    from skimage import exposure
-                    np_images = exposure.equalize_adapthist(np_images, clip_limit=0.03)
-                    np_images = np.uint8(np_images*255)
-                except:
-                    print("probably no skimage installed?")
-                '''
             else:
                 # If there are no frames available, show dummy image instead
                 np_images = create_dummy_frame(self.resolution_preview[1],self.resolution_preview[0])
@@ -190,29 +177,7 @@ class FrameConsumer(threading.Thread):
                 cv2.imwrite(filename, np_images)
                 self.iframe += 1
 
-            if self.is_stream:
-                print("We need to implement the streaming option here.")
-
-            if not self.is_window_on_top:
-                # set window upfront
-                self.log.info('Setting window "always on top"')
-                # https://askubuntu.com/questions/394998/why-wmctrl-doesnt-work-for-certain-windows
-                os.system('wmctrl -r "UC2-Livestream" -b add,above')
-                self.is_window_on_top = True
-
-            if self.frame_callback is not None:
-                self.frame_callback(None, self.latest_frame_raw)
-
-            # Check for shutdown condition
-            if self.is_stop or KEY_CODE_ENTER == cv2.waitKey(10):
-                cv2.destroyAllWindows()
-                self.alive = False
-                self.is_window_on_top = False
-
         self.log.info('Thread \'FrameConsumer\' terminated.')
-
-    def register_capture_callback(self, callback):
-        self.frame_callback = callback
 
     def getLatestFrame(self, is_raw=True):
         """[summary]
@@ -221,7 +186,7 @@ class FrameConsumer(threading.Thread):
             [type]: [description]
         """
         if is_raw:
-            return self.latest_frame_raw
+            return self.latest_frame_raw[0:FRAME_WIDTH,0:FRAME_HEIGHT]
         else:
             return self.latest_frame
 

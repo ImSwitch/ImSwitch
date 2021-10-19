@@ -162,8 +162,8 @@ class CameraAV:
 
     def grabFrame(self):
         # get frame and save
-        numpy_image = np.squeeze(self.camera.getLatestFrame(is_raw=True))
-        return numpy_image
+        return np.squeeze(self.camera.getLatestFrame(is_raw=True))
+       
 
 
     def setROI(self, hpos, vpos, hsize, vsize):

@@ -82,7 +82,7 @@ Future:
 
 class VimbaCameraThread(threading.Thread):
     def __init__(self, is_record=False, filename='',
-    resolution=(640,320),
+    resolution=(640,),
     framerate=20,
     exposure_time=10e6,
     gain=0,
@@ -116,7 +116,7 @@ class VimbaCameraThread(threading.Thread):
         self.image_sink = None  # can be 'window', 'stream', 'record', or NONE
         self.filename = '' # TODO: Adapt it!
 
-        self.preview_resolution = (480,320)
+        self.preview_resolution = (FRAME_WIDTH,FRAME_HEIGHT)
 
         # recording
         self.i_frame = 0 # iterator for the recorded frames

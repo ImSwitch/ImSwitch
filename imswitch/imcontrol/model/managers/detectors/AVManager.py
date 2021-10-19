@@ -61,6 +61,8 @@ class AVManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
+        super().setParameter(name, value)
+
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
@@ -143,7 +145,6 @@ class AVManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces.avcamera import CameraAV
             self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
             camera = CameraAV(cameraId)
-            asdf
         except Exception as e:
             print(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')

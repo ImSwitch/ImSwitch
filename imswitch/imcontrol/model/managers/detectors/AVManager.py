@@ -25,7 +25,7 @@ class AVManager(DetectorManager):
         self._running = False
         self._adjustingParameters = False
 
-        for propertyName, propertyValue in detectorInfo.managerProperties['avc'].items():
+        for propertyName, propertyValue in detectorInfo.managerProperties['avcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (self._camera.getPropertyValue('image_width'),
@@ -80,7 +80,7 @@ class AVManager(DetectorManager):
         return value
 
     def setBinning(self, binning):
-        pass #TODO: Impelement: super().setBinning(binning)
+        super().setBinning(binning)
 
     def getChunk(self):
         return self._camera.grabFrame()[np.newaxis, :, :]
@@ -143,7 +143,8 @@ class AVManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces.avcamera import CameraAV
             self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
             camera = CameraAV(cameraId)
-        except Exception:
+        except Exception as e:
+            print(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()

@@ -18,7 +18,7 @@
     "managerName": "AVManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "av": {
+      "avcam": {
         "exposure": 0,
         "gain": 0,
         "brightness": 0,

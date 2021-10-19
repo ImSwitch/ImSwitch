@@ -1,18 +1,10 @@
-import argparse
-import cv2
-import time
 import numpy as np
-import copy
-import threading
-import queue
-import os
 from PIL import Image
 
 from typing import Optional
 from vimba import *
 
 from imswitch.imcommon.model import initLogger
-from .pyicic import IC_ImagingControl
 
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameconsumer import *

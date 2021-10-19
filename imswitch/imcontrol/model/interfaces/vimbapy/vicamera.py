@@ -11,12 +11,8 @@ from PIL import Image
 from typing import Optional
 from vimba import *
 
-try:
-    from control.vimbapy.vicamera_frameproducer import *
-    from control.vimbapy.vicamera_frameconsumer import *
-except:
-    from vicamera_frameproducer import *
-    from vicamera_frameconsumer import *
+from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *
+from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameconsumer import *
 
 FRAME_HEIGHT = 1088
 FRAME_WIDTH = 1456

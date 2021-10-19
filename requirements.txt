@@ -19,3 +19,6 @@ requests >= 2.25, < 3
 scikit-image >= 0.18, < 0.19
 tifffile >= 2020.11.26
 wxPython >= 4.1, < 5
+opencv-python
+#git+https://github.com/alliedvision/VimbaPython
+

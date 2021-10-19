@@ -1,6 +1,6 @@
 {
   "positioners": {
-    "X": {
+    "GRBLStage": {
         "managerName": "GRBLStageManager",
         "managerProperties": {
           "rs232device_mac": "/dev/cu.wchusbserial14330",
@@ -11,11 +11,29 @@
         "forPositioning": true
     }
 },
+"detectors": {
+  "WidefieldCamera": {
+    "analogChannel": null,
+    "digitalLine": null,
+    "managerName": "AVManager",
+    "managerProperties": {
+      "cameraListIndex": 1,
+      "av": {
+        "exposure": 0,
+        "gain": 0,
+        "brightness": 0,
+        "image_width": 2448,
+        "image_height": 2048
+      }
+    },
+    "forAcquisition": true
+  }
+},
   "rois": {
     "Full chip": {
       "x": 0,
       "y": 0,
-      "w": 2448,
+      "w": 1000,
       "h": 2048
     }
   },

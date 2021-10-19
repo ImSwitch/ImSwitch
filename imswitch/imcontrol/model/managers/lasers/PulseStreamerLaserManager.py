@@ -1,11 +1,6 @@
-"""
-Created on Mon Oct 11 09:48:00 2021
-
-@author: jacopoabramo
-"""
-
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
+
 
 class PulseStreamerLaserManager(LaserManager):
     """ LaserManager for controlling Pulse Streamer 8/2 from Swabian Instruments.
@@ -37,6 +32,7 @@ class PulseStreamerLaserManager(LaserManager):
             channel=self._analogChannels, voltage=voltage,
             min_val=self.valueRangeMin, max_val=self.valueRangeMax
         )
+
 
 # Copyright (C) 2021 Eggeling Group
 # This file is part of ImSwitch.

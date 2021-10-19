@@ -1,11 +1,9 @@
-from dotmap import DotMap
-
 from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import generateAPI
+from imswitch.imcommon.model import generateAPI, pythontools
+from imswitch.imscripting.model import getActionsScope
 from .CommunicationChannel import CommunicationChannel
-from .basecontrollers import ImScrWidgetControllerFactory
 from .ImScrMainViewController import ImScrMainViewController
-from ..model import getActionsScope
+from .basecontrollers import ImScrWidgetControllerFactory
 
 
 class ImScrMainController(MainController):
@@ -38,15 +36,17 @@ class ImScrMainController(MainController):
         """ Generates a scope of objects that are intended to be accessible by scripts. """
 
         scope = {}
-        scope.update(getActionsScope())
         scope.update({
             'moduleCommChannel': moduleCommChannel,
             'mainWindow': generateAPI([multiModuleWindowController]),
-            'controllers': DotMap(moduleMainControllers),
-            'api': DotMap({key: controller.api
-                           for key, controller in moduleMainControllers.items()
-                           if hasattr(controller, 'api')})
+            'controllers': pythontools.dictToROClass(moduleMainControllers),
+            'api': pythontools.dictToROClass(
+                {key: controller.api
+                 for key, controller in moduleMainControllers.items()
+                 if hasattr(controller, 'api')}
+            )
         })
+        scope.update(getActionsScope(scope.copy()))
 
         return scope
 

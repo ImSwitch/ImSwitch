@@ -1,10 +1,13 @@
 import numpy as np
+
+from imswitch.imcommon.model import initLogger
 from .pyicic import IC_ImagingControl
 
 
 class CameraTIS:
     def __init__(self, cameraNo):
         super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         ic_ic = IC_ImagingControl.IC_ImagingControl()
         ic_ic.init_library()
@@ -14,7 +17,7 @@ class CameraTIS:
 
         self.cam.open()
 
-        self.shape = (0,0)
+        self.shape = (0, 0)
         self.cam.colorenable = 0
 
         self.cam.enable_continuous_mode(True)  # image in continuous mode
@@ -36,19 +39,22 @@ class CameraTIS:
         self.cam.prepare_live()  # prepare prepared state for live imaging
 
     def grabFrame(self):
-        #self.cam.wait_til_frame_ready(20)  # wait for frame ready
+        # self.cam.wait_til_frame_ready(20)  # wait for frame ready
         frame, width, height, depth = self.cam.get_image_data()
         frame = np.array(frame, dtype='float64')
         # Check if below is giving the right dimensions out
-        #TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped 3D array and taking the first plane of that
-        frame = np.reshape(frame, (height, width, depth))[:,:,0]
+        # TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped
+        #       3D array and taking the first plane of that
+        frame = np.reshape(frame, (height, width, depth))[:, :, 0]
         frame = np.transpose(frame)
         return frame
 
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
-        #print(f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
+        # self.__logger.debug(
+        #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
+        # )
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
         self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
@@ -57,7 +63,10 @@ class CameraTIS:
         left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
         hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
         wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
-        print(f'{self.model}: setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}')
+        self.__logger.debug(
+            f'{self.model}: '
+            f'setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}'
+        )
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -72,7 +81,7 @@ class CameraTIS:
         elif property_name == 'image_width':
             self.shape = (property_value, self.shape[1])
         else:
-            print('Property', property_name, 'does not exist')
+            self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
@@ -89,7 +98,7 @@ class CameraTIS:
         elif property_name == "image_height":
             property_value = self.shape[1]
         else:
-            print('Property', property_name, 'does not exist')
+            self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 

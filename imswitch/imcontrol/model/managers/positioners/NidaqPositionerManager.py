@@ -4,18 +4,19 @@ from .PositionerManager import PositionerManager
 class NidaqPositionerManager(PositionerManager):
     """ PositionerManager for analog-value NI-DAQ-controlled positioners.
 
-    Available manager properties:
-    * conversionFactor -- float
-    * minVolt -- minimum voltage
-    * maxVolt -- maximum voltage
+    Manager properties:
+
+    - ``conversionFactor`` -- float value
+    - ``minVolt`` -- minimum voltage
+    - ``maxVolt`` -- maximum voltage
     """
 
-    def __init__(self, positionerInfo, name, **kwargs):
+    def __init__(self, positionerInfo, name, **lowLevelManagers):
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
                                f' {len(positionerInfo.axes)} provided.')
 
-        self._nidaqManager = kwargs['nidaqManager']
+        self._nidaqManager = lowLevelManagers['nidaqManager']
         self._conversionFactor = positionerInfo.managerProperties['conversionFactor']
         self._minVolt = positionerInfo.managerProperties['minVolt']
         self._maxVolt = positionerInfo.managerProperties['maxVolt']

@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import napari
 import numpy as np
+from napari.utils.translations import trans
 from qtpy import QtCore, QtGui, QtWidgets
 from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
@@ -21,6 +22,54 @@ def addNapariGrayclipColormap():
     napari.utils.colormaps.AVAILABLE_COLORMAPS['grayclip'] = napari.utils.Colormap(
         name='grayclip', colors=grayclip
     )
+
+
+class EmbeddedNapari(napari.Viewer):
+    """ Napari viewer to be embedded in non-napari windows. Also includes a
+    feature to protect certain layers from being removed when added using
+    the add_image method. """
+
+    def __init__(self, *args, show=False, **kwargs):
+        super().__init__(*args, show=show, **kwargs)
+
+        # Monkeypatch layer removal methods
+        oldDelitemIndices = self.layers._delitem_indices
+
+        def newDelitemIndices(key):
+            indices = oldDelitemIndices(key)
+            for index in indices[:]:
+                layer = index[0][index[1]]
+                if hasattr(layer, 'protected') and layer.protected:
+                    indices.remove(index)
+            return indices
+
+        self.layers._delitem_indices = newDelitemIndices
+
+        # Make menu bar not native
+        self.window._qt_window.menuBar().setNativeMenuBar(False)
+
+        # Remove unwanted menu bar items
+        menuChildren = self.window._qt_window.findChildren(QtWidgets.QAction)
+        for menuChild in menuChildren:
+            try:
+                if menuChild.text() in [trans._('Close Window'), trans._('Exit')]:
+                    self.window.file_menu.removeAction(menuChild)
+            except Exception:
+                pass
+
+    def add_image(self, *args, protected=False, **kwargs):
+        result = super().add_image(*args, **kwargs)
+
+        if isinstance(result, list):
+            for layer in result:
+                layer.protected = protected
+        else:
+            result.protected = protected
+
+        return result
+
+    def get_widget(self):
+        return self.window._qt_window
 
 
 class NapariBaseWidget(QtWidgets.QWidget):
@@ -52,6 +101,14 @@ class NapariBaseWidget(QtWidgets.QWidget):
             napariViewer.window.qt_viewer.dockLayerList
         )
         napariViewer.window.qt_viewer.dockLayerList.show()
+        return widget
+
+    def addItemToViewer(self, item):
+        item.attach(self.viewer,
+                    canvas=self.viewer.window.qt_viewer.canvas,
+                    view=self.viewer.window.qt_viewer.view,
+                    parent=self.viewer.window.qt_viewer.view.scene,
+                    order=1e6 + 8000)
 
 
 class NapariUpdateLevelsWidget(NapariBaseWidget):
@@ -240,7 +297,7 @@ class VispyROIVisual(VispyBaseVisual):
 
     @position.setter
     def position(self, value):
-        self._position = np.array(value, dtype=np.int)
+        self._position = np.array(value, dtype=int)
         self._update_position()
         self.sigROIChanged.emit(self.position, self.size)
 
@@ -250,7 +307,7 @@ class VispyROIVisual(VispyBaseVisual):
 
     @size.setter
     def size(self, value):
-        self._size = np.array(value, dtype=np.int)
+        self._size = np.array(value, dtype=int)
         self._update_size()
         self.sigROIChanged.emit(self.position, self.size)
 
@@ -375,8 +432,10 @@ class VispyROIVisual(VispyBaseVisual):
         pos_start = self.position
         pos_end = self.position + self._size
 
-        if (pos_end[0] <= mouse_pos[0] < pos_end[0] + self._world_scale * self._handle_side_length and
-            pos_end[1] <= mouse_pos[1] < pos_end[1] + self._world_scale * self._handle_side_length):
+        if (pos_end[0] <= mouse_pos[0] <
+                pos_end[0] + self._world_scale * self._handle_side_length and
+            pos_end[1] <= mouse_pos[1] <
+                pos_end[1] + self._world_scale * self._handle_side_length):
             self._drag_mode = 'scale'
         elif (pos_start[0] <= mouse_pos[0] < pos_end[0] and
               pos_start[1] <= mouse_pos[1] < pos_end[1]):
@@ -422,7 +481,7 @@ class VispyLineVisual(VispyBaseVisual):
 
     @position.setter
     def position(self, value):
-        self._position = np.array(value, dtype=np.int)
+        self._position = np.array(value, dtype=int)
         self._update_position()
 
     @property
@@ -482,9 +541,10 @@ class VispyLineVisual(VispyBaseVisual):
         if not self._attached:
             return
 
+        angleRad = np.deg2rad(self._angle)
         self.node.transform.translate = [
-            self._position[0] - self._line_length / 2 * self._world_scale * (np.cos(np.deg2rad(self._angle))),
-            self._position[1] - self._line_length / 2 * self._world_scale * (np.sin(np.deg2rad(self._angle))),
+            self._position[0] - self._line_length / 2 * self._world_scale * (np.cos(angleRad)),
+            self._position[1] - self._line_length / 2 * self._world_scale * (np.sin(angleRad)),
             0, 0
         ]
 
@@ -527,7 +587,7 @@ class VispyLineVisual(VispyBaseVisual):
 
         # Determine whether the line was clicked
         mouse_pos = np.array(self._view.scene.node_transform(self._view).imap(event.pos)[0:2])
-        
+
         s = np.sin(np.deg2rad(-self.angle))
         c = np.cos(np.deg2rad(-self.angle))
 
@@ -535,7 +595,7 @@ class VispyLineVisual(VispyBaseVisual):
 
         mouse_pos_rot = mouse_pos - center
         mouse_pos_rot = np.array([mouse_pos_rot[0] * c - mouse_pos_rot[1] * s,
-                                 mouse_pos_rot[0] * s + mouse_pos_rot[1] * c])
+                                  mouse_pos_rot[0] * s + mouse_pos_rot[1] * c])
         mouse_pos_rot = mouse_pos_rot + center
 
         x_start = self.position[0] - self._line_length / 2

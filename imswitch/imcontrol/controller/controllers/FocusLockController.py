@@ -1,20 +1,22 @@
 import time
 
 import numpy as np
-
 import pyqtgraph.ptime as ptime
 import scipy.ndimage as ndi
 from lantz import Q_
-from qtpy import QtCore
 from skimage.feature import peak_local_max
 
+from imswitch.imcommon.framework import Thread, Timer
+from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 
 
 class FocusLockController(ImConWidgetController):
     """Linked to FocusLockWidget."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         if self._setupInfo.focusLock is None:
             return
@@ -37,10 +39,10 @@ class FocusLockController(ImConWidgetController):
         self._widget.positionSetButton.clicked.connect(self.moveZ)
         self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
         self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
-        
+
         self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
         self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
-        
+
         self.setPointSignal = 0
         self.locked = False
         self.aboutToLock = False
@@ -60,21 +62,29 @@ class FocusLockController(ImConWidgetController):
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
 
-        self.timer = QtCore.QTimer()
+        self.timer = Timer()
         self.timer.timeout.connect(self.update)
         self.timer.start(self.focusTime)
         self.startTime = ptime.time()
+
+    def __del__(self):
+        self.__processDataThread.quit()
+        self.__processDataThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def unlockFocus(self):
         if self.locked:
             self.locked = False
             self._widget.lockButton.setChecked(False)
             self._widget.focusPlot.removeItem(self._widget.focusLockGraph.lineLock)
-    
+
     def toggleFocus(self):
         if self._widget.lockButton.isChecked():
             absz = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(np.float(self._widget.kpEdit.text()), np.float(self._widget.kiEdit.text()), absz)
+            self.lockFocus(float(self._widget.kpEdit.text()),
+                           float(self._widget.kiEdit.text()),
+                           absz)
             self._widget.lockButton.setText('Unlock')
         else:
             self.unlockFocus()
@@ -82,18 +92,18 @@ class FocusLockController(ImConWidgetController):
 
     def cameraDialog(self):
         self._master.detectorsManager[self.camera].openPropertiesDialog()
-        print("Controller: Open camera settings dialog.")
+        self.__logger.debug('Open camera settings dialog')
 
     def moveZ(self):
-        abspos = np.float(self._widget.positionEdit.text())
+        abspos = float(self._widget.positionEdit.text())
         self._master.positionersManager[self.positioner].setPosition(abspos, 0)
-        print(f"FL Controller: Move Z-piezo to absolute position {abspos} um.")
+        self.__logger.debug(f'Move Z-piezo to absolute position {abspos} um')
 
     def focusCalibrationStart(self):
-        print("Controller: Start focus calibration thread and calibrate.")
+        self.__logger.debug('Start focus calibration thread and calibrate')
 
     def showCalibrationCurve(self):
-        print("Controller: Show calibration curve.")
+        self.__logger.debug('Show calibration curve')
 
     def zStackVarChange(self):
         if self.zStackVar:
@@ -109,24 +119,25 @@ class FocusLockController(ImConWidgetController):
 
     # Update focus lock
     def update(self):
-        #1 Grab camera frame
+        # 1 Grab camera frame
         img = self.__processDataThread.grabCameraFrame()
-        #2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
+        # 2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
         self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
-        #3 Update PI with the new setPointSignal and get back the distance to move, send to
+        # 3 Update PI with the new setPointSignal and get back the distance to move, send to
         # update the PI control, and then send the move-distance to the z-piezo
         if self.locked:
             value_move = self.updatePI()
             if self.noStepVar and abs(value_move) > 0.002:
-                #self.zstepupdate = self.zstepupdate + 1
+                # self.zstepupdate = self.zstepupdate + 1
                 self._master.positionersManager[self.positioner].move(value_move, 0)
-        #elif self.aboutToLock:
+        # elif self.aboutToLock:
         #    self.lockingPI()
-        #4 Update image and focusSignalPosition in FocusLockWidget
+        # 4 Update image and focusSignalPosition in FocusLockWidget
         self.updateSetPointData()
         self._widget.camImg.setImage(img)
         if self.currPoint < self.buffer:
-            self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint], self.setPointData[1:self.currPoint])
+            self._widget.focusPlotCurve.setData(self.timeData[1:self.currPoint],
+                                                self.setPointData[1:self.currPoint])
         else:
             self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
 
@@ -139,7 +150,7 @@ class FocusLockController(ImConWidgetController):
             self.setPointData[-1] = self.setPointSignal
             self.timeData[:-1] = self.timeData[1:]
             self.timeData[-1] = ptime.time() - self.startTime
-        self.currPoint += 1        
+        self.currPoint += 1
 
     def updatePI(self):
         if not self.noStepVar:
@@ -150,9 +161,9 @@ class FocusLockController(ImConWidgetController):
         self.lastZ = self.currentPosition
 
         if abs(distance) > 5 or abs(move) > 3:
-            print(f'Safety unlocking! Distance: {distance}, move: {move}.')
+            self.__logger.debug(f'Safety unlocking! Distance: {distance}, move: {move}.')
             self.unlockFocus()
-        
+
         return move
 
     def lockFocus(self, kp, ki, absz):
@@ -160,70 +171,72 @@ class FocusLockController(ImConWidgetController):
             self.pi = PI(self.setPointSignal, 0.001, kp, ki)
             self.lockPosition = absz
             self.locked = True
-            self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(y=self.setPointSignal, pen='r')
+            self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(
+                y=self.setPointSignal, pen='r'
+            )
 
-    def focusCalibrationStart(self):
-        print("Manager: starting focus calibration thread")
 
-
-class ProcessDataThread(QtCore.QThread):
+class ProcessDataThread(Thread):
     def __init__(self, controller, *args, **kwargs):
         self._controller = controller
         super().__init__(*args, **kwargs)
 
     def grabCameraFrame(self):
-        self.latestimg = self._controller._master.detectorsManager[self._controller.camera].getLatestFrame()
+        detectorManager = self._controller._master.detectorsManager[self._controller.camera]
+        self.latestimg = detectorManager.getLatestFrame()
         return self.latestimg
 
     def update(self, twoFociVar):
-        # Update the focus signal
-        imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)     # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+        # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+        imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)
 
+        # Update the focus signal
         if twoFociVar:
             allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
             size = allmaxcoords.shape
             maxvals = np.zeros(size[0])
             maxvalpos = np.zeros(2)
-            for n in range(0,size[0]):
-                if imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]] > maxvals[0]:
-                    if imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]] > maxvals[1]:
+            for n in range(0, size[0]):
+                if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[0]:
+                    if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[1]:
                         tempval = maxvals[1]
                         maxvals[0] = tempval
-                        maxvals[1] = imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]]
+                        maxvals[1] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
                         tempval = maxvalpos[1]
                         maxvalpos[0] = tempval
                         maxvalpos[1] = n
                     else:
-                        maxvals[0] = imagearraygf[allmaxcoords[n][0],allmaxcoords[n][1]]
+                        maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
                         maxvalpos[0] = n
             xcenter = allmaxcoords[maxvalpos[0]][0]
             ycenter = allmaxcoords[maxvalpos[0]][1]
             if allmaxcoords[maxvalpos[1]][1] < ycenter:
                 xcenter = allmaxcoords[maxvalpos[1]][0]
                 ycenter = allmaxcoords[maxvalpos[1]][1]
-            centercoords2 = np.array([xcenter,ycenter])
+            centercoords2 = np.array([xcenter, ycenter])
         else:
             centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
-            centercoords2 = np.array([centercoords[0][0],centercoords[1][0]])
-            
+            centercoords2 = np.array([centercoords[0][0], centercoords[1][0]])
+
         subsizey = 50
         subsizex = 50
-        xlow = max(0,(centercoords2[0]-subsizex))
-        xhigh = min(1024,(centercoords2[0]+subsizex))
-        ylow = max(0,(centercoords2[1]-subsizey))
-        yhigh = min(1280,(centercoords2[1]+subsizey))
+        xlow = max(0, (centercoords2[0] - subsizex))
+        xhigh = min(1024, (centercoords2[0] + subsizex))
+        ylow = max(0, (centercoords2[1] - subsizey))
+        yhigh = min(1280, (centercoords2[1] + subsizey))
 
-        imagearraygfsub = imagearraygf[xlow:xhigh,ylow:yhigh]
+        imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
 
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
-        massCenterGlobal = massCenter[1] + centercoords2[1] #- subsizey - self.sensorSize[1] / 2     #add the information about where the center of the subarray is
+
+        # add the information about where the center of the subarray is
+        massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
 
         return massCenterGlobal
 
 
-class FocusCalibThread(QtCore.QThread):
+class FocusCalibThread(Thread):
     def __init__(self, focusWidget, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         self.z = focusWidget.z
@@ -233,8 +246,8 @@ class FocusCalibThread(QtCore.QThread):
     def run(self):
         self.signalData = []
         self.positionData = []
-        self.start = np.float(self.focusWidget.CalibFromEdit.text())
-        self.end = np.float(self.focusWidget.CalibToEdit.text())
+        self.start = float(self.focusWidget.CalibFromEdit.text())
+        self.end = float(self.focusWidget.CalibToEdit.text())
         self.scan_list = np.round(np.linspace(self.start, self.end, 20), 2)
         for x in self.scan_list:
             self.z.move_absZ(x * self.um)
@@ -251,7 +264,7 @@ class FocusCalibThread(QtCore.QThread):
     def export(self):
         np.savetxt('calibration.txt', self.calibrationResult)
         cal = self.poly[0]
-        calText = '1 px --> {} nm'.format(np.round(1000/cal, 1))
+        calText = '1 px --> {} nm'.format(np.round(1000 / cal, 1))
         self.focusWidget.calibrationDisplay.setText(calText)
         d = [self.positionData, self.calibrationResult[::-1]]
         self.savedCalibData = [self.positionData,
@@ -260,8 +273,8 @@ class FocusCalibThread(QtCore.QThread):
         np.savetxt('calibrationcurves.txt', self.savedCalibData)
 
 
-class PI(object):
-    """Simple implementation of a discrete PI controller. 
+class PI:
+    """Simple implementation of a discrete PI controller.
     Taken from http://code.activestate.com/recipes/577231-discrete-pid-controller/
     Author: Federico Barabas"""
 

@@ -1,12 +1,23 @@
 from abc import ABC, abstractmethod
 
+from typing import Dict, List
+
 
 class PositionerManager(ABC):
-    """ Abstract class for a manager for controlling positioners. Intended to
-    be extended for each type of positioner. """
+    """ Abstract base class for managers that control positioners. Each type of
+    positioner corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, positionerInfo, name, initialPosition):
+    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float]):
+        """
+        Args:
+            positionerInfo: See setup file documentation.
+            name: The unique name that the device is identified with in the
+              setup file.
+            initialPosition: The initial position for each axis. This is a dict
+              in the format ``{ axis: position }``.
+        """
+
         self._positionerInfo = positionerInfo
         self._position = initialPosition
 
@@ -20,43 +31,47 @@ class PositionerManager(ABC):
                              ' PositionerInfo.')
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """ Unique positioner name, defined in the positioner's setup info. """
         return self.__name
 
     @property
-    def position(self):
-        """ The positioner's position. This is a dict in the format
-        { axis: position }. """
+    def position(self) -> Dict[str, float]:
+        """ The position of each axis. This is a dict in the format
+        ``{ axis: position }``. """
         return self._position
 
     @property
-    def axes(self):
+    def axes(self) -> List[str]:
+        """ The list of axes that are controlled by this positioner. """
         return self.__axes
 
     @property
-    def forPositioning(self):
+    def forPositioning(self) -> bool:
+        """ Whether the positioner is used for manual positioning. """
         return self.__forPositioning
 
     @property
-    def forScanning(self):
+    def forScanning(self) -> bool:
+        """ Whether the positioner is used for scanning. """
         return self.__forScanning
 
     @abstractmethod
-    def move(self, dist, axis):
+    def move(self, dist: float, axis: str):
         """ Moves the positioner by the specified distance and returns the new
         position. Derived classes will update the position field manually. If
         the positioner controls multiple axes, the axis must be specified. """
         pass
 
     @abstractmethod
-    def setPosition(self, position, axis):
+    def setPosition(self, position: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
         """
         pass
 
-    def finalize(self):
+    def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass
 
@@ -76,4 +91,3 @@ class PositionerManager(ABC):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

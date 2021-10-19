@@ -1,75 +1,93 @@
 from abc import ABC, abstractmethod
 
+from typing import Union
+
 
 class LaserManager(ABC):
-    """ Abstract class for a manager for controlling lasers. Intended to be
-    extended for each type of laser. """
+    """ Abstract base class for managers that control lasers. Each type of
+    laser corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, laserInfo, name, isBinary, isDigital, valueUnits):
+    def __init__(self, laserInfo, name: str, isBinary: bool, valueUnits: str,
+                 valueDecimals: int) -> None:
+        """
+        Args:
+            laserInfo: See setup file documentation.
+            name: The unique name that the device is identified with in the
+              setup file.
+            isBinary: Whether the laser can only be turned on and off, and its
+              value cannot be changed.
+            valueUnits: The units of the laser value, e.g. "mW" or "V".
+            valueDecimals: How many decimals are accepted in the laser value.
+        """
         self._laserInfo = laserInfo
         self.__name = name
         self.__isBinary = isBinary
-        self.__isDigital = isDigital
         self.__wavelength = laserInfo.wavelength
         self.__valueRangeMin = laserInfo.valueRangeMin
         self.__valueRangeMax = laserInfo.valueRangeMax
         self.__valueRangeStep = laserInfo.valueRangeStep
         self.__valueUnits = valueUnits
+        self.__valueDecimals = valueDecimals
 
     @property
-    def name(self):
+    def name(self) -> str:
+        """ Unique laser name, defined in the laser's setup info. """
         return self.__name
 
     @property
-    def isBinary(self):
-        """Whether the laser can only be turned on and off, and its value
-        cannot be changed."""
+    def isBinary(self) -> bool:
+        """ Whether the laser can only be turned on and off, and its value
+        cannot be changed. """
         return self.__isBinary
 
     @property
-    def isDigital(self):
-        """Whether the laser is digital."""
-        return self.__isDigital
-
-    @property
-    def wavelength(self):
+    def wavelength(self) -> int:
+        """ The wavelength of the laser. """
         return self.__wavelength
 
     @property
-    def valueRangeMin(self):
-        """The minimum value that the laser can be set to."""
+    def valueRangeMin(self) -> float:
+        """ The minimum value that the laser can be set to. """
         return self.__valueRangeMin
 
     @property
-    def valueRangeMax(self):
-        """The maximum value that the laser can be set to."""
+    def valueRangeMax(self) -> float:
+        """ The maximum value that the laser can be set to. """
         return self.__valueRangeMax
 
     @property
-    def valueRangeStep(self):
-        """The step of the value range that the laser can be set to."""
+    def valueRangeStep(self) -> float:
+        """ The default step size of the value range that the laser can be set
+        to. """
         return self.__valueRangeStep
 
     @property
-    def valueUnits(self):
-        """The units of the laser value, e.g. "mW" or "V"."""
+    def valueUnits(self) -> str:
+        """ The units of the laser value, e.g. "mW" or "V". """
         return self.__valueUnits
 
-    @abstractmethod
-    def setEnabled(self, enabled):
-        """Sets whether the laser is enabled."""
-        pass
+    @property
+    def valueDecimals(self):
+        """ How many decimals are accepted in the laser value. """
+        return self.__valueDecimals
 
     @abstractmethod
-    def setValue(self, value):
+    def setEnabled(self, enabled: bool) -> None:
+        """ Sets whether the laser is enabled. """
         pass
 
-    def setScanModeActive(self, active):
-        """Sets whether the laser should be in scan mode (if supported)."""
+    @abstractmethod
+    def setValue(self, value: Union[int, float]) -> None:
+        """ Sets the value of the laser. """
         pass
 
-    def finalize(self):
+    def setScanModeActive(self, active: bool) -> None:
+        """ Sets whether the laser should be in scan mode (if the laser
+        supports it). """
+        pass
+
+    def finalize(self) -> None:
         """ Close/cleanup laser. """
         pass
 
@@ -89,4 +107,3 @@ class LaserManager(ABC):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

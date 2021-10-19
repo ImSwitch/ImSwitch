@@ -1,7 +1,8 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -19,7 +20,7 @@ class BeadRecWidget(Widget):
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
         self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
+        self.img.setTransform(self.img.transform().translate(-0.5, -0.5))
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
@@ -32,7 +33,7 @@ class BeadRecWidget(Widget):
         self.roiButton = guitools.BetterPushButton('Show ROI')
         self.roiButton.setCheckable(True)
         self.runButton = QtWidgets.QCheckBox('Run')
-        self.ROI = guitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
+        self.ROI = naparitools.VispyROIVisual(rect_color='yellow', handle_color='orange')
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
@@ -58,7 +59,7 @@ class BeadRecWidget(Widget):
 
     def updateImage(self, image):
         self.img.setImage(image, autoLevels=False)
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

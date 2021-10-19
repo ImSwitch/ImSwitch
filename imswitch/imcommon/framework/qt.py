@@ -1,5 +1,8 @@
 from abc import ABCMeta
+
+import sip
 from qtpy import QtCore
+
 import imswitch.imcommon.framework.base as base
 
 
@@ -21,7 +24,20 @@ class SignalInterface(QtCore.QObject, base.SignalInterface, metaclass=QObjectMet
 
 
 class Thread(QtCore.QThread, base.Thread, metaclass=QObjectMeta):
-    pass
+    def quit(self) -> None:
+        if not self.__isWrappedCObjDeleted():
+            super().quit()
+
+    def wait(self) -> None:
+        if not self.__isWrappedCObjDeleted():
+            super().wait()
+
+    def __isWrappedCObjDeleted(self) -> bool:
+        try:
+            sip.unwrapinstance(self)
+        except RuntimeError:
+            return True
+        return False
 
 
 class Timer(QtCore.QTimer, base.Timer, metaclass=QObjectMeta):

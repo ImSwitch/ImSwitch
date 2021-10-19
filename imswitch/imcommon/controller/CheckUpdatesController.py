@@ -7,17 +7,26 @@ from packaging import version
 
 import imswitch
 from imswitch.imcommon.framework import Signal, Thread
+from imswitch.imcommon.model import initLogger
 from .basecontrollers import WidgetController
 
 
 class CheckUpdatesController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
+
         self.thread = CheckUpdatesThread()
         self.thread.sigFailed.connect(self._widget.showFailed)
         self.thread.sigNoUpdate.connect(self._widget.showNoUpdateAvailable)
         self.thread.sigNewVersionPyInstaller.connect(self._widget.showPyInstallerUpdate)
         self.thread.sigNewVersionPyPI.connect(self._widget.showPyPIUpdate)
+
+    def __del__(self):
+        self.thread.quit()
+        self.thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def checkForUpdates(self):
         """ Check for updates on a separate thread. """
@@ -36,6 +45,10 @@ class CheckUpdatesThread(Thread):
     sigNewVersionPyInstaller = Signal(str)  # (latestVersion)
     sigNewVersionPyPI = Signal(str)  # (latestVersion)
 
+    def __init__(self):
+        super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
+
     def run(self):
         currentVersion = imswitch.__version__
         try:
@@ -44,7 +57,7 @@ class CheckUpdatesThread(Thread):
                 releaseResponse = requests.get(
                     'https://api.github.com/repos/kasasxav/ImSwitch/releases/latest'
                 )
-                latestVersion = releaseResponse.json()['tag_name']
+                latestVersion = releaseResponse.json()['tag_name'].lstrip('v')
                 if version.parse(latestVersion) > version.parse(currentVersion):
                     self.sigNewVersionPyInstaller.emit(latestVersion)
                 else:
@@ -57,7 +70,7 @@ class CheckUpdatesThread(Thread):
                 else:
                     self.sigNoUpdate.emit()
         except Exception:
-            print(traceback.format_exc())
+            self.__logger.warning(traceback.format_exc())
             self.sigFailed.emit()
 
 

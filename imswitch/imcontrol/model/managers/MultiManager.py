@@ -1,23 +1,26 @@
 import importlib
 from abc import ABC, abstractmethod
 
+from imswitch.imcommon.model import pythontools
+
 
 class MultiManager(ABC):
     """ Abstract class for a manager used to control a group of sub-managers.
     Intended to be extended for each type of manager. """
 
     @abstractmethod
-    def __init__(self, managedDeviceInfos, subManagersPackage, **kwargs):
+    def __init__(self, managedDeviceInfos, subManagersPackage, **lowLevelManagers):
         self._subManagers = {}
         currentPackage = '.'.join(__name__.split('.')[:-1])
         for managedDeviceName, managedDeviceInfo in managedDeviceInfos.items():
             # Create sub-manager
             package = importlib.import_module(
-                f'{currentPackage}.{subManagersPackage}.{managedDeviceInfo.managerName}'
+                pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
+                                           managedDeviceInfo.managerName)
             )
             manager = getattr(package, managedDeviceInfo.managerName)
             self._subManagers[managedDeviceName] = manager(
-                managedDeviceInfo, managedDeviceName, **kwargs)
+                managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
     def hasDevices(self):
         """ Returns whether this manager manages any devices. """
@@ -26,12 +29,11 @@ class MultiManager(ABC):
     def getAllDeviceNames(self, condition=None):
         """ Returns the names of all managed devices. """
         if condition is None:
-            condition = lambda _: True
+            def condition(_): return True
 
         return list(managedDeviceName
-                for managedDeviceName, subManager in self._subManagers.items()
-                if condition(subManager))
-
+                    for managedDeviceName, subManager in self._subManagers.items()
+                    if condition(subManager))
 
     def execOn(self, managedDeviceName, func):
         """ Executes a function on a specific sub-manager and returns the
@@ -43,7 +45,7 @@ class MultiManager(ABC):
         """ Executes a function on all sub-managers and returns the
         results. """
         if condition is None:
-            condition = lambda _: True
+            def condition(_): return True
 
         return {managedDeviceName: func(subManager)
                 for managedDeviceName, subManager in self._subManagers.items()

@@ -57,12 +57,16 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '
             f' Your current version is {imswitch.__version__}.'
-            f'\n\nTo update, download the new version archive from the link below and extract it into'
-            f' a new folder. Do NOT overwrite your current installation; instead, delete it after'
-            f' you have updated.'
+            f'\n\nTo update, download the new version archive from the link below and extract it'
+            f' into a new folder. Do NOT overwrite your current installation; instead, delete it'
+            f' after you have updated.'
         )
         self.linkLabel.setText(
-            'The new version may be downloaded from <a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">the GitHub releases page</a>.'
+            'The new version may be downloaded from '
+            '<a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">'
+            'the GitHub releases page'
+            '</a>'
+            '.'
         )
         self.linkLabel.setVisible(True)
 
@@ -73,7 +77,12 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
             f'\n\nTo update, run the command: pip install --upgrade imswitch'
         )
         self.linkLabel.setText(
-            'The changelog is available <a href="https://imswitch.readthedocs.io/en/stable/changelog.html" style="color: orange">here</a>.'
+            'The changelog is available '
+            '<a href="https://imswitch.readthedocs.io/en/stable/changelog.html"'
+            'style="color: orange">'
+            'here'
+            '</a>'
+            '.'
         )
         self.linkLabel.setVisible(True)
 

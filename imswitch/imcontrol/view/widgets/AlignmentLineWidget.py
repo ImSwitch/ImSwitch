@@ -1,7 +1,7 @@
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -18,9 +18,7 @@ class AlignmentLineWidget(Widget):
         self.angleEdit = QtWidgets.QLineEdit('30')
         self.alignmentCheck = QtWidgets.QCheckBox('Show Alignment Tool')
         self.alignmentLineMakerButton = guitools.BetterPushButton('Alignment Line')
-        pen = pg.mkPen(color=(255, 255, 0), width=0.5,
-                       style=QtCore.Qt.SolidLine, antialias=True)
-        self.alignmentLine = guitools.VispyLineVisual(movable=True)
+        self.alignmentLine = naparitools.VispyLineVisual(movable=True)
 
         # Add items to GridLayout
         alignmentLayout = QtWidgets.QGridLayout()

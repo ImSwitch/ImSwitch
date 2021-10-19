@@ -1,7 +1,5 @@
 import json
 
-import h5py
-
 from imswitch.imcommon.framework import Signal, SignalInterface
 
 
@@ -13,6 +11,8 @@ class SharedAttributes(SignalInterface):
         self._data = {}
 
     def getHDF5Attributes(self):
+        """ Returns a dictionary of HDF5 attributes representing this object.
+        """
         attrs = {}
         for key, value in self._data.items():
             attrs[':'.join(key)] = value
@@ -20,6 +20,7 @@ class SharedAttributes(SignalInterface):
         return attrs
 
     def getJSON(self):
+        """ Returns a JSON representation of this instance. """
         attrs = {}
         for key, value in self._data.items():
             parent = attrs
@@ -33,6 +34,8 @@ class SharedAttributes(SignalInterface):
         return json.dumps(attrs)
 
     def update(self, data):
+        """ Updates this object with the data in the given dictionary or
+        SharedAttributes object. """
         if isinstance(data, SharedAttributes):
             data = data._data
 
@@ -52,12 +55,13 @@ class SharedAttributes(SignalInterface):
         yield from self._data.items()
 
     @classmethod
-    def fromHDF5File(cls, filePath):
+    def fromHDF5File(cls, file, dataset):
+        """ Loads the attributes from a HDF5 file into a SharedAttributes
+        object. """
         attrs = cls()
-        with h5py.File(filePath) as file:
-            for key, value in file.attrs.items():
-                keyTuple = tuple(key.split(':'))
-                attrs[keyTuple] = value
+        for key, value in file[dataset].attrs.items():
+            keyTuple = tuple(key.split(':'))
+            attrs[keyTuple] = value
         return attrs
 
     @staticmethod

@@ -5,8 +5,8 @@ class PositionersManager(MultiManager):
     """ PositionersManager interface for dealing with PositionerManagers. It is
     a MultiManager for positioners. """
 
-    def __init__(self, positionerInfos, **kwargs):
-        super().__init__(positionerInfos, 'positioners', **kwargs)
+    def __init__(self, positionerInfos, **lowLevelManagers):
+        super().__init__(positionerInfos, 'positioners', **lowLevelManagers)
 
 
 # Copyright (C) 2020, 2021 TestaLab

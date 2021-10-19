@@ -1,111 +1,247 @@
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
+
 from dataclasses_json import dataclass_json, Undefined, CatchAll
-from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    analogChannel: Optional[int]  # null if the device is digital or doesn't use Nidaq
-    digitalLine: Optional[int]  # null if the device is analog or doesn't use Nidaq
+    analogChannel: Optional[Union[str, int]]
+    """ Channel for analog communication. ``null`` if the device is digital or
+    doesn't use NI-DAQ. If an integer is specified, it will be translated to
+    "Dev1/ao{analogChannel}". """
 
-    managerName: str  # manager class name
-    managerProperties: Dict[str, Any]  # properties to be read by manager
+    digitalLine: Optional[Union[str, int]]
+    """ Line for digital communication. ``null`` if the device is analog or
+    doesn't use NI-DAQ. If an integer is specified, it will be translated to
+    "Dev1/port0/line{digitalLine}". """
+
+    managerName: str
+    """ Manager class name. """
+
+    managerProperties: Dict[str, Any]
+    """ Properties to be read by the manager. """
+
+    def getAnalogChannel(self):
+        """ :meta private: """
+        if isinstance(self.analogChannel, int):
+            return f'Dev1/ao{self.analogChannel}'  # for backwards compatibility
+        else:
+            return self.analogChannel
+
+    def getDigitalLine(self):
+        """ :meta private: """
+        if isinstance(self.digitalLine, int):
+            return f'Dev1/port0/line{self.digitalLine}'  # for backwards compatibility
+        else:
+            return self.digitalLine
 
 
 @dataclass(frozen=True)
 class DetectorInfo(DeviceInfo):
     forAcquisition: bool = False
+    """ Whether the detector is used for acquisition. """
+
     forFocusLock: bool = False
+    """ Whether the detector is used for focus lock. """
 
 
 @dataclass(frozen=True)
 class LaserInfo(DeviceInfo):
-    wavelength: str  # hex code
-    valueRangeMin: Optional[int]  # null if auto-detector or laser is binary
-    valueRangeMax: Optional[int]  # null if auto-detector or laser is binary
+    valueRangeMin: Optional[Union[int, float]]
+    """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    valueRangeMax: Optional[Union[int, float]]
+    """ maximum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    wavelength: Union[int, float]
+    """ Laser wavelength in nanometres. """
+
     valueRangeStep: float = 1.0
+    """ The default step size of the value range that the laser can be set to.
+    """
 
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
     axes: List[str]
+    """ A list of axes (names) that the positioner controls. """
+
     isPositiveDirection: bool = True
+    """ Whether the direction of the positioner is positive. """
+
     forPositioning: bool = False
+    """ Whether the positioner is used for manual positioning. """
+
     forScanning: bool = False
+    """ Whether the positioner is used for scanning. """
 
 
 @dataclass(frozen=True)
 class RS232Info:
-    managerName: str  # manager class name
-    managerProperties: Dict[str, Any]  # properties to be read by manager
+    managerName: str
+    """ RS232 manager class name. """
+
+    managerProperties: Dict[str, Any]
+    """ Properties to be read by the RS232 manager. """
 
 
 @dataclass(frozen=True)
 class SLMInfo:
     monitorIdx: int
+    """ Index of the monitor in the system list of monitors (indexing starts at
+    0). """
+
     width: int
+    """ Width of SLM, in pixels. """
+
     height: int
+    """ Height of SLM, in pixels. """
+
     wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
     pixelSize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
     angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
     correctionPatternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
 
 
 @dataclass(frozen=True)
 class FocusLockInfo:
-    camera: str  # detector name
-    positioner: str  # positioner name
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
     updateFreq: int
+    """ Update frequency, in milliseconds. """
+
     frameCropx: int
+    """ Starting X position of frame crop. """
+
     frameCropy: int
+    """ Starting Y position of frame crop. """
+
     frameCropw: int
+    """ Width of frame crop. """
+
     frameCroph: int
+    """ Height of frame crop. """
 
 
 @dataclass(frozen=True)
 class ScanInfo:
-    scanDesigner: str  # name of the scan designer class to use
-    scanDesignerParams: Dict[str, Any]  # properties to be read by ScanDesigner
-    TTLCycleDesigner: str  # name of the TTL cycle designer class to use
-    TTLCycleDesignerParams: Dict[str, Any]  # properties to be read by TTLCycleDesigner
-    sampleRate: int  # scan sample rate
+    scanDesigner: str
+    """ Name of the scan designer class to use. """
+
+    scanDesignerParams: Dict[str, Any]
+    """ Params to be read by the scan designer. """
+
+    TTLCycleDesigner: str
+    """ Name of the TTL cycle designer class to use. """
+
+    TTLCycleDesignerParams: Dict[str, Any]
+    """ Params to be read by the TTL cycle designer. """
+
+    sampleRate: int
+    """ Scan sample rate. """
 
 
 @dataclass(frozen=True)
 class NidaqInfo:
-    timerCounterChannel: Optional[int] = None  # Output for Counter for timing purposes
-    startTrigger: bool = False  # Boolean for start triggering for sync
+    timerCounterChannel: Optional[Union[str, int]] = None
+    """ Output for Counter for timing purposes. If an integer is specified, it
+    will be translated to "Dev1/ctr{timerCounterChannel}". """
+
+    startTrigger: bool = False
+    """ Boolean for start triggering for sync. """
+
+    def getTimerCounterChannel(self):
+        """ :meta private: """
+        if isinstance(self.timerCounterChannel, int):
+            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
+        else:
+            return self.timerCounterChannel
 
 
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: Optional[str] = None
+    """ IP address of Pulse Streamer hardware. """
+
+    
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
-    detectors: Dict[str, DetectorInfo] = field(default_factory=dict)  # map from device name to CameraInfo
-    lasers: Dict[str, LaserInfo] = field(default_factory=dict)  # map from device name to LaserInfo
-    positioners: Dict[str, PositionerInfo] = field(default_factory=dict)  # map from device name to PositionerInfo
-    rs232devices: Dict[str, RS232Info] = field(default_factory=dict)  # map from device name to RS232Info
+    # default_factory seems to be required for the field to show up in autodocs for deriving classes
 
-    slm: Optional[SLMInfo] = None
-    focusLock: Optional[FocusLockInfo] = None
+    detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
+    """ Detectors in this setup. This is a map from unique detector names to
+    DetectorInfo objects. """
 
-    scan: ScanInfo = field(default_factory=ScanInfo)
+    lasers: Dict[str, LaserInfo] = field(default_factory=dict)
+    """ Lasers in this setup. This is a map from unique laser names to
+    LaserInfo objects. """
+
+    positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
+    """ Positioners in this setup. This is a map from unique positioner names
+    to DetectorInfo objects. """
+
+    rs232devices: Dict[str, RS232Info] = field(default_factory=dict)
+    """ RS232 connections in this setup. This is a map from unique RS232
+    connection names to RS232Info objects. Some detector/laser/positioner
+    managers will require a corresponding RS232 connection to be referenced in
+    their properties.
+    """
+
+    slm: Optional[SLMInfo] = field(default_factory=lambda: None)
+    """ SLM settings. Required to be defined to use SLM functionality. """
+
+    focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
+    """ Focus lock settings. Required to be defined to use focus lock
+    functionality. """
+
+    scan: Optional[ScanInfo] = field(default_factory=lambda: None)
+    """ Scan settings. Required to be defined to use scan functionality. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
+    """ NI-DAQ settings. """
+
+    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
+    """ Pulse Streamer settings. """
 
     _catchAll: CatchAll = None
 
     def getDevice(self, deviceName):
-        """ Returns the DeviceInfo for a specific device. """
+        """ Returns the DeviceInfo for a specific device.
+
+        :meta private:
+        """
         return self.getAllDevices()[deviceName]
 
     def getTTLDevices(self):
-        """ Returns DeviceInfo from all devices that have a digitalLine. """
+        """ Returns DeviceInfo from all devices that have a digitalLine.
+
+        :meta private:
+        """
         devices = {}
         i = 0
         for deviceInfos in self.lasers, self.detectors:
             deviceInfosCopy = deviceInfos.copy()
             for item in list(deviceInfosCopy):
-                if deviceInfosCopy[item].digitalLine is None:
+                if deviceInfosCopy[item].getDigitalLine() is None:
                     del deviceInfosCopy[item]
             devices.update(deviceInfosCopy)
             i += 1
@@ -113,6 +249,7 @@ class SetupInfo:
         return devices
 
     def getDetectors(self):
+        """ :meta private: """
         devices = {}
         for deviceInfos in self.detectors:
             devices.update(deviceInfos)
@@ -120,12 +257,13 @@ class SetupInfo:
         return devices
 
     def getAllDevices(self):
+        """ :meta private: """
         devices = {}
         for deviceInfos in self.lasers, self.detectors, self.positioners:
             devices.update(deviceInfos)
 
         return devices
-    
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

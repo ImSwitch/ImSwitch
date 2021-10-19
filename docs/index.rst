@@ -2,6 +2,9 @@
 ImSwitch
 ********
 
+.. image:: https://joss.theoj.org/papers/10.21105/joss.03394/status.svg
+   :target: https://doi.org/10.21105/joss.03394
+   
 ``ImSwitch`` is a software solution in Python that aims at generalizing microscope control by using an architecture based on the model-view-presenter (MVP) design pattern and enabling flexible control of multiple microscope modalities.
 
 The constant development of novel microscopy methods with an increased number of dedicated
@@ -35,9 +38,10 @@ well as for developers (scripting and API modules, and hardware control and JSON
     :hidden:
     :caption: Internals and specifications
 
-    Hdf5datafile
     modules
+    Hdf5datafile
     imcontrol-setups
+    adding-device-support
 
 .. toctree::
     :glob:

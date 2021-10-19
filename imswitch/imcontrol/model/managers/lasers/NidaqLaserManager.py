@@ -4,16 +4,13 @@ from .LaserManager import LaserManager
 class NidaqLaserManager(LaserManager):
     """ LaserManager for analog-value NI-DAQ-controlled lasers.
 
-    Available manager properties: None
+    Manager properties: None
     """
 
-    def __init__(self, laserInfo, name, **kwargs):
-        self._nidaqManager = kwargs['nidaqManager']
-
-        super().__init__(
-            laserInfo, name, isBinary=laserInfo.analogChannel is None, isDigital=False,
-            valueUnits='V'
-        )
+    def __init__(self, laserInfo, name, **lowLevelManagers):
+        self._nidaqManager = lowLevelManagers['nidaqManager']
+        super().__init__(laserInfo, name, isBinary=laserInfo.getAnalogChannel() is None,
+                         valueUnits='V', valueDecimals=2)
 
     def setEnabled(self, enabled):
         self._nidaqManager.setDigital(self.name, enabled)
@@ -27,6 +24,9 @@ class NidaqLaserManager(LaserManager):
             min_val=self.valueRangeMin, max_val=self.valueRangeMax
         )
 
+    def setScanModeActive(self, active):
+        if active:
+            self.setEnabled(False)
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

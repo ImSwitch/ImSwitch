@@ -1,7 +1,7 @@
-from imswitch.imcommon.model import DataItem
+from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, NidaqManager, PositionersManager, RecordingManager,
-    RS232sManager, ScanManager, SLMManager
+    DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
+    RecordingManager, RS232sManager, ScanManager, SLMManager
 )
 
 
@@ -12,17 +12,18 @@ class MasterController:
     """
 
     def __init__(self, setupInfo, commChannel, moduleCommChannel):
-        print('init master controller')
         self.__setupInfo = setupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
         self.nidaqManager = NidaqManager(self.__setupInfo)
+        self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
+            'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
@@ -38,25 +39,34 @@ class MasterController:
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Connect signals
-        self.detectorsManager.sigAcquisitionStarted.connect(self.__commChannel.sigAcquisitionStarted)
-        self.detectorsManager.sigAcquisitionStopped.connect(self.__commChannel.sigAcquisitionStopped)
-        self.detectorsManager.sigDetectorSwitched.connect(self.__commChannel.sigDetectorSwitched)
-        self.detectorsManager.sigImageUpdated.connect(self.__commChannel.sigUpdateImage)
+        cc = self.__commChannel
 
-        self.recordingManager.sigRecordingStarted.connect(self.__commChannel.sigRecordingStarted)
-        self.recordingManager.sigRecordingEnded.connect(self.__commChannel.sigRecordingEnded)
-        self.recordingManager.sigRecordingFrameNumUpdated.connect(self.__commChannel.sigUpdateRecFrameNum)
-        self.recordingManager.sigRecordingTimeUpdated.connect(self.__commChannel.sigUpdateRecTime)
+        self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
+        self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
+        self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
+        self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
+
+        self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
+        self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
+        self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
+        self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
+        self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
+        self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
-        self.__moduleCommChannel.memoryRecordings[name] = DataItem(
+        self.__moduleCommChannel.memoryRecordings[name] = VFileItem(
             data=file, filePath=filePath, savedToDisk=savedToDisk
         )
 
     def closeEvent(self):
-        for multiManager in (self.detectorsManager, self.lasersManager, self.positionersManager):
-            multiManager.finalize()
+        self.recordingManager.endRecording(emitSignal=False, wait=True)
+
+        for attrName in dir(self):
+            attr = getattr(self, attrName)
+            if isinstance(attr, MultiManager):
+                attr.finalize()
 
 
 # Copyright (C) 2020, 2021 TestaLab

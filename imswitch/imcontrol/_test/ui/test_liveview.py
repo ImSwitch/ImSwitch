@@ -1,9 +1,8 @@
 import pytest
 from qtpy import QtCore, QtTest
 
-from .. import optionsBasic, setupInfoBasic
 from . import getApp, prepareUI
-
+from .. import optionsBasic, setupInfoBasic
 
 mainView = None
 

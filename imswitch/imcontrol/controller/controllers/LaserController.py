@@ -1,3 +1,5 @@
+from typing import List, Union
+
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
@@ -16,11 +18,11 @@ class LaserController(ImConWidgetController):
         # Set up lasers
         for lName, lManager in self._master.lasersManager:
             self._widget.addLaser(
-                lName, lManager.valueUnits, lManager.wavelength,
+                lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
                 lManager.valueRangeStep if lManager.valueRangeStep is not None else None
             )
-            if not lManager.isBinary and lManager.isDigital:
+            if not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
 
             self.setSharedAttr(lName, _enabledAttr, self._widget.isLaserActive(lName))
@@ -36,6 +38,7 @@ class LaserController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigScanStarting.connect(lambda: self.scanChanged(True))
+        self._commChannel.sigScanBuilt.connect(self.scanBuilt)
         self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
 
         # Connect LaserWidget signals
@@ -45,6 +48,7 @@ class LaserController(ImConWidgetController):
         self._widget.sigPresetSelected.connect(self.presetSelected)
         self._widget.sigLoadPresetClicked.connect(self.loadPreset)
         self._widget.sigSavePresetClicked.connect(self.savePreset)
+        self._widget.sigSavePresetAsClicked.connect(self.savePresetAs)
         self._widget.sigDeletePresetClicked.connect(self.deletePreset)
         self._widget.sigPresetScanDefaultToggled.connect(self.presetScanDefaultToggled)
 
@@ -61,7 +65,6 @@ class LaserController(ImConWidgetController):
         """ Change magnitude. """
         self._master.lasersManager[laserName].setValue(magnitude)
         self._widget.setValue(laserName, magnitude)
-        self._widget.setCurrentPreset(None)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
 
     def presetSelected(self, presetName):
@@ -87,12 +90,29 @@ class LaserController(ImConWidgetController):
         # Load values
         self.applyPreset(self._setupInfo.laserPresets[presetToLoad])
 
-        # Keep preset selected in GUI
-        self._widget.setCurrentPreset(presetToLoad)
+    def savePreset(self, name=None):
+        """ Saves current values to a preset. If the name parameter is None,
+        the values will be saved to the currently selected preset. """
 
-    def savePreset(self):
+        if not name:
+            name = self._widget.getCurrentPreset()
+            if not name:
+                return
+
+        # Add in GUI
+        if name not in self._setupInfo.laserPresets:
+            self._widget.addPreset(name)
+
+        # Set in setup info
+        self._setupInfo.setLaserPreset(name, self.makePreset())
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
+        # Update selected preset in GUI
+        self._widget.setCurrentPreset(name)
+
+    def savePresetAs(self):
         """ Handles what happens when the user requests the current laser
-        values to be saved as a preset. """
+        values to be saved as a new preset. """
 
         name = guitools.askForTextInput(self._widget, 'Add laser preset',
                                         'Enter a name for this preset:')
@@ -101,9 +121,7 @@ class LaserController(ImConWidgetController):
             return
 
         add = True
-        alreadyExists = False
         if name in self._setupInfo.laserPresets:
-            alreadyExists = True
             add = guitools.askYesNoQuestion(
                 self._widget,
                 'Laser preset already exists',
@@ -111,16 +129,7 @@ class LaserController(ImConWidgetController):
             )
 
         if add:
-            # Add in GUI
-            if not alreadyExists:
-                self._widget.addPreset(name)
-
-            # Set in setup info
-            self._setupInfo.setLaserPreset(name, self.makePreset())
-            configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
-
-            # Update selected preset in GUI
-            self._widget.setCurrentPreset(name)
+            self.savePreset(name)
 
     def deletePreset(self):
         """ Handles what happens when the user requests the selected preset to
@@ -175,12 +184,13 @@ class LaserController(ImConWidgetController):
 
     def scanChanged(self, isScanning):
         """ Handles what happens when a scan is started/stopped. """
-        self._widget.setEditable(not isScanning)
+        for lName, _ in self._master.lasersManager:
+            self._widget.setLaserEditable(lName, not isScanning)
         self._master.lasersManager.execOnAll(lambda l: l.setScanModeActive(isScanning))
 
         defaultScanPresetName = self._setupInfo.defaultLaserPresetForScan
         if defaultScanPresetName in self._setupInfo.laserPresets:
-            if isScanning:
+            if isScanning and self.presetBeforeScan is None:
                 # Scan started, save current values and apply default scan preset
                 self.presetBeforeScan = self.makePreset()
                 self.applyPreset(self._setupInfo.laserPresets[defaultScanPresetName])
@@ -188,6 +198,11 @@ class LaserController(ImConWidgetController):
                 # Scan finished, restore the values that were set before the scan started
                 self.applyPreset(self.presetBeforeScan)
                 self.presetBeforeScan = None
+
+    def scanBuilt(self, deviceList):
+        for lName, _ in self._master.lasersManager:
+            if lName not in deviceList:
+                self._widget.setLaserEditable(lName, True)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 3 or key[0] != _attrCategory:
@@ -206,22 +221,27 @@ class LaserController(ImConWidgetController):
         finally:
             self.settingAttr = False
 
-    @APIExport
-    def getLaserNames(self):
+    @APIExport()
+    def getLaserNames(self) -> List[str]:
         """ Returns the device names of all lasers. These device names can be
         passed to other laser-related functions. """
         return self._master.lasersManager.getAllDeviceNames()
 
-    @APIExport
-    def setLaserActive(self, laserName, active):
+    @APIExport(runOnUIThread=True)
+    def setLaserActive(self, laserName: str, active: bool) -> None:
         """ Sets whether the specified laser is powered on. """
         self._widget.setLaserActive(laserName, active)
 
-    @APIExport
-    def setLaserValue(self, laserName, value):
+    @APIExport(runOnUIThread=True)
+    def setLaserValue(self, laserName: str, value: Union[int, float]) -> None:
         """ Sets the value of the specified laser, in the units that the laser
         uses. """
         self._widget.setValue(laserName, value)
+
+    @APIExport()
+    def changeScanPower(self, laserName, laserValue):
+        defaultPreset = self._setupInfo.laserPresets[self._setupInfo.defaultLaserPresetForScan]
+        defaultPreset[laserName] = guitools.LaserPresetInfo(value=laserValue)
 
 
 _attrCategory = 'Laser'

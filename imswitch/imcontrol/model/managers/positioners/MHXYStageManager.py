@@ -1,8 +1,20 @@
+from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
 class MHXYStageManager(PositionerManager):
-    def __init__(self, positionerInfo, name, *args, **kwargs):
+    """ PositionerManager for control of a Marzhauser XY-stage through RS232
+    communication.
+
+    Manager properties:
+
+    - ``rs232device`` -- name of the defined rs232 communication channel
+      through which the communication should take place
+    """
+
+    def __init__(self, positionerInfo, name, *args, **lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
         if (len(positionerInfo.axes) != 2
                 or 'X' not in positionerInfo.axes or 'Y' not in positionerInfo.axes):
             raise RuntimeError(f'{self.__class__.__name__} requires two axes named X and Y'
@@ -11,8 +23,10 @@ class MHXYStageManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self._rs232Manager = kwargs['rs232sManager'][positionerInfo.managerProperties['rs232device']]
-        print(str(self._rs232Manager.send('?readsn')))  # print serial no of stage
+        self._rs232Manager = lowLevelManagers['rs232sManager'][
+            positionerInfo.managerProperties['rs232device']
+        ]
+        self.__logger.info(str(self._rs232Manager.send('?readsn')))  # log serial no of stage
 
     def move(self, value, axis):
         if axis == 'X':
@@ -20,7 +34,7 @@ class MHXYStageManager(PositionerManager):
         elif axis == 'Y':
             cmd = 'mor y ' + str(float(value))
         else:
-            print('Wrong axis, has to be "X" or "Y".')
+            self.__logger.error('Wrong axis, has to be "X" or "Y".')
             return
         self._rs232Manager.send(cmd)
         self._position[axis] = self._position[axis] + value
@@ -31,7 +45,7 @@ class MHXYStageManager(PositionerManager):
         elif axis == 'Y':
             cmd = 'moa y ' + str(float(value))
         else:
-            print('Wrong axis, has to be "X" or "Y".')
+            self.__logger.error('Wrong axis, has to be "X" or "Y".')
             return
         self._rs232Manager.send(cmd)
         self._position[axis] = value

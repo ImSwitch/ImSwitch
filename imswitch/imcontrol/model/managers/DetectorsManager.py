@@ -1,4 +1,3 @@
-from collections import Sequence
 from time import sleep
 
 import numpy as np
@@ -14,10 +13,12 @@ class DetectorsManager(MultiManager, SignalInterface):
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
-    sigImageUpdated = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
+    sigImageUpdated = Signal(
+        str, np.ndarray, bool, bool
+    )  # (detectorName, image, init, isCurrentDetector)
 
-    def __init__(self, detectorInfos, updatePeriod, **kwargs):
-        MultiManager.__init__(self, detectorInfos, 'detectors', **kwargs)
+    def __init__(self, detectorInfos, updatePeriod, **lowLevelManagers):
+        MultiManager.__init__(self, detectorInfos, 'detectors', **lowLevelManagers)
         SignalInterface.__init__(self)
 
         self._activeAcqHandles = []
@@ -45,6 +46,12 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._lvWorker.moveToThread(self._thread)
         self._thread.started.connect(self._lvWorker.run)
         self._thread.finished.connect(self._lvWorker.stop)
+
+    def __del__(self):
+        self._thread.quit()
+        self._thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def getCurrentDetectorName(self):
         """ Returns the name of the current detector. """
@@ -90,7 +97,7 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._activeAcqsMutex.lock()
         try:
             # Generate handle that will be used to stop acquisition
-            handle = np.random.randint(2**31)
+            handle = np.random.randint(2 ** 31)
 
             # Add to handle list and set enable acquisition/LV flags if not already enabled
             if not liveView:
@@ -105,7 +112,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # Do actual enabling
         if enableAcq:
-            self.execOnAll(lambda c: c.startAcquisition(), condition = lambda c: c.forAcquisition)
+            self.execOnAll(lambda c: c.startAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStarted.emit()
         if enableLV:
             sleep(0.3)
@@ -141,7 +148,7 @@ class DetectorsManager(MultiManager, SignalInterface):
             self._thread.quit()
             self._thread.wait()
         if disableAcq:
-            self.execOnAll(lambda c: c.stopAcquisition(), condition = lambda c: c.forAcquisition)
+            self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
 
 
@@ -153,10 +160,12 @@ class LVWorker(Worker):
         self._vtimer = None
 
     def run(self):
-        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False), condition = lambda c: c.forAcquisition)
+        self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(False),
+                                         condition=lambda c: c.forAcquisition)
         self._vtimer = Timer()
         self._vtimer.timeout.connect(
-            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True), condition = lambda c: c.forAcquisition)
+            lambda: self._detectorsManager.execOnAll(lambda c: c.updateLatestFrame(True),
+                                                     condition=lambda c: c.forAcquisition)
         )
         self._vtimer.start(self._updatePeriod)
 
@@ -187,4 +196,3 @@ class NoDetectorsError(RuntimeError):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

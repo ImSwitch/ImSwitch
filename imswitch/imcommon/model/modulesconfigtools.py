@@ -1,6 +1,7 @@
+import dataclasses
+import importlib
 import os
 import pkgutil
-import dataclasses
 from dataclasses import dataclass
 from typing import List
 
@@ -28,13 +29,43 @@ def setEnabledModuleIds(moduleIds):
 
 
 def getAvailableModules():
+    """ Returns the available modules as an { id: name } dict. """
+
+    def iter_namespace(ns_pkg):
+        # PyInstaller-compatible alternative to pkgutil.iter_modules
+        # Source: https://github.com/pyinstaller/pyinstaller/issues/1905#issuecomment-525221546
+
+        prefix = ns_pkg.__name__ + '.'
+        for p in pkgutil.iter_modules(ns_pkg.__path__, prefix):
+            yield p[1]
+
+        # special handling when the package is bundled with PyInstaller 3.5
+        # See https://github.com/pyinstaller/pyinstaller/issues/1905#issuecomment-445787510
+        toc = set()
+        for importer in pkgutil.iter_importers(ns_pkg.__name__.partition('.')[0]):
+            if hasattr(importer, 'toc'):
+                toc |= importer.toc
+        for name in toc:
+            if name.startswith(prefix):
+                yield name
+
     moduleIdsAndNamesDict = {}
-    for moduleInfo in pkgutil.iter_modules(imswitch.__path__):
-        if moduleInfo.ispkg and moduleInfo.name != 'imcommon':  # Exception for imcommon
-            moduleId = moduleInfo.name
-            modulePkg = moduleInfo.module_finder.find_spec(moduleId).loader.load_module(moduleId)
-            moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
-            moduleIdsAndNamesDict[moduleInfo.name] = moduleName
+    for modulePkgPath in sorted(iter_namespace(imswitch)):
+        if not modulePkgPath.startswith('imswitch.') or modulePkgPath.count('.') != 1:
+            continue
+
+        # E.g. "imswitch.imcontrol" -> "imcontrol"
+        moduleId = modulePkgPath[modulePkgPath.rindex('.') + 1:]
+
+        modulePkg = importlib.import_module(modulePkgPath)
+
+        if (not hasattr(modulePkg, '__imswitch_module__') or
+                modulePkg.__imswitch_module__ is not True):
+            # ImSwitch modules must have __imswitch_module__ == True
+            continue
+
+        moduleName = modulePkg.__title__ if hasattr(modulePkg, '__title__') else moduleId
+        moduleIdsAndNamesDict[moduleId] = moduleName
 
     return moduleIdsAndNamesDict
 

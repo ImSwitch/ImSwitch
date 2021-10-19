@@ -1,17 +1,22 @@
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtWidgets
 from pyqtgraph.parametertree import ParameterTree
+from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
 class SLMWidget(Widget):
     """ Widget containing slm interface. """
 
+    sigSLMDisplayToggled = QtCore.Signal(bool)  # (enabled)
+    sigSLMMonitorChanged = QtCore.Signal(int)  # (monitor)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.slmDisplay = None
 
         self.slmFrame = pg.GraphicsLayoutWidget()
         self.vb = self.slmFrame.addViewBox(row=1, col=1)
@@ -23,13 +28,14 @@ class SLMWidget(Widget):
 
         self.slmParameterTree = ParameterTree()
         self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
-                            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
-                            'suffix': 'px'},
-                            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
-                            'suffix': 'px'},
-                            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832), 'step': 0.1,
-                            'suffix': 'rad'}
-                            ]}]
+            {'name': 'radius', 'type': 'float', 'value': 100, 'limits': (0, 600), 'step': 1,
+             'suffix': 'px'},
+            {'name': 'sigma', 'type': 'float', 'value': 35, 'limits': (1, 599), 'step': 0.1,
+             'suffix': 'px'},
+            {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832),
+             'step': 0.1,
+             'suffix': 'rad'}
+        ]}]
         self.slmParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -107,10 +113,25 @@ class SLMWidget(Widget):
         abertreeDock = pg.dockarea.Dock('Aberration correction parameters', size=(1, 1))
         abertreeDock.addWidget(self.aberParameterTree)
         self.paramtreeDockArea.addDock(abertreeDock, 'above', pmtreeDock)
-        
+
+        # Button for showing SLM display and spinbox for monitor selection
+        self.slmDisplayLayout = QtWidgets.QHBoxLayout()
+
+        self.slmDisplayButton = guitools.BetterPushButton('Show SLM display (fullscreen)')
+        self.slmDisplayButton.setCheckable(True)
+        self.slmDisplayButton.toggled.connect(self.sigSLMDisplayToggled)
+        self.slmDisplayLayout.addWidget(self.slmDisplayButton, 1)
+
+        self.slmMonitorLabel = QtWidgets.QLabel('Screen:')
+        self.slmDisplayLayout.addWidget(self.slmMonitorLabel)
+
+        self.slmMonitorBox = QtWidgets.QSpinBox()
+        self.slmMonitorBox.valueChanged.connect(self.sigSLMMonitorChanged)
+        self.slmDisplayLayout.addWidget(self.slmMonitorBox)
+
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
-        #self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
+        # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', abertreeDock)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -130,7 +151,8 @@ class SLMWidget(Widget):
         self.controlPanel.objlensComboBox.addItem("No objective")
         self.controlPanel.objlensComboBox.addItem("Oil")
         self.controlPanel.objlensComboBox.addItem("Glycerol")
-        self.controlPanel.choiceInterfaceLayout.addWidget(QtWidgets.QLabel('Select objective:'), 1, 0)
+        self.controlPanel.choiceInterfaceLayout.addWidget(QtWidgets.QLabel('Select objective:'),
+                                                          1, 0)
         self.controlPanel.choiceInterfaceLayout.addWidget(self.controlPanel.objlensComboBox, 1, 1)
 
         # Phase mask moving buttons
@@ -209,11 +231,27 @@ class SLMWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def initControls(self):
         self.grid.addWidget(self.slmFrame, 0, 0, 1, 2)
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 1, 1)
-        self.grid.addWidget(self.applyChangesButton, 2, 0, 1, 1)
+        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
+        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        self.grid.addLayout(self.slmDisplayLayout, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+
+    def initSLMDisplay(self, monitor):
+        from imswitch.imcontrol.view import SLMDisplay
+        self.slmDisplay = SLMDisplay(self, monitor)
+        self.slmDisplay.sigClosed.connect(lambda: self.sigSLMDisplayToggled.emit(False))
+        self.slmMonitorBox.setValue(monitor)
+
+    def updateSLMDisplay(self, imgArr):
+        self.slmDisplay.updateImage(imgArr)
+
+    def setSLMDisplayVisible(self, visible):
+        self.slmDisplay.setVisible(visible)
+        self.slmDisplayButton.setChecked(visible)
+
+    def setSLMDisplayMonitor(self, monitor):
+        self.slmDisplay.setMonitor(monitor, updateImage=True)
 
 
 # Copyright (C) 2020, 2021 TestaLab

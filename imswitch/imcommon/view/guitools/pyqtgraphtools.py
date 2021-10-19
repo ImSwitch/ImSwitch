@@ -4,7 +4,7 @@ import pyqtgraph.ptime as ptime
 from qtpy import QtCore, QtGui, QtWidgets
 
 
-def setBestImageLimits(viewBox, width, height):
+def setPGBestImageLimits(viewBox, width, height):
     viewBox.setAspectLocked()
     viewBox.setLimits(xMin=None, xMax=None, yMin=None, yMax=None)
 
@@ -14,7 +14,7 @@ def setBestImageLimits(viewBox, width, height):
                       yMin=viewBounds[1][0], yMax=viewBounds[1][1])
 
 
-class Grid:
+class PGGrid:
     def __init__(self, viewBox):
         self.showed = False
         self.vb = viewBox
@@ -82,7 +82,7 @@ class Grid:
         self.showed = visible
 
 
-class TwoColorGrid:
+class PGTwoColorGrid:
     def __init__(self, viewBox, shape=(512, 512)):
         self.showed = False
         self.vb = viewBox
@@ -123,7 +123,7 @@ class TwoColorGrid:
         self.showed = visible
 
 
-class Crosshair:
+class PGCrosshair:
     def __init__(self, viewBox):
         self.showed = False
 
@@ -143,7 +143,7 @@ class Crosshair:
     def mouseClicked(self):
         try:
             self.vb.scene().sigMouseMoved.disconnect(self.mouseMoved)
-        except:
+        except Exception:
             pass
 
     def toggle(self):
@@ -171,7 +171,7 @@ class Crosshair:
             self.hide()
 
 
-class ROI(pg.ROI):
+class PGROI(pg.ROI):
     def __init__(self, shape, pos, handlePos, handleCenter, color, *args,
                  **kwargs):
         self.mainShape = shape
@@ -189,7 +189,7 @@ class ROI(pg.ROI):
     def updateText(self):
         self.label.setPos(self.pos()[0] + self.size()[0],
                           self.pos()[1] + self.size()[1])
-        size = np.round(self.size()).astype(np.int)
+        size = np.round(self.size()).astype(int)
         self.label.setText('{}x{}'.format(size[0], size[1]))
 
     def hide(self, *args, **kwargs):
@@ -201,7 +201,7 @@ class ROI(pg.ROI):
         self.label.show()
 
 
-class cropROI(pg.ROI):
+class PGCropROI(pg.ROI):
     def __init__(self, shape, vb, *args, **kwargs):
         self.mainShape = shape
 

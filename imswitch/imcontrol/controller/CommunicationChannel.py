@@ -1,8 +1,9 @@
+from typing import Mapping
+
 import numpy as np
-from dotmap import DotMap
 
 from imswitch.imcommon.framework import Signal, SignalInterface
-from imswitch.imcommon.model import APIExport, SharedAttributes
+from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -11,13 +12,15 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
-    sigUpdateImage = Signal(str, np.ndarray, bool, bool)  # (detectorName, image, init, isCurrentDetector)
+    sigUpdateImage = Signal(
+        str, np.ndarray, bool, bool
+    )  # (detectorName, image, init, isCurrentDetector)
 
     sigAcquisitionStarted = Signal()
 
     sigAcquisitionStopped = Signal()
 
-    sigAdjustFrame = Signal(int, int)  # (width, height)
+    sigAdjustFrame = Signal(object)  # (shape)
 
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
 
@@ -37,11 +40,25 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 
-    sigPrepareScan = Signal()
+    sigMemorySnapAvailable = Signal(
+        str, np.ndarray, object, bool
+    )  # (name, image, filePath, savedToDisk)
+
+    sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
+
+    sigAbortScan = Signal()
 
     sigScanStarting = Signal()
-    
+
+    sigScanBuilt = Signal(object)  # (deviceList)
+
+    sigScanStarted = Signal()
+
+    sigScanDone = Signal()
+
     sigScanEnded = Signal()
+
+    sigSLMMaskUpdated = Signal(object)  # (mask)
 
     @property
     def sharedAttrs(self):
@@ -71,8 +88,8 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
-    @APIExport
-    def signals(self):
+    @APIExport()
+    def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
         action. Currently available signals are:
 
@@ -81,16 +98,17 @@ class CommunicationChannel(SignalInterface):
          - recordingStarted
          - recordingEnded
          - scanEnded
+
+        They can be accessed like this: api.imcontrol.signals().scanEnded
         """
 
-        return DotMap({
+        return pythontools.dictToROClass({
             'acquisitionStarted': self.sigAcquisitionStarted,
             'acquisitionStopped': self.sigAcquisitionStopped,
             'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
             'scanEnded': self.sigScanEnded
         })
-
 
 
 # Copyright (C) 2020, 2021 TestaLab

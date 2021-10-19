@@ -9,19 +9,23 @@ class ScriptEntry:
     unsaved: bool = False
 
     def isSavedToFile(self):
+        """ Returns whether this script entry has been saved to a file. """
         return self.filePath is not None
 
     def save(self):
+        """ Saves this script entry to a file. If it has not been saved to a
+        file previously, a RuntimeError will be raised. """
         if not self.isSavedToFile():
             raise RuntimeError('Cannot save, no file path set in entry')
 
-        with open(self.filePath, 'w') as file:
+        with open(self.filePath, 'w', newline='\n') as file:
             file.write(self.code)
 
         self.unsaved = False
 
     @classmethod
     def loadFromFile(cls, filePath):
+        """ Creates a ScriptEntry from the file at the specified path. """
         with open(filePath) as file:
             code = file.read()
 

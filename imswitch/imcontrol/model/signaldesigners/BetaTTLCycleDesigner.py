@@ -4,6 +4,12 @@ from .basesignaldesigners import TTLCycleDesigner
 
 
 class BetaTTLCycleDesigner(TTLCycleDesigner):
+    """ TTL cycle designer for camera-based applications where each pulse
+    scheme is one frame.
+
+    Designer params: None
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -19,24 +25,24 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
 
         if not self.parameterCompatibility(parameterDict):
-            print('TTL parameters seem incompatible, this error should not be \
-                  since this should be checked at program start-up')
+            self._logger.error('TTL parameters seem incompatible, this error should not be since'
+                               ' this should be checked at program start-up')
             return None
 
         sampleRate = setupInfo.scan.sampleRate
         targets = parameterDict['target_device']
         cycleSamples = parameterDict['sequence_time'] * sampleRate
-        #print(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
+        # self._logger.debug(f'DO sample rate: {sampleRate}, cycleSamples: {cycleSamples}')
         if not cycleSamples.is_integer():
-            print('WARNING: Non-integer number of sequence samples, rounding up')
-        cycleSamples = np.int(np.ceil(cycleSamples))
+            self._logger.warning('Non-integer number of sequence samples, rounding up')
+        cycleSamples = int(np.ceil(cycleSamples))
         signalDict = {}
         tmpSigArr = np.zeros(cycleSamples, dtype='bool')
         for i, target in enumerate(targets):
             tmpSigArr[:] = False
             for j, start in enumerate(parameterDict['TTL_start'][i]):
-                startSamp = np.int(np.round(start * sampleRate))
-                endSamp = np.int(np.round(parameterDict['TTL_end'][i][j] * sampleRate))
+                startSamp = int(np.round(start * sampleRate))
+                endSamp = int(np.round(parameterDict['TTL_end'][i][j] * sampleRate))
                 tmpSigArr[startSamp:endSamp] = True
 
             signalDict[target] = np.copy(tmpSigArr)
@@ -48,8 +54,8 @@ class BetaTTLCycleDesigner(TTLCycleDesigner):
             # Calculate samples to zero pad TTL signals with
             TTLZeroPadSamples = returnTime * sampleRate
             if not TTLZeroPadSamples.is_integer():
-                print('WARNING: Non-integer number of return samples, rounding up')
-            TTLZeroPadSamples = np.int(np.ceil(TTLZeroPadSamples))
+                self._logger.warning('Non-integer number of return samples, rounding up')
+            TTLZeroPadSamples = int(np.ceil(TTLZeroPadSamples))
 
             # Tile and pad TTL signals according to sync parameters
             for target, signal in signalDict.items():

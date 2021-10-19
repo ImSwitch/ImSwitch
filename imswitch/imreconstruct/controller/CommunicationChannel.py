@@ -19,6 +19,8 @@ class CommunicationChannel(SignalInterface):
 
     sigPatternVisibilityChanged = Signal(bool)  # (visible)
 
+    sigAddToMultiData = Signal(str, str)  # (path, datasetName)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

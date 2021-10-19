@@ -1,30 +1,39 @@
 import logging
 import os
 import sys
+import traceback
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
+from .model import dirtools, pythontools, initLogger
 from .view.guitools import getBaseStyleSheet
 
 
 def prepareApp():
     """ This function must be called before any views are created. """
 
+    # Initialize exception handling
+    pythontools.installExceptHook()
+
     # Set logging levels
-    logging.getLogger("pyvisa").setLevel(logging.WARNING)
-    logging.getLogger("lantz").setLevel(logging.WARNING)
+    logging.getLogger('pyvisa').setLevel(logging.WARNING)
+    logging.getLogger('lantz').setLevel(logging.WARNING)
 
     # Create app
+    os.environ['IMSWITCH_FULL_APP'] = '1'  # Indicator that non-plugin version of ImSwitch is used
     os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # Force Qt to use PyQt5
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'  # Force HDF5 to not lock files
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     app = QtWidgets.QApplication([])
+    app.setWindowIcon(QtGui.QIcon(os.path.join(dirtools.DataFileDirs.Root, 'icon.png')))
     app.setStyleSheet(getBaseStyleSheet())
     return app
 
 
 def launchApp(app, mainView, moduleMainControllers):
     """ Launches the app. The program will exit when the app is exited. """
+
+    logger = initLogger('launchApp')
 
     # Show app
     mainView.showMaximized()
@@ -33,7 +42,13 @@ def launchApp(app, mainView, moduleMainControllers):
 
     # Clean up
     for controller in moduleMainControllers:
-        controller.closeEvent()
+        try:
+            controller.closeEvent()
+        except Exception:
+            logger.error(f'Error closing {type(controller).__name__}')
+            logger.error(traceback.format_exc())
+
+    # Exit
     sys.exit(exitCode)
 
 

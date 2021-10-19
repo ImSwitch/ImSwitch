@@ -1,6 +1,6 @@
 from .AlignAverageController import AlignAverageController
-from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController
+from .AlignmentLineController import AlignmentLineController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .FFTController import FFTController
@@ -9,8 +9,8 @@ from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
+from .SLMController import SLMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
-from .SLMController import SLMController
 from .ULensesController import ULensesController
 from .ViewController import ViewController

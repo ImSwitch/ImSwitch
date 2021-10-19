@@ -5,7 +5,7 @@
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
-        "ctrInputLine": 0,
+        "ctrInputLine": "Dev1/ctr0",
         "terminal": "PFI0",
         "cameraListIndex": null
       },
@@ -16,7 +16,7 @@
       "digitalLine": null,
       "managerName": "APDManager",
       "managerProperties": {
-        "ctrInputLine": 1,
+        "ctrInputLine": "Dev1/ctr1",
         "terminal": "PFI12",
         "cameraListIndex": null
       },
@@ -58,7 +58,7 @@
   "lasers": {
     "561": {
       "analogChannel": null,
-      "digitalLine": 1,
+      "digitalLine": "Dev1/port0/line1",
       "managerName": "NidaqLaserManager",
       "managerProperties": {
       },
@@ -69,7 +69,7 @@
     },
     "640": {
       "analogChannel": null,
-      "digitalLine": 2,
+      "digitalLine": "Dev1/port0/line2",
       "managerName": "NidaqLaserManager",
       "managerProperties": {
       },
@@ -105,8 +105,8 @@
       "valueRangeStep": 1
     },
     "775AOM": {
-      "analogChannel": 3,
-      "digitalLine": 4,
+      "analogChannel": "Dev1/ao3",
+      "digitalLine": "Dev1/port0/line4",
       "managerName": "NidaqLaserManager",
       "managerProperties": {
       },
@@ -118,7 +118,7 @@
   },
   "positioners": {
     "ND-GalvoX": {
-      "analogChannel": 0,
+      "analogChannel": "Dev1/ao0",
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -132,7 +132,7 @@
       "forScanning": true
     },
     "ND-GalvoY": {
-      "analogChannel": 1,
+      "analogChannel": "Dev1/ao1",
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -146,7 +146,7 @@
       "forScanning": true
     },
     "ND-PiezoZ": {
-      "analogChannel": 2,
+      "analogChannel": "Dev1/ao2",
       "digitalLine": null,
       "managerName": "NidaqPositionerManager",
       "managerProperties": {
@@ -223,9 +223,6 @@
     "FocusLock",
     "SLM"
   ],
-  "scanDefaults": {
-    "defaultScanFile": null
-  },
   "scan": {
     "scanDesigner": "GalvoScanDesigner",
     "scanDesignerParams": {},

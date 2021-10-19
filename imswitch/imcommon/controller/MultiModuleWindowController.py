@@ -1,20 +1,34 @@
 import webbrowser
 
-from imswitch.imcommon.view import guitools
+import psutil
+
+import imswitch
+from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
-from .basecontrollers import WidgetController
+from imswitch.imcommon.view import guitools
 from .CheckUpdatesController import CheckUpdatesController
 from .PickModulesController import PickModulesController
+from .basecontrollers import WidgetController
 
 
 class MultiModuleWindowController(WidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.pickModulesController = self._factory.createController(PickModulesController, self._widget.pickModulesDialog)
-        self.checkUpdatesController = self._factory.createController(CheckUpdatesController, self._widget.checkUpdatesDialog)
+        self.pickModulesController = self._factory.createController(
+            PickModulesController, self._widget.pickModulesDialog
+        )
+        self.checkUpdatesController = self._factory.createController(
+            CheckUpdatesController, self._widget.checkUpdatesDialog
+        )
 
         self._moduleIdNameMap = {}
+
+        self._updateMemBarTimer = Timer()
+        self._updateMemBarTimer.timeout.connect(self.updateRAMUsage)
+        self._updateMemBarTimer.start(1000)
+
+        self.updateRAMUsage()
 
         # Connect signals
         self._widget.sigPickModules.connect(self.pickModules)
@@ -50,7 +64,7 @@ class MultiModuleWindowController(WidgetController):
 
     def showDocs(self):
         """ Opens the ImSwitch documentation in a web browser. """
-        webbrowser.open('https://imswitch.readthedocs.io')
+        webbrowser.open(f'https://imswitch.readthedocs.io/en/v{imswitch.__version__}/')
 
     def checkUpdates(self):
         """ Checks if there are any updates to ImSwitch available and notifies
@@ -65,8 +79,11 @@ class MultiModuleWindowController(WidgetController):
     def moduleAdded(self, moduleId, moduleName):
         self._moduleIdNameMap[moduleId] = moduleName
 
-    @APIExport
-    def setCurrentModule(self, moduleId):
+    def updateRAMUsage(self):
+        self._widget.updateRAMUsage(psutil.virtual_memory()[2] / 100)
+
+    @APIExport(runOnUIThread=True)
+    def setCurrentModule(self, moduleId: str) -> None:
         """ Sets the currently displayed module to the module with the
         specified ID (e.g. "imcontrol"). """
         moduleName = self._moduleIdNameMap[moduleId]

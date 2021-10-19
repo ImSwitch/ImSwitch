@@ -1,9 +1,10 @@
 import os
 import time
+from typing import Optional, Union, List
 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import filetools, ostools, APIExport
-from imswitch.imcontrol.model import SaveMode, RecMode
+from imswitch.imcommon.model import ostools, APIExport
+from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
 
 
@@ -19,43 +20,59 @@ class RecordingController(ImConWidgetController):
 
         self.settingAttr = False
         self.recording = False
-        self.endedScan = False
+        self.doneScan = False
         self.endedRecording = False
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        imreconstructRegistered = self._moduleCommChannel.isModuleRegistered('imreconstruct')
-        self._widget.setSaveMode(SaveMode.Disk.value)
-        self._widget.setSaveModeVisible(imreconstructRegistered)
+        self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
+        self._widget.setSnapSaveMode(SaveMode.Disk.value)
+        self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
+
+        self._widget.setRecSaveMode(SaveMode.Disk.value)
+        self._widget.setRecSaveModeVisible(
+            self._moduleCommChannel.isModuleRegistered('imreconstruct')
+        )
 
         self.untilStop()
 
         # Connect CommunicationChannel signals
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigScanEnded.connect(self.scanEnded)
+        self._commChannel.sigScanDone.connect(self.scanDone)
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect RecordingWidget signals
-        self._widget.sigDetectorChanged.connect(self.detectorChanged)
+        self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
+        self._widget.sigDetectorSpecificChanged.connect(self.detectorChanged)
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
         self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
-        self._widget.sigSnapRequested.connect(self.snap)
-        self._widget.sigRecToggled.connect(self.toggleREC)
+
+        self._widget.sigSnapSaveModeChanged.connect(self.snapSaveModeChanged)
+
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
         self._widget.sigScanOncePicked.connect(self.recScanOnce)
         self._widget.sigScanLapsePicked.connect(self.recScanLapse)
         self._widget.sigUntilStopPicked.connect(self.untilStop)
 
+        self._widget.sigSnapRequested.connect(self.snap)
+        self._widget.sigRecToggled.connect(self.toggleREC)
+
     def openFolder(self):
         """ Opens current folder in File Explorer. """
-        try:
-            ostools.openFolderInOS(self._widget.getRecFolder())
-        except ostools.OSToolsError:
-            ostools.openFolderInOS(self._widget.initialDir)
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        ostools.openFolderInOS(folder)
+
+    def snapSaveModeChanged(self):
+        saveMode = SaveMode(self._widget.getSnapSaveMode())
+        self._widget.setSnapSaveFormatEnabled(saveMode != SaveMode.RAM)
+        if saveMode == SaveMode.RAM:
+            self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
@@ -63,16 +80,19 @@ class RecordingController(ImConWidgetController):
 
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
-            os.mkdir(folder)
+            os.makedirs(folder)
         time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
-        name = os.path.join(folder, self.getFileName()) + '_snap'
-        savename = filetools.getUniqueName(name)
+        savename = os.path.join(folder, self.getFileName()) + '_snap'
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
 
-        self._master.recordingManager.snap(detectorNames, savename, attrs)
+        self._master.recordingManager.snap(detectorNames,
+                                           savename,
+                                           SaveMode(self._widget.getSnapSaveMode()),
+                                           SaveFormat(self._widget.getSnapSaveFormat()),
+                                           attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """
@@ -81,54 +101,74 @@ class RecordingController(ImConWidgetController):
 
             folder = self._widget.getRecFolder()
             if not os.path.exists(folder):
-                os.mkdir(folder)
+                os.makedirs(folder)
             time.sleep(0.01)
-            name = os.path.join(folder, self.getFileName()) + '_rec'
-            self.savename = filetools.getUniqueName(name)
-            self.saveMode = SaveMode(self._widget.getSaveMode())
+            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
 
-            self.detectorsBeingCaptured = self.getDetectorNamesToCapture()
-            self.attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
-                          for detectorName in self.detectorsBeingCaptured}
+            if self.recMode == RecMode.ScanOnce:
+                self._commChannel.sigScanStarting.emit()  # To get correct values from sharedAttrs
 
-            recordingArgs = (self.detectorsBeingCaptured, self.recMode, self.savename,
-                             self.saveMode, self.attrs)
+            detectorsBeingCaptured = self.getDetectorNamesToCapture()
+
+            self.recordingArgs = {
+                'detectorNames': detectorsBeingCaptured,
+                'recMode': self.recMode,
+                'savename': self.savename,
+                'saveMode': SaveMode(self._widget.getRecSaveMode()),
+                'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                          for detectorName in detectorsBeingCaptured},
+                'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
+                                            self._widget.getMultiDetectorSingleFile())
+            }
 
             if self.recMode == RecMode.SpecFrames:
-                self._master.recordingManager.startRecording(
-                    *recordingArgs, recFrames=self._widget.getNumExpositions()
-                )
+                self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
+                self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.SpecTime:
-                self._master.recordingManager.startRecording(
-                    *recordingArgs, recTime=self._widget.getTimeToRec()
-                )
+                self.recordingArgs['recTime'] = self._widget.getTimeToRec()
+                self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.ScanOnce:
-                self._master.recordingManager.startRecording(
-                    *recordingArgs, recFrames=self._commChannel.getNumScanPositions()
-                )
-                time.sleep(0.1)
-                self._commChannel.sigPrepareScan.emit()
+                self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()
+                self._master.recordingManager.startRecording(**self.recordingArgs)
+                time.sleep(0.3)
+                self._commChannel.sigRunScan.emit(True, False)
             elif self.recMode == RecMode.ScanLapse:
+                self.recordingArgs['singleLapseFile'] = self._widget.getTimelapseSingleFile()
                 self.lapseTotal = self._widget.getTimelapseTime()
                 self.lapseCurrent = 0
                 self.nextLapse()
             else:
-                self._master.recordingManager.startRecording(*recordingArgs)
+                self._master.recordingManager.startRecording(**self.recordingArgs)
 
             self.recording = True
         else:
+            if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
+                self._commChannel.sigAbortScan.emit()
             self._master.recordingManager.endRecording()
 
     def nextLapse(self):
         self.endedRecording = False
-        self.endedScan = False
-        fileName = self.savename + "_" + str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
-        self._master.recordingManager.startRecording(
-            self.detectorsBeingCaptured, self.recMode, fileName, self.saveMode, self.attrs,
-            recFrames=self._commChannel.getNumScanPositions()
-        )
+        self.doneScan = False
+
+        isFirstLapse = self.lapseCurrent == 0
+        isFinalLapse = self.lapseCurrent + 1 == self.lapseTotal
+
+        if not self.recordingArgs['singleLapseFile']:
+            lapseCurrentStr = str(self.lapseCurrent).zfill(len(str(self.lapseTotal)))
+            self.recordingArgs['savename'] = f'{self.savename}_scan{lapseCurrentStr}'
+
+        if isFirstLapse:
+            self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs
+            self.recordingArgs['attrs'] = {  # Update
+                detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                for detectorName in self.recordingArgs['detectorNames']
+            }
+            self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()  # Update
+
+        self._master.recordingManager.startRecording(**self.recordingArgs)
         time.sleep(0.3)
-        self._commChannel.sigPrepareScan.emit()
+
+        self._commChannel.sigRunScan.emit(isFirstLapse, not isFinalLapse)
 
     def recordingStarted(self):
         self._widget.setFieldsEnabled(False)
@@ -149,17 +189,19 @@ class RecordingController(ImConWidgetController):
             self._widget.updateRecLapseNum(0)
             self._widget.setRecButtonChecked(False)
             self._widget.setFieldsEnabled(True)
-            
-    def scanEnded(self):
-        self.endedScan = True
-        if self.endedRecording and (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+
+    def scanDone(self):
+        self.doneScan = True
+        if self.endedRecording and (self.recMode == RecMode.ScanLapse or
+                                    self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
-            
+
     def recordingEnded(self):
         self.endedRecording = True
-        if self.endedScan or not (self.recMode == RecMode.ScanLapse or self.recMode == RecMode.ScanOnce):
+        if self.doneScan or not (self.recMode == RecMode.ScanLapse or
+                                 self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
-            
+
     def updateRecFrameNum(self, recFrameNum):
         if self.recMode == RecMode.SpecFrames:
             self._widget.updateRecFrameNum(recFrameNum)
@@ -170,12 +212,12 @@ class RecordingController(ImConWidgetController):
 
     def specFrames(self):
         self._widget.checkSpecFrames()
-        self._widget.setEnabledParams(numExpositions=True)
+        self._widget.setEnabledParams(specFrames=True)
         self.recMode = RecMode.SpecFrames
 
     def specTime(self):
         self._widget.checkSpecTime()
-        self._widget.setEnabledParams(timeToRec=True)
+        self._widget.setEnabledParams(specTime=True)
         self.recMode = RecMode.SpecTime
 
     def recScanOnce(self):
@@ -185,7 +227,7 @@ class RecordingController(ImConWidgetController):
 
     def recScanLapse(self):
         self._widget.checkScanLapse()
-        self._widget.setEnabledParams(timelapseTime=True, timelapseFreq=True)
+        self._widget.setEnabledParams(scanLapse=True)
         self.recMode = RecMode.ScanLapse
 
     def untilStop(self):
@@ -208,27 +250,24 @@ class RecordingController(ImConWidgetController):
             raise ValueError(f'Invalid RecMode {recMode} specified')
 
     def detectorChanged(self):
-        detectorListData = self._widget.getDetectorToCapture()
-        if detectorListData == -2:  # §
-            # When recording all detectors, the SpecFrames mode isn't supported
-            self._widget.setSpecifyFramesAllowed(False)
-        else:
-            self._widget.setSpecifyFramesAllowed(True)
+        detectorMode = self._widget.getDetectorMode()
+        self._widget.setSpecificDetectorListVisible(detectorMode == -3)
+        self._widget.setMultiDetectorSingleFileVisible(detectorMode in [-2, -3])
 
     def getDetectorNamesToCapture(self):
         """ Returns a list of which detectors the user has selected to be captured. """
-        detectorListData = self._widget.getDetectorToCapture()
-        if detectorListData == -1:  # Current detector at start
+        detectorMode = self._widget.getDetectorMode()
+        if detectorMode == -1:  # Current detector at start
             return [self._master.detectorsManager.getCurrentDetectorName()]
-        elif detectorListData == -2:  # All acquisition detectors
+        elif detectorMode == -2:  # All acquisition detectors
             return list(
                 self._master.detectorsManager.execOnAll(
                     lambda c: c.name,
                     condition=lambda c: c.forAcquisition
                 ).values()
             )
-        else:  # A specific detector
-            return [detectorListData]
+        elif detectorMode == -3:  # A specific detector
+            return self._widget.getSelectedSpecificDetectors()
 
     def getFileName(self):
         """ Gets the filename of the data to save. """
@@ -279,61 +318,71 @@ class RecordingController(ImConWidgetController):
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
 
-    @APIExport
-    def snapImage(self):
+    @APIExport(runOnUIThread=True)
+    def snapImage(self) -> None:
         """ Take a snap and save it to a .tiff file at the set file path. """
         self.snap()
 
-    @APIExport
-    def startRecording(self):
+    @APIExport(runOnUIThread=True)
+    def startRecording(self) -> None:
         """ Starts recording with the set settings to the set file path. """
         self._widget.setRecButtonChecked(True)
 
-    @APIExport
-    def stopRecording(self):
+    @APIExport(runOnUIThread=True)
+    def stopRecording(self) -> None:
         """ Stops recording. """
         self._widget.setRecButtonChecked(False)
 
-    @APIExport
-    def setRecModeSpecFrames(self, numFrames):
+    @APIExport(runOnUIThread=True)
+    def setRecModeSpecFrames(self, numFrames: int) -> None:
         """ Sets the recording mode to record a specific number of frames. """
         self.specFrames()
         self._widget.setNumExpositions(numFrames)
 
-    @APIExport
-    def setRecModeSpecTime(self, secondsToRec):
+    @APIExport(runOnUIThread=True)
+    def setRecModeSpecTime(self, secondsToRec: Union[int, float]) -> None:
         """ Sets the recording mode to record for a specific amount of time.
         """
         self.specTime()
         self._widget.setTimeToRec(secondsToRec)
 
-    @APIExport
-    def setRecModeScanOnce(self):
+    @APIExport(runOnUIThread=True)
+    def setRecModeScanOnce(self) -> None:
         """ Sets the recording mode to record a single scan. """
         self.recScanOnce()
 
-    @APIExport
-    def setRecModeScanTimelapse(self, secondsToRec, freqSeconds):
+    @APIExport(runOnUIThread=True)
+    def setRecModeScanTimelapse(self, lapsesToRec: int, freqSeconds: float,
+                                timelapseSingleFile: bool = False) -> None:
         """ Sets the recording mode to record a timelapse of scans. """
         self.recScanLapse()
-        self._widget.setTimelapseTime(secondsToRec)
+        self._widget.setTimelapseTime(lapsesToRec)
         self._widget.setTimelapseFreq(freqSeconds)
+        self._widget.setTimelapseSingleFile(timelapseSingleFile)
 
-    @APIExport
-    def setRecModeUntilStop(self):
+    @APIExport(runOnUIThread=True)
+    def setRecModeUntilStop(self) -> None:
         """ Sets the recording mode to record until recording is manually
         stopped. """
         self.untilStop()
 
-    @APIExport
-    def setDetectorToRecord(self, detectorName):
+    @APIExport(runOnUIThread=True)
+    def setDetectorToRecord(self, detectorName: Union[List[str], str, int],
+                            multiDetectorSingleFile: bool = False) -> None:
         """ Sets which detectors to record. One can also pass -1 as the
         argument to record the current detector, or -2 to record all detectors.
         """
-        self._widget.setDetectorToCapture(detectorName)
+        if isinstance(detectorName, int):
+            self._widget.setDetectorMode(detectorName)
+        else:
+            if isinstance(detectorName, str):
+                detectorName = [detectorName]
+            self._widget.setDetectorMode(-3)
+            self._widget.setSelectedSpecificDetectors(detectorName)
+            self._widget.setMultiDetectorSingleFile(multiDetectorSingleFile)
 
-    @APIExport
-    def setRecFilename(self, filename):
+    @APIExport(runOnUIThread=True)
+    def setRecFilename(self, filename: Optional[str]) -> None:
         """ Sets the name of the file to record to. This only sets the name of
         the file, not the full path. One can also pass None as the argument to
         use a default time-based filename. """
@@ -342,8 +391,8 @@ class RecordingController(ImConWidgetController):
         else:
             self._widget.setCustomFilenameEnabled(False)
 
-    @APIExport
-    def setRecFolder(self, folderPath):
+    @APIExport(runOnUIThread=True)
+    def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
 

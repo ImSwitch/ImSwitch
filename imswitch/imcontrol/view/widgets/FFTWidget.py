@@ -1,7 +1,8 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import pyqtgraphtools
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -39,7 +40,7 @@ class FFTWidget(Widget):
         self.vb = self.cwidget.addViewBox(row=1, col=1)
         self.vb.setMouseMode(pg.ViewBox.RectMode)
         self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.translate(-0.5, -0.5)
+        self.img.setTransform(self.img.transform().translate(-0.5, -0.5))
         self.vb.addItem(self.img)
         self.vb.setAspectLocked(True)
         self.hist = pg.HistogramLUTItem(image=self.img)
@@ -90,7 +91,42 @@ class FFTWidget(Widget):
 
     def getUpdateRate(self):
         return float(self.lineRate.text())
-    
+
+    def getImage(self):
+        return self.img.image
+
+    def setImage(self, im):
+        self.img.setImage(im, autoLevels=False)
+
+    def updateImageLimits(self, imgWidth, imgHeight):
+        pyqtgraphtools.setPGBestImageLimits(self.vb, imgWidth, imgHeight)
+
+    def getImageDisplayLevels(self):
+        return self.hist.getLevels()
+
+    def setImageDisplayLevels(self, minimum, maximum):
+        self.hist.setLevels(minimum, maximum)
+        self.hist.vb.autoRange()
+
+    def setPosLinesVisible(self, visible):
+        self.vline.setVisible(visible)
+        self.hline.setVisible(visible)
+        self.rvline.setVisible(visible)
+        self.lvline.setVisible(visible)
+        self.uhline.setVisible(visible)
+        self.dhline.setVisible(visible)
+
+    def updatePosLines(self, pos, imgWidth, imgHeight):
+        self.vline.setValue(0.5 * imgWidth)
+        self.hline.setAngle(0)
+        self.hline.setValue(0.5 * imgHeight)
+        self.rvline.setValue((0.5 + pos) * imgWidth)
+        self.lvline.setValue((0.5 - pos) * imgWidth)
+        self.dhline.setAngle(0)
+        self.dhline.setValue((0.5 - pos) * imgHeight)
+        self.uhline.setAngle(0)
+        self.uhline.setValue((0.5 + pos) * imgHeight)
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

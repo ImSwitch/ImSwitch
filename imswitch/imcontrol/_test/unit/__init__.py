@@ -1,6 +1,5 @@
 from imswitch.imcontrol.model import DetectorInfo
 
-
 detectorInfosBasic = {
     'CAM': DetectorInfo(
         analogChannel=None,
@@ -53,7 +52,6 @@ detectorInfosMulti = {
         forAcquisition=True
     )
 }
-
 
 detectorInfosNonSquare = {
     'CAM': DetectorInfo(

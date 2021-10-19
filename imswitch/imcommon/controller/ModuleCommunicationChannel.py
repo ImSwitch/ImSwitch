@@ -25,7 +25,7 @@ class ModuleCommunicationChannel(SignalInterface):
 
     def getModuleId(self, modulePackage):
         moduleId = modulePackage.__name__
-        moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        moduleId = moduleId[moduleId.rindex('.') + 1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
         return moduleId
 
     def isModuleRegistered(self, moduleId):

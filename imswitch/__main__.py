@@ -1,28 +1,30 @@
 import importlib
-import os
 import traceback
 
+import imswitch
 from .imcommon import prepareApp, launchApp
 from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from .imcommon.model import dirtools, modulesconfigtools
+from .imcommon.model import modulesconfigtools, pythontools, initLogger
 from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
 def main():
+    logger = initLogger('main')
+    logger.info(f'Starting ImSwitch {imswitch.__version__}')
+
+    app = prepareApp()
+
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
         # Ensure that imscripting is added last
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-    modulePkgs = [importlib.import_module(f'imswitch.{moduleId}')
+    modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
-    app = prepareApp()
     moduleCommChannel = ModuleCommunicationChannel()
 
-    multiModuleWindow = MultiModuleWindow(
-        'ImSwitch', os.path.join(dirtools.DataFileDirs.Root, 'icon.png')
-    )
+    multiModuleWindow = MultiModuleWindow('ImSwitch')
     multiModuleWindowController = MultiModuleWindowController.create(
         multiModuleWindow, moduleCommChannel
     )
@@ -38,7 +40,7 @@ def main():
 
     for i, modulePkg in enumerate(modulePkgs):
         moduleId = modulePkg.__name__
-        moduleId = moduleId[moduleId.rindex('.')+1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
+        moduleId = moduleId[moduleId.rindex('.') + 1:]  # E.g. "imswitch.imcontrol" -> "imcontrol"
 
         # The displayed module name will be the module's __title__, or alternatively its ID if
         # __title__ is not set
@@ -51,8 +53,8 @@ def main():
                 moduleMainControllers=moduleMainControllers
             )
         except Exception as e:
-            print(f'Failed to initialize module {moduleId}')
-            print(traceback.format_exc())
+            logger.error(f'Failed to initialize module {moduleId}')
+            logger.error(traceback.format_exc())
             moduleCommChannel.unregister(modulePkg)
             multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
         else:
@@ -61,7 +63,7 @@ def main():
             moduleMainControllers[moduleId] = controller
 
             # Update loading progress
-            multiModuleWindow.setLoadingProgress(i / len(modulePkgs))
+            multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())

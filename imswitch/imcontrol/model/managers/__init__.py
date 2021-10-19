@@ -1,8 +1,10 @@
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
-from .RS232sManager import RS232sManager
+from .MultiManager import MultiManager
 from .NidaqManager import NidaqManager
+from .PulseStreamerManager import PulseStreamerManager
 from .PositionersManager import PositionersManager
-from .RecordingManager import RecordingManager, RecMode, SaveMode
-from .ScanManager import ScanManager
+from .RS232sManager import RS232sManager
+from .RecordingManager import RecordingManager, RecMode, SaveMode, SaveFormat
 from .SLMManager import SLMManager
+from .ScanManager import ScanManager

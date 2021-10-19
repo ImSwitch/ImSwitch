@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from imswitch.imcommon.framework import Thread, Worker, Signal
@@ -10,9 +12,21 @@ class BeadRecController(ImConWidgetController):
         self.running = False
         self.roiAdded = False
 
+        self.beadWorker = BeadWorker(self)
+        self.beadWorker.sigNewChunk.connect(self.update)
+        self.thread = Thread()
+        self.beadWorker.moveToThread(self.thread)
+        self.thread.started.connect(self.beadWorker.run)
+
         # Connect BeadRecWidget signals
         self._widget.sigROIToggled.connect(self.roiToggled)
         self._widget.sigRunClicked.connect(self.run)
+
+    def __del__(self):
+        self.thread.quit()
+        self.thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def roiToggled(self, enabled):
         """ Show or hide ROI."""
@@ -39,11 +53,6 @@ class BeadRecController(ImConWidgetController):
         if not self.running:
             self.dims = np.array(self._commChannel.getDimsScan()).astype(int)
             self.running = True
-            self.beadWorker = BeadWorker(self)
-            self.beadWorker.sigNewChunk.connect(self.update)
-            self.thread = Thread()
-            self.beadWorker.moveToThread(self.thread)
-            self.thread.started.connect(self.beadWorker.run)
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()
         else:
@@ -69,7 +78,9 @@ class BeadWorker(Worker):
         i = 0
 
         while self.__controller.running:
-            newImages = self.__controller._master.detectorsManager.execOnCurrent(lambda c: c.getChunk())
+            newImages = self.__controller._master.detectorsManager.execOnCurrent(
+                lambda c: c.getChunk()
+            )
             n = len(newImages)
             if n > 0:
                 roiItem = self.__controller._widget.getROIGraphicsItem()
@@ -84,6 +95,8 @@ class BeadWorker(Worker):
                     if i == N:
                         i = 0
                 self.sigNewChunk.emit()
+
+            time.sleep(0.0001)  # Prevents freezing
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,29 +1,64 @@
+import inspect
 import os
-import pydoc
-import re
 
-import html2text
-import m2r
-
+from imswitch import imcontrol, imreconstruct
 from imswitch.imcommon import prepareApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcontrol.model import Options
 from imswitch.imcontrol.view import ViewSetupInfo
 from imswitch.imscripting.model.actions import _Actions
 
-from imswitch import imcontrol, imreconstruct
 
+def writeDocs(cls, isClass=True, displayName=None):
+    def fixIndent(docstring, indent):
+        lines = docstring.splitlines()
+        for i in range(len(lines)):
+            lines[i] = f'{" " * indent}{lines[i].lstrip()}'
+        return '\n'.join(lines)
 
-def writeDocs(cls):
-    obj, name = pydoc.resolve(cls)
-    html = pydoc.html.page(pydoc.describe(obj), pydoc.html.document(obj, name))
+    rst = ''
+    indent = 0
 
-    markdown = html2text.html2text(html)
-    markdown = markdown.replace('`', '')
-    markdown = re.sub(r'^[ \t|]+', '', markdown, flags=re.MULTILINE)
+    if not displayName:
+        displayName = cls.__name__
 
-    rst = m2r.convert(markdown)
+    # Title
+    title = displayName
+    rst += f'{"*" * len(title)}\n'
+    rst += f'{title}\n'
+    rst += f'{"*" * len(title)}\n'
+    rst += '\n'
 
+    # Class
+    if isClass:
+        rst += f'.. class:: {displayName}\n'
+        indent += 3
+        if cls.__doc__:
+            rst += '\n'
+            rst += f'{fixIndent(cls.__doc__, indent)}\n'
+        rst += '\n'
+
+    # Attributes
+    for attrName in dir(cls):
+        if attrName.startswith('_'):
+            continue  # Skip private members
+
+        attr = getattr(cls, attrName)
+        if callable(attr):
+            # Method
+            rst += f'{" " * indent}.. method:: {attr.__name__}{inspect.signature(attr)}\n'
+            indent += 3
+            if attr.__doc__:
+                rst += '\n'
+                rst += f'{fixIndent(attr.__doc__, indent)}\n'
+            rst += '\n'
+            indent -= 3
+
+    # End class
+    if isClass:
+        indent -= 3
+
+    # Write rst file
     with open(os.path.join(apiDocsDir, f'{cls.__name__}.rst'), 'w') as file:
         file.write(rst)
 
@@ -79,29 +114,33 @@ for modulePackage in modules:
     API.__name__ = moduleId
     API.__doc__ = f""" These functions are available in the {moduleId} object. """
 
-    for key, value in mainController.api.items():
+    for key, value in mainController.api._asdict().items():
         setattr(API, key, value)
 
     writeDocs(API)
 
 dummyApp.exit(0)
 
+
 # Generate docs for actions
 class _actions:
     """ These functions are available at the global level. """
     pass
+
 
 for subObjName in dir(_Actions):
     subObj = getattr(_Actions, subObjName)
     if hasattr(subObj, '_APIExport') and subObj._APIExport:
         setattr(_actions, subObjName, subObj)
 
-writeDocs(_actions)
+writeDocs(_actions, isClass=False, displayName='Global-level functions')
+
 
 # Generate docs for mainWindow
 class mainWindow:
     """ These functions are available in the mainWindow object. """
     pass
+
 
 for subObjName in dir(MultiModuleWindowController):
     subObj = getattr(MultiModuleWindowController, subObjName)

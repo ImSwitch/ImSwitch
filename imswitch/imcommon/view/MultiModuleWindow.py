@@ -1,4 +1,5 @@
-from qtpy import QtCore, QtGui, QtWidgets
+from qdarkstyle import DarkPalette
+from qtpy import QtCore, QtWidgets
 
 from .AboutDialog import AboutDialog
 from .CheckUpdatesDialog import CheckUpdatesDialog
@@ -14,13 +15,11 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
     sigModuleAdded = QtCore.Signal(str, str)  # (moduleId, moduleName)
 
-    def __init__(self, title, iconPath=None, *args, **kwargs):
+    def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.moduleWidgets = {}
 
         self.setWindowTitle(title)
-        if iconPath:
-            self.setWindowIcon(QtGui.QIcon(iconPath))
 
         self.pickModulesDialog = PickModulesDialog(self)
         self.checkUpdatesDialog = CheckUpdatesDialog(self)
@@ -29,6 +28,27 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
         # Add tabs
         self.moduleTabs = QtWidgets.QTabWidget()
         self.moduleTabs.setTabPosition(QtWidgets.QTabWidget.TabPosition.West)
+
+        # RAM usage bar
+        self.memBarLabel = QtWidgets.QLabel('Current RAM usage:')
+        self.memBarLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.memBar = QtWidgets.QProgressBar()
+        self.memBar.setMaximum(100)  # Percentage
+        self.memBar.setStyleSheet(
+            f'min-width: 320px;'
+            f'border: 1px solid {DarkPalette.COLOR_BACKGROUND_5};'
+            f'background-color: {DarkPalette.COLOR_BACKGROUND_1};'
+        )
+
+        self.memBarContainer = QtWidgets.QWidget()
+        self.memBarContainer.setStyleSheet('background-color: transparent;')
+        self.memBarContainerLayout = QtWidgets.QHBoxLayout()
+        self.memBarContainerLayout.setContentsMargins(0, 2, 6, 4)
+        self.memBarContainerLayout.addWidget(self.memBarLabel, 1)
+        self.memBarContainerLayout.addWidget(self.memBar)
+        self.memBarContainer.setLayout(self.memBarContainerLayout)
+
+        self.statusBar().addPermanentWidget(self.memBarContainer)
 
         # Display loading screen until show(showLoadingScreen=False) is called
         loadingLabel = QtWidgets.QLabel('<h1>Starting ImSwitch…</h1>')
@@ -54,6 +74,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
         if hasattr(moduleWidget, 'menuBar') and callable(moduleWidget.menuBar):
             # Module widget has menu bar; add common items and hide fallback menu bar
+            moduleWidget.menuBar().setNativeMenuBar(False)
             self.addItemsToMenuBar(moduleWidget.menuBar())
             self.menuBar().hide()
 
@@ -67,8 +88,11 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
                 self.moduleTabs.setCurrentIndex(i)
                 return
 
-    def setLoadingProgress(self, progressFraction):
+    def updateLoadingProgress(self, progressFraction):
         self.loadingProgressBar.setValue(progressFraction * 100)
+
+    def updateRAMUsage(self, usageFraction):
+        self.memBar.setValue(round(usageFraction * 100))
 
     def showPickModulesDialogBlocking(self):
         result = self.pickModulesDialog.exec_()
@@ -133,6 +157,10 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
 
         self.showMaximized()
         super().show()
+
+    def closeEvent(self, event):
+        QtWidgets.QApplication.instance().quit()
+        event.accept()
 
 
 # Copyright (C) 2020, 2021 TestaLab

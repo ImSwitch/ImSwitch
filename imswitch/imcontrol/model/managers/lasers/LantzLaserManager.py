@@ -1,3 +1,4 @@
+from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces import LantzLaser
 from .LaserManager import LaserManager
 
@@ -6,27 +7,29 @@ class LantzLaserManager(LaserManager):
     """ Base LaserManager for lasers that are fully digitally controlled using
     drivers available through Lantz.
 
-    Available manager properties:
-    * digitalDriver -- a string containing a Lantz driver name, e.g. "cobolt.cobolt0601.Cobolt0601"
-    * digitalPorts -- a string array containing the COM ports to connect to, e.g. ["COM4"]
+    Manager properties:
+
+    - ``digitalPorts`` -- a string array containing the COM ports to connect
+      to, e.g. ``["COM4"]``
     """
 
-    def __init__(self, laserInfo, name, **_kwargs):
-        digitalDriver = laserInfo.managerProperties['digitalDriver']
-        digitalPorts = laserInfo.managerProperties['digitalPorts']
+    def __init__(self, laserInfo, name, isBinary, valueUnits, valueDecimals, driver,
+                 **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
+        ports = laserInfo.managerProperties['digitalPorts']
 
         # Init laser
-        self._laser = LantzLaser(digitalDriver, digitalPorts)
-        self._numLasers = len(digitalPorts)
-        print(self._laser.idn)
+        self._laser = LantzLaser(driver, ports)
+        self._numLasers = len(ports)
+        self.__logger.info(f'Initialized laser, model: {self._laser.idn}')
 
-        super().__init__(
-            laserInfo, name, isBinary=False, isDigital=True, valueUnits='mW'
-        )
+        super().__init__(laserInfo, name, isBinary=isBinary, valueUnits=valueUnits,
+                         valueDecimals=valueDecimals)
 
     def finalize(self):
         self._laser.finalize()
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

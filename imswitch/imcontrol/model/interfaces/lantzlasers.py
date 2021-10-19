@@ -1,5 +1,7 @@
 import importlib
 
+from imswitch.imcommon.model import pythontools, initLogger
+
 
 class LantzLaser:
     def __new__(cls, iName, ports):
@@ -55,11 +57,14 @@ class LinkedLantzLaser:
 
 
 def getLaser(iName, port):
+    logger = initLogger('getLaser', tryInheritParent=True)
     pName, driverName = iName.rsplit('.', 1)
 
     try:
         # Try our included drivers first
-        package = importlib.import_module('imswitch.imcontrol.model.drivers.' + pName)
+        package = importlib.import_module(
+            pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers', pName)
+        )
         driver = getattr(package, driverName)
         laser = driver(port)
         laser.initialize()
@@ -68,36 +73,45 @@ def getLaser(iName, port):
 
         try:
             # If that fails, try to load the driver from lantz
-            package = importlib.import_module('lantz.drivers.' + pName)
+            package = importlib.import_module(
+                pythontools.joinModulePath('lantz.drivers', pName)
+            )
             driver = getattr(package, driverName)
             laser = driver(port)
             laser.initialize()
         except Exception as e2:
             if driverNotFound:
-                driverNotFound = isinstance(e2, ModuleNotFoundError) or isinstance(e2, AttributeError)
+                driverNotFound = (isinstance(e2, ModuleNotFoundError) or
+                                  isinstance(e2, AttributeError))
 
             if driverNotFound:
-                print(f'No lantz driver found matching "{iName}" for laser, loading mocker')
+                logger.warning(
+                    f'No lantz driver found matching "{iName}" for laser, loading mocker'
+                )
             else:
                 if not isinstance(e1, ModuleNotFoundError) or isinstance(e1, AttributeError):
                     errorDetails = str(e1)
                 else:
                     errorDetails = str(e2)
 
-                print(f'Failed to initialize lantz driver "{iName}" for laser, loading mocker'
-                      f' (error details: {errorDetails})')
+                logger.warning(
+                    f'Failed to initialize lantz driver "{iName}" for laser, loading mocker'
+                    f' (error details: {errorDetails})'
+                )
 
             try:
                 # If that also fails, try loading a mock driver
-                package = importlib.import_module('imswitch.imcontrol.model.drivers_mock.' + pName)
+                package = importlib.import_module(
+                    pythontools.joinModulePath('imswitch.imcontrol.model.lantzdrivers_mock.', pName)
+                )
                 driver = getattr(package, driverName)
                 laser = driver(port)
                 laser.initialize()
             except Exception as e3:
                 if isinstance(e3, ModuleNotFoundError) or isinstance(e3, AttributeError):
-                    print(f'No mocker found matching "{iName}"')
+                    logger.error(f'No mocker found matching "{iName}"')
                 else:
-                    print(f'Failed to initialize mocker for "{iName}"')
+                    logger.error(f'Failed to initialize mocker for "{iName}"')
 
                 if driverNotFound:
                     raise NoSuchDriverError(f'No lantz driver found matching "{iName}"')
@@ -109,12 +123,14 @@ def getLaser(iName, port):
 
 class NoSuchDriverError(Exception):
     """ Exception raised when the specified driver is not found. """
+
     def __init__(self, message):
         self.message = message
 
 
 class DriverLoadError(Exception):
     """ Exception raised when the specified driver fails to be initialized. """
+
     def __init__(self, message):
         self.message = message
 

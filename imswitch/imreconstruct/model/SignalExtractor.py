@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 
-from imswitch.imcommon.model import dirtools
+from imswitch.imcommon.model import dirtools, initLogger
 
 
 class SignalExtractor:
@@ -14,6 +14,8 @@ class SignalExtractor:
     """
 
     def __init__(self):
+        self.__logger = initLogger(self)
+
         if os.name != 'nt':
             raise RuntimeError('This module does unfortunately currently not support non-Windows'
                                ' operating systems.')
@@ -29,7 +31,8 @@ class SignalExtractor:
         )
 
     def make3dPtrArray(self, inData):
-        assert len(np.shape(inData)) == 3, 'Trying to make 3D ctypes.POINTER array out of non-3D data'
+        assert len(np.shape(inData)) == 3, \
+            'Trying to make 3D ctypes.POINTER array out of non-3D data'
 
         data = inData
         slices = data.shape[0]
@@ -43,7 +46,8 @@ class SignalExtractor:
         return cPtrArray
 
     def make4dPtrArray(self, inData):
-        assert len(np.shape(inData)) == 4, 'Trying to make 4D ctypes.POINTER array out of non-4D data'
+        assert len(np.shape(inData)) == 4, \
+            'Trying to make 4D ctypes.POINTER array out of non-4D data'
 
         data = inData
         groups = data.shape[0]
@@ -67,13 +71,13 @@ class SignalExtractor:
         Output is a 4D matrix where first dimension is base and last three
         are frame and pixel coordinates."""
 
-        print('Max in data = ', data.max())
+        self.__logger.debug(f'Max in data: {data.max()}')
         dataPtrArray = self.make3dPtrArray(data)
         p = ctypes.c_float * 4
         # Minus one due to different (1 or 0) indexing in C/Matlab
         cPattern = p(pattern[0], pattern[1], pattern[2], pattern[3])
         cNumBases = ctypes.c_int(np.size(sigmas))
-        print('Sigmas = ', sigmas)
+        self.__logger.debug(f'Sigmas: {sigmas}')
         sigmas = np.array(sigmas, dtype=np.float32)
         cSigmas = np.ctypeslib.as_ctypes(sigmas)  # s(1, 10)
         cGridRows = ctypes.c_int(0)
@@ -87,7 +91,7 @@ class SignalExtractor:
             ctypes.byref(cGridRows), ctypes.byref(cGridCols),
             ctypes.byref(cPattern)
         )
-        print('Coeff grid calculated')
+        self.__logger.debug('Coeff grid calculated')
 
         resCoeffs = np.zeros(dtype=np.float32, shape=(cNumBases.value, cImSlices.value,
                                                       cGridRows.value, cGridCols.value))
@@ -107,7 +111,7 @@ class SignalExtractor:
                            ctypes.byref(dataPtrArray), ctypes.byref(resPtr))
 
         elapsed = time.time() - t
-        print('Signal extraction performed in', elapsed, 'seconds')
+        self.__logger.debug(f'Signal extraction performed in {elapsed} seconds')
         return resCoeffs
 
 

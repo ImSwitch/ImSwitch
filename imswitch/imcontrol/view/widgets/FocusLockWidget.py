@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -60,8 +60,8 @@ class FocusLockWidget(Widget):
         self.focusPlot = self.focusLockGraph.addPlot(row=1, col=0)
         self.focusPlot.setLabels(bottom=('Time', 's'), left=('Laser position', 'px'))
         self.focusPlot.showGrid(x=True, y=True)
-        self.focusPlotCurve = self.focusPlot.plot(
-            pen='y')  # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
+        # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
+        self.focusPlotCurve = self.focusPlot.plot(pen='y')
 
         # Webcam graph
         self.webcamGraph = pg.GraphicsLayoutWidget()

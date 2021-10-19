@@ -6,6 +6,8 @@ import numpy as np
 from lantz import Driver
 from lantz import Q_
 
+from imswitch.imcommon.model import initLogger
+
 
 class HMockCamData:
 
@@ -54,6 +56,7 @@ class HMockCamData:
 class MockHamamatsu(Driver):
 
     def __init__(self):
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         self.buffer_index = 0
         self.camera_id = 9999
@@ -75,11 +78,11 @@ class MockHamamatsu(Driver):
         self.s = Q_(1, 's')
 
         # Open the camera.
-#        self.camera_handle = ctypes.c_void_p(0)
-#        self.checkStatus(dcam.dcam_open(ctypes.byref(self.camera_handle),
-#                                        ctypes.c_int32(self.camera_id),
-#                                        None),
-#                         "dcam_open")
+        # self.camera_handle = ctypes.c_void_p(0)
+        # self.checkStatus(dcam.dcam_open(ctypes.byref(self.camera_handle),
+        #                                 ctypes.c_int32(self.camera_id),
+        #                                 None),
+        #                  "dcam_open")
         # Get camera properties.
         self.properties = {'Name': 'MOCK Hamamatsu',
                            'exposure_time': 10,  # * self.s,
@@ -265,21 +268,21 @@ class MockHamamatsu(Driver):
 
         # Some values are not changeable while the acquisition is running
         if (self.mock_acquisiton_running and
-            (property_name == 'subarray_vpos' or property_name == 'subarray_hpos' or
-             property_name == 'subarray_vsize' or property_name == 'subarray_hsize')):
+                (property_name == 'subarray_vpos' or property_name == 'subarray_hpos' or
+                 property_name == 'subarray_vsize' or property_name == 'subarray_hsize')):
             raise Exception('Value not changeable while acquisition is running')
 
         # If the value is text, figure out what the
         # corresponding numerical property value is.
 
         self.properties[property_name] = property_value
-#        print(property_name, 'set to:', self.properties[property_name])
-#            if (property_value in text_values):
-#                property_value = float(text_values[property_value])
-#            else:
-#                print(" unknown property text value:", property_value, "for",
-#                      property_name)
-#                return False
+        # self.__logger.debug(f'{property_name} set to: {self.properties[property_name]}')
+        #     if (property_value in text_values):
+        #         property_value = float(text_values[property_value])
+        #     else:
+        #         self.__logger.warning(f'Unknown property text value {property_value} for
+        #                               f'{property_name}')
+        #         return False
         return property_value
 
     # setSubArrayMode

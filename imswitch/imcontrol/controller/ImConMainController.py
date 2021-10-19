@@ -1,18 +1,25 @@
 import dataclasses
 
-from imswitch.imcommon.controller import MainController
-from imswitch.imcommon.model import ostools, generateAPI, SharedAttributes
+import h5py
+
+from imswitch.imcommon.controller import MainController, PickDatasetsController
+from imswitch.imcommon.model import (
+    ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
+)
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
-from .basecontrollers import ImConWidgetControllerFactory
+from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
-from . import controllers
+from .basecontrollers import ImConWidgetControllerFactory
 
 
 class ImConMainController(MainController):
     def __init__(self, options, setupInfo, mainView, moduleCommChannel):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+
         self.__options = options
         self.__setupInfo = setupInfo
         self.__mainView = mainView
@@ -32,7 +39,12 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(PickSetupController, self.__mainView.pickSetupDialog)
+        self.pickSetupController = self.__factory.createController(
+            PickSetupController, self.__mainView.pickSetupDialog
+        )
+        self.pickDatasetsController = self.__factory.createController(
+            PickDatasetsController, self.__mainView.pickDatasetsDialog
+        )
 
         self.controllers = {}
 
@@ -44,11 +56,27 @@ class ImConMainController(MainController):
         # Generate API
         self.__api = None
         apiObjs = list(self.controllers.values()) + [self.__commChannel]
-        self.__api = generateAPI(apiObjs)
+        self.__api = generateAPI(
+            apiObjs,
+            missingAttributeErrorMsg=lambda attr: f'The imcontrol API does either not have any'
+                                                  f' method {attr}, or the widget that defines it'
+                                                  f' is not included in your currently active'
+                                                  f' hardware setup file.'
+        )
+
+        # Generate Shorcuts
+        self.__shortcuts = None
+        shorcutObjs = list(self.__mainView.widgets.values())
+        self.__shortcuts = generateShortcuts(shorcutObjs)
+        self.__mainView.addShortcuts(self.__shortcuts)
 
     @property
     def api(self):
         return self.__api
+
+    @property
+    def shortcuts(self):
+        return self.__shortcuts
 
     def loadParamsFromHDF5(self):
         """ Set detector, positioner, laser etc. params from values saved in a
@@ -58,8 +86,27 @@ class ImConMainController(MainController):
         if not filePath:
             return
 
-        attrs = SharedAttributes.fromHDF5File(filePath)
-        self.__commChannel.sharedAttrs.update(attrs)
+        with h5py.File(filePath) as file:
+            datasetsInFile = file.keys()
+            if len(datasetsInFile) < 1:
+                # File does not contain any datasets
+                return
+            elif len(datasetsInFile) == 1:
+                datasetToLoad = list(datasetsInFile)[0]
+            else:
+                # File contains multiple datasets
+                self.pickDatasetsController.setDatasets(filePath, datasetsInFile)
+                if not self.__mainView.showPickDatasetsDialogBlocking():
+                    return
+
+                datasetsSelected = self.pickDatasetsController.getSelectedDatasets()
+                if len(datasetsSelected) != 1:
+                    return
+
+                datasetToLoad = datasetsSelected[0]
+
+            attrs = SharedAttributes.fromHDF5File(file, datasetToLoad)
+            self.__commChannel.sharedAttrs.update(attrs)
 
     def pickSetup(self):
         """ Let the user change which setup is used. """
@@ -84,6 +131,7 @@ class ImConMainController(MainController):
         ostools.restartSoftware()
 
     def closeEvent(self):
+        self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
 
@@ -103,4 +151,3 @@ class ImConMainController(MainController):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

@@ -1,19 +1,17 @@
-import numpy as np
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
-from .basewidgets import Widget
+from imswitch.imcommon.view.guitools import naparitools
+from imswitch.imcontrol.view import guitools
+from .basewidgets import NapariHybridWidget
 
 
-class ULensesWidget(Widget):
+class ULensesWidget(NapariHybridWidget):
     """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
 
     sigULensesClicked = QtCore.Signal()
     sigUShowLensesChanged = QtCore.Signal(bool)  # (enabled)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
+    def __post_init__(self):
         # Graphical Elements
         self.ulensesButton = guitools.BetterPushButton('uLenses')
         self.ulensesCheck = QtWidgets.QCheckBox('Show uLenses')
@@ -21,7 +19,11 @@ class ULensesWidget(Widget):
         self.yEdit = QtWidgets.QLineEdit('0')
         self.pxEdit = QtWidgets.QLineEdit('157.5')
         self.upEdit = QtWidgets.QLineEdit('1182')
-        self.ulensesPlot = guitools.VispyScatterVisual(color='red', symbol='x')
+
+        # Vispy visual to render in napari
+        self.ulensesPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
+        self.ulensesPlot.hide()
+        self.addItemToViewer(self.ulensesPlot)
 
         # Add elements to GridLayout
         ulensesLayout = QtWidgets.QGridLayout()
@@ -44,10 +46,10 @@ class ULensesWidget(Widget):
     def getParameters(self):
         """ Returns the X offset, Y offset, pixel size, and periodicity
         parameters respectively set by the user."""
-        return (np.float(self.xEdit.text()),
-                np.float(self.yEdit.text()),
-                np.float(self.pxEdit.text()),
-                np.float(self.upEdit.text()))
+        return (float(self.xEdit.text()),
+                float(self.yEdit.text()),
+                float(self.pxEdit.text()),
+                float(self.upEdit.text()))
 
     def getPlotGraphicsItem(self):
         return self.ulensesPlot

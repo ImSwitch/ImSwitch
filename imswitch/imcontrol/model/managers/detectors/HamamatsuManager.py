@@ -1,3 +1,4 @@
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -7,14 +8,18 @@ class HamamatsuManager(DetectorManager):
     """ DetectorManager that deals with the Hamamatsu parameters and frame
     extraction for a Hamamatsu camera.
 
-    Available manager properties:
-    * cameraListIndex -- the camera's index in the Hamamatsu camera list (list indexing starts at
-                         0); set this to an invalid value, e.g. the string "mock" to load a mocker
-    * hamamatsu -- dictionary of DCAM API properties
+    Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the Hamamatsu camera list
+      (list indexing starts at 0); set this to an invalid value, e.g. the
+      string "mock" to load a mocker
+    - ``hamamatsu`` -- dictionary of DCAM API properties to pass to the driver
     """
 
-    def __init__(self, detectorInfo, name, **_kwargs):
-        self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._camera = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
         for propertyName, propertyValue in detectorInfo.managerProperties['hamamatsu'].items():
@@ -148,16 +153,18 @@ class HamamatsuManager(DetectorManager):
         """
         try:
             function()
-        except:
+        except Exception:
             self.stopAcquisition()
             function()
             self.startAcquisition()
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
-        self.setParameter('Internal frame interval', self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Internal frame interval',
+                          self._camera.getPropertyValue('internal_frame_interval')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
-        self.setParameter('Internal frame rate', self._camera.getPropertyValue('internal_frame_rate')[0])
+        self.setParameter('Internal frame rate',
+                          self._camera.getPropertyValue('internal_frame_rate')[0])
 
         triggerSource = self._camera.getPropertyValue('trigger_source')
         if triggerSource == 1:
@@ -169,18 +176,19 @@ class HamamatsuManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
+    def _getCameraObj(self, cameraId):
+        try:
+            from imswitch.imcontrol.model.interfaces import HamamatsuCameraMR
+            self.__logger.debug(f'Trying to initialize Hamamatsu camera {cameraId}')
+            camera = HamamatsuCameraMR(cameraId)
+        except Exception:
+            self.__logger.warning(f'Failed to initialize Hamamatsu camera {cameraId},'
+                                  f' loading mocker')
+            from imswitch.imcontrol.model.interfaces import MockHamamatsu
+            camera = MockHamamatsu()
 
-def getCameraObj(cameraId):
-    try:
-        from imswitch.imcontrol.model.interfaces import HamamatsuCameraMR
-        print('Trying to import camera', cameraId)
-        camera = HamamatsuCameraMR(cameraId)
-        print('Initialized Hamamatsu Camera Object, model: ', camera.camera_model)
+        self.__logger.info(f'Initialized camera, model: {camera.camera_model}')
         return camera
-    except:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab
@@ -198,4 +206,3 @@ def getCameraObj(cameraId):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

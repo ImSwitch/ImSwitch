@@ -1,5 +1,6 @@
 import numpy as np
 
+from imswitch.imcommon.model import initLogger
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -8,13 +9,16 @@ from .DetectorManager import (
 class PhotometricsManager(DetectorManager):
     """ DetectorManager that deals with frame extraction for a Photometrics camera.
 
-    Available manager properties:
-    * cameraListIndex -- the camera's index in the Photometrics camera list (list indexing starts at
-                         0)
+    Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the Photometrics camera list
+      (list indexing starts at 0)
     """
 
-    def __init__(self, detectorInfo, name, **_kwargs):
-        self._camera = getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._camera = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
         self._binning = 1
 
         fullShape = self._camera.sensor_size
@@ -28,13 +32,14 @@ class PhotometricsManager(DetectorManager):
                                                          valueUnits='ms', editable=True),
             'Real exposure time': DetectorNumberParameter(group='Timings', value=0,
                                                           valueUnits='ms', editable=False),
-            'Readout time' : DetectorNumberParameter(group='Timings', value=0,
-                                                     valueUnits='ms', editable=False),
+            'Readout time': DetectorNumberParameter(group='Timings', value=0,
+                                                    valueUnits='ms', editable=False),
             'Trigger source': DetectorListParameter(group='Acquisition mode',
                                                     value='Internal trigger',
                                                     options=['Internal trigger',
                                                              'External "start-trigger"',
-                                                             'External "frame-trigger"'], editable=True),
+                                                             'External "frame-trigger"'],
+                                                    editable=True),
             'Readout port': DetectorListParameter(group='ports',
                                                   value='Sensitivity',
                                                   options=['Sensitivity',
@@ -81,7 +86,7 @@ class PhotometricsManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
-        roi = (hpos, hpos+hsize, vpos, vpos+vsize)
+        roi = (hpos, hpos + hsize, vpos, vpos + vsize)
 
         def cropAction():
             self._camera.roi = roi
@@ -91,7 +96,7 @@ class PhotometricsManager(DetectorManager):
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
         self._shape = (hsize, vsize)
-        self.setParameter('Readout time', self.__scanLineTime*vsize/1e6)
+        self.setParameter('Readout time', self.__scanLineTime * vsize / 1e6)
 
     def setBinning(self, binning):
         super().setBinning(binning)
@@ -126,7 +131,7 @@ class PhotometricsManager(DetectorManager):
         self._camera.exp_time = int(time)
 
     def _setTriggerSource(self, source):
-        print("Change trigger source")
+        self.__logger.debug("Change trigger source")
 
         def triggerAction():
             self._camera.exp_mode = trigger_value
@@ -146,7 +151,7 @@ class PhotometricsManager(DetectorManager):
             raise ValueError(f'Invalid trigger source "{source}"')
 
     def _setReadoutPort(self, port):
-        print("Change readout port")
+        self.__logger.debug("Change readout port")
 
         def portAction():
             self._camera.readout_port = port_value
@@ -168,8 +173,8 @@ class PhotometricsManager(DetectorManager):
         else:
             raise ValueError(f'Invalid readout port "{port}"')
         self._performSafeCameraAction(getScanTimeAction)
-        self.setParameter('Readout time', self.__scanLineTime*self._shape[0]/1e6)
-    
+        self.setParameter('Readout time', self.__scanLineTime * self._shape[0] / 1e6)
+
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
@@ -190,7 +195,7 @@ class PhotometricsManager(DetectorManager):
             self.setParameter('Trigger source', 'External "start-trigger"')
         elif triggerSource == 2048:
             self.setParameter('Trigger source', 'External "frame-trigger"')
-        
+
         readoutPort = self._camera.readout_port
         if readoutPort == 0:
             self.setParameter('Readout port', 'Sensitivity')
@@ -202,22 +207,23 @@ class PhotometricsManager(DetectorManager):
     def finalize(self):
         self._camera.close()
 
+    def _getCameraObj(self, cameraId):
+        try:
+            from pyvcam import pvc
+            from pyvcam.camera import Camera
 
-def getCameraObj(cameraId):
-    try:
-        from pyvcam import pvc
-        from pyvcam.camera import Camera
+            pvc.init_pvcam()
+            self.__logger.debug(f'Trying to initialize Photometrics camera {cameraId}')
+            camera = next(Camera.detect_camera())
+            camera.open()
+        except Exception:
+            self.__logger.warning(f'Failed to initialize Photometrics camera {cameraId},'
+                                  f' loading mocker')
+            from imswitch.imcontrol.model.interfaces import MockHamamatsu
+            camera = MockHamamatsu()
 
-        pvc.init_pvcam()
-        print('Trying to import camera', cameraId)
-        camera = next(Camera.detect_camera())
-        camera.open()
-        print('Initialized Photometrics Camera Object, model: ', camera.name)
+        self.__logger.info(f'Initialized camera, model: {camera.name}')
         return camera
-    except:
-        print('Initializing Mock Hamamatsu')
-        from imswitch.imcontrol.model.interfaces import MockHamamatsu
-        return MockHamamatsu()
 
 
 # Copyright (C) 2020, 2021 TestaLab

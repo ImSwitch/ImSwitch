@@ -5,7 +5,7 @@ by example_import.py
 
 
 def printMessage():
-    print('Running code from another file!')
+    getLogger().info('Running code from another file!')
 
 
 # Copyright (C) 2020, 2021 TestaLab

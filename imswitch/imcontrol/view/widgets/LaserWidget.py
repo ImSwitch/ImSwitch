@@ -1,6 +1,7 @@
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.view.guitools import colorutils
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
@@ -13,6 +14,7 @@ class LaserWidget(Widget):
     sigPresetSelected = QtCore.Signal(str)  # (presetName)
     sigLoadPresetClicked = QtCore.Signal()
     sigSavePresetClicked = QtCore.Signal()
+    sigSavePresetAsClicked = QtCore.Signal()
     sigDeletePresetClicked = QtCore.Signal()
     sigPresetScanDefaultToggled = QtCore.Signal()
 
@@ -51,8 +53,10 @@ class LaserWidget(Widget):
         )
         self.loadPresetButton = guitools.BetterPushButton('Load selected')
         self.loadPresetButton.clicked.connect(self.sigLoadPresetClicked)
-        self.savePresetButton = guitools.BetterPushButton('Save values…')
+        self.savePresetButton = guitools.BetterPushButton('Save to selected')
         self.savePresetButton.clicked.connect(self.sigSavePresetClicked)
+        self.savePresetAsButton = guitools.BetterPushButton('Save as…')
+        self.savePresetAsButton.clicked.connect(self.sigSavePresetAsClicked)
         self.moreButton = QtWidgets.QToolButton()
         self.moreButton.setText('More…')
         self.moreButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -70,16 +74,19 @@ class LaserWidget(Widget):
         self.presetsBox.addWidget(self.presetsList, 1)
         self.presetsBox.addWidget(self.loadPresetButton)
         self.presetsBox.addWidget(self.savePresetButton)
+        self.presetsBox.addWidget(self.savePresetAsButton)
         self.presetsBox.addWidget(self.moreButton)
 
         self.layout.addLayout(self.presetsBox, 1, 0)
 
-    def addLaser(self, laserName, valueUnits, wavelength, valueRange=None, valueRangeStep=1):
+    def addLaser(self, laserName, valueUnits, valueDecimals, wavelength, valueRange=None,
+                 valueRangeStep=1):
         """ Adds a laser module widget. valueRange is either a tuple
         (min, max), or None (if the laser can only be turned on/off). """
 
         control = LaserModule(
-            units=valueUnits, valueRange=valueRange, tickInterval=5, singleStep=valueRangeStep,
+            valueUnits=valueUnits, valueDecimals=valueDecimals, valueRange=valueRange,
+            tickInterval=5, singleStep=valueRangeStep,
             initialPower=valueRange[0] if valueRange is not None else 0
         )
         control.sigEnableChanged.connect(
@@ -90,7 +97,7 @@ class LaserWidget(Widget):
         )
 
         nameLabel = QtWidgets.QLabel(laserName)
-        color = guitools.colorutils.wavelengthToHex(wavelength)
+        color = colorutils.wavelengthToHex(wavelength)
         nameLabel.setStyleSheet(
             f'font-size: 16px; font-weight: bold; padding: 0 6px 0 12px;'
             f'border-left: 4px solid {color}'
@@ -149,6 +156,7 @@ class LaserWidget(Widget):
             self.presetsList.setCurrentIndex(-1)
 
         self.loadPresetButton.setEnabled(anyPresetSelected)
+        self.savePresetButton.setEnabled(anyPresetSelected)
         self.deletePresetAction.setEnabled(anyPresetSelected)
         self.presetScanDefaultAction.setEnabled(anyPresetSelected)
         if not anyPresetSelected:
@@ -185,8 +193,8 @@ class LaserWidget(Widget):
         if source is self.lasersGridContainer and event.type() == QtCore.QEvent.Resize:
             # Set correct minimum width (otherwise things can go outside the widget because of the
             # scroll area)
-            width = self.lasersGridContainer.minimumSizeHint().width()\
-                     + self.scrollArea.verticalScrollBar().width()
+            width = self.lasersGridContainer.minimumSizeHint().width() \
+                    + self.scrollArea.verticalScrollBar().width()
             self.scrollArea.setMinimumWidth(width)
             self.setMinimumWidth(width)
 
@@ -199,29 +207,27 @@ class LaserModule(QtWidgets.QWidget):
     sigEnableChanged = QtCore.Signal(bool)  # (enabled)
     sigValueChanged = QtCore.Signal(float)  # (value)
 
-    def __init__(self, units, valueRange, tickInterval, singleStep, initialPower, *args, **kwargs):
+    def __init__(self, valueUnits, valueDecimals, valueRange, tickInterval, singleStep,
+                 initialPower, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.valueDecimals = valueDecimals
+
         isBinary = valueRange is None
 
         # Graphical elements
         self.setPointLabel = QtWidgets.QLabel('Setpoint')
         self.setPointLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.setPointEdit = QtWidgets.QLineEdit(str(float(initialPower)))
+        self.setPointEdit = QtWidgets.QLineEdit(str(initialPower))
         self.setPointEdit.setFixedWidth(50)
         self.setPointEdit.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-
-        self.powerLabel = QtWidgets.QLabel('Power')
-        self.powerLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.powerIndicator = QtWidgets.QLabel(str(float(initialPower)))
-        self.powerIndicator.setFixedWidth(50)
-        self.powerIndicator.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         self.minpower = QtWidgets.QLabel()
         self.minpower.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.maxpower = QtWidgets.QLabel()
         self.maxpower.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
-        self.slider = guitools.BetterSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False)
+        self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         if not isBinary:
@@ -243,16 +249,14 @@ class LaserModule(QtWidgets.QWidget):
 
         self.powerGrid.addWidget(self.setPointLabel, 0, 0, 1, 2)
         self.powerGrid.addWidget(self.setPointEdit, 1, 0)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 1)
-        self.powerGrid.addWidget(self.powerLabel, 0, 2, 1, 2)
-        self.powerGrid.addWidget(self.powerIndicator, 1, 2)
-        self.powerGrid.addWidget(QtWidgets.QLabel(units), 1, 3)
-        self.powerGrid.addWidget(self.minpower, 0, 4, 2, 1)
-        self.powerGrid.addWidget(self.slider, 0, 5, 2, 5)
-        self.powerGrid.addWidget(self.maxpower, 0, 10, 2, 1)
+        self.powerGrid.addWidget(QtWidgets.QLabel(valueUnits), 1, 1)
+        self.powerGrid.addWidget(self.minpower, 0, 2, 2, 1)
+        self.powerGrid.addWidget(self.slider, 0, 3, 2, 4)
+        self.powerGrid.addWidget(self.maxpower, 0, 8, 2, 1)
 
         self.enableButton = guitools.BetterPushButton('ON')
-        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                        QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
 
         # Add elements to QHBoxLayout
@@ -269,8 +273,8 @@ class LaserModule(QtWidgets.QWidget):
 
         # Connect signals
         self.enableButton.toggled.connect(self.sigEnableChanged)
-        self.slider.valueChanged[int].connect(
-            lambda value: self.sigValueChanged.emit(float(value))
+        self.slider.valueChanged.connect(
+            lambda value: self.sigValueChanged.emit(value)
         )
         self.setPointEdit.returnPressed.connect(
             lambda: self.sigValueChanged.emit(self.getValue())
@@ -297,10 +301,11 @@ class LaserModule(QtWidgets.QWidget):
         """ Sets whether the laser's values can be edited by the user. """
         self.setPointEdit.setEnabled(editable)
         self.slider.setEnabled(editable)
+        self.enableButton.setEnabled(editable)
 
     def setValue(self, value):
         """ Sets the value of the laser, in the units that the laser uses. """
-        self.setPointEdit.setText(str(float(value)))
+        self.setPointEdit.setText(f'%.{self.valueDecimals}f' % value)
         self.slider.setValue(value)
 
 
@@ -319,4 +324,3 @@ class LaserModule(QtWidgets.QWidget):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-

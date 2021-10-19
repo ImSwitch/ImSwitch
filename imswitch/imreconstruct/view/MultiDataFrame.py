@@ -52,16 +52,10 @@ class MultiDataFrame(QtWidgets.QFrame):
         self.saveAllDataBtn = BetterPushButton('Save all')
         self.saveAllDataBtn.clicked.connect(self.sigSaveAllDataClicked)
 
-        ramUsageLabel = QtWidgets.QLabel('Current RAM usage')
-
-        self.memBar = QtWidgets.QProgressBar(self)
-        self.memBar.setMaximum(100)  # Percentage
-
         # Set layout
         layout = QtWidgets.QGridLayout()
         self.setLayout(layout)
 
-        layout.addWidget(self.dataList, 0, 0, 4, 1)
         layout.addWidget(dataLoadedLabel, 0, 1)
         layout.addWidget(self.dataLoadedStatus, 0, 2)
         layout.addWidget(self.addDataBtn, 1, 1)
@@ -75,8 +69,7 @@ class MultiDataFrame(QtWidgets.QFrame):
         layout.addWidget(self.saveDataBtn, 5, 1)
         layout.addWidget(self.saveAllDataBtn, 5, 2)
         layout.addWidget(self.unloadAllDataBtn, 4, 2)
-        layout.addWidget(ramUsageLabel, 4, 0)
-        layout.addWidget(self.memBar, 5, 0)
+        layout.addWidget(self.dataList, 0, 0, -1, 1)
 
     def requestFilePathsFromUser(self, defaultFolder=None):
         return QtWidgets.QFileDialog().getOpenFileNames(directory=defaultFolder)[0]
@@ -95,28 +88,50 @@ class MultiDataFrame(QtWidgets.QFrame):
         )
         return result == QtWidgets.QMessageBox.Yes
 
-    def addDataObj(self, name, dataObj):
-        listItem = QtWidgets.QListWidgetItem(f'Data: {name}')
+    def requestOverwriteConfirmation(self, name):
+        result = QtWidgets.QMessageBox.question(
+            self, 'Overwrite file?', f'A file named {name} already exists. Overwrite it?',
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        return result == QtWidgets.QMessageBox.Yes
+
+    def addDataObj(self, name, datasetName, dataObj):
+        listItem = QtWidgets.QListWidgetItem('')
         listItem.setData(1, dataObj)
         listItem.setData(3, name)
+        listItem.setData(4, datasetName)
+        listItem.setText(self.getTextForItem(listItem))
         self.dataList.addItem(listItem)
         self.dataList.setCurrentItem(listItem)
 
-    def getDataObjByName(self, name):
+    def setDataObjMemoryFlag(self, dataObj, inMemory):
         for i in range(self.dataList.count()):
-            if self.dataList.item(i).data(3) == name:
-                return self.dataList.item(i).data(1)
-
-        return None
-
-    def setDataObjMemoryFlag(self, name, inMemory):
-        for i in range(self.dataList.count()):
-            if self.dataList.item(i).data(3) == name:
-                dataObj = self.dataList.item(i).data(1)
-                itemName = f'Data: {dataObj.name}'
+            item = self.dataList.item(i)
+            if item.data(1) == dataObj:
+                itemText = self.getTextForItem(item)
                 if inMemory:
-                    itemName += ' (MEMORY)'
-                self.dataList.item(i).setText(itemName)
+                    itemText += ' (MEMORY)'
+                item.setText(itemText)
+
+    def getTextForItem(self, item):
+        name = item.data(3)
+        datasetName = item.data(4)
+
+        text = f'{name}: {datasetName}' if datasetName is not None else name
+
+        duplicateNum = item.data(5)
+        if duplicateNum is None:
+            duplicateNum = 0
+            for i in range(self.dataList.count()):
+                otherItem = self.dataList.item(i)
+                if (item is not otherItem and name == otherItem.data(3)
+                        and datasetName == otherItem.data(4) and duplicateNum <= otherItem.data(5)):
+                    duplicateNum += 1
+            item.setData(5, duplicateNum)
+        if duplicateNum > 0:
+            text = f'{name} [{duplicateNum}]: {datasetName}' if datasetName is not None else name
+
+        return text
 
     def getSelectedDataObj(self):
         currentItem = self.dataList.currentItem()
@@ -131,9 +146,9 @@ class MultiDataFrame(QtWidgets.QFrame):
         for i in range(self.dataList.count()):
             yield self.dataList.item(i).data(1)
 
-    def delDataByName(self, name):
-        for i in range(self.dataList.count()):
-            if self.dataList.item(i) is not None and self.dataList.item(i).data(3) == name:
+    def delDataByDataObj(self, dataObj):
+        for i in reversed(range(self.dataList.count())):
+            if self.dataList.item(i) is not None and self.dataList.item(i).data(1) is dataObj:
                 self.dataList.takeItem(i)
 
     def setCurrentRowHighlighted(self, highlighted):
@@ -179,9 +194,6 @@ class MultiDataFrame(QtWidgets.QFrame):
 
     def setSaveAllButtonEnabled(self, value):
         self.saveAllDataBtn.setEnabled(value)
-
-    def updateMemBar(self, percentUsed):
-        self.memBar.setValue(round(percentUsed))
 
 
 # Copyright (C) 2020, 2021 TestaLab

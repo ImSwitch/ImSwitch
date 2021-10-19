@@ -1,11 +1,25 @@
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
-
 import numpy as np
+
+from imswitch.imcommon.model import initLogger
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 
 class TISManager(DetectorManager):
-    def __init__(self, detectorInfo, name, **_kwargs):
-        self._camera = getTISObj(detectorInfo.managerProperties['cameraListIndex'])
+    """ DetectorManager that deals with TheImagingSource cameras and the
+    parameters for frame extraction from them.
+
+    Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the TIS camera list (list
+      indexing starts at 0); set this string to an invalid value, e.g. the
+      string "mock" to load a mocker
+    - ``tis`` -- dictionary of TIS camera properties
+    """
+
+    def __init__(self, detectorInfo, name, **_lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+
+        self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
         self._running = False
@@ -21,9 +35,12 @@ class TISManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms', editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.', editable=True),
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+                                                editable=True),
+            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                            editable=True),
+            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                                  editable=True),
         }
 
         # Prepare actions
@@ -66,9 +83,9 @@ class TISManager(DetectorManager):
 
     def setBinning(self, binning):
         super().setBinning(binning)
-    
+
     def getChunk(self):
-        return self._camera.grabFrame()[np.newaxis,:,:]
+        return self._camera.grabFrame()[np.newaxis, :, :]
 
     def flushBuffers(self):
         pass
@@ -77,18 +94,18 @@ class TISManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            print('startlive')
+            self.__logger.debug('startlive')
 
     def stopAcquisition(self):
         if self._running:
             self._running = False
             self._camera.suspend_live()
-            print('suspendlive')
-    
+            self.__logger.debug('suspendlive')
+
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
-        print('stoplive')
+        self.__logger.debug('stoplive')
 
     @property
     def pixelSizeUm(self):
@@ -96,11 +113,13 @@ class TISManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
-            #print(f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.')
+            # self.__logger.debug(
+            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+            # )
             self._camera.setROI(hpos, vpos, hsize, vsize)
-        
+
         self._performSafeCameraAction(cropAction)
-        #TODO: unsure if frameStart is needed? Try without.
+        # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
@@ -121,18 +140,18 @@ class TISManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
+    def _getTISObj(self, cameraId):
+        try:
+            from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
+            self.__logger.debug(f'Trying to initialize TIS camera {cameraId}')
+            camera = CameraTIS(cameraId)
+        except Exception:
+            self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
+            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
+            camera = MockCameraTIS()
 
-def getTISObj(cameraId):
-    try:
-        from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
-        print('Trying to import camera', cameraId)
-        camera = CameraTIS(cameraId)
-        print('Initialized TIS Camera Object, model: ', camera.model)
+        self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    except:
-        print('Initializing Mock TIS')
-        from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-        return MockCameraTIS()
 
 
 # Copyright (C) 2020, 2021 TestaLab

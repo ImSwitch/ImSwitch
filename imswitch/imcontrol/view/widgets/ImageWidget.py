@@ -1,8 +1,8 @@
-import napari
 import numpy as np
 from qtpy import QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.model import shortcut
+from imswitch.imcommon.view.guitools import naparitools
 
 
 class ImageWidget(QtWidgets.QWidget):
@@ -10,33 +10,36 @@ class ImageWidget(QtWidgets.QWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        guitools.addNapariGrayclipColormap()
-        self.napariViewer = napari.Viewer(show=False)
-        guitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
-        guitools.NapariShiftWidget.addToViewer(self.napariViewer)
+
+        naparitools.addNapariGrayclipColormap()
+        self.napariViewer = naparitools.EmbeddedNapari()
+        self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
+            self.napariViewer
+        )
+        self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
         self.viewCtrlLayout = QtWidgets.QVBoxLayout()
-        self.viewCtrlLayout.addWidget(self.napariViewer.window._qt_window)
+        self.viewCtrlLayout.addWidget(self.napariViewer.get_widget())
         self.setLayout(self.viewCtrlLayout)
 
-        self.grid = guitools.VispyGridVisual(color='yellow')
+        self.grid = naparitools.VispyGridVisual(color='yellow')
         self.grid.hide()
         self.addItem(self.grid)
 
-        self.crosshair = guitools.VispyCrosshairVisual(color='yellow')
+        self.crosshair = naparitools.VispyCrosshairVisual(color='yellow')
         self.crosshair.hide()
         self.addItem(self.crosshair)
 
-    def setLayers(self, names):
+    def setLiveViewLayers(self, names):
         for name, img in self.imgLayers.items():
             if name not in names:
-                self.napariViewer.layers.remove(img)
+                self.napariViewer.layers.remove(img, force=True)
 
         def addImage(name, colormap=None):
             self.imgLayers[name] = self.napariViewer.add_image(
-                np.zeros((1, 1)), rgb=False, name=name, blending='additive', colormap=colormap
+                np.zeros((1, 1)), rgb=False, name=f'Live: {name}', blending='additive',
+                colormap=colormap, protected=True
             )
 
         for name in names:
@@ -45,6 +48,9 @@ class ImageWidget(QtWidgets.QWidget):
                     addImage(name, name.lower())
                 except KeyError:
                     addImage(name, 'grayclip')
+
+    def addStaticLayer(self, name, im):
+        self.napariViewer.add_image(im, rgb=False, name=name, blending='additive')
 
     def getCurrentImageName(self):
         return self.napariViewer.active_layer.name
@@ -92,7 +98,11 @@ class ImageWidget(QtWidgets.QWidget):
 
     def removeItem(self, item):
         item.detach()
-        
+
+    @shortcut('Ctrl+U', "Update levels")
+    def updateLevelsButton(self):
+        self.updateLevelsWidget.updateLevelsButton.click()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

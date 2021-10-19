@@ -3,24 +3,31 @@ import time
 
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.model.shortcut import shortcut
+from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
 class RecordingWidget(Widget):
-    """ Widget to control image or sequence recording.
-    Recording only possible when liveview active. """
+    """ Widget to control image or sequence recording. """
 
-    sigDetectorChanged = QtCore.Signal()
+    sigDetectorModeChanged = QtCore.Signal()
+    sigDetectorSpecificChanged = QtCore.Signal()
     sigOpenRecFolderClicked = QtCore.Signal()
     sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
-    sigSnapRequested = QtCore.Signal()
-    sigRecToggled = QtCore.Signal(bool)  # (enabled)
+
     sigSpecFramesPicked = QtCore.Signal()
     sigSpecTimePicked = QtCore.Signal()
     sigScanOncePicked = QtCore.Signal()
     sigScanLapsePicked = QtCore.Signal()
     sigUntilStopPicked = QtCore.Signal()
+
+    sigSnapSaveFormatChanged = QtCore.Signal()
+    sigSnapSaveModeChanged = QtCore.Signal()
+    sigRecSaveModeChanged = QtCore.Signal()
+
+    sigSnapRequested = QtCore.Signal()
+    sigRecToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,7 +37,12 @@ class RecordingWidget(Widget):
         recTitle.setTextFormat(QtCore.Qt.RichText)
 
         # Detector list
-        self.detectorList = QtWidgets.QComboBox()
+        self.detectorModeList = QtWidgets.QComboBox()
+        self.detectorList = guitools.CheckableComboBox()
+        self.detectorList.setItemTypeName(singular='detector', plural='detectors')
+        self.detectorList.setVisible(False)
+        self.singleFileMultiDetectorBox = QtWidgets.QCheckBox('Save recordings in a single file')
+        self.singleFileMultiDetectorBox.setVisible(False)
 
         # Folder and filename fields
         baseOutputFolder = self._options.recording.outputFolder
@@ -54,37 +66,49 @@ class RecordingWidget(Widget):
         self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                      QtWidgets.QSizePolicy.Expanding)
+
         # Number of frames and measurement timing
         modeTitle = QtWidgets.QLabel('<strong>Recording mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
+
         self.specifyFrames = QtWidgets.QRadioButton('Number of frames')
+        self.currentFrame = QtWidgets.QLabel('0 /')
+        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
+                                        QtCore.Qt.AlignVCenter))
+        self.numExpositionsEdit = QtWidgets.QLineEdit('100')
+
         self.specifyTime = QtWidgets.QRadioButton('Time (s)')
+        self.currentTime = QtWidgets.QLabel('0 / ')
+        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
+                                       QtCore.Qt.AlignVCenter))
+        self.timeToRec = QtWidgets.QLineEdit('1')
+
         self.recScanOnceBtn = QtWidgets.QRadioButton('Scan once')
+
         self.recScanLapseBtn = QtWidgets.QRadioButton('Time-lapse scan')
         self.currentLapse = QtWidgets.QLabel('0 / ')
         self.timeLapseEdit = QtWidgets.QLineEdit('5')
         self.freqLabel = QtWidgets.QLabel('Freq [s]')
         self.freqEdit = QtWidgets.QLineEdit('0')
-        self.stepSizeLabel = QtWidgets.QLabel('Step size [um]')
-        self.stepSizeEdit = QtWidgets.QLineEdit('0.05')
-        self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
-        self.timeToRec = QtWidgets.QLineEdit('1')
-        self.currentTime = QtWidgets.QLabel('0 / ')
-        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
-                                       QtCore.Qt.AlignVCenter))
-        self.currentFrame = QtWidgets.QLabel('0 /')
-        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
-                                        QtCore.Qt.AlignVCenter))
-        self.numExpositionsEdit = QtWidgets.QLineEdit('100')
-        self.tRemaining = QtWidgets.QLabel()
-        self.tRemaining.setAlignment((QtCore.Qt.AlignCenter |
-                                      QtCore.Qt.AlignVCenter))
+        self.singleFileLapseBox = QtWidgets.QCheckBox('Save all scans in a single file')
 
-        self.saveModeLabel = QtWidgets.QLabel('<strong>Save mode:</strong>')
-        self.saveModeList = QtWidgets.QComboBox()
-        self.saveModeList.addItems(['Save on disk',
-                                    'Save in memory for reconstruction',
-                                    'Save on disk and keep in memory'])
+        self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
+
+        self.snapSaveFormatLabel = QtWidgets.QLabel('<strong>Snap format:</strong>')
+        self.snapSaveFormatList = QtWidgets.QComboBox()
+        self.snapSaveFormatList.addItems(['HDF5', 'TIFF'])
+
+        self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
+        self.snapSaveModeList = QtWidgets.QComboBox()
+        self.snapSaveModeList.addItems(['Save on disk',
+                                        'Save to image display',
+                                        'Save on disk and to image display'])
+
+        self.recSaveModeLabel = QtWidgets.QLabel('<strong>Rec save mode:</strong>')
+        self.recSaveModeList = QtWidgets.QComboBox()
+        self.recSaveModeList.addItems(['Save on disk',
+                                       'Save in memory for reconstruction',
+                                       'Save on disk and keep in memory'])
 
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -99,34 +123,67 @@ class RecordingWidget(Widget):
         self.setLayout(layout)
 
         recGrid = QtWidgets.QGridLayout()
+        gridRow = 0
 
-        recGrid.addWidget(recTitle, 0, 0, 1, 3)
-        recGrid.addWidget(QtWidgets.QLabel('Detector to capture'), 1, 0)
-        recGrid.addWidget(self.detectorList, 1, 1, 1, 4)
-        recGrid.addWidget(QtWidgets.QLabel('Folder'), 2, 0)
-        recGrid.addWidget(self.folderEdit, 2, 1, 1, 3)
-        recGrid.addWidget(self.openFolderButton, 2, 4)
-        recGrid.addWidget(self.filenameEdit, 3, 1, 1, 3)
+        recGrid.addWidget(recTitle, gridRow, 0, 1, 3)
+        gridRow += 1
 
-        recGrid.addWidget(self.specifyfile, 3, 0)
+        recGrid.addWidget(QtWidgets.QLabel('Detector(s) to capture'), gridRow, 0)
+        recGrid.addWidget(self.detectorModeList, gridRow, 1, 1, 4)
+        gridRow += 1
+        recGrid.addWidget(self.detectorList, gridRow, 1, 1, 4)
+        gridRow += 1
+        recGrid.addWidget(self.singleFileMultiDetectorBox, gridRow, 1, 1, 4)
+        gridRow += 1
 
-        recGrid.addWidget(modeTitle, 4, 0)
-        recGrid.addWidget(self.specifyFrames, 5, 0, 1, 5)
-        recGrid.addWidget(self.currentFrame, 5, 1)
-        recGrid.addWidget(self.numExpositionsEdit, 5, 2)
-        recGrid.addWidget(self.specifyTime, 6, 0, 1, 5)
-        recGrid.addWidget(self.currentTime, 6, 1)
-        recGrid.addWidget(self.timeToRec, 6, 2)
-        recGrid.addWidget(self.tRemaining, 6, 3, 1, 2)
-        recGrid.addWidget(self.recScanOnceBtn, 7, 0, 1, 5)
-        recGrid.addWidget(self.recScanLapseBtn, 8, 0, 1, 5)
-        recGrid.addWidget(self.currentLapse, 8, 1)
-        recGrid.addWidget(self.timeLapseEdit, 8, 2)
-        recGrid.addWidget(self.freqLabel, 8, 3)
-        recGrid.addWidget(self.freqEdit, 8, 4)
-        recGrid.addWidget(self.untilSTOPbtn, 10, 0, 1, -1)
-        recGrid.addWidget(self.saveModeLabel, 12, 0)
-        recGrid.addWidget(self.saveModeList, 12, 1, 1, -1)
+        recGrid.addWidget(QtWidgets.QLabel('Folder'), gridRow, 0)
+        recGrid.addWidget(self.folderEdit, gridRow, 1, 1, 3)
+        recGrid.addWidget(self.openFolderButton, gridRow, 4)
+        gridRow += 1
+
+        recGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 3)
+        recGrid.addWidget(self.specifyfile, gridRow, 0)
+        gridRow += 1
+
+        recGrid.addWidget(modeTitle, gridRow, 0)
+        gridRow += 1
+
+        recGrid.addWidget(self.specifyFrames, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.currentFrame, gridRow, 1)
+        recGrid.addWidget(self.numExpositionsEdit, gridRow, 2)
+        gridRow += 1
+
+        recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.currentTime, gridRow, 1)
+        recGrid.addWidget(self.timeToRec, gridRow, 2)
+        gridRow += 1
+
+        recGrid.addWidget(self.recScanOnceBtn, gridRow, 0, 1, 5)
+        gridRow += 1
+
+        recGrid.addWidget(self.recScanLapseBtn, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.currentLapse, gridRow, 1)
+        recGrid.addWidget(self.timeLapseEdit, gridRow, 2)
+        recGrid.addWidget(self.freqLabel, gridRow, 3)
+        recGrid.addWidget(self.freqEdit, gridRow, 4)
+        gridRow += 1
+        recGrid.addWidget(self.singleFileLapseBox, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.untilSTOPbtn, gridRow, 0, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.snapSaveFormatLabel, gridRow, 0)
+        recGrid.addWidget(self.snapSaveFormatList, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.snapSaveModeLabel, gridRow, 0)
+        recGrid.addWidget(self.snapSaveModeList, gridRow, 1, 1, -1)
+        gridRow += 1
+
+        recGrid.addWidget(self.recSaveModeLabel, gridRow, 0)
+        recGrid.addWidget(self.recSaveModeList, gridRow, 1, 1, -1)
+        gridRow += 1
 
         self.recGridContainer = QtWidgets.QWidget()
         self.recGridContainer.setLayout(recGrid)
@@ -135,32 +192,50 @@ class RecordingWidget(Widget):
         layout.addWidget(buttonWidget)
 
         # Initial condition of fields and checkboxes.
-        self.writable = True
-        self.readyToRecord = False
         self.filenameEdit.setEnabled(False)
         self.untilSTOPbtn.setChecked(True)
 
         # Connect signals
-        self.detectorList.currentIndexChanged.connect(self.sigDetectorChanged)
+        self.detectorModeList.currentIndexChanged.connect(self.sigDetectorModeChanged)
+        self.detectorList.sigCheckedChanged.connect(self.sigDetectorSpecificChanged)
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
         self.specifyfile.toggled.connect(self.sigSpecFileToggled)
-        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
-        self.recButton.toggled.connect(self.sigRecToggled)
+
         self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
         self.specifyTime.clicked.connect(self.sigSpecTimePicked)
         self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
         self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
 
-    def getDetectorToCapture(self):
-        """ Returns the name of the detector the user has selected to be
-        captured. Note: If "current detector at start" is selected, this
-        returns -1, and if "all acquisition detectors" is selected, this
-        returns -2. """
-        return self.detectorList.itemData(self.detectorList.currentIndex())
+        self.snapSaveFormatList.currentIndexChanged.connect(self.sigSnapSaveFormatChanged)
+        self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
+        self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
 
-    def getSaveMode(self):
-        return self.saveModeList.currentIndex() + 1
+        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
+        self.recButton.toggled.connect(self.sigRecToggled)
+
+    def getDetectorMode(self):
+        """ Returns -1 if "current detector at start" is selected, -2 if "all
+        acquisition detectors" is selected, and -3 if "specific detector(s)" is
+        selected. """
+        return self.detectorModeList.itemData(self.detectorModeList.currentIndex())
+
+    def getSelectedSpecificDetectors(self):
+        """ Returns the names of the selected items in the "select specific
+        detectors" list. """
+        return self.detectorList.getCheckedItems()
+
+    def getMultiDetectorSingleFile(self):
+        return self.singleFileMultiDetectorBox.isChecked()
+
+    def getSnapSaveFormat(self):
+        return self.snapSaveFormatList.currentIndex() + 1
+
+    def getSnapSaveMode(self):
+        return self.snapSaveModeList.currentIndex() + 1
+
+    def getRecSaveMode(self):
+        return self.recSaveModeList.currentIndex() + 1
 
     def getRecFolder(self):
         return self.folderEdit.text()
@@ -183,29 +258,63 @@ class RecordingWidget(Widget):
     def getTimelapseFreq(self):
         return float(self.freqEdit.text())
 
+    def getTimelapseSingleFile(self):
+        return self.singleFileLapseBox.isChecked()
+
     def setDetectorList(self, detectorModels):
+        self.detectorModeList.addItem('Current detector at start', -1)
+
         if len(detectorModels) > 1:
-            self.detectorList.addItem('Current detector at start', -1)
-            self.detectorList.addItem('All acquisition detectors', -2)
+            self.detectorModeList.addItem('All acquisition detectors', -2)
+            self.detectorModeList.addItem('Specific detector(s)', -3)
 
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
 
-    def setDetectorToCapture(self, detectorName):
-        """ Sets which detector should be captured. Note: The value -1
-        corresponds to "current detector at start", and the value -2
-        corresponds to "all acquisition detectors". """
-        for i in range(self.detectorList.count()):
-            if self.detectorList.itemData(i) == detectorName:
-                self.detectorList.setCurrentIndex(i)
+    def setSpecificDetectorListVisible(self, visible):
+        """ Sets whether the "select specific detectors" list is visible. """
+        self.detectorList.setVisible(visible)
+
+    def setDetectorMode(self, detectorMode):
+        """ Sets the detector capture mode. The value -1  corresponds to
+        "current detector at start", the value -2 corresponds to "all
+        acquisition detectors", and the value -3 corresponds to "specific
+        detector(s)". """
+        for i in range(self.detectorModeList.count()):
+            if self.detectorModeList.itemData(i) == detectorMode:
+                self.detectorModeList.setCurrentIndex(i)
                 return
 
-    def setSaveMode(self, saveMode):
-        self.saveModeList.setCurrentIndex(saveMode - 1)
+    def setSelectedSpecificDetectors(self, detectors):
+        """ Sets the selected items in the "select specific detectors" list.
+        """
+        self.detectorList.setCheckedItems(detectors)
 
-    def setSaveModeVisible(self, value):
-        self.saveModeLabel.setVisible(value)
-        self.saveModeList.setVisible(value)
+    def setMultiDetectorSingleFile(self, singleFile):
+        self.singleFileMultiDetectorBox.setChecked(singleFile)
+
+    def setMultiDetectorSingleFileVisible(self, visible):
+        self.singleFileMultiDetectorBox.setVisible(visible)
+
+    def setSnapSaveFormat(self, saveMode):
+        self.snapSaveFormatList.setCurrentIndex(saveMode - 1)
+
+    def setSnapSaveFormatEnabled(self, value):
+        self.snapSaveFormatList.setEnabled(value)
+
+    def setSnapSaveMode(self, saveMode):
+        self.snapSaveModeList.setCurrentIndex(saveMode - 1)
+
+    def setSnapSaveModeVisible(self, value):
+        self.snapSaveModeLabel.setVisible(value)
+        self.snapSaveModeList.setVisible(value)
+
+    def setRecSaveMode(self, saveMode):
+        self.recSaveModeList.setCurrentIndex(saveMode - 1)
+
+    def setRecSaveModeVisible(self, value):
+        self.recSaveModeLabel.setVisible(value)
+        self.recSaveModeList.setVisible(value)
 
     def setCustomFilenameEnabled(self, enabled):
         """ Enables the ability to type a specific filename for the data to. """
@@ -237,17 +346,12 @@ class RecordingWidget(Widget):
     def setFieldsEnabled(self, enabled):
         self.recGridContainer.setEnabled(enabled)
 
-    def setEnabledParams(self, numExpositions=False, timeToRec=False,
-                         timelapseTime=False, timelapseFreq=False):
-        self.numExpositionsEdit.setEnabled(numExpositions)
-        self.timeToRec.setEnabled(timeToRec)
-        self.timeLapseEdit.setEnabled(timelapseTime)
-        self.freqEdit.setEnabled(timelapseFreq)
-
-    def setSpecifyFramesAllowed(self, allowed):
-        self.specifyFrames.setEnabled(allowed)
-        if not allowed and self.specifyFrames.isChecked():
-            self.untilSTOPbtn.setChecked(True)
+    def setEnabledParams(self, specFrames=False, specTime=False, scanLapse=False):
+        self.numExpositionsEdit.setEnabled(specFrames)
+        self.timeToRec.setEnabled(specTime)
+        self.timeLapseEdit.setEnabled(scanLapse)
+        self.freqEdit.setEnabled(scanLapse)
+        self.singleFileLapseBox.setEnabled(scanLapse)
 
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)
@@ -264,6 +368,9 @@ class RecordingWidget(Widget):
     def setTimelapseFreq(self, freqSeconds):
         self.freqEdit.setText(str(freqSeconds))
 
+    def setTimelapseSingleFile(self, singleFile):
+        self.singleFileLapseBox.setChecked(singleFile)
+
     def updateRecFrameNum(self, recFrameNum):
         self.currentFrame.setText(str(recFrameNum) + ' /')
 
@@ -272,7 +379,11 @@ class RecordingWidget(Widget):
 
     def updateRecLapseNum(self, lapseNum):
         self.currentLapse.setText(str(lapseNum) + ' /')
-        
+
+    @shortcut('Ctrl+R', "Record")
+    def toggleRecButton(self):
+        self.recButton.toggle()
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

@@ -52,7 +52,7 @@ class ScanWidget(Widget):
 
         self.scanButton = guitools.BetterPushButton('Run Scan')
 
-        self.continuousCheck = QtWidgets.QCheckBox('Repeat')
+        self.repeatBox = QtWidgets.QCheckBox('Repeat')
 
         self.graph = GraphFrame()
         self.graph.setEnabled(False)
@@ -96,7 +96,7 @@ class ScanWidget(Widget):
                                   QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
             currentRow, 4
         )
-        self.grid.addWidget(self.continuousCheck, currentRow, 5)
+        self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
         currentRow += 1
 
@@ -162,7 +162,9 @@ class ScanWidget(Widget):
             self.scanPar['stepSize' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['pixels' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['center' + positionerName].textChanged.connect(self.sigStageParChanged)
-            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(self.sigStageParChanged)
+            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(
+                self.sigStageParChanged
+            )
 
         # Add dwell time parameter
         self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
@@ -189,8 +191,8 @@ class ScanWidget(Widget):
         for deviceName in TTLDeviceNames:
             # TTL pulse params
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('0')
-            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('10')
+            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('')
+            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('')
             self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
             self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1
@@ -208,8 +210,8 @@ class ScanWidget(Widget):
     def isContLaserMode(self):
         return self.contLaserPulsesRadio.isChecked()
 
-    def continuousCheckEnabled(self):
-        return self.continuousCheck.isChecked()
+    def repeatEnabled(self):
+        return self.repeatBox.isChecked()
 
     def getScanDim(self, index):
         return self.scanPar['scanDim' + str(index)].currentText()
@@ -222,6 +224,10 @@ class ScanWidget(Widget):
 
     def getScanCenterPos(self, positionerName):
         return float(self.scanPar['center' + positionerName].text())
+
+    def getTTLIncluded(self, deviceName):
+        return (self.pxParameters['sta' + deviceName].text() != '' and
+                self.pxParameters['end' + deviceName].text() != '')
 
     def getTTLStarts(self, deviceName):
         return list(map(lambda s: float(s) / 1000 if s else None,
@@ -240,7 +246,12 @@ class ScanWidget(Widget):
     def setContLaserMode(self):
         self.contLaserPulsesRadio.setChecked(True)
 
+    def setRepeatEnabled(self, enabled):
+        self.repeatBox.setChecked(enabled)
+
     def setScanButtonChecked(self, checked):
+        self.scanButton.setEnabled(not checked)
+        self.scanButton.setCheckable(checked)
         self.scanButton.setChecked(checked)
 
     def setScanDim(self, index, positionerName):
@@ -269,6 +280,10 @@ class ScanWidget(Widget):
             ','.join(map(lambda e: str(round(1000 * e, 3)), ends))
         )
 
+    def unsetTTL(self, deviceName):
+        self.pxParameters['sta' + deviceName].setText('')
+        self.pxParameters['end' + deviceName].setText('')
+
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
 
@@ -290,7 +305,7 @@ class ScanWidget(Widget):
 
         self.graph.plot.clear()
         for i in range(len(areas)):
-            self.graph.plot.plot(areas[i], signals[i],  pen=pg.mkPen(colors[i]))
+            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
 
         self.graph.plot.setYRange(-0.1, 1.1)
         self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
@@ -299,8 +314,8 @@ class ScanWidget(Widget):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
             # Set correct minimum width (otherwise things can go outside the widget because of the
             # scroll area)
-            width = self.gridContainer.minimumSizeHint().width()\
-                     + self.scrollArea.verticalScrollBar().width()
+            width = self.gridContainer.minimumSizeHint().width() \
+                    + self.scrollArea.verticalScrollBar().width()
             self.scrollArea.setMinimumWidth(width)
             self.setMinimumWidth(width)
 

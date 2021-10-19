@@ -3,6 +3,36 @@ Changelog
 *********
 
 
+1.2.1
+=====
+
+Highlights:
+
+- Snaps can now be saved to the image viewer (#64)
+- Snaps can now be saved as tiff files (#75)
+- Resolved the issue of not being able to run scans with only one positioner or only one laser
+- Fixed the step up/down buttons not working properly for multi-axis positioners
+- Fixed the api.imcontrol.setDetectorToRecord method not working
+
+A list of all code changes is available on GitHub: https://github.com/kasasxav/ImSwitch/compare/v1.2.0...v1.2.1
+
+
+1.2.0
+=====
+
+Highlights:
+
+- Saving multi-detector and timelapse recordings in a single file is now supported (#53)
+- Selecting specific detectors to record is now supported (#52)
+- It is now possible to edit values/on-off-state of non-involved lasers during scanning (#51)
+- The image reconstruction module now allows reconstructing all loaded data files (e.g. multi-file timelapses) into a single reconstruction (#34)
+- The documentation has been improved (#61, #63)
+- Fixed the SLM widget causing crashes on macOS (#57)
+- Fixed the module picker being empty in standalone Windows bundles (#55)
+
+A list of all code changes is available on GitHub: https://github.com/kasasxav/ImSwitch/compare/v1.1.0...v1.2.0
+
+
 1.1.0
 =====
 

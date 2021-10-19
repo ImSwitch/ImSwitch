@@ -2,8 +2,8 @@ import os
 
 import numpy as np
 
-from imswitch.imcontrol.model import ScanManager
 from imswitch.imcontrol._test import setupInfoBasic
+from imswitch.imcontrol.model import ScanManager
 
 
 def test_scan_signals():
@@ -40,13 +40,13 @@ def test_scan_signals():
     assert fullsig['scanSignalsDict']['X'].min() == 0.0
     assert fullsig['scanSignalsDict']['Y'].min() == 0.0
     assert fullsig['scanSignalsDict']['Z'].min() == 0.0
-    assert fullsig['scanSignalsDict']['X'].max()\
+    assert fullsig['scanSignalsDict']['X'].max() \
            == fullsig['scanSignalsDict']['Y'].max()
     assert fullsig['scanSignalsDict']['Z'].max() == 0.5
 
     # Basic TTL signal checks
     assert np.count_nonzero(fullsig['TTLCycleSignalsDict']['405']) == 51840
-    assert np.all(fullsig['TTLCycleSignalsDict']['488'] == False)
+    assert np.all(~fullsig['TTLCycleSignalsDict']['488'])
 
     # Check all values against precomputed ones
     with np.load(os.path.join(os.path.dirname(__file__), 'test_scan_expected.npz')) as data:

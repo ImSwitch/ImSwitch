@@ -1,12 +1,13 @@
 import configparser
 import functools
 import os
+import traceback
 from ast import literal_eval
-from traceback import print_exc
 
 import numpy as np
 
-from imswitch.imcommon.model import APIExport, dirtools
+from imswitch.imcommon.model import APIExport, dirtools, initLogger
+from imswitch.imcommon.view.guitools import colorutils
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import SuperScanController
 
@@ -14,9 +15,17 @@ from ..basecontrollers import SuperScanController
 class ScanController(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         self.settingAttr = False
         self.settingParameters = False
+
+        self._analogParameterDict = {}
+        self._digitalParameterDict = {}
+        self.signalDict = None
+        self.scanInfoDict = None
+        self.isRunning = False
+        self.doingNonFinalPartOfSequence = False
 
         self.positioners = {
             pName: pManager for pName, pManager in self._setupInfo.positioners.items()
@@ -34,9 +43,6 @@ class ScanController(SuperScanController):
         if not os.path.exists(self.scanDir):
             os.makedirs(self.scanDir)
 
-        self._analogParameterDict = {}
-        self._digitalParameterDict = {}
-
         self.getParameters()
         self.updatePixels()
         self.plotSignalGraph()
@@ -44,10 +50,18 @@ class ScanController(SuperScanController):
         self.updateScanTTLAttrs()
 
         # Connect NidaqManager signals
+        self._master.nidaqManager.sigScanBuilt.connect(
+            lambda _, deviceList: self.emitScanSignal(self._commChannel.sigScanBuilt, deviceList)
+        )
+        self._master.nidaqManager.sigScanStarted.connect(
+            lambda: self.emitScanSignal(self._commChannel.sigScanStarted)
+        )
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
+        self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigPrepareScan.connect(lambda: self.setScanButton(True))
+        self._commChannel.sigRunScan.connect(self.runScanExternal)
+        self._commChannel.sigAbortScan.connect(self.abortScan)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
@@ -62,13 +76,15 @@ class ScanController(SuperScanController):
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
-        print('Init Scan Controller')
-
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()
-        x = self._analogParameterDict['axis_length'][0] / self._analogParameterDict['axis_step_size'][0]
-        y = self._analogParameterDict['axis_length'][1] / self._analogParameterDict['axis_step_size'][1]
+
+        lengths = self._analogParameterDict['axis_length']
+        stepSizes = self._analogParameterDict['axis_step_size']
+
+        x = lengths[0] / stepSizes[0]
+        y = lengths[1] / stepSizes[1]
 
         return x, y
 
@@ -85,8 +101,8 @@ class ScanController(SuperScanController):
 
         self.saveScanParamsToFile(fileName)
 
-    @APIExport
-    def saveScanParamsToFile(self, filePath):
+    @APIExport(runOnUIThread=True)
+    def saveScanParamsToFile(self, filePath: str) -> None:
         """ Saves the set scanning parameters to the specified file. """
         self.getParameters()
         config = configparser.ConfigParser()
@@ -106,8 +122,8 @@ class ScanController(SuperScanController):
 
         self.loadScanParamsFromFile(fileName)
 
-    @APIExport
-    def loadScanParamsFromFile(self, filePath):
+    @APIExport(runOnUIThread=True)
+    def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
 
         config = configparser.ConfigParser()
@@ -137,48 +153,86 @@ class ScanController(SuperScanController):
     def setParameters(self):
         self.settingParameters = True
         try:
-            for i in range(len(self.positioners)):
+            for i in range(len(self._analogParameterDict['target_device'])):
                 positionerName = self._analogParameterDict['target_device'][i]
                 self._widget.setScanDim(i, positionerName)
-                self._widget.setScanSize(positionerName, self._analogParameterDict['axis_length'][i])
-                self._widget.setScanStepSize(positionerName, self._analogParameterDict['axis_step_size'][i])
-                self._widget.setScanCenterPos(positionerName, self._analogParameterDict['axis_centerpos'][i])
+                self._widget.setScanSize(positionerName,
+                                         self._analogParameterDict['axis_length'][i])
+                self._widget.setScanStepSize(positionerName,
+                                             self._analogParameterDict['axis_step_size'][i])
+                self._widget.setScanCenterPos(positionerName,
+                                              self._analogParameterDict['axis_centerpos'][i])
 
-            for i in range(len(self.TTLDevices)):
+            setTTLDevices = []
+            for i in range(len(self._digitalParameterDict['target_device'])):
                 deviceName = self._digitalParameterDict['target_device'][i]
                 self._widget.setTTLStarts(deviceName, self._digitalParameterDict['TTL_start'][i])
                 self._widget.setTTLEnds(deviceName, self._digitalParameterDict['TTL_end'][i])
+                setTTLDevices.append(deviceName)
+
+            for deviceName in self.TTLDevices:
+                if deviceName not in setTTLDevices:
+                    self._widget.unsetTTL(deviceName)
 
             self._widget.setSeqTimePar(self._digitalParameterDict['sequence_time'])
         finally:
             self.settingParameters = False
             self.plotSignalGraph()
 
-    @APIExport
-    def runScan(self, hasStarted = False):
-        """ Runs a scan with the set scanning parameters. """
-        self.getParameters()
-        try:
-            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                self._analogParameterDict, self._digitalParameterDict,
-                staticPositioner=self._widget.isContLaserMode()
-            )
-        except:
-            # TODO: should raise an error here probably, but that does not crash the program.
-            print_exc()
-            return
+    def runScanExternal(self, recalculateSignals, isNonFinalPartOfSequence):
+        self._widget.setScanMode()
+        self._widget.setRepeatEnabled(False)
+        self.runScanAdvanced(recalculateSignals=recalculateSignals,
+                             isNonFinalPartOfSequence=isNonFinalPartOfSequence,
+                             sigScanStartingEmitted=True)
 
-        if not hasStarted: self._commChannel.sigScanStarting.emit()
-        self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+    def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
+                        sigScanStartingEmitted):
+        """ Runs a scan with the set scanning parameters. """
+        try:
+            self._widget.setScanButtonChecked(True)
+            self.isRunning = True
+
+            if recalculateSignals or self.signalDict is None or self.scanInfoDict is None:
+                self.getParameters()
+                self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                    self._analogParameterDict, self._digitalParameterDict,
+                    staticPositioner=self._widget.isContLaserMode()
+                )
+
+            self.doingNonFinalPartOfSequence = isNonFinalPartOfSequence
+
+            if not sigScanStartingEmitted:
+                self.emitScanSignal(self._commChannel.sigScanStarting)
+            self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+        except Exception:
+            self.__logger.error(traceback.format_exc())
+            self.isRunning = False
+
+    def abortScan(self):
+        self.doingNonFinalPartOfSequence = False  # So that sigScanEnded is emitted
+        if not self.isRunning:
+            self.scanFailed()
 
     def scanDone(self):
-        print('Scan done')
-        if not self._widget.isContLaserMode() and not self._widget.continuousCheckEnabled():
-            self.setScanButton(False)
-            self._commChannel.sigScanEnded.emit()
+        self.__logger.debug('Scan done')
+        self.isRunning = False
+
+        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
+            self.emitScanSignal(self._commChannel.sigScanDone)
+            if not self.doingNonFinalPartOfSequence:
+                self._widget.setScanButtonChecked(False)
+                self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
-            print('Repeat scan')
-            self.runScan(hasStarted=True)
+            self.__logger.debug('Repeat scan')
+            self.runScanAdvanced(sigScanStartingEmitted=True)
+
+    def scanFailed(self):
+        self.__logger.error('Scan failed')
+        self.isRunning = False
+        self.doingNonFinalPartOfSequence = False
+        self._widget.setScanButtonChecked(False)
+        self.emitScanSignal(self._commChannel.sigScanEnded)
 
     def getParameters(self):
         if self.settingParameters:
@@ -206,6 +260,9 @@ class ScanController(SuperScanController):
         self._digitalParameterDict['TTL_start'] = []
         self._digitalParameterDict['TTL_end'] = []
         for deviceName, deviceInfo in self.TTLDevices.items():
+            if not self._widget.getTTLIncluded(deviceName):
+                continue
+
             self._digitalParameterDict['target_device'].append(deviceName)
             self._digitalParameterDict['TTL_start'].append(self._widget.getTTLStarts(deviceName))
             self._digitalParameterDict['TTL_end'].append(self._widget.getTTLEnds(deviceName))
@@ -220,10 +277,6 @@ class ScanController(SuperScanController):
             self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
             self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
             self._widget.setScanCenterPosEnabled(positionerName, not isContLaserPulses)
-
-    def setScanButton(self, b):
-        self._widget.setScanButtonChecked(b)
-        if b: self.runScan()
 
     def updatePixels(self):
         self.getParameters()
@@ -256,11 +309,15 @@ class ScanController(SuperScanController):
             )
             signals.append(signal.astype(np.uint8))
             colors.append(
-                guitools.colorutils.wavelengthToHex(
+                colorutils.wavelengthToHex(
                     self._setupInfo.lasers[deviceName].wavelength
                 ) if isLaser else '#ffffff'
             )
         self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
+
+    def emitScanSignal(self, signal, *args):
+        if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
+            signal.emit(*args)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 2:
@@ -300,10 +357,15 @@ class ScanController(SuperScanController):
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
 
+    @APIExport(runOnUIThread=True)
+    def runScan(self) -> None:
+        """ Runs a scan with the set scanning parameters. """
+        self.runScanAdvanced(sigScanStartingEmitted=False)
+
 
 _attrCategoryStage = 'ScanStage'
 _attrCategoryTTL = 'ScanTTL'
-        
+
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

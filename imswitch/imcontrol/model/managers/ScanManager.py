@@ -1,6 +1,7 @@
 import copy
 from abc import ABC, abstractmethod
 
+from imswitch.imcommon.model import initLogger
 from ..errors import IncompatibilityError
 from ..signaldesigners import SignalDesignerFactory
 
@@ -29,21 +30,32 @@ class ScanManager(SuperScanManager):
 
     def __init__(self, setupInfo):
         super().__init__()
+        self.__logger = initLogger(self)
+
         self._setupInfo = setupInfo
-        self._scanDesigner = SignalDesignerFactory(setupInfo.scan.scanDesigner)
-        self._TTLCycleDesigner = SignalDesignerFactory(setupInfo.scan.TTLCycleDesigner)
+
+        if setupInfo.scan:
+            self._scanDesigner = SignalDesignerFactory(setupInfo.scan.scanDesigner)
+            self._TTLCycleDesigner = SignalDesignerFactory(setupInfo.scan.TTLCycleDesigner)
+        else:
+            self._scanDesigner = None
+            self._TTLCycleDesigner = None
 
         self._expectedSyncParameters = []
 
     @property
     def sampleRate(self):
+        self._checkScanDefined()
         return self._setupInfo.scan.sampleRate
 
     @property
     def TTLTimeUnits(self):
+        self._checkScanDefined()
         return self._TTLCycleDesigner.timeUnits
 
     def _parameterCompatibility(self, parameterDict):
+        self._checkScanDefined()
+
         stageExpected = set(self._scanDesigner.expectedParameters)
         stageIncoming = set(parameterDict['stageParameterList'])
 
@@ -64,25 +76,31 @@ class ScanManager(SuperScanManager):
 
     def getScanSignalsDict(self, scanParameters):
         """ Generates scan signals. """
+        self._checkScanDefined()
         parameterDict = copy.deepcopy(self._setupInfo.scan.scanDesignerParams)
         parameterDict.update(scanParameters)
         return self._scanDesigner.make_signal(parameterDict, self._setupInfo)
 
     def getTTLCycleSignalsDict(self, TTLParameters, scanInfoDict=None):
         """ Generates TTL cycle signals. """
+        self._checkScanDefined()
         parameterDict = copy.deepcopy(self._setupInfo.scan.TTLCycleDesignerParams)
         parameterDict.update(TTLParameters)
         return self._TTLCycleDesigner.make_signal(parameterDict, self._setupInfo, scanInfoDict)
 
     def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
         """ Generates stage and TTL scan signals. """
+        self._checkScanDefined()
+
         if not staticPositioner:
             scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
             if not self._scanDesigner.checkSignalComp(
                     scanParameters, self._setupInfo, scanInfoDict
             ):
-                print('Signal voltages outside scanner ranges: try scanning a smaller ROI or a'
-                      ' slower scan.')
+                self.__logger.error(
+                    'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
+                    ' scan.'
+                )
                 return
 
             TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
@@ -96,6 +114,12 @@ class ScanManager(SuperScanManager):
              'TTLCycleSignalsDict': TTLCycleSignalsDict},
             scanInfoDict
         )
+
+    def _checkScanDefined(self):
+        if not self._setupInfo.scan:
+            raise RuntimeError(
+                'scan field is not defined in hardware configuration; cannot proceed'
+            )
 
 
 # Copyright (C) 2020, 2021 TestaLab

@@ -1,33 +1,58 @@
 import importlib.util
+import logging
 import os
 import time
+from typing import Any, Callable
 
-from imswitch.imcommon.framework import FrameworkUtils
-from imswitch.imcommon.model import APIExport, generateAPI
+from imswitch.imcommon.framework import Signal, FrameworkUtils
+from imswitch.imcommon.model import APIExport, generateAPI, initLogger
 
 
 class _Actions:
     """ Additional functions intended to be made available through the
     scripting API. """
 
-    def __init__(self, scriptPath=None):
+    def __init__(self, scriptScope, scriptPath=None):
+        self._scriptScope = scriptScope
         self._scriptPath = scriptPath
+        self._scriptLogger = initLogger('script')
 
-    @APIExport
-    def importScript(self, path):
+    @APIExport()
+    def importScript(self, path: str) -> Any:
         """ Imports the script at the specified path (either absolute or
         relative to the main script) and returns it as a module variable. """
 
+        # Convert to absolute path
         if self._scriptPath is not None:
             path = os.path.join(os.path.dirname(self._scriptPath), path)
 
+        # Load module
         spec = importlib.util.spec_from_file_location(os.path.basename(path), path)
         script = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(script)
+
+        # Set script/actions scope
+        script.__dict__.update(self._scriptScope)
+        script.__dict__.update(getActionsScope(self._scriptScope, self._scriptPath))
+
+        # Return
         return script
 
-    @APIExport
-    def getWaitForSignal(self, signal, pollIntervalSeconds=1):
+    @APIExport()
+    def getScriptDirPath(self) -> str:
+        """ Returns the path to the directory containing the running script.
+        """
+        return os.path.dirname(self._scriptPath)
+
+    @APIExport()
+    def getLogger(self) -> logging.LoggerAdapter:
+        """ Returns a logger instance that can be used to print formatted
+        messages to the console. """
+        return self._scriptLogger
+
+    @APIExport()
+    def getWaitForSignal(self, signal: Signal,
+                         pollIntervalSeconds: float = 1.0) -> Callable[[], None]:
         """ Returns a function that will wait for the specified signal to emit.
         The returned function will continuously check whether the signal has
         been emitted since its creation. The polling interval defaults to one
@@ -51,9 +76,9 @@ class _Actions:
         return wait
 
 
-def getActionsScope(scriptPath=None):
+def getActionsScope(otherScope, scriptPath=None):
     """ Returns the script scope for the actions. """
-    return generateAPI([_Actions(scriptPath)]).toDict()
+    return generateAPI([_Actions(otherScope, scriptPath)])._asdict()
 
 
 # Copyright (C) 2020, 2021 TestaLab

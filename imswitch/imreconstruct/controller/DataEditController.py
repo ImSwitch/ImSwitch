@@ -17,7 +17,8 @@ class DataEditController(ImRecWidgetController):
         self._dataObj = inDataObj
         self._meanData = np.array(np.mean(self._dataObj.data, 0), dtype=np.float32)
         self.showMean()
-        self._widget.updateDataProperties(self._dataObj.name, self._dataObj.numFrames)
+        self._widget.updateDataProperties(self._dataObj.name, self._dataObj.datasetName,
+                                          self._dataObj.numFrames)
 
     def setImgSlice(self, frameNumber):
         if self._dataObj is None or frameNumber >= len(self._dataObj.data):

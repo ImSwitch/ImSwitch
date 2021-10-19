@@ -52,22 +52,14 @@ class EditorController(ImScrWidgetController):
             if not scriptPath:
                 return
 
-        scriptEntry = ScriptEntry.loadFromFile(scriptPath)
-
-        instance = None
         for existingInstanceID, existingEntry in self.scriptStore:
             if scriptPath == existingEntry.filePath:
                 # File already open
                 self._widget.setCurrentInstanceByID(existingInstanceID)
-                if self.verifyNotUnsaved(existingInstanceID):
-                    instance = self._widget.getInstanceByID(existingInstanceID)
-                else:
-                    return
+                return
 
-        if instance is None:
-            instance = self._widget.addEditor(os.path.basename(scriptPath))
-        else:
-            self._widget.setEditorName(instance.getID(), self.getScriptName(instance.getID()))
+        scriptEntry = ScriptEntry.loadFromFile(scriptPath)
+        instance = self._widget.addEditor(os.path.basename(scriptPath))
 
         self.loadingFile = True
         try:

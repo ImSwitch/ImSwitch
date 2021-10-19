@@ -3,7 +3,8 @@
     "X": {
         "managerName": "GRBLStageManager",
         "managerProperties": {
-          "rs232device": "/dev/cu.wchusbserial14330"
+          "rs232device_mac": "/dev/cu.wchusbserial14330",
+          "rs232device": "COM14"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,

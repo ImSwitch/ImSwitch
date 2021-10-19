@@ -2,10 +2,10 @@ import importlib
 import traceback
 
 import imswitch
-from .imcommon import prepareApp, launchApp
-from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from .imcommon.model import modulesconfigtools, pythontools, initLogger
-from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
+from imswitch.imcommon import prepareApp, launchApp
+from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
+from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
+from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
 def main():

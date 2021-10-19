@@ -60,7 +60,7 @@ class GrblDriver:
     def __init__(self, address='/dev/ttyACM0'):
         self.ser = serial.Serial(address, baudrate=115200, timeout=0.01)
         self.waittimeout = 0.01
-        self.is_debug = True
+        self.is_debug = False
         
         # illumination settings
         self.laser_intensity = 0
@@ -124,7 +124,7 @@ class GrblDriver:
         self._update_writesettings()
 
         self.globalconfig = {
-            1:255, #ms to wait before going idle (255=don't disable steppers)
+            1:25, #ms to wait before going idle (255=don't disable steppers)
             5:0,  #set NO limit switch
             20:0, # enable soft limit switch (stop immediately) # changed to off 1.31.19 after crash during data collection
             21:0, # enable hard limit switch (stop immediately) # changed to off 1.31.19 after crash during data collection
@@ -135,7 +135,7 @@ class GrblDriver:
             27:0.1, # (Homing switch pull-off distance, millimeters)
             30:1024, # resolution PWM
             31:0, # minimum spindle speed
-            32:0 # enable laser mode 
+            32:0# enable laser mode (Has to be 0!)
 
 
         }

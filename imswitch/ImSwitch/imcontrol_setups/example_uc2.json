@@ -1,0 +1,29 @@
+{
+  "positioners": {
+    "X": {
+        "managerName": "GRBLStageManager",
+        "managerProperties": {
+          "rs232device": "/dev/cu.wchusbserial14330"
+        },
+        "axes": ["X", "Y", "Z"],
+        "forScanning": true,
+        "forPositioning": true
+    }
+},
+  "rois": {
+    "Full chip": {
+      "x": 0,
+      "y": 0,
+      "w": 2448,
+      "h": 2048
+    }
+  },
+  "availableWidgets": [
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "Positioner"
+  ]
+}

@@ -61,6 +61,15 @@ class FrameProducer(threading.Thread):
     def stop(self):
         self.killswitch.set()
 
+    def getFramesize(self):
+        try:
+            print("getting pixel numbers")
+            PIX_HEIGHT = self.cam.HeightMax.get()
+            PIX_WIDTH = self.cam.WidthMax.get()            
+            return PIX_HEIGHT, PIX_WIDTH
+        except:
+            print("Error getting N pixels - frame producer already running?")
+
     def setIntensityCorrection(self, IntensityControllerTarget):
         self.IntensityControllerTarget = IntensityControllerTarget
 
@@ -70,6 +79,18 @@ class FrameProducer(threading.Thread):
             self.cam.ExposureTime.set(self.ExposureTime)
         except:
             print("Error setting ExposureTime1 - frame producer already running?")
+
+
+    def setROI(self, vpos, hpos, vsize, hsize):        
+        try:
+            print("setting ROI")
+            self.cam.OffsetX.set(vpos)
+            self.cam.OffsetY.set(hpos)
+            self.cam.Width.set(vsize)
+            self.cam.Height.set(hsize)
+        except:
+            print("Error setting roi - frame producer already running?")
+
 
     def setGain(self, Gain):
         self.Gain = Gain

@@ -10,8 +10,6 @@ from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameconsumer import *
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera import VimbaCameraThread
 
-FRAME_HEIGHT = 1088
-FRAME_WIDTH = 1456
 
 # Camera Settings
 #CAM_GAIN = 20 # dB
@@ -150,10 +148,10 @@ class CameraAV:
             property_value = self.camera.gain
         elif property_name == "blacklevel":
             property_value == self.camera.blacklevel
-        elif property_name == "image_width":
-            property_value = FRAME_WIDTH
-        elif property_name == "image_height":
-            property_value = FRAME_HEIGHT
+#        elif property_name == "image_width":
+#            property_value = FRAME_WIDTH
+#        elif property_name == "image_height":
+#            property_value = FRAME_HEIGHT
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

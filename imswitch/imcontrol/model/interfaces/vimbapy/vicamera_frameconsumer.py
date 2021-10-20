@@ -28,12 +28,6 @@ def create_dummy_frame(width, height) -> np.ndarray:
 
     return cv_frame
 
-def crop_square(frame: Frame) -> np.ndarray:
-    dim_to_crop = np.min(frame.as_numpy_ndarray().shape())
-    frame[frame.shape[0]//2-dim_to_crop//2:frame.shape[0]//2+dim_to_crop//2,
-            frame.shape[1]//2-dim_to_crop//2:frame.shape[1]//2+dim_to_crop//2]
-    return frame
-
 class FrameConsumer(threading.Thread):
     """
     
@@ -137,8 +131,8 @@ class FrameConsumer(threading.Thread):
             # Construct image by stitching frames together.
             if frames:
                 self.is_connected = True
-                cv_images = [crop_square(frames[cam_id]) for cam_id in sorted(frames.keys())]
-                np_images_raw = np.concatenate(cv_images, axis=1)
+                images = [frames[cam_id] for cam_id in sorted(frames.keys())]
+                np_images_raw = np.concatenate(images, axis=1)
 
                 # resize to fit in the window
                 np_images = cv2.resize(np_images_raw, (self.resolution_preview[0], self.resolution_preview[1]), interpolation=cv2.INTER_NEAREST)
@@ -169,6 +163,12 @@ class FrameConsumer(threading.Thread):
 
         self.log.info('Thread \'FrameConsumer\' terminated.')
 
+    def crop_square(self, frame):
+        dim_to_crop = np.min(frame.as_numpy_ndarray().shape())
+        frame[frame.shape[0]//2-dim_to_crop//2:frame.shape[0]//2+dim_to_crop//2,
+                frame.shape[1]//2-dim_to_crop//2:frame.shape[1]//2+dim_to_crop//2]
+        return frame
+
     def getLatestFrame(self, is_raw=True):
         """[summary]
 
@@ -176,11 +176,11 @@ class FrameConsumer(threading.Thread):
             [type]: [description]
         """
         if is_raw:
-            return self.latest_frame_raw[0:FRAME_WIDTH,0:FRAME_HEIGHT]
-        else:
-            return self.latest_frame
-
-
+            frame = self.latest_frame_raw
+        else: 
+            frame = self.latest_frame
+        return self.crop_square(frame)
+        
     def setWindow(self, window):
         # self.window = WINDOW_START_FROM_LEFT, WINDOW_START_FROM_TOP, WINDOW_HEIGHT, WINDOW_WIDTH
         self.window = WINDOW_START_FROM_LEFT, WINDOW_START_FROM_TOP, window[2], window[3]

@@ -21,9 +21,9 @@
       "avcam": {
         "exposure": 0,
         "gain": 0,
-        "brightness": 0,
-        "image_width": 2448,
-        "image_height": 2048
+        "blacklevel": 100,
+        "image_width": 1000,
+        "image_height": 1000
       }
     },
     "forAcquisition": true

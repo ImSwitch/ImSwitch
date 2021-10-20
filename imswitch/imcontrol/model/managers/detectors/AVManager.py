@@ -39,7 +39,9 @@ class AVManager(DetectorManager):
                                                 editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
-            }
+            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+                                            editable=True),
+            }            
 
         # Prepare actions
         actions = {

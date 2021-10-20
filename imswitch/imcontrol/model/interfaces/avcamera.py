@@ -27,12 +27,11 @@ class CameraAV:
         self.model = "AV Camera"
         self.shape = (0, 0)
 
+        # camera parameters
         self.blacklevel = 100
         self.exposure_time = 0
         self.analog_gain = 0
 
-        self.image_locked = False
-        self.current_frame = None
         self.is_streaming = False
 
         self.GAIN_MAX = 24
@@ -41,9 +40,10 @@ class CameraAV:
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
-    def start_live(self):
-        # no camera thread open, generate one!
+        # generate a camera object 
         self.camera = VimbaCameraThread()
+
+    def start_live(self):
         # temporary
         self.camera.start()
         self.is_streaming = True
@@ -52,9 +52,9 @@ class CameraAV:
     def stop_live(self):
         if self.is_streaming:
             self.camera.stop_preview()
+            self.is_streaming = False
             self.camera.close()
             self.device_info_list = None
-            self.camera = None
             self.is_color = None
             self.gamma_lut = None
             self.contrast_lut = None
@@ -79,21 +79,10 @@ class CameraAV:
         if self.is_streaming:
             self.camera.setGain(self.analog_gain)
         
-    def get_awb_ratios(self):
-        '''
-        self.camera.BalanceWhiteAuto.set(2)
-        self.camera.BalanceRatioSelector.set(0)
-        awb_r = self.camera.BalanceRatio.get()
-        self.camera.BalanceRatioSelector.set(1)
-        awb_g = self.camera.BalanceRatio.get()
-        self.camera.BalanceRatioSelector.set(2)
-        awb_b = self.camera.BalanceRatio.get()
-        '''
-        awb_r, awb_g, awb_b = 1,1,1
-        return (awb_r, awb_g, awb_b)
-
-    def set_wb_ratios(self, wb_r=None, wb_g=None, wb_b=None):
-        pass
+    def set_blacklevel(self,blacklevel):
+        self.blacklevel = blacklevel
+        if self.is_streaming:
+            self.camera.setBlacklevel(self.blacklevel)
 
     def start_streaming(self):
         self.is_streaming = True
@@ -103,7 +92,7 @@ class CameraAV:
 
     def set_pixel_format(self,format):
         #TODO: Implement
-        '''
+        
         if self.is_streaming == True:
             was_streaming = True
             self.stop_streaming()
@@ -126,67 +115,19 @@ class CameraAV:
             print("pixel format is not implemented or not writable")
         if was_streaming:
            self.start_streaming()
-        '''
-        pass
-
-    def set_continuous_acquisition(self):
-        '''
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
-        '''
-        pass
-
-    def set_software_triggered_acquisition(self):
-        '''
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.SOFTWARE)
-        '''
-        pass
-    
-    def set_hardware_triggered_acquisition(self):
-        '''
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
-        # self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
-        self.frame_ID_offset_hardware_trigger = self.frame_ID
-        '''
-        pass
-
-    def send_trigger(self):
-        '''
-        if self.is_streaming:
-            self.camera.TriggerSoftware.send_command()
-        else:
-        	print('trigger not sent - camera is not streaming')
-        '''
-        pass
-
+        
     def grabFrame(self):
         # get frame and save
         return np.squeeze(self.camera.getLatestFrame(is_raw=True))
        
-
-
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
-        '''
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width'.encode('utf-8'), hsize)
-        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top'.encode('utf-8'))
-        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
-        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
-        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
-        self.__logger.debug(
-            f'{self.model}: '
-            f'setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}'
-        )
-        '''
-        #TODO: Impelment 
+        self.camera.setROI(vpos, hpos, vsize, hsize)
+
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -194,6 +135,8 @@ class CameraAV:
             self.set_analog_gain(property_value)
         elif property_name == "exposure":
             self.set_exposure_time(property_value)
+        elif property_name == "blacklevel":
+            self.set_blacklevel(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -205,6 +148,8 @@ class CameraAV:
             property_value = self.camera.gain
         elif property_name == "exposure":
             property_value = self.camera.gain
+        elif property_name == "blacklevel":
+            property_value == self.camera.blacklevel
         elif property_name == "image_width":
             property_value = FRAME_WIDTH
         elif property_name == "image_height":

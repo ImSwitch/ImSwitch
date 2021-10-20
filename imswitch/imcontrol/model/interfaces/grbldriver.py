@@ -58,7 +58,12 @@ class GrblDriver:
     
     
     def __init__(self, address='/dev/ttyACM0'):
-        self.ser = serial.Serial(address, baudrate=115200, timeout=0.01)
+        try:
+            self.ser = serial.Serial(address, baudrate=115200, timeout=0.01)
+            self.is_connected = True
+        except:
+            print("No stage connected - Wrong Port?")
+            self.is_connected = False
         self.waittimeout = 0.01
         self.is_debug = False
         
@@ -71,7 +76,7 @@ class GrblDriver:
         #initialize and wait for grbl to wake up
         self._write('\r\n\r\n')
         time.sleep(2)
-        self.ser.reset_input_buffer()
+        if self.is_connected: self.ser.reset_input_buffer()
 
         
         self.limit_x_max = 1000
@@ -160,108 +165,115 @@ class GrblDriver:
     def write_global_config(self, wait=0.02):
         """Should only need to be run at initial setup.  Configures
         global options like homing speed, limit switch behavior."""
-        self.ser.reset_input_buffer()
-        for k,v in self.globalconfig.items():
-            self._write('${}={}'.format(k,v))
-            time.sleep(wait) #longer wait time to write to EEPROM
-        resp = self._read_buffer()
-        for r in resp:
-            if(r != 'ok'):
-               if self.is_debug:  print('Ok not received after attempted write.')
+        if self.is_connected:
+            self.ser.reset_input_buffer()
+            for k,v in self.globalconfig.items():
+                self._write('${}={}'.format(k,v))
+                time.sleep(wait) #longer wait time to write to EEPROM
+            resp = self._read_buffer()
+            for r in resp:
+                if(r != 'ok'):
+                    if self.is_debug:  print('Ok not received after attempted write.')
         
     def _write_settings(self, settings, settingsmap, wait=0.5):
         """Utility function to write motor config settings to GRBL"""
         #TODO: make this only write commands that have changed,
         #to save on the number of writes to EEPROM
-        self.ser.reset_input_buffer()
-        for s, v in settings.items():
-            self._write(settingsmap[s]+'={:.3f}'.format(v))
-            time.sleep(wait) #longer wait time to write to EEPROM
-        resp = self._read_buffer()
-        for r in resp:
-            if(r != 'ok'):
-                if self.is_debug: print('Ok not received after attempted write.')
+        if self.is_connected:
+            self.ser.reset_input_buffer()
+            for s, v in settings.items():
+                self._write(settingsmap[s]+'={:.3f}'.format(v))
+                time.sleep(wait) #longer wait time to write to EEPROM
+            resp = self._read_buffer()
+            for r in resp:
+                if(r != 'ok'):
+                    if self.is_debug: print('Ok not received after attempted write.')
             
     def write_all_settings(self):
         """Write settings for all of the motors to GRBL"""
-        self._update_writesettings()
-        maps = (self.xsettingsmap, self.ysettingsmap, self.zsettingsmap)
-        writemaps = (self.xwritesettings, self.ywritesettings, self.zwritesettings)
-        for settingsmap, setting in zip(maps, writemaps):
-            self._write_settings(setting, settingsmap)
+        if self.is_connected:
+            self._update_writesettings()
+            maps = (self.xsettingsmap, self.ysettingsmap, self.zsettingsmap)
+            writemaps = (self.xwritesettings, self.ywritesettings, self.zwritesettings)
+            for settingsmap, setting in zip(maps, writemaps):
+                self._write_settings(setting, settingsmap)
 
     def verify_settings(self):
         """Verify that current GRBL settings match the desired config of this class"""
-        settingsre = re.compile(r'(\$\d{1,3})=(\d{1,5}\.?\d{0,3})')
-        
-        self.ser.reset_input_buffer()
-        
-        self._write('$$')
-        time.sleep(self.waittimeout)
-        resp = self._read_buffer()
-        maps = (self.xsettingsmap, self.ysettingsmap, self.zsettingsmap)
-        writemaps = (self.xwritesettings, self.ywritesettings, self.zwritesettings)
-        for settingsmap, checksettings in zip(maps, writemaps):
-            # read settings specified in settingsmap
-            settings = {}
+        if self.is_connected:
+            settingsre = re.compile(r'(\$\d{1,3})=(\d{1,5}\.?\d{0,3})')
+            
+            self.ser.reset_input_buffer()
+            
+            self._write('$$')
+            time.sleep(self.waittimeout)
+            resp = self._read_buffer()
+            maps = (self.xsettingsmap, self.ysettingsmap, self.zsettingsmap)
+            writemaps = (self.xwritesettings, self.ywritesettings, self.zwritesettings)
+            for settingsmap, checksettings in zip(maps, writemaps):
+                # read settings specified in settingsmap
+                settings = {}
+                for s in resp:
+                    m = settingsre.match(s)
+                    if m is not None:
+                        cmd, reading = m.groups()
+                        for k, v in settingsmap.items():
+                            if cmd == v:
+                                settings[k] = float(reading)
+                                
+                # compare to checksettings to verify:
+                for s, v in checksettings.items():
+                    if settings[s] != checksettings[s]:
+                        raise Exception(
+                            ('Current setting for {} is {}, but {} is expected.'
+                            ' Consider writing the settings again.'
+                            ).format(s,v,settings[s]))
+
+            #verify global config
             for s in resp:
-                m = settingsre.match(s)
+                m = re.match(r'\$(\d*)=(\d*\.?\d*)',s)
                 if m is not None:
                     cmd, reading = m.groups()
-                    for k, v in settingsmap.items():
-                        if cmd == v:
-                            settings[k] = float(reading)
-                            
-            # compare to checksettings to verify:
-            for s, v in checksettings.items():
-                if settings[s] != checksettings[s]:
-                    raise Exception(
-                        ('Current setting for {} is {}, but {} is expected.'
-                         ' Consider writing the settings again.'
-                        ).format(s,v,settings[s]))
+                    cmd = int(cmd)
+                    reading = float(reading)
+                    if cmd in self.globalconfig.keys():
+                        if reading != self.globalconfig[cmd]:
+                            raise Exception(('Current setting for global config ${} is {},'
+                                'but {} is expected.').format(cmd,self.globalconfig[cmd],reading))
 
-        #verify global config
-        for s in resp:
-            m = re.match(r'\$(\d*)=(\d*\.?\d*)',s)
-            if m is not None:
-                cmd, reading = m.groups()
-                cmd = int(cmd)
-                reading = float(reading)
-                if cmd in self.globalconfig.keys():
-                    if reading != self.globalconfig[cmd]:
-                        raise Exception(('Current setting for global config ${} is {},'
-                            'but {} is expected.').format(cmd,self.globalconfig[cmd],reading))
-
-        
+            
         return True
         
     def _write(self, command, flush=False):
         """Utility function, write string to GRBL"""
         if self.is_debug: print(command)
-        self.ser.write(command.encode('ascii')+b'\r')
-        if flush:
-            self.ser.flushInput()
-            self.ser.flushOutput()
-    
+        if self.is_connected:
+            self.ser.write(command.encode('ascii')+b'\r')
+            if flush:
+                self.ser.flushInput()
+                self.ser.flushOutput()
+        
     def _read_buffer(self, maxreads = 100):
         """Utility function, perform readlines into a list of readings
         from GRBL.  Useful to clear the read buffer."""
         resp = []
-        i = 0
-        while i < maxreads:
-            msg = self.ser.readline()
-            if msg == b'':
-                break
-            try:
-                resp.append(msg.decode().strip())
-            except:
-                if self.is_debug: print("Something went wrong while deconding the return message from GRBL")
-                self.ser.flush()
-                break
-            time.sleep(self.waittimeout)
-            i+=1
+        if self.is_connected:
+            i = 0
+            while i < maxreads:
+                msg = self.ser.readline()
+                if msg == b'':
+                    break
+                try:
+                    resp.append(msg.decode().strip())
+                except:
+                    if self.is_debug: print("Something went wrong while deconding the return message from GRBL")
+                    self.ser.flush()
+                    break
+                time.sleep(self.waittimeout)
+                i+=1
         return resp
     
+
     def _move(self, axis, steps, config, blocking = True, pingwait = 0.25):
         """Move axis with optional blocking"""
         pos = steps/self.stepdivider
@@ -448,7 +460,7 @@ class GrblDriver:
         csv file containing settings descriptions."""
         settingsre = re.compile(r'\$(\d{1,3})=(\d{1,5}\.?\d{0,3})')
 
-        self.ser.reset_input_buffer()
+        if self.is_connected: self.ser.reset_input_buffer()
 
         self._write('$$')
         time.sleep(self.waittimeout)

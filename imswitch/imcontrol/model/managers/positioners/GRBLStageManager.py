@@ -21,6 +21,7 @@ class GRBLStageManager(PositionerManager):
         self.port = positionerInfo.managerProperties['rs232device']
         self.board = grbldriver.GrblDriver(self.port)
 
+
         # Initialise backlash storage, used by property setter/getter
         self._backlash = None
         self.settle_time = 0.5  # Default move settle time

@@ -184,6 +184,9 @@ class VimbaCameraThread(threading.Thread):
                 del self.producer
                 break
 
+    def setROI(self, vpos, hpos, vsize, hsize):
+        print(vpos, hpos, vsize, hsize)
+        # Todo: Implement
 
     def setIntensityCorrection(self, IntensityCorrection=50):
         self.IntensityCorrection = IntensityCorrection

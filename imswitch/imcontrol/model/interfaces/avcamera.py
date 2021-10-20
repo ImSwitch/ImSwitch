@@ -51,7 +51,7 @@ class CameraAV:
 
     def stop_live(self):
         if self.is_streaming:
-            self.camera.stop_preview()
+            self.camera.stop()
             self.is_streaming = False
             self.camera.close()
             self.device_info_list = None

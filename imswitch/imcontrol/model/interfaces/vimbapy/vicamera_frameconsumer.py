@@ -14,10 +14,6 @@ FRAME_QUEUE_SIZE = 1
 # TODO: REMOVE THIS HERE
 T_PERIODE = 0.5 # [s] - time between acquired frames
 
-# TODO: REMOVE THOSE PARAMETERS?
-FRAME_HEIGHT = 1000
-FRAME_WIDTH = 1000
-
 WINDOW_START_FROM_LEFT = 80
 WINDOW_START_FROM_TOP = 80
 IMAGE_CAPTION = 'UC2-Livestream'
@@ -32,17 +28,11 @@ def create_dummy_frame(width, height) -> np.ndarray:
 
     return cv_frame
 
-def resize_if_required(frame: Frame) -> np.ndarray:
-    # Helper function resizing the given frame, if it has not the required dimensions.
-    # On resizing, the image data is copied and resized, the image inside the frame object
-    # is untouched.
-    cv_frame = frame.as_numpy_ndarray()
-
-    if (frame.get_height() != FRAME_HEIGHT) or (frame.get_width() != FRAME_WIDTH):
-        cv_frame = cv2.resize(cv_frame, (FRAME_WIDTH, FRAME_HEIGHT), interpolation=cv2.INTER_AREA)
-        cv_frame = cv_frame[..., np.newaxis]
-
-    return cv_frame
+def crop_square(frame: Frame) -> np.ndarray:
+    dim_to_crop = np.min(frame.as_numpy_ndarray().shape())
+    frame[frame.shape[0]//2-dim_to_crop//2:frame.shape[0]//2+dim_to_crop//2,
+            frame.shape[1]//2-dim_to_crop//2:frame.shape[1]//2+dim_to_crop//2]
+    return frame
 
 class FrameConsumer(threading.Thread):
     """
@@ -147,7 +137,7 @@ class FrameConsumer(threading.Thread):
             # Construct image by stitching frames together.
             if frames:
                 self.is_connected = True
-                cv_images = [resize_if_required(frames[cam_id]) for cam_id in sorted(frames.keys())]
+                cv_images = [crop_square(frames[cam_id]) for cam_id in sorted(frames.keys())]
                 np_images_raw = np.concatenate(cv_images, axis=1)
 
                 # resize to fit in the window

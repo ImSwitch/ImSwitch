@@ -169,8 +169,6 @@ class FrameProducer(threading.Thread):
 
 
     def run(self):
-        self.log.info('Thread \'FrameProducer({})\' started.'.format(self.cam.get_id()))
-
         try:
             with self.cam:
                 self.setup_camera()
@@ -187,4 +185,3 @@ class FrameProducer(threading.Thread):
         finally:
             try_put_frame(self.frame_queue, self.cam, None)
 
-        self.log.info('Thread \'FrameProducer({})\' terminated.'.format(self.cam.get_id()))

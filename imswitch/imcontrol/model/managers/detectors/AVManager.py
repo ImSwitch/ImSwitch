@@ -41,6 +41,10 @@ class AVManager(DetectorManager):
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
                                             editable=True),
+            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
+                        editable=False),
+            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
+                        editable=False),
             }            
 
         # Prepare actions
@@ -147,7 +151,6 @@ class AVManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces.avcamera import CameraAV
             self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
             camera = CameraAV(cameraId)
-            dd
         except Exception as e:
             print(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')

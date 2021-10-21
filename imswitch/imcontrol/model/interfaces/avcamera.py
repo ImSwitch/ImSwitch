@@ -121,7 +121,7 @@ class CameraAV:
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
-        self.camera.setROI(vpos, hpos, vsize, hsize)
+        #self.camera.setROI(vpos, hpos, vsize, hsize)
 
 
     def setPropertyValue(self, property_name, property_value):

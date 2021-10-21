@@ -1,6 +1,5 @@
 import numpy as np
-from imswitch.imcontrol.model.interfaces.pymbacamera import AVCamera
- 
+
 
 class MockCameraTIS:
     def __init__(self):
@@ -17,18 +16,12 @@ class MockCameraTIS:
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
-                
-        #%%
-        self.camera = AVCamera()
-        self.camera.start()
-
-
 
     def start_live(self):
         pass
 
     def stop_live(self):
-        self.camera.stop()
+        pass
 
     def suspend_live(self):
         pass
@@ -39,8 +32,11 @@ class MockCameraTIS:
     def setROI(self, hpos, vpos, hsize, vsize):
         pass
 
-    def getLast(self, **kwargs):
-        img = self.camera.last_frame
+    def grabFrame(self, **kwargs):
+        img = np.zeros((500, 600))
+        beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
+        img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+        img = np.random.randn(img.shape[0],img.shape[1])
         return img
 
     def setPropertyValue(self, property_name, property_value):

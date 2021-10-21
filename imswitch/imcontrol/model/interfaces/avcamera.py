@@ -38,11 +38,11 @@ class CameraAV:
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
-        self.FRAME_WIDTH = 1000
-        self.FRAME_HEIGHT = 1000
-
         # generate a camera object 
         self.camera = VimbaCameraThread()
+
+        self.FRAME_WIDTH = 1000
+        self.FRAME_HEIGHT = 1000
 
 
     def start_live(self):
@@ -111,7 +111,7 @@ class CameraAV:
         if was_streaming:
            self.start_streaming()
         
-    def grabFrame(self):
+    def getLast(self):
         # get frame and save
         return np.squeeze(self.camera.getLatestFrame(is_raw=True))
        
@@ -144,7 +144,7 @@ class CameraAV:
         elif property_name == "exposure":
             property_value = self.camera.gain
         elif property_name == "blacklevel":
-            property_value == self.camera.blacklevel
+            property_value = self.camera.blacklevel
         elif property_name == "image_width":
             property_value = self.FRAME_WIDTH
         elif property_name == "image_height":

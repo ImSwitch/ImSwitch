@@ -1,14 +1,5 @@
-import copy
-import cv2
 import threading
 import queue
-import numpy as np
-import os
-import time 
-
-from PIL import Image
-
-from typing import Optional
 from vimba import *
 
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *

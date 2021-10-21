@@ -1,21 +1,8 @@
 import numpy as np
-from PIL import Image
-
-from typing import Optional
-from vimba import *
-
 from imswitch.imcommon.model import initLogger
 
-from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *
-from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameconsumer import *
-from imswitch.imcontrol.model.interfaces.vimbapy.vicamera import VimbaCameraThread
-
-
-# Camera Settings
-#CAM_GAIN = 20 # dB
-T_EXPOSURE_MAX = 1e6 # µs => 1s
-ExposureTime = 50e3
-
+from imswitch.imcontrol.model.interfaces.pymbacamera import AVCamera
+ 
 class CameraAV:
     def __init__(self,cameraNo=None):
         super().__init__()
@@ -44,12 +31,16 @@ class CameraAV:
         self.FRAME_WIDTH = 1000
         self.FRAME_HEIGHT = 1000
 
+        #%% starting the camera thread
+        self.camera = AVCamera()
+        self.camera.start()
 
     def start_live(self):
         if self.camera.is_active:
             # TODO: Hacky way :/
             self.camera.stop()
             del self.camera
+            self.camera = AVCamera()
         self.camera.start()
         self.is_streaming = True
 
@@ -57,6 +48,7 @@ class CameraAV:
         if self.is_streaming:
             self.camera.stop()
             del self.camera
+        self.is_streaming = False
 
     def suspend_live(self):
         pass
@@ -66,24 +58,15 @@ class CameraAV:
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        if self.is_streaming:
-            self.camera.setExposureTime(self.exposure_time*1000)
+        self.camera.setExposureTime(self.exposure_time*1000)
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
-        if self.is_streaming:
-            self.camera.setGain(self.analog_gain)
+        self.camera.setGain(self.analog_gain)
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
-        if self.is_streaming:
-            self.camera.setBlacklevel(self.blacklevel)
-
-    def start_streaming(self):
-        self.is_streaming = True
-
-    def stop_streaming(self):
-        self.is_streaming = False
+        self.camera.setBlacklevel(self.blacklevel)
 
     def set_pixel_format(self,format):
         #TODO: Implement
@@ -113,11 +96,12 @@ class CameraAV:
         
     def getLast(self):
         # get frame and save
-        return np.squeeze(self.camera.getLatestFrame(is_raw=True))
+        return  self.camera.last_frame
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
+        pass
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )

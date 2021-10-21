@@ -30,6 +30,7 @@ class AVCamera(threading.Thread):
         self.gain = 0
         self.blacklevel = 0
         self.shape = (1000,1000)
+        self.is_active = True
 
         self.is_changevalue = False
 
@@ -81,19 +82,19 @@ class AVCamera(threading.Thread):
     def stop(self):
         self.kill = True
 
-    def set_exposuretime(self, value):
+    def setExposureTime(self, value):
         self.exposuretime = value
         self.is_changevalue = True
         self.feature_key = "ExposureTime"
         self.feature_value = value
 
-    def set_gain(self, value):
+    def setGain(self, value):
         self.gain = value
         self.is_changevalue = True
         self.feature_key = "Gain"
         self.feature_value = value   
 
-    def set_blacklevel(self, value):
+    def setBlacklevel(self, value):
         self.gavaluein = value
         self.is_changevalue = True
         self.feature_key = "Blacklevel"

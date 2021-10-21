@@ -38,28 +38,25 @@ class CameraAV:
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
+        self.FRAME_WIDTH = 1000
+        self.FRAME_HEIGHT = 1000
+
         # generate a camera object 
         self.camera = VimbaCameraThread()
 
+
     def start_live(self):
-        # temporary
+        if self.camera.is_active:
+            # TODO: Hacky way :/
+            self.camera.stop()
+            del self.camera
         self.camera.start()
         self.is_streaming = True
-        self.camera.setExposureTime(1000)
 
     def stop_live(self):
         if self.is_streaming:
             self.camera.stop()
-            self.is_streaming = False
-            self.camera.close()
-            self.device_info_list = None
-            self.is_color = None
-            self.gamma_lut = None
-            self.contrast_lut = None
-            self.color_correction_param = None
-            self.last_raw_image = None
-            self.last_converted_image = None
-            self.last_numpy_image = None
+            del self.camera
 
     def suspend_live(self):
         pass
@@ -148,10 +145,10 @@ class CameraAV:
             property_value = self.camera.gain
         elif property_name == "blacklevel":
             property_value == self.camera.blacklevel
-#        elif property_name == "image_width":
-#            property_value = FRAME_WIDTH
-#        elif property_name == "image_height":
-#            property_value = FRAME_HEIGHT
+        elif property_name == "image_width":
+            property_value = self.FRAME_WIDTH
+        elif property_name == "image_height":
+            property_value = self.FRAME_HEIGHT
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

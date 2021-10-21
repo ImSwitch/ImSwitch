@@ -24,8 +24,8 @@ ExposureTime = 50e3
 
 
 class VimbaCameraThread(threading.Thread):
-    def __init__(self, is_record=False, filename='',
-    resolution=(640,),
+    def __init__(self,
+    resolution=(640,320),
     framerate=20,
     exposure_time=10e6,
     gain=0,
@@ -36,8 +36,6 @@ class VimbaCameraThread(threading.Thread):
         self.frame_queue = queue.Queue(maxsize=FRAME_QUEUE_SIZE)
         self.producers = {}
         self.producers_lock = threading.Lock()
-        self.is_record = is_record
-        self.filename = filename
         self.is_active = False
         self.IntensityCorrection = 50
         self.ExposureTime = ExposureTime
@@ -58,11 +56,6 @@ class VimbaCameraThread(threading.Thread):
         self.gain = gain
         self.blacklevel = blacklevel
 
-        self.image_sink = None  # can be 'window', 'stream', 'record', or NONE
-        self.filename = '' # TODO: Adapt it!
-
-        self.preview_resolution = (FRAME_WIDTH,FRAME_HEIGHT)
-
         # recording
         self.i_frame = 0 # iterator for the recorded frames
 
@@ -81,8 +74,8 @@ class VimbaCameraThread(threading.Thread):
 
     def run(self):
         log = Log.get_instance()
-        self.consumer = FrameConsumer(self.frame_queue, image_sink=self.image_sink, filename=self.filename)
-        self.consumer.setPreviewResolution(size=self.preview_resolution)
+        self.consumer = FrameConsumer(self.frame_queue)
+        #self.consumer.setPreviewResolution(size=self.preview_resolution)
 
         vimba = Vimba.get_instance()
         #vimba.enable_log()
@@ -93,11 +86,14 @@ class VimbaCameraThread(threading.Thread):
             with vimba:
                 # Construct FrameProducer threads for the detected camera
                 cams = vimba.get_all_cameras()
-                cam = cams[0]
+                try:
+                    cam = cams[0]
+                except:
+                    cam = None # TODO: Is this sufficient to catch a missing camrea? Reconnecting possible?
                 self.producer = FrameProducer(cam, self.frame_queue)
 
                 # get camera parameters
-                self.getFramesize()
+                #self.getFramesize()
 
                 # Start FrameProducer threads
                 with self.producers_lock:
@@ -123,28 +119,26 @@ class VimbaCameraThread(threading.Thread):
         log.info('Thread \'VimbaCameraThread\' terminated.')
 
     def stop(self):
-        # Stop all FrameProducer threads
-        print("Stopping main CameraThread ")
+        '''
+        Stop frame producer and consumer, but keep camera open
+        '''
         self.consumer.is_stop = True
         while True:
             if not self.consumer.alive:
                 del self.consumer
                 del self.producer
                 break
-            
-    def close(self):
-        '''
-        [Set Camera Parameters]
-        '''
-        self.camerathread.stop()
-        del self.camerathread            
+
 
     def getFramesize(self):
         self.PIX_HEIGHT, self.PIX_WIDTH = self.producer.getFramesize()
 
     def setROI(self, vpos, hpos, vsize, hsize):
-        self.producer.setRoi(vpos, hpos, vsize, hsize)
-
+        try:
+            self.producer.setRoi(vpos, hpos, vsize, hsize)
+        except:
+            print("Error setting roi - frame producer already running?")
+                    
     def setIntensityCorrection(self, IntensityCorrection=50):
         self.IntensityCorrection = IntensityCorrection
 

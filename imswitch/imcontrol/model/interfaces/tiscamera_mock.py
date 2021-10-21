@@ -34,7 +34,7 @@ class MockCameraTIS:
 
     def grabFrame(self, **kwargs):
         img = np.zeros((500, 600))
-        beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
+        beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
         img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
         return img
 

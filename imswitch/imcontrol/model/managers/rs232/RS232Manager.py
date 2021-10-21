@@ -1,8 +1,3 @@
-"""
-Created on Thu Jan 13 10:23:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 
 

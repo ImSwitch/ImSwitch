@@ -1,8 +1,3 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 

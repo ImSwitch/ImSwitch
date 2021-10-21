@@ -5,11 +5,12 @@ Created on Wed Jan 13 09:40:00 2021
 """
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
-
+from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
 class ESP32LEDLaserManager(LaserManager):
-    """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager
-    instance controls one LED.
+    """ LaserManager for controlling LEDs and LAsers connected to an 
+    ESP32 exposing a REST API
+    Each LaserManager instance controls one LED.
 
     Manager properties:
 
@@ -21,30 +22,22 @@ class ESP32LEDLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._rs232manager = lowLevelManagers['rs232sManager'][
-            laserInfo.managerProperties['rs232device']
-        ]
+        self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
+
         self.__channel_index = laserInfo.managerProperties['channel_index']
-        self.__digital_mod = False
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        if enabled:
-            value = "N"
-        else:
-            value = "F"
-        cmd = "C" + self.__channel_index + value
-        self._rs232manager.send(cmd)
+        pass
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
-        self.__logger.debug(cmd)
-        self._rs232manager.send(cmd)
+        self.esp32.set_laser(self.__channel_index, power)
+
 
 
 # Copyright (C) 2020, 2021 TestaLab

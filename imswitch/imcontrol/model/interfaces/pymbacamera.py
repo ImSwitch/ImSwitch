@@ -1,8 +1,10 @@
 #%%
-from pymba import Vimba, VimbaException
+try:
+    from pymba import Vimba, VimbaException
+except:
+    print("No pymba installed..")
 from typing import Optional
 import cv2
-from pymba import Frame
 
 
 import logging

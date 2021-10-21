@@ -11,6 +11,20 @@
         "forPositioning": true
     }
 },
+"lasers": {
+  "635 Laser": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32LEDLaserManager",
+      "managerProperties": {
+          "host": "192.168.2.43",
+          "channel_index": "R"
+      },
+      "wavelength": 365635,
+      "valueRangeMin": 0,
+      "valueRangeMax": 30000
+  }
+},
 "detectors": {
   "WidefieldCamera": {
     "analogChannel": null,

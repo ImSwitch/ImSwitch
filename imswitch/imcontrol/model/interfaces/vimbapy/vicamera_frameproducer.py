@@ -18,7 +18,8 @@ def try_put_frame(q: queue.Queue, cam: Camera, frame: Optional[Frame]):
         pass
 
 class FrameProducer(threading.Thread):
-    def __init__(self, cam: Camera, frame_queue: queue.Queue):
+    def __init__(self, cam: Camera, frame_queue: queue.Queue,
+    Gain = 1, Blacklevel =0, ExposureTime = 10e3):
         threading.Thread.__init__(self)
 
         # swith off logging
@@ -39,11 +40,11 @@ class FrameProducer(threading.Thread):
         self.frame_queue = frame_queue
         self.killswitch = threading.Event()
         self.IntensityControllerTarget = 50 # percent
-        self.Gain = 1
-        self.Blacklevel = 0
-        self.ExposureTime = 10e3
-        # TODO: Make this adaptive/initiliazed properly 
-        # TODO: Make the names conincde with other vicamera classes
+        self.Gain = Gain
+        self.Blacklevel = Blacklevel
+        self.ExposureTime = ExposureTime
+        
+        
         
     def __call__(self, cam: Camera, frame: Frame):
         # This method is executed within VimbaC context. All incoming frames
@@ -69,6 +70,7 @@ class FrameProducer(threading.Thread):
             return PIX_HEIGHT, PIX_WIDTH
         except:
             print("Error getting N pixels - frame producer already running?")
+            return 1000,1000
 
     def setIntensityCorrection(self, IntensityControllerTarget):
         self.IntensityControllerTarget = IntensityControllerTarget
@@ -81,15 +83,16 @@ class FrameProducer(threading.Thread):
             print("Error setting ExposureTime1 - frame producer already running?")
 
 
-    def setROI(self, vpos, hpos, vsize, hsize):        
-        try:
-            print("setting ROI")
-            self.cam.OffsetX.set(vpos)
-            self.cam.OffsetY.set(hpos)
-            self.cam.Width.set(vsize)
-            self.cam.Height.set(hsize)
-        except:
-            print("Error setting roi - frame producer already running?")
+    def setROI(self, vpos, hpos, vsize, hsize): 
+        if(0): # TODO: Not properly implemented       
+            try:
+                print("setting ROI")
+                self.cam.OffsetX.set(vpos)
+                self.cam.OffsetY.set(hpos)
+                self.cam.Width.set(vsize)
+                self.cam.Height.set(hsize)
+            except:
+                print("Error setting roi - frame producer already running?")
 
 
     def setGain(self, Gain):
@@ -139,9 +142,6 @@ class FrameProducer(threading.Thread):
                           self.cam.get_id()))
 
     def setup_camera(self):
-        #set_nearest_value(self.cam, 'Height', FRAME_HEIGHT)
-        #set_nearest_value(self.cam, 'Width', FRAME_WIDTH)
-
         # try to set IntensityControllerTarget
         '''
         try:
@@ -169,8 +169,6 @@ class FrameProducer(threading.Thread):
 
 
     def run(self):
-        self.log.info('Thread \'FrameProducer({})\' started.'.format(self.cam.get_id()))
-
         try:
             with self.cam:
                 self.setup_camera()
@@ -178,7 +176,6 @@ class FrameProducer(threading.Thread):
                 try:
                     self.cam.start_streaming(self)
                     self.killswitch.wait()
-
                 finally:
                     self.cam.stop_streaming()
 
@@ -188,4 +185,3 @@ class FrameProducer(threading.Thread):
         finally:
             try_put_frame(self.frame_queue, self.cam, None)
 
-        self.log.info('Thread \'FrameProducer({})\' terminated.'.format(self.cam.get_id()))

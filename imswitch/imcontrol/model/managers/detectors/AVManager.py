@@ -41,6 +41,10 @@ class AVManager(DetectorManager):
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
                                             editable=True),
+            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
+                        editable=False),
+            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
+                        editable=False),
             }            
 
         # Prepare actions
@@ -53,9 +57,7 @@ class AVManager(DetectorManager):
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
     def getLatestFrame(self):
-        if not self._adjustingParameters:
-            self.__image = self._camera.grabFrame()
-        return self.__image
+        return self._camera.getLast()
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -84,10 +86,11 @@ class AVManager(DetectorManager):
         return value
 
     def setBinning(self, binning):
-        super().setBinning(binning)
+        super().setBinning(binning) 
+        
 
     def getChunk(self):
-        return self._camera.grabFrame()[np.newaxis, :, :]
+        return self._camera.getFrames()
 
     def flushBuffers(self):
         pass
@@ -114,18 +117,20 @@ class AVManager(DetectorManager):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
-        def cropAction():
-            # self.__logger.debug(
-            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            # )
-            self._camera.setROI(hpos, vpos, hsize, vsize)
+        if(0):
+            def cropAction():
+                # self.__logger.debug(
+                #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+                # )
+                self._camera.setROI(hpos, vpos, hsize, vsize)
 
-        self._performSafeCameraAction(cropAction)
-        # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-        self._frameStart = (hpos, vpos)
-        # Only place self.shapes is changed
-        self._shape = (hsize, vsize)
+            self._performSafeCameraAction(cropAction)
+            # TODO: unsure if frameStart is needed? Try without.
+            # This should be the only place where self.frameStart is changed
+            self._frameStart = (hpos, vpos)
+            # Only place self.shapes is changed
+            self._shape = (hsize, vsize)
+        # TODO: Reimplement
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -147,6 +152,7 @@ class AVManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces.avcamera import CameraAV
             self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
             camera = CameraAV(cameraId)
+            adsf
         except Exception as e:
             print(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
@@ -156,19 +162,3 @@ class AVManager(DetectorManager):
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
 
-
-# Copyright (C) 2020, 2021 TestaLab
-# This file is part of ImSwitch.
-#
-# ImSwitch is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# ImSwitch is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.

@@ -32,7 +32,7 @@ def print_preamble():
 def print_camera(cam: Camera):
     print('/// Camera Name   : {}'.format(cam.get_name()))
     print('/// Model Name    : {}'.format(cam.get_model()))
-    print('/// Camera ID     : {}'.format(cam.get_id()))
+    print('/// Camera ID     : {}'.format(cam.nget_id()))
     print('/// Serial Number : {}'.format(cam.get_serial()))
     print('/// Interface ID  : {}\n'.format(cam.get_interface_id()))
 

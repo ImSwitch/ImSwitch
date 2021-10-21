@@ -10,8 +10,6 @@ from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameproducer import *
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera_frameconsumer import *
 from imswitch.imcontrol.model.interfaces.vimbapy.vicamera import VimbaCameraThread
 
-FRAME_HEIGHT = 1088
-FRAME_WIDTH = 1456
 
 # Camera Settings
 #CAM_GAIN = 20 # dB
@@ -43,25 +41,22 @@ class CameraAV:
         # generate a camera object 
         self.camera = VimbaCameraThread()
 
+        self.FRAME_WIDTH = 1000
+        self.FRAME_HEIGHT = 1000
+
+
     def start_live(self):
-        # temporary
+        if self.camera.is_active:
+            # TODO: Hacky way :/
+            self.camera.stop()
+            del self.camera
         self.camera.start()
         self.is_streaming = True
-        self.camera.setExposureTime(1000)
 
     def stop_live(self):
         if self.is_streaming:
             self.camera.stop()
-            self.is_streaming = False
-            self.camera.close()
-            self.device_info_list = None
-            self.is_color = None
-            self.gamma_lut = None
-            self.contrast_lut = None
-            self.color_correction_param = None
-            self.last_raw_image = None
-            self.last_converted_image = None
-            self.last_numpy_image = None
+            del self.camera
 
     def suspend_live(self):
         pass
@@ -116,7 +111,7 @@ class CameraAV:
         if was_streaming:
            self.start_streaming()
         
-    def grabFrame(self):
+    def getLast(self):
         # get frame and save
         return np.squeeze(self.camera.getLatestFrame(is_raw=True))
        
@@ -126,7 +121,7 @@ class CameraAV:
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
-        self.camera.setROI(vpos, hpos, vsize, hsize)
+        #self.camera.setROI(vpos, hpos, vsize, hsize)
 
 
     def setPropertyValue(self, property_name, property_value):
@@ -149,11 +144,11 @@ class CameraAV:
         elif property_name == "exposure":
             property_value = self.camera.gain
         elif property_name == "blacklevel":
-            property_value == self.camera.blacklevel
+            property_value = self.camera.blacklevel
         elif property_name == "image_width":
-            property_value = FRAME_WIDTH
+            property_value = self.FRAME_WIDTH
         elif property_name == "image_height":
-            property_value = FRAME_HEIGHT
+            property_value = self.FRAME_HEIGHT
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

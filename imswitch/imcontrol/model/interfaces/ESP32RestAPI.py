@@ -6,24 +6,27 @@ Simple client code for the ESP32 in Python - adapted from OFM Client
 Copyright 2020 Richard Bowman, released under LGPL 3.0 or later
 Copyright 2021 Benedict Diederich, released under LGPL 3.0 or later
 """
-
 import requests
 import json
 import time
-import io
-#import PIL.Image
 import numpy as np
 import logging
-
+import zeroconf
+import threading
 import requests 
 import json
 import time
 import cv2
 from tempfile import NamedTemporaryFile 
+from imswitch.imcommon.model import initLogger
+
 #import matplotlib.pyplot as plt
 
 ACTION_RUNNING_KEYWORDS = ["idle", "pending", "running"]
 ACTION_OUTPUT_KEYS = ["output", "return"]
+
+
+
 
 class ESP32Client(object):
     # headers = {'ESP32-version': '*'}
@@ -51,35 +54,70 @@ class ESP32Client(object):
             self.host = host
             self.port = port
             #self.get_json(self.base_uri)
-        logging.info(f"Connecting to microscope {self.host}:{self.port}")
-        #self.populate_extensions()
+        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
+
 
     is_filter_init = False
     filter_position = 0
+
+    is_connected = False
+
+    is_working = False
         
     @property
     def base_uri(self):
         return f"http://{self.host}:{self.port}"
 
-    def get_json(self, path):
+    def get_json_thread(self, path):
         """Perform an HTTP GET request and return the JSON response"""
         if not path.startswith("http"):
             path = self.base_uri + path
-        r = requests.get(path)
-        r.raise_for_status()
-        return r.json()
+        try:
+            r = requests.get(path)
+            r.raise_for_status()
+            self.is_working = False
+            return r.json()
+        except Exception as e:
+            self.__logger.error(e)
+            self.is_working = False
+            # not connected
+            return None
 
-    def post_json(self, path, payload={}, headers=None, timeout=10):
+    def get_json(self, path):
+        if not self.is_working:
+            self.is_working = True
+            t = threading.Thread(target=self.get_json_thread, args = (path))
+            t.daemon = True
+            t.start()
+        return None
+
+    def post_json(self, path, payload={}, headers=None, timeout=3):
+        if not self.is_working:
+            self.is_working = True
+            t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
+            t.daemon = True
+            t.start()
+        return None
+
+    def post_json_thread(self, path, payload={}, headers=None, timeout=10):
         """Make an HTTP POST request and return the JSON response"""
         if not path.startswith("http"):
             path = self.base_uri + path
         if headers is None:
             headers = self.headers
-            
-        r = requests.post(path, json=payload, headers=headers,timeout=timeout)
-        r.raise_for_status()
-        r = r.json()
-        return r
+        
+        try:
+            r = requests.post(path, json=payload, headers=headers,timeout=timeout)
+            r.raise_for_status()
+            r = r.json()
+            self.is_working = False
+            return r
+        except Exception as e:
+            self.__logger.error(e)
+            self.is_working = False
+            # not connected
+            return None
 
 
     def get_temperature(self):

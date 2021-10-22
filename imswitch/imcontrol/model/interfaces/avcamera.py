@@ -25,15 +25,12 @@ class CameraAV:
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
-        # generate a camera object 
-        self.camera = VimbaCameraThread()
-
         self.FRAME_WIDTH = 1000
         self.FRAME_HEIGHT = 1000
 
         #%% starting the camera thread
         self.camera = AVCamera()
-        self.camera.start()
+        
 
     def start_live(self):
         if self.camera.is_active:

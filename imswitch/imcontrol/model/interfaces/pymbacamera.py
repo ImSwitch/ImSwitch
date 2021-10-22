@@ -57,12 +57,12 @@ class AVCamera(threading.Thread):
                         self.is_running = True
                         self.camera.arm('SingleFrame')
                         self.__logger.debug("camera connected")
-                        self.SensorHeight = self.camera.feature("SensorHeight")
-                        self.SensorWidth = self.camera.feature("SensorWidth")
+                        self.SensorHeight = self.camera.feature("SensorHeight").value
+                        self.SensorWidth = self.camera.feature("SensorWidth").value
                     
                     except Exception as e:
                         self.__logger.debug(e)
-                    time.sleep(2)
+                        time.sleep(2)
                     self.__logger.debug("try to reconnect the camera (replug?)...")
                     
                 # Need to change acquisition parameters?

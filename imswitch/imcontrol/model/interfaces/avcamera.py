@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from imswitch.imcommon.model import initLogger
 
 from imswitch.imcontrol.model.interfaces.pymbacamera import AVCamera
@@ -36,6 +37,7 @@ class CameraAV:
         if self.camera.is_active:
             # TODO: Hacky way :/
             self.camera.stop()
+            time.sleep(1)
             del self.camera
             self.camera = AVCamera()
         self.camera.start()
@@ -93,7 +95,10 @@ class CameraAV:
         
     def getLast(self):
         # get frame and save
-        return  self.camera.last_frame
+        return  self.camera.last_frame_preview
+
+    def getLastChunk(self):
+        return self.camera.last_frame
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size

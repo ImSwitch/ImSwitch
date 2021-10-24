@@ -30,7 +30,7 @@ class AVCamera(threading.Thread):
         self.is_running = False
         self.kill = False
 
-        self.exposure_time = 10000
+        self.exposure_time = 1000
         self.gain = 0
         self.blacklevel = 0
         self.shape = (1000,1000)
@@ -62,7 +62,7 @@ class AVCamera(threading.Thread):
                     self.__logger.debug("camera connected")
                     self.SensorHeight = self.camera.feature("SensorHeight").value
                     self.SensorWidth = self.camera.feature("SensorWidth").value
-                    self.shape = (np.min(self.SensorHeight,self.SensorWidth),np.min(self.SensorHeight,self.SensorWidth))
+                    self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
                 except Exception as e:
                     self.__logger.debug(e)
                     time.sleep(2)
@@ -84,24 +84,24 @@ class AVCamera(threading.Thread):
                 # TODO: Try reconnecting the camera automaticaly
                 self.needs_reconnect = True
 
-            self.camera.disarm()
-            self.camera.close()
-            self.vimba.shutdown()
-            self.is_running = False
-            self.kill = False
-            del self.camera 
+        self.camera.disarm()
+        self.camera.close()
+        self.is_running = False
+        self.kill = False
+        del self.camera 
 
     def stop(self):
         self.kill = True
 
-    def set_value(self,feature_key, feature_value):
+    def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
         if self.is_running:
             try:
-                feature = self.camera.feature(self.feature_key)
-                feature.value = self.feature_value
-            except:
-                print("Value not available?")
+                feature = self.camera.feature(feature_key)
+                feature.value = feature_value
+            except Exception as e:
+                self.__logger.error(e)
+                self.__logger.debug("Value not available?")
             
     def setExposureTime(self, value):
         self.set_value("ExposureTime", value)

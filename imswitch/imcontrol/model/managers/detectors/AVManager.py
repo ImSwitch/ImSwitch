@@ -90,7 +90,7 @@ class AVManager(DetectorManager):
         
 
     def getChunk(self):
-        return self._camera.getLast()
+        return self._camera.getLastChunk()
 
     def flushBuffers(self):
         pass

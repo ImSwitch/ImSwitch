@@ -24,17 +24,16 @@
     "valueRangeMin": 0,
     "valueRangeMax": 32768
 },
-  "White LED": {
+  "LED Array": {
     "analogChannel": null,
     "digitalLine": null,
-    "managerName": "ESP32LEDLaserManager",
+    "managerName": "ESP32LEDMatrixManager",
     "managerProperties": {
-        "host": "192.168.137.222",
-        "channel_index": "G"
+        "host": "192.168.137.222"
     },
     "wavelength": 1000,
     "valueRangeMin": 0,
-    "valueRangeMax": 32768
+    "valueRangeMax": 255
   }
 },
 "detectors": {

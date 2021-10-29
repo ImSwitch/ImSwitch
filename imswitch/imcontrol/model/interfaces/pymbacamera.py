@@ -44,12 +44,24 @@ class AVCamera(threading.Thread):
 
         self.needs_reconnect = True # if we loose connection => reconnect
 
+        self.openCamera()
+        
+
+
+    def startVimba(self, is_restart = False):
+        if is_restart:
+            try:
+                self.vimba.shutdown()
+                del self.vimba
+            except:
+                pass
         self.vimba = Vimba()
         self.vimba.startup()
-        self.openCamera()
+        
 
     def openCamera(self):
         try:
+            self.startVimba(is_restart=True)
             self.camera = self.vimba.camera(0)
             self.camera.open()
             self.needs_reconnect = False
@@ -64,8 +76,11 @@ class AVCamera(threading.Thread):
             
     def closeCamera(self):
         self.__logger.debug(f"Closing Camera.")
-        self.camera.disarm()
-        self.camera.close()
+        try:
+            self.camera.disarm()
+            self.camera.close()
+        except:
+            pass
         self.is_camera_open = False
         
     def run(self):
@@ -81,12 +96,13 @@ class AVCamera(threading.Thread):
                 
                 # acquire frame
                 try:
-                    self.last_frame = self.camera.acquire_frame().buffer_data_numpy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
+                    self.last_frame = self.camera.acquire_frame().buffer_data_numpy()
+                    self.last_frame_preview = self.last_frame.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
                                                                                         self.SensorWidth//2-self.shape[1]//2:self.SensorWidth//2+self.shape[1]//2]
                     preview_width = 300
                     preview_height = 300
 
-                    self.last_frame_preview = cv2.resize(self.last_frame , (preview_width,preview_height), interpolation= cv2.INTER_LINEAR)
+                    self.last_frame_preview = cv2.resize(self.last_frame_preview , (preview_width,preview_height), interpolation= cv2.INTER_LINEAR)
                 
                 except Exception as e:
                     # rearm camera upon frame timeout

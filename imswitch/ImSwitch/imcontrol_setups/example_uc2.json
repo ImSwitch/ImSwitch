@@ -17,7 +17,7 @@
     "digitalLine": null,
     "managerName": "ESP32LEDLaserManager",
     "managerProperties": {
-        "host": "192.168.137.144",
+        "host": "192.168.137.222",
         "channel_index": "R"
     },
     "wavelength": 635,
@@ -29,7 +29,7 @@
     "digitalLine": null,
     "managerName": "ESP32LEDLaserManager",
     "managerProperties": {
-        "host": "192.168.137.144",
+        "host": "192.168.137.222",
         "channel_index": "G"
     },
     "wavelength": 1000,

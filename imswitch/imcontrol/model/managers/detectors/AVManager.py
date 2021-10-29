@@ -56,8 +56,11 @@ class AVManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
-    def getLatestFrame(self):
-        return self._camera.getLast()
+    def getLatestFrame(self, is_save=False):
+        if is_save:
+            return self._camera.getLastChunk()
+        else:
+            return self._camera.getLast()
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.

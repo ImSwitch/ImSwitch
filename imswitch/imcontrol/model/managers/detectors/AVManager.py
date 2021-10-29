@@ -112,6 +112,11 @@ class AVManager(DetectorManager):
         self._camera.stop_live()
         self.__logger.debug('stoplive')
 
+    def finalize(self) -> None:
+        super().finalize()
+        self.__logger.debug('Safely disconnecting the camera...')
+        self._camera.close()
+
     @property
     def pixelSizeUm(self):
         return [1, 1, 1]

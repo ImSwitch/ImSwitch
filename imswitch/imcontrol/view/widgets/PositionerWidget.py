@@ -29,7 +29,7 @@ class PositionerWidget(Widget):
             self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
-            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0.05')
+            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
             self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
 
             self.grid.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)

@@ -106,6 +106,9 @@ class AVCamera(threading.Thread):
     def close(self):
         self.is_live = False
         self.is_stop = True
+        while(self.is_alive()):
+            time.sleep(.1) # wait until thread is done
+        self.join()
         self.closeCamera()
         self.vimba.shutdown()
 

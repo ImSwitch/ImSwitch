@@ -2,11 +2,8 @@ import serial
 import time
 import re
 import numpy as np
-try:
-    import pandas as pd
-except:
-    print("no pandas installed..")
-    
+
+
 class GrblDriver:
     """Class for interfacing with GRBL loaded on an Arduino Uno.Arduino
 
@@ -130,11 +127,13 @@ class GrblDriver:
 
         self.globalconfig = {
             1:25, #ms to wait before going idle (255=don't disable steppers)
+            3:2, # direction inversion (mask)
             5:0,  #set NO limit switch
             20:0, # enable soft limit switch (stop immediately) # changed to off 1.31.19 after crash during data collection
             21:0, # enable hard limit switch (stop immediately) # changed to off 1.31.19 after crash during data collection
             22:1, # enable homing cycle
-            24:50, # homing speed fine
+            23:2, # homing direction (mask)
+            24:50, # homing speed find
             25:100, # homing speed
             3:0,    # inverse Direction of X motor
             27:0.1, # (Homing switch pull-off distance, millimeters)
@@ -287,20 +286,12 @@ class GrblDriver:
                     break
                 time.sleep(pingwait)
             # currentsteps = self.get_positions()[axis]
-            if currentsteps - steps < 1:
-                if self.is_debug: print('Didn\'t get there! Stopped at {} even though {} was requested.'.format(currentsteps,steps))
 
     def shake_plate(self, d_shift=100, time_shake = 30):
         """let the plate shake"""
         time_start = time.time()
         position_now = self.positions
         while ((time.time()-time_start)<time_shake):
-            if(0):
-                ix = self.positions[0]
-                iy = self.positions[1]
-                self._write('G0 X'+str(ix)+'Y'+str(iy))
-                self._write('G2 X'+str(ix)+'Y'+str(iy)+ ' I1 J'+str(radius))
-            else:
                 self.move_abs((position_now[0]-d_shift,position_now[1],position_now[2]), blocking = False, pingwait = 0.1)
                 self.move_abs((position_now[0]-d_shift,position_now[1]-d_shift,position_now[2]), blocking = False, pingwait = 0.1)
                 self.move_abs((position_now[0]-d_shift,position_now[1]-d_shift,position_now[2]), blocking = False, pingwait = 0.1)
@@ -454,34 +445,6 @@ class GrblDriver:
         self._write("G10 L20 P1 X0 Y0 Z0")
         self._write("G10 P0 L20 X0 Y0 Z0")
 
- 
-    def _human_readable_settings(self):
-        """Utility function to read all GRBL settings that attempts to load
-        csv file containing settings descriptions."""
-        settingsre = re.compile(r'\$(\d{1,3})=(\d{1,5}\.?\d{0,3})')
-
-        if self.is_connected: self.ser.reset_input_buffer()
-
-        self._write('$$')
-        time.sleep(self.waittimeout)
-        resp = self._read_buffer()
-        
-        current = []
-        for s in resp:
-            m = settingsre.match(s)
-            if m is not None:
-                cmd, reading = m.groups()
-                current.append([int(cmd), float(reading)])
-                
-        currentdf = pd.DataFrame(current,columns=['$-Code','Value'])
-        
-        try:
-            settings_descriptions = pd.read_csv('C:/Users/Lab X-ray/Downloads/grbl_setting_codes_en_US.csv')
-            currentdf = pd.merge(currentdf,settings_descriptions,on='$-Code')
-        except OSError:
-            print('Settings descriptions file not found, returning settings without descriptions.')
-        
-        return currentdf
 
     
 

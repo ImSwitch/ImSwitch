@@ -10,7 +10,7 @@ class CameraAV:
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
-        self.model = "AV Camera"
+        self.model = "AVCamera"
         self.shape = (0, 0)
 
         # camera parameters
@@ -18,43 +18,37 @@ class CameraAV:
         self.exposure_time = 0
         self.analog_gain = 0
 
-        self.is_streaming = False
-
         self.GAIN_MAX = 24
         self.GAIN_MIN = 0
         self.GAIN_STEP = 1
         self.EXPOSURE_TIME_MS_MIN = 0.01
         self.EXPOSURE_TIME_MS_MAX = 4000
 
-        self.FRAME_WIDTH = 1000
-        self.FRAME_HEIGHT = 1000
-
         #%% starting the camera thread
         self.camera = AVCamera()
         
 
     def start_live(self):
-        if self.camera.is_active:
-            # TODO: Hacky way :/
-            self.camera.stop()
-            time.sleep(1)
-            del self.camera
-            self.camera = AVCamera()
-        self.camera.start()
-        self.is_streaming = True
+        # check if camera is open
+        if(not self.camera.is_alive()):
+            self.camera.start()
+        self.camera.start_live()
 
     def stop_live(self):
-        if self.is_streaming:
-            self.camera.stop()
-            del self.camera
-        self.is_streaming = False
+        self.camera.stop_live()
+        
 
     def suspend_live(self):
-        pass
-
+        self.camera.stop_live()
+        
+        
     def prepare_live(self):
         pass
 
+    def close(self):
+        self.camera.close()
+        self.camera.join()
+        
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.setExposureTime(self.exposure_time*1000)
@@ -69,12 +63,7 @@ class CameraAV:
 
     def set_pixel_format(self,format):
         #TODO: Implement
-        
-        if self.is_streaming == True:
-            was_streaming = True
-            self.stop_streaming()
-        else:
-            was_streaming = False
+
         if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
             if format == 'MONO8':
                 self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
@@ -90,8 +79,7 @@ class CameraAV:
                 self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
         else:
             print("pixel format is not implemented or not writable")
-        if was_streaming:
-           self.start_streaming()
+
         
     def getLast(self):
         # get frame and save
@@ -132,9 +120,9 @@ class CameraAV:
         elif property_name == "blacklevel":
             property_value = self.camera.blacklevel
         elif property_name == "image_width":
-            property_value = self.FRAME_WIDTH
+            property_value = self.camera.SensorWidth
         elif property_name == "image_height":
-            property_value = self.FRAME_HEIGHT
+            property_value = self.camera.SensorHeight
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

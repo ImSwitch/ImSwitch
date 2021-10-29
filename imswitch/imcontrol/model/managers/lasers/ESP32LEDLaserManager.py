@@ -21,6 +21,7 @@ class ESP32LEDLaserManager(LaserManager):
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.power = 0
 
         self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
 
@@ -30,13 +31,14 @@ class ESP32LEDLaserManager(LaserManager):
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        pass
+        self.esp32.set_laser(self.__channel_index, self.power*enabled)
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        self.esp32.set_laser(self.__channel_index, power)
+        self.power = power
+        self.esp32.set_laser(self.__channel_index, self.power)
 
 
 

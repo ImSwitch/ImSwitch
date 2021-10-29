@@ -8,11 +8,11 @@ from .PositionerManager import PositionerManager
 import imswitch.imcontrol.model.interfaces.grbldriver as grbldriver
 
 # constants depending on the configuration
-PHYS_TO_GRBL_FAC = 1000 #74820/1000 # 1000 steps are 74.2 mm
+PHYS_TO_GRBL_FAC = 5/48.5 # in ImSwtich 5µm equal 48.5mm in reality
 PHYS_TO_GRBL_FAC_Z = 1000 # 10
 
 # reverse display vs. motion?
-DIR_X = 1
+DIR_X = -1
 DIR_Y = 1
 DIR_Z = 1
 
@@ -30,23 +30,25 @@ class GRBLStageManager(PositionerManager):
         # init the stage
         self.board.write_global_config()
         self.board.write_all_settings()
-        self.board.verify_settings()
+        #self.board.verify_settings()
 
         #self.board.home()
         self.board.reset_stage()
+        self.board.home()
 
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
+        print("Done")
 
 
     def move(self, value, axis):
         if axis == 'X':
-            self.board.move_rel((value*PHYS_TO_GRBL_FAC,0,0), blocking=False)
+            self.board.move_rel((value*PHYS_TO_GRBL_FAC*DIR_X,0,0), blocking=False)
         elif axis == 'Y':
-            self.board.move_rel((0,value*PHYS_TO_GRBL_FAC,0), blocking=False)
+            self.board.move_rel((0,value*PHYS_TO_GRBL_FAC*DIR_Y,0), blocking=False)
         elif axis == 'Z':
-            self.board.move_rel((0,0,value*PHYS_TO_GRBL_FAC_Z), blocking=False)
+            self.board.move_rel((0,0,value*PHYS_TO_GRBL_FAC_Z*DIR_Z), blocking=False)
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
@@ -54,6 +56,9 @@ class GRBLStageManager(PositionerManager):
 
     def setPosition(self, value, axis):
         self._position[axis] = value
+
+    def closeEvent(self):
+        self.board.close()
 
 
 # Copyright (C) 2020, 2021 TestaLab

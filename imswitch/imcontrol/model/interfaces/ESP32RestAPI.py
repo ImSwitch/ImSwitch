@@ -156,6 +156,8 @@ class ESP32Client(object):
             path = '/laser_green'
         if channel == 'B':
             path = '/laser_blue'
+        if channel == 'W':
+            path = '/led_white'
         r = self.post_json(path, payload)
         return r        
 

@@ -161,3 +161,6 @@ class AVManager(DetectorManager):
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
 
+    def closeEvent(self):
+        self._camera.close()
+

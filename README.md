@@ -37,6 +37,26 @@ You will then be able to start ImSwitch with this command:
 imswitch
 ```
 
+### Option C: Install from Github (UC2 version) 
+
+**Installation**
+```
+cd ~/Downloads
+git clone https://github.com/beniroquai/ImSwitch/
+conda create -n imswitch python=3.8
+conda activate imswitch
+pip install -r requirements.txt
+pip install -e ./
+```
+
+**Start the imswitch**
+
+```
+cd imswitch
+python __main__.py
+```
+
+
 ## Documentation
 
 Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).

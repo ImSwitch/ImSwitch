@@ -2,6 +2,8 @@ import numpy as np
 from ximea import xiapi
 from imswitch.imcommon.model import initLogger
 from collections import deque
+
+from imswitch.imcontrol.model.interfaces import ximea
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -22,13 +24,13 @@ class XimeaManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self._camera, self._img, settings = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
 
+        # open Ximea camera for allowing parameters settings
+        self._camera.open_device()
+
         # todo: local circular buffer used as a temporary workaround for getChunk
         # we should investigate if this is the proper way to store images
         # or another solution is feasible
         self._frame_buffer = deque([], maxlen=1000)
-
-        # to set Ximea parameters, camera must be open first
-        self._camera.open_device()
 
         for propertyName, propertyValue in detectorInfo.managerProperties['ximea'].items():
             self._camera.set_param(propertyName, propertyValue)
@@ -36,12 +38,12 @@ class XimeaManager(DetectorManager):
         fullShape = (self._camera.get_width_maximum(),
                      self._camera.get_height_maximum())
 
-        model = self._camera.get_device_model_id()
+        model = self._camera.get_device_info_string("device_name").decode("utf-8")
 
         # Prepare parameters
         parameters = {
-            'Exposure': DetectorNumberParameter(group='Timings', value=100,
-                                                         valueUnits='µs', editable=True),
+            'Exposure': DetectorNumberParameter(group='Timings', value=100e-6,
+                                                         valueUnits='s', editable=True),
 
             'Trigger source': DetectorListParameter(group='Trigger settings',
                                                     value=settings.trigger_source[0],
@@ -91,11 +93,6 @@ class XimeaManager(DetectorManager):
         """Method to crop the frame read out by the camera. """
 
         def cropAction():
-            self._camera.set_offsetX(0)
-            self._camera.set_offsetY(0)
-            self._camera.set_width(self.fullShape[1])
-            self._camera.set_height(self.fullShape[0])
-
             if (hsize, vsize) != self.fullShape:
                 self._camera.set_offsetX(vpos)
                 self._camera.set_offsetY(hpos)
@@ -118,12 +115,23 @@ class XimeaManager(DetectorManager):
         # Ximea parameters should follow the naming convention
         # described in https://www.ximea.com/support/wiki/apis/XiAPI_Manual
 
-        # parameter names are lower case
-        # for multiple words, join them with '_' character
-        name = "_".join(name.lower().split(" "))
+        def set_ximea_param():
+            # parameter names are lower case
+            # for multiple words, join them with '_' character
+            ximea_param_name = "_".join(name.lower().split(" "))
 
-        # call set_param from Ximea camera
-        self._camera.set_param(name, value)
+            # append ":direct_update" to perform update
+            # without stopping acquisition (if it is running)
+            # only valid for gain and exposure parameters
+            if ximea_param_name == "exposure" or ximea_param_name == "gain":
+                ximea_param_name += ":direct_update"
+                ximea_param_val = int(value) * 10e6
+
+            # call set_param from Ximea camera
+            self.__logger.info(f"Setting {ximea_param_name} to {ximea_param_val}")
+            self._camera.set_param(ximea_param_name, value)
+
+        self._performSafeCameraAction(set_ximea_param)
 
         # then update local parameters
         super().setParameter(name, value)
@@ -161,16 +169,17 @@ class XimeaManager(DetectorManager):
         try:
             from ximea.xiapi import Camera, Image
             self.__logger.debug(f'Trying to initialize Ximea camera {cameraId}')
-            camera = Camera(cameraId)
+            camera = Camera()
             image = Image()
-            camera_name = camera.get_device_info_string("device_name") + ": " + camera.get_device_info_string("device_type")
+            
+            camera_name = camera.get_device_info_string("device_name").decode("utf-8")
         except:
             self.__logger.warning(f'Failed to initialize Ximea camera {cameraId},'
                                   f' loading mocker')
             from imswitch.imcontrol.model.interfaces import MockXimea, MockImage
             camera = MockXimea()
             image = MockImage()
-            camera_name = camera.get_device_info_string("device_name") + ": " + camera.get_device_info_string("device_type")
+            camera_name = camera.get_device_info_string("device_name")
 
         self.__logger.info(f'Initialized camera, model: {camera_name}')
         return camera, image, camera_settings

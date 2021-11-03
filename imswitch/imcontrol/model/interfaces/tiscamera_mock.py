@@ -39,6 +39,10 @@ class MockCameraTIS:
         img = np.random.randn(img.shape[0],img.shape[1])
         return img
 
+    def getLast(self):
+        return self.grabFrame()
+
+
     def setPropertyValue(self, property_name, property_value):
         return property_value
 

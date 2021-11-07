@@ -17,6 +17,9 @@ import requests
 import json
 import time
 import cv2
+import os
+import socket
+
 from tempfile import NamedTemporaryFile 
 from imswitch.imcommon.model import initLogger
 
@@ -31,6 +34,8 @@ ACTION_OUTPUT_KEYS = ["output", "return"]
 class ESP32Client(object):
     # headers = {'ESP32-version': '*'}
     headers={"Content-Type":"application/json"}
+    getmessage = ""
+    is_connected = False
 
     def __init__(self, host, port=31950):
         if isinstance(host, zeroconf.ServiceInfo):
@@ -53,7 +58,10 @@ class ESP32Client(object):
         else:
             self.host = host
             self.port = port
-            #self.get_json(self.base_uri)
+        
+        # check if host is up
+        self.is_connected = self.isConnected()
+
         self.__logger = initLogger(self, tryInheritParent=True)
         self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
 
@@ -61,46 +69,60 @@ class ESP32Client(object):
     is_filter_init = False
     filter_position = 0
 
-    is_connected = False
+    def isConnected(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((self.host, int(self.port)))
+            s.settimeout(2)
+            s.shutdown(2)
+            return True
+        except:
+            return False
 
-    is_working = False
         
     @property
     def base_uri(self):
         return f"http://{self.host}:{self.port}"
 
-    def get_json_thread(self, path):
-        """Perform an HTTP GET request and return the JSON response"""
-        if not path.startswith("http"):
-            path = self.base_uri + path
-        try:
-            r = requests.get(path)
-            r.raise_for_status()
-            self.is_working = False
-            return r.json()
-        except Exception as e:
-            self.__logger.error(e)
-            self.is_working = False
-            # not connected
-            return None
-
-    def get_json(self, path):
-        if not self.is_working:
-            self.is_working = True
+    def get_json(self, path, wait_for_result=False):
+        if self.is_connected:
             t = threading.Thread(target=self.get_json_thread, args = (path))
             t.daemon = True
             t.start()
+            if wait_for_result:
+                t.join()    
+                return self.getmessage
+            return None
         return None
 
-    def post_json(self, path, payload={}, headers=None, timeout=3):
-        if not self.is_working:
-            self.is_working = True
-            t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
-            t.daemon = True
-            t.start()
+    def get_json_thread(self, path):
+        """Perform an HTTP GET request and return the JSON response"""
+        if self.is_connected:
+            if not path.startswith("http"):
+                path = self.base_uri + path
+            try:
+                r = requests.get(path)
+                r.raise_for_status()
+                self.is_connected = True
+
+                self.getmessage = r.json()
+                return self.getmessage
+            except Exception as e:
+                self.__logger.error(e)
+                self.is_connected = False
+
+                # not connected
+                return None
+        else:
+            return None 
+
+    def post_json(self, path, payload={}, headers=None, timeout=1):
+        t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
+        t.daemon = True
+        t.start()
         return None
 
-    def post_json_thread(self, path, payload={}, headers=None, timeout=10):
+    def post_json_thread(self, path, payload={}, headers=None, timeout=1):
         """Make an HTTP POST request and return the JSON response"""
         if not path.startswith("http"):
             path = self.base_uri + path
@@ -111,11 +133,11 @@ class ESP32Client(object):
             r = requests.post(path, json=payload, headers=headers,timeout=timeout)
             r.raise_for_status()
             r = r.json()
-            self.is_working = False
+            self.is_connected = True
             return r
         except Exception as e:
             self.__logger.error(e)
-            self.is_working = False
+            self.is_connected = False
             # not connected
             return None
 

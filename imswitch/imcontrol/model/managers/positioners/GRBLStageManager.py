@@ -39,7 +39,6 @@ class GRBLStageManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        print("Done")
 
 
     def move(self, value, axis):

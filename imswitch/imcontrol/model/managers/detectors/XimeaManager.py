@@ -1,5 +1,5 @@
 import numpy as np
-from ximea import xiapi
+from imswitch.imcontrol.model.interfaces import XimeaSettings
 from imswitch.imcommon.model import initLogger
 from collections import deque
 
@@ -22,7 +22,9 @@ class XimeaManager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
-        self._camera, self._img, settings = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+        self._camera, self._img = self._getCameraObj(detectorInfo.managerProperties['cameraListIndex'])
+
+        self._settings = XimeaSettings(self._camera)
 
         # open Ximea camera for allowing parameters settings
         self._camera.open_device()
@@ -40,30 +42,32 @@ class XimeaManager(DetectorManager):
 
         model = self._camera.get_device_info_string("device_name").decode("utf-8")
 
+        parameter_list = list(self._settings.set_parameter.keys())
+
         # Prepare parameters
         parameters = {
             'Exposure': DetectorNumberParameter(group='Timings', value=100e-6,
                                                          valueUnits='s', editable=True),
 
             'Trigger source': DetectorListParameter(group='Trigger settings',
-                                                    value=settings.trigger_source[0],
-                                                    options=settings.trigger_source,
+                                                    value=list(self._settings.settings[0].keys())[0],
+                                                    options=list(self._settings.settings[0].keys()),
                                                     editable=True),
             
-            'Trigger selector': DetectorListParameter(group='Trigger settings',
-                                                value=settings.trigger_selector[0],
-                                                options=settings.trigger_selector,
+            'Trigger type': DetectorListParameter(group='Trigger settings',
+                                                value=list(self._settings.settings[1].keys())[0],
+                                                options=list(self._settings.settings[1].keys()),
                                                 editable=True),
+            
+            'GPI': DetectorListParameter(group='Trigger settings',
+                                        value=list(self._settings.settings[2].keys())[0],
+                                        options=list(self._settings.settings[2].keys()),
+                                        editable=True),
 
             'GPI mode': DetectorListParameter(group='Trigger settings',
-                                            value=settings.gpi_mode[0],
-                                            options=settings.gpi_mode,
+                                            value=list(self._settings.settings[3].keys())[0],
+                                            options=list(self._settings.settings[3].keys()),
                                             editable=True),
-
-            'GPI selector': DetectorListParameter(group='Acquisition mode',
-                                                    value=settings.gpi_selector[0],
-                                                    options=settings.gpi_selector,
-                                                    editable=True),
             
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=13.7,
                                                          valueUnits='µm', editable=False),                                                        
@@ -114,27 +118,26 @@ class XimeaManager(DetectorManager):
     def setParameter(self, name : str, value):
         # Ximea parameters should follow the naming convention
         # described in https://www.ximea.com/support/wiki/apis/XiAPI_Manual
+        self.__logger.debug(f"{name}: {value}")
+        ximea_value = None
 
-        def set_ximea_param():
-            # parameter names are lower case
-            # for multiple words, join them with '_' character
-            ximea_param_name = "_".join(name.lower().split(" "))
+        if name == "Exposure":
+            # value must be translated into microseconds
+            ximea_value = int(value*10e5)
+        else:
+            for setting in self._settings.settings:
+                if value in setting.keys():
+                    ximea_value = setting[value]
+                    break
 
-            # append ":direct_update" to perform update
-            # without stopping acquisition (if it is running)
-            # only valid for gain and exposure parameters
-            if ximea_param_name == "exposure" or ximea_param_name == "gain":
-                ximea_param_name += ":direct_update"
-                ximea_param_val = int(value) * 10e6
-
-            # call set_param from Ximea camera
-            self.__logger.info(f"Setting {ximea_param_name} to {ximea_param_val}")
-            self._camera.set_param(ximea_param_name, value)
-
-        self._performSafeCameraAction(set_ximea_param)
-
-        # then update local parameters
-        super().setParameter(name, value)
+        try:
+            
+            self.__logger.info(f"Setting {name} to {ximea_value} us")
+            self._settings.set_parameter[name](ximea_value)
+            # update local parameters
+            super().setParameter(name, value)
+        except:
+            self.__logger.error(f"Cannot set {name} to {ximea_value}")
 
         return self.parameters
 
@@ -154,6 +157,7 @@ class XimeaManager(DetectorManager):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
         """
+
         try:
             function()
         except Exception:
@@ -162,9 +166,6 @@ class XimeaManager(DetectorManager):
             self.startAcquisition()
 
     def _getCameraObj(self, cameraId):
-        
-        from imswitch.imcontrol.model.interfaces import XimeaSettings
-        camera_settings = XimeaSettings()
 
         try:
             from ximea.xiapi import Camera, Image
@@ -182,4 +183,4 @@ class XimeaManager(DetectorManager):
             camera_name = camera.get_device_info_string("device_name")
 
         self.__logger.info(f'Initialized camera, model: {camera_name}')
-        return camera, image, camera_settings
+        return camera, image

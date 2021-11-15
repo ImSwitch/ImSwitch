@@ -10,10 +10,10 @@ class MockXimea:
     def __init__(self) -> None:
         self.__logger = initLogger(self, tryInheritParent=True)
         self._device_info = {
-            "device_name" : "MockXimea",
-            "device_type" : "Ximea camera mock object"
+            "device_name" : b"MockXimea",
+            "device_type" : b"Ximea camera mock object"
         }
-        self._device_id = "Mock Ximea camera"
+        self._device_id = b"Mock Ximea camera"
         self._exposure = 0
         self._width = 1280
         self._height = 864

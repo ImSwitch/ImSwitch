@@ -3,7 +3,6 @@ from imswitch.imcontrol.model.interfaces import XimeaSettings
 from imswitch.imcommon.model import initLogger
 from collections import deque
 
-from imswitch.imcontrol.model.interfaces import ximea
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
@@ -41,8 +40,6 @@ class XimeaManager(DetectorManager):
                      self._camera.get_height_maximum())
 
         model = self._camera.get_device_info_string("device_name").decode("utf-8")
-
-        parameter_list = list(self._settings.set_parameter.keys())
 
         # Prepare parameters
         parameters = {

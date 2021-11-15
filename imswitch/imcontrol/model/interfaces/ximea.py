@@ -1,4 +1,7 @@
-from ximea.xiapi import Camera
+try:
+    from ximea.xiapi import Camera
+except:
+    from ximea_mock import MockXimea as Camera
 
 class XimeaSettings:
     """Class for Ximea camera parameters.

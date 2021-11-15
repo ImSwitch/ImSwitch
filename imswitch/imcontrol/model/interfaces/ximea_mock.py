@@ -24,6 +24,11 @@ class MockXimea:
         self._mock_acquisition_running = False
         self._mock_start_time = time.time_ns()
 
+        self._trig_source = "Off"
+        self._trig_type = "Acquisition start"
+        self._gpi_select = "GPI1"
+        self._gpi_mode = "Off"
+
     def open_device(self):
         self.__logger.info("Mock object opened")
     
@@ -42,6 +47,22 @@ class MockXimea:
 
     def set_exposure(self, exposure):
         self._exposure = exposure
+    
+    def set_exposure_direct(self, exposure):
+        self.set_exposure(exposure)
+
+    def set_trigger_source(self, source):
+        self._trig_source = source
+    
+    def set_trigger_selector(self, selector):
+        self._trig_type = selector
+
+    def set_gpi_selector(self, selector):
+        self._gpi_select = selector
+
+    def set_gpi_mode(self, mode):
+        self._gpi_mode = mode
+
     
     def get_image(self, image):
         # todo: does this work?

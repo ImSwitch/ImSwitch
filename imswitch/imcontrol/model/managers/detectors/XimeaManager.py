@@ -132,7 +132,7 @@ class XimeaManager(DetectorManager):
 
         try:
             
-            self.__logger.info(f"Setting {name} to {ximea_value} us")
+            self.__logger.info(f"Setting {name} to {ximea_value}")
             self._settings.set_parameter[name](ximea_value)
             # update local parameters
             super().setParameter(name, value)

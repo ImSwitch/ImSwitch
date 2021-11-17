@@ -13,7 +13,6 @@ import numpy as np
 import logging
 import zeroconf
 import threading
-import requests 
 import json
 import time
 import cv2
@@ -180,6 +179,8 @@ class ESP32Client(object):
             path = '/laser_blue'
         if channel == 'W':
             path = '/led_white'
+        if channel == "":
+            path = "/laser"
         r = self.post_json(path, payload)
         return r        
 
@@ -264,7 +265,8 @@ class ESP32Client(object):
         #r = self.post_json(path, payload=payload, headers = headers)
         #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)      
         files = {'media': open(iName, 'rb')}
-        requests.post(self.base_uri + path, files=files)
+        if self.is_connected:
+            requests.post(self.base_uri + path, files=files)
         
     def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=20):
         
@@ -313,8 +315,8 @@ class ESP32Client(object):
         }
         print(self.base_uri + path)
         print(payload)
-        requests.post(self.base_uri + path, data=json.dumps(payload), headers=headers)
-        #r = self.post_json(path, payload=payload, headers = headers)
+        if self.is_connected:
+            requests.post(self.base_uri + path, data=json.dumps(payload), headers=headers)
         
            
     def move_filter(self, steps=100, speed=10,timeout=1):
@@ -323,6 +325,14 @@ class ESP32Client(object):
             "speed": speed,            
         }
         path = '/move_filter'
+        r = self.post_json(path, payload,timeout=timeout)
+        return r
+
+    def galvo_x(self, amplitude_x = 0, timeout=1):
+        payload = {
+            "value": amplitude_x          
+        }
+        path = '/galvo/amplitudex'
         r = self.post_json(path, payload,timeout=timeout)
         return r
     

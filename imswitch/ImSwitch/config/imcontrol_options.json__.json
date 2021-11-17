@@ -1,5 +1,5 @@
 {
-    "setupFileName": "example_uc2.json",
+    "setupFileName": "example_uc2_lightsheet.json",
     "recording": {
         "outputFolder": "D:\\Data\\",
         "includeDateInOutputFolder": true

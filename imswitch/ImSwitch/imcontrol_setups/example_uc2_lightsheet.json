@@ -3,7 +3,7 @@
     "LightsheetStage": {
         "managerName": "ESP32StageManager",
         "managerProperties": {
-          "host": "192.168.137.206"
+          "host": "192.168.137.89"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
@@ -16,7 +16,7 @@
     "digitalLine": null,
     "managerName": "ESP32LEDLaserManager",
     "managerProperties": {
-        "host": "192.168.137.206",
+        "host": "192.168.137.89",
         "channel_index": ""
     },
     "wavelength": 635,
@@ -28,7 +28,7 @@
     "digitalLine": null,
     "managerName": "ESP32LightSheetManager",
     "managerProperties": {
-        "host": "192.168.137.206"
+        "host": "192.168.137.89"
     },
     "wavelength": 635,
     "valueRangeMin": 0,
@@ -50,10 +50,10 @@
   "WidefieldCamera": {
     "analogChannel": null,
     "digitalLine": null,
-    "managerName": "AVManager",
+    "managerName": "GXPIPYManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "avcam": {
+      "gxipycam": {
         "exposure": 0,
         "gain": 0,
         "blacklevel": 100,

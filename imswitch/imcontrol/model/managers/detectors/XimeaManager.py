@@ -43,7 +43,7 @@ class XimeaManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'Exposure': DetectorNumberParameter(group='Timings', value=100e-6,
+            'Exposure': DetectorNumberParameter(group='Timings', value=1e-3,
                                                          valueUnits='s', editable=True),
 
             'Trigger source': DetectorListParameter(group='Trigger settings',
@@ -93,14 +93,19 @@ class XimeaManager(DetectorManager):
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
 
-        def cropAction():
-            if (hsize, vsize) != self.fullShape:
-                self._camera.set_offsetX(vpos)
-                self._camera.set_offsetY(hpos)
-                self._camera.set_width(vsize)
-                self._camera.set_height(hsize)
+        # todo: this does not work, fix
+        self._camera.set_offsetX(0)
+        self._camera.set_offsetY(0)
+        self._camera.set_width(self.fullShape[0])
+        self._camera.set_height(self.fullShape[1])
 
-        self._performSafeCameraAction(cropAction)
+        if (hsize, vsize) != self.fullShape:
+            self._camera.set_offsetX(vpos)
+            self._camera.set_offsetY(hpos)
+            self._camera.set_width(hsize)
+            self._camera.set_height(vsize)
+
+        # self._performSafeCameraAction(cropAction)
 
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)

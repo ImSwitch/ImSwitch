@@ -30,11 +30,6 @@ class XimeaManager(DetectorManager):
         # open Ximea camera for allowing parameters settings
         self._camera.open_device()
 
-        # todo: local circular buffer used as a temporary workaround for getChunk
-        # we should investigate if this is the proper way to store images
-        # or another solution is feasible
-        self._frame_buffer = deque([], maxlen=1000)
-
         for propertyName, propertyValue in detectorInfo.managerProperties['ximea'].items():
             self._camera.set_param(propertyName, propertyValue)
 
@@ -85,14 +80,13 @@ class XimeaManager(DetectorManager):
     def getLatestFrame(self):
         self._camera.get_image(self._img)
         data = self._img.get_image_data_numpy()
-        self._frame_buffer.append(data)
         return data
 
     def getChunk(self):
         return np.stack([self.getLatestFrame()])
 
     def flushBuffers(self):
-        self._frame_buffer.clear()
+        pass
     
     @contextmanager
     def _camera_disabled(self):

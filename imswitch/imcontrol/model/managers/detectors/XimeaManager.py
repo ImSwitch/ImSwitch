@@ -1,7 +1,9 @@
 import numpy as np
+from ximea.xiapi import Xi_error
 from imswitch.imcontrol.model.interfaces import XimeaSettings
 from imswitch.imcommon.model import initLogger
 from collections import deque
+from contextlib import contextmanager
 
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
@@ -70,6 +72,8 @@ class XimeaManager(DetectorManager):
                                                          valueUnits='µm', editable=False),                                                        
         }
 
+        self._isAcquiring = False
+
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, croppable=True)
     
@@ -85,28 +89,59 @@ class XimeaManager(DetectorManager):
         return data
 
     def getChunk(self):
-        return np.stack(self._frame_buffer)
+        return np.stack([self.getLatestFrame()])
 
     def flushBuffers(self):
         self._frame_buffer.clear()
+    
+    @contextmanager
+    def _camera_disabled(self):
+        if self._isAcquiring:
+            try:
+                self.stopAcquisition()
+                yield
+            finally:
+                self.startAcquisition()
+        else:
+            yield
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Method to crop the frame read out by the camera. """
 
-        # todo: this does not work, fix
-        self._camera.set_offsetX(0)
-        self._camera.set_offsetY(0)
-        self._camera.set_width(self.fullShape[0])
-        self._camera.set_height(self.fullShape[1])
+        # Ximea ROI works only if the increment is performed
+        # using a multiple of the minimum allowed increment of the
+        # current used sensor.
+        with self._camera_disabled():
+            if (hsize, vsize) != self.fullShape:
+                try:
+                    self.__logger.debug(f"Crop requested: X0 = {hpos}, Y0 = {vpos}, width = {hsize}, height = {vsize}")
+                    hsize_incr = self._camera.get_width_increment()
+                    vsize_incr = self._camera.get_height_increment()
+                    hsize = (round(hsize / hsize_incr)*hsize_incr if (hsize % hsize_incr) != 0 else hsize)
+                    vsize = (round(vsize / vsize_incr)*vsize_incr if (vsize % vsize_incr) != 0 else vsize)
+                    self._camera.set_width(hsize)
+                    self._camera.set_height(vsize)
 
-        if (hsize, vsize) != self.fullShape:
-            self._camera.set_offsetX(vpos)
-            self._camera.set_offsetY(hpos)
-            self._camera.set_width(hsize)
-            self._camera.set_height(vsize)
+                    hpos_incr  = self._camera.get_offsetX_increment()
+                    vpos_incr  = self._camera.get_offsetY_increment()
+                    hpos = (round(hpos / hpos_incr)*hpos_incr if (hpos % hpos_incr) != 0 else hpos)
+                    vpos = (round(vpos / vpos_incr)*vpos_incr if (vpos % vpos_incr) != 0 else vpos)
+                    self._camera.set_offsetX(hpos)
+                    self._camera.set_offsetY(vpos)                
+                    
+                    self.__logger.debug(f"Increment info: X0_incr = {hpos_incr}, Y0_incr = {vpos_incr}, width_incr = {hsize_incr}, height_inc = {vsize_incr}")
+                    self.__logger.debug(f"Actual crop: X0 = {hpos}, Y0 = {vpos}, width = {hsize}, height = {vsize}")
+                except Xi_error as error:
+                    self.__logger.error(f"Error in setting ROI (X0 = {hpos}, Y0 = {vpos}, width = {hsize}, height = {vsize})")
+                    self.__logger.error(error)
+            else:
+                self._camera.set_offsetX(0)
+                self._camera.set_offsetY(0)
+                self._camera.set_width(self.fullShape[0])
+                self._camera.set_height(self.fullShape[1])
 
-        # self._performSafeCameraAction(cropAction)
-
+                    # self.__logger.error(f"Error in setting ROI (X0 = {hpos}, Y0 = {vpos}, width = {hsize}, height = {vsize})")
+                    # self.__logger.error(error)
         # This should be the only place where self.frameStart is changed
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
@@ -144,9 +179,11 @@ class XimeaManager(DetectorManager):
         return self.parameters
 
     def startAcquisition(self):
+        self._isAcquiring = True
         self._camera.start_acquisition()
 
     def stopAcquisition(self):
+        self._isAcquiring = False
         self._camera.stop_acquisition()
     
     def finalize(self) -> None:

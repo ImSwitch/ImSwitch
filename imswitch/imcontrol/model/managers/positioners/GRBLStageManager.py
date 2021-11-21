@@ -17,28 +17,25 @@ DIR_Y = 1
 DIR_Z = 1
 
 class GRBLStageManager(PositionerManager):
-    def __init__(self, positionerInfo, name, *args, **kwargs):
-        self.port = positionerInfo.managerProperties['rs232device']
-        self.board = grbldriver.GrblDriver(self.port)
-
-
+    def __init__(self, positionerInfo, name, **lowLevelManagers):
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            positionerInfo.managerProperties['rs232device']
+        ]
+        try:
+            PHYS_TO_GRBL_FAC=positionerInfo.managerProperties['PHYS_TO_GRBL_FAC']
+            PHYS_TO_GRBL_FAC_Z=positionerInfo.managerProperties['PHYS_TO_GRBL_FAC_Z']
+        except:
+            pass
+        
         # Initialise backlash storage, used by property setter/getter
         self._backlash = None
         self.settle_time = 0.5  # Default move settle time
         self._position_on_enter = None
 
-        # init the stage
-        self.board.write_global_config()
-        self.board.write_all_settings()
-        #self.board.verify_settings()
-
-        #self.board.home()
-        self.board.reset_stage()
-        self.board.home()
-
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
+        self.board = self._rs232manager._board
 
 
     def move(self, value, axis):

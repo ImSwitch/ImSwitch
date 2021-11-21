@@ -1,14 +1,23 @@
 {
   "positioners": {
     "LightsheetStage": {
-        "managerName": "ESP32StageManager",
+        "managerName": "GRBLStageManager",
         "managerProperties": {
+          "rs232device": "GRBL",
           "host": "192.168.137.206"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
         "forPositioning": true
     }
+},
+"rs232devices": {
+  "GRBL": {
+    "managerName": "GRBLManager",
+    "managerProperties": {
+      "port": "COM14"
+    }
+  }
 },
 "lasers": {
   "450 Laser": {
@@ -22,6 +31,19 @@
     "wavelength": 635,
     "valueRangeMin": 0,
     "valueRangeMax": 32768
+},
+"635 Lasesr": {
+  "analogChannel": null,
+  "digitalLine": null,
+  "managerName": "GRBLLaserManager",
+  "managerProperties": {
+      "rs232device": "GRBL",
+      "channel": 1
+  },
+  "wavelength": 635,
+  "valueRangeMin": 0,
+  "valueRangeMax": 1023,
+  "valueRangeStep": 1
 },
 "Lightsheet Position X": {
     "analogChannel": null,

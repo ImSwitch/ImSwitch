@@ -3,7 +3,7 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 
-from imswitch.imcontrol.model.interfaces.gxipy import gx
+import imswitch.imcontrol.model.interfaces.gxipy as gx
  
 class CameraGXIPY:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100):
@@ -29,13 +29,13 @@ class CameraGXIPY:
         #%% starting the camera thread
         self.camera = None
         self.device_manager = gx.DeviceManager()
-        dev_num, dev_info_list = device_manager.update_device_list()
-        if dev_num is not 0:
+        dev_num, dev_info_list = self.device_manager.update_device_list()
+        if dev_num  != 0:
             # start camera
             self.is_connected = True
             
             # open the first device
-            self.camera = device_manager.open_device_by_index(1)
+            self.camera = self.device_manager.open_device_by_index(1)
 
             # exit when the camera is a color camera
             self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
@@ -56,8 +56,8 @@ class CameraGXIPY:
             self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
 
             # get framesize 
-            self.SensorHeight = cam.Height.get()
-            self.SensorWidth = cam.Width.get()
+            self.SensorHeight = self.camera.Height.get()
+            self.SensorWidth = self.camera.Width.get()
 
     def start_live(self):
         if not self.is_streaming:
@@ -114,15 +114,16 @@ class CameraGXIPY:
 
     def getLast(self):
         # get frame and save
-        raw_image = camera.data_stream[0].get_image().get_numpy_array()
+        raw_image = self.camera.data_stream[0].get_image().get_numpy_array()
         preview_width = 300
         preview_height = 300
-        last_frame_preview = raw_image.copy()[self.SensorHeight//2-self.SensorHeight//2:self.SensorHeight//2+self.SensorHeight//2,
+        last_frame_preview = raw_image.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
+                                    self.SensorWidth//2-self.shape[1]//2:self.SensorWidth//2+self.shape[1]//2]
         last_frame_preview = cv2.resize(last_frame_preview , (preview_width,preview_height), interpolation= cv2.INTER_LINEAR)
         return last_frame_preview
 
     def getLastChunk(self):
-        return raw_image = camera.data_stream[0].get_image().get_numpy_array()
+        return self.camera.data_stream[0].get_image().get_numpy_array()
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
@@ -155,9 +156,9 @@ class CameraGXIPY:
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":
-            property_value = cam.Height.get()            
+            property_value = self.camera.Height.get()            
         elif property_name == "image_height":
-            property_value = cam.Height.get()            
+            property_value = self.camera.Height.get()            
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

@@ -6,19 +6,35 @@ from dataclasses_json import dataclass_json, Undefined, CatchAll
 
 @dataclass(frozen=True)
 class DeviceInfo:
-    analogChannel: Optional[int]
+    analogChannel: Optional[Union[str, int]]
     """ Channel for analog communication. ``null`` if the device is digital or
-    doesn't use NI-DAQ. """
+    doesn't use NI-DAQ. If an integer is specified, it will be translated to
+    "Dev1/ao{analogChannel}". """
 
-    digitalLine: Optional[int]
+    digitalLine: Optional[Union[str, int]]
     """ Line for digital communication. ``null`` if the device is analog or
-    doesn't use NI-DAQ. """
+    doesn't use NI-DAQ. If an integer is specified, it will be translated to
+    "Dev1/port0/line{digitalLine}". """
 
     managerName: str
     """ Manager class name. """
 
     managerProperties: Dict[str, Any]
     """ Properties to be read by the manager. """
+
+    def getAnalogChannel(self):
+        """ :meta private: """
+        if isinstance(self.analogChannel, int):
+            return f'Dev1/ao{self.analogChannel}'  # for backwards compatibility
+        else:
+            return self.analogChannel
+
+    def getDigitalLine(self):
+        """ :meta private: """
+        if isinstance(self.digitalLine, int):
+            return f'Dev1/port0/line{self.digitalLine}'  # for backwards compatibility
+        else:
+            return self.digitalLine
 
 
 @dataclass(frozen=True)
@@ -145,17 +161,27 @@ class ScanInfo:
 
 @dataclass(frozen=True)
 class NidaqInfo:
-    timerCounterChannel: Optional[int] = None
-    """ Output for Counter for timing purposes. """
+    timerCounterChannel: Optional[Union[str, int]] = None
+    """ Output for Counter for timing purposes. If an integer is specified, it
+    will be translated to "Dev1/ctr{timerCounterChannel}". """
 
     startTrigger: bool = False
     """ Boolean for start triggering for sync. """
 
+    def getTimerCounterChannel(self):
+        """ :meta private: """
+        if isinstance(self.timerCounterChannel, int):
+            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
+        else:
+            return self.timerCounterChannel
+
+
 @dataclass(frozen=True)
 class PulseStreamerInfo:
-    ipAddress: str
+    ipAddress: Optional[str] = None
     """ IP address of Pulse Streamer hardware. """
 
+    
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -215,7 +241,7 @@ class SetupInfo:
         for deviceInfos in self.lasers, self.detectors:
             deviceInfosCopy = deviceInfos.copy()
             for item in list(deviceInfosCopy):
-                if deviceInfosCopy[item].digitalLine is None:
+                if deviceInfosCopy[item].getDigitalLine() is None:
                     del deviceInfosCopy[item]
             devices.update(deviceInfosCopy)
             i += 1

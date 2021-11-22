@@ -47,6 +47,12 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.started.connect(self._lvWorker.run)
         self._thread.finished.connect(self._lvWorker.stop)
 
+    def __del__(self):
+        self._thread.quit()
+        self._thread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
+
     def getCurrentDetectorName(self):
         """ Returns the name of the current detector. """
 

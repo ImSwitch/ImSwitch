@@ -1,11 +1,6 @@
-"""
-Created on Mon Oct 11 09:48:00 2021
-
-@author: jacopoabramo
-"""
-
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
+
 
 class PulseStreamerLaserManager(LaserManager):
     """ LaserManager for controlling Pulse Streamer 8/2 from Swabian Instruments.
@@ -19,9 +14,9 @@ class PulseStreamerLaserManager(LaserManager):
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self._logger = initLogger(self, instanceName=name)
         self._pulseStreamerManager = lowLevelManagers["pulseStreamerManager"]
-        self._digitalChannels = laserInfo.managerProperties["digitalChannels"]
-        self._analogChannels = laserInfo.managerProperties["analogChannels"]
-        
+        self._digitalChannels = laserInfo.digitalLine
+        self._analogChannels = laserInfo.analogChannel
+
 
         super().__init__(laserInfo, name, isBinary=self._analogChannels is None, valueUnits="V", valueDecimals=1)
 
@@ -37,6 +32,7 @@ class PulseStreamerLaserManager(LaserManager):
             channel=self._analogChannels, voltage=voltage,
             min_val=self.valueRangeMin, max_val=self.valueRangeMax
         )
+
 
 # Copyright (C) 2021 Eggeling Group
 # This file is part of ImSwitch.

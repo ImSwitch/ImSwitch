@@ -2,7 +2,7 @@
     "detectors": {
         "Green": {
             "analogChannel": null,
-            "digitalLine": 4,
+            "digitalLine": "Dev1/port0/line4",
             "managerName": "HamamatsuManager",
             "managerProperties": {
                 "cameraListIndex": 0,
@@ -23,7 +23,7 @@
         },
         "Red": {
             "analogChannel": null,
-            "digitalLine": 5,
+            "digitalLine": "Dev1/port0/line5",
             "managerName": "HamamatsuManager",
             "managerProperties": {
                 "cameraListIndex": 1,
@@ -46,7 +46,7 @@
     "lasers": {
         "488 (OFF)": {
             "analogChannel": null,
-            "digitalLine": 3,
+            "digitalLine": "Dev1/port0/line3",
             "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
                 "digitalPorts": [
@@ -59,7 +59,7 @@
         },
         "488 (EXC)": {
             "analogChannel": null,
-            "digitalLine": 1,
+            "digitalLine": "Dev1/port0/line1",
             "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
                 "digitalPorts": [
@@ -72,7 +72,7 @@
         },
         "405 (ON)": {
             "analogChannel": null,
-            "digitalLine": 2,
+            "digitalLine": "Dev1/port0/line2",
             "managerName": "Cobolt0601LaserManager",
             "managerProperties": {
                 "digitalPorts": [
@@ -84,8 +84,8 @@
             "valueRangeMax": 200
         },
         "592 (EXC)": {
-            "analogChannel": 3,
-            "digitalLine": 0,
+            "analogChannel": "Dev1/ao3",
+            "digitalLine": "Dev1/port0/line0",
             "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
@@ -94,7 +94,7 @@
         },
         "592 (OFF)": {
             "analogChannel": null,
-            "digitalLine": 6,
+            "digitalLine": "Dev1/port0/line6",
             "managerName": "NidaqLaserManager",
             "managerProperties": {},
             "wavelength": 592,
@@ -104,7 +104,7 @@
     },
     "positioners": {
         "X": {
-            "analogChannel": 0,
+            "analogChannel": "Dev1/ao0",
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -117,7 +117,7 @@
             "forPositioning": true
         },
         "Y": {
-            "analogChannel": 1,
+            "analogChannel": "Dev1/ao1",
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -130,7 +130,7 @@
             "forPositioning": true
         },
         "Z": {
-            "analogChannel": 2,
+            "analogChannel": "Dev1/ao2",
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {

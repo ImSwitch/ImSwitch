@@ -4,9 +4,9 @@ import numpy as np
 import pyqtgraph.ptime as ptime
 import scipy.ndimage as ndi
 from lantz import Q_
-from qtpy import QtCore
 from skimage.feature import peak_local_max
 
+from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 
@@ -62,10 +62,16 @@ class FocusLockController(ImConWidgetController):
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
 
-        self.timer = QtCore.QTimer()
+        self.timer = Timer()
         self.timer.timeout.connect(self.update)
         self.timer.start(self.focusTime)
         self.startTime = ptime.time()
+
+    def __del__(self):
+        self.__processDataThread.quit()
+        self.__processDataThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
 
     def unlockFocus(self):
         if self.locked:
@@ -170,7 +176,7 @@ class FocusLockController(ImConWidgetController):
             )
 
 
-class ProcessDataThread(QtCore.QThread):
+class ProcessDataThread(Thread):
     def __init__(self, controller, *args, **kwargs):
         self._controller = controller
         super().__init__(*args, **kwargs)
@@ -229,7 +235,7 @@ class ProcessDataThread(QtCore.QThread):
         return massCenterGlobal
 
 
-class FocusCalibThread(QtCore.QThread):
+class FocusCalibThread(Thread):
     def __init__(self, focusWidget, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

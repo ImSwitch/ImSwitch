@@ -39,6 +39,12 @@ class FFTController(LiveUpdatedController):
         self.setShowFFT(self._widget.getShowFFTChecked())
         self.setShowPos(self._widget.getShowPosChecked())
 
+    def __del__(self):
+        self.imageComputationThread.quit()
+        self.imageComputationThread.wait()
+        if hasattr(super(), '__del__'):
+            super().__del__()
+
     def setShowFFT(self, enabled):
         """ Show or hide FFT. """
         self.active = enabled

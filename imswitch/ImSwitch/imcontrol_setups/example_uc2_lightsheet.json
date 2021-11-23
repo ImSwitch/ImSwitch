@@ -15,7 +15,8 @@
   "GRBL": {
     "managerName": "GRBLManager",
     "managerProperties": {
-      "port": "COM14"
+      "port": "COM4",
+      "is_home": false
     }
   }
 },
@@ -38,11 +39,24 @@
   "managerName": "GRBLLaserManager",
   "managerProperties": {
       "rs232device": "GRBL",
-      "channel": 1
+      "channel": "LASER"
   },
   "wavelength": 635,
   "valueRangeMin": 0,
   "valueRangeMax": 1023,
+  "valueRangeStep": 1
+},
+"White LED": {
+  "analogChannel": null,
+  "digitalLine": null,
+  "managerName": "GRBLLaserManager",
+  "managerProperties": {
+      "rs232device": "GRBL",
+      "channel": "LED"
+  },
+  "wavelength": 500,
+  "valueRangeMin": 0,
+  "valueRangeMax": 1,
   "valueRangeStep": 1
 },
 "Lightsheet Position X": {

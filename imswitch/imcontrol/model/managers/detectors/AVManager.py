@@ -92,8 +92,9 @@ class AVManager(DetectorManager):
         super().setBinning(binning) 
         
 
-    def getChunk(self):
-        return self._camera.getLastChunk()
+    def getChunk(self):        
+        return np.expand_dims(self._camera.getLastChunk(),0)
+
 
     def flushBuffers(self):
         pass

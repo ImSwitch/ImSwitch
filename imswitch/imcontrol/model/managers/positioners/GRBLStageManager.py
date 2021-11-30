@@ -55,6 +55,28 @@ class GRBLStageManager(PositionerManager):
 
     def closeEvent(self):
         self.board.close()
+     
+    # test arrow key input
+    from PyQt5 import QtCore
+    @shortcut(QtCore.Qt.Key_Up, "Move up")
+    def key_moveXup(self):
+        self.move(value=100, axis = "X")
+    @shortcut(QtCore.Qt.Key_Down, "Move down")
+    def key_moveXdown(self):
+        self.move(value=-100, axis = "X")
+    @shortcut(QtCore.Qt.Key_Left, "Move left")
+    def key_moveYleft(self):
+        self.move(value=-100, axis = "Y")
+    @shortcut(QtCore.Qt.Key_Right, "Move right")
+    def key_moveYright(self):
+        self.move(value=100, axis = "Y")                        
+    @shortcut(QtCore.Qt.Key_Right, "Move Z up")
+    def key_moveZup(self):
+        self.move(value=100, axis = "Z")                        
+    @shortcut(QtCore.Qt.Key_Right, "Move Z down")
+    def key_moveZdown(self):
+        self.move(value=-100, axis = "Z")                        
+            
 
 
 # Copyright (C) 2020, 2021 TestaLab

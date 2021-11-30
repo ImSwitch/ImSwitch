@@ -147,8 +147,8 @@ class CameraGXIPY:
         return self.getLast(is_resize=False)
 
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
-        hsize = max(hsize, 256)  # minimum ROI size
-        vsize = max(vsize, 24)  # minimum ROI size
+        hsize = max(hsize, 25)*10  # minimum ROI size
+        vsize = max(vsize, 3)*10  # minimum ROI size
         hpos = 8*(hpos//8)
         vpos = 2*(vpos//2)        
 
@@ -210,7 +210,7 @@ class CameraGXIPY:
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":
-            property_value = self.camera.Height.get()            
+            property_value = self.camera.Width.get()            
         elif property_name == "image_height":
             property_value = self.camera.Height.get()    
         elif property_name == "roi_size":

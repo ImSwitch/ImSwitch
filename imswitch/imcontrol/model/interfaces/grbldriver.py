@@ -126,7 +126,7 @@ class GrblDriver:
         self._update_writesettings()
 
         self.globalconfig = {
-            1:255, #ms to wait before going idle (255=don't disable steppers)
+            1:25, #ms to wait before going idle (255=don't disable steppers)
             3:2, # direction inversion (mask)
             5:0,  #set NO limit switch
             20:0, # enable soft limit switch (stop immediately) # changed to off 1.31.19 after crash during data collection

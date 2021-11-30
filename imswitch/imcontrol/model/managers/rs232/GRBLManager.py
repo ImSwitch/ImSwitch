@@ -34,6 +34,11 @@ class GRBLManager:
         self._settings = rs232Info.managerProperties
         self._name = name
         self._port = rs232Info.managerProperties['port']
+        try:
+            self.is_home = rs232Info.managerProperties['is_home']
+        except:
+            self.is_home = False 
+             
         
         self._board = grbldriver.GrblDriver(self._port)
 
@@ -42,7 +47,8 @@ class GRBLManager:
         self._board.write_all_settings()
         #self.board.verify_settings()
         self._board.reset_stage()
-        self._board.home()
+        if self.is_home:
+            self._board.home()
 
     def send(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a

@@ -94,7 +94,7 @@ class GXPIPYManager(DetectorManager):
         
 
     def getChunk(self):
-        return self._camera.getLastChunk()
+        return np.expand_dims(self._camera.getLastChunk(),0)
 
     def flushBuffers(self):
         pass

@@ -22,9 +22,11 @@ class CameraGXIPY:
         self.exposure_time = exposure_time
         self.gain = gain
         
-        self.shape = (1000,1000)
+        self.shape = (1200,1200) # TODO: Attention: Hardcoded!!
         self.SensorHeight = self.shape[0]
         self.SensorWidth = self.shape[1]
+        self.preview_width = 600
+        self.preview_height = 600
 
         #%% starting the camera thread
         self.camera = None
@@ -53,7 +55,7 @@ class CameraGXIPY:
             self.camera.data_stream[0].set_acquisition_buffer_number(1)
             
             # set camera to mono12 mode
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
+            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
 
             # get framesize 
             self.SensorHeight = self.camera.Height.get()
@@ -115,16 +117,16 @@ class CameraGXIPY:
     def getLast(self):
         # get frame and save
         raw_image = self.camera.data_stream[0].get_image().get_numpy_array()
-        preview_width = 300
-        preview_height = 300
+
         last_frame_preview = raw_image.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
                                     self.SensorWidth//2-self.shape[1]//2:self.SensorWidth//2+self.shape[1]//2]
-        last_frame_preview = cv2.resize(last_frame_preview , (preview_width,preview_height), interpolation= cv2.INTER_LINEAR)
+        last_frame_preview = cv2.resize(last_frame_preview , (self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
         return last_frame_preview
 
     def getLastChunk(self):
-        return self.camera.data_stream[0].get_image().get_numpy_array()
-       
+        return self.camera.data_stream[0].get_image().get_numpy_array()[:,
+                                    self.SensorWidth//2-self.SensorHeight//2:self.SensorWidth//2+self.SensorHeight//2]
+       # TODO: This is odd
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size

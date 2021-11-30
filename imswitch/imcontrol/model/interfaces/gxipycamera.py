@@ -32,34 +32,39 @@ class CameraGXIPY:
         self.camera = None
         self.device_manager = gx.DeviceManager()
         dev_num, dev_info_list = self.device_manager.update_device_list()
+
         if dev_num  != 0:
-            # start camera
-            self.is_connected = True
-            
-            # open the first device
-            self.camera = self.device_manager.open_device_by_index(1)
+            self._init_cam()
+        
 
-            # exit when the camera is a color camera
-            self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
+    def _init_cam(self):
+        # start camera
+        self.is_connected = True
+        
+        # open the first device
+        self.camera = self.device_manager.open_device_by_index(1)
 
-            # set exposure
-            self.camera.ExposureTime.set(self.exposure_time)
+        # exit when the camera is a color camera
+        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
 
-            # set gain
-            self.camera.Gain.set(self.gain)
-            
-            # set blacklevel
-            self.camera.BlackLevel.set(self.blacklevel)
+        # set exposure
+        self.camera.ExposureTime.set(self.exposure_time)
 
-            # set the acq buffer count
-            self.camera.data_stream[0].set_acquisition_buffer_number(1)
-            
-            # set camera to mono12 mode
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+        # set gain
+        self.camera.Gain.set(self.gain)
+        
+        # set blacklevel
+        self.camera.BlackLevel.set(self.blacklevel)
 
-            # get framesize 
-            self.SensorHeight = self.camera.Height.get()
-            self.SensorWidth = self.camera.Width.get()
+        # set the acq buffer count
+        self.camera.data_stream[0].set_acquisition_buffer_number(1)
+        
+        # set camera to mono12 mode
+        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+
+        # get framesize 
+        self.SensorHeight = self.camera.Height.get()
+        self.SensorWidth = self.camera.Width.get()
 
     def start_live(self):
         if not self.is_streaming:
@@ -76,7 +81,13 @@ class CameraGXIPY:
     def suspend_live(self):
         if self.is_streaming:
         # start data acquisition
-            self.camera.stream_off()
+            try:
+                self.camera.stream_off()
+            except:
+                # camera was disconnected? 
+                self.camera.close_device()
+                self._init_cam()
+
             self.is_streaming = False
         
     def prepare_live(self):
@@ -114,27 +125,66 @@ class CameraGXIPY:
         else:
             print("pixel format is not implemented or not writable")
 
-    def getLast(self):
+    def getLast(self, is_resize=True):
         # get frame and save
-        raw_image = self.camera.data_stream[0].get_image().get_numpy_array()
-
-        last_frame_preview = raw_image.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
-                                    self.SensorWidth//2-self.shape[1]//2:self.SensorWidth//2+self.shape[1]//2]
-        last_frame_preview = cv2.resize(last_frame_preview , (self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
-        return last_frame_preview
+        try:
+            self.last_frame_preview = self.camera.data_stream[0].get_image().get_numpy_array()
+            '''
+            minHeight = int(self.SensorHeight//2-self.roi_size//2)
+            maxHeight = int(self.SensorHeight//2+self.roi_size//2)
+            minWidth = int(self.SensorWidth//2-self.roi_size//2)
+            maxWidth = int(self.SensorWidth//2+self.roi_size//2)
+            self.last_frame_preview = self.last_frame_preview[minHeight:maxHeight,minWidth:maxWidth]
+            '''
+            if is_resize:
+                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None, fx=.25, fy=.25, interpolation= cv2.INTER_LINEAR)
+#                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None(self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
+        except:
+            pass # TODO: What if the very first frame is corrupt?
+        return self.last_frame_preview 
 
     def getLastChunk(self):
-        return self.camera.data_stream[0].get_image().get_numpy_array()[:,
-                                    self.SensorWidth//2-self.SensorHeight//2:self.SensorWidth//2+self.SensorHeight//2]
-       # TODO: This is odd
-    def setROI(self, hpos, vpos, hsize, vsize):
-        hsize = max(hsize, 256)  # minimum ROI size
-        vsize = max(vsize, 24)  # minimum ROI size
-        pass
-        # self.__logger.debug(
-        #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
-        # )
-        #self.camera.setROI(vpos, hpos, vsize, hsize)
+        return self.getLast(is_resize=False)
+
+    def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
+        hsize = max(hsize, 25)*10  # minimum ROI size
+        vsize = max(vsize, 3)*10  # minimum ROI size
+        hpos = 8*(hpos//8)
+        vpos = 2*(vpos//2)        
+
+
+        if hsize is not None:
+            self.ROI_width = hsize
+            # update the camera setting
+            if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
+                self.camera.Width.set(self.ROI_width)
+            else:
+                print("OffsetX is not implemented or not writable")
+
+        if vsize is not None:
+            self.ROI_height = vsize
+            # update the camera setting
+            if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
+                self.camera.Height.set(self.ROI_height)
+            else:
+                print("Height is not implemented or not writable")
+
+        if hpos is not None:
+            self.ROI_hpos = hpos
+            # update the camera setting
+            if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
+                self.camera.OffsetX.set(self.ROI_hpos)
+            else:
+                print("OffsetX is not implemented or not writable")
+
+        if vpos is not None:
+            self.ROI_vpos = vpos
+            # update the camera setting
+            if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
+                self.camera.OffsetY.set(self.ROI_vpos)
+            else:
+                print("OffsetX is not implemented or not writable")
+
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -144,6 +194,8 @@ class CameraGXIPY:
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
+        elif property_name == "roi_size":
+            self.roi_size = property_value
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -158,9 +210,11 @@ class CameraGXIPY:
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":
-            property_value = self.camera.Height.get()            
+            property_value = self.camera.Width.get()            
         elif property_name == "image_height":
-            property_value = self.camera.Height.get()            
+            property_value = self.camera.Height.get()    
+        elif property_name == "roi_size":
+            property_value = self.roi_size 
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -183,4 +237,4 @@ class CameraGXIPY:
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.    

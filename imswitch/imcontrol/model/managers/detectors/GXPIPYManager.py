@@ -45,7 +45,7 @@ class GXPIPYManager(DetectorManager):
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False),
+                        editable=False)
             }            
 
         # Prepare actions
@@ -94,7 +94,10 @@ class GXPIPYManager(DetectorManager):
         
 
     def getChunk(self):
-        return np.expand_dims(self._camera.getLastChunk(),0)
+        try:
+            return np.expand_dims(self._camera.getLastChunk(),0)
+        except:
+            return None
 
     def flushBuffers(self):
         pass
@@ -126,20 +129,18 @@ class GXPIPYManager(DetectorManager):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
-        if(0):
-            def cropAction():
-                # self.__logger.debug(
-                #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-                # )
-                self._camera.setROI(hpos, vpos, hsize, vsize)
+        def cropAction():
+            # self.__logger.debug(
+            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+            # )
+            self._camera.setROI(hpos, vpos, hsize, vsize)
 
-            self._performSafeCameraAction(cropAction)
-            # TODO: unsure if frameStart is needed? Try without.
-            # This should be the only place where self.frameStart is changed
-            self._frameStart = (hpos, vpos)
-            # Only place self.shapes is changed
-            self._shape = (hsize, vsize)
-        # TODO: Reimplement
+        self._performSafeCameraAction(cropAction)
+        # TODO: unsure if frameStart is needed? Try without.
+        # This should be the only place where self.frameStart is changed
+        self._frameStart = (hpos, vpos)
+        # Only place self.shapes is changed
+        self._shape = (hsize, vsize)
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need

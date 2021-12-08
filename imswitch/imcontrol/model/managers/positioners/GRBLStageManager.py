@@ -4,6 +4,7 @@ import serial.tools.list_ports
 import time
 import numpy as np
 
+from imswitch.imcommon.model import shortcut
 from .PositionerManager import PositionerManager
 import imswitch.imcontrol.model.interfaces.grbldriver as grbldriver
 
@@ -70,10 +71,10 @@ class GRBLStageManager(PositionerManager):
     @shortcut(QtCore.Qt.Key_Right, "Move right")
     def key_moveYright(self):
         self.move(value=100, axis = "Y")                        
-    @shortcut(QtCore.Qt.Key_Right, "Move Z up")
+    @shortcut("-", "Move Z up")
     def key_moveZup(self):
         self.move(value=100, axis = "Z")                        
-    @shortcut(QtCore.Qt.Key_Right, "Move Z down")
+    @shortcut("+", "Move Z down")
     def key_moveZdown(self):
         self.move(value=-100, axis = "Z")                        
             

@@ -1,15 +1,24 @@
 {
   "positioners": {
-    "GRBLStage": {
+    "LightsheetStage": {
         "managerName": "GRBLStageManager",
         "managerProperties": {
-          "rs232device_mac": "/dev/cu.wchusbserial14330",
-          "rs232device": "COM14"
+          "rs232device": "GRBL",
+          "host": "192.168.137.206"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
         "forPositioning": true
     }
+},
+"rs232devices": {
+  "GRBL": {
+    "managerName": "GRBLManager",
+    "managerProperties": {
+      "port": "COM4",
+      "is_home": false
+    }
+  }
 },
 "detectors": {
   "WidefieldCamera": {
@@ -44,7 +53,6 @@
     "View",
     "Recording",
     "Image",
-    "Laser",
-    "Positioner"
+    "WellPlate"
   ]
 }

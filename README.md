@@ -45,7 +45,7 @@ cd ~/Downloads
 git clone https://github.com/beniroquai/ImSwitch/
 conda create -n imswitch python=3.8
 conda activate imswitch
-pip install -r requirements.txt
+pip install -r requirements.txt --user 
 pip install -e ./
 ```
 

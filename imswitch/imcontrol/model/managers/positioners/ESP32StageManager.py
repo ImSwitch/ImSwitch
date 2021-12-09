@@ -5,29 +5,31 @@ Created on Wed Jan 13 09:40:00 2021
 """
 from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
-SPEED=200
-PHYS_FACTOR = 1
+
+
 class ESP32StageManager(PositionerManager):
+    SPEED=500
+    PHYS_FACTOR = 1
 
-    def __init__(self, positionerInfo, name, *args, **kwargs):
-        self.__logger = initLogger(self, instanceName=name)
-        self.power = 0
-
-        self.esp32 = ESP32Client(positionerInfo.managerProperties['host'], port=80)
-
+    def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            positionerInfo.managerProperties['rs232device']
+        ]
+        self.__logger = initLogger(self, instanceName=name)
+
+
 
     def move(self, value, axis):
         if axis == 'X':
-            self.esp32.move_x(value*PHYS_FACTOR, SPEED)
+            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         elif axis == 'Y':
-            self.esp32.move_y(value*PHYS_FACTOR, SPEED)
+            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         elif axis == 'Z':
-            self.esp32.move_z(value*PHYS_FACTOR, SPEED)
+            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return

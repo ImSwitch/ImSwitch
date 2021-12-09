@@ -8,7 +8,7 @@ positioner = api.imcontrol.getPositionerNames()
 
 #api.imcontrol.setLaserActive(laserName, True)
 N_images = 40
-dz = 100
+dz = 1
 axis = "Z"
 api.imcontrol.movePositioner(positioner[0], axis, -N_images*dz/2)
 

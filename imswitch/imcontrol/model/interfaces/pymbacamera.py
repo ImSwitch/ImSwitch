@@ -43,7 +43,12 @@ class AVCamera(threading.Thread):
         self.is_changevalue = False # change parameters
 
         self.needs_reconnect = True # if we loose connection => reconnect
+        
+        self.preview_width = 300
+        self.preview_height = 300
 
+        self.frame_id = -1
+        
         self.openCamera()
         
 
@@ -70,7 +75,9 @@ class AVCamera(threading.Thread):
             self.__logger.debug("camera connected")
             self.SensorHeight = self.camera.feature("SensorHeight").value
             self.SensorWidth = self.camera.feature("SensorWidth").value
-            self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
+            #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
+            self.shape = (self.SensorHeight,self.SensorWidth)
+
         except Exception as e:
             self.__logger.debug(e)
             
@@ -96,13 +103,12 @@ class AVCamera(threading.Thread):
                 
                 # acquire frame
                 try:
-                    self.last_frame = self.camera.acquire_frame().buffer_data_numpy()
+                    frame = self.camera.acquire_frame()
+                    self.frame_id = frame.data.frameID
+                    self.frame_last = frame.buffer_data_numpy()
                     self.last_frame_preview = self.last_frame.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
-                                                                                        self.SensorWidth//2-self.shape[1]//2:self.SensorWidth//2+self.shape[1]//2]
-                    preview_width = 300
-                    preview_height = 300
 
-                    self.last_frame_preview = cv2.resize(self.last_frame_preview , (preview_width,preview_height), interpolation= cv2.INTER_LINEAR)
+                    self.last_frame_preview = cv2.resize(self.last_frame_preview , (self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
                 
                 except Exception as e:
                     # rearm camera upon frame timeout

@@ -21,9 +21,9 @@ class CameraAV:
         self.GAIN_MAX = 24
         self.GAIN_MIN = 0
         self.GAIN_STEP = 1
-        self.EXPOSURE_TIME_MS_MIN = 0.01
-        self.EXPOSURE_TIME_MS_MAX = 4000
 
+        self.frame_id_last = 0
+        
         #%% starting the camera thread
         self.camera = AVCamera()
         
@@ -67,16 +67,23 @@ class CameraAV:
         
     def getLast(self):
         # get frame and save
-        return  self.camera.last_frame_preview
+        if self.frame_id_last != self.camera.frame_id:
+            return  self.camera.last_frame_preview
+        else:
+            self.__logger.debug("No new camera frame available")
+            return None
 
     def getLastChunk(self):
         return self.camera.last_frame
        
     def setROI(self, hpos, vpos, hsize, vsize):
-        hsize = max(hsize, 256)  # minimum ROI size
-        vsize = max(vsize, 24)  # minimum ROI size
-        pass
-        # self.__logger.debug(
+        #hsize = max(hsize, 256)  # minimum ROI size
+        #vsize = max(vsize, 24)  # minimum ROI size
+        image_Height = self.camera.feature("Height")
+        image_Width = self.camera.feature("Width")
+        image_Height.value = hsize
+        image_Width.value = vsize
+# self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
         #self.camera.setROI(vpos, hpos, vsize, hsize)

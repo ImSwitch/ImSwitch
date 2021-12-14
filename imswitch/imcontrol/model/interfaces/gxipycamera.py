@@ -21,10 +21,6 @@ class CameraGXIPY:
         self.blacklevel = blacklevel
         self.exposure_time = exposure_time
         self.gain = gain
-        
-        self.shape = (1200,1200) # TODO: Attention: Hardcoded!!
-        self.SensorHeight = self.shape[0]
-        self.SensorWidth = self.shape[1]
         self.preview_width = 600
         self.preview_height = 600
 
@@ -63,8 +59,8 @@ class CameraGXIPY:
         self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
 
         # get framesize 
-        self.SensorHeight = self.camera.Height.get()
-        self.SensorWidth = self.camera.Width.get()
+        self.SensorHeight = self.camera.HeightMax.get()
+        self.SensorWidth = self.camera.WidthMax.get()
 
     def start_live(self):
         if not self.is_streaming:
@@ -147,11 +143,12 @@ class CameraGXIPY:
         return self.getLast(is_resize=False)
 
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
-        hsize = max(hsize, 25)*10  # minimum ROI size
-        vsize = max(vsize, 3)*10  # minimum ROI size
+        #hsize = max(hsize, 25)*10  # minimum ROI size
+        #vsize = max(vsize, 3)*10  # minimum ROI size
         hpos = 8*(hpos//8)
-        vpos = 2*(vpos//2)        
-
+        vpos = 2*(vpos//2)     
+        hsize = 8*(hsize//8)   
+        vsize = 2*(vsize//2) 
 
         if hsize is not None:
             self.ROI_width = hsize

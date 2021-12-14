@@ -28,8 +28,8 @@ class GXPIPYManager(DetectorManager):
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.getPropertyValue('image_width'),
-                     self._camera.getPropertyValue('image_height'))
+        fullShape = (self._camera.SensorHeight, 
+                     self._camera.SensorWidth)
 
         # TODO: Not implemented yet 
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])

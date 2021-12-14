@@ -5,7 +5,6 @@ Created on Wed Jan 13 09:40:00 2021
 """
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
 class ESP32LEDLaserManager(LaserManager):
     """ LaserManager for controlling LEDs and LAsers connected to an 
@@ -20,25 +19,35 @@ class ESP32LEDLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            laserInfo.managerProperties['rs232device']
+        ]
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
-
-        self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
-
         self.__channel_index = laserInfo.managerProperties['channel_index']
+        try:
+            self.__filter_change = laserInfo.managerProperties['filter_change']
+        except:
+            self.__filter_change = False
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        self.enabled = False
+
+        
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        self.esp32.set_laser(self.__channel_index, self.power*enabled)
+        self.enabled = enabled
+        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change)
+        
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
         self.power = power
-        self.esp32.set_laser(self.__channel_index, self.power)
+        if self.enabled:
+            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, self.__filter_change)
 
 
 

@@ -1,35 +1,30 @@
 """
-Created on Wed Jan 13 09:40:00 2021
+Created on Thu Jan 13 10:23:00 2021
 
 @author: jonatanalvelid
 """
 from imswitch.imcommon.model import initLogger
-from .LaserManager import LaserManager
 from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
-class ESP32LightSheetManager(LaserManager):
+class ESP32Manager:
+    """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
+    """
 
-    def __init__(self, LighsheetInfo, name, **lowLevelManagers):
-        super().__init__(LighsheetInfo, name, isBinary=False, 
-            valueUnits='mW', valueDecimals=0)
-        self._rs232manager = lowLevelManagers['rs232sManager'][
-            LighsheetInfo.managerProperties['rs232device']
-        ]
-        self.__axis = LighsheetInfo.managerProperties['axis']
-
+    def __init__(self, rs232Info, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self._settings = rs232Info.managerProperties
+        self._name = name
+        self._host = rs232Info.managerProperties['host']
+        # initialize the ESP32 device adapter
+        self._esp32 = ESP32Client(self._host, port=80)
 
-    def setEnabled(self, enabled):
-        """Turn on (N) or off (F) laser emission"""
-
-    def setValue(self, value=0):
-        """Handles output power.
-        Sends a RS232 command to the laser specifying the new intensity.
-        """
-        if self.__axis == "pos_x":
-            self._rs232manager._esp32.galvo_pos_x(value)
-        elif self.__axis == "amp_y":
-            self._rs232manager._esp32.galvo_amp_y(value)
+    def send(self, arg: str) -> str:
+        """ Sends the specified command to the RS232 device and returns a
+        string encoded from the received bytes. """
+        self._esp32.post_json(arg)
+        
+    def finalize(self):
+        pass 
 
 
 # Copyright (C) 2020, 2021 TestaLab

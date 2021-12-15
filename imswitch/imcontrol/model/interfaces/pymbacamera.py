@@ -24,8 +24,7 @@ class AVCamera(threading.Thread):
         self.__logger = initLogger(self, tryInheritParent=True)
         self.__logger.debug(f"Opening Camrea")
 
-        self.FEATURE_NAME = 'ExposureTime'
-        self.exposure_time = 10000
+
 
         self.is_camera_open = False
         self.is_live = False
@@ -34,19 +33,18 @@ class AVCamera(threading.Thread):
         self.exposure_time = 1000
         self.gain = 0
         self.blacklevel = 0
-        self.shape = (1000,1000)
-        self.SensorHeight = self.shape[0]
-        self.SensorWidth = self.shape[1]
         
-        self.last_frame = np.zeros(self.shape)
-        self.last_frame_preview = np.zeros(self.shape)
-        self.is_changevalue = False # change parameters
+        self.PreviewWidthRatio = 4
+        self.PreviewHeightRatio = 4
+        #TODO: NO hardcoding here!
+        self.SensorHeight = -1
+        self.SensorWidth = -1
+        
+        self.last_frame = None
+        self.last_frame_preview = None
 
         self.needs_reconnect = True # if we loose connection => reconnect
         
-        self.preview_width = 300
-        self.preview_height = 300
-
         self.frame_id = -1
         
         self.openCamera()
@@ -76,7 +74,7 @@ class AVCamera(threading.Thread):
             self.SensorHeight = self.camera.feature("SensorHeight").value
             self.SensorWidth = self.camera.feature("SensorWidth").value
             #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
-            self.shape = (self.SensorHeight,self.SensorWidth)
+            #self.shape = (self.SensorHeight,self.SensorWidth)
 
         except Exception as e:
             self.__logger.debug(e)
@@ -105,10 +103,14 @@ class AVCamera(threading.Thread):
                 try:
                     frame = self.camera.acquire_frame()
                     self.frame_id = frame.data.frameID
-                    self.frame_last = frame.buffer_data_numpy()
-                    self.last_frame_preview = self.last_frame.copy()[self.SensorHeight//2-self.shape[0]//2:self.SensorHeight//2+self.shape[0]//2,
+                    self.__logger(self.frame_id)
+                    self.last_frame = frame.buffer_data_numpy()
+                    self.last_frame_preview = self.last_frame.copy()
 
-                    self.last_frame_preview = cv2.resize(self.last_frame_preview , (self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
+                    # crop and resize?
+                    #self.last_frame_preview = self.last_frame_preview [self.SensorHeight//2-self.sensorheight//2:self.SensorHeight//2+self.sensorheight//2,
+                    #                                self.SensorWidth//2-self.sensorwidth//2:self.SensorWidth//2+self.sensorwidth//2]
+                    self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None, fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, interpolation= cv2.INTER_LINEAR)
                 
                 except Exception as e:
                     # rearm camera upon frame timeout
@@ -116,6 +118,7 @@ class AVCamera(threading.Thread):
                     self.__logger.error("Please reconnect the camera")
                     # TODO: Try reconnecting the camera automaticaly
                     self.needs_reconnect = True
+                    self.frame_id = -1
             else:
                 time.sleep(.1) # don't bother the CPU, dirty! 
 
@@ -142,6 +145,7 @@ class AVCamera(threading.Thread):
                 feature.value = feature_value
             except Exception as e:
                 self.__logger.error(e)
+                self.__logger.error(feature_key)
                 self.__logger.debug("Value not available?")
             
     def setExposureTime(self, value):
@@ -153,6 +157,12 @@ class AVCamera(threading.Thread):
     def setBlacklevel(self, value):
         self.set_value("Blacklevel", value)
 
+    def setROI(self, vpos, hpos, vsize, hsize):
+        image_Height = self.camera.feature("Height")
+        image_Width = self.camera.feature("Width")
+        image_Height.value = hsize
+        image_Width.value = vsize
+        
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.
 #

@@ -113,8 +113,8 @@ class AVManager(DetectorManager):
 
     def stopAcquisitionForROIChange(self):
         self._running = False
-        self._camera.stop_live()
-        self.__logger.debug('stoplive')
+        self._camera.camera.closeCamera()
+        self.__logger.debug('stoplive for roi change')
 
     def finalize(self) -> None:
         super().finalize()
@@ -126,21 +126,19 @@ class AVManager(DetectorManager):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
-        if(0):
-            def cropAction():
-                # self.__logger.debug(
-                #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-                # )
-                self._camera.setROI(hpos, vpos, hsize, vsize)
+        def cropAction():
+            # self.__logger.debug(
+            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+            # )
+            self._camera.setROI(hpos, vpos, hsize, vsize)
 
-            self._performSafeCameraAction(cropAction)
-            # TODO: unsure if frameStart is needed? Try without.
-            # This should be the only place where self.frameStart is changed
-            # self._frameStart = (hpos, vpos)
-            # Only place self.shapes is changed
-            self._shape = (hsize, vsize)
-        # TODO: Reimplement
-
+        self._performSafeCameraAction(cropAction)
+        # TODO: unsure if frameStart is needed? Try without.
+        # This should be the only place where self.frameStart is changed
+        # self._frameStart = (hpos, vpos)
+        # Only place self.shapes is changed
+        self._shape = (hsize, vsize)
+    
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.

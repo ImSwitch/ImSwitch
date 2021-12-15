@@ -36,6 +36,10 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
+    filter_pos_r = 2700
+    filter_pos_b = 1900
+    filter_pos_g = 0
+
     def __init__(self, host, port=31950):
         if isinstance(host, zeroconf.ServiceInfo):
             # If we have an mDNS ServiceInfo object, try each address
@@ -117,14 +121,14 @@ class ESP32Client(object):
         else:
             return None 
 
-    def post_json(self, path, payload={}, headers=None, timeout=1, is_blocking=False):
+    def post_json(self, path, payload={}, headers=None, timeout=1, is_blocking=True):
         if is_blocking:
-            self.post_json_thread(path, payload, headers, timeout)
+            return self.post_json_thread(path, payload, headers, timeout)
         else:
             t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
             t.daemon = True
             t.start()
-        return None
+            return None
 
     def post_json_thread(self, path, payload={}, headers=None, timeout=10):
         """Make an HTTP POST request and return the JSON response"""
@@ -165,9 +169,9 @@ class ESP32Client(object):
     
 
 
-    def set_laser(self, channel='R', value=0, auto_filterswitch=False):
+    def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
-            self.switch_filter(channel)
+            self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
         payload = {
             "value": value
         }
@@ -182,18 +186,9 @@ class ESP32Client(object):
             path = '/led_white'
         if channel == "":
             path = "/laser"
-        r = self.post_json(path, payload)
+        r = self.post_json(path, payload, is_blocking=is_blocking)
         return r        
 
-    def set_laser_red(self, value, auto_filterswitch=False):
-        return self.set_laser('R', value, auto_filterswitch)
-    
-    def set_laser_green(self, value, auto_filterswitch=False):
-        return self.set_laser('G', value, auto_filterswitch)
-    
-    def set_laser_blue(self, value, auto_filterswitch=False):
-        return self.set_laser('B', value, auto_filterswitch)
-        
 
     def move_x(self, steps=100, speed=10, is_blocking=False):
         r = self.move_stepper(axis="x", steps=steps, speed=speed, timeout=1, backlash=0, is_blocking=is_blocking)
@@ -233,15 +228,6 @@ class ESP32Client(object):
         r = self.post_json(path, payload)
         return r
 
-    def move_filter(self, steps=100, speed=10,timeout=10):
-        payload = {
-            "steps": steps, 
-            "speed": speed,            
-        }
-        path = '/move_filter'
-        r = self.post_json(path, payload, timeout=timeout)
-        return r
-    
     def lens_z(self, value=100):
         payload = {
             "lens_value": value,            
@@ -273,42 +259,38 @@ class ESP32Client(object):
         if self.is_connected:
             requests.post(self.base_uri + path, files=files)
         
-    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=20):
+    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=20, is_blocking=True):
         
         # switch off all lasers first!        
-        self.set_laser_red(0)
+        self.set_laser("R", 0)
         time.sleep(.1)
-        self.set_laser_blue(0)
+        self.set_laser("G", 0)
         time.sleep(.1)
-        self.set_laser_green(0)
+        self.set_laser("B", 0)
         time.sleep(.1)
 
         if is_filter_init is not None:
             self.is_filter_init = is_filter_init
             
         if not self.is_filter_init:
-            self.move_filter(steps=-3000, speed=speed)
-            time.sleep(4)
+            self.move_filter(steps=-3000, speed=speed, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
             
         # measured in steps from zero position
-        pos_blue = 1800+700
-        pos_green = 900
-        pos_red = 1800
             
         steps = 0
         if colour=="R":
-            steps = pos_red-self.filter_position
-            self.filter_position = pos_red
+            steps = self.filter_pos_r-self.filter_position
+            self.filter_position = self.filter_pos_r
         if colour=="G":
-            steps = pos_green - self.filter_position
-            self.filter_position = pos_green
+            steps = self.filter_pos_g - self.filter_position
+            self.filter_position = self.filter_pos_g
         if colour=="B":
-            steps = pos_blue - self.filter_position
-            self.filter_position = pos_blue
+            steps = self.filter_pos_b - self.filter_position
+            self.filter_position = self.filter_pos_b
             
-        self.move_filter(steps=steps, speed=speed)
+        self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
 
 
         
@@ -328,13 +310,13 @@ class ESP32Client(object):
             requests.post(self.base_uri + path, data=json.dumps(payload), headers=headers)
         
            
-    def move_filter(self, steps=100, speed=10,timeout=10):
+    def move_filter(self, steps=100, speed=10,timeout=10,is_blocking=False):
         payload = {
             "steps": steps, 
             "speed": speed,            
         }
         path = '/move_filter'
-        r = self.post_json(path, payload,timeout=timeout)
+        r = self.post_json(path, payload,timeout=timeout,is_blocking=is_blocking)
         return r
 
     def galvo_pos_x(self, pos_x = 0, timeout=1):
@@ -353,93 +335,3 @@ class ESP32Client(object):
         r = self.post_json(path, payload,timeout=timeout)
         return r
         
-if __name__ == "__main__":
-            
-        
-    #%
-    host = '192.168.43.226'
-    host = '192.168.2.147'
-    host = '192.168.2.151'
-    esp32 = ESP32Client(host, port=80)
-    
-    #esp32.set_led((100,2,5))
-    #esp32.move_x(steps=2000, speed=8)
-    #esp32.move_y(steps=2000, speed=6)
-    
-    #%%
-    esp32.lens_x(value=10000)
-    esp32.lens_z(value=10000)
-    #%%
-    for ix in range(0,32000,100):
-        esp32.lens_x(value=ix)
-        for iy in range(0,32000,100):
-            esp32.lens_z(value=iy)
-    esp32.lens_z(value=0)
-    esp32.lens_x(value=0)
-    
-    #%%
-    esp32.lens_x(value=0)
-    esp32.lens_z(value=0)
-    #%%
-    for iy in range(0,1000,1):
-        esp32.set_laser(np.sin(iy/1000*np.pi*100)*10000)
-    
-        
-    #%%
-    esp32.move_z(steps=500,  speed=1000)
-    
-    #%%
-    for i in range(100):
-        print(i)
-        esp32.move_z(steps=i*100, speed=i*100)
-        
-    
-    #%%
-    for i in range(100):
-        print(i)
-        esp32.post(value = i)
-    
-    #%%
-    esp32.set_laser_red(10000)
-    esp32.set_laser_blue(10000)
-    esp32.set_laser_green(10000)
-    
-    time.sleep(1)
-    
-    esp32.set_laser_red(0)
-    esp32.set_laser_blue(0)
-    esp32.set_laser_green(0)
-    #%%
-    esp32.move_filter(steps=-800, speed=20)
-    # %%
-    esp32.set_laser_red(0)
-    esp32.set_laser_blue(0000)
-    
-    #%%
-    esp32.set_laser_red(0)
-    
-    #%%
-    esp32.set_led(colour=(0,255,255))
-    
-    #%%
-    esp32.switch_filter()
-    
-    #%%
-    image = np.random.randn(320,240)*255
-    esp32.send_jpeg(image)
-    
-    #%%
-    N_leds = 4
-    I_max = 100
-    iiter = 0 
-    while(True):
-        iiter+=1
-        
-        image = np.ones((320,240))*(iiter%2)*255 # np.random.randn(320,240)*
-        esp32.send_jpeg(np.uint8(image))
-        led_pattern = np.array((np.reshape(np.random.randint(0,I_max ,N_leds**2),(N_leds,N_leds)),
-                       np.reshape(np.random.randint(0,I_max ,N_leds**2),(N_leds,N_leds)),
-                       np.reshape(np.random.randint(0,I_max ,N_leds**2),(N_leds,N_leds))))
-        
-        esp32.send_ledmatrix(led_pattern)
-

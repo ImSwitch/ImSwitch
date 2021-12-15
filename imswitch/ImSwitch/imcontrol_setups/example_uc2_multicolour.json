@@ -3,7 +3,7 @@
     "LightsheetStage": {
         "managerName": "ESP32StageManager",
         "managerProperties": {
-          "rs232device": "ESP32"
+            "rs232device": "ESP32"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
@@ -11,13 +11,13 @@
     }
 },
 "rs232devices": {
-  "ESP32": {
-    "managerName": "ESP32Manager",
-    "managerProperties": {
-      "host": "192.168.43.229"
+    "ESP32": {
+      "managerName": "ESP32Manager",
+      "managerProperties": {
+        "host": "192.168.137.28"
+      }
     }
-  }
-},
+  },
 "lasers": {
   "488 Laser": {
     "analogChannel": null,
@@ -25,12 +25,25 @@
     "managerName": "ESP32LEDLaserManager",
     "managerProperties": {
         "rs232device": "ESP32",
-        "channel_index": "",
-        "filter_change": false
+        "channel_index": "B",
+        "filter_change": true
     },
     "wavelength": 488,
     "valueRangeMin": 0,
     "valueRangeMax": 32768
+},
+"635 Laser": {
+  "analogChannel": null,
+  "digitalLine": null,
+  "managerName": "ESP32LEDLaserManager",
+  "managerProperties": {
+      "rs232device": "ESP32",
+      "channel_index": "R",
+      "filter_change": true
+  },
+  "wavelength": 635,
+  "valueRangeMin": 0,
+  "valueRangeMax": 32768
 },
 "LED": {
   "analogChannel": null,
@@ -41,44 +54,19 @@
       "channel_index": "W",
       "filter_change": false
   },
-  "wavelength": 1000,
+  "wavelength": 635,
   "valueRangeMin": 0,
   "valueRangeMax": 32768
-},
-"Lightsheet X-position": {
-    "analogChannel": null,
-    "digitalLine": null,
-    "managerName": "ESP32LightSheetManager",
-    "managerProperties": {
-        "rs232device": "ESP32",
-        "axis": "pos_x"
-    },
-    "wavelength": 0,
-    "valueRangeMin": 0,
-    "valueRangeMax": 255
-  },
-  "Lightsheet Y-Amplitude": {
-    "analogChannel": null,
-    "digitalLine": null,
-    "managerName": "ESP32LightSheetManager",
-    "managerProperties": {
-        "rs232device": "ESP32",
-        "axis": "amp_y"
-    },
-    "wavelength": 0,
-    "valueRangeMin": 0,
-    "valueRangeMax": 255
-  }  
+}
 },
 "detectors": {
   "WidefieldCamera": {
     "analogChannel": null,
     "digitalLine": null,
-    "managerNameGX": "GXPIPYManager",
-    "managerName": "AVManager",
+    "managerName": "GXPIPYManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "avcam": {
+      "gxipycam": {
         "exposure": 0,
         "gain": 0,
         "blacklevel": 100,

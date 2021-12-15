@@ -11,7 +11,7 @@ class CameraAV:
 
         # many to be purged
         self.model = "AVCamera"
-        self.shape = (0, 0)
+        
 
         # camera parameters
         self.blacklevel = 100
@@ -77,17 +77,15 @@ class CameraAV:
         return self.camera.last_frame
        
     def setROI(self, hpos, vpos, hsize, vsize):
-        #hsize = max(hsize, 256)  # minimum ROI size
-        #vsize = max(vsize, 24)  # minimum ROI size
-        image_Height = self.camera.feature("Height")
-        image_Width = self.camera.feature("Width")
-        image_Height.value = hsize
-        image_Width.value = vsize
-# self.__logger.debug(
-        #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
-        # )
-        #self.camera.setROI(vpos, hpos, vsize, hsize)
-
+        hsize = max(hsize, 256)  # minimum ROI size
+        vsize = max(vsize, 24)  # minimum ROI size
+        self.__logger.debug(
+             f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
+        try:
+            self.camera.setROI(vpos, hpos, vsize, hsize)
+        except Exception as e:
+            self.__logger.error("Setting the ROI")
+            self.__logger.error(e)
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.

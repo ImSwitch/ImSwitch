@@ -1,6 +1,11 @@
 import numpy as np
 import time
+import cv2
 from imswitch.imcommon.model import initLogger
+try:
+    from pymba import Vimba, VimbaException
+except:
+    print("No pymba installed..")
 
 from imswitch.imcontrol.model.interfaces.pymbacamera import AVCamera
  
@@ -12,77 +17,111 @@ class CameraAV:
         # many to be purged
         self.model = "AVCamera"
         
-
         # camera parameters
         self.blacklevel = 100
-        self.exposure_time = 0
+        self.exposure_time = 1000
         self.analog_gain = 0
-
-        self.GAIN_MAX = 24
-        self.GAIN_MIN = 0
-        self.GAIN_STEP = 1
+        self.pixel_format = "Mono12"
 
         self.frame_id_last = 0
+
+        self.PreviewWidthRatio = 4
+        self.PreviewHeightRatio = 4
         
         #%% starting the camera thread
-        self.camera = AVCamera()
-        
+        self.vimba = self.startVimba()
+        self.openCamera(self.set_frame) # open camera and set callback for frame grabbing
 
     def start_live(self):
         # check if camera is open
-        if(not self.camera.is_alive()):
-            self.camera.start()
-        self.camera.start_live()
+        try:
+            if not self.camera._is_armed:
+                self.camera.arm("Continuous", self.set_frame)
+        except:
+            # try reconnecting the camera via software 
+            try:
+                self.camera.close()
+                self.vimba.shutdown()
+                del self.vimba
+                del self.camera
+                self.vimba = self.startVimba()
+                self.openCamera(self.set_frame) # open camera and set callback for frame grabbing
+            except Exception as e:
+                self.__logger.error("Restarting the camera failed")
+                self.__logger.error(e)
+        self.camera.start_frame_acquisition()
 
     def stop_live(self):
-        self.camera.stop_live()
+        self.camera.stop_frame_acquisition()
+        if self.camera._is_armed:
+            self.camera.disarm()
         
-
     def suspend_live(self):
-        self.camera.stop_live()
-        
+        self.camera.stop_frame_acquisition()
         
     def prepare_live(self):
         pass
 
     def close(self):
+        self.camera.stop_frame_acquisition()
+        if self.camera._is_armed:
+            self.camera.disarm()
         self.camera.close()
-        self.camera.join()
-        
+    
+    def set_value(self ,feature_key, feature_value):
+        # Need to change acquisition parameters?
+        try:
+            feature = self.camera.feature(feature_key)
+            feature.value = feature_value
+        except Exception as e:
+            self.__logger.error(e)
+            self.__logger.error(feature_key)
+            self.__logger.debug("Value not available?")
+    
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.camera.setExposureTime(self.exposure_time*1000)
+        self.set_value("ExposureTime", self.exposure_time*1000)
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
-        self.camera.setGain(self.analog_gain)
+        self.set_value("Gain", self.analog_gain)
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
-        self.camera.setBlacklevel(self.blacklevel)
+        self.set_value("BlackLevel", blacklevel)
 
     def set_pixel_format(self,format):
-        #TODO: Implement
-        pass
+        self.pixelformat = format
+        self.set_value("PixelFormat", format)
         
     def getLast(self):
         # get frame and save
+
+        return cv2.resize(self.frame , dsize=None, 
+                fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, 
+                interpolation= cv2.INTER_LINEAR)
+                
+        '''
         if self.frame_id_last != self.camera.frame_id:
             return  self.camera.last_frame_preview
         else:
             self.__logger.debug("No new camera frame available")
             return None
-
+        '''
+        
     def getLastChunk(self):
-        return self.camera.last_frame
+        return self.frame
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
-        vsize = max(vsize, 24)  # minimum ROI size
+        vsize = max(vsize, 256)  # minimum ROI size
         self.__logger.debug(
              f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
         try:
-            self.camera.setROI(vpos, hpos, vsize, hsize)
+            image_Height = self.camera.feature("Height")
+            image_Width = self.camera.feature("Width")
+            image_Height.value = hsize
+            image_Width.value = vsize
         except Exception as e:
             self.__logger.error("Setting the ROI")
             self.__logger.error(e)
@@ -95,6 +134,10 @@ class CameraAV:
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
+        elif property_name == "pixel_format":
+            self.stop_live()
+            self.set_pixel_format(property_value)
+            self.start_live()
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -112,6 +155,8 @@ class CameraAV:
             property_value = self.camera.SensorWidth
         elif property_name == "image_height":
             property_value = self.camera.SensorHeight
+        elif property_name == "pixel_format":
+            property_value = self.camera.PixelFormat
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -119,6 +164,51 @@ class CameraAV:
 
     def openPropertiesGUI(self):
         pass
+
+    def startVimba(self, is_restart = False):
+        '''
+        get the camera instance
+        NOTE: This has to be closed before the programm is done! 
+        '''
+        if is_restart:
+            try:
+                self.vimba.shutdown()
+                del self.vimba
+            except:
+                pass
+        vimba = Vimba()
+        vimba.startup()
+        return vimba
+
+    def openCamera(self, callback_fct):
+        try:
+            self.camera = self.vimba.camera(0)
+            self.camera.open()
+            try:
+                feature = self.camera.feature("PixelFormat")
+                feature.value = "Mono12"
+            except:
+                self.__logger.debug("Pixel Format could not be set")
+            self.setPropertyValue("pixel_format", "Mono12")
+            self.needs_reconnect = False
+            self.is_camera_open = True
+            self.camera.arm('Continuous',callback_fct)
+            self.__logger.debug("camera connected")
+            self.SensorHeight = self.camera.feature("SensorHeight").value
+            self.SensorWidth = self.camera.feature("SensorWidth").value
+            #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
+            self.shape = (self.SensorHeight,self.SensorWidth)
+
+        except Exception as e:
+            self.__logger.debug(e)
+
+    def set_frame(self, frame):
+        self.frame = frame.buffer_data_numpy()
+        self.frame_id = frame.data.frameID
+        if self.frame is None:
+            self.frame = np.zeros(self.shape)
+            
+    
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

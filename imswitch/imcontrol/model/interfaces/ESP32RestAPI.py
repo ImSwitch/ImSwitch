@@ -130,17 +130,21 @@ class ESP32Client(object):
             return None 
 
     def post_json(self, path, payload={}, headers=None, timeout=1, is_blocking=True):
-        if not self.is_sending:
-            self.is_sending = True
-            if is_blocking:
-                r = self.post_json_thread(path, payload, headers, timeout)
-                self.is_sending = False
-                return r
-            else:
-                t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
-                t.daemon = True
-                t.start()
-                return None
+        tmp_counter = 0
+        while self.is_sending:
+            time.sleep(.1)
+            tmp_counter +=1
+            if tmp_counter>100: break
+        self.is_sending = True
+        if is_blocking:
+            r = self.post_json_thread(path, payload, headers, timeout)
+            self.is_sending = False
+            return r
+        else:
+            t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
+            t.daemon = True
+            t.start()
+            return None
 
     def post_json_thread(self, path, payload={}, headers=None, timeout=10):
         """Make an HTTP POST request and return the JSON response"""

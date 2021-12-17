@@ -7,7 +7,6 @@ try:
 except:
     print("No pymba installed..")
 
-from imswitch.imcontrol.model.interfaces.pymbacamera import AVCamera
  
 class CameraAV:
     def __init__(self,cameraNo=None):
@@ -30,7 +29,7 @@ class CameraAV:
         
         #%% starting the camera thread
         self.vimba = self.startVimba()
-        self.openCamera(self.set_frame) # open camera and set callback for frame grabbing
+        self.openCamera(self.set_frame,is_init=True) # open camera and set callback for frame grabbing
 
     def start_live(self):
         # check if camera is open
@@ -52,22 +51,34 @@ class CameraAV:
         self.camera.start_frame_acquisition()
 
     def stop_live(self):
-        self.camera.stop_frame_acquisition()
-        if self.camera._is_armed:
-            self.camera.disarm()
-        
+        try:
+            self.camera.stop_frame_acquisition()
+            if self.camera._is_armed:
+                self.camera.disarm()
+        except Exception as e:
+                self.__logger.error("Stopping Camera failed - nothing connected?")
+                self.__logger.error(e)
+
     def suspend_live(self):
-        self.camera.stop_frame_acquisition()
-        
+        try:
+            self.camera.stop_frame_acquisition()
+        except Exception as e:
+            self.__logger.error("Suspending live failed - nothing connected?")
+            self.__logger.error(e)
+
     def prepare_live(self):
         pass
 
     def close(self):
-        self.camera.stop_frame_acquisition()
-        if self.camera._is_armed:
-            self.camera.disarm()
-        self.camera.close()
-    
+        try:
+            self.camera.stop_frame_acquisition()
+            if self.camera._is_armed:
+                self.camera.disarm()
+            self.camera.close()
+        except Exception as e:
+                self.__logger.error("Closing Camera failed - nothing connected?")
+                self.__logger.error(e)
+
     def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
         try:
@@ -180,7 +191,7 @@ class CameraAV:
         vimba.startup()
         return vimba
 
-    def openCamera(self, callback_fct):
+    def openCamera(self, callback_fct, is_init=False):
         try:
             self.camera = self.vimba.camera(0)
             self.camera.open()
@@ -201,6 +212,9 @@ class CameraAV:
 
         except Exception as e:
             self.__logger.debug(e)
+            if is_init:
+                # make sure mock gets called when initilizing
+                raise Exception
 
     def set_frame(self, frame):
         self.frame = frame.buffer_data_numpy()

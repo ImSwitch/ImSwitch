@@ -14,7 +14,7 @@
     "ESP32": {
       "managerName": "ESP32Manager",
       "managerProperties": {
-        "host": "192.168.137.28"
+        "host": "192.168.137.146"
       }
     }
   },

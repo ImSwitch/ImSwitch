@@ -9,6 +9,14 @@
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
         "forPositioning": true
+    },
+    "LabThig": {
+      "managerName": "LabThingManager",
+      "managerProperties": {
+      },
+      "axes": ["X", "Y", "Z"],
+      "forScanning": true,
+      "forPositioning": true
     }
 },
 "rs232devices": {
@@ -53,6 +61,7 @@
     "View",
     "Recording",
     "Image",
-    "WellPlate"
+    "WellPlate",
+    "LabThing"
   ]
 }

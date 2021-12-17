@@ -1,16 +1,16 @@
 import numpy as np
 import time
 
-def snap_zstack(N_images=40, dz=2):
+def snap_zstack(N_images=50, dz=4):
 	axis = "Z"
-	api.imcontrol.movePositioner(positioner[0], axis, -N_images*dz/2)
+	api.imcontrol.movePositioner(positioner[0], axis, -(N_images*dz)//2)
 
 	for i_pos in range(N_images):
 		api.imcontrol.movePositioner(positioner[0], axis, dz)
-		time.sleep(.2)
+		#time.sleep(.3)
 		api.imcontrol.snapImage() 
-	
-	api.imcontrol.movePositioner(positioner[0], axis, -N_images*dz/2)
+	time.sleep(.5)
+	api.imcontrol.movePositioner(positioner[0], axis, -(N_images*dz)//2)
 
 	
 mainWindow.setCurrentModule('imcontrol')
@@ -24,14 +24,18 @@ laser_635 = '635 Laser'
 
 # snap GFP
 api.imcontrol.setLaserActive(laser_635, False)
+time.sleep(.3)
 api.imcontrol.setLaserActive(laser_488, True)
+time.sleep(.3)
 
 snap_zstack()
 #api.imcontrol.snapImage() 
 
 # snap AF647
 api.imcontrol.setLaserActive(laser_488, False)
+time.sleep(.3)
 api.imcontrol.setLaserActive(laser_635, True)
+time.sleep(.3)
 
 #api.imcontrol.snapImage() 
 snap_zstack()

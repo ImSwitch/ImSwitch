@@ -4,7 +4,7 @@
         "managerName": "GRBLStageManager",
         "managerProperties": {
           "rs232device": "GRBL",
-          "host": "192.168.137.206"
+          "host": "192.168.137.126"
         },
         "axes": ["X", "Y", "Z"],
         "forScanning": true,

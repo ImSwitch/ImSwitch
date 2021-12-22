@@ -134,7 +134,6 @@ class ESP32Client(object):
             self.is_sending = True
             if is_blocking:
                 r = self.post_json_thread(path, payload, headers, timeout)
-                self.is_sending = False
                 return r
             else:
                 t = threading.Thread(target=self.post_json_thread, args = (path, payload, headers, timeout))
@@ -155,10 +154,12 @@ class ESP32Client(object):
             r.raise_for_status()
             r = r.json()
             self.is_connected = True
+            self.is_sending = False
             return r
         except Exception as e:
             self.__logger.error(e)
             self.is_connected = False
+            self.is_sending = False
             # not connected
             return None
 
@@ -217,29 +218,25 @@ class ESP32Client(object):
     def move_stepper(self, axis="z", steps=100, speed=10, timeout=1, backlash=20, is_blocking=False):
         path = '/move_'+axis
 
-        if not self.is_driving: 
-            self.is_driving = True
 
-            if np.abs(steps) < 10:
-                speed = 50
+        if np.abs(steps) < 10:
+            speed = 50
 
-            # detect change in direction
-            if np.sign(self.steps_z_last) != np.sign(steps):
-                # we want to overshoot a bit
-                print("Detected position change:")
-                steps += (np.sign(steps)*backlash)
-                print(steps)
+        # detect change in direction
+        if np.sign(self.steps_z_last) != np.sign(steps):
+            # we want to overshoot a bit
+            print("Detected position change:")
+            steps += (np.sign(steps)*backlash)
+            print(steps)
 
-            payload = {
-                "steps": np.int(steps), 
-                "speed": np.int(speed),            
-            }
-            self.steps_z_last = steps
-            r = self.post_json(path, payload,timeout=timeout, is_blocking=is_blocking)
-            self.is_driving = False
-            return r
-        else:
-            return None
+        payload = {
+            "steps": np.int(steps), 
+            "speed": np.int(speed),            
+        }
+        self.steps_z_last = steps
+        r = self.post_json(path, payload,timeout=timeout, is_blocking=is_blocking)
+        self.is_driving = False
+        return r
 
     def lens_x(self, value=100):
         payload = {

@@ -18,7 +18,7 @@ class CameraAV:
         
         # camera parameters
         self.blacklevel = 100
-        self.exposure_time = 1000
+        self.exposure_time = 10
         self.analog_gain = 0
         self.pixel_format = "Mono12"
 
@@ -200,7 +200,7 @@ class CameraAV:
                 feature.value = "Mono12"
             except:
                 self.__logger.debug("Pixel Format could not be set")
-            self.setPropertyValue("pixel_format", "Mono12")
+            
             self.needs_reconnect = False
             self.is_camera_open = True
             self.camera.arm('Continuous',callback_fct)
@@ -214,6 +214,7 @@ class CameraAV:
             self.__logger.debug(e)
             if is_init:
                 # make sure mock gets called when initilizing
+                self.vimba.shutdown()
                 raise Exception
 
     def set_frame(self, frame):

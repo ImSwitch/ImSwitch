@@ -47,7 +47,10 @@ class MockCameraTIS:
         return property_value
 
     def getPropertyValue(self, property_name):
-        return self.properties[property_name]
+        try:
+            return self.properties[property_name]
+        except:
+            return 0
 
     def openPropertiesGUI(self):
         pass

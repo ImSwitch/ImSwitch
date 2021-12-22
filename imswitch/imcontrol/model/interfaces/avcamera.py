@@ -72,6 +72,10 @@ class CameraAV:
     def close(self):
         try:
             self.camera.stop_frame_acquisition()
+        except:
+            pass
+        
+        try:
             if self.camera._is_armed:
                 self.camera.disarm()
             self.camera.close()
@@ -107,8 +111,9 @@ class CameraAV:
         
     def getLast(self):
         # get frame and save
-
-        return cv2.resize(self.frame , dsize=None, 
+#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
+        #TODO: Napari only displays 8Bit?
+        return cv2.resize(self.frame, dsize=None, 
                 fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, 
                 interpolation= cv2.INTER_LINEAR)
                 
@@ -133,6 +138,7 @@ class CameraAV:
             image_Width = self.camera.feature("Width")
             image_Height.value = hsize
             image_Width.value = vsize
+            self.shape = (image_Width.value,image_Height.value)
         except Exception as e:
             self.__logger.error("Setting the ROI")
             self.__logger.error(e)
@@ -198,7 +204,8 @@ class CameraAV:
             try:
                 feature = self.camera.feature("PixelFormat")
                 feature.value = "Mono12"
-            except:
+            except Exception as e:
+                self.__logger.error(e)
                 self.__logger.debug("Pixel Format could not be set")
             
             self.needs_reconnect = False
@@ -208,7 +215,7 @@ class CameraAV:
             self.SensorHeight = self.camera.feature("SensorHeight").value
             self.SensorWidth = self.camera.feature("SensorWidth").value
             #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
-            self.shape = (self.SensorHeight,self.SensorWidth)
+            self.shape = (self.SensorWidth,self.SensorHeight)
 
         except Exception as e:
             self.__logger.debug(e)

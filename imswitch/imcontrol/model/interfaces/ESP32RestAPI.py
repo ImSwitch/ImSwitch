@@ -36,8 +36,8 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
-    filter_pos_r = 2700
-    filter_pos_b = 1900
+    filter_pos_r = 1000
+    filter_pos_b = 2000
     filter_pos_g = 0
 
     backlash_x = 0
@@ -282,7 +282,7 @@ class ESP32Client(object):
         if self.is_connected:
             requests.post(self.base_uri + path, files=files)
 
-    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=20, is_blocking=True):
+    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=250, is_blocking=True):
 
         # switch off all lasers first!
         self.set_laser("R", 0)
@@ -333,7 +333,7 @@ class ESP32Client(object):
             requests.post(self.base_uri + path, data=json.dumps(payload), headers=headers)
 
 
-    def move_filter(self, steps=100, speed=10,timeout=10,is_blocking=False):
+    def move_filter(self, steps=100, speed=10,timeout=250,is_blocking=False):
         payload = {
             "steps": steps,
             "speed": speed,

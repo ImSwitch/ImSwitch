@@ -136,9 +136,9 @@ class AVManager(DetectorManager):
         # This should be the only place where self.frameStart is changed
         # self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed 
-        vsize = self._camera.getPropertyValue('image_width')
-        hsize = self._camera.getPropertyValue('image_height')
-        self._shape = (hsize, vsize)
+        #vsize = self._camera.getPropertyValue('image_width')
+        #hsize = self._camera.getPropertyValue('image_height')
+        self._shape = self._camera.shape
     
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -160,7 +160,7 @@ class AVManager(DetectorManager):
             self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
             camera = CameraAV(cameraId)
         except Exception as e:
-            print(e)
+            self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()

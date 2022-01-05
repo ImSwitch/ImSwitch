@@ -1,8 +1,9 @@
 {
-    "setupFileName": "example_uc2_lightsheet_vimba.json",
+    "setupFileName": "example_uc2_multicolour_basler.json",
     "recording": {
         "outputFolder": "C:\\Users\\UC2\\Downloads",
         "includeDateInOutputFolder": true
     },
+    "setupFileName1": "example_uc2_lightsheet_vimba.json",
     "setupFileName2": "example_uc2_.json"
 }

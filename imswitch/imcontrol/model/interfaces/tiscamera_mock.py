@@ -10,12 +10,16 @@ class MockCameraTIS:
             'subarray_hpos': 0,
             'exposure_time': 0.1,
             'subarray_vsize': 1024,
-            'subarray_hsize': 1280
+            'subarray_hsize': 1280,
+            'SensorHeight': 1000,
+            'SensorWidth': 1000
         }
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
+        self.SensorHeight = 1000
+        self.SensorWidth = 1000
 
     def start_live(self):
         pass
@@ -47,8 +51,11 @@ class MockCameraTIS:
         return property_value
 
     def getPropertyValue(self, property_name):
-        return self.properties[property_name]
-
+        try:
+            return self.properties[property_name]
+        except Exception as e:
+            return 0
+        
     def openPropertiesGUI(self):
         pass
 

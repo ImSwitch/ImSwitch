@@ -1,17 +1,17 @@
 import numpy as np
 import time
 
-def snap_zstack(N_images=50, dz=4):
+def snap_zstack(N_images=50, dz=10):
 	axis = "Z"
 	api.imcontrol.movePositioner(positioner[0], axis, -(N_images*dz)//2)
-
+	time.sleep(5)
 	for i_pos in range(N_images):
 		api.imcontrol.movePositioner(positioner[0], axis, dz)
-		#time.sleep(.3)
+		time.sleep(1)
 		api.imcontrol.snapImage() 
-	time.sleep(.5)
+	time.sleep(1)
 	api.imcontrol.movePositioner(positioner[0], axis, -(N_images*dz)//2)
-
+	time.sleep(5)
 	
 mainWindow.setCurrentModule('imcontrol')
 

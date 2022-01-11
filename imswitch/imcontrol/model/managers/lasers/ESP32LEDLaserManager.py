@@ -46,7 +46,7 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, self.__filter_change, is_blocking=True)
+            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
 
 
 

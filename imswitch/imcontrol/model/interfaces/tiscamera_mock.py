@@ -55,7 +55,7 @@ class MockCameraTIS:
             return self.properties[property_name]
         except Exception as e:
             return 0
-        
+
     def openPropertiesGUI(self):
         pass
 

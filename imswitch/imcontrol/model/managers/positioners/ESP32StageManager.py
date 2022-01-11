@@ -25,11 +25,11 @@ class ESP32StageManager(PositionerManager):
 
     def move(self, value, axis):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=True)
+            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=True)
+            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=True)
+            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return

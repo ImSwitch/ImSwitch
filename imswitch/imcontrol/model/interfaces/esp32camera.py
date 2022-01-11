@@ -242,7 +242,7 @@ class ESP32Client(object):
 
     def start_stream(self, callback_fct = None):
         # Create and launch a thread    
-        self.stream_url = self.base_uri+'/cam-stream'
+        self.stream_url = self.base_uri+'/cam-stream.jpg'
         self.is_stream = True
         self.frame_receiver_thread = Thread(target = self.getframes)
         self.frame_receiver_thread.start() 

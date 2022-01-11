@@ -9,14 +9,6 @@
         "axes": ["X", "Y", "Z"],
         "forScanning": true,
         "forPositioning": true
-    },
-    "LabThig": {
-      "managerName": "LabThingManager",
-      "managerProperties": {
-      },
-      "axes": ["X", "Y", "Z"],
-      "forScanning": true,
-      "forPositioning": true
     }
 },
 "rs232devices": {
@@ -35,8 +27,8 @@
     "managerName": "ESP32CamManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "cameraHost": "http://192.168.43.93",
-      "cameraPort": "5000",
+      "cameraHost": "192.168.43.93",
+      "cameraPort": "80",
       "esp32cam": {
         "exposure": 0,
         "gain": 0,
@@ -60,8 +52,6 @@
     "Settings",
     "View",
     "Recording",
-    "Image",
-    "WellPlate",
-    "LabThing"
+    "Image"
   ]
 }

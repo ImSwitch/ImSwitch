@@ -43,6 +43,7 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigSnapImg.connect(self.snap)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)

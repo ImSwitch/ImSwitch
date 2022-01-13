@@ -63,6 +63,8 @@ class ScanController(SuperScanController):
         self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sigAbortScan.connect(self.abortScan)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigToggleBlockScanWidget.connect(lambda block: self.toggleBlockWidget(block))
+        self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -361,6 +363,14 @@ class ScanController(SuperScanController):
     def runScan(self) -> None:
         """ Runs a scan with the set scanning parameters. """
         self.runScanAdvanced(sigScanStartingEmitted=False)
+
+    def toggleBlockWidget(self, block):
+        """ Blocks/unblocks scan widget if scans are run from elsewhere. """
+        self._widget.setEnabled(block)
+        
+    def sendScanParameters(self):
+        self.getParameters()
+        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict)
 
 
 _attrCategoryStage = 'ScanStage'

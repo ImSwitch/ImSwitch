@@ -6,6 +6,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 
 from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
+from imswitch.imcommon.view.guitools import naparitools
 from .basewidgets import Widget
 
 _etstedDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_etsted')
@@ -167,6 +168,7 @@ class EtSTEDWidget(Widget):
 
 
 class AnalysisWidget(Widget):
+    """ Pop-up widget for the live analysis images or binary masks. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -188,7 +190,7 @@ class AnalysisWidget(Widget):
 
 
 
-class CoordTransformWidget(Widget):
+class OldCoordTransformWidget(Widget):
     """ Pop-up widget for the coordinate transform between the two etSTED modalities. """
 
     def __init__(self, *args, **kwargs):
@@ -235,6 +237,40 @@ class CoordTransformWidget(Widget):
         currentRow += 1
         self.grid.addWidget(self.loResVbWidget, currentRow, 0)
         self.grid.addWidget(self.hiResVbWidget, currentRow, 1)
+
+        currentRow += 1
+        self.grid.addWidget(self.saveCalibButton, currentRow, 0)
+        self.grid.addWidget(self.resetCoordsButton, currentRow, 1)
+
+
+class CoordTransformWidget(Widget):
+    """ Pop-up widget for the coordinate transform between the two etSTED modalities. """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.loadLoResButton = guitools.BetterPushButton('Load low-res calibration image')
+        self.loadHiResButton = guitools.BetterPushButton('Load high-res calibration image')
+        self.saveCalibButton = guitools.BetterPushButton('Save calibration')
+        self.resetCoordsButton = guitools.BetterPushButton('Reset coordinates')
+
+        self.napariViewerLo = naparitools.EmbeddedNapari()
+        self.napariViewerHi = naparitools.EmbeddedNapari()
+
+        self.pointsLayerLo = self.napariViewerLo.add_points(name="lo_points")  # add points layer to the image
+        self.pointsLayerHi = self.napariViewerHi.add_points(name="hi_points")  # add points layer to the image
+        self.pointsLayerTransf = self.napariViewerHi.add_points(name="transf_points")  # add points layer to the image
+
+        self.grid = QtGui.QGridLayout()
+        self.setLayout(self.grid)
+    
+        # initialize the controls for the coordinate transform help widget
+        currentRow = 0
+        self.grid.addWidget(self.loadLoResButton, currentRow, 0)
+        self.grid.addWidget(self.loadHiResButton, currentRow, 1)
+        
+        currentRow += 1
+        self.grid.addWidget(self.napariViewerLo.get_widget(), currentRow, 0)
+        self.grid.addWidget(self.napariViewerHi.get_widget(), currentRow, 1)
 
         currentRow += 1
         self.grid.addWidget(self.saveCalibButton, currentRow, 0)

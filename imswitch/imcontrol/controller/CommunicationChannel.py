@@ -60,6 +60,14 @@ class CommunicationChannel(SignalInterface):
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
 
+    sigToggleBlockScanWidget = Signal(bool)
+
+    sigSnapImg = Signal()
+
+    sigRequestScanParameters = Signal()
+
+    sigSendScanParameters = Signal(dict, dict)  # (analogParams, digitalParams)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

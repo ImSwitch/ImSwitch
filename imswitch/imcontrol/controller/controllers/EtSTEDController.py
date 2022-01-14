@@ -61,6 +61,10 @@ class EtSTEDController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        if self._setupInfo.etSTED is None:
+            return
+        
         self.__logger = initLogger(self)
         self.__logger.debug('Initializing')
 
@@ -108,6 +112,7 @@ class EtSTEDController(ImConWidgetController):
         self.__init_frames = 5
         self.__validationFrames = 0
         self.__frame = 0
+        self.timelapse = self._widget.timelapseScanCheck.isChecked()
 
         self.t_call = 0
 
@@ -454,6 +459,9 @@ class EtSTEDCoordTransformHelper():
     """ Coordinate transform help widget controller. """
     def __init__(self, etSTEDController, coordTransformWidget, saveFolder, *args, **kwargs):
         
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+
         self.etSTEDController = etSTEDController
         self._widget = coordTransformWidget
         self.__saveFolder = saveFolder
@@ -484,17 +492,22 @@ class EtSTEDCoordTransformHelper():
         self.etSTEDController._widget.launchHelpWidget(self.etSTEDController._widget.coordTransformWidget, init=True)
 
     def calibrationFinish(self):
-        #TODO: FIX THIS, AND ADD DEBUGGING MESSAGES SO THAT I CAN SEE THAT IT IS CORRECT
         """ Finish calibration. """
-        self.__loResCoords = self._widget.pointsLayerLo.data
-        # use this to translate pixel coord to real coord: pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
-        self.__hiResCoords = self._widget.pointsLayerHi.data
-        # use this to translate pixel coord to real coord: pos = (np.around(pos_px[0]*self.__hiResPxSize - self.__hiResSize/2, 3), -1 * np.around(pos_px[1]*self.__hiResPxSize - self.__hiResSize/2, 3))
+        # get annotated coordinates in both images and translate to real space coordinates
+        self.__loResCoordsPx = self._widget.pointsLayerLo.data
+        for pos_px in self.__loResCoordsPx:
+            pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
+            self.__loResCoords.append(pos)
+        self.__hiResCoordsPx = self._widget.pointsLayerHi.data
+        for pos_px in self.__hiResCoordsPx:
+            pos = (np.around(pos_px[0]*self.__hiResPxSize - self.__hiResSize/2, 3), -1 * np.around(pos_px[1]*self.__hiResPxSize - self.__hiResSize/2, 3))
+            self.__hiResCoords.append(pos)
+        # calibrate coordinate transform
         self.coordinateTransformCalibrate()
+        self.__logger.debug(f'Transformation coeffs: {self.__transformCoeffs}')
         name = datetime.utcnow().strftime('%Hh%Mm%Ss%fus')
         filename = os.path.join(self.__saveFolder, name) + '_transformCoeffs.txt'
         np.savetxt(fname=filename, X=self.__transformCoeffs)
-        print(self.__transformCoeffs)
 
         # plot the resulting transformed low-res coordinates on the hi-res image
         coords_transf = []
@@ -549,9 +562,10 @@ class EtSTEDCoordTransformHelper():
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
         viewer.add_image(img_data)
+        viewer.layers.unselect_all()
+        viewer.layers.move_selected(len(viewer.layers)-1,0)
 
     def coordinateTransformCalibrate(self):
-        #TODO: FIX THIS, AND ADD DEBUGGING MESSAGES SO THAT I CAN SEE THAT IT IS CORRECT
         """ Third-order polynomial fitting with least-squares Levenberg-Marquart algorithm. """
         # prepare data and init guess
         c_init = np.hstack([np.zeros(10), np.zeros(10)])

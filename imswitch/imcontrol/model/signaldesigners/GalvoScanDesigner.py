@@ -3,6 +3,8 @@ from scipy.interpolate import BPoly
 
 from .basesignaldesigners import ScanDesigner
 
+from imswitch.imcommon.model import initLogger
+
 
 class GalvoScanDesigner(ScanDesigner):
     """ Scan designer for scan systems with galvanometric mirrors.
@@ -12,6 +14,8 @@ class GalvoScanDesigner(ScanDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.__logger = initLogger(self)
 
         self._expectedParameters = ['target_device',
                                     'axis_length',
@@ -50,14 +54,19 @@ class GalvoScanDesigner(ScanDesigner):
         axis_count = len(positioners)
         # convert vel_max from µm/µs to V/µs
         vel_max = [positionerProps['vel_max'] / positionerProps['conversionFactor']
-                   for positionerProps in positionersProps]
+                   if 'vel_max' in positionerProps else 1e6
+                   for positionerProps in positionersProps ]
         # convert acc_max from µm/µs^2 to V/µs^2
         acc_max = [positionerProps['acc_max'] / positionerProps['conversionFactor']
-                   for positionerProps in positionersProps]
+                   if 'acc_max' in positionerProps else 1e6
+                   for positionerProps in positionersProps ]
+
+        # get conversion factors for scanning axes
+        convFactors = [positionerProps['conversionFactor'] 
+                       if 'conversionFactor' in positionerProps else 1
+                       for positionerProps in positionersProps]
 
         # get list of positions for each axis
-        convFactors = [positionerProps['conversionFactor'] for positionerProps in positionersProps]
-
         # TODO: this is not correct, as I take the order of conversion factors from the order in the
         #       list of scanners, but the scan info order as the scan axis order
         # retrieve axis lengths in V

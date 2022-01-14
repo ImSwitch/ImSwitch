@@ -256,9 +256,11 @@ class CoordTransformWidget(Widget):
         self.napariViewerLo = naparitools.EmbeddedNapari()
         self.napariViewerHi = naparitools.EmbeddedNapari()
 
-        self.pointsLayerLo = self.napariViewerLo.add_points(name="lo_points")  # add points layer to the image
-        self.pointsLayerHi = self.napariViewerHi.add_points(name="hi_points")  # add points layer to the image
-        self.pointsLayerTransf = self.napariViewerHi.add_points(name="transf_points")  # add points layer to the image
+        # add points layers to the viewer
+        self.pointsLayerLo = self.napariViewerLo.add_points(name="lo_points", symbol='ring', size=20, face_color='green', edge_color='green')
+        self.pointsLayerTransf = self.napariViewerHi.add_points(name="transf_points", symbol='cross', size=20, face_color='red', edge_color='red')
+        self.pointsLayerHi = self.napariViewerHi.add_points(name="hi_points", symbol='ring', size=20, face_color='green', edge_color='green')
+        
 
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)

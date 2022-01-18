@@ -144,6 +144,7 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['pixel_size_ax2'] = parameterDict['axis_step_size'][1]
             scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines]
         elif axis_count==3:
             sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
                         parameterDict['target_device'][1]: line_axis_signal,
@@ -155,6 +156,7 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
             scanInfoDict['minmax_frame_axis'] = [min(frame_axis_signal), max(frame_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines, n_frames]
         else:
             sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
                         parameterDict['target_device'][1]: line_axis_signal}
@@ -163,6 +165,7 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['pixel_size_ax2'] = parameterDict['axis_step_size'][1]
             scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
         #plot scan signal
         import matplotlib.pyplot as plt

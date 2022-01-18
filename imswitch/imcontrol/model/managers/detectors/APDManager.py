@@ -111,10 +111,10 @@ class APDManager(DetectorManager):
             # adjust viewbox shape to new image shape at the start of the image
             self.updateLatestFrame(False)
 
-    def initiateImage(self, lines, pixels_line):
-        if np.shape(self._image) != (lines, pixels_line):
-            self._image = np.zeros((lines, pixels_line))
-            self.setShape(lines, pixels_line)
+    def initiateImage(self, lines, pixels_line, frames=1):
+        if np.shape(self._image) != (lines, pixels_line, frames):
+            self._image = np.zeros((lines, pixels_line, frames))
+            self.setShape(lines, pixels_line, frames)
 
     def setParameter(self, name, value):
         pass
@@ -135,8 +135,8 @@ class APDManager(DetectorManager):
     def shape(self):
         return self.__shape
 
-    def setShape(self, ysize, xsize):
-        self.__shape = (xsize, ysize)
+    def setShape(self, ysize, xsize, framesize=1):
+        self.__shape = (xsize, ysize, framesize)
 
     @property
     def pixelSizeUm(self):
@@ -178,6 +178,10 @@ class ScanWorker(Worker):
 
         self._n_lines = round(scanInfoDict['n_lines'])  # number of lines in image
         self._pixels_line = round(scanInfoDict['pixels_line'])  # number of pixels per line
+        if len(scanInfoDict['img_dims'][2]) == 3:
+            self._n_frames = round(scanInfoDict['img_dims'][2])  # number of pixels per line
+        else:
+            self._n_frames = 1
 
         # # det samples per line: time per line * det sampling rate
         self._samples_line = round(
@@ -247,7 +251,7 @@ class ScanWorker(Worker):
                                                    self._manager._detection_samplerate,
                                                    self._samples_total, True, 'ao/StartTrigger',
                                                    self._manager._terminal)
-        self._manager.initiateImage(self._n_lines, self._pixels_line)
+        self._manager.initiateImage(self._n_lines, self._pixels_line, self._n_frames)
         # self._manager._image = np.zeros((self._n_lines, self._pixels_line))
         # self._manager.setShape(self._n_lines, self._pixels_line)
         self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),

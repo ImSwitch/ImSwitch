@@ -11,7 +11,7 @@ import logging
 import zeroconf
 import urllib
 import numpy as np
-import cv2
+#import cv2
 import imageio
 
 from threading import Thread

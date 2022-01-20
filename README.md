@@ -141,6 +141,31 @@ In order to get it work properly, you have to change the PORT (i.e. `COMX`, `/de
 }
 ```
 
+# On Jetson Nano
+
+Add environment 
+
+```
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash ./Miniforge3-Linux-aarch64.sh
+./anaconda3/bin/conda init
+conda create -n imswitch  python=3.7
+```
+
+Now lets add pyqt5 via conda
+
+```
+conda install pyqt
+```
+
+Make sure you install this repo without `pyqt` in `setup.cfg`
+
+install imswitch without pyqt
+sudo apt-get install python3-pyqt5.qsci
+
+
+
+
 
 
 ## Documentation

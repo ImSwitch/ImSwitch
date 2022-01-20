@@ -1,7 +1,8 @@
 {
   "positioners": {
     "LightsheetStage": {
-        "managerName": "ESP32StageManager",
+        "managerNameESP32": "ESP32StageManager",
+        "managerName": "GRBLStageManager",
         "managerProperties": {
           "rs232device": "GRBL",
           "host": "192.168.137.96"
@@ -18,6 +19,12 @@
       "port": "COM4",
       "is_home": false
     }
+  },
+  "ESP32": {
+    "managerName": "ESP32Manager",
+    "managerProperties": {
+      "host": "192.168.137.95"
+    }
   }
 },
 "lasers": {
@@ -26,7 +33,7 @@
     "digitalLine": null,
     "managerName": "ESP32LEDLaserManager",
     "managerProperties": {
-        "host": "192.168.137.96",
+      "rs232device": "ESP32",
         "channel_index": "B",
         "filter_change": true
     },
@@ -39,8 +46,8 @@
   "digitalLine": null,
   "managerName": "ESP32LEDLaserManager",
   "managerProperties": {
-      "host": "192.168.137.96",
-      "channel_index": "R",
+    "rs232device": "ESP32",
+    "channel_index": "R",
       "filter_change": true
   },
   "wavelength": 635,
@@ -52,8 +59,8 @@
   "digitalLine": null,
   "managerName": "ESP32LEDLaserManager",
   "managerProperties": {
-      "host": "192.168.137.96",
-      "channel_index": "W",
+    "rs232device": "ESP32",
+    "channel_index": "W",
       "filter_change": false
   },
   "wavelength": 635,

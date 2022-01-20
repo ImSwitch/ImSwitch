@@ -10,12 +10,17 @@ class MockCameraTIS:
             'subarray_hpos': 0,
             'exposure_time': 0.1,
             'subarray_vsize': 1024,
-            'subarray_hsize': 1280
+            'subarray_hsize': 1280,
+            'SensorHeight': 1024, 
+            'SensorWidth': 1280
         }
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
+        self.SensorHeight = 1000
+        self.SensorWidth = 1000
+        self.shape = (self.SensorHeight,self.SensorWidth)
 
     def start_live(self):
         pass

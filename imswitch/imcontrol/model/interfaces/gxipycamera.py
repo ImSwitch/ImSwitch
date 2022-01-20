@@ -1,3 +1,4 @@
+from logging import raiseExceptions
 import numpy as np
 import time
 import cv2
@@ -31,6 +32,8 @@ class CameraGXIPY:
 
         if dev_num  != 0:
             self._init_cam()
+        else:
+            raise Exception("No camera GXIPY connected")
         
 
     def _init_cam(self):

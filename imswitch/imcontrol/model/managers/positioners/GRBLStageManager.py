@@ -9,7 +9,7 @@ from .PositionerManager import PositionerManager
 import imswitch.imcontrol.model.interfaces.grbldriver as grbldriver
 
 # constants depending on the configuration
-PHYS_TO_GRBL_FAC = 5/48.5 # in ImSwtich 5µm equal 48.5mm in reality
+PHYS_TO_GRBL_FAC = .1 # 5/48.5 # in ImSwtich 5µm equal 48.5mm in reality
 PHYS_TO_GRBL_FAC_Z = .1 # 10
 
 # reverse display vs. motion?

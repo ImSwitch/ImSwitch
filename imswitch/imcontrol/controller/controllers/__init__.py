@@ -15,4 +15,4 @@ from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .WellPlateController import WellPlateController
-from .LabThingController import LabThingController
+#from .LabThingController import LabThingController

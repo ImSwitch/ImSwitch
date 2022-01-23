@@ -66,11 +66,11 @@ class CommunicationChannel(SignalInterface):
     def sharedAttrs(self):
         return self.__sharedAttrs
 
-    def __init__(self, main):
+    def __init__(self, main, setupInfo):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
-        self._serverWorker = ServerWorker()
+        self._serverWorker = ServerWorker(self, setupInfo)
         self._thread = Thread()
         self._serverWorker.moveToThread(self._thread)
         self._thread.started.connect(self._serverWorker.run)
@@ -120,16 +120,22 @@ class CommunicationChannel(SignalInterface):
 
 
 class ServerWorker(Worker):
-    def __init__(self):
+    def __init__(self, channel, setupInfo):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
-        self._daemon = Pyro5.server.Daemon()
-        self._uri = self._daemon.register(ImSwitchServer)
-        self.__logger.debug(self._uri)
+        self._server = ImSwitchServer(channel)
+        self._channel = channel
+        self._host = setupInfo.pyroServerInfo.host
+        self._port = setupInfo.pyroServerInfo.port
 
     def run(self):
         self.__logger.debug("Started")
-        self._daemon.requestLoop()
+        Pyro5.server.serve(
+            {self._server: "ImSwitchServer"},
+            use_ns=False,
+            host=self._host,
+            port=self._port,
+        )
         self.__logger.debug("Loop Finished")
 
     def stop(self):

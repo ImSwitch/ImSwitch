@@ -125,13 +125,14 @@ class ServerWorker(Worker):
         self.__logger = initLogger(self, tryInheritParent=True)
         self._server = ImSwitchServer(channel)
         self._channel = channel
+        self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
         self._port = setupInfo.pyroServerInfo.port
 
     def run(self):
-        self.__logger.debug("Started")
+        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         Pyro5.server.serve(
-            {self._server: "ImSwitchServer"},
+            {self._server: self._name},
             use_ns=False,
             host=self._host,
             port=self._port,

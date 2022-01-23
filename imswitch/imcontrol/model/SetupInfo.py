@@ -184,7 +184,8 @@ class PulseStreamerInfo:
 
 @dataclass(frozen=True)
 class PyroServerInfo:
-    host: Optional[str] = "127.0.0.1"
+    name: Optional[str] = 'ImSwitchServer'
+    host: Optional[str] = '127.0.0.1'
     port: Optional[int] = 54333
 
 

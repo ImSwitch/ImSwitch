@@ -79,27 +79,6 @@ detectorInfosNonSquare = {
     )
 }
 
-detectorInfoXimea = {
-    'CAM' : DetectorInfo(
-        analogChannel=None,
-        digitalLine=3,
-        managerName="XimeaManager",
-        managerProperties={
-            "cameraListIndex" : 0,
-            "ximea" : {
-                "exposure" : 100,
-                "offsetX" : 0,
-                "offsetY" : 0,
-                "width" : 1280,
-				"height" : 864,
-				"trigger_source" : "XI_TRG_OFF",
-				"gpi_selector" : "XI_GPI_PORT1"
-            }
-        },
-        forAcquisition=True
-    )
-}
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -3,7 +3,7 @@ import pytest
 import h5py
 
 from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode, SaveMode
-from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare, detectorInfoXimea
+from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
 
 def record(qtbot, detectorInfos, *args, **kwargs):
@@ -31,7 +31,7 @@ def record(qtbot, detectorInfos, *args, **kwargs):
 
 
 @pytest.mark.parametrize('detectorInfos,numFrames',
-                         [(detectorInfosBasic, 10), (detectorInfosNonSquare, 53), (detectorInfoXimea, 510)])
+                         [(detectorInfosBasic, 10), (detectorInfosNonSquare, 53)])
 def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
     filePerDetector, savedToDiskPerDetector = record(
         qtbot,
@@ -61,7 +61,7 @@ def test_recording_spec_frames(qtbot, detectorInfos, numFrames):
 
 
 @pytest.mark.parametrize('detectorInfos',
-                         [detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare, detectorInfoXimea])
+                         [detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare])
 def test_recording_spec_time(qtbot, detectorInfos):
     filePerDetector, savedToDiskPerDetector = record(
         qtbot,

@@ -29,13 +29,13 @@ To install ImSwitch from PyPI, run the following command:
 pip install ImSwitch
 ```
 
-(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead.)
-
 You will then be able to start ImSwitch with this command:
 
 ```
 imswitch
 ```
+
+(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
 ## Documentation
 

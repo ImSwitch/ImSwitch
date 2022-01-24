@@ -34,7 +34,7 @@ class PulseStreamerLaserManager(LaserManager):
         )
 
 
-# Copyright (C) 2021 Eggeling Group
+# Copyright (C) 2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

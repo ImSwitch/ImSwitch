@@ -24,18 +24,9 @@ class APDManager(DetectorManager):
 
         model = name
         self._name = name
-        # self.__pixelsizex = 1
-        # self.__pixelsizey = 1
         self.setPixelSize(1, 1)
         fullShape = (100, 100)
         self._image = np.random.rand(fullShape[0], fullShape[1]) * 100
-
-        # self._nidaq_clock_source = r'20MHzTimebase'
-        # self._detection_samplerate = float(20e6)  # detection sampling rate for the Nidaq, in Hz
-        # self._nidaq_clock_source = r'100kHzTimebase'
-        # self._detection_samplerate = float(100e3)  # detection sampling rate for the Nidaq, in Hz
-        # self._nidaq_clock_source = r'20MHzTimebase'
-        # self._detection_samplerate = float(1e6)  # detection sampling rate for the Nidaq, in Hz
 
         # counter output task generating a 1 MHz frequency digitial pulse train
         self._nidaq_clock_source = r'ctr2InternalOutput'
@@ -152,7 +143,7 @@ class APDManager(DetectorManager):
 
 
 class ScanWorker(Worker):
-    newLine = Signal(np.ndarray, int)
+    newLine = Signal(np.ndarray, int, int)
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict):
@@ -184,81 +175,69 @@ class ScanWorker(Worker):
         else:
             self._n_frames = 1
 
-        # # det samples per line: time per line * det sampling rate
+        # # det samples per line:
+        # time per line * det sampling rate
         self._samples_line = round(
             scanInfoDict['scan_samples_line'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # det samples per fast axis period: time per period * det sampling rate
+        # # det samples per fast axis period
         self._samples_period = round(
             scanInfoDict['scan_samples_period'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # samptot = scanInfoDict['scan_samples_total']
-        # scantimest = scanInfoDict['scan_time_step']
-        # detsamprate = self._manager._detection_samplerate
-        # samptotdet = round(samptot * scantimest * detsamprate)
-        # self.__logger.debug(f'scansampltot: {samptot}, scantimestep: {scantimest}, '
-        #                     f'detsamprate: {detsamprate}, totdetsamp: {samptotdet}')
-
-        # # det samples in total signal: time for total scan * det sampling rate
+        # # det samples in total signal
         self._samples_total = round(
             scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to the starting zero-padding:
-        # time for zero_padding * det sampling rate
+        # # samples to throw due to the starting zero-padding
         self._throw_startzero = round(
             scanInfoDict['scan_throw_startzero'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to smooth inital positioning time:
-        # time for initpos * det sampling rate
+        # # samples to throw due to smooth inital positioning time
         self._throw_initpos = round(
             scanInfoDict['scan_throw_initpos'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to settling time: time for settling * det sampling rate
+        # # samples to throw due to settling time
         self._throw_settling = round(
             scanInfoDict['scan_throw_settling'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to starting acceleration: time for acceleration * det sampling rate
+        # # samples to throw due to starting acceleration
         self._throw_startacc = round(
             scanInfoDict['scan_throw_startacc'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to smooth final positioning time:
-        # time for finalpos * det sampling rate
+        # # samples to throw due to smooth final positioning time
         self._throw_finalpos = round(
             scanInfoDict['scan_throw_finalpos'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
+        self._samples_throw_init = (self._throw_startzero + self._throw_initpos + self._throw_settling +
+                               self._throw_startacc + self._throw_delay)
+        
         # # samples to throw due to smooth between frames transitioning:
         # time for finalpos + time for initpos + time for starting acceleration
         self._throw_between_frames = self._throw_finalpos + self._throw_initpos + self._throw_startacc
 
-        self._samples_throw_init = (self._throw_startzero + self._throw_initpos + self._throw_settling +
-                               self._throw_startacc + self._throw_delay)
-
-        # TODO: How to I get the following parameters into this function? Or read them from within
-        #       _nidaqmanager? channels should definitely come from here I suppose...
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
                                                    self._manager._detection_samplerate,
                                                    self._samples_total, True, 'ao/StartTrigger',
                                                    self._manager._terminal)
         self._manager.initiateImage(self._n_lines, self._pixels_line, self._n_frames)
-        # self._manager._image = np.zeros((self._n_lines, self._pixels_line))
-        # self._manager.setShape(self._n_lines, self._pixels_line)
+        
         if len(scanInfoDict['img_dims']) == 3:
             self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
                                        float(scanInfoDict['pixel_size_ax2']),
@@ -271,17 +250,17 @@ class ScanWorker(Worker):
         self._line_counter = 0
 
     def run(self):
-        self.__logger.debug('scanWorker.run initiated')
-        self.__logger.debug(f'Samples to throw init: {self._samples_throw_init}')
+        #self.__logger.debug('scanWorker.run initiated')
+        #self.__logger.debug(f'Samples to throw init: {self._samples_throw_init}')
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw_init)
+        #self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
         self._last_value = throwdata[-1]
         # self._alldata += len(throwdata)
-        self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
         for i in range(self._n_frames):
-            self.__logger.debug(f'Currently data for frame {i} out of {self._n_frames}')
+            #self.__logger.debug(f'Currently data for frame {i+1} out of {self._n_frames}')
             while self._line_counter < self._n_lines:
                 if self.scanning:
-                    self.__logger.debug(f'sw1: line {self._line_counter} started')
+                    #self.__logger.debug(f'sw1: line {self._line_counter} started')
                     if self._line_counter == self._n_lines - 1:
                         # read a line
                         data = self._manager._nidaqManager.readInputTask(self._name,
@@ -292,63 +271,45 @@ class ScanWorker(Worker):
                         data = self._manager._nidaqManager.readInputTask(self._name,
                                                                         self._samples_period)
                     # self._alldata += len(data)
-                    # self.__logger.debug(f'sw1.5: length of all data so far: {self._alldata}')
-                    self.__logger.debug(
-                        f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}'
-                    )
                     # galvo-sensor-data reading
                     subtractionArray = np.concatenate(([self._last_value], data[:-1]))
                     self._last_value = data[-1]
 
-                    # Now apd_data is an array contains at each position the number of counts at this
-                    # position
+                    # Now data is an array containing at each position the number of counts
+                    # at this position
                     data = data - subtractionArray
 
                     # only take the first samples that corresponds to the samples during the line
                     line_samples = data[:self._samples_line]
 
-                    # self.__logger.debug(
-                    #     f'sw3: line {self._line_counter}: samples per line: {self._samples_line}'
-                    # )
-                    # self.__logger.debug(
-                    #     f'sw4: line {self._line_counter}: save data shape: '{np.shape(line_samples)}'
-                    # )
-
                     # translate sample stream to an array where each value corresponds to a pixel count
                     line_pixels = self.samples_to_pixels(line_samples)
 
-                    # self.__logger.debug(
-                    #     f'sw5: line {self._line_counter}: line data shape: {np.shape(line_pixels)}'
-                    # )
                     self.newLine.emit(line_pixels, self._line_counter, i)
-                    # self.__logger.debug(f'sw6: line {self._line_counter} finished')
                     self._line_counter += 1
                 else:
-                    self.__logger.debug('CLOSE!')
+                    self.__logger.debug('Close data reading: not scanning any longer')
                     self.close()
-            # self.__logger.debug('APD worker: read between frames throwdata')
             throwdata = self._manager._nidaqManager.readInputTask(
                 self._name, self._throw_between_frames
             )
+            self._line_counter = 0
 
-        # self.__logger.debug('APD worker: read fin throwdata 1')
         throwdata = self._manager._nidaqManager.readInputTask(
             self._name, self._throw_startzero + self._throw_finalpos
         )
-        # self.__logger.debug('APD worker: read fin throwdata 2')
         # self._alldata += len(throwdata)
         # self.__logger.debug(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
         self.acqDoneSignal.emit()
         # self.__logger.debug(self._name)
-        # self.__logger.debug(np.mean(self._manager._image))
         # self.close()
 
     def samples_to_pixels(self, line_samples):
         """ Reshape read datastream over the line to a line with pixel counts.
         Do this by summing elements, with the rate ratio calculated previously. """
-        # If reading with higher sample rate (ex. 20 MHz, 50 ns per sample), sum N samples for each
-        # pixel, since scanning curve is linear (ex. only allow dwell times as multiples of 0.05 us
-        # if sampling rate is 20 MHz)
+        # If reading with higher sample rate (ex. 1 MHz, 1 us per sample) than scanning, sum N
+        # samples for each pixel, since scanning curve is linear (ex. only allow dwell times as
+        # multiples of 1 us if sampling rate is 1 MHz)
         line_pixels = np.array(line_samples).reshape(-1, self._frac_det_dwell).sum(axis=1)
         return line_pixels
 

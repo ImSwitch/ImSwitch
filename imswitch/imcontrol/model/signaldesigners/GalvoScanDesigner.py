@@ -51,7 +51,7 @@ class GalvoScanDesigner(ScanDesigner):
                        if positioner.forScanning]
         positionerNames = [positioner for positioner in setupInfo.positioners
                            if setupInfo.positioners[positioner].forScanning]
-        self.__logger.debug(positionerNames)
+        #self.__logger.debug(positionerNames)
         positionersProps = [positioner.managerProperties for positioner in positioners]
 
         device_count = len(positioners)
@@ -72,12 +72,12 @@ class GalvoScanDesigner(ScanDesigner):
         # retrieve axis order of active axes, to compare with the positionerNames
         self.axis_devs_order = [parameterDict['target_device'][i] for i in range(device_count)
                                 if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
-        self.__logger.debug(self.axis_devs_order)
+        #self.__logger.debug(self.axis_devs_order)
         # retrieve axis lengths in V of active axes
         self.axis_length = [(parameterDict['axis_length'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                             for i in range(device_count)
                             if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
-        self.__logger.debug(self.axis_length)
+        #self.__logger.debug(self.axis_length)
         # retrieve axis step sizes in V of active axes
         self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                                for i in range(device_count)
@@ -167,16 +167,17 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
             scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
-        ##plot scan signal
-        #import matplotlib.pyplot as plt
-        #plt.figure()
-        #plt.plot(pixel_axis_signal-0.01)
-        #plt.plot(line_axis_signal)
-        #if axis_count==3:
-        #    plt.plot(frame_axis_signal)
-        #plt.show()
+        # plot scan signal
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.plot(pixel_axis_signal-0.01)
+        plt.plot(line_axis_signal)
+        if axis_count==3:
+            plt.plot(frame_axis_signal)
+        plt.show()
 
-        self._logger.debug('Scanning curves generated.')
+        #self.__logger.debug(scanInfoDict)
+        self.__logger.debug('Scanning curves generated.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):

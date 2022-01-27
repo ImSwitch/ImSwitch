@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
@@ -14,6 +15,9 @@ class ImConMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+        
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)

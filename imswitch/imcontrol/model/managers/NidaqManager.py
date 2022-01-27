@@ -190,6 +190,7 @@ class NidaqManager(SignalInterface):
 
     def readInputTask(self, taskName, samples=0, timeout=False):
         if not timeout:
+            self.__logger.debug(f'Read {samples} samples from {taskName}')
             return self.tasks[taskName].read(samples)
         else:
             return self.tasks[taskName].read(samples, timeout)
@@ -285,11 +286,14 @@ class NidaqManager(SignalInterface):
                 AOchannels = []
 
                 for device, channel in AOTargetChanPairs:
+                    self.__logger.debug(f'Device {device}, channel {channel} is part of scan')
                     if device not in stageDic:
                         continue
+                    self.__logger.debug(f'Device {device}, channel {channel} attaching to AO signals')
                     AOdevices.append(device)
                     AOsignals.append(stageDic[device])
                     AOchannels.append(channel)
+                    self.__logger.debug(f'Device {device}, channel {channel} attached to AO signals')
 
                 DOTargetChanPairs = self.__makeSortedTargets('getDigitalLine')
                 DOdevices = []
@@ -330,6 +334,7 @@ class NidaqManager(SignalInterface):
                 clockDO = scanclock
                 if len(AOsignals) > 0:
                     sampsInScan = len(AOsignals[0])
+                    self.__logger.debug(f'Total samples in scan: {sampsInScan}')
                     self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
                                                           acquisitionTypeFinite, scanclock,
                                                           100000, min_val=-10, max_val=10,

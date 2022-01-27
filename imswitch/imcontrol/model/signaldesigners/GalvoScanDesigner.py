@@ -167,14 +167,14 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
             scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
-        #plot scan signal
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(pixel_axis_signal-0.01)
-        plt.plot(line_axis_signal)
-        if axis_count==3:
-            plt.plot(frame_axis_signal)
-        plt.show()
+        ##plot scan signal
+        #import matplotlib.pyplot as plt
+        #plt.figure()
+        #plt.plot(pixel_axis_signal-0.01)
+        #plt.plot(line_axis_signal)
+        #if axis_count==3:
+        #    plt.plot(frame_axis_signal)
+        #plt.show()
 
         self._logger.debug('Scanning curves generated.')
         return sig_dict, axis_positions, scanInfoDict

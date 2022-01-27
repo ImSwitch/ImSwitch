@@ -79,7 +79,7 @@ class APDManager(DetectorManager):
             self._scanThread.started.connect(self._scanWorker.run)
             self._scanWorker.scanning = True
             self._scanWorker.newLine.connect(
-                lambda line_pixels, line_count: self.updateImage(line_pixels, line_count)
+                lambda line_pixels, line_count, frame: self.updateImage(line_pixels, line_count, frame)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisition)
 
@@ -105,15 +105,15 @@ class APDManager(DetectorManager):
         # return image
         return self._image
 
-    def updateImage(self, line_pixels, line_count):
-        self._image[-(line_count + 1), :] = line_pixels
+    def updateImage(self, line_pixels, line_count, frame):
+        self._image[frame, -(line_count + 1), :] = line_pixels
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
             self.updateLatestFrame(False)
 
     def initiateImage(self, lines, pixels_line, frames=1):
-        if np.shape(self._image) != (lines, pixels_line, frames):
-            self._image = np.zeros((lines, pixels_line, frames))
+        if np.shape(self._image) != (frames, lines, pixels_line):
+            self._image = np.zeros((frames, lines, pixels_line))
             self.setShape(lines, pixels_line, frames)
 
     def setParameter(self, name, value):
@@ -136,15 +136,16 @@ class APDManager(DetectorManager):
         return self.__shape
 
     def setShape(self, ysize, xsize, framesize=1):
-        self.__shape = (xsize, ysize, framesize)
+        self.__shape = (framesize, xsize, ysize)
 
     @property
     def pixelSizeUm(self):
         return [1, self.__pixelsize_ax2, self.__pixelsize_ax1]
 
-    def setPixelSize(self, pixelsize_ax1, pixelsize_ax2):
+    def setPixelSize(self, pixelsize_ax1, pixelsize_ax2, pixelsize_ax3=1):
         self.__pixelsize_ax1 = pixelsize_ax1
         self.__pixelsize_ax2 = pixelsize_ax2
+        self.__pixelsize_ax3 = pixelsize_ax3
 
     def crop(self, hpos, vpos, hsize, vsize):
         pass
@@ -178,7 +179,7 @@ class ScanWorker(Worker):
 
         self._n_lines = round(scanInfoDict['n_lines'])  # number of lines in image
         self._pixels_line = round(scanInfoDict['pixels_line'])  # number of pixels per line
-        if len(scanInfoDict['img_dims'][2]) == 3:
+        if len(scanInfoDict['img_dims']) == 3:
             self._n_frames = round(scanInfoDict['img_dims'][2])  # number of pixels per line
         else:
             self._n_frames = 1
@@ -235,13 +236,17 @@ class ScanWorker(Worker):
         )
 
         # # samples to throw due to smooth final positioning time:
-        # time for initpos * det sampling rate
+        # time for finalpos * det sampling rate
         self._throw_finalpos = round(
             scanInfoDict['scan_throw_finalpos'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        self._samples_throw = (self._throw_startzero + self._throw_initpos + self._throw_settling +
+        # # samples to throw due to smooth between frames transitioning:
+        # time for finalpos + time for initpos + time for starting acceleration
+        self._throw_between_frames = self._throw_finalpos + self._throw_initpos + self._throw_startacc
+
+        self._samples_throw_init = (self._throw_startzero + self._throw_initpos + self._throw_settling +
                                self._throw_startacc + self._throw_delay)
 
         # TODO: How to I get the following parameters into this function? Or read them from within
@@ -254,64 +259,77 @@ class ScanWorker(Worker):
         self._manager.initiateImage(self._n_lines, self._pixels_line, self._n_frames)
         # self._manager._image = np.zeros((self._n_lines, self._pixels_line))
         # self._manager.setShape(self._n_lines, self._pixels_line)
-        self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
-                                   float(scanInfoDict['pixel_size_ax2']))
+        if len(scanInfoDict['img_dims']) == 3:
+            self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
+                                       float(scanInfoDict['pixel_size_ax2']),
+                                       float(scanInfoDict['pixel_size_ax3']))
+        else:
+            self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
+                                       float(scanInfoDict['pixel_size_ax2']))
 
         self._last_value = 0
         self._line_counter = 0
 
     def run(self):
-        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw)
+        self.__logger.debug('scanWorker.run initiated')
+        self.__logger.debug(f'Samples to throw init: {self._samples_throw_init}')
+        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw_init)
         self._last_value = throwdata[-1]
         # self._alldata += len(throwdata)
-        # self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
-        while self._line_counter < self._n_lines:
-            if self.scanning:
-                # self.__logger.debug(f'sw1: line {self._line_counter} started')
-                if self._line_counter == self._n_lines - 1:
-                    # read a line
-                    data = self._manager._nidaqManager.readInputTask(self._name,
-                                                                     self._samples_line)
+        self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
+        for i in range(self._n_frames):
+            self.__logger.debug(f'Currently data for frame {i} out of {self._n_frames}')
+            while self._line_counter < self._n_lines:
+                if self.scanning:
+                    self.__logger.debug(f'sw1: line {self._line_counter} started')
+                    if self._line_counter == self._n_lines - 1:
+                        # read a line
+                        data = self._manager._nidaqManager.readInputTask(self._name,
+                                                                        self._samples_line)
+                    else:
+                        # read a whole period, starting with the line and then the data during the
+                        # flyback
+                        data = self._manager._nidaqManager.readInputTask(self._name,
+                                                                        self._samples_period)
+                    # self._alldata += len(data)
+                    # self.__logger.debug(f'sw1.5: length of all data so far: {self._alldata}')
+                    self.__logger.debug(
+                        f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}'
+                    )
+                    # galvo-sensor-data reading
+                    subtractionArray = np.concatenate(([self._last_value], data[:-1]))
+                    self._last_value = data[-1]
+
+                    # Now apd_data is an array contains at each position the number of counts at this
+                    # position
+                    data = data - subtractionArray
+
+                    # only take the first samples that corresponds to the samples during the line
+                    line_samples = data[:self._samples_line]
+
+                    # self.__logger.debug(
+                    #     f'sw3: line {self._line_counter}: samples per line: {self._samples_line}'
+                    # )
+                    # self.__logger.debug(
+                    #     f'sw4: line {self._line_counter}: save data shape: '{np.shape(line_samples)}'
+                    # )
+
+                    # translate sample stream to an array where each value corresponds to a pixel count
+                    line_pixels = self.samples_to_pixels(line_samples)
+
+                    # self.__logger.debug(
+                    #     f'sw5: line {self._line_counter}: line data shape: {np.shape(line_pixels)}'
+                    # )
+                    self.newLine.emit(line_pixels, self._line_counter, i)
+                    # self.__logger.debug(f'sw6: line {self._line_counter} finished')
+                    self._line_counter += 1
                 else:
-                    # read a whole period, starting with the line and then the data during the
-                    # flyback
-                    data = self._manager._nidaqManager.readInputTask(self._name,
-                                                                     self._samples_period)
-                # self._alldata += len(data)
-                # self.__logger.debug(f'sw1.5: length of all data so far: {self._alldata}')
-                # self.__logger.debug(
-                #     f'sw2: line {self._line_counter}: read data shape: {np.shape(data)}'
-                # )
-                # galvo-sensor-data reading
-                subtractionArray = np.concatenate(([self._last_value], data[:-1]))
-                self._last_value = data[-1]
-
-                # Now apd_data is an array contains at each position the number of counts at this
-                # position
-                data = data - subtractionArray
-
-                # only take the first samples that corresponds to the samples during the line
-                line_samples = data[:self._samples_line]
-
-                # self.__logger.debug(
-                #     f'sw3: line {self._line_counter}: samples per line: {self._samples_line}'
-                # )
-                # self.__logger.debug(
-                #     f'sw4: line {self._line_counter}: save data shape: '{np.shape(line_samples)}'
-                # )
-
-                # translate sample stream to an array where each value corresponds to a pixel count
-                line_pixels = self.samples_to_pixels(line_samples)
-
-                # self.__logger.debug(
-                #     f'sw5: line {self._line_counter}: line data shape: {np.shape(line_pixels)}'
-                # )
-                self.newLine.emit(line_pixels, self._line_counter)
-                # self.__logger.debug(f'sw6: line {self._line_counter} finished')
-                self._line_counter += 1
-            else:
-                self.__logger.debug('CLOSE!')
-                self.close()
+                    self.__logger.debug('CLOSE!')
+                    self.close()
+            # self.__logger.debug('APD worker: read between frames throwdata')
+            throwdata = self._manager._nidaqManager.readInputTask(
+                self._name, self._throw_between_frames
+            )
 
         # self.__logger.debug('APD worker: read fin throwdata 1')
         throwdata = self._manager._nidaqManager.readInputTask(

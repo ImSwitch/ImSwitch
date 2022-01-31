@@ -20,6 +20,7 @@ class MockCameraTIS:
         self.model = 'mock'
         self.SensorHeight = 1000
         self.SensorWidth = 1000
+        self.shape = (self.SensorHeight,self.SensorWidth)
 
     def start_live(self):
         pass

@@ -1,0 +1,58 @@
+{
+  "positioners": {
+    "GRBLStage": {
+        "managerName": "GRBLStageManager",
+        "managerProperties": {
+          "rs232device_mac": "/dev/cu.wchusbserial14330",
+          "rs232device_linux": "/dev/ttyUSB0",
+          "rs232device": "GRBL"
+        },
+        "axes": ["X", "Y", "Z"],
+        "forScanning": true,
+        "forPositioning": true
+    }
+},
+"rs232devices": {
+  "GRBL": {
+    "managerName": "GRBLManager",
+    "managerProperties": {
+      "port": "/dev/ttyUSB0",
+      "is_home": false
+    }
+  }
+},
+"detectors": {
+  "WidefieldCamera": {
+    "analogChannel": null,
+    "digitalLine": null,
+    "managerName": "JetsonCamManager",
+    "managerProperties": {
+      "cameraListIndex": 1,
+      "avcam": {
+        "exposure": 0,
+        "gain": 0,
+        "blacklevel": 100,
+        "image_width": 1000,
+        "image_height": 1000
+      }
+    },
+    "forAcquisition": true
+  }
+},
+  "rois": {
+    "Full chip": {
+      "x": 0,
+      "y": 0,
+      "w": 1000,
+      "h": 2048
+    }
+  },
+  "availableWidgets": [
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "Positioner"
+  ]
+}

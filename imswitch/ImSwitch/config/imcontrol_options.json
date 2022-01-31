@@ -1,7 +1,7 @@
 {
-    "setupFileName": "example_uc2_lightsheet_vimba.json",
+    "setupFileName": "example_uc2_lightsheet.json",
     "recording": {
-        "outputFolder": "C:\\Users\\UC2\\Downloads",
+        "outputFolder": "./ImSwitch/ImSwitch/recordings",
         "includeDateInOutputFolder": true
     },
     "setupFileName0": "example_uc2_multicolour.json",

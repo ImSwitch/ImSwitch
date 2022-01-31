@@ -1,0 +1,8 @@
+{
+    "setupFileName": "example_uc2_lightsheet.json",
+    "recording": {
+        "outputFolder": "./ImSwitch/ImSwitch/recordings",
+        "includeDateInOutputFolder": true
+    },
+    "setupFileName1": "example_uc2_jetson_nano_cam.json"
+}

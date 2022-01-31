@@ -1,7 +1,0 @@
-{
-    "setupFileName": "example_sted.json",
-    "recording": {
-        "outputFolder": "D:\\Data\\",
-        "includeDateInOutputFolder": true
-    }
-}

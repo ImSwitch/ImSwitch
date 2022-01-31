@@ -15,7 +15,11 @@ import zeroconf
 import threading
 import json
 import time
-import cv2
+try:
+    import cv2
+    is_cv2 = True
+except:
+    is_cv2 = False
 import os
 import socket
 
@@ -261,26 +265,26 @@ class ESP32Client(object):
 
 
     def send_jpeg(self, image):
+        if is_cv2:
+            temp = NamedTemporaryFile()
 
-        temp = NamedTemporaryFile()
+            #add JPEG format to the NamedTemporaryFile
+            iName = "".join([str(temp.name),".jpg"])
 
-        #add JPEG format to the NamedTemporaryFile
-        iName = "".join([str(temp.name),".jpg"])
+            #save the numpy array image onto the NamedTemporaryFile
+            cv2.imwrite(iName,image)
+            _, img_encoded = cv2.imencode('test.jpg', image)
 
-        #save the numpy array image onto the NamedTemporaryFile
-        cv2.imwrite(iName,image)
-        _, img_encoded = cv2.imencode('test.jpg', image)
+            content_type = 'image/jpeg'
+            headers = {'content-type': content_type}
+            payload = img_encoded.tostring()
+            path = '/uploadimage'
 
-        content_type = 'image/jpeg'
-        headers = {'content-type': content_type}
-        payload = img_encoded.tostring()
-        path = '/uploadimage'
-
-        #r = self.post_json(path, payload=payload, headers = headers)
-        #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)
-        files = {'media': open(iName, 'rb')}
-        if self.is_connected:
-            requests.post(self.base_uri + path, files=files)
+            #r = self.post_json(path, payload=payload, headers = headers)
+            #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)
+            files = {'media': open(iName, 'rb')}
+            if self.is_connected:
+                requests.post(self.base_uri + path, files=files)
 
     def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=250, is_blocking=True):
 

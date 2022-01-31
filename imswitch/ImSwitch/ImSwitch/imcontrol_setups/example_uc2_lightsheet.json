@@ -1,8 +1,7 @@
 {
   "positioners": {
     "LightsheetStage": {
-        "managerNameESP32": "ESP32StageManager",
-        "managerName": "GRBLStageManager",
+        "managerName": "ESP32StageManager",
         "managerProperties": {
             "rs232device": "ESP32"
         },
@@ -19,13 +18,6 @@
       }
     }
   },
-  "ESP32": {
-    "managerName": "ESP32Manager",
-    "managerProperties": {
-      "host": "192.168.137.95"
-    }
-  }
-},
 "lasers": {
   "488 Laser": {
     "analogChannel": null,
@@ -71,12 +63,10 @@
   "WidefieldCamera": {
     "analogChannel": null,
     "digitalLine": null,
-    "managerName1": "GXPIPYManager",
-    "managerName": "AVManager",
-    "managerProperties1": "gxipycam",
+    "managerName": "GXPIPYManager",
     "managerProperties": {
       "cameraListIndex": 1,
-      "avcam": {
+      "gxipycam": {
         "exposure": 0,
         "gain": 0,
         "blacklevel": 100,

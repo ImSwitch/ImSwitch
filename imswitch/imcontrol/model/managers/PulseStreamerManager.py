@@ -1,9 +1,3 @@
-"""
-Created on Tue Oct 12 15:05:00 2021
-
-@author: jacopoabramo
-"""
-
 from pulsestreamer import PulseStreamer, OutputState
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
@@ -39,7 +33,7 @@ class PulseStreamerManager(SignalInterface):
             self.__pulseStreamer = PulseStreamer(self.__ipAddress)
             msg = self.__stdOut.getvalue()
             msg = msg.split("\n")
-            [self.__logger.info(m) for m in msg if len(m) > 1]
+            (self.__logger.info(m) for m in msg if len(m) > 1)
         except:
             # todo: fill exception
             pass       
@@ -48,7 +42,7 @@ class PulseStreamerManager(SignalInterface):
         """Function to set a digital channel output level.
 
         Args:
-            channel (int, list): channel/list of channels to set.
+            channel (int): channel to set.
             enable (int, bool): 0/False to disable output, 1/True to enable output.
         """
         if channel is None:
@@ -57,10 +51,7 @@ class PulseStreamerManager(SignalInterface):
             raise PulseStreamerManagerError(f'Target digital channels are out of bounds (min. is 0, max. is {DIG_CH_MAX_NUMBER-1})')
         else:
             if bool(enable):
-                if isinstance(channel, list):
-                    self.__digitalChannels = channel
-                else:
-                    self.__digitalChannels = [channel]
+                self.__digitalChannels = [channel]
             else:
                 self.__digitalChannels = []
         
@@ -68,7 +59,7 @@ class PulseStreamerManager(SignalInterface):
                                                 self.__analogChannels[0], 
                                                 self.__analogChannels[1]))
 
-    def setAnalog(self, channel, voltage, min_val=-1.0, max_val=1.0):
+    def setAnalog(self, channel, voltage, min_val=0.0, max_val=1.0):
         """Function to set an analog channel output level
 
         Args:
@@ -87,20 +78,10 @@ class PulseStreamerManager(SignalInterface):
             else:
                 voltage = max(voltage, min_val)
 
-            # todo: verbose checks, can we make them more elegant?
-            if isinstance(channel, list):
-                if len(channel) < 2:
-                    if channel[0] == 0:
-                        self.__analogChannels[0] = voltage
-                    else:
-                        self.__analogChannels[1] = voltage
-                else:
-                    self.__analogChannels[0] = self.__analogChannels[1] = voltage
+            if channel == 0:
+                self.__analogChannels[0] = voltage
             else:
-                if channel == 0:
-                    self.__analogChannels[0] = voltage
-                else:
-                    self.__analogChannels[1] = voltage
+                self.__analogChannels[1] = voltage
             self.__pulseStreamer.constant(OutputState(self.__digitalChannels, 
                                                 self.__analogChannels[0], 
                                                 self.__analogChannels[1]))
@@ -109,22 +90,16 @@ class PulseStreamerManager(SignalInterface):
         """Checks the validity of the selected channel (or channels)
 
         Args:
-            channel (int, list): channel/list of channels to verify
+            channel (int): channel to verify
             upper_bound (int): upper limit for channel check
 
         Returns:
             bool: True if channels are OK, else False
         """
-        if isinstance(channel, list):
-            if all(ch >= upper_bound for ch in channel):
-                return False
-            else:
-                return True
+        if channel >= upper_bound:
+            return False
         else:
-            if channel >= upper_bound:
-                return False
-            else:
-                return True
+            return True
             
 
 class PulseStreamerManagerError(Exception):
@@ -132,3 +107,20 @@ class PulseStreamerManagerError(Exception):
 
     def __init__(self, message):
         self.message = message
+
+
+# Copyright (C) 2021 ImSwitch developers
+# This file is part of ImSwitch.
+#
+# ImSwitch is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ImSwitch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

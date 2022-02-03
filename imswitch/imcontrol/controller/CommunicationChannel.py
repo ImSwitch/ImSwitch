@@ -133,12 +133,15 @@ class ServerWorker(Worker):
 
     def run(self):
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
-        Pyro5.server.serve(
-            {self._server: self._name},
-            use_ns=False,
-            host=self._host,
-            port=self._port,
-        )
+        try:
+            Pyro5.server.serve(
+                {self._server: self._name},
+                use_ns=False,
+                host=self._host,
+                port=self._port,
+            )
+        except:
+            self.__loger.error("Couldn't start server.")
         self.__logger.debug("Loop Finished")
 
     def stop(self):

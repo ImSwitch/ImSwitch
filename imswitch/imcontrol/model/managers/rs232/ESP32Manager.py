@@ -1,8 +1,3 @@
-"""
-Created on Thu Jan 13 10:23:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
@@ -41,7 +36,7 @@ class ESP32Manager:
         pass 
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,8 +1,3 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
@@ -32,7 +27,7 @@ class ESP32LightSheetManager(LaserManager):
             self._rs232manager._esp32.galvo_amp_y(value)
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

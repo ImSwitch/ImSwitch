@@ -14,9 +14,23 @@ class ESP32Manager:
         self.__logger = initLogger(self, instanceName=name)
         self._settings = rs232Info.managerProperties
         self._name = name
-        self._host = rs232Info.managerProperties['host']
+        try:
+            self._host = rs232Info.managerProperties['host']
+        except:
+            self._host = None
+
+        try:
+            while True:
+                myserial = serial.scanport(x)
+                if "IS_ESP32_UC2" = myserial.read()
+                return myserial
+            self._serialport = rs232Info.managerProperties['serialport']
+        except:
+            self._port = None
+
         # initialize the ESP32 device adapter
-        self._esp32 = ESP32Client(self._host, port=80)
+        self._esp32 = ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
+        # self._esp32 = ESP32Client(self._host, port=80)
 
     def send(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a

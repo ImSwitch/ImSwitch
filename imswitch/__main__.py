@@ -1,6 +1,7 @@
 import importlib
 import traceback
-import cv2 # this solves an issue with the Jetson Nano # https://forums.developer.nvidia.com/t/cv2-cannot-allocate-memory-in-static-tls-block/118709
+
+
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     main()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

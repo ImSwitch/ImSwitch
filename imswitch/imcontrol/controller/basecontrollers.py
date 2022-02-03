@@ -30,7 +30,7 @@ class ImConWidgetController(WidgetController):
     def _receive(self, module, func, params):
         if module == type(self).__name__:
             func = eval("self."+func)
-            func(params)
+            func(*params)
 
     def broadcast(self, module, func, params):
         self._commChannel.sigBroadcast.emit(module, func, params)

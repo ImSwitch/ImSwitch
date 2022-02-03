@@ -10,8 +10,8 @@ class ImSwitchServer(object):
         self.__logger = initLogger(self, tryInheritParent=True)
 
     @Pyro5.server.expose
-    def receive(self, request):
-        self.__logger.info(request)
+    def receive(self, module, func, params):
+        self._channel.sigBroadcast.emit(module, func, params)
 
     @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:

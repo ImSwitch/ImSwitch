@@ -9,7 +9,7 @@ from .PositionerManager import PositionerManager
 
 
 class ESP32StageManager(PositionerManager):
-    SPEED=500
+    SPEED=1000
     PHYS_FACTOR = 1
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):

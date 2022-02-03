@@ -1,6 +1,7 @@
 import importlib
 import traceback
 
+
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController

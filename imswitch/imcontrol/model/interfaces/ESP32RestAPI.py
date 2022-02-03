@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+    #!/usr/bin/env python
 # coding: utf-8
 #%%
 """
@@ -11,18 +11,23 @@ import json
 import time
 import numpy as np
 import logging
-import zeroconf
 import threading
 import json
 import time
 import cv2
 import os
 import socket
+import serial
 
 from tempfile import NamedTemporaryFile
-from imswitch.imcommon.model import initLogger
 
-#import matplotlib.pyplot as plt
+try: 
+    from imswitch.imcommon.model import initLogger
+    IS_IMSWITCH = True
+except: 
+    print("No imswitch available")
+    IS_IMSWITCH = False
+    
 
 ACTION_RUNNING_KEYWORDS = ["idle", "pending", "running"]
 ACTION_OUTPUT_KEYS = ["output", "return"]
@@ -45,40 +50,36 @@ class ESP32Client(object):
     backlash_z = 40
     is_driving = False
     is_sending = False
-
-    def __init__(self, host, port=31950):
-        if isinstance(host, zeroconf.ServiceInfo):
-            # If we have an mDNS ServiceInfo object, try each address
-            # in turn, to see if it works (sometimes you get addresses
-            # that don't work, if your network config is odd).
-            # TODO: figure out why we can get mDNS packets even when
-            # the microscope is unreachable by that IP
-            for addr in host.parsed_addresses():
-                if ":" in addr:
-                    self.host = f"[{addr}]"
-                else:
-                    self.host = addr
-                self.port = host.port
-                try:
-                    self.get_json(self.base_uri)
-                    break
-                except:
-                    logging.info(f"Couldn't connect to {addr}, we'll try another address if possible.")
-        else:
-            self.host = host
-            self.port = port
-
-        # check if host is up
-        self.is_connected = self.isConnected()
-
-        self.__logger = initLogger(self, tryInheritParent=True)
-        self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
-
-
+    
+    is_wifi = False
+    is_serial = False
+    
     is_filter_init = False
     filter_position = 0
 
-    steps_z_last = 0
+    steps_last = 0
+    
+    def __init__(self, host=None, port=31950, serialport=None, baudrate=115200):
+        
+        if host is not None:
+            # use client in wireless mode
+            self.is_wifi = True
+            self.host = host
+            self.port = port
+    
+            # check if host is up
+            self.is_connected = self.isConnected()
+    
+            if IS_IMSWITCH:
+                self.__logger = initLogger(self, tryInheritParent=True)
+                self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
+
+        elif serialport is not None:
+            # use client in wired mode
+            self.serialport = serialport # e.g.'/dev/cu.SLAB_USBtoUART'
+            self.is_serial = True
+            self.serialdevice = serial.Serial(port=serialport, baudrate=baudrate, timeout=1)
+            print("Connected to "+serialport)
 
     def isConnected(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,13 +91,12 @@ class ESP32Client(object):
         except:
             return False
 
-
     @property
     def base_uri(self):
         return f"http://{self.host}:{self.port}"
 
-    def get_json(self, path, wait_for_result=False):
-        if self.is_connected:
+    def get_json_thread(self, path, wait_for_result=False):
+        if self.is_connected and self.is_wifi:
             t = threading.Thread(target=self.get_json_thread, args = (path))
             t.daemon = True
             t.start()
@@ -106,9 +106,9 @@ class ESP32Client(object):
             return None
         return None
 
-    def get_json_thread(self, path):
+    def get_json(self, path):
         """Perform an HTTP GET request and return the JSON response"""
-        if self.is_connected:
+        if self.is_connected and self.is_wifi:
             if not path.startswith("http"):
                 path = self.base_uri + path
             try:
@@ -126,10 +126,18 @@ class ESP32Client(object):
                 self.is_sending = False
                 # not connected
                 return None
+        elif self.is_serial:
+            path = path.replace(self.base_uri,"")
+            message = {"task":path}
+            message = json.dumps(message)
+            self.serialdevice.flushInput()
+            self.serialdevice.flushOutput()    
+            returnmessage = self.serialdevice.write(message.encode(encoding='UTF-8'))
+            return returnmessage
         else:
             return None
 
-    def post_json(self, path, payload={}, headers=None, timeout=1, is_blocking=True):
+    def post_json_thread(self, path, payload={}, headers=None, timeout=1, is_blocking=True):
         tmp_counter = 0
         while self.is_sending:
             time.sleep(.1)
@@ -146,29 +154,51 @@ class ESP32Client(object):
             t.start()
             return None
 
-    def post_json_thread(self, path, payload={}, headers=None, timeout=10):
+    def post_json(self, path, payload={}, headers=None, timeout=10):
         """Make an HTTP POST request and return the JSON response"""
-        print(timeout)
-        if not path.startswith("http"):
-            path = self.base_uri + path
-        if headers is None:
-            headers = self.headers
+        if self.is_connected and self.is_wifi:
+            if not path.startswith("http"):
+                path = self.base_uri + path
+            if headers is None:
+                headers = self.headers
+            try:
+                r = requests.post(path, json=payload, headers=headers,timeout=timeout)
+                r.raise_for_status()
+                r = r.json()
+                self.is_connected = True
+                self.is_sending = False
+                return r
+            except Exception as e:
+                self.__logger.error(e)
+                self.is_connected = False
+                self.is_sending = False
+                # not connected
+                return None
+        elif self.is_serial:
+            payload["task"] = path
+            self.writeSerial(payload)
+            returnmessage = self.readSerial()
+            return returnmessage
 
-        try:
-            r = requests.post(path, json=payload, headers=headers,timeout=timeout)
-            r.raise_for_status()
-            r = r.json()
-            self.is_connected = True
-            self.is_sending = False
-            return r
-        except Exception as e:
-            self.__logger.error(e)
-            self.is_connected = False
-            self.is_sending = False
-            # not connected
-            return None
-
-
+    def writeSerial(self, payload):
+        self.serialdevice.flushInput()
+        self.serialdevice.flushOutput()    
+        if type(payload)==dict:
+            payload = json.dumps(payload)
+        self.serialdevice.write(payload.encode(encoding='UTF-8'))
+        
+    def readSerial(self):
+        returnmessage = ''
+        rmessage = '' 
+        icounter = 0
+        while True:
+            rmessage =  self.serialdevice.readline().decode()
+            returnmessage += rmessage
+            icounter+=1
+            if rmessage.find("//")==0 or icounter>50: break
+        #TODO: Here we need to cast the JSON to som
+        return returnmessage
+       
     def get_temperature(self):
         path = "/temperature"
         r = self.get_json(path)
@@ -190,56 +220,59 @@ class ESP32Client(object):
     def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
             self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
-        payload = {
-            "value": value
-        }
-        path = ''
+        
+        path = '/LASER_act'
         if channel == 'R':
-            path = '/laser_red'
+            LASERid = 1
         if channel == 'G':
-            path = '/laser_green'
+            LASERid = 2
         if channel == 'B':
-            path = '/laser_blue'
-        if channel == 'W':
-            path = '/led_white'
-        if channel == "":
-            path = "/laser"
-        r = self.post_json(path, payload, is_blocking=is_blocking)
+            LASERid = 3
+            
+        payload = {
+            "task": path, 
+            "LASERid": LASERid,
+            "LASERval": value   
+        }
+
+        r = self.post_json(path, payload)
         return r
 
 
-    def move_x(self, steps=100, speed=10, is_blocking=False):
-        r = self.move_stepper(axis="x", steps=steps, speed=speed, timeout=1, backlash=self.backlash_x, is_blocking=is_blocking)
+    def move_x(self, steps=100, speed=1000, is_blocking=False):
+        r = self.move_stepper(axis=1, steps=steps, speed=speed, timeout=1, backlash=self.backlash_x, is_blocking=is_blocking)
         return r
 
-    def move_y(self, steps=100, speed=10, is_blocking=False):
-        r = self.move_stepper(axis="y", steps=steps, speed=speed, timeout=1, backlash=self.backlash_y, is_blocking=is_blocking)
+    def move_y(self, steps=100, speed=1000, is_blocking=False):
+        r = self.move_stepper(axis=2, steps=steps, speed=speed, timeout=1, backlash=self.backlash_y, is_blocking=is_blocking)
         return r
 
-    def move_z(self, steps=100, speed=10, is_blocking=False):
-        r = self.move_stepper(axis="z", steps=steps, speed=speed, timeout=1, backlash=self.backlash_z, is_blocking=is_blocking)
+    def move_z(self, steps=100, speed=1000, is_blocking=False):
+        r = self.move_stepper(axis=3, steps=steps, speed=speed, timeout=1, backlash=self.backlash_z, is_blocking=is_blocking)
         return r
 
-    def move_stepper(self, axis="z", steps=100, speed=10, timeout=1, backlash=20, is_blocking=False):
-        path = '/move_'+axis
-
-
-        if np.abs(steps) < 10:
-            speed = 50
-
+    def move_stepper(self, axis=1, steps=100, speed=10, is_absolute=False, timeout=1, backlash=20, is_blocking=False):
+        
+        path = "/motor_act"
+        
         # detect change in direction
-        if np.sign(self.steps_z_last) != np.sign(steps):
+        if np.sign(self.steps_last) != np.sign(steps):
             # we want to overshoot a bit
             print("Detected position change:")
             steps += (np.sign(steps)*backlash)
             print(steps)
 
         payload = {
-            "steps": np.int(steps),
+            "task":"/motor_act", 
+            "position": np.int(steps),
+            "isblocking": is_blocking,
+            "isabsolute": is_absolute,
             "speed": np.int(speed),
+            "axis": axis
         }
-        self.steps_z_last = steps
-        r = self.post_json(path, payload,timeout=timeout, is_blocking=is_blocking)
+        self.steps_last = steps
+        self.is_driving = True
+        r = self.post_json(path, payload, timeout=timeout)
         self.is_driving = False
         return r
 
@@ -316,9 +349,6 @@ class ESP32Client(object):
         self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
 
 
-
-
-
     def send_ledmatrix(self, led_pattern):
         headers = {"Content-Type":"application/json"}
         path = '/matrix'
@@ -333,13 +363,8 @@ class ESP32Client(object):
             requests.post(self.base_uri + path, data=json.dumps(payload), headers=headers)
 
 
-    def move_filter(self, steps=100, speed=10,timeout=250,is_blocking=False):
-        payload = {
-            "steps": steps,
-            "speed": speed,
-        }
-        path = '/move_filter'
-        r = self.post_json(path, payload,timeout=timeout,is_blocking=is_blocking)
+    def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
+        r = self.move_stepper(axis=axis, steps=steps, speed=speed, timeout=1, backlash=self.backlash_z, is_blocking=is_blocking)
         return r
 
     def galvo_pos_x(self, pos_x = 0, timeout=1):

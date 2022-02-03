@@ -1,12 +1,11 @@
 import importlib
 import traceback
 
-
 import imswitch
-from imswitch.imcommon import prepareApp, launchApp
-from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
-from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
-from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
+from .imcommon import prepareApp, launchApp
+from .imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
+from .imcommon.model import modulesconfigtools, pythontools, initLogger
+from .imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 
 def main():
@@ -74,7 +73,7 @@ if __name__ == '__main__':
     main()
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

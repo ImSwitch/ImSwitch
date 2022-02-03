@@ -191,11 +191,11 @@ class ESP32Client(object):
             payload = json.dumps(payload)
         self.serialdevice.write(payload.encode(encoding='UTF-8'))
         
-    def readSerial(self):
+    def readSerial(self, is_blocking=True):
         returnmessage = ''
         rmessage = '' 
         icounter = 0
-        while True:
+        while is_blocking:
             rmessage =  self.serialdevice.readline().decode()
             returnmessage += rmessage
             icounter+=1

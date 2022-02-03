@@ -1,7 +1,8 @@
 {
   "positioners": {
     "LightsheetStage": {
-        "managerName": "ESP32StageManager",
+        "managerNameESP32": "ESP32StageManager",
+        "managerName": "GRBLStageManager",
         "managerProperties": {
             "rs232device": "ESP32"
         },
@@ -18,6 +19,13 @@
       }
     }
   },
+  "ESP32": {
+    "managerName": "ESP32Manager",
+    "managerProperties": {
+      "host": "192.168.137.95"
+    }
+  }
+},
 "lasers": {
   "488 Laser": {
     "analogChannel": null,

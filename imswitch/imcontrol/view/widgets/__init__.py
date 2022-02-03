@@ -16,4 +16,3 @@ from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .basewidgets import WidgetFactory
 from .WellPlateWidget import WellPlateWidget
-from .LabThingWidget import LabThingWidget

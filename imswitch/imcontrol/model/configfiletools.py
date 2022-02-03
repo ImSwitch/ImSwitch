@@ -55,7 +55,7 @@ _optionsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options
 _options = None
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

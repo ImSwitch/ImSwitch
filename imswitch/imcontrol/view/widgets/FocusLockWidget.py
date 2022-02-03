@@ -103,7 +103,7 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.camDialogButton, 3, 6, 1, 2)
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -59,6 +59,9 @@ class GRBLManager:
         self.self._board.close()
 
 
+
+
+
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #

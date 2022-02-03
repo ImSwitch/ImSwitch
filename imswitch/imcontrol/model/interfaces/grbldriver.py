@@ -2,6 +2,8 @@ import serial
 import time
 import re
 import numpy as np
+import sys
+import glob
 
 
 class GrblDriver:
@@ -140,8 +142,6 @@ class GrblDriver:
             30:1024, # resolution PWM
             31:0, # minimum spindle speed
             32:0# enable laser mode (Has to be 0!)
-
-
         }
         
     def _update_writesettings(self):
@@ -498,6 +498,57 @@ class GrblDriver:
     def close(self):
         """Close GRBL serial connection"""
         self.ser.close()
+
+
+    def serial_ports(self):
+        """ Lists serial port names
+
+            :raises EnvironmentError:
+                On unsupported or unknown platforms
+            :returns:
+                A list of the serial ports available on the system
+        """
+        if sys.platform.startswith('win'):
+            ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+            # this excludes your current terminal "/dev/tty"
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+            ports = glob.glob('/dev/tty.*')
+        else:
+            raise EnvironmentError('Unsupported platform')
+
+        result = []
+        for port in ports:
+            try:
+                s = serial.Serial(port)
+                s.close()
+                result.append(port)
+            except (OSError, serial.SerialException):
+                pass
+        return result
+
+
+
+
+
+if __name__ == "__main__":
+
+    port = "/dev/ttyUSB0"
+    is_home = False 
+    board = GrblDriver(address=port)
+    board.is_debug=True
+    print(board.serial_ports())
+
+    # init the stage
+    board.write_global_config()
+    board.write_all_settings()
+    
+    #board.verify_settings()
+    board.reset_stage()
+    
+    board.move_rel((1000,1000,1000))
+    board.move_rel((-1000,-1000,-1000))
 
 
 # Copyright (C) ImSwitch developers 2021

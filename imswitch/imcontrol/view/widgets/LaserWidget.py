@@ -309,7 +309,7 @@ class LaserModule(QtWidgets.QWidget):
         self.slider.setValue(value)
 
 
-# Copyright (C) 2017 Federico Barabas 2020, 2021 TestaLab
+# Copyright (C) 2017 Federico Barabas 2020-2021 ImSwitch developers
 # This file is part of Tormenta and ImSwitch.
 #
 # Tormenta and ImSwitch are free software: you can redistribute it and/or modify

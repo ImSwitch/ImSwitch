@@ -91,7 +91,7 @@ class ESP32Client(object):
             
             self.__logger.debug(f'Searching for SERIAL devices...')
             try:
-                self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+                self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
             except:
                 # try to find the PORT 
                 _available_ports = serial.tools.list_ports.comports(include_links=False)

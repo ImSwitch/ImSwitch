@@ -1,7 +1,7 @@
 """
 Created on Thu Jan 13 10:23:00 2021
 
-@author: jonatanalvelid
+@author: diederichbenedict
 """
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client

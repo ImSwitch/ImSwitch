@@ -69,6 +69,11 @@ class ESP32Client(object):
     
     def __init__(self, host=None, port=31950, serialport=None, baudrate=115200):
         
+        
+        if IS_IMSWITCH:
+            self.__logger = initLogger(self, tryInheritParent=True)
+                
+        self.__logger.debug(f"Connecting to microscope on {self.serialdevice}")
         if host is not None:
             # use client in wireless mode
             self.is_wifi = True
@@ -77,27 +82,35 @@ class ESP32Client(object):
     
             # check if host is up
             self.is_connected = self.isConnected()
-    
-            if IS_IMSWITCH:
-                self.__logger = initLogger(self, tryInheritParent=True)
-                self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
-
+            self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
+            
         elif serialport is not None:
             # use client in wired mode
             self.serialport = serialport # e.g.'/dev/cu.SLAB_USBtoUART'
             self.is_serial = True
             
-            self.__logger.debug('Searching for SERIAL devices...')
-            _available_ports = serial.tools.list_ports.comports(include_links=False)
-            for iport in _available_ports:
-                try:
-                    self.serialdevice = serial.Serial(port=serialport, baudrate=baudrate, timeout=1)
-                    _state = self.get_state()
-                    _identifier_name = _state["identifier_name"]
-                    if _identifier_name ]== "UC2_Feather":
-                        return
-                except:
-                    self.__logger.debug("Trying out port "+iport.device+" failed")
+            self.__logger.debug(f'Searching for SERIAL devices...')
+            try:
+                self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+            except:
+                # try to find the PORT 
+                _available_ports = serial.tools.list_ports.comports(include_links=False)
+                for iport in _available_ports: 
+                    # list of possible serial ports
+                    self.__logger.debug(iport.device)
+                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA") # TODO: Hardcoded :/ 
+                    if iport.device.startswith(portslist): 
+                        try:
+                            self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+                            _state = self.get_state()
+                            _identifier_name = _state["identifier_name"]
+                            if _identifier_name == "UC2_Feather":
+                                self.serialport = iport.device
+                                return
+                            
+                        except:
+                            self.__logger.debug("Trying out port "+iport.device+" failed")
+            
                 
 
 
@@ -215,7 +228,7 @@ class ESP32Client(object):
             rmessage =  self.serialdevice.readline().decode()
             returnmessage += rmessage
             icounter+=1
-            if rmessage.find("//")==0 or icounter>50: break
+            if rmessage.find("//")==0 or icounter>20: break
         
         # casting to dict
         try:

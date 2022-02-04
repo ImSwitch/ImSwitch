@@ -73,7 +73,7 @@ class ESP32Client(object):
         if IS_IMSWITCH:
             self.__logger = initLogger(self, tryInheritParent=True)
                 
-        self.__logger.debug(f"Connecting to microscope on {self.serialdevice}")
+        
         if host is not None:
             # use client in wireless mode
             self.is_wifi = True

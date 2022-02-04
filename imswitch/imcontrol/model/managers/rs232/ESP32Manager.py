@@ -20,10 +20,6 @@ class ESP32Manager:
             self._host = None
 
         try:
-            while True:
-                myserial = serial.scanport(x)
-                if "IS_ESP32_UC2" = myserial.read()
-                return myserial
             self._serialport = rs232Info.managerProperties['serialport']
         except:
             self._port = None

@@ -14,14 +14,18 @@ import logging
 import threading
 import json
 import time
+import os
+import sys
+
+
 try:
     import cv2
     is_cv2 = True
 except:
     is_cv2 = False
-import os
 import socket
 import serial
+import serial.tools.list_ports
 
 from tempfile import NamedTemporaryFile
 
@@ -82,8 +86,20 @@ class ESP32Client(object):
             # use client in wired mode
             self.serialport = serialport # e.g.'/dev/cu.SLAB_USBtoUART'
             self.is_serial = True
-            self.serialdevice = serial.Serial(port=serialport, baudrate=baudrate, timeout=1)
-            print("Connected to "+serialport)
+            
+            self.__logger.debug('Searching for SERIAL devices...')
+            _available_ports = serial.tools.list_ports.comports(include_links=False)
+            for iport in _available_ports:
+                try:
+                    self.serialdevice = serial.Serial(port=serialport, baudrate=baudrate, timeout=1)
+                    _state = self.get_state()
+                    _identifier_name = _state["identifier_name"]
+                    if _identifier_name ]== "UC2_Feather":
+                        return
+                except:
+                    self.__logger.debug("Trying out port "+iport.device+" failed")
+                
+
 
     def isConnected(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -200,7 +216,13 @@ class ESP32Client(object):
             returnmessage += rmessage
             icounter+=1
             if rmessage.find("//")==0 or icounter>50: break
-        #TODO: Here we need to cast the JSON to som
+        
+        # casting to dict
+        try:
+            returnmessage = json.loads(returnmessage.split("--")[0].split("++")[-1])
+        except:
+            self.__logger.debu("Casting json string from serial to Python dict failed")
+
         return returnmessage
        
     def get_temperature(self):
@@ -217,6 +239,16 @@ class ESP32Client(object):
         }
         path = '/led'
         r = self.post_json(path, payload)
+        return r
+    
+    
+    def get_state(self, timeout=1):
+        path = "/state_get"
+        
+        payload = {
+            "task":path
+        }
+        r = self.post_json(path, payload, timeout=timeout)
         return r
 
 

@@ -6,6 +6,8 @@ try:
     from pymba import Vimba, VimbaException
 except:
     print("No pymba installed..")
+    
+import collections
 
  
 class CameraAV:
@@ -24,8 +26,11 @@ class CameraAV:
 
         self.frame_id_last = 0
 
-        self.PreviewWidthRatio = 4
-        self.PreviewHeightRatio = 4
+        self.PreviewWidthRatio = 2
+        self.PreviewHeightRatio = 2
+        
+        # reserve some space for the framebuffer
+        self.frame_buffer = collections.deque(maxlen=10)
         
         #%% starting the camera thread
         self.vimba = self.startVimba()
@@ -126,7 +131,7 @@ class CameraAV:
         '''
         
     def getLastChunk(self):
-        return self.frame
+        return self.frame_buffer
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
@@ -224,12 +229,13 @@ class CameraAV:
                 self.vimba.shutdown()
                 raise Exception
 
+    self.frame_queu = {}
     def set_frame(self, frame):
         self.frame = frame.buffer_data_numpy()
         self.frame_id = frame.data.frameID
         if self.frame is None:
             self.frame = np.zeros(self.shape)
-            
+        self.frame_buffer.append(self.frame)
     
 
 # Copyright (C) ImSwitch developers 2021

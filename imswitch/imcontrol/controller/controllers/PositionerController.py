@@ -2,6 +2,7 @@ from typing import Dict, List
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
 
 class PositionerController(ImConWidgetController):
@@ -11,6 +12,8 @@ class PositionerController(ImConWidgetController):
         super().__init__(*args, **kwargs)
 
         self.settingAttr = False
+
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
@@ -23,6 +26,8 @@ class PositionerController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigSetXYPosition.connect(self.setXYPosition)
+        self._commChannel.sigSetZPosition.connect(self.setZPosition)
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -72,6 +77,19 @@ class PositionerController(ImConWidgetController):
             self._commChannel.sharedAttrs[(_attrCategory, positionerName, axis, attr)] = value
         finally:
             self.settingAttr = False
+
+    def setXYPosition(self, x, y):
+        positionerX = self.getPositionerNames[0]
+        positionerY = self.getPositionerNames[1]
+        self.__logger.debug("Move {}, axis X, dist {}", positionerX, str(x))
+        self.__logger.debug("Move {}, axis Y, dist {}", positionerY, str(y))
+        #self.move(positionerX, 'X', x)
+        #self.move(positionerY, 'Y', y)
+
+    def setZPosition(self, z):
+        positionerZ = self.getPositionerNames[2]
+        self.__logger.debug("Move {}, axis Z, dist {}", positionerZ, str(z))
+        #self.move(self.getPositionerNames[2], 'Z', z)
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:

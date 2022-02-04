@@ -64,6 +64,11 @@ class CommunicationChannel(SignalInterface):
 
     sigBroadcast = Signal(str, str, object)
 
+    # useq-schema related signals
+    sigSetXYPosition = Signal(float, float)
+    sigSetZPosition = Signal(float)
+    sigSetExposure = Signal(float)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

@@ -234,7 +234,7 @@ class ESP32Client(object):
         try:
             returnmessage = json.loads(returnmessage.split("--")[0].split("++")[-1])
         except:
-            self.__logger.debu("Casting json string from serial to Python dict failed")
+            self.__logger.debug("Casting json string from serial to Python dict failed")
 
         return returnmessage
        

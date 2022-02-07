@@ -2,6 +2,7 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
+from imswitch.imcommon.model import initLogger
 from .basewidgets import Widget
 
 
@@ -18,6 +19,7 @@ class ScanWidget(Widget):
     sigSignalParChanged = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
+        self.__logger = initLogger(self, instanceName='ScanWidget')
         super().__init__(*args, **kwargs)
 
         self.setMinimumHeight(200)
@@ -84,7 +86,10 @@ class ScanWidget(Widget):
 
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
         currentRow = 0
-        self.scanDims = positionerNames
+        self.scanDims = list(positionerNames)
+        self.__logger.debug(positionerNames)
+        self.__logger.debug(type(positionerNames))
+        self.scanDims.append('None')
 
         # Add general buttons
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)

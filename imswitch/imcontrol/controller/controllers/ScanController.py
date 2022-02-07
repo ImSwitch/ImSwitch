@@ -247,11 +247,16 @@ class ScanController(SuperScanController):
         self._analogParameterDict['axis_startpos'] = []
         for i in range(len(self.positioners)):
             positionerName = self._widget.getScanDim(i)
-            size = self._widget.getScanSize(positionerName)
-            stepSize = self._widget.getScanStepSize(positionerName)
-            center = self._widget.getScanCenterPos(positionerName)
-            start = list(self._master.positionersManager[positionerName].position.values())
-
+            if positionerName != 'None':
+                size = self._widget.getScanSize(positionerName)
+                stepSize = self._widget.getScanStepSize(positionerName)
+                center = self._widget.getScanCenterPos(positionerName)
+                start = list(self._master.positionersManager[positionerName].position.values())
+            else:
+                size = 1.0
+                stepSize = 1.0
+                center = 0.0
+                start = [0]
             self._analogParameterDict['target_device'].append(positionerName)
             self._analogParameterDict['axis_length'].append(size)
             self._analogParameterDict['axis_step_size'].append(stepSize)
@@ -348,8 +353,9 @@ class ScanController(SuperScanController):
         positiveDirections = []
         for i in range(len(self.positioners)):
             positionerName = self._analogParameterDict['target_device'][i]
-            positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
-            positiveDirections.append(positiveDirection)
+            if positionerName != 'None':
+                positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
+                positiveDirections.append(positiveDirection)
 
         self.setSharedAttr(_attrCategoryStage, 'positive_direction', positiveDirections)
 

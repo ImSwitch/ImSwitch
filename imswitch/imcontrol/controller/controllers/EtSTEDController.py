@@ -122,6 +122,14 @@ class EtSTEDController(ImConWidgetController):
         if not self.__running:
             self.__param_vals = self.readParams()
             # launch help widget, if visualization mode or validation mode
+            # Check if visualization mode, in case launch help widget
+            if self._widget.visualizeCheck.isChecked():
+                self.__runMode = RunMode.Visualize
+            elif self._widget.validateCheck.isChecked():
+                self.__runMode = RunMode.Validate
+            else:
+                self.__runMode = RunMode.Experiment
+            # check if visualization or validation mode
             if self.__runMode == RunMode.Validate or self.__runMode == RunMode.Visualize:
                 self.launchHelpWidget()
             # load selected coordinate transform
@@ -245,19 +253,22 @@ class EtSTEDController(ImConWidgetController):
         self._commChannel.sigUpdateImage.connect(self.addImgBinStack)
         self._widget.recordBinaryMaskButton.setText('Recording...')
 
-    def addImgBinStack(self, img):
+    def addImgBinStack(self, name, img):
         """ Add image to the stack of images used to calculate a binary mask of the region of interest. """
-        if self.__binary_stack is None:
-            self.__binary_stack = img
-        elif len(self.__binary_stack) == self.__binary_frames:
-            self._commChannel.sigUpdateImage.disconnect(self.addImgBinStack)
-            self._maser.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
-            self.calculateBinaryMask(self.__binary_stack)
-        else:
-            if np.ndim(self.__binary_stack) == 2:
-                self.__binary_stack = np.stack((self.__binary_stack, img))
+        if name == self.detectorFast:
+            if self.__binary_stack is None:
+                self.__binary_stack = img
+            elif len(self.__binary_stack) == self.__binary_frames:
+                self._commChannel.sigUpdateImage.disconnect(self.addImgBinStack)
+                self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
+                self.calculateBinaryMask(self.__binary_stack)
             else:
-                self.__binary_stack = np.concatenate((self.__binary_stack,  [img]), axis=0)
+                if np.ndim(self.__binary_stack) == 2:
+                    self.__binary_stack = np.stack((self.__binary_stack, img))
+                else:
+                    self.__logger.debug(np.shape(img))
+                    self.__logger.debug(np.shape(self.__binary_stack))
+                    self.__binary_stack = np.concatenate((self.__binary_stack,  [img]), axis=0)
 
     def calculateBinaryMask(self, img_stack):
         """ Calculate the binary mask of the region of interest. """
@@ -270,18 +281,18 @@ class EtSTEDController(ImConWidgetController):
 
     def setAnalysisHelpImg(self, img):
         """ Set the preprocessed image in the analysis help widget. """
-        self._widget.analysisHelpWidget.img.setOnlyRenderVisible(True, render=False)
+        #self._widget.analysisHelpWidget.img.setOnlyRenderVisible(True, render=False)
         if self.__frame < self.__init_frames + 3:
             autolevels = True
         else:
             autolevels = False
-        self._widget.analysisHelpWidget.img.setImage(img, autoLevels=autolevels, autoDownsample=False)
+        self._widget.analysisHelpWidget.img.setImage(img, autoLevels=autolevels)
         infotext = f'Min: {np.min(img)}, max: {np.max(img/10000)} (rel. change)'
         self._widget.analysisHelpWidget.info_label.setText(infotext)
         img_shape = np.shape(img)
-        if self.__frame < self.__init_frames + 1:
-            guitools.setBestImageLimits(self._widget.analysisHelpWidget.imgVb, img_shape[1], img_shape[0])
-        self._widget.analysisHelpWidget.img.render()
+        #if self.__frame < self.__init_frames + 1:
+        #    guitools.setBestImageLimits(self._widget.analysisHelpWidget.imgVb, img_shape[1], img_shape[0])
+        #self._widget.analysisHelpWidget.img.render()
 
     def getScanParameters(self):
         """ Load STED scan parameters from the scanning widget. """
@@ -356,6 +367,7 @@ class EtSTEDController(ImConWidgetController):
 
             # run if the initial frames have passed
             if self.__frame > self.__init_frames:
+                self.__logger.debug(self.__runMode)
                 if self.__runMode == RunMode.Visualize:
                     self.updateScatter(coords_detected, clear=True)
                     self.setAnalysisHelpImg(img_ana)

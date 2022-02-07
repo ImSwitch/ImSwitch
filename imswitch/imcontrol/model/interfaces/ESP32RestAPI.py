@@ -98,7 +98,7 @@ class ESP32Client(object):
                 for iport in _available_ports: 
                     # list of possible serial ports
                     self.__logger.debug(iport.device)
-                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA") # TODO: Hardcoded :/ 
+                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb") # TODO: Hardcoded :/ 
                     if iport.device.startswith(portslist): 
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
@@ -110,6 +110,11 @@ class ESP32Client(object):
                             
                         except:
                             self.__logger.debug("Trying out port "+iport.device+" failed")
+                            self.is_connected = False
+        else:
+            self.is_connected = False
+            self.__logger.error("No ESP32 device is connected - check IP or Serial port!")
+            
             
                 
 

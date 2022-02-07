@@ -40,6 +40,10 @@ class ESP32StageManager(PositionerManager):
 
     def closeEvent(self):
         pass
+    
+    def get_abs(self):
+        return self._position
+
 
 
 

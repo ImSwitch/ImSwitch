@@ -140,6 +140,29 @@ class FocusLockInfo:
     frameCroph: int
     """ Height of frame crop. """
 
+@dataclass(frozen=True)
+class AutofocusInfo:
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
+    updateFreq: int
+    """ Update frequency, in milliseconds. """
+
+    frameCropx: int
+    """ Starting X position of frame crop. """
+
+    frameCropy: int
+    """ Starting Y position of frame crop. """
+
+    frameCropw: int
+    """ Width of frame crop. """
+
+    frameCroph: int
+    """ Height of frame crop. """
+
 
 @dataclass(frozen=True)
 class ScanInfo:
@@ -211,6 +234,10 @@ class SetupInfo:
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
+    functionality. """
+    
+    autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
+    """ Autofocus  settings. Required to be defined to use autofocus 
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)

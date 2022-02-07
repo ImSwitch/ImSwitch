@@ -11,7 +11,7 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         dll = CDLL('/usr/lib/libgxiapi.so')
     except OSError:
         print("Cannot find libgxiapi.so.")
-else:
+elif sys.platform == 'win32':
     try:
         if (sys.version_info.major == 3 and sys.version_info.minor >= 8) or (sys.version_info.major > 3):
             dll = WinDLL('GxIAPI.dll', winmode=0)
@@ -19,6 +19,9 @@ else:
             dll = WinDLL('GxIAPI.dll')
     except OSError:
         print('Cannot find GxIAPI.dll.')
+else:
+    dll = None
+    raise Exception("Drivers for Daheng Camera not installed!")
 
 
 # Error code

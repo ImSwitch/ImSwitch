@@ -5,6 +5,7 @@ from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .FFTController import FFTController
 from .FocusLockController import FocusLockController
+from .AufofocusController import AutofocusController
 from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController

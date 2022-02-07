@@ -22,7 +22,7 @@ class ESP32Manager:
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:
-            self._port = None
+            self._serialport = None
 
         # initialize the ESP32 device adapter
         self._esp32 = ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)

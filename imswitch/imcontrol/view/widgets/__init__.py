@@ -5,6 +5,7 @@ from .BeadRecWidget import BeadRecWidget
 from .ConsoleWidget import ConsoleWidget
 from .FFTWidget import FFTWidget
 from .FocusLockWidget import FocusLockWidget
+from .AutofocusWidget import AutofocusWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget

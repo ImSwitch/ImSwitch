@@ -50,6 +50,7 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Dock area
         rightDockInfos = {
+            'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'SLM': _DockInfo(name='SLM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),

@@ -121,6 +121,7 @@ class ProcessDataThread(Thread):
             
             # 1 Grab camera frame
             img = self.grabCameraFrame()
+            self._controller._widget.camImg.setImage(img)
             
             # 2 Gaussian filter the image, to remove noise 
             img_norm = img-np.min(img)

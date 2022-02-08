@@ -48,11 +48,11 @@ class AutofocusController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     # Update focus lock
     def autoFocus(self, rangez=100, resolutionz=10):
-        
+
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
         For every stage-position a camera frame is captured and a contrast curve is determined
-        
+
         '''
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         self.focusPointSignal = self.__processDataThread.update(rangez,resolutionz)
@@ -68,60 +68,60 @@ class ProcessDataThread(Thread):
         return self.latestimg
 
     def update(self, rangez, resolutionz):
-        
+
         allfocusvals = []
         allfocuspositions = []
 
-        # 0 move focus to initial position        
+        # 0 move focus to initial position
         absz_init = self._controller._master.positionersManager[self._controller.positioner].get_abs()[gAxis]
         self._controller._master.positionersManager[self._controller.positioner].move(absz_init-rangez, axis=gAxis)
 
         # store data
         Nz = int(2*rangez//resolutionz)
-        allfocusvals = np.zeros(Nz) 
-        allfocuspositions  = np.zeros(Nz) 
-        allfocusimages = [] 
-        
+        allfocusvals = np.zeros(Nz)
+        allfocuspositions  = np.zeros(Nz)
+        allfocusimages = []
+
         # 1 compute focus for every z position
         for iz in range(Nz):
-            
+
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
             self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis=gAxis)
             time.sleep(T_DEBOUNCE)
             positionz = iz*resolutionz+absz_init
             self._controller._logger.debug(f'Moving focus to {positionz}')
-            
+
             # 1 Grab camera frame
             self._controller._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
             allfocusimages.append(img)
-            
-            # 2 Gaussian filter the image, to remove noise 
+
+            # 2 Gaussian filter the image, to remove noise
             self._controller._logger.debug("Processing Frame")
             img_norm = img-np.min(img)
             img_norm = img_norm/np.mean(img_norm)
             imagearraygf = ndi.filters.gaussian_filter(img_norm, 3)
-            
+
             # 3 compute focus metric
             focusquality = np.mean(ndi.filters.laplace(imagearraygf))
             allfocusvals[iz]=focusquality
             allfocuspositions[iz] = positionz
-            
+
         # display the curve
         self._controller._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
-            
+
         # 4 find maximum focus value and move stage to this position
         allfocusvals=np.array(allfocusvals)
         zindex=np.where(np.max(allfocusvals)==allfocusvals)[0]
         bestzpos = allfocuspositions[np.squeeze(zindex)]
-        
+
          # 5 move focus back to initial position (reduce backlash)
         self._controller._master.positionersManager[self._controller.positioner].move(-Nz*resolutionz, axis=gAxis)
 
         # 6 Move stage to the position with max focus value
         self._controller._logger.debug(f'Moving focus to {zindex*resolutionz}')
         self._controller._master.positionersManager[self._controller.positioner].move(zindex*resolutionz, axis=gAxis)
-        
+
 
         # DEBUG
         allfocusimages=np.array(allfocusimages)
@@ -132,7 +132,7 @@ class ProcessDataThread(Thread):
         np.save('allfocusvals.npy', allfocusvals)
 
         return bestzpos
-        
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

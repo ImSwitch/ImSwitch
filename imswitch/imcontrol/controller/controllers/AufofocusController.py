@@ -9,6 +9,8 @@ from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
+# global axis for Z-positioning - should be Z
+gAxis = "X" # for multicolour it is X
 
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
@@ -22,45 +24,13 @@ class AutofocusController(ImConWidgetController):
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
-        self.updateFreq = self._setupInfo.autofocus.updateFreq
-        self.cropFrame = (self._setupInfo.autofocus.frameCropx,
-                          self._setupInfo.autofocus.frameCropy,
-                          self._setupInfo.autofocus.frameCropw,
-                          self._setupInfo.autofocus.frameCroph)
-        self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        #self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect AutofocusWidget buttons
         self._widget.focusButton.clicked.connect(self.focusButton)
-        #self._widget.positionSetButton.clicked.connect(self.moveZ)
-        #self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
-        #self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
-
-        #self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
-        #self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
-
-        self.setPointSignal = 0
-        self.locked = False
-        self.aboutToLock = False
-        self.zStackVar = False
-        self.twoFociVar = False
-        self.noStepVar = True
-        self.focusTime = 1000 / self.updateFreq  # time between focus signal updates in ms
-        self.lockPosition = 0
-        self.currentPosition = 0
-        self.lastZ = 0
-        self.buffer = 40
-        self.currPoint = 0
-        self.setPointData = np.zeros(self.buffer)
-        self.timeData = np.zeros(self.buffer)
-        self.lockingData = np.zeros(7)
 
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
-
-        #self.timer = Timer()
-        #self.timer.timeout.connect(self.update)
-        #self.timer.start(self.focusTime)
-        #self.startTime = ptime.time()
 
     def __del__(self):
         self.__processDataThread.quit()
@@ -103,8 +73,8 @@ class ProcessDataThread(Thread):
         allfocuspositions = []
 
         # 0 move focus to initial position        
-        absz_init = self._controller._master.positionersManager[self._controller.positioner].get_abs()['Z']
-        self._controller._master.positionersManager[self._controller.positioner].move(absz_init-rangez, axis="Z")
+        absz_init = self._controller._master.positionersManager[self._controller.positioner].get_abs()[gAxis]
+        self._controller._master.positionersManager[self._controller.positioner].move(absz_init-rangez, axis=gAxis)
 
         # store data
         Nz = int(2*rangez//resolutionz)
@@ -115,7 +85,7 @@ class ProcessDataThread(Thread):
         for iz in range(Nz):
             
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
-            self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis="Z")
+            self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis=gAxis)
             positionz = iz*resolutionz+absz_init
             self._controller._logger.debug(f'Moving focus to {positionz}')
             
@@ -142,11 +112,11 @@ class ProcessDataThread(Thread):
         bestzpos = allfocuspositions[np.squeeze(zindex)]
         
          # 5 move focus back to initial position (reduce backlash)
-        self._controller._master.positionersManager[self._controller.positioner].move(-Nz*resolutionz, axis="Z")
+        self._controller._master.positionersManager[self._controller.positioner].move(-Nz*resolutionz, axis=gAxis)
 
         # 6 Move stage to the position with max focus value
         self._controller._logger.debug(f'Moving focus to {zindex*resolutionz}')
-        self._controller._master.positionersManager[self._controller.positioner].move(zindex*resolutionz, axis="Z")
+        self._controller._master.positionersManager[self._controller.positioner].move(zindex*resolutionz, axis=gAxis)
         
         return bestzpos
         

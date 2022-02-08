@@ -119,8 +119,8 @@ class GalvoScanDesigner(ScanDesigner):
 
         # create scan information dictionary
         pixels_line = int(self.axis_length[0] / self.axis_step_size[0])
-        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner and/or image
-        # acquisition managers
+        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner
+        # and/or image acquisition managers
         scanInfoDict = {
             'n_lines': int(self.axis_length[1] / self.axis_step_size[1]),
             'pixels_line': pixels_line,
@@ -168,13 +168,13 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
         # plot scan signal
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.plot(pixel_axis_signal-0.01)
-        plt.plot(line_axis_signal)
-        if axis_count==3:
-            plt.plot(frame_axis_signal)
-        plt.show()
+        #import matplotlib.pyplot as plt
+        #plt.figure()
+        #plt.plot(pixel_axis_signal-0.01)
+        #plt.plot(line_axis_signal)
+        #if axis_count==3:
+        #    plt.plot(frame_axis_signal)
+        #plt.show()
 
         #self.__logger.debug(scanInfoDict)
         self.__logger.debug('Scanning curves generated.')

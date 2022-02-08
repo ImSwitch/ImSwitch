@@ -64,6 +64,8 @@ class CommunicationChannel(SignalInterface):
 
     sigSnapImg = Signal()
 
+    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+
     sigRequestScanParameters = Signal()
 
     sigSendScanParameters = Signal(dict, dict)  # (analogParams, digitalParams)

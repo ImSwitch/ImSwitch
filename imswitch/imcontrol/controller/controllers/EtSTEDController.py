@@ -442,8 +442,50 @@ class EtSTEDController(ImConWidgetController):
             self.__frame += 1
             self.setBusyFalse()
 
-    def initiateSlowScan(self):
-        pass
+    def initiateSlowScan(self, position=[0.0,0.0,0.0]):
+        """ Initiate a STED scan. """
+        dt = datetime.now()
+        time_curr_before = round(dt.microsecond/1000)
+        self.setCenterScanParameter(position)
+        dt = datetime.now()
+        time_curr_mid = round(dt.microsecond/1000)
+        try:
+            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                self._analogParameterDict, self._digitalParameterDict, staticPositioner=False
+            )
+        except:
+            return
+        self.scanInfoDict['throw_delay'] = np.float(self._widget.throw_delay_edit.text())
+        dt = datetime.now()
+        time_curr_after = round(dt.microsecond/1000)
+        print(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
+        print(f'Time for signal curve generation: {time_curr_after-time_curr_mid}')
+
+    def setCenterScanParameter(self, position):
+        """ Set the scanning center from the detected event coordinates. """
+        if self._analogParameterDict:
+            self._analogParameterDict['axis_centerpos'] = []
+            for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
+                if positionerInfo.forScanning:
+                    self._analogParameterDict['target_device'].append(positionerName)
+                    if positionerName != 'None':
+                        center = position[index]
+                        if index==0:
+                            center = self.addFastAxisShift(center)
+                        self._analogParameterDict['axis_centerpos'].append(center)
+                    else:
+                        self._analogParameterDict['axis_centerpos'].append(0.0)
+
+    def addFastAxisShift(self, center):
+        """ Add a scanning-method and microscope-specific shift to the fast axis scanning. 
+        Based on second-degree curved surface fit to 2D-sampling of dwell time and pixel size induced shifts. """
+        dwell_time = float(self._analogParameterDict['sequence_time'])
+        px_size = float(self._analogParameterDict['axis_step_size'][0])
+        C = np.array([-5.06873628, -80.6978355, 104.06976744, -7.12113356, 8.0065076, 0.68227188])  # second order plane fit
+        params = np.array([px_size**2, dwell_time**2, px_size*dwell_time, px_size, dwell_time, 1])  # for use with second order plane fit
+        shift_compensation = np.sum(params*C)
+        center -= shift_compensation
+        return(center)
 
     def updateScatter(self, coords, clear):
         """ Update the scatter plot of detected event coordinates. """
@@ -453,8 +495,16 @@ class EtSTEDController(ImConWidgetController):
                 coord_primary = coords[0,:]
                 self.__scatterPlot.addPoints(x=[coord_primary[0]], y=[coord_primary[1]], pen=pg.mkPen(None), brush='r', symbol='x', size=25)
 
-    def saveValidationImages(self, prev, prev_ana):
-        pass
+    def saveValidationImages(self, prev=True, prev_ana=True):
+        """ Save the widefield validation images of an event detection. """
+        if prev:
+            img = np.array(list(self.__prevFrames))
+            self._commChannel.sigSnapImagePrev.emit(self.detectorFast, img, 'raw')
+            self.__prevFrames.clear()
+        if prev_ana:
+            img = np.array(list(self.__prevAnaFrames))
+            self._commChannel.sigSnapImagePrev.emit(self.detectorFast, img, 'ana')
+            self.__prevAnaFrames.clear()
 
     def pauseFastModality(self):
         """ Pause the fast method, when an event has been detected. """

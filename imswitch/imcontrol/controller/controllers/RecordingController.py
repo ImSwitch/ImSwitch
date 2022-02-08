@@ -44,6 +44,7 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
+        self._commChannel.sigSnapImagePrev.connect(self.snapImagePrev)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
@@ -76,7 +77,7 @@ class RecordingController(ImConWidgetController):
             self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
-        """ Take a snap and save it to a .tiff file. """
+        """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
 
         folder = self._widget.getRecFolder()
@@ -94,6 +95,29 @@ class RecordingController(ImConWidgetController):
                                            SaveMode(self._widget.getSnapSaveMode()),
                                            SaveFormat(self._widget.getSnapSaveFormat()),
                                            attrs)
+
+    def snapImagePrev(self, *args):
+        """ Snap an already taken image and save it to a file. """
+        self.updateRecAttrs(isSnapping=True)
+
+        args = list(args)
+        detectorName = (args[0])
+        image = args[1]
+        suffix = args[2]
+
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        time.sleep(0.01)
+
+        savename = os.path.join(folder, self.getFileName()) + '_snap_' + suffix
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()}
+
+        self._master.recordingManager.snapImagePrev(detectorName,
+                                                    savename,
+                                                    SaveFormat(self._widget.getSnapSaveFormat()),
+                                                    image,
+                                                    attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """

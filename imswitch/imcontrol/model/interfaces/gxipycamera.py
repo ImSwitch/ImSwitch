@@ -18,6 +18,9 @@ class CameraGXIPY:
         self.is_connected = False
         self.is_streaming = False
 
+        # unload CPU? 
+        self.downsamplepreview = 1
+
         # camera parameters
         self.blacklevel = blacklevel
         self.exposure_time = exposure_time
@@ -136,7 +139,7 @@ class CameraGXIPY:
             self.last_frame_preview = self.last_frame_preview[minHeight:maxHeight,minWidth:maxWidth]
             '''
             if is_resize:
-                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None, fx=.25, fy=.25, interpolation= cv2.INTER_LINEAR)
+                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None, fx=self.downsamplepreview, fy=self.downsamplepreview, interpolation= cv2.INTER_LINEAR)
 #                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None(self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
         except:
             pass # TODO: What if the very first frame is corrupt?

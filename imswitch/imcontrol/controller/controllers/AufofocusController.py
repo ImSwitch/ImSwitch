@@ -11,7 +11,7 @@ from ..basecontrollers import ImConWidgetController
 
 # global axis for Z-positioning - should be Z
 gAxis = "X" # for multicolour it is X
-
+T_DEBOUNCE = .2
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
 
@@ -80,19 +80,24 @@ class ProcessDataThread(Thread):
         Nz = int(2*rangez//resolutionz)
         allfocusvals = np.zeros(Nz) 
         allfocuspositions  = np.zeros(Nz) 
+        allfocusimages = [] 
         
         # 1 compute focus for every z position
         for iz in range(Nz):
             
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
             self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis=gAxis)
+            time.sleep(T_DEBOUNCE)
             positionz = iz*resolutionz+absz_init
             self._controller._logger.debug(f'Moving focus to {positionz}')
             
             # 1 Grab camera frame
+            self._controller._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
+            allfocusimages.append(img)
             
             # 2 Gaussian filter the image, to remove noise 
+            self._controller._logger.debug("Processing Frame")
             img_norm = img-np.min(img)
             img_norm = img_norm/np.mean(img_norm)
             imagearraygf = ndi.filters.gaussian_filter(img_norm, 3)
@@ -102,8 +107,8 @@ class ProcessDataThread(Thread):
             allfocusvals[iz]=focusquality
             allfocuspositions[iz] = positionz
             
-            # display the curve
-            self._controller._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
+        # display the curve
+        self._controller._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
             
         # 4 find maximum focus value and move stage to this position
         allfocusvals=np.array(allfocusvals)
@@ -117,6 +122,15 @@ class ProcessDataThread(Thread):
         self._controller._logger.debug(f'Moving focus to {zindex*resolutionz}')
         self._controller._master.positionersManager[self._controller.positioner].move(zindex*resolutionz, axis=gAxis)
         
+
+        # DEBUG
+        allfocusimages=np.array(allfocusimages)
+        np.save('allfocusimages.npy', allfocusimages)
+        import tifffile as tif
+        tif.imsave("allfocusimages.tif", allfocusimages)
+        np.save('allfocuspositions.npy', allfocuspositions)
+        np.save('allfocusvals.npy', allfocusvals)
+
         return bestzpos
         
 # Copyright (C) 2020-2021 ImSwitch developers

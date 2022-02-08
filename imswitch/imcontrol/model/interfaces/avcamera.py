@@ -32,6 +32,7 @@ class CameraAV:
         # reserve some space for the framebuffer
         self.frame_buffer = collections.deque(maxlen=10)
         
+        
         #%% starting the camera thread
         self.vimba = self.startVimba()
         self.openCamera(self.set_frame,is_init=True) # open camera and set callback for frame grabbing
@@ -229,7 +230,6 @@ class CameraAV:
                 self.vimba.shutdown()
                 raise Exception
 
-    self.frame_queu = {}
     def set_frame(self, frame):
         self.frame = frame.buffer_data_numpy()
         self.frame_id = frame.data.frameID

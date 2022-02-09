@@ -64,3 +64,7 @@ target/
 
 # Visual Studio Code
 .vscode/
+
+# Mac Files
+.DS_Store
+**/.DS_Store

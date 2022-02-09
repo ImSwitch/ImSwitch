@@ -23,7 +23,7 @@ def getSystemUserDir():
             return buf.value
         except ImportError:
             pass
-
+        #TOOD: How can we ensure that configuration files are updated automatically.. 
     return os.path.expanduser('~')  # Non-Windows system, return home directory
 
 

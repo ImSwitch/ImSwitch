@@ -139,43 +139,37 @@ class RecordingManager(SignalInterface):
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
 
-    def snapImage(self, detectorNames, savename, saveFormat, image, attrs):
+    def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
         file format and attributes to save to the capture per detector. """
-        images = {}
-        for detectorName in detectorNames:
-            images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame()
+        fileExtension = str(saveFormat.name).lower()
+        filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
 
-        for detectorName in detectorNames:
-            image = images[detectorName]
-            fileExtension = str(saveFormat.name).lower()
-            filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
+        # Write file
+        if saveFormat == SaveFormat.HDF5:
+            file = h5py.File(filePath, 'w')
 
-            # Write file
-            if saveFormat == SaveFormat.HDF5:
-                file = h5py.File(filePath, 'w')
+            shape = image.shape
+            dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
-                shape = image.shape
-                dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+            for key, value in attrs[detectorName].items():
+                self.__logger.debug(key)
+                self.__logger.debug(value)
+                dataset.attrs[key] = value
 
-                for key, value in attrs[detectorName].items():
-                    self.__logger.debug(key)
-                    self.__logger.debug(value)
-                    dataset.attrs[key] = value
+            dataset.attrs['detector_name'] = detectorName
 
-                dataset.attrs['detector_name'] = detectorName
-
-                # For ImageJ compatibility
-                dataset.attrs['element_size_um'] =\
-                    self.__detectorsManager[detectorName].pixelSizeUm
-                
-                dataset[:,:,:] = image
-                #dataset[:,...] = np.moveaxis(image,0,-1)
-                file.close()
-            elif saveFormat == SaveFormat.TIFF:
-                tiff.imwrite(filePath, image)
-            else:
-                raise ValueError(f'Unsupported save format "{saveFormat}"')    
+            # For ImageJ compatibility
+            dataset.attrs['element_size_um'] =\
+                self.__detectorsManager[detectorName].pixelSizeUm
+            
+            dataset[:,:,:] = image
+            #dataset[:,...] = np.moveaxis(image,0,-1)
+            file.close()
+        elif saveFormat == SaveFormat.TIFF:
+            tiff.imwrite(filePath, image)
+        else:
+            raise ValueError(f'Unsupported save format "{saveFormat}"')    
 
 
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):

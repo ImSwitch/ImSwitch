@@ -28,7 +28,7 @@ def getSystemUserDir():
 
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitch')
+_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitchConfig')
 
 
 def initUserFilesIfNeeded():

@@ -7,10 +7,11 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-
+SPEED=1000
+PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
-    SPEED=1000
-    PHYS_FACTOR = 1
+    
+    
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
@@ -23,17 +24,25 @@ class ESP32StageManager(PositionerManager):
 
 
 
-    def move(self, value, axis):
+    def move(self, value=0, axis="X", speed=SPEED, is_blocking = False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking)
+            self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking)
+            self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking)
+            self._position[axis] = self._position[axis] + value
+        elif axis == 'XYZ':
+            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking)
+            self._position["X"] = self._position["X"] + value[0]
+            self._position["Y"] = self._position["Y"] + value[1]
+            self._position["Z"] = self._position["Z"] + value[2]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
-        self._position[axis] = self._position[axis] + value
+        
 
     def setPosition(self, value, axis):
         self._position[axis] = value
@@ -42,7 +51,11 @@ class ESP32StageManager(PositionerManager):
         pass
     
     def get_abs(self):
-        return self._position
+        abspos["X"] = get_position(axis=1)
+        abspos["Y"] = get_position(axis=2)
+        abspos["Z"] = get_position(axis=3)
+        return abspos
+    
 
 
 

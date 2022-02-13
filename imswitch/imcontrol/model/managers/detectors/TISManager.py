@@ -154,6 +154,10 @@ class TISManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
+    
+    def close(self):
+        self.__logger.info(f'Shutting down camera, model: {camera.model}')
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

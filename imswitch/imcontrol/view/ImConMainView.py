@@ -62,7 +62,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
-            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
@@ -103,7 +103,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        self.showMaximized()
+        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)

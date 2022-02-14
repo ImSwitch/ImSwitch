@@ -352,8 +352,8 @@ class ESP32Client(object):
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),
-            "isblocking": is_blocking,
-            "isabsolute": is_absolute,
+            "isblock": is_blocking,
+            "isabs": is_absolute,
             "speed": np.int(speed),
         }
         self.steps_last_0 = steps_0

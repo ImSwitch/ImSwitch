@@ -113,7 +113,7 @@ class ESP32Client(object):
                                 self.is_connected = True
                                 return
 
-                        except Excetion as e:
+                        except Exception as e:
                             if IS_IMSWITCH: 
                                 self.__logger.debug("Trying out port "+iport.device+" failed")
                                 self.__logger.error(e)
@@ -275,6 +275,21 @@ class ESP32Client(object):
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position
+    
+    def set_position(self, axis=1, position=0, timeout=1):
+        path = "/motor_set"
+        if axis=="X": axis=1
+        if axis=="Y": axis=2
+        if axis=="Z": axis=3
+
+        payload = {
+            "task":path,
+            "axis":axis,
+            "currentposition": position
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+ 
+        return r
 
     def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
@@ -298,20 +313,20 @@ class ESP32Client(object):
         return r
 
 
-    def move_x(self, steps=100, speed=1000, is_blocking=False):
-        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking)
+    def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
+        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
-    def move_y(self, steps=100, speed=1000, is_blocking=False):
-        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking)
+    def move_y(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
+        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
-    def move_z(self, steps=100, speed=1000, is_blocking=False):
-        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking)
+    def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
+        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
     
-    def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False):
-        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking)
+    def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False, is_absolute=False):
+        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
     def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False):
@@ -347,22 +362,6 @@ class ESP32Client(object):
         self.is_driving = True
         r = self.post_json(path, payload, timeout=timeout)
         self.is_driving = False
-        return r
-
-    def lens_x(self, value=100):
-        payload = {
-            "lens_value": value,
-        }
-        path = '/lens_x'
-        r = self.post_json(path, payload)
-        return r
-
-    def lens_z(self, value=100):
-        payload = {
-            "lens_value": value,
-        }
-        path = '/lens_z'
-        r = self.post_json(path, payload)
         return r
 
 

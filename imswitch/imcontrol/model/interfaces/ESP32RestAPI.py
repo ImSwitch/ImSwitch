@@ -55,7 +55,7 @@ class ESP32Client(object):
 
     backlash_x = 0
     backlash_y = 0
-    backlash_z = 40
+    backlash_z = 100
     is_driving = False
     is_sending = False
 
@@ -114,7 +114,7 @@ class ESP32Client(object):
                                 return
 
                         except Exception as e:
-                            if IS_IMSWITCH: 
+                            if IS_IMSWITCH:
                                 self.__logger.debug("Trying out port "+iport.device+" failed")
                                 self.__logger.error(e)
                             self.is_connected = False
@@ -275,7 +275,7 @@ class ESP32Client(object):
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position
-    
+
     def set_position(self, axis=1, position=0, timeout=1):
         path = "/motor_set"
         if axis=="X": axis=1
@@ -288,7 +288,7 @@ class ESP32Client(object):
             "currentposition": position
         }
         r = self.post_json(path, payload, timeout=timeout)
- 
+
         return r
 
     def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
@@ -324,7 +324,7 @@ class ESP32Client(object):
     def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
         r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
-    
+
     def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False, is_absolute=False):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
@@ -337,16 +337,16 @@ class ESP32Client(object):
         if np.sign(self.steps_last_0) != np.sign(steps[0]):
             # we want to overshoot a bit
             steps_0 = steps[0] + (np.sign(steps[0])*backlash[0])
-        else: steps_0 = steps[0] 
+        else: steps_0 = steps[0]
         if np.sign(self.steps_last_1) != np.sign(steps[1]):
             # we want to overshoot a bit
             steps_1 =  steps[1] + (np.sign(steps[1])*backlash[1])
-        else: steps_1 = steps[1]     
+        else: steps_1 = steps[1]
         if np.sign(self.steps_last_2) != np.sign(steps[2]):
             # we want to overshoot a bit
-            steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])            
-        else: steps_2 = steps[2] 
-            
+            steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
+        else: steps_2 = steps[2]
+
         payload = {
             "task":"/motor_act",
             "pos1": np.int(steps_0),
@@ -358,7 +358,7 @@ class ESP32Client(object):
         }
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
-        self.steps_last_2 = steps_2                
+        self.steps_last_2 = steps_2
         self.is_driving = True
         r = self.post_json(path, payload, timeout=timeout)
         self.is_driving = False
@@ -440,7 +440,3 @@ class ESP32Client(object):
         steps_xyz[axis-1] = steps
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
-
-
-
-        

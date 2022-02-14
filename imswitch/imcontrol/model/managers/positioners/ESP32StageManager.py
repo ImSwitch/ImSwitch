@@ -10,8 +10,8 @@ from .PositionerManager import PositionerManager
 SPEED=1000
 PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
-    
-    
+
+
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
@@ -21,6 +21,10 @@ class ESP32StageManager(PositionerManager):
             positionerInfo.managerProperties['rs232device']
         ]
         self.__logger = initLogger(self, instanceName=name)
+
+        self.backlash_x = 0
+        self.backlash_y = 0
+        self.backlash_z= 0 # TODO: Map that to the JSON!
 
 
 
@@ -42,7 +46,7 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
-        
+
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness
         self._rs232manager._esp32.set_position(axis=axis, position=value)
@@ -50,12 +54,12 @@ class ESP32StageManager(PositionerManager):
 
     def closeEvent(self):
         pass
-    
-    
+
+
     def get_abs(self, axis=1):
         abspos = self._rs232manager._esp32.get_position(axis=axis)
         return abspos
-    
+
 
 
 

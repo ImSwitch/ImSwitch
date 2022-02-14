@@ -10,7 +10,7 @@ from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
 # global axis for Z-positioning - should be Z
-gAxis = "X" # for multicolour it is X
+gAxis = "Z" 
 T_DEBOUNCE = .2
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
@@ -72,10 +72,10 @@ class ProcessDataThread(Thread):
         allfocusvals = []
         allfocuspositions = []
 
+        
         # 0 move focus to initial position
-        absz_init = self._controller._master.positionersManager[self._controller.positioner].get_abs()[gAxis]
-        self._controller._master.positionersManager[self._controller.positioner].move(absz_init-rangez, axis=gAxis)
-
+        self._controller._master.positionersManager[self._controller.positioner].move(-rangez, axis=gAxis)
+        img = self.grabCameraFrame()     # grab dummy frame?
         # store data
         Nz = int(2*rangez//resolutionz)
         allfocusvals = np.zeros(Nz)
@@ -88,7 +88,7 @@ class ProcessDataThread(Thread):
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
             self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis=gAxis)
             time.sleep(T_DEBOUNCE)
-            positionz = iz*resolutionz+absz_init
+            positionz = iz*resolutionz
             self._controller._logger.debug(f'Moving focus to {positionz}')
 
             # 1 Grab camera frame
@@ -98,9 +98,9 @@ class ProcessDataThread(Thread):
 
             # 2 Gaussian filter the image, to remove noise
             self._controller._logger.debug("Processing Frame")
-            img_norm = img-np.min(img)
-            img_norm = img_norm/np.mean(img_norm)
-            imagearraygf = ndi.filters.gaussian_filter(img_norm, 3)
+            #img_norm = img-np.min(img)
+            #img_norm = img_norm/np.mean(img_norm)
+            imagearraygf = ndi.filters.gaussian_filter(img, 3)
 
             # 3 compute focus metric
             focusquality = np.mean(ndi.filters.laplace(imagearraygf))
@@ -127,7 +127,7 @@ class ProcessDataThread(Thread):
         allfocusimages=np.array(allfocusimages)
         np.save('allfocusimages.npy', allfocusimages)
         import tifffile as tif
-        tif.imsave("allfocusimages.tif", allfocusimages)
+        tif.imsave("llfocusimages.tif", allfocusimages)
         np.save('allfocuspositions.npy', allfocuspositions)
         np.save('allfocusvals.npy', allfocusvals)
 

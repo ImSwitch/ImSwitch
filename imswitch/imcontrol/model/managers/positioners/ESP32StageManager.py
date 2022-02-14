@@ -7,10 +7,11 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-
+SPEED=1000
+PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
-    SPEED=1000
-    PHYS_FACTOR = 1
+
+
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
@@ -27,26 +28,38 @@ class ESP32StageManager(PositionerManager):
 
 
 
-    def move(self, value, axis):
+    def move(self, value=0, axis="X", speed=SPEED, is_blocking = False, is_absolute=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_x)
+            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_y)
+            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_z)
+            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._position[axis] = self._position[axis] + value
+        elif axis == 'XYZ':
+            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._position["X"] = self._position["X"] + value[0]
+            self._position["Y"] = self._position["Y"] + value[1]
+            self._position["Z"] = self._position["Z"] + value[2]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
-        self._position[axis] = self._position[axis] + value
 
     def setPosition(self, value, axis):
+        if value: value+=1 # TODO: Firmware weirdness
+        self._rs232manager._esp32.set_position(axis=axis, position=value)
         self._position[axis] = value
 
     def closeEvent(self):
         pass
-    
-    def get_abs(self):
-        return self._position
+
+
+    def get_abs(self, axis=1):
+        abspos = self._rs232manager._esp32.get_position(axis=axis)
+        return abspos
+
 
 
 

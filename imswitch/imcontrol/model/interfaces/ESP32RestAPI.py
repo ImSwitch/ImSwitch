@@ -55,7 +55,7 @@ class ESP32Client(object):
 
     backlash_x = 0
     backlash_y = 0
-    backlash_z = 40
+    backlash_z = 100
     is_driving = False
     is_sending = False
 
@@ -285,15 +285,21 @@ class ESP32Client(object):
         return r
 
 
-    def move_x(self, steps=100, speed=1000, is_blocking=False):
+    def move_x(self, steps=100, speed=1000, is_blocking=False, backlash = None):
+        if backlash is not None:
+            self.backlash_x = backlash
         r = self.move_stepper(axis=1, steps=steps, speed=speed, timeout=1, backlash=self.backlash_x, is_blocking=is_blocking)
         return r
 
-    def move_y(self, steps=100, speed=1000, is_blocking=False):
+    def move_y(self, steps=100, speed=1000, is_blocking=False, backlash = None):
+        if backlash is not None:
+            self.backlash_y = backlash
         r = self.move_stepper(axis=2, steps=steps, speed=speed, timeout=1, backlash=self.backlash_y, is_blocking=is_blocking)
         return r
 
-    def move_z(self, steps=100, speed=1000, is_blocking=False):
+    def move_z(self, steps=100, speed=1000, is_blocking=False, backlash = None):
+        if backlash is not None:
+            self.backlash_z = backlash
         r = self.move_stepper(axis=3, steps=steps, speed=speed, timeout=1, backlash=self.backlash_z, is_blocking=is_blocking)
         return r
 
@@ -304,10 +310,8 @@ class ESP32Client(object):
         # detect change in direction
         if np.sign(self.steps_last) != np.sign(steps):
             # we want to overshoot a bit
-            print("Detected position change:")
             steps += (np.sign(steps)*backlash)
-            print(steps)
-
+            if IS_IMSWITCH: self.__logger.debug(f"Overshooting {steps}")
         payload = {
             "task":"/motor_act",
             "position": np.int(steps),

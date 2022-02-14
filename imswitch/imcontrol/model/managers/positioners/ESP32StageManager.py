@@ -21,15 +21,19 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
+        self.backlash_x = 0
+        self.backlash_y = 0
+        self.backlash_z= 0 # TODO: Map that to the JSON!
+
 
 
     def move(self, value, axis):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_x(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_x)
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_y(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_y)
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False)
+            self._rs232manager._esp32.move_z(value*self.PHYS_FACTOR, self.SPEED, is_blocking=False, backlash = self.backlash_z)
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return

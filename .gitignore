@@ -68,3 +68,8 @@ target/
 # Mac Files
 .DS_Store
 **/.DS_Store
+allfocusimages.npy
+allfocusvals.npy
+allfocuspositions.npy
+allfocusimages.tif
+llfocusimages.tif

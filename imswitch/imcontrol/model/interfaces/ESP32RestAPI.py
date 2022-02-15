@@ -401,7 +401,7 @@ class ESP32Client(object):
             self.is_filter_init = is_filter_init
 
         if not self.is_filter_init:
-            self.move_filter(steps=-3000, speed=speed, is_blocking=is_blocking)
+            self.move_filter(steps=-4000, speed=speed, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
 
@@ -439,3 +439,5 @@ class ESP32Client(object):
         steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
+
+# %%

@@ -26,20 +26,18 @@ class ESP32StageManager(PositionerManager):
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
 
-
-
     def move(self, value=0, axis="X", speed=SPEED, is_blocking = False, is_absolute=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
-            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=False)
+            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]

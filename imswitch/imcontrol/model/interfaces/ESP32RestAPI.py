@@ -195,7 +195,7 @@ class ESP32Client(object):
             except:
                 is_blocking = True
             self.writeSerial(payload)
-            self.__logger.debug(payload)
+            #self.__logger.debug(payload)
             returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
             #, timeout=timeout)
             return returnmessage
@@ -216,7 +216,7 @@ class ESP32Client(object):
         while is_blocking:
             try:
                 rmessage =  self.serialdevice.readline().decode()
-                self.__logger.debug(rmessage)
+                #self.__logger.debug(rmessage)
                 returnmessage += rmessage
                 if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
             except:
@@ -276,6 +276,7 @@ class ESP32Client(object):
         payload = {
             "task":path,
         }
+        öljkh
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position
@@ -327,7 +328,7 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False):
+    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False, is_enabled=False):
 
         path = "/motor_act"
 
@@ -350,9 +351,10 @@ class ESP32Client(object):
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),
-            "isblock": is_blocking,
-            "isabs": is_absolute,
+            "isblock": int(is_blocking),
+            "isabs": int(is_absolute),
             "speed": np.int(speed),
+            "isen": np.int(is_enabled)
         }
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1

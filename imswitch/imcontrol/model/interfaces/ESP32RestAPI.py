@@ -49,9 +49,9 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
-    filter_pos_r = 1000
-    filter_pos_b = 2000
-    filter_pos_g = 0
+    filter_pos_1 = 2000
+    filter_pos_3 = 4000
+    filter_pos_2 = 0
 
     backlash_x = 0
     backlash_y = 0
@@ -291,21 +291,15 @@ class ESP32Client(object):
 
         return r
 
-    def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
             self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
-        if channel == 'R':
-            LASERid = 1
-        if channel == 'G':
-            LASERid = 2
-        if channel == 'B':
-            LASERid = 3
-
+        
         payload = {
             "task": path,
-            "LASERid": LASERid,
+            "LASERid": channel,
             "LASERval": value
         }
 
@@ -387,14 +381,14 @@ class ESP32Client(object):
             if self.is_connected:
                 requests.post(self.base_uri + path, files=files)
 
-    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=250, is_blocking=True):
+    def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
 
         # switch off all lasers first!
-        self.set_laser("R", 0)
+        self.set_laser(1, 0)
         time.sleep(.1)
-        self.set_laser("G", 0)
+        self.set_laser(2, 0)
         time.sleep(.1)
-        self.set_laser("B", 0)
+        self.set_laser(3, 0)
         time.sleep(.1)
 
         if is_filter_init is not None:
@@ -408,15 +402,15 @@ class ESP32Client(object):
         # measured in steps from zero position
 
         steps = 0
-        if colour=="R":
-            steps = self.filter_pos_r-self.filter_position
-            self.filter_position = self.filter_pos_r
-        if colour=="G":
-            steps = self.filter_pos_g - self.filter_position
-            self.filter_position = self.filter_pos_g
-        if colour=="B":
-            steps = self.filter_pos_b - self.filter_position
-            self.filter_position = self.filter_pos_b
+        if laserid==1:
+            steps = self.filter_pos_1-self.filter_position
+            self.filter_position = self.filter_pos_1
+        if laserid==2:
+            steps = self.filter_pos_2 - self.filter_position
+            self.filter_position = self.filter_pos_2
+        if laserid==3:
+            steps = self.filter_pos_3 - self.filter_position
+            self.filter_position = self.filter_pos_3
 
         self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
 
@@ -436,7 +430,6 @@ class ESP32Client(object):
 
 
     def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
-        steps_xyz = (0,0,0)
-        steps_xyz[axis-1] = steps
+        steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r

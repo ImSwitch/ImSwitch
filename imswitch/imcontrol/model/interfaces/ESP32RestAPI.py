@@ -195,7 +195,8 @@ class ESP32Client(object):
             except:
                 is_blocking = True
             self.writeSerial(payload)
-            returnmessage = self.readSerial(is_blocking=is_blocking)
+            self.__logger.debug(payload)
+            returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
             #, timeout=timeout)
             return returnmessage
         else:
@@ -213,10 +214,13 @@ class ESP32Client(object):
         rmessage = ''
         _time0 = time.time()
         while is_blocking:
-            rmessage =  self.serialdevice.readline().decode()
-            returnmessage += rmessage
-            if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
-
+            try:
+                rmessage =  self.serialdevice.readline().decode()
+                self.__logger.debug(rmessage)
+                returnmessage += rmessage
+                if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
+            except:
+                pass
         # casting to dict
         try:
             returnmessage = json.loads(returnmessage.split("--")[0].split("++")[-1])

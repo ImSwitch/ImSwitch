@@ -103,7 +103,7 @@ class ESP32Client(object):
                     # list of possible serial ports
                     if IS_IMSWITCH: self.__logger.debug(iport.device)
                     portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb") # TODO: Hardcoded :/
-                    if iport.device.startswith(_identifier_name = _state["identifier_name"]):
+                    if iport.device.startswith(portslist):
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
                             _state = self.get_state()

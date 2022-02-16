@@ -73,3 +73,5 @@ allfocusvals.npy
 allfocuspositions.npy
 allfocusimages.tif
 llfocusimages.tif
+
+imswitch/ImSwitch/recordings/

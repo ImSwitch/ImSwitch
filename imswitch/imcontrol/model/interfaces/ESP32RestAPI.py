@@ -49,13 +49,15 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
-    filter_pos_1 = 2000
-    filter_pos_3 = 4000
-    filter_pos_2 = 0
+    microsteppingfactor_filter=16 # run more smoothly
+    filter_pos_1 = 2000*microsteppingfactor_filter
+    filter_pos_3 = 3500*microsteppingfactor_filter
+    filter_pos_2 = 0*microsteppingfactor_filter
+    filter_pos_init = -5000*microsteppingfactor_filter
 
     backlash_x = 0
     backlash_y = 0
-    backlash_z = 100
+    backlash_z = 0
     is_driving = False
     is_sending = False
 
@@ -305,7 +307,8 @@ class ESP32Client(object):
         payload = {
             "task": path,
             "LASERid": channel,
-            "LASERval": value
+            "LASERval": value,
+            "LASERDdespeckle": int(value*.1)
         }
 
         r = self.post_json(path, payload)
@@ -388,20 +391,17 @@ class ESP32Client(object):
                 requests.post(self.base_uri + path, files=files)
 
     def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
-
+        
         # switch off all lasers first!
         self.set_laser(1, 0)
-        time.sleep(.1)
         self.set_laser(2, 0)
-        time.sleep(.1)
         self.set_laser(3, 0)
-        time.sleep(.1)
 
         if is_filter_init is not None:
             self.is_filter_init = is_filter_init
 
         if not self.is_filter_init:
-            self.move_filter(steps=-4000, speed=speed, is_blocking=is_blocking)
+            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
 
@@ -409,7 +409,7 @@ class ESP32Client(object):
 
         steps = 0
         if laserid==1:
-            steps = self.filter_pos_1-self.filter_position
+            steps = self.filter_pos_1 - self.filter_position
             self.filter_position = self.filter_pos_1
         if laserid==2:
             steps = self.filter_pos_2 - self.filter_position
@@ -418,7 +418,7 @@ class ESP32Client(object):
             steps = self.filter_pos_3 - self.filter_position
             self.filter_position = self.filter_pos_3
 
-        self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
+        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
 
     def send_ledmatrix(self, led_pattern):

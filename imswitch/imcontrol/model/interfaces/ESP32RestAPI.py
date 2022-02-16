@@ -49,13 +49,15 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
-    filter_pos_r = 1000
-    filter_pos_b = 2000
-    filter_pos_g = 0
+    microsteppingfactor_filter=16 # run more smoothly
+    filter_pos_1 = 2000*microsteppingfactor_filter
+    filter_pos_3 = 3500*microsteppingfactor_filter
+    filter_pos_2 = 0*microsteppingfactor_filter
+    filter_pos_init = -5000*microsteppingfactor_filter
 
     backlash_x = 0
     backlash_y = 0
-    backlash_z = 100
+    backlash_z = 0
     is_driving = False
     is_sending = False
 
@@ -195,7 +197,7 @@ class ESP32Client(object):
             except:
                 is_blocking = True
             self.writeSerial(payload)
-            self.__logger.debug(payload)
+            #self.__logger.debug(payload)
             returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
             #, timeout=timeout)
             return returnmessage
@@ -216,7 +218,7 @@ class ESP32Client(object):
         while is_blocking:
             try:
                 rmessage =  self.serialdevice.readline().decode()
-                self.__logger.debug(rmessage)
+                #self.__logger.debug(rmessage)
                 returnmessage += rmessage
                 if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
             except:
@@ -276,6 +278,7 @@ class ESP32Client(object):
         payload = {
             "task":path,
         }
+        öljkh
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position
@@ -295,22 +298,17 @@ class ESP32Client(object):
 
         return r
 
-    def set_laser(self, channel='R', value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
             self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
-        if channel == 'R':
-            LASERid = 1
-        if channel == 'G':
-            LASERid = 2
-        if channel == 'B':
-            LASERid = 3
-
+        
         payload = {
             "task": path,
-            "LASERid": LASERid,
-            "LASERval": value
+            "LASERid": channel,
+            "LASERval": value,
+            "LASERDdespeckle": int(value*.1)
         }
 
         r = self.post_json(path, payload)
@@ -333,7 +331,7 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False):
+    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False, is_enabled=False):
 
         path = "/motor_act"
 
@@ -356,9 +354,10 @@ class ESP32Client(object):
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),
-            "isblock": is_blocking,
-            "isabs": is_absolute,
+            "isblock": int(is_blocking),
+            "isabs": int(is_absolute),
             "speed": np.int(speed),
+            "isen": np.int(is_enabled)
         }
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
@@ -391,38 +390,35 @@ class ESP32Client(object):
             if self.is_connected:
                 requests.post(self.base_uri + path, files=files)
 
-    def switch_filter(self, colour="R", timeout=20, is_filter_init=None, speed=250, is_blocking=True):
-
+    def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
+        
         # switch off all lasers first!
-        self.set_laser("R", 0)
-        time.sleep(.1)
-        self.set_laser("G", 0)
-        time.sleep(.1)
-        self.set_laser("B", 0)
-        time.sleep(.1)
+        self.set_laser(1, 0)
+        self.set_laser(2, 0)
+        self.set_laser(3, 0)
 
         if is_filter_init is not None:
             self.is_filter_init = is_filter_init
 
         if not self.is_filter_init:
-            self.move_filter(steps=-3000, speed=speed, is_blocking=is_blocking)
+            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
 
         # measured in steps from zero position
 
         steps = 0
-        if colour=="R":
-            steps = self.filter_pos_r-self.filter_position
-            self.filter_position = self.filter_pos_r
-        if colour=="G":
-            steps = self.filter_pos_g - self.filter_position
-            self.filter_position = self.filter_pos_g
-        if colour=="B":
-            steps = self.filter_pos_b - self.filter_position
-            self.filter_position = self.filter_pos_b
+        if laserid==1:
+            steps = self.filter_pos_1 - self.filter_position
+            self.filter_position = self.filter_pos_1
+        if laserid==2:
+            steps = self.filter_pos_2 - self.filter_position
+            self.filter_position = self.filter_pos_2
+        if laserid==3:
+            steps = self.filter_pos_3 - self.filter_position
+            self.filter_position = self.filter_pos_3
 
-        self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
+        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
 
     def send_ledmatrix(self, led_pattern):
@@ -440,7 +436,8 @@ class ESP32Client(object):
 
 
     def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
-        steps_xyz = (0,0,0)
-        steps_xyz[axis-1] = steps
+        steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
+
+# %%

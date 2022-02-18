@@ -45,18 +45,18 @@ ACTION_OUTPUT_KEYS = ["output", "return"]
 class galvo(object):
     def __init__(self, channel=1, frequency=1000, offset=0, amplitude=1/2, clk_div=0):
         '''
-        defaults:            
+        defaults:
             dac->Setup(DAC_CHANNEL_1, 0, 1, 0, 0, 2);
             dac->Setup(dac_channel, clk_div, frequency, scale, phase, invert);
       '''
         self.channel= channel
         self.frequency = frequency
-        self.offset = offset 
+        self.offset = offset
         self.amplitude = amplitude
         self.clk_div = clk_div
         self.path = "/dac_act"
 
-    
+
     def return_dict(self):
         dict = {
         "task":self.path,
@@ -67,7 +67,7 @@ class galvo(object):
         "clk_div": self.clk_div
         }
         return dict
-    
+
 
 
 class ESP32Client(object):
@@ -76,13 +76,15 @@ class ESP32Client(object):
     getmessage = ""
     is_connected = False
 
-    filter_pos_1 = 2000
-    filter_pos_3 = 4000
-    filter_pos_2 = 0
+    microsteppingfactor_filter=16 # run more smoothly
+    filter_pos_1 = 2000*microsteppingfactor_filter
+    filter_pos_3 = 3500*microsteppingfactor_filter
+    filter_pos_2 = 0*microsteppingfactor_filter
+    filter_pos_init = -5000*microsteppingfactor_filter
 
     backlash_x = 0
     backlash_y = 0
-    backlash_z = 100
+    backlash_z = 0
     is_driving = False
     is_sending = False
 
@@ -102,7 +104,7 @@ class ESP32Client(object):
         if IS_IMSWITCH:
             if IS_IMSWITCH: self.__logger = initLogger(self, tryInheritParent=True)
 
-        
+
         self.galvo1 = galvo(channel=1)
         self.galvo2 = galvo(channel=2)
 
@@ -135,6 +137,7 @@ class ESP32Client(object):
                     # list of possible serial ports
                     if IS_IMSWITCH: self.__logger.debug(iport.device)
                     portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb") # TODO: Hardcoded :/
+                    self.is_connected = True # attempting to initiliaze connection
                     if iport.device.startswith(portslist):
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
@@ -142,7 +145,6 @@ class ESP32Client(object):
                             _identifier_name = _state["identifier_name"]
                             if _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
-                                self.is_connected = True
                                 return
 
                         except Exception as e:
@@ -278,26 +280,26 @@ class ESP32Client(object):
         r = self.post_json(path, payload)
         return r
 
-    
+
     def set_galvo_freq(self, axis=1, value=1000):
         if axis == 1:
             self.galvo1.frequency=value
-            payload = self.gavlo1.return_dict() 
+            payload = self.gavlo1.return_dict()
         else:
             self.galvo2.frequency=value
-            payload = self.galvo2.return_dict() 
-    
+            payload = self.galvo2.return_dict()
+
         r = self.post_json(payload["task"], payload, timeout=1)
         return r
 
     def set_galvo_amp(self, axis=1, value=1000):
         if axis == 1:
             self.galvo1.amplitude=value
-            payload = self.gavlo1.return_dict() 
+            payload = self.gavlo1.return_dict()
         else:
             self.galvo2.amplitude=value
-            payload = self.galvo2.return_dict() 
-    
+            payload = self.galvo2.return_dict()
+
         r = self.post_json(payload["task"], payload, timeout=1)
         return r
 
@@ -313,13 +315,28 @@ class ESP32Client(object):
         r = self.post_json(path, payload, timeout=timeout)
         return r
 
+    def set_direction(self, axis=1, sign=1, timeout=1):
+        path = "/motor_set"
+
+        payload = {
+            "task":path,
+            "axis": axis,
+            "sign": sign
+        }
+
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+
+
     def get_position(self, axis=1, timeout=1):
         path = "/motor_get"
 
         payload = {
             "task":path,
+            "axis": axis
         }
-        öljkh
+
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position
@@ -344,11 +361,12 @@ class ESP32Client(object):
             self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
-        
+
         payload = {
             "task": path,
             "LASERid": channel,
-            "LASERval": value
+            "LASERval": value,
+            "LASERDdespeckle": int(value*.1)
         }
 
         r = self.post_json(path, payload)
@@ -434,17 +452,14 @@ class ESP32Client(object):
 
         # switch off all lasers first!
         self.set_laser(1, 0)
-        time.sleep(.1)
         self.set_laser(2, 0)
-        time.sleep(.1)
         self.set_laser(3, 0)
-        time.sleep(.1)
 
         if is_filter_init is not None:
             self.is_filter_init = is_filter_init
 
         if not self.is_filter_init:
-            self.move_filter(steps=-3000, speed=speed, is_blocking=is_blocking)
+            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
 
@@ -452,7 +467,7 @@ class ESP32Client(object):
 
         steps = 0
         if laserid==1:
-            steps = self.filter_pos_1-self.filter_position
+            steps = self.filter_pos_1 - self.filter_position
             self.filter_position = self.filter_pos_1
         if laserid==2:
             steps = self.filter_pos_2 - self.filter_position
@@ -461,7 +476,7 @@ class ESP32Client(object):
             steps = self.filter_pos_3 - self.filter_position
             self.filter_position = self.filter_pos_3
 
-        self.move_filter(steps=steps, speed=speed, is_blocking=is_blocking)
+        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
 
     def send_ledmatrix(self, led_pattern):
@@ -483,3 +498,4 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
 
+# %%

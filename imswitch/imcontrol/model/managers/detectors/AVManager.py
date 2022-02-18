@@ -59,9 +59,12 @@ class AVManager(DetectorManager):
 
     def getLatestFrame(self, is_save=False):
         if is_save:
-            return self._camera.getLastChunk()
+            return self._camera.getLast(is_resize=False)
         else:
-            return self._camera.getLast()
+            # for preview purpose (speed up GUI?)
+            return self._camera.getLast(is_resize=True)
+            #return self._camera.getLastChunk()
+            
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -93,7 +96,7 @@ class AVManager(DetectorManager):
         super().setBinning(binning) 
         
     def getChunk(self):        
-        return np.expand_dims(self._camera.getLastChunk(),0)
+        return self._camera.getLastChunk()
 
     def flushBuffers(self):
         pass

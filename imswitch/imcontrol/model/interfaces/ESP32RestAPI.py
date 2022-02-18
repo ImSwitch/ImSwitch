@@ -42,6 +42,33 @@ ACTION_OUTPUT_KEYS = ["output", "return"]
 
 
 
+class galvo(object):
+    def __init__(self, channel=1, frequency=1000, offset=0, amplitude=1/2, clk_div=0):
+        '''
+        defaults:            
+            dac->Setup(DAC_CHANNEL_1, 0, 1, 0, 0, 2);
+            dac->Setup(dac_channel, clk_div, frequency, scale, phase, invert);
+      '''
+        self.channel= channel
+        self.frequency = frequency
+        self.offset = offset 
+        self.amplitude = amplitude
+        self.clk_div = clk_div
+        self.path = "/dac_act"
+
+    
+    def return_dict(self):
+        dict = {
+        "task":self.path,
+        "dac_channel": self.channel, # 1 or 2
+        "frequency": self.frequency,
+        "offset": self.offset,
+        "amplitude":self.amplitude,
+        "clk_div": self.clk_div
+        }
+        return dict
+    
+
 
 class ESP32Client(object):
     # headers = {'ESP32-version': '*'}
@@ -74,6 +101,11 @@ class ESP32Client(object):
 
         if IS_IMSWITCH:
             if IS_IMSWITCH: self.__logger = initLogger(self, tryInheritParent=True)
+
+        
+        self.galvo1 = galvo(channel=1)
+        self.galvo2 = galvo(channel=2)
+
 
 
         if host is not None:
@@ -246,20 +278,31 @@ class ESP32Client(object):
         r = self.post_json(path, payload)
         return r
 
-
-    def set_galvo(self, dac_channel=1, frequency=1, offset=0, amplitude=0, clk_div=1000, timeout=1):
-
-        path = "/dac_act"
-        payload = {
-            "task":path,
-            "dac_channel": dac_channel, # 1 or 2
-            "frequency":frequency,
-            "offset":offset,
-            "amplitude":amplitude,
-            "clk_div": clk_div
-        }
-        r = self.post_json(path, payload, timeout=timeout)
+    
+    def set_galvo_freq(self, axis=1, value=1000):
+        if axis == 1:
+            self.galvo1.frequency=value
+            payload = self.gavlo1.return_dict() 
+        else:
+            self.galvo2.frequency=value
+            payload = self.galvo2.return_dict() 
+    
+        r = self.post_json(payload["task"], payload, timeout=1)
         return r
+
+    def set_galvo_amp(self, axis=1, value=1000):
+        if axis == 1:
+            self.galvo1.amplitude=value
+            payload = self.gavlo1.return_dict() 
+        else:
+            self.galvo2.amplitude=value
+            payload = self.galvo2.return_dict() 
+    
+        r = self.post_json(payload["task"], payload, timeout=1)
+        return r
+
+
+
 
     def get_state(self, timeout=1):
         path = "/state_get"
@@ -439,3 +482,4 @@ class ESP32Client(object):
         steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
+

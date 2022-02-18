@@ -115,24 +115,23 @@ class CameraAV:
         self.pixelformat = format
         self.set_value("PixelFormat", format)
         
-    def getLast(self):
+    def getLast(self, is_resize=True):
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        return cv2.resize(self.frame, dsize=None, 
-                fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, 
-                interpolation= cv2.INTER_LINEAR)
-                
-        '''
-        if self.frame_id_last != self.camera.frame_id:
-            return  self.camera.last_frame_preview
+        if is_resize:
+            return cv2.resize(self.frame, dsize=None, 
+                    fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, 
+                    interpolation= cv2.INTER_LINEAR)
         else:
-            self.__logger.debug("No new camera frame available")
-            return None
-        '''
-        
+            return self.frame
+
     def getLastChunk(self):
-        return self.frame_buffer
+        chunk = np.array(self.frame_buffer)
+        self.frame_buffer.clear()
+        self.__logger.debug("Buffer: "+str(chunk.shape))
+        return chunk
+        
        
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size

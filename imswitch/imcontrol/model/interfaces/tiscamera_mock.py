@@ -60,6 +60,8 @@ class MockCameraTIS:
     def openPropertiesGUI(self):
         pass
 
+    def close(self):
+        pass
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

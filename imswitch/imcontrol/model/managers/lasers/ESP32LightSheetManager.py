@@ -27,9 +27,15 @@ class ESP32LightSheetManager(LaserManager):
         Sends a RS232 command to the laser specifying the new intensity.
         """
         if self.__axis == "pos_x":
-            self._rs232manager._esp32.galvo_pos_x(value)
+            self._rs232manager._esp32.set_galvo_freq(axis=0, value=value)
+        elif self.__axis == "pos_y":
+            self._rs232manager._esp32.set_galvo_freq(axis=1, value=value)
+        elif self.__axis == "amp_x":
+            self._rs232manager._esp32.set_galvo_amp(axis=0, value=value)
         elif self.__axis == "amp_y":
-            self._rs232manager._esp32.galvo_amp_y(value)
+            self._rs232manager._esp32.set_galvo_amp(axis=0, value=value)
+
+            
 
 
 # Copyright (C) 2020, 2021 TestaLab

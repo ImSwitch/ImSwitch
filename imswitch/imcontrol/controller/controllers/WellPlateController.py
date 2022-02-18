@@ -25,9 +25,9 @@ class WellPlateController(ImConWidgetController):
 '''
         self._widget.add_plate_view()
         self.connect_wells()
-        self.setDirections(self, directions=(1,-1,1))
         
         self.wellplatescannner = WellplateScanner(self.positioner, platepattern="96")
+        self.wellplatescannner.setDirections(directions=(1,-1,1))
 
     @APIExport()
     def moveToXY(self, wellID):
@@ -99,9 +99,10 @@ class WellplateScanner():
         self.is_moving = False
         
     def setDirections(self, directions=(1,1,1)):
-        self.set_direction(axis=1, sign=directions[0])
-        self.set_direction(axis=2, sign=directions[1])        
-        self.set_direction(axis=3, sign=directions[2])
+        if(0):
+            self.positioner.set_direction(axis=1, sign=directions[0])
+            self.positioner.set_direction(axis=2, sign=directions[1])        
+            self.positioner.set_direction(axis=3, sign=directions[2])
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

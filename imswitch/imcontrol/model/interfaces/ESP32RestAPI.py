@@ -271,14 +271,29 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
+    
+    def set_direction(self, axis=1, sign=1, timeout=1):
+        path = "/motor_set"
+        
+        payload = {
+            "task":path,
+            "axis": axis,
+            "sign": sign
+        }
+        
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+
 
     def get_position(self, axis=1, timeout=1):
         path = "/motor_get"
 
         payload = {
             "task":path,
+            "axis": axis
         }
-        öljkh
+        
         r = self.post_json(path, payload, timeout=timeout)
         _position = r["position"]
         return _position

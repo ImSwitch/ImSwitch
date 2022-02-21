@@ -55,13 +55,14 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'Scan': _DockInfo(name='Scan', yPosition=2),
+            'TriggerScope': _DockInfo(name='TriggerScope', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
-            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

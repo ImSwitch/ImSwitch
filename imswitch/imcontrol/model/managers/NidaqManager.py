@@ -1,7 +1,3 @@
-"""
-Created on Tue Apr  7 16:46:33 2020
-
-"""
 import operator
 import traceback
 import warnings

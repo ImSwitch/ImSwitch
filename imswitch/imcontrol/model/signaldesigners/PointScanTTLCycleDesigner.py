@@ -39,6 +39,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             # pixels_line = scanInfoDict['pixels_line']
             samples_line = scanInfoDict['scan_samples_line']
             samples_total = scanInfoDict['scan_samples_total']
+            samples_frame = scanInfoDict['scan_samples_frame']
 
             # extra ON to make sure the laser is on at the start and end of the line (due to
             # rise/fall time) (if it is ON there initially)
@@ -51,6 +52,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             zeropad_settling = scanInfoDict['scan_throw_settling']
             zeropad_start = scanInfoDict['scan_throw_startzero']
             zeropad_startacc = scanInfoDict['scan_throw_startacc']
+            zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
             # zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
             # Tile and pad TTL signals according to fast axis scan parameters
             for i, target in enumerate(targets):
@@ -81,7 +83,23 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)
                 # pad start settling
                 signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)
-                signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)  # pad initpos
+                # pad initpos
+                signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)
+                # pad finalpos
+                signal = np.append(signal, np.zeros(zeropad_finalpos, dtype='bool'))
+                # pad to frame len 
+                zeropad_toframelen = samples_frame - len(signal)
+                signal = np.append(signal, np.zeros(zeropad_toframelen, dtype='bool'))
+
+                # repeat for third axis if applicable
+                axis_count = len(scanInfoDict['img_dims'])
+                if axis_count==3:
+                    n_frames = scanInfoDict['img_dims'][2]
+                    signal_tot = signal
+                    for i in range(n_frames-1):
+                        signal_tot = np.concatenate((signal_tot, signal))
+                    signal = signal_tot
+
                 signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zeros
                 zeropad_end = samples_total - len(signal)
                 # pad end zeros to same length as analog scanning
@@ -90,6 +108,12 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 signal_dict[target] = signal
 
             # return signal_dict, which contains bool arrays for each target
+            #import matplotlib.pyplot as plt
+            #plt.figure(1)
+            #for i, target in enumerate(targets):
+            #    plt.plot(signal_dict[target])
+            #plt.show()
+
             return signal_dict
 
     def __make_signal_stationary(self, parameterDict, sample_rate):

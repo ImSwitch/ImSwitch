@@ -36,7 +36,7 @@ class ScanWidget(Widget):
         self.saveScanBtn = guitools.BetterPushButton('Save Scan')
         self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
-        self.seqTimePar = QtWidgets.QLineEdit('10')  # ms
+        self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
         self.nrFramesPar = QtWidgets.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtWidgets.QLabel(str(self.scanDuration))
@@ -133,11 +133,11 @@ class ScanWidget(Widget):
 
         for index, positionerName in enumerate(positionerNames):
             # Scan params
-            sizePar = QtWidgets.QLineEdit('2')
+            sizePar = QtWidgets.QLineEdit('5')
             self.scanPar['size' + positionerName] = sizePar
-            stepSizePar = QtWidgets.QLineEdit('1')
+            stepSizePar = QtWidgets.QLineEdit('0.1')
             self.scanPar['stepSize' + positionerName] = stepSizePar
-            numPixelsPar = QtWidgets.QLineEdit('2')
+            numPixelsPar = QtWidgets.QLineEdit('50')
             numPixelsPar.setEnabled(False)
             self.scanPar['pixels' + positionerName] = numPixelsPar
             centerPar = QtWidgets.QLineEdit('0')

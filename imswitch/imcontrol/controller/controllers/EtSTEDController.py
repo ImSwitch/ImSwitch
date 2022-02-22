@@ -499,11 +499,11 @@ class EtSTEDController(ImConWidgetController):
         """ Save the widefield validation images of an event detection. """
         if prev:
             img = np.array(list(self.__prevFrames))
-            self._commChannel.sigSnapImagePrev.emit(self.detectorFast, img, 'raw')
+            self._commChannel.sigSnapImgPrev.emit(self.detectorFast, img, 'raw')
             self.__prevFrames.clear()
         if prev_ana:
             img = np.array(list(self.__prevAnaFrames))
-            self._commChannel.sigSnapImagePrev.emit(self.detectorFast, img, 'ana')
+            self._commChannel.sigSnapImgPrev.emit(self.detectorFast, img, 'ana')
             self.__prevAnaFrames.clear()
 
     def pauseFastModality(self):

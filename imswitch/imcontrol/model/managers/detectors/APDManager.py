@@ -97,7 +97,7 @@ class APDManager(DetectorManager):
         return self._image
 
     def updateImage(self, line_pixels, line_count, frame):
-        self._image[frame, -(line_count + 1), :] = line_pixels
+        self._image[frame, -(line_count + 1), :] = line_pixels[::-1]
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
             self.updateLatestFrame(False)
@@ -160,7 +160,7 @@ class ScanWorker(Worker):
         #       the galvos, can we measure this somehow?
         # self._throw_delay = int(13*20e6/100e3)
         # self._throw_delay = 15200
-        self._throw_delay = 25
+        self._throw_delay = 50  # should be larger the smaller the faster the scanning/smaller the FOV?
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
 
@@ -182,54 +182,64 @@ class ScanWorker(Worker):
             self._manager._detection_samplerate
         )
 
-        # # det samples per fast axis period
+        # det samples per fast axis period
         self._samples_period = round(
             scanInfoDict['scan_samples_period'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # det samples in total signal
+        # det samples in total signal
         self._samples_total = round(
             scanInfoDict['scan_samples_total'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to the starting zero-padding
+        # samples to throw due to the starting zero-padding
         self._throw_startzero = round(
             scanInfoDict['scan_throw_startzero'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to smooth inital positioning time
+        # samples to throw due to smooth inital positioning time
         self._throw_initpos = round(
             scanInfoDict['scan_throw_initpos'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to settling time
+        # samples to throw due to settling time
         self._throw_settling = round(
             scanInfoDict['scan_throw_settling'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to starting acceleration
+        # samples to throw due to starting acceleration
         self._throw_startacc = round(
             scanInfoDict['scan_throw_startacc'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        # # samples to throw due to smooth final positioning time
+        # samples to throw due to smooth final positioning time
         self._throw_finalpos = round(
             scanInfoDict['scan_throw_finalpos'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
-        self._samples_throw_init = (self._throw_startzero + self._throw_initpos + self._throw_settling +
-                               self._throw_startacc + self._throw_delay)
+        # scan samples in a frame (period)
+        self._samples_frame = round(
+            scanInfoDict['scan_samples_frame'] * scanInfoDict['scan_time_step'] *
+            self._manager._detection_samplerate
+        )
+
+        self._samples_throw_init = self._throw_startzero
         
-        # # samples to throw due to smooth between frames transitioning:
-        # time for finalpos + time for initpos + time for starting acceleration
-        self._throw_between_frames = self._throw_finalpos + self._throw_initpos + self._throw_startacc
+        # samples to throw due to smooth between frames transitioning
+        self._throw_init_frame = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._throw_delay)
+
+        #self.__logger.debug(f'samples line: {self._samples_line}')
+        #self.__logger.debug(f'samples period: {self._samples_period}')
+        #self.__logger.debug(f'samples frame: {self._samples_frame}')
+        #self.__logger.debug(f'init throw: {self._samples_throw_init}')
+        #self.__logger.debug(f'init frame throw: {self._throw_init_frame}')
 
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
@@ -255,9 +265,12 @@ class ScanWorker(Worker):
         throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw_init)
         #self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
         self._last_value = throwdata[-1]
-        # self._alldata += len(throwdata)
+        self._alldata += len(throwdata)
         for i in range(self._n_frames):
             #self.__logger.debug(f'Currently data for frame {i+1} out of {self._n_frames}')
+            throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_init_frame)
+            self._last_value = throwdata[-1]
+            self._alldata += len(throwdata)
             while self._line_counter < self._n_lines:
                 if self.scanning:
                     #self.__logger.debug(f'sw1: line {self._line_counter} started')
@@ -270,7 +283,7 @@ class ScanWorker(Worker):
                         # flyback
                         data = self._manager._nidaqManager.readInputTask(self._name,
                                                                         self._samples_period)
-                    # self._alldata += len(data)
+                    self._alldata += len(data)
                     # galvo-sensor-data reading
                     subtractionArray = np.concatenate(([self._last_value], data[:-1]))
                     self._last_value = data[-1]
@@ -290,16 +303,22 @@ class ScanWorker(Worker):
                 else:
                     self.__logger.debug('Close data reading: not scanning any longer')
                     self.close()
+            #throwdata = self._manager._nidaqManager.readInputTask(
+            #    self._name, self._throw_between_frames
+            #)
+            throwdatalen = self._throw_startzero + self._samples_frame * (i+1) - self._alldata
             throwdata = self._manager._nidaqManager.readInputTask(
-                self._name, self._throw_between_frames
+                self._name, throwdatalen
             )
+            self._alldata += len(throwdata)
             self._line_counter = 0
+            #self.__logger.debug(f'length of all data after frame {i+1}: {self._alldata}')
 
         throwdata = self._manager._nidaqManager.readInputTask(
             self._name, self._throw_startzero + self._throw_finalpos
         )
-        # self._alldata += len(throwdata)
-        # self.__logger.debug(f'sw fin: {self._name}: length of all data so far: {self._alldata}')
+        self._alldata += len(throwdata)
+        #self.__logger.debug(f'length of all data, end: {self._alldata}')
         self.acqDoneSignal.emit()
         # self.__logger.debug(self._name)
         # self.close()

@@ -317,7 +317,7 @@ class NidaqManager(SignalInterface):
                     detSampsInScan = int(
                         len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * (1e6/100e3)
                     )
-                    self.__logger.debug(f'Total detection samples in scan: {detSampsInScan}')
+                    #self.__logger.debug(f'Total detection samples in scan: {detSampsInScan}')
                     self.timerTask = self.__createChanCOTask(
                         'TimerTask', channel=self.__timerCounterChannel, rate=1e6,
                         sampsInScan=detSampsInScan, starttrig=self.__startTrigger,

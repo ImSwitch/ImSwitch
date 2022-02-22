@@ -107,7 +107,7 @@ class GalvoScanDesigner(ScanDesigner):
         # third axis signal
         if axis_count==3:
             n_frames = int(self.axis_length[2] / self.axis_step_size[2])
-            pixel_pos, line_pos = self.__zero_pad_samelen(pixel_pos, line_pos)
+            pixel_pos, line_pos, pad_betweenframes = self.__zero_pad_samelen(pixel_pos, line_pos)
             pixel_pos, line_pos, len_frame = self.__repeat_frames(pixel_pos, line_pos, n_frames)
             frame_pos = self.__generate_step_scan_stepwise(len_frame, n_frames, self.axis_devs_order[2])
 
@@ -157,6 +157,8 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
             scanInfoDict['minmax_frame_axis'] = [min(frame_axis_signal), max(frame_axis_signal)]
             scanInfoDict['img_dims'] = [pixels_line, n_lines, n_frames]
+            scanInfoDict['scan_throw_zeropos_betweenframes'] = pad_betweenframes
+            scanInfoDict['scan_samples_frame'] = len_frame
         else:
             sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
                         parameterDict['target_device'][1]: line_axis_signal}
@@ -169,7 +171,7 @@ class GalvoScanDesigner(ScanDesigner):
 
         # plot scan signal
         #import matplotlib.pyplot as plt
-        #plt.figure()
+        #plt.figure(1)
         #plt.plot(pixel_axis_signal-0.01)
         #plt.plot(line_axis_signal)
         #if axis_count==3:
@@ -535,7 +537,7 @@ class GalvoScanDesigner(ScanDesigner):
                 padlen1 = padlen1 + np.array([0, abs(lendiff)])
         pos_ret1 = np.pad(pos1, padlen1, 'constant', constant_values=0)
         pos_ret2 = np.pad(pos2, padlen2, 'constant', constant_values=0)
-        return pos_ret1, pos_ret2
+        return pos_ret1, pos_ret2, lendiff
 
     def __zero_padding_2axis(self, parameterDict, pos1, pos2):
         """ Pad zeros to the end of two scanning curves, for initial and final

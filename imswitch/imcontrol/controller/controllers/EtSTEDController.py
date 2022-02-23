@@ -64,17 +64,29 @@ class EtSTEDController(ImConWidgetController):
         
         if self._setupInfo.etSTED is None:
             return
-        
+
+        self._widget.setFastDetectorList(
+            self._master.detectorsManager.execOnAll(lambda c: c.name,
+                                                    condition=lambda c: c.forAcquisition)
+        )
+        self._widget.setSlowDetectorList(
+            self._master.detectorsManager.execOnAll(lambda c: c.name,
+                                                    condition=lambda c: c.forAcquisition)
+        )
+        self._widget.setFastLaserList(
+            self._master.lasersManager.execOnAll(lambda c: c.name)
+        )
+
         self.__logger = initLogger(self)
         self.__logger.debug('Initializing')
 
         sys.path.append(self._widget.analysisDir)
         sys.path.append(self._widget.transformDir)
 
-        # detectors for fast (widefield) and slow (sted) imaging, and laser for fast
-        self.detectorFast = self._setupInfo.etSTED.detectorFast
-        self.detectorSlow = self._setupInfo.etSTED.detectorSlow
-        self.laserFast = self._setupInfo.etSTED.laserFast
+        ## detectors for fast (widefield) and slow (sted) imaging, and laser for fast
+        #self.detectorFast = self._setupInfo.etSTED.detectorFast
+        #self.detectorSlow = self._setupInfo.etSTED.detectorSlow
+        #self.laserFast = self._setupInfo.etSTED.laserFast
 
         # create a helper controller for the coordinate transform pop-out widget
         self.__coordTransformHelper = EtSTEDCoordTransformHelper(self, self._widget.coordTransformWidget, _logsDir)
@@ -120,6 +132,12 @@ class EtSTEDController(ImConWidgetController):
     def initiate(self):
         """ Initiate or stop an etSTED experiment. """
         if not self.__running:
+            detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
+            self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
+            #detectorSlowIdx = self._widget.slowImgDetectorsPar.currentIndex()
+            #self.detectorSlow = self._widget.slowImgDetectors[detectorSlowIdx]
+            laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
+            self.laserFast = self._widget.fastImgLasers[laserFastIdx]
             self.__param_vals = self.readParams()
             # launch help widget, if visualization mode or validation mode
             # Check if visualization mode, in case launch help widget
@@ -163,12 +181,12 @@ class EtSTEDController(ImConWidgetController):
         else:
             self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
         self._commChannel.sigSnapImg.emit()
-        if self.timelapse:
-            #TODO: change this to actually perform a timelapse scan from the rec widget instead, if that is instant now when saving to a single file?
-            if self.timelapse_frame < self.timelapse_frames_tot:
-                self.timelapse_frame += 1
-                self.runSlowScan()
-                return
+        #if self.timelapse:
+        #    #TODO: change this to actually perform a timelapse scan from the rec widget instead, if that is instant now when saving to a single file?
+        #    if self.timelapse_frame < self.timelapse_frames_tot:
+        #        self.timelapse_frame += 1
+        #        self.runSlowScan()
+        #        return
         self.endRecording()
         self.continueFastModality()
         self.__frame = 0
@@ -253,9 +271,9 @@ class EtSTEDController(ImConWidgetController):
         self._commChannel.sigUpdateImage.connect(self.addImgBinStack)
         self._widget.recordBinaryMaskButton.setText('Recording...')
 
-    def addImgBinStack(self, name, img):
+    def addImgBinStack(self, detectorName, img, init, isCurrentDetector):
         """ Add image to the stack of images used to calculate a binary mask of the region of interest. """
-        if name == self.detectorFast:
+        if detectorName == self.detectorFast:
             if self.__binary_stack is None:
                 self.__binary_stack = img
             elif len(self.__binary_stack) == self.__binary_frames:
@@ -349,98 +367,99 @@ class EtSTEDController(ImConWidgetController):
         self.__validating = False
         self.__frame = 0
 
-    def runPipeline(self, img):
-        """ Run the analyis pipeline, called after every fast method frame. """
-        if not self.__busy:
-            t_sincelastcall = millis() - self.t_call
-            self.t_call = millis()
-            self.setDetLogLine("pipeline_rep_period", str(t_sincelastcall))
-            self.setDetLogLine("pipeline_start", datetime.now().strftime('%Ss%fus'))
-            self.__busy = True
-            t_pre = millis()
-            if self.__runMode == RunMode.Visualize or self.__runMode == RunMode.Validate:
-                coords_detected, img_ana = self.pipeline(img, self.__bkg, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), *self.__param_vals)
-            else:
-                coords_detected = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, *self.__param_vals)
-            t_post = millis()
-            self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
+    def runPipeline(self, detectorName, img, init, isCurrentDetector):
+        """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
+        if detectorName == self.detectorFast:
+            if not self.__busy:
+                t_sincelastcall = millis() - self.t_call
+                self.t_call = millis()
+                self.setDetLogLine("pipeline_rep_period", str(t_sincelastcall))
+                self.setDetLogLine("pipeline_start", datetime.now().strftime('%Ss%fus'))
+                self.__busy = True
+                t_pre = millis()
+                if self.__runMode == RunMode.Visualize or self.__runMode == RunMode.Validate:
+                    coords_detected, img_ana = self.pipeline(img, self.__bkg, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), *self.__param_vals)
+                else:
+                    coords_detected = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, *self.__param_vals)
+                t_post = millis()
+                self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
 
-            # run if the initial frames have passed
-            if self.__frame > self.__init_frames:
-                self.__logger.debug(self.__runMode)
-                if self.__runMode == RunMode.Visualize:
-                    self.updateScatter(coords_detected, clear=True)
-                    self.setAnalysisHelpImg(img_ana)
-                elif self.__runMode == RunMode.Validate:
-                    self.updateScatter(coords_detected, clear=True)
-                    self.setAnalysisHelpImg(img_ana)
-                    if self.__validating:
-                        if self.__validationFrames > 5:
-                            self.saveValidationImages(prev=True, prev_ana=True)
-                            self.pauseFastModality()
-                            self.endRecording()
-                            self.continueFastModality()
-                            self.__frame = 0
-                            self.__validating = False
-                        self.__validationFrames += 1
+                # run if the initial frames have passed
+                if self.__frame > self.__init_frames:
+                    self.__logger.debug(self.__runMode)
+                    if self.__runMode == RunMode.Visualize:
+                        self.updateScatter(coords_detected, clear=True)
+                        self.setAnalysisHelpImg(img_ana)
+                    elif self.__runMode == RunMode.Validate:
+                        self.updateScatter(coords_detected, clear=True)
+                        self.setAnalysisHelpImg(img_ana)
+                        if self.__validating:
+                            if self.__validationFrames > 5:
+                                self.saveValidationImages(prev=True, prev_ana=True)
+                                self.pauseFastModality()
+                                self.endRecording()
+                                self.continueFastModality()
+                                self.__frame = 0
+                                self.__validating = False
+                            self.__validationFrames += 1
+                        elif coords_detected.size != 0:
+                            # if some events where detected
+                            if np.size(coords_detected) > 2:
+                                coords_scan = coords_detected[0,:]
+                            else:
+                                coords_scan = coords_detected[0]
+                            # log detected center coordinate
+                            self.setDetLogLine("fastscan_x_center", coords_scan[0])
+                            self.setDetLogLine("fastscan_y_center", coords_scan[1])
+                            # log all detected coordinates
+                            if np.size(coords_detected) > 2:
+                                for i in range(np.size(coords_detected,0)):
+                                    self.setDetLogLine("det_coord_x_", coords_detected[i,0], i)
+                                    self.setDetLogLine("det_coord_y_", coords_detected[i,1], i)
+                            self.__validating = True
+                            self.__validationFrames = 0
                     elif coords_detected.size != 0:
-                        # if some events where detected
+                        # if some events were detected
                         if np.size(coords_detected) > 2:
                             coords_scan = coords_detected[0,:]
                         else:
                             coords_scan = coords_detected[0]
-                        # log detected center coordinate
+                        self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
+                        self.pauseFastModality()
+                        self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
+                        coords_center_scan = self.transform(coords_scan, self.__transformCoeffs)
                         self.setDetLogLine("fastscan_x_center", coords_scan[0])
                         self.setDetLogLine("fastscan_y_center", coords_scan[1])
-                        # log all detected coordinates
+                        self.setDetLogLine("slowscan_x_center", coords_center_scan[0])
+                        self.setDetLogLine("slowscan_y_center", coords_center_scan[1])
+                        self.setDetLogLine("scan_initiate", datetime.now().strftime('%Ss%fus'))
+                        # save all detected coordinates in the log
                         if np.size(coords_detected) > 2:
                             for i in range(np.size(coords_detected,0)):
-                                self.setDetLogLine("det_coord_x_", coords_detected[i,0], i)
-                                self.setDetLogLine("det_coord_y_", coords_detected[i,1], i)
-                        self.__validating = True
-                        self.__validationFrames = 0
-                elif coords_detected.size != 0:
-                    # if some events were detected
-                    if np.size(coords_detected) > 2:
-                        coords_scan = coords_detected[0,:]
-                    else:
-                        coords_scan = coords_detected[0]
-                    self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
-                    self.pauseFastModality()
-                    self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
-                    coords_center_scan = self.transform(coords_scan, self.__transformCoeffs)
-                    self.setDetLogLine("fastscan_x_center", coords_scan[0])
-                    self.setDetLogLine("fastscan_y_center", coords_scan[1])
-                    self.setDetLogLine("slowscan_x_center", coords_center_scan[0])
-                    self.setDetLogLine("slowscan_y_center", coords_center_scan[1])
-                    self.setDetLogLine("scan_initiate", datetime.now().strftime('%Ss%fus'))
-                    # save all detected coordinates in the log
-                    if np.size(coords_detected) > 2:
-                        for i in range(np.size(coords_detected,0)):
-                            self.setDetLogLine("det_coord_x_", coords_scan[0], i)
-                            self.setDetLogLine("det_coord_y_", coords_scan[1], i)
-                    
-                    self.timelapse = self._widget.timelapseScanCheck.isChecked()
-                    if self.timelapse:
-                        self.timelapse_frame = 0
-                        self.timelapse_frame_tot = int(self._widget.timelapse_reps_edit.text())
-                    
-                    self.initiateSlowScan(position=coords_center_scan)
-                    self.runSlowScan()
+                                self.setDetLogLine("det_coord_x_", coords_scan[0], i)
+                                self.setDetLogLine("det_coord_y_", coords_scan[1], i)
+                        
+                        self.timelapse = self._widget.timelapseScanCheck.isChecked()
+                        if self.timelapse:
+                            self.timelapse_frame = 0
+                            self.timelapse_frame_tot = int(self._widget.timelapse_reps_edit.text())
+                        
+                        self.initiateSlowScan(position=coords_center_scan)
+                        self.runSlowScan()
 
-                    # update scatter plot of event coordinates in the shown fast method image
-                    self.updateScatter(coords_detected, clear=True)
+                        # update scatter plot of event coordinates in the shown fast method image
+                        self.updateScatter(coords_detected, clear=True)
 
-                    self.__prevFrames.append(img)
-                    self.saveValidationImages(prev=True, prev_ana=False)
-                    self.__busy = False
-                    return
-            self.__bkg = img
-            self.__prevFrames.append(img)
-            if self.__runMode == RunMode.Validate:
-                self.__prevAnaFrames.append(img_ana)
-            self.__frame += 1
-            self.setBusyFalse()
+                        self.__prevFrames.append(img)
+                        self.saveValidationImages(prev=True, prev_ana=False)
+                        self.__busy = False
+                        return
+                self.__bkg = img
+                self.__prevFrames.append(img)
+                if self.__runMode == RunMode.Validate:
+                    self.__prevAnaFrames.append(img_ana)
+                self.__frame += 1
+                self.setBusyFalse()
 
     def initiateSlowScan(self, position=[0.0,0.0,0.0]):
         """ Initiate a STED scan. """

@@ -50,6 +50,16 @@ class EtSTEDWidget(Widget):
         self.transformPipelinePar.addItems(self.transformPipelines)
         self.transformPipelinePar.setCurrentIndex(0)
 
+        # add all forAcquisition detectors in a dropdown list, for being the fastImgDetector (widefield)
+        self.fastImgDetectors = list()
+        self.fastImgDetectorsPar = QtGui.QComboBox()
+        ## add all forAcquisition detectors in a dropdown list, for being the slowImgDetector (STED)
+        #self.slowImgDetectors = list()
+        #self.slowImgDetectorsPar = QtGui.QComboBox()
+        # add all lasers in a dropdown list, for being the fastImgLaser (widefield)
+        self.fastImgLasers = list()
+        self.fastImgLasersPar = QtGui.QComboBox()
+
         self.param_names = list()
         self.param_edits = list()
 
@@ -130,6 +140,11 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.update_period_label, currentRow+1, 4)
         self.grid.addWidget(self.update_period_edit, currentRow+1, 5)
 
+        currentRow += 2
+
+        self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
+        self.grid.addWidget(self.fastImgLasersPar, currentRow, 4)
+        #self.grid.addWidget(self.slowImgDetectorsPar, currentRow, 4)
 
     def initParamFields(self, parameters: dict):
         """ Initialized etSTED widget parameter fields. """
@@ -158,6 +173,24 @@ class EtSTEDWidget(Widget):
                 self.param_edits.append(param_edit)
 
                 currentRow += 1
+
+    def setFastDetectorList(self, detectorNames):
+        for detectorName in detectorNames.items():
+            self.fastImgDetectors.append(detectorName)
+        self.fastImgDetectorsPar.addItems(self.fastImgDetectors)
+        self.fastImgDetectorsPar.setCurrentIndex(0)
+
+    #def setSlowDetectorList(self, detectorNames):
+    #    for detectorName in detectorNames.items():
+    #        self.slowImgDetectors.append(detectorName)
+    #    self.slowImgDetectorsPar.addItems(self.slowImgDetectors)
+    #    self.slowImgDetectorsPar.setCurrentIndex(0)
+        
+    def setFastLaserList(self, laserNames):
+        for laserName in laserNames.items():
+            self.fastImgLasers.append(laserName)
+        self.fastImgLasersPar.addItems(self.fastImgLasers)
+        self.fastImgLasersPar.setCurrentIndex(0)
 
     def launchHelpWidget(self, widget, init=True):
         """ Launch the help widget. """

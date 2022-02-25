@@ -20,13 +20,11 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
-        self.triggerScopeManager = TriggerScopeManager(self.__setupInfo)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
             'pulseStreamerManager' : self.pulseStreamerManager,
-            'rs232sManager': self.rs232sManager,
-            'TriggerScopeManager': self.triggerScopeManager
+            'rs232sManager': self.rs232sManager
         }
 
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
@@ -56,6 +54,8 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        
+        self.triggerScopeManager = TriggerScopeManager(self.__setupInfo.daq, **lowLevelManagers)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

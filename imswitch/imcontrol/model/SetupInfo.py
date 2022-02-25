@@ -181,8 +181,16 @@ class PulseStreamerInfo:
     ipAddress: Optional[str] = None
     """ IP address of Pulse Streamer hardware. """
 
+@dataclass(frozen=True)
+class DaqInfo:
+    managerName: str
+    """ Data acquisition manager name. """
+
+    managerProperties: Dict[str, Any]
+    """ Properties to be read by the manager. """
     
 @dataclass_json(undefined=Undefined.INCLUDE)
+
 @dataclass
 class SetupInfo:
     # default_factory seems to be required for the field to show up in autodocs for deriving classes
@@ -222,6 +230,9 @@ class SetupInfo:
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
 
+    daq: DaqInfo = field(default_factory=DaqInfo)
+    """ DAQ settings. """
+    
     _catchAll: CatchAll = None
 
     def getDevice(self, deviceName):

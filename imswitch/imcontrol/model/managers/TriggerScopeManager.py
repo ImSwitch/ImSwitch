@@ -32,7 +32,8 @@ class TriggerScopeManager(SignalInterface):
         
         for x in range(params["length"]):
             command = str(((dacArray[x]+5)/10)*65535) + "," + str(ttlArray[x])
-            self.send(command, 0)
+            self.send(command, 1)
+            self.__logger.debug("Send: " + str(x))
             
         self.send("STARTWAVE", 0)
 

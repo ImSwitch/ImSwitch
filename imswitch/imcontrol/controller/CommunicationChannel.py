@@ -1,9 +1,11 @@
 from typing import Mapping
 
 import numpy as np
+import Pyro5.server
 
-from imswitch.imcommon.framework import Signal, SignalInterface
-from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
+from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
+from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes, initLogger
+from .ImSwitchServer import ImSwitchServer
 
 
 class CommunicationChannel(SignalInterface):
@@ -60,14 +62,27 @@ class CommunicationChannel(SignalInterface):
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
 
+    sigBroadcast = Signal(str, str, object)
+
+    # useq-schema related signals
+    sigSetXYPosition = Signal(float, float)
+    sigSetZPosition = Signal(float)
+    sigSetExposure = Signal(float)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs
 
-    def __init__(self, main):
+    def __init__(self, main, setupInfo):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
+        self._serverWorker = ServerWorker(self, setupInfo)
+        self._thread = Thread()
+        self._serverWorker.moveToThread(self._thread)
+        self._thread.started.connect(self._serverWorker.run)
+        self._thread.finished.connect(self._serverWorker.stop)
+        self._thread.start()
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -111,7 +126,33 @@ class CommunicationChannel(SignalInterface):
         })
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+class ServerWorker(Worker):
+    def __init__(self, channel, setupInfo):
+        super().__init__()
+        self.__logger = initLogger(self, tryInheritParent=True)
+        self._server = ImSwitchServer(channel)
+        self._channel = channel
+        self._name = setupInfo.pyroServerInfo.name
+        self._host = setupInfo.pyroServerInfo.host
+        self._port = setupInfo.pyroServerInfo.port
+
+    def run(self):
+        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+        try:
+            Pyro5.server.serve(
+                {self._server: self._name},
+                use_ns=False,
+                host=self._host,
+                port=self._port,
+            )
+        except:
+            self.__loger.error("Couldn't start server.")
+        self.__logger.debug("Loop Finished")
+
+    def stop(self):
+        self._daemon.shutdown()
+
+# Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

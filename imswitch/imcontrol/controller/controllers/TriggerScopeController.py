@@ -8,14 +8,11 @@ class TriggerScopeController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self)
-
         # Connect PositionerWidget signals
         self._widget.sigRunToggled.connect(self.run)
 
     def run(self):
-        self.__logger.debug("Run button clicked")
-        self.__logger.debug(self._master.triggerScopeManager.send("*", 1))
+        self._master.triggerScopeManager.send("*", 1)
         params = self.setParams(1, 1, 1, 0, 0, 1)
         self._master.triggerScopeManager.run_wave([1], [1], params)
         #self._master.triggerScopeManager.sendAnalog(1, 1)

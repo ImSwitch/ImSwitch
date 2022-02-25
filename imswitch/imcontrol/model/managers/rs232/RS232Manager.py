@@ -33,7 +33,10 @@ class RS232Manager:
     def send(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
-        return self._rs232port.query(arg)
+        try:
+            return self._rs232port.query(arg)
+        except:
+            pass
 
     def finalize(self):
         self._rs232port.close()

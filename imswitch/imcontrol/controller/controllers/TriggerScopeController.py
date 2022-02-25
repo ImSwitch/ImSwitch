@@ -12,9 +12,21 @@ class TriggerScopeController(ImConWidgetController):
 
         # Connect PositionerWidget signals
         self._widget.sigRunToggled.connect(self.run)
-        self._master.triggerScopeManager.test()
 
     def run(self):
         self.__logger.debug("Run button clicked")
-        self._master.triggerScopeManager.run()
+        self.__logger.debug(self._master.triggerScopeManager.send("*", 1))
+        params = self.setParams(1, 1, 1, 0, 0, 1)
+        self._master.triggerScopeManager.run_wave([1], [1], params)
+        #self._master.triggerScopeManager.sendAnalog(1, 1)
+        
+    def setParams(self, analogLine, digitalLine, length, trigMode, delay, reps):
+        params = dict([])
+        params["analogLine"] = analogLine
+        params["digitalLine"] = digitalLine
+        params["length"] = length
+        params["trigMode"] = trigMode
+        params["delay"] = delay
+        params["reps"] = reps
+        return params
 

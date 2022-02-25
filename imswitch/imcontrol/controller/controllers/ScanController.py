@@ -1,5 +1,6 @@
 import configparser
 import functools
+from logging import exception
 import os
 import traceback
 from ast import literal_eval
@@ -197,10 +198,15 @@ class ScanController(SuperScanController):
 
             if recalculateSignals or self.signalDict is None or self.scanInfoDict is None:
                 self.getParameters()
-                self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                    self._analogParameterDict, self._digitalParameterDict,
-                    staticPositioner=self._widget.isContLaserMode()
-                )
+                try:
+                    self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                        self._analogParameterDict, self._digitalParameterDict,
+                        staticPositioner=self._widget.isContLaserMode()
+                    )
+                except TypeError:
+                    self.__logger.error(traceback.format_exc())
+                    self.isRunning = False
+                    return
 
             self.doingNonFinalPartOfSequence = isNonFinalPartOfSequence
 

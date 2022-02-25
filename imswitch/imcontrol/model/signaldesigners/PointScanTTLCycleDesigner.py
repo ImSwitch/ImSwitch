@@ -88,7 +88,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # pad finalpos
                 signal = np.append(signal, np.zeros(zeropad_finalpos, dtype='bool'))
                 # pad to frame len 
-                zeropad_toframelen = samples_frame - len(signal)
+                zeropad_toframelen = np.max([0, samples_frame - len(signal)])
                 signal = np.append(signal, np.zeros(zeropad_toframelen, dtype='bool'))
 
                 # repeat for third axis if applicable

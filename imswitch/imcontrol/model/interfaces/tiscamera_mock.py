@@ -5,13 +5,13 @@ from scipy.stats import multivariate_normal
 class MockCameraTIS:
     def __init__(self):
         self.properties = {
-            'image_height': 1024,
-            'image_width': 1280,
+            'image_height': 800,
+            'image_width': 800,
             'subarray_vpos': 0,
             'subarray_hpos': 0,
             'exposure_time': 0.1,
-            'subarray_vsize': 1024,
-            'subarray_hsize': 1280
+            'subarray_vsize': 800,
+            'subarray_hsize': 800
         }
         self.exposure = 100
         self.gain = 1

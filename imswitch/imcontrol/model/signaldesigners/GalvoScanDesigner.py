@@ -27,15 +27,36 @@ class GalvoScanDesigner(ScanDesigner):
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
         """ Check analog scanning signals so that they are inside the range of
         the acceptable scanner voltages."""
-        pixel_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
-        line_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+        #pixel_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
+        #line_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+        #frame_positioner = setupInfo.positioners[scanParameters['target_device'][2]]
 
-        if (scanInfo['minmax_pixel_axis'][0] < pixel_positioner.managerProperties['minVolt'] or
-                scanInfo['minmax_pixel_axis'][1] > pixel_positioner.managerProperties['maxVolt']):
-            return False
-        if (scanInfo['minmax_line_axis'][0] < line_positioner.managerProperties['minVolt'] or
-                scanInfo['minmax_line_axis'][1] > line_positioner.managerProperties['maxVolt']):
-            return False
+        #if (scanInfo['minmax_pixel_axis'][0] < pixel_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_pixel_axis'][1] > pixel_positioner.managerProperties['maxVolt']):
+        #    return False
+        #if (scanInfo['minmax_line_axis'][0] < line_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_line_axis'][1] > line_positioner.managerProperties['maxVolt']):
+        #    return False
+        #if (scanInfo['minmax_frame_axis'][0] < frame_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_frame_axis'][1] > frame_positioner.managerProperties['maxVolt']):
+        #    return False
+        #return True
+
+        for i in range(len(scanParameters['target_device'])):
+            if scanParameters['target_device'][i] != 'None':
+                positioner = setupInfo.positioners[scanParameters['target_device'][i]]
+                minv = positioner.managerProperties['minVolt']
+                maxv = positioner.managerProperties['maxVolt']
+                #self.__logger.debug(positioner)
+                #self.__logger.debug([minv, maxv])
+                if i == 0: 
+                    param = 'minmax_pixel_axis'
+                elif i == 1:
+                    param = 'minmax_line_axis'
+                elif i == 2:
+                    param = 'minmax_frame_axis'
+                if (scanInfo[param][0] < minv or scanInfo[param][1] > maxv):
+                    return False
         return True
 
     def make_signal(self, parameterDict, setupInfo):
@@ -103,12 +124,14 @@ class GalvoScanDesigner(ScanDesigner):
         # line (middle) axis signal
         axis_reps = self.__get_axis_reps(pixel_pos, samples_period, n_lines)
         line_pos = self.__generate_step_scan(axis_reps, vel_max[1], acc_max[1])
+        len_frame = len(pixel_pos)
 
         # third axis signal
         if axis_count==3:
             n_frames = int(self.axis_length[2] / self.axis_step_size[2])
             pixel_pos, line_pos, pad_betweenframes = self.__zero_pad_samelen(pixel_pos, line_pos)
-            pixel_pos, line_pos, len_frame = self.__repeat_frames(pixel_pos, line_pos, n_frames)
+            len_frame = len(pixel_pos)
+            pixel_pos, line_pos = self.__repeat_frames(pixel_pos, line_pos, n_frames)
             frame_pos = self.__generate_step_scan_stepwise(len_frame, n_frames, self.axis_devs_order[2])
 
         # pad all signals
@@ -127,6 +150,7 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_samples_line': int(
                 round(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep)
             ),
+            'scan_samples_frame': len_frame,
             'scan_samples_total': len(pixel_axis_signal),
             'scan_throw_startzero': int(round(self.__paddingtime / self.__timestep)),
             'scan_throw_initpos': self._samples_initpos,
@@ -158,7 +182,6 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['minmax_frame_axis'] = [min(frame_axis_signal), max(frame_axis_signal)]
             scanInfoDict['img_dims'] = [pixels_line, n_lines, n_frames]
             scanInfoDict['scan_throw_zeropos_betweenframes'] = pad_betweenframes
-            scanInfoDict['scan_samples_frame'] = len_frame
         else:
             sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
                         parameterDict['target_device'][1]: line_axis_signal}
@@ -178,7 +201,7 @@ class GalvoScanDesigner(ScanDesigner):
         #    plt.plot(frame_axis_signal)
         #plt.show()
 
-        #self.__logger.debug(scanInfoDict)
+        self.__logger.debug(scanInfoDict)
         self.__logger.debug('Scanning curves generated.')
         return sig_dict, axis_positions, scanInfoDict
 
@@ -228,13 +251,12 @@ class GalvoScanDesigner(ScanDesigner):
 
     def __repeat_frames(self, pixel_pos, line_pos, n_frames):
         """ Repeat pixel and line positions over multiple frames. """
-        len_frame = len(pixel_pos)
         pixel_pos_ret = pixel_pos
         line_pos_ret = line_pos
         for i in range(n_frames-1):
             pixel_pos_ret = np.concatenate((pixel_pos_ret, pixel_pos))
             line_pos_ret = np.concatenate((line_pos_ret, line_pos))
-        return pixel_pos_ret, line_pos_ret, len_frame
+        return pixel_pos_ret, line_pos_ret
 
     def __generate_step_scan_stepwise(self, len_frame, n_frames, axis_name):
         """ Generate a step-function scanning curve, with initial smooth

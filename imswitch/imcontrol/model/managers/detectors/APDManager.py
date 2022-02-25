@@ -100,7 +100,7 @@ class APDManager(DetectorManager):
         self._image[frame, -(line_count + 1), :] = line_pixels[::-1]
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
-            self.updateLatestFrame(False)
+            self.updateLatestFrame(True)
 
     def initiateImage(self, lines, pixels_line, frames=1):
         if np.shape(self._image) != (frames, lines, pixels_line):

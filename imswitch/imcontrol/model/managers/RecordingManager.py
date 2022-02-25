@@ -114,9 +114,12 @@ class RecordingManager(SignalInterface):
                         dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                         for key, value in attrs[detectorName].items():
-                            self.__logger.debug(key)
-                            self.__logger.debug(value)
-                            dataset.attrs[key] = value
+                            #self.__logger.debug(key)
+                            #self.__logger.debug(value)
+                            try:
+                                dataset.attrs[key] = value
+                            except:
+                                self.__logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
 
                         dataset.attrs['detector_name'] = detectorName
 
@@ -153,9 +156,12 @@ class RecordingManager(SignalInterface):
             dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
             for key, value in attrs[detectorName].items():
-                self.__logger.debug(key)
-                self.__logger.debug(value)
-                dataset.attrs[key] = value
+                #self.__logger.debug(key)
+                #self.__logger.debug(value)
+                try:
+                    dataset.attrs[key] = value
+                except:
+                    self.__logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
 
             dataset.attrs['detector_name'] = detectorName
 
@@ -163,8 +169,8 @@ class RecordingManager(SignalInterface):
             dataset.attrs['element_size_um'] =\
                 self.__detectorsManager[detectorName].pixelSizeUm
             
-            dataset[:,:,:] = image
-            #dataset[:,...] = np.moveaxis(image,0,-1)
+            #dataset[:,:,:] = image
+            dataset[:,...] = np.moveaxis(image,0,-1)
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)

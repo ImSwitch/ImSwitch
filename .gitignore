@@ -64,3 +64,4 @@ target/
 
 # Visual Studio Code
 .vscode/
+imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py

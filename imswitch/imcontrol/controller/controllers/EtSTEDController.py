@@ -69,10 +69,7 @@ class EtSTEDController(ImConWidgetController):
             self._master.detectorsManager.execOnAll(lambda c: c.name,
                                                     condition=lambda c: c.forAcquisition)
         )
-        self._widget.setSlowDetectorList(
-            self._master.detectorsManager.execOnAll(lambda c: c.name,
-                                                    condition=lambda c: c.forAcquisition)
-        )
+
         self._widget.setFastLaserList(
             self._master.lasersManager.execOnAll(lambda c: c.name)
         )
@@ -82,11 +79,6 @@ class EtSTEDController(ImConWidgetController):
 
         sys.path.append(self._widget.analysisDir)
         sys.path.append(self._widget.transformDir)
-
-        ## detectors for fast (widefield) and slow (sted) imaging, and laser for fast
-        #self.detectorFast = self._setupInfo.etSTED.detectorFast
-        #self.detectorSlow = self._setupInfo.etSTED.detectorSlow
-        #self.laserFast = self._setupInfo.etSTED.laserFast
 
         # create a helper controller for the coordinate transform pop-out widget
         self.__coordTransformHelper = EtSTEDCoordTransformHelper(self, self._widget.coordTransformWidget, _logsDir)
@@ -102,10 +94,6 @@ class EtSTEDController(ImConWidgetController):
         self._widget.setUpdatePeriodButton.clicked.connect(self.setUpdatePeriod)
         self._widget.setBusyFalseButton.clicked.connect(self.setBusyFalse)
         self._commChannel.sigSendScanParameters.connect(lambda analogParams, digitalParams: self.assignScanParameters(analogParams, digitalParams))
-
-        # create scatter plot item for sending to the viewbox in the help widget while analysis is running
-        self.__scatterPlot = pg.ScatterPlotItem()
-        self.addScatter()
 
         # initiate log for each detected event
         self.resetDetLog()
@@ -124,9 +112,8 @@ class EtSTEDController(ImConWidgetController):
         self.__init_frames = 5
         self.__validationFrames = 0
         self.__frame = 0
-        self.timelapse = self._widget.timelapseScanCheck.isChecked()
-
         self.t_call = 0
+        self.__maxAnaImgVal = 0
 
 
     def initiate(self):
@@ -134,12 +121,10 @@ class EtSTEDController(ImConWidgetController):
         if not self.__running:
             detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
-            #detectorSlowIdx = self._widget.slowImgDetectorsPar.currentIndex()
-            #self.detectorSlow = self._widget.slowImgDetectors[detectorSlowIdx]
             laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
             self.laserFast = self._widget.fastImgLasers[laserFastIdx]
             self.__param_vals = self.readParams()
-            # launch help widget, if visualization mode or validation mode
+            
             # Check if visualization mode, in case launch help widget
             if self._widget.visualizeCheck.isChecked():
                 self.__runMode = RunMode.Visualize
@@ -159,7 +144,7 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigScanEnded.connect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
 
-            self.__scatterPlot.show()
+            self._widget.setCoordScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         else:
@@ -169,24 +154,15 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigScanEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
 
-            self.__scatterPlot.hide()
+            self._widget.setCoordScatterVisible(False)
             self._widget.initiateButton.setText('Initiate')
             self.resetParamVals()
             self.resetRunParams()
 
     def scanEnded(self):
         """ End an etSTED slow method scan. """
-        if self.timelapse:
-            self.setDetLogLine("scan_end_frame", datetime.now().strftime('%Ss%fus'), self.timelapse_frame)
-        else:
-            self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
+        self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
         self._commChannel.sigSnapImg.emit()
-        #if self.timelapse:
-        #    #TODO: change this to actually perform a timelapse scan from the rec widget instead, if that is instant now when saving to a single file?
-        #    if self.timelapse_frame < self.timelapse_frames_tot:
-        #        self.timelapse_frame += 1
-        #        self.runSlowScan()
-        #        return
         self.endRecording()
         self.continueFastModality()
         self.__frame = 0
@@ -198,7 +174,9 @@ class EtSTEDController(ImConWidgetController):
             self.__detLog[key] = val
 
     def runSlowScan(self):
-        pass
+        """ Run a scan of the slow method (STED). """
+        self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
+        self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
 
     def endRecording(self):
         """ Save an etSTED slow method scan. """
@@ -206,10 +184,9 @@ class EtSTEDController(ImConWidgetController):
         self.logPipelineParamVals()
         # save log file with temporal info of trigger event
         filename = datetime.utcnow().strftime('%Hh%Mm%Ss%fus')
-        name = os.path.join(self.__saveFolder, filename) + '_log'
-        savename = guitools.getUniqueName(name)  #TODO: not called getUniqueName anymore, does it still exist a function with the same functionality?
+        name = os.path.join(_logsDir, filename) + '_log'
         log = [f'{key}: {self.__detLog[key]}' for key in self.__detLog]
-        with open(f'{savename}.txt', 'w') as f:
+        with open(f'{name}.txt', 'w') as f:
             [f.write(f'{st}\n') for st in log]
         self.resetDetLog()
 
@@ -242,7 +219,7 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
             
-            self._scatterPlot.show()
+            self._widget.setCoordScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
@@ -267,6 +244,10 @@ class EtSTEDController(ImConWidgetController):
     def initiateBinaryMask(self):
         """ Initiate the process of calculating a binary mask of the region of interest. """
         self.__binary_stack = None
+        laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
+        self.laserFast = self._widget.fastImgLasers[laserFastIdx]
+        detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
+        self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
         self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
         self._commChannel.sigUpdateImage.connect(self.addImgBinStack)
         self._widget.recordBinaryMaskButton.setText('Recording...')
@@ -284,8 +265,8 @@ class EtSTEDController(ImConWidgetController):
                 if np.ndim(self.__binary_stack) == 2:
                     self.__binary_stack = np.stack((self.__binary_stack, img))
                 else:
-                    self.__logger.debug(np.shape(img))
-                    self.__logger.debug(np.shape(self.__binary_stack))
+                    #self.__logger.debug(np.shape(img))
+                    #self.__logger.debug(np.shape(self.__binary_stack))
                     self.__binary_stack = np.concatenate((self.__binary_stack,  [img]), axis=0)
 
     def calculateBinaryMask(self, img_stack):
@@ -300,12 +281,14 @@ class EtSTEDController(ImConWidgetController):
     def setAnalysisHelpImg(self, img):
         """ Set the preprocessed image in the analysis help widget. """
         #self._widget.analysisHelpWidget.img.setOnlyRenderVisible(True, render=False)
-        if self.__frame < self.__init_frames + 3:
+        if np.max(img) > self.__maxAnaImgVal:
+            self.__maxAnaImgVal = np.max(img)
             autolevels = True
         else:
             autolevels = False
+        #self.__logger.debug(autolevels)
         self._widget.analysisHelpWidget.img.setImage(img, autoLevels=autolevels)
-        infotext = f'Min: {np.min(img)}, max: {np.max(img/10000)} (rel. change)'
+        infotext = f'Min: {np.min(img)}, max: {np.max(img)}'
         self._widget.analysisHelpWidget.info_label.setText(infotext)
         img_shape = np.shape(img)
         #if self.__frame < self.__init_frames + 1:
@@ -328,11 +311,6 @@ class EtSTEDController(ImConWidgetController):
         """ Assign scan parameters from the scanning widget. """
         self._analogParameterDict = analogParams
         self._digitalParameterDict = digitalParams
-
-    def addScatter(self):
-        """ Adds the scatter points from pipeline output to ImageWidget viewbox through the CommunicationChannel. """
-        self.__scatterPlot.setData
-        self._commChannel.sigAddItemToVb.emit(self.__scatterPlot)
 
     def readParams(self):
         """ Read user-provided analysis pipeline parameter values. """
@@ -383,10 +361,11 @@ class EtSTEDController(ImConWidgetController):
                     coords_detected = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, *self.__param_vals)
                 t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
+                #self.__logger.debug(coords_detected)
 
                 # run if the initial frames have passed
                 if self.__frame > self.__init_frames:
-                    self.__logger.debug(self.__runMode)
+                    #self.__logger.debug(self.__runMode)
                     if self.__runMode == RunMode.Visualize:
                         self.updateScatter(coords_detected, clear=True)
                         self.setAnalysisHelpImg(img_ana)
@@ -439,11 +418,7 @@ class EtSTEDController(ImConWidgetController):
                                 self.setDetLogLine("det_coord_x_", coords_scan[0], i)
                                 self.setDetLogLine("det_coord_y_", coords_scan[1], i)
                         
-                        self.timelapse = self._widget.timelapseScanCheck.isChecked()
-                        if self.timelapse:
-                            self.timelapse_frame = 0
-                            self.timelapse_frame_tot = int(self._widget.timelapse_reps_edit.text())
-                        
+                        #self.__logger.debug(self.__detLog)
                         self.initiateSlowScan(position=coords_center_scan)
                         self.runSlowScan()
 
@@ -473,6 +448,7 @@ class EtSTEDController(ImConWidgetController):
                 self._analogParameterDict, self._digitalParameterDict, staticPositioner=False
             )
         except:
+            self.__logger.debug('Error when initiating slow scan')
             return
         self.scanInfoDict['throw_delay'] = np.float(self._widget.throw_delay_edit.text())
         dt = datetime.now()
@@ -482,18 +458,19 @@ class EtSTEDController(ImConWidgetController):
 
     def setCenterScanParameter(self, position):
         """ Set the scanning center from the detected event coordinates. """
+        #self.__logger.debug(self._analogParameterDict)
         if self._analogParameterDict:
-            self._analogParameterDict['axis_centerpos'] = []
-            for index, (positionerName, positionerInfo) in enumerate(self._setupInfo.positioners.items()):
-                if positionerInfo.forScanning:
-                    self._analogParameterDict['target_device'].append(positionerName)
-                    if positionerName != 'None':
-                        center = position[index]
-                        if index==0:
-                            center = self.addFastAxisShift(center)
-                        self._analogParameterDict['axis_centerpos'].append(center)
-                    else:
-                        self._analogParameterDict['axis_centerpos'].append(0.0)
+            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+                #self.__logger.debug(positionerName)
+                if positionerName != 'None':
+                    if positionerName == 'ND-GalvoX':
+                        center = position[0]
+                        center = self.addFastAxisShift(center)
+                        self._analogParameterDict['axis_centerpos'][index] = center
+                    elif positionerName == 'ND-GalvoY':
+                        center = position[1]
+                        self._analogParameterDict['axis_centerpos'][index] = center
+        #self.__logger.debug(self._analogParameterDict)
 
     def addFastAxisShift(self, center):
         """ Add a scanning-method and microscope-specific shift to the fast axis scanning. 
@@ -506,13 +483,10 @@ class EtSTEDController(ImConWidgetController):
         center -= shift_compensation
         return(center)
 
-    def updateScatter(self, coords, clear):
+    def updateScatter(self, coords, clear=True):
         """ Update the scatter plot of detected event coordinates. """
         if np.size(coords) > 0:
-            self.__scatterPlot.setData(x=coords[:,0], y=coords[:,1], pen=pg.mkPen(None), brush='g', symbol='x', size=25)
-            if np.size(coords) > 2:
-                coord_primary = coords[0,:]
-                self.__scatterPlot.addPoints(x=[coord_primary[0]], y=[coord_primary[1]], pen=pg.mkPen(None), brush='r', symbol='x', size=25)
+            self._widget.setCoordScatterData(x=coords[:,0],y=coords[:,1])
 
     def saveValidationImages(self, prev=True, prev_ana=True):
         """ Save the widefield validation images of an event detection. """

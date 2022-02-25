@@ -1,5 +1,6 @@
 import os
 from inspect import signature
+from imswitch.imcommon.model import initLogger
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
@@ -7,7 +8,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.view.guitools import naparitools
-from .basewidgets import Widget
+from .basewidgets import Widget, NapariHybridWidget
 
 _etstedDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_etsted')
 
@@ -16,6 +17,7 @@ class EtSTEDWidget(Widget):
     """ Widget for controlling the etSTED implementation. """
 
     def __init__(self, *args, **kwargs):
+        self.__logger = initLogger(self, instanceName='EtSTEDWidget')
         super().__init__(*args, **kwargs)
 
         self.analysisDir = os.path.join(_etstedDir, 'analysis_pipelines')
@@ -26,6 +28,14 @@ class EtSTEDWidget(Widget):
 
         if not os.path.exists(self.transformDir):
             os.makedirs(self.transformDir)
+
+        # add scatterplot to napari imageviewer to plot the detected coordinates 
+        #TODO: fix this: for this to work EtSTEDWidget has to be from NapariHybridWidget, but this does not work for the subwidgets.
+        # Find a workaround, where I can still pass "options" to the subwidgets, but this still being a NapariHybridWidget
+        # so that I can create a scatterPlot that I can show in the ImageViewer.
+        #self.coordScatterPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
+        #self.coordScatterPlot.hide()
+        #self.addItemToViewer(self.coordScatterPlot)
         
         # add all available analysis pipelines to the dropdown list
         self.analysisPipelines = list()
@@ -53,12 +63,13 @@ class EtSTEDWidget(Widget):
         # add all forAcquisition detectors in a dropdown list, for being the fastImgDetector (widefield)
         self.fastImgDetectors = list()
         self.fastImgDetectorsPar = QtGui.QComboBox()
-        ## add all forAcquisition detectors in a dropdown list, for being the slowImgDetector (STED)
-        #self.slowImgDetectors = list()
-        #self.slowImgDetectorsPar = QtGui.QComboBox()
+        self.fastImgDetectorsPar_label = QtGui.QLabel('Fast detector')
+        self.fastImgDetectorsPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         # add all lasers in a dropdown list, for being the fastImgLaser (widefield)
         self.fastImgLasers = list()
         self.fastImgLasersPar = QtGui.QComboBox()
+        self.fastImgLasersPar_label = QtGui.QLabel('Fast laser')
+        self.fastImgLasersPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
 
         self.param_names = list()
         self.param_edits = list()
@@ -76,7 +87,6 @@ class EtSTEDWidget(Widget):
         self.endlessScanCheck = QtGui.QCheckBox('Endless')
         self.visualizeCheck = QtGui.QCheckBox('Visualize')
         self.validateCheck = QtGui.QCheckBox('Validate')
-        self.timelapseScanCheck = QtGui.QCheckBox('Timelapse scan')
 
         self.bin_thresh_label = QtGui.QLabel('Bin. threshold')
         self.bin_thresh_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
@@ -84,9 +94,6 @@ class EtSTEDWidget(Widget):
         self.bin_smooth_label = QtGui.QLabel('Bin. smooth (px)')
         self.bin_smooth_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         self.bin_smooth_edit = QtGui.QLineEdit(str(2))
-        self.timelapse_reps_label = QtGui.QLabel('Timelapse frames')
-        self.timelapse_reps_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.timelapse_reps_edit = QtGui.QLineEdit(str(1))
         self.throw_delay_label = QtGui.QLabel('Throw delay (us)')
         self.throw_delay_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         self.throw_delay_edit = QtGui.QLineEdit(str(30))
@@ -102,33 +109,26 @@ class EtSTEDWidget(Widget):
 
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
-    
 
         # initialize widget controls
         currentRow = 0
 
-        # add general buttons to grid
         self.grid.addWidget(self.initiateButton, currentRow, 0)
         self.grid.addWidget(self.endlessScanCheck, currentRow, 1)
         self.grid.addWidget(self.visualizeCheck, currentRow, 2)
         self.grid.addWidget(self.validateCheck, currentRow, 3)
-        self.grid.addWidget(self.loadScanParametersButton, currentRow, 4)
-        self.grid.addWidget(self.recordBinaryMaskButton, currentRow, 5)
-        self.grid.addWidget(self.setBusyFalseButton, currentRow, 6)
         
-        currentRow += 2
+        currentRow += 1
 
-        # add image and pixel size parameters to grid
-        # add param name and param to grid
-        self.grid.addWidget(self.throw_delay_label, currentRow-1, 1)
-        self.grid.addWidget(self.timelapseScanCheck, currentRow-1, 2)
-        self.grid.addWidget(self.timelapse_reps_label, currentRow-1, 3)
-        self.grid.addWidget(self.bin_thresh_label, currentRow-1, 4)
-        self.grid.addWidget(self.bin_smooth_label, currentRow-1, 5)
+        self.grid.addWidget(self.throw_delay_label, currentRow, 0)
         self.grid.addWidget(self.throw_delay_edit, currentRow, 1)
-        self.grid.addWidget(self.timelapse_reps_edit, currentRow, 3)
-        self.grid.addWidget(self.bin_thresh_edit, currentRow, 4)
-        self.grid.addWidget(self.bin_smooth_edit, currentRow, 5)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.bin_thresh_label, currentRow, 0)
+        self.grid.addWidget(self.bin_thresh_edit, currentRow, 1)
+        self.grid.addWidget(self.bin_smooth_label, currentRow, 2)
+        self.grid.addWidget(self.bin_smooth_edit, currentRow, 3)
 
         currentRow += 1
 
@@ -136,23 +136,42 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.analysisPipelinePar, currentRow, 1)
         self.grid.addWidget(self.transformPipelinePar, currentRow, 2)
         self.grid.addWidget(self.coordTransfCalibButton, currentRow, 3)
-        self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 5)
-        self.grid.addWidget(self.update_period_label, currentRow+1, 4)
-        self.grid.addWidget(self.update_period_edit, currentRow+1, 5)
 
-        currentRow += 2
+        currentRow += 1
 
-        self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
-        self.grid.addWidget(self.fastImgLasersPar, currentRow, 4)
-        #self.grid.addWidget(self.slowImgDetectorsPar, currentRow, 4)
+        self.grid.addWidget(self.update_period_label, currentRow, 2)
+        self.grid.addWidget(self.update_period_edit, currentRow, 3)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 2)
+        self.grid.addWidget(self.recordBinaryMaskButton, currentRow, 3)
+
+        currentRow +=1
+
+        self.grid.addWidget(self.fastImgDetectorsPar_label, currentRow, 2)
+        self.grid.addWidget(self.fastImgLasersPar_label, currentRow, 3)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 2)
+        self.grid.addWidget(self.fastImgLasersPar, currentRow, 3)
+
+        currentRow +=1 
+
+        self.grid.addWidget(self.loadScanParametersButton, currentRow, 2)
+        self.grid.addWidget(self.setBusyFalseButton, currentRow, 3)
+
 
     def initParamFields(self, parameters: dict):
         """ Initialized etSTED widget parameter fields. """
         # remove previous parameter fields for the previously loaded pipeline
         for param in self.param_names:
             self.grid.removeWidget(param)
+            param.deleteLater()
         for param in self.param_edits:
             self.grid.removeWidget(param)
+            param.deleteLater()
 
         # initiate parameter fields for all the parameters in the pipeline chosen
         currentRow = 4
@@ -175,22 +194,28 @@ class EtSTEDWidget(Widget):
                 currentRow += 1
 
     def setFastDetectorList(self, detectorNames):
-        for detectorName in detectorNames.items():
+        """ Set combobox with available detectors to use for the fast method. """
+        for detectorName, _ in detectorNames.items():
             self.fastImgDetectors.append(detectorName)
         self.fastImgDetectorsPar.addItems(self.fastImgDetectors)
         self.fastImgDetectorsPar.setCurrentIndex(0)
 
-    #def setSlowDetectorList(self, detectorNames):
-    #    for detectorName in detectorNames.items():
-    #        self.slowImgDetectors.append(detectorName)
-    #    self.slowImgDetectorsPar.addItems(self.slowImgDetectors)
-    #    self.slowImgDetectorsPar.setCurrentIndex(0)
-        
     def setFastLaserList(self, laserNames):
-        for laserName in laserNames.items():
+        """ Set combobox with available lasers to use for the fast method. """
+        for laserName, _ in laserNames.items():
             self.fastImgLasers.append(laserName)
         self.fastImgLasersPar.addItems(self.fastImgLasers)
         self.fastImgLasersPar.setCurrentIndex(0)
+
+    def setCoordScatterData(self, x, y):
+        """ Updates scatter plot of detected coordinates with new data. """
+        pass
+        #self.coordScatterPlot.setData(x=x, y=y)
+        
+    def setCoordScatterVisible(self, visible):
+        """ Updates visibility of scatter plot. """
+        pass
+        #self.coordScatterPlot.setVisible(visible)
 
     def launchHelpWidget(self, widget, init=True):
         """ Launch the help widget. """
@@ -222,60 +247,6 @@ class AnalysisWidget(Widget):
         self.grid.addWidget(self.imgVbWidget, 1, 0)
 
 
-
-class OldCoordTransformWidget(Widget):
-    """ Pop-up widget for the coordinate transform between the two etSTED modalities. """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self.loadLoResButton = guitools.BetterPushButton('Load low-res calibration image')
-        self.loadHiResButton = guitools.BetterPushButton('Load high-res calibration image')
-        self.saveCalibButton = guitools.BetterPushButton('Save calibration')
-        self.resetCoordsButton = guitools.BetterPushButton('Reset coordinates')
-
-        self.loResVbWidget = pg.GraphicsLayoutWidget()
-        self.hiResVbWidget = pg.GraphicsLayoutWidget()
-        self.loResVb = self.loResVbWidget.addViewBox(row=1, col=1)
-        self.hiResVb = self.hiResVbWidget.addViewBox(row=1, col=1)
-
-        self.loResImg = pg.ImageItem(axisOrder = 'row-major')
-        self.hiResImg = pg.ImageItem(axisOrder = 'row-major')
-        self.loResImg.translate(-0.5, -0.5)
-        self.hiResImg.translate(-0.5, -0.5)
-
-        self.loResVb.addItem(self.loResImg)
-        self.hiResVb.addItem(self.hiResImg)
-        self.loResVb.setAspectLocked(True)
-        self.hiResVb.setAspectLocked(True)
-
-        self.loResScatterPlot = pg.ScatterPlotItem()
-        self.hiResScatterPlot = pg.ScatterPlotItem()
-        self.transformScatterPlot = pg.ScatterPlotItem()
-        self.loResScatterPlot.setData
-        self.hiResScatterPlot.setData
-        self.transformScatterPlot.setData
-        self.loResVb.addItem(self.loResScatterPlot)
-        self.hiResVb.addItem(self.hiResScatterPlot)
-        self.hiResVb.addItem(self.transformScatterPlot)
-
-        self.grid = QtGui.QGridLayout()
-        self.setLayout(self.grid)
-    
-        # initialize the controls for the coordinate transform help widget
-        currentRow = 0
-        self.grid.addWidget(self.loadLoResButton, currentRow, 0)
-        self.grid.addWidget(self.loadHiResButton, currentRow, 1)
-        
-        currentRow += 1
-        self.grid.addWidget(self.loResVbWidget, currentRow, 0)
-        self.grid.addWidget(self.hiResVbWidget, currentRow, 1)
-
-        currentRow += 1
-        self.grid.addWidget(self.saveCalibButton, currentRow, 0)
-        self.grid.addWidget(self.resetCoordsButton, currentRow, 1)
-
-
 class CoordTransformWidget(Widget):
     """ Pop-up widget for the coordinate transform between the two etSTED modalities. """
 
@@ -293,7 +264,6 @@ class CoordTransformWidget(Widget):
         self.pointsLayerLo = self.napariViewerLo.add_points(name="lo_points", symbol='ring', size=20, face_color='green', edge_color='green')
         self.pointsLayerTransf = self.napariViewerHi.add_points(name="transf_points", symbol='cross', size=20, face_color='red', edge_color='red')
         self.pointsLayerHi = self.napariViewerHi.add_points(name="hi_points", symbol='ring', size=20, face_color='green', edge_color='green')
-        
 
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)

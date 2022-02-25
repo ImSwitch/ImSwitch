@@ -148,7 +148,7 @@ class ScanWidget(Widget):
             self.grid.addWidget(numPixelsPar, currentRow, 3)
             self.grid.addWidget(centerPar, currentRow, 4)
 
-            # Scan dimension label and pickier
+            # Scan dimension label and picker
             dimlabel = QtWidgets.QLabel(
                 f'{index + 1}{guitools.ordinalSuffix(index + 1)} dimension:'
             )

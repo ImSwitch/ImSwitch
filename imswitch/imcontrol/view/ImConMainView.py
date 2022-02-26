@@ -108,10 +108,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
         if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 10)
+            self.docks['Settings'].setStretch(1, 5)
             self.docks['Settings'].container().setStretch(3, 1)
         if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 10)
+            rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
 

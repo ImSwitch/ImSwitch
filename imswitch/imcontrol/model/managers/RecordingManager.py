@@ -102,9 +102,13 @@ class RecordingManager(SignalInterface):
 
             for detectorName in detectorNames:
                 image = images[detectorName]
+
+                if saveMode == SaveMode.Numpy:
+                    return 
+
                 fileExtension = str(saveFormat.name).lower()
                 filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
-
+                                
                 if saveMode != SaveMode.RAM:
                     # Write file
                     if saveFormat == SaveFormat.HDF5:
@@ -134,8 +138,14 @@ class RecordingManager(SignalInterface):
                     name = os.path.basename(f'{savename}_{detectorName}')
                     self.sigMemorySnapAvailable.emit(name, image, filePath,
                                                      saveMode == SaveMode.DiskAndRAM)
+                
+
+                    
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
+            if saveMode == SaveMode.Numpy:
+                return image
+            
 
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
         newPath = path
@@ -380,6 +390,7 @@ class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2
     DiskAndRAM = 3
+    Numpy = 4
 
 
 class SaveFormat(enum.Enum):

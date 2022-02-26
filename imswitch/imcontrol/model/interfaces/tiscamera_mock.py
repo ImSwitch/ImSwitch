@@ -46,8 +46,10 @@ class MockCameraTIS:
 
     def getLast(self, is_resize=False):
         return self.grabFrame()
-
-
+    
+    def getLastChunk(self):
+        return self.grabFrame()
+    
     def setPropertyValue(self, property_name, property_value):
         return property_value
 

@@ -93,6 +93,20 @@ class RecordingController(ImConWidgetController):
                                            SaveMode(self._widget.getSnapSaveMode()),
                                            SaveFormat(self._widget.getSnapSaveFormat()),
                                            attrs)
+        
+    def snapNumpy(self):
+        self.updateRecAttrs(isSnapping=True)
+        detectorNames = self.getDetectorNamesToCapture()
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                 for detectorName in detectorNames}
+
+        return self._master.recordingManager.snap(detectorNames,
+                                           "",
+                                           SaveMode(4), # for Numpy
+                                           "",
+                                           attrs)
+
+
 
     def toggleREC(self, checked):
         """ Start or end recording. """

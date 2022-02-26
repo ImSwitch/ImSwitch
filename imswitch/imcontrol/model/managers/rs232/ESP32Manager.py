@@ -1,8 +1,3 @@
-"""
-Created on Thu Jan 13 10:23:00 2021
-
-@author: diederichbenedict
-"""
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
 
@@ -32,12 +27,12 @@ class ESP32Manager:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
         self._esp32.post_json(arg)
-        
+
     def finalize(self):
-        pass 
+        pass
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

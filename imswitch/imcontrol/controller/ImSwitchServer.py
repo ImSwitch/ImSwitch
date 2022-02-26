@@ -14,7 +14,7 @@ class ImSwitchServer(object):
 
     @Pyro5.server.expose
     def receive(self, module, func, params):
-        self._channel.sigBroadcast.emit(module, func, params)
+        return self._channel.sigBroadcast.emit(module, func, params)
 
     @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:

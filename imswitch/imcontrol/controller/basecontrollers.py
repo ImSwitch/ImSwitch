@@ -30,7 +30,15 @@ class ImConWidgetController(WidgetController):
     def _receive(self, module, func, params):
         if module == type(self).__name__:
             func = eval("self."+func)
-            func(*params)
+            if len(params)==0:
+                # in case we have no parameters to be transfered
+                return func()
+            else:
+                try:
+                    return func(*params)
+                except:
+                    # not iterable?
+                    return  func(params)
 
     def broadcast(self, module, func, params):
         self._commChannel.sigBroadcast.emit(module, func, params)

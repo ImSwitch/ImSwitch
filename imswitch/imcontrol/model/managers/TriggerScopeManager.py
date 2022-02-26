@@ -13,7 +13,7 @@ class TriggerScopeManager(SignalInterface):
         self.__logger = initLogger(self)
 
     def send(self, command, recieve):
-        self.__logger.debug("Send command to RS232 device: " + command)
+        #self.__logger.debug("Send command to RS232 device: " + command)
     
         if recieve:
             return self._rs232manager.send(command)
@@ -32,8 +32,8 @@ class TriggerScopeManager(SignalInterface):
         
         for x in range(params["length"]):
             command = str(((dacArray[x]+5)/10)*65535) + "," + str(ttlArray[x])
-            self.send(command, 1)
-            self.__logger.debug("Send: " + str(x))
+            self.send(command, 0)
+            self.__logger.debug(str(dacArray[x]))
             
         self.send("STARTWAVE", 0)
 

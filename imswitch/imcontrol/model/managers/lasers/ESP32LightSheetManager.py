@@ -26,9 +26,9 @@ class ESP32LightSheetManager(LaserManager):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        if self.__axis == "pos_x":
+        if self.__axis == "freq_x":
             self._rs232manager._esp32.set_galvo_freq(axis=0, value=value)
-        elif self.__axis == "pos_y":
+        elif self.__axis == "freq_y":
             self._rs232manager._esp32.set_galvo_freq(axis=1, value=value)
         elif self.__axis == "amp_x":
             self._rs232manager._esp32.set_galvo_amp(axis=0, value=value)

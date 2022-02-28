@@ -11,6 +11,7 @@ class TriggerScopeManager(SignalInterface):
             daqInfo.managerProperties['rs232device']
         ]
         self.__logger = initLogger(self)
+        self.__logger.info(self.send("*", 1))
 
     def send(self, command, recieve):  
         if recieve:
@@ -26,12 +27,11 @@ class TriggerScopeManager(SignalInterface):
         
     def run_wave(self, dacArray, ttlArray, params):
         command = "PROG_WAVE," + str(params["analogLine"]) + "," + str(params["digitalLine"]) + "," + str(params["length"]) + "," + str(params["trigMode"]) + "," + str(params["delay"]) + "," + str(params["reps"])
-        self.__logger.debug(self.send(command, 1))
+        self.send(command, 1)
         
         for x in range(params["length"]):
             command = str(((dacArray[x]+5)/10)*65535) + "," + str(ttlArray[x])
             self.send(command, 0)
-            self.__logger.debug(str(dacArray[x]))
             
-        self.__logger.debug(self.send("STARTWAVE", 1))
+        self.send("STARTWAVE", 0)
 

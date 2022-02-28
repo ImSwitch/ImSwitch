@@ -56,6 +56,8 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        
+        self.triggerScopeManager = TriggerScopeManager(self.__setupInfo.daq, **lowLevelManagers)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

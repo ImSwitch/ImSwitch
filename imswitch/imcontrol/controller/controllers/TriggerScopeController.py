@@ -2,6 +2,7 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 import numpy as np
 
+
 class TriggerScopeController(ImConWidgetController):
     """ Linked to TriggerScopeWidget."""
 

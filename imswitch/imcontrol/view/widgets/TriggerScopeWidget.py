@@ -6,7 +6,6 @@ from .basewidgets import Widget
 
 class TriggerScopeWidget(Widget):
     """ Widget for controlling the parameters of a TriggerScope. """
-
     sigRunToggled = QtCore.Signal(float)  # (enabled)
 
     def __init__(self, *args, **kwargs):

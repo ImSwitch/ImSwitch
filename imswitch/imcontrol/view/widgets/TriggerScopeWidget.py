@@ -19,7 +19,7 @@ class TriggerScopeWidget(Widget):
 
         grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
-        self.incrementVoltageLabel = QtWidgets.QLabel("increment/V")
+        self.incrementVoltageLabel = QtWidgets.QLabel("Increment/V")
         grid.addWidget(self.incrementVoltageLabel, 0, 0)
 
         self.incrementVoltage = QtWidgets.QLineEdit()

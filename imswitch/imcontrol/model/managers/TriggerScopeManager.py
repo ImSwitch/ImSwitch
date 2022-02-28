@@ -12,13 +12,11 @@ class TriggerScopeManager(SignalInterface):
         ]
         self.__logger = initLogger(self)
 
-    def send(self, command, recieve):
-        #self.__logger.debug("Send command to RS232 device: " + command)
-    
+    def send(self, command, recieve):  
         if recieve:
             return self._rs232manager.send(command)
         else:
-            self._rs232manager.send(command)
+            self._rs232manager.write(command)
         
     def sendAnalog(self, dacLine, value):
         self.send("DAC" + str(dacLine) + "," + str(((value+5)/10)*65535), 0)
@@ -28,12 +26,12 @@ class TriggerScopeManager(SignalInterface):
         
     def run_wave(self, dacArray, ttlArray, params):
         command = "PROG_WAVE," + str(params["analogLine"]) + "," + str(params["digitalLine"]) + "," + str(params["length"]) + "," + str(params["trigMode"]) + "," + str(params["delay"]) + "," + str(params["reps"])
-        self.send(command, 0)
+        self.__logger.debug(self.send(command, 1))
         
         for x in range(params["length"]):
             command = str(((dacArray[x]+5)/10)*65535) + "," + str(ttlArray[x])
             self.send(command, 0)
             self.__logger.debug(str(dacArray[x]))
             
-        self.send("STARTWAVE", 0)
+        self.__logger.debug(self.send("STARTWAVE", 1))
 

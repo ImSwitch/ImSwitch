@@ -27,9 +27,6 @@ class RS232Driver(MessageBasedDriver):
                              }}
         return defaults
 
-    def query(self, arg):
-        return super().query(arg)
-
     def initialize(self):
         super().initialize()
         return 'initialized?'

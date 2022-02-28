@@ -31,7 +31,7 @@ class CoolLEDLaserManager(LaserManager):
         else:
             value = "F"
         cmd = "C" + self.__channel_index + value
-        self._rs232manager.send(cmd)
+        self._rs232manager.query(cmd)
 
     def setValue(self, power):
         """Handles output power.
@@ -39,7 +39,7 @@ class CoolLEDLaserManager(LaserManager):
         """
         cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
         self.__logger.debug(cmd)
-        self._rs232manager.send(cmd)
+        self._rs232manager.query(cmd)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

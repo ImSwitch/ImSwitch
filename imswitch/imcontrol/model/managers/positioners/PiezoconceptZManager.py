@@ -30,19 +30,19 @@ class PiezoconceptZManager(PositionerManager):
             cmd = 'MOVRX +' + str(round(float(value), 3))[0:6] + 'u'
         elif float(value) < 0:
             cmd = 'MOVRX -' + str(round(float(value), 3))[1:7] + 'u'
-        self._rs232Manager.send(cmd)
+        self._rs232Manager.query(cmd)
 
         self._position[self.axes[0]] = self._position[self.axes[0]] + value
 
     def setPosition(self, value, axis):
         cmd = 'MOVEX ' + str(round(float(value), 3)) + 'u'
-        self._rs232Manager.send(cmd)
+        self._rs232Manager.query(cmd)
 
         self._position[self.axes[0]] = value
 
     def get_abs(self):
         cmd = 'GET_X'
-        reply = self._rs232Manager.send(cmd)
+        reply = self._rs232Manager.query(cmd)
         if reply is None:
             reply = self._position[self.axes[0]]
         else:

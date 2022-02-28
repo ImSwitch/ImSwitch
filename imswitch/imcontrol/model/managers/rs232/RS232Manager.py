@@ -30,10 +30,14 @@ class RS232Manager:
         self._port = rs232Info.managerProperties['port']
         self._rs232port = self._getRS232port(self._port, self._settings)
 
-    def send(self, arg: str) -> str:
+    def query(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
         return self._rs232port.query(arg)
+
+    def write(self, arg: str):
+        """ Sends the specified command to the RS232 device. """
+        return self._rs232port.write(arg)
 
     def finalize(self):
         self._rs232port.close()

@@ -14,7 +14,7 @@ class TriggerScopeManager(SignalInterface):
 
     def send(self, command, recieve):  
         if recieve:
-            return self._rs232manager.send(command)
+            return self._rs232manager.query(command)
         else:
             self._rs232manager.write(command)
         

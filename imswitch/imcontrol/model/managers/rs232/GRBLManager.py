@@ -45,7 +45,7 @@ class GRBLManager:
         if self.is_home:
             self._board.home()
 
-    def send(self, arg: str) -> str:
+    def query(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
         return self._board._write(arg)

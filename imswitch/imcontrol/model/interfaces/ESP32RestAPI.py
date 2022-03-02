@@ -222,6 +222,7 @@ class ESP32Client(object):
                 self.is_sending = False
                 # not connected
                 return None
+
         elif self.is_connected and self.is_serial:
             payload["task"] = path
             try:

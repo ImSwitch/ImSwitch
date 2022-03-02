@@ -1,6 +1,7 @@
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
 import numpy as np
+from imswitch.imcommon.model import initLogger
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -8,6 +9,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.__logger = initLogger(self, tryInheritParent=True)
         if not self._master.detectorsManager.hasDevices():
             return
 
@@ -26,6 +28,7 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
+        self._commChannel.sigSetExposure.connect(self.setExposure)
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -95,6 +98,10 @@ class ImageController(LiveUpdatedController):
         if self._shouldResetView:
             self.adjustFrame(image.shape, instantResetView=True)
 
+    def setExposure(self, exp):
+        detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
+        self.__logger.debug("Change exposure of {}, to {}", detectorName, str(exp))
+        #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

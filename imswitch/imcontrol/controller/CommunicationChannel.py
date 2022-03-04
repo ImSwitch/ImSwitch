@@ -2,10 +2,10 @@ from typing import Mapping
 
 import numpy as np
 import Pyro5.server
-
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes, initLogger
 from .ImSwitchServer import ImSwitchServer
+from ._serialize import register_serializers
 
 
 class CommunicationChannel(SignalInterface):
@@ -103,6 +103,9 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
+    def get_image(self, detectorName=None):
+        return self.__main.controllers['View'].get_image(detectorName)
+
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
@@ -139,12 +142,15 @@ class ServerWorker(Worker):
     def run(self):
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
+            register_serializers()
+
             Pyro5.server.serve(
                 {self._server: self._name},
                 use_ns=False,
                 host=self._host,
                 port=self._port,
             )
+
         except:
             self.__loger.error("Couldn't start server.")
         self.__logger.debug("Loop Finished")

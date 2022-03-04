@@ -1,8 +1,8 @@
-import Pyro5.server
+import Pyro5
 from imswitch.imcommon.model import initLogger
 from useq import MDAEvent, MDASequence
 import time
-
+import numpy as np
 
 class ImSwitchServer(object):
 
@@ -15,6 +15,10 @@ class ImSwitchServer(object):
     @Pyro5.server.expose
     def receive(self, module, func, params):
         self._channel.sigBroadcast.emit(module, func, params)
+
+    @Pyro5.server.expose
+    def get_image(self, detectorName=None):
+        return self._channel.get_image(detectorName)
 
     @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:

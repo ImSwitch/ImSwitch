@@ -37,6 +37,12 @@ class ViewController(ImConWidgetController):
         if self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
 
+    def get_image(self, detectorName):
+        if detectorName is None:
+            return self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame)
+        else:
+            return self._master.detectorsManager[detectorName].getLatestFrame()
+
     @APIExport(runOnUIThread=True)
     def setLiveViewActive(self, active: bool) -> None:
         """ Sets whether the LiveView is active and updating. """

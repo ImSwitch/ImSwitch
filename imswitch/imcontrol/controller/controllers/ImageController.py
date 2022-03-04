@@ -1,7 +1,7 @@
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger
-
+import numpy as np
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -55,13 +55,15 @@ class ImageController(LiveUpdatedController):
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update new image in the viewbox. """
-        if not init:
-            self.autoLevels([detectorName], im)
+        if np.prod(im.shape)>1: # TODO: This seems weird!
+            print(np.shape(im))
+            if not init:
+                self.autoLevels([detectorName], im)
 
-        self._widget.setImage(detectorName, im)
+            self._widget.setImage(detectorName, im)
 
-        if not init or self._shouldResetView:
-            self.adjustFrame(instantResetView=True)
+            if not init or self._shouldResetView:
+                self.adjustFrame(instantResetView=True)
 
     def adjustFrame(self, shape=None, instantResetView=False):
         """ Adjusts the viewbox to a new width and height. """

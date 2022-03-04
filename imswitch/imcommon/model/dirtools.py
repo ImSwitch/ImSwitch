@@ -23,12 +23,12 @@ def getSystemUserDir():
             return buf.value
         except ImportError:
             pass
-
+        #TOOD: How can we ensure that configuration files are updated automatically.. 
     return os.path.expanduser('~')  # Non-Windows system, return home directory
 
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitch')
+_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitchConfig')
 
 
 def initUserFilesIfNeeded():

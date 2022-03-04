@@ -1,7 +1,7 @@
 from .LaserManager import LaserManager
 
 
-class AAAOTFLaserManager(LaserManager):
+class GRBLLaserManager(LaserManager):
     """ LaserManager for controlling one channel of an AA Opto-Electronic
     acousto-optic modulator/tunable filter through RS232 communication.
 
@@ -14,42 +14,32 @@ class AAAOTFLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
-        self._channel = int(laserInfo.managerProperties['channel'])
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
         ]
-
-        self.blankingOn()
-        self.internalControl()
-
+        self.channel = laserInfo.managerProperties['channel']
+        self.laserval = 0
+        self.enabled = False
         super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
+        self._rs232manager._board.set_laser_intensity(self.enabled*self.laserval)
 
     def setEnabled(self, enabled):
         """Turn on (1) or off (0) laser emission"""
-        if enabled:
-            value = 1
+        self.enabled = enabled 
+        if self.channel == "LASER":
+          self._rs232manager._board.set_laser_intensity(enabled*self.laserval)
         else:
-            value = 0
-        cmd = 'L' + str(self._channel) + 'O' + str(value)
-        self._rs232manager.query(cmd)
-
+          self._rs232manager._board.set_led(self.enabled*self.laserval)
+              
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        valueaotf = round(power)  # assuming input value is [0,1023]
-        cmd = 'L' + str(self._channel) + 'P' + str(valueaotf)
-        self._rs232manager.query(cmd)
-
-    def blankingOn(self):
-        """Switch on the blanking of all the channels"""
-        cmd = 'L0' + 'I1' + 'O1'
-        self._rs232manager.query(cmd)
-
-    def internalControl(self):
-        """Switch the channel to external control"""
-        cmd = 'L' + str(self._channel) + 'I1'
-        self._rs232manager.query(cmd)
+        self.laserval = round(power)  # assuming input value is [0,1023]
+        if self.channel == "LASER":
+          self._rs232manager._board.set_laser_intensity(self.enabled*self.laserval)
+        else:
+          self._rs232manager._board.set_led(self.enabled*self.laserval)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -26,7 +26,7 @@ class MHXYStageManager(PositionerManager):
         self._rs232Manager = lowLevelManagers['rs232sManager'][
             positionerInfo.managerProperties['rs232device']
         ]
-        self.__logger.info(str(self._rs232Manager.send('?readsn')))  # log serial no of stage
+        self.__logger.info(str(self._rs232Manager.query('?readsn')))  # log serial no of stage
 
     def move(self, value, axis):
         if axis == 'X':
@@ -36,7 +36,7 @@ class MHXYStageManager(PositionerManager):
         else:
             self.__logger.error('Wrong axis, has to be "X" or "Y".')
             return
-        self._rs232Manager.send(cmd)
+        self._rs232Manager.query(cmd)
         self._position[axis] = self._position[axis] + value
 
     def setPosition(self, value, axis):
@@ -47,7 +47,7 @@ class MHXYStageManager(PositionerManager):
         else:
             self.__logger.error('Wrong axis, has to be "X" or "Y".')
             return
-        self._rs232Manager.send(cmd)
+        self._rs232Manager.query(cmd)
         self._position[axis] = value
 
 

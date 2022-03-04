@@ -10,12 +10,17 @@ class MockCameraTIS:
             'subarray_hpos': 0,
             'exposure_time': 0.1,
             'subarray_vsize': 1024,
-            'subarray_hsize': 1280
+            'subarray_hsize': 1280,
+            'SensorHeight': 1024,
+            'SensorWidth': 1280
         }
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
+        self.SensorHeight = 1000
+        self.SensorWidth = 1000
+        self.shape = (self.SensorHeight,self.SensorWidth)
 
     def start_live(self):
         pass
@@ -34,15 +39,23 @@ class MockCameraTIS:
 
     def grabFrame(self, **kwargs):
         img = np.zeros((500, 600))
-        beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
+        beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
         img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+        img = np.random.randn(img.shape[0],img.shape[1])
         return img
+
+    def getLast(self):
+        return self.grabFrame()
+
 
     def setPropertyValue(self, property_name, property_value):
         return property_value
 
     def getPropertyValue(self, property_name):
-        return self.properties[property_name]
+        try:
+            return self.properties[property_name]
+        except Exception as e:
+            return 0
 
     def openPropertiesGUI(self):
         pass

@@ -226,7 +226,7 @@ class ESP32Client(object):
         elif self.is_connected and self.is_serial:
             payload["task"] = path
             try:
-                is_blocking = payload['isblocking']
+                is_blocking = payload['isblock']
             except:
                 is_blocking = True
             self.writeSerial(payload)
@@ -390,7 +390,7 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=False, is_enabled=False):
+    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
 
         path = "/motor_act"
 

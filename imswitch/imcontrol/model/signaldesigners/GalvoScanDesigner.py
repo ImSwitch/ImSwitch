@@ -44,19 +44,20 @@ class GalvoScanDesigner(ScanDesigner):
 
         for i in range(len(scanParameters['target_device'])):
             if scanParameters['target_device'][i] != 'None':
-                positioner = setupInfo.positioners[scanParameters['target_device'][i]]
-                minv = positioner.managerProperties['minVolt']
-                maxv = positioner.managerProperties['maxVolt']
-                #self.__logger.debug(positioner)
-                #self.__logger.debug([minv, maxv])
-                if i == 0: 
-                    param = 'minmax_pixel_axis'
-                elif i == 1:
-                    param = 'minmax_line_axis'
-                elif i == 2:
-                    param = 'minmax_frame_axis'
-                if (scanInfo[param][0] < minv or scanInfo[param][1] > maxv):
-                    return False
+                if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1:
+                    positioner = setupInfo.positioners[scanParameters['target_device'][i]]
+                    minv = positioner.managerProperties['minVolt']
+                    maxv = positioner.managerProperties['maxVolt']
+                    #self.__logger.debug(positioner)
+                    #self.__logger.debug([minv, maxv])
+                    if i == 0: 
+                        param = 'minmax_pixel_axis'
+                    elif i == 1:
+                        param = 'minmax_line_axis'
+                    elif i == 2:
+                        param = 'minmax_frame_axis'
+                    if (scanInfo[param][0] < minv or scanInfo[param][1] > maxv):
+                        return False
         return True
 
     def make_signal(self, parameterDict, setupInfo):

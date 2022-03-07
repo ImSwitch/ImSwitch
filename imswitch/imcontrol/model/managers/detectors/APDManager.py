@@ -42,6 +42,8 @@ class APDManager(DetectorManager):
 
         self._scanWorker = None
         self._scanThread = None
+        self._frameCount = 0
+        self.__newFrameReady = False
 
         # Prepare parameters and signal connections
         parameters = {}
@@ -80,6 +82,7 @@ class APDManager(DetectorManager):
 
     def startAcquisition(self):
         self.acquisition = True
+        self.__newFrameReady = False
 
     def stopAcquisition(self):
         try:
@@ -89,6 +92,8 @@ class APDManager(DetectorManager):
             self._scanWorker.close()
         except Exception:
             pass
+        self.__currentFrame += 1
+        self.__newFrameReady = True
 
     def getLatestFrame(self):
         # image = self._image
@@ -98,9 +103,11 @@ class APDManager(DetectorManager):
 
     def updateImage(self, line_pixels, line_count, frame):
         self._image[frame, -(line_count + 1), :] = line_pixels[::-1]
+        self.__currentFrame = frame
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
             self.updateLatestFrame(True)
+            self.__newFrameReady = True
 
     def initiateImage(self, lines, pixels_line, frames=1):
         if np.shape(self._image) != (frames, lines, pixels_line):
@@ -117,8 +124,12 @@ class APDManager(DetectorManager):
         super().setBinning(binning)
 
     def getChunk(self):
-        pass
-
+        #TODO: double check that this is working fine
+        if self.__newFrameReady and self.__currentFrame > 0:
+            self.__newFrameReady = False
+            data = self.getLatestFrame()[self.__currentFrame-1,:,:]
+            return data[np.newaxis,:,:]
+            
     def flushBuffers(self):
         pass
 

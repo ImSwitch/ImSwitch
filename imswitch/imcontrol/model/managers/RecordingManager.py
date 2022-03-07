@@ -199,6 +199,7 @@ class RecordingManager(SignalInterface):
 class RecordingWorker(Worker):
     def __init__(self, recordingManager):
         super().__init__()
+        self.__logger = initLogger(self)
         self.__recordingManager = recordingManager
 
     def run(self):
@@ -231,9 +232,12 @@ class RecordingWorker(Worker):
 
             # Initial number of frames must not be 0; otherwise, too much disk space may get
             # allocated. We remove this default frame later on if no frames are captured.
+            shape = shapes[detectorName]
+            if len(shape) > 2:
+                shape = shape[-2:]
             datasets[detectorName] = files[detectorName].create_dataset(
-                datasetName, (1, *reversed(shapes[detectorName])),
-                maxshape=(None, *reversed(shapes[detectorName])),
+                datasetName, (1, *reversed(shape)),
+                maxshape=(None, *reversed(shape)),
                 dtype='i2'
             )
 

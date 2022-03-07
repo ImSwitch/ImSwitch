@@ -212,6 +212,12 @@ class ScanController(SuperScanController):
 
             if not sigScanStartingEmitted:
                 self.emitScanSignal(self._commChannel.sigScanStarting)
+            # set positions of scanners not in scan from centerpos
+            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+                if positionerName not in self._positionersScan:
+                    position = self._analogParameterDict['axis_centerpos'][index]
+                    self._master.positionersManager[positionerName].setPosition(position, 0)
+            # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
             self.__logger.error(traceback.format_exc())
@@ -245,34 +251,41 @@ class ScanController(SuperScanController):
     def getParameters(self):
         if self.settingParameters:
             return
-
         self._analogParameterDict['target_device'] = []
         self._analogParameterDict['axis_length'] = []
         self._analogParameterDict['axis_step_size'] = []
         self._analogParameterDict['axis_centerpos'] = []
         self._analogParameterDict['axis_startpos'] = []
+        self._positionersScan = []
         for i in range(len(self.positioners)):
-            positionerName = self._widget.getScanDim(i)
+            self._positionersScan.append(self._widget.getScanDim(i))
+        for positionerName in self._positionersScan:
             if positionerName != 'None':
                 size = self._widget.getScanSize(positionerName)
                 stepSize = self._widget.getScanStepSize(positionerName)
                 center = self._widget.getScanCenterPos(positionerName)
                 start = list(self._master.positionersManager[positionerName].position.values())
-            else:
+                self._analogParameterDict['target_device'].append(positionerName)
+                self._analogParameterDict['axis_length'].append(size)
+                self._analogParameterDict['axis_step_size'].append(stepSize)
+                self._analogParameterDict['axis_centerpos'].append(center)
+                self._analogParameterDict['axis_startpos'].append(start)
+        for positionerName in self.positioners:
+            if positionerName not in self._positionersScan:
                 size = 1.0
                 stepSize = 1.0
-                center = 0.0
+                center = self._widget.getScanCenterPos(positionerName)
                 start = [0]
-            self._analogParameterDict['target_device'].append(positionerName)
-            self._analogParameterDict['axis_length'].append(size)
-            self._analogParameterDict['axis_step_size'].append(stepSize)
-            self._analogParameterDict['axis_centerpos'].append(center)
-            self._analogParameterDict['axis_startpos'].append(start)
+                self._analogParameterDict['target_device'].append(positionerName)
+                self._analogParameterDict['axis_length'].append(size)
+                self._analogParameterDict['axis_step_size'].append(stepSize)
+                self._analogParameterDict['axis_centerpos'].append(center)
+                self._analogParameterDict['axis_startpos'].append(start)
 
         self._digitalParameterDict['target_device'] = []
         self._digitalParameterDict['TTL_start'] = []
         self._digitalParameterDict['TTL_end'] = []
-        for deviceName, deviceInfo in self.TTLDevices.items():
+        for deviceName, _ in self.TTLDevices.items():
             if not self._widget.getTTLIncluded(deviceName):
                 continue
 

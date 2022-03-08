@@ -39,7 +39,7 @@ class ViewController(ImConWidgetController):
 
     def get_image(self, detectorName):
         if detectorName is None:
-            return self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame)
+            return self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
         else:
             return self._master.detectorsManager[detectorName].getLatestFrame()
 

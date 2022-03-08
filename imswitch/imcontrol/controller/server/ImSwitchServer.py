@@ -4,7 +4,6 @@ from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from useq import MDASequence
 import time
-from .ImSwitchServer import ImSwitchServer
 from ._serialize import register_serializers
 
 
@@ -14,7 +13,6 @@ class ImSwitchServer(Worker):
         super().__init__()
 
         self.__logger = initLogger(self, tryInheritParent=True)
-        self._server = ImSwitchServer(channel)
         self._channel = channel
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
@@ -29,7 +27,7 @@ class ImSwitchServer(Worker):
             register_serializers()
 
             Pyro5.server.serve(
-                {self._server: self._name},
+                {self: self._name},
                 use_ns=False,
                 host=self._host,
                 port=self._port,

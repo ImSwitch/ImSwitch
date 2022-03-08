@@ -3,6 +3,7 @@ from typing import Mapping
 import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
+from .server import ImSwitchServer
 
 
 class CommunicationChannel(SignalInterface):
@@ -74,7 +75,7 @@ class CommunicationChannel(SignalInterface):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
-        self._serverWorker = ServerWorker(self, setupInfo)
+        self._serverWorker = ImSwitchServer(self, setupInfo)
         self._thread = Thread()
         self._serverWorker.moveToThread(self._thread)
         self._thread.started.connect(self._serverWorker.run)

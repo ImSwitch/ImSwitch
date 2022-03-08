@@ -63,7 +63,6 @@ class SerMDAEvent(Serializer[useq.MDAEvent]):
         return useq.MDAEvent.parse_obj(d)
 
 
-
 class SerNDArray(Serializer[np.ndarray]):
     SHM_SENT: Deque[SharedMemory] = Deque(maxlen=15)
 

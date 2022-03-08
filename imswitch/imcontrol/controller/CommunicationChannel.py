@@ -1,11 +1,8 @@
 from typing import Mapping
 
 import numpy as np
-import Pyro5.server
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes, initLogger
-from .ImSwitchServer import ImSwitchServer
-from ._serialize import register_serializers
+from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 
 
 class CommunicationChannel(SignalInterface):
@@ -128,35 +125,6 @@ class CommunicationChannel(SignalInterface):
             'scanEnded': self.sigScanEnded
         })
 
-
-class ServerWorker(Worker):
-    def __init__(self, channel, setupInfo):
-        super().__init__()
-        self.__logger = initLogger(self, tryInheritParent=True)
-        self._server = ImSwitchServer(channel)
-        self._channel = channel
-        self._name = setupInfo.pyroServerInfo.name
-        self._host = setupInfo.pyroServerInfo.host
-        self._port = setupInfo.pyroServerInfo.port
-
-    def run(self):
-        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
-        try:
-            register_serializers()
-
-            Pyro5.server.serve(
-                {self._server: self._name},
-                use_ns=False,
-                host=self._host,
-                port=self._port,
-            )
-
-        except:
-            self.__loger.error("Couldn't start server.")
-        self.__logger.debug("Loop Finished")
-
-    def stop(self):
-        self._daemon.shutdown()
 
 # Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.

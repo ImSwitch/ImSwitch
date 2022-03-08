@@ -1,16 +1,46 @@
 import Pyro5
+import Pyro5.server
+from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
-from useq import MDAEvent, MDASequence
+from useq import MDASequence
 import time
-import numpy as np
+from .ImSwitchServer import ImSwitchServer
+from ._serialize import register_serializers
 
-class ImSwitchServer(object):
 
-    def __init__(self, channel):
-        self._channel = channel
+class ImSwitchServer(Worker):
+
+    def __init__(self, channel, setupInfo):
+        super().__init__()
+
         self.__logger = initLogger(self, tryInheritParent=True)
+        self._server = ImSwitchServer(channel)
+        self._channel = channel
+        self._name = setupInfo.pyroServerInfo.name
+        self._host = setupInfo.pyroServerInfo.host
+        self._port = setupInfo.pyroServerInfo.port
+
         self._paused = False
         self._canceled = False
+
+    def run(self):
+        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+        try:
+            register_serializers()
+
+            Pyro5.server.serve(
+                {self._server: self._name},
+                use_ns=False,
+                host=self._host,
+                port=self._port,
+            )
+
+        except:
+            self.__loger.error("Couldn't start server.")
+        self.__logger.debug("Loop Finished")
+
+    def stop(self):
+        self._daemon.shutdown()
 
     @Pyro5.server.expose
     def receive(self, module, func, params):

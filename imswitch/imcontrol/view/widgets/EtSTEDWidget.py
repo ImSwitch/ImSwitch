@@ -33,9 +33,9 @@ class EtSTEDWidget(Widget):
         #TODO: fix this: for this to work EtSTEDWidget has to be from NapariHybridWidget, but this does not work for the subwidgets.
         # Find a workaround, where I can still pass "options" to the subwidgets, but this still being a NapariHybridWidget
         # so that I can create a scatterPlot that I can show in the ImageViewer.
-        #self.coordScatterPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
-        #self.coordScatterPlot.hide()
-        #self.addItemToViewer(self.coordScatterPlot)
+        self.eventScatterPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
+        self.eventScatterPlot.hide()
+        # add item to viewer through comm-channel sigAddItemToVb. Then I won't be able to update the data though, but add new every time there is an event, can easily delete these as I want.
         
         # add all available analysis pipelines to the dropdown list
         self.analysisPipelines = list()
@@ -95,13 +95,13 @@ class EtSTEDWidget(Widget):
 
         self.bin_thresh_label = QtGui.QLabel('Bin. threshold')
         self.bin_thresh_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.bin_thresh_edit = QtGui.QLineEdit(str(9))
+        self.bin_thresh_edit = QtGui.QLineEdit(str(10))
         self.bin_smooth_label = QtGui.QLabel('Bin. smooth (px)')
         self.bin_smooth_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         self.bin_smooth_edit = QtGui.QLineEdit(str(2))
         self.throw_delay_label = QtGui.QLabel('Throw delay (us)')
         self.throw_delay_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.throw_delay_edit = QtGui.QLineEdit(str(30))
+        self.throw_delay_edit = QtGui.QLineEdit(str(40))
         self.update_period_label = QtGui.QLabel('Update period (ms)')
         self.update_period_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.update_period_edit = QtGui.QLineEdit(str(100))
@@ -224,15 +224,17 @@ class EtSTEDWidget(Widget):
         self.scanInitiationPar.addItems(self.scanInitiation)
         self.scanInitiationPar.setCurrentIndex(0)
 
-    def setCoordScatterData(self, x, y):
+    def setEventScatterData(self, x, y):
         """ Updates scatter plot of detected coordinates with new data. """
-        pass
-        #self.coordScatterPlot.setData(x=x, y=y)
+        self.eventScatterPlot.setData(x=x, y=y)
         
-    def setCoordScatterVisible(self, visible):
+    def setEventScatterVisible(self, visible):
         """ Updates visibility of scatter plot. """
         pass
-        #self.coordScatterPlot.setVisible(visible)
+        #self.eventScatterPlot.setVisible(visible)
+
+    def getEventScatterPlot(self):
+        return self.eventScatterPlot
 
     def launchHelpWidget(self, widget, init=True):
         """ Launch the help widget. """
@@ -253,8 +255,11 @@ class AnalysisWidget(Widget):
         self.img = pg.ImageItem(axisOrder = 'row-major')
         self.img.translate(-0.5, -0.5)
 
+        self.scatter = pg.ScatterPlotItem()
+
         self.imgVb.addItem(self.img)
         self.imgVb.setAspectLocked(True)
+        self.imgVb.addItem(self.scatter)
 
         self.info_label = QtGui.QLabel('<image info>')
         

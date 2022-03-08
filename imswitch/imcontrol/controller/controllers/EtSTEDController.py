@@ -133,7 +133,10 @@ class EtSTEDController(ImConWidgetController):
                 self.scanInitiationMode = ScanInitiationMode.ScanWidget
             elif scanInitiationType == self.scanInitiationList[1]:
                 self.scanInitiationMode = ScanInitiationMode.RecordingWidget
+
             self.__param_vals = self.readParams()
+            # Reset parameter for extra information that pipelines can input and output
+            self.__exinfo = None
             
             # Check if visualization mode, in case launch help widget
             if self._widget.visualizeCheck.isChecked():
@@ -157,7 +160,7 @@ class EtSTEDController(ImConWidgetController):
                 self._commChannel.sigRecordingEnded.connect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
 
-            self._widget.setCoordScatterVisible(True)
+            #self._widget.setEventScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         else:
@@ -170,7 +173,7 @@ class EtSTEDController(ImConWidgetController):
                 self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
 
-            self._widget.setCoordScatterVisible(False)
+            #self._widget.setEventScatterVisible(False)
             self._widget.initiateButton.setText('Initiate')
             self.resetParamVals()
             self.resetRunParams()
@@ -243,7 +246,7 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
             
-            self._widget.setCoordScatterVisible(True)
+            #self._widget.setEventScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
@@ -263,8 +266,8 @@ class EtSTEDController(ImConWidgetController):
 
     def loadPipeline(self):
         """ Load the selected analysis pipeline, and its parameters into the GUI. """
-        pipelinename = self.getPipelineName()
-        self.pipeline = getattr(importlib.import_module(f'{pipelinename}'), f'{pipelinename}')
+        self.__pipelinename = self.getPipelineName()
+        self.pipeline = getattr(importlib.import_module(f'{self.__pipelinename}'), f'{self.__pipelinename}')
         self.__pipeline_params = signature(self.pipeline).parameters
         self._widget.initParamFields(self.__pipeline_params)
 
@@ -305,22 +308,27 @@ class EtSTEDController(ImConWidgetController):
         self.setAnalysisHelpImg(self.__binary_mask)
         self.launchHelpWidget()
 
-    def setAnalysisHelpImg(self, img):
+    def setAnalysisHelpImg(self, img_ana, exinfo=None):
         """ Set the preprocessed image in the analysis help widget. """
         #self._widget.analysisHelpWidget.img.setOnlyRenderVisible(True, render=False)
-        if np.max(img) > self.__maxAnaImgVal:
-            self.__maxAnaImgVal = np.max(img)
+        if np.max(img_ana) > self.__maxAnaImgVal:
+            self.__maxAnaImgVal = np.max(img_ana)
             autolevels = True
         else:
             autolevels = False
         #self.__logger.debug(autolevels)
-        self._widget.analysisHelpWidget.img.setImage(img, autoLevels=autolevels)
-        infotext = f'Min: {np.min(img)}, max: {np.max(img)}'
+        self._widget.analysisHelpWidget.img.setImage(img_ana, autoLevels=autolevels)
+        infotext = f'Min: {np.min(img_ana)}, max: {np.max(img_ana)}'
         self._widget.analysisHelpWidget.info_label.setText(infotext)
-        img_shape = np.shape(img)
-        #if self.__frame < self.__init_frames + 1:
-        #    guitools.setBestImageLimits(self._widget.analysisHelpWidget.imgVb, img_shape[1], img_shape[0])
-        #self._widget.analysisHelpWidget.img.render()
+
+        # scatter plot exinfo if there is something (cdvesprox or dynamin)
+        if exinfo != None:
+            if 'cd_vesicle_prox' in self.__pipelinename or 'dynamin' in self.__pipelinename:
+                self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
+            #else:
+            #    self._widget.analysisHelpWidget.scatter.setData(x=[], y=[])
+
+        self._widget.analysisHelpWidget.img.render()
 
     def getScanParameters(self):
         """ Load STED scan parameters from the scanning widget. """
@@ -383,9 +391,9 @@ class EtSTEDController(ImConWidgetController):
                 self.__busy = True
                 t_pre = millis()
                 if self.__runMode == RunMode.Visualize or self.__runMode == RunMode.Validate:
-                    coords_detected, img_ana = self.pipeline(img, self.__bkg, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), *self.__param_vals)
+                    coords_detected, self.__exinfo, img_ana = self.pipeline(img, self.__bkg, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), self.__exinfo, *self.__param_vals)
                 else:
-                    coords_detected = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, *self.__param_vals)
+                    coords_detected, self.__exinfo = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, self.__exinfo, *self.__param_vals)
                 t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
                 #self.__logger.debug(coords_detected)
@@ -395,7 +403,7 @@ class EtSTEDController(ImConWidgetController):
                     #self.__logger.debug(self.__runMode)
                     if self.__runMode == RunMode.Visualize:
                         self.updateScatter(coords_detected, clear=True)
-                        self.setAnalysisHelpImg(img_ana)
+                        self.setAnalysisHelpImg(img_ana, self.__exinfo)
                     elif self.__runMode == RunMode.Validate:
                         self.updateScatter(coords_detected, clear=True)
                         self.setAnalysisHelpImg(img_ana)
@@ -534,7 +542,9 @@ class EtSTEDController(ImConWidgetController):
     def updateScatter(self, coords, clear=True):
         """ Update the scatter plot of detected event coordinates. """
         if np.size(coords) > 0:
-            self._widget.setCoordScatterData(x=coords[:,0],y=coords[:,1])
+            self._widget.setEventScatterData(x=coords[:,0],y=coords[:,1])
+            # possibly not the below more than one time. Maybe it is enough to then update it, if the reference to the same object is kept throughout all function calls
+            self._commChannel.sigAddItemToVb.emit(self._widget.getEventScatterPlot())
 
     def saveValidationImages(self, prev=True, prev_ana=True):
         """ Save the widefield validation images of an event detection. """

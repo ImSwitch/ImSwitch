@@ -7,6 +7,7 @@ from useq import MDASequence
 import time
 import numpy as np
 
+
 class ImSwitchServer(Worker):
 
     def __init__(self, channel, setupInfo):
@@ -50,7 +51,7 @@ class ImSwitchServer(Worker):
 
     @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:
-        self.__logger.info("MDA Started: {}", type(sequence))
+        self.__logger.info("MDA Started: {}")
         self._paused = False
         paused_time = 0.0
         t0 = time.perf_counter()  # reference time, in seconds
@@ -100,11 +101,11 @@ class ImSwitchServer(Worker):
             if event.x_pos is not None or event.y_pos is not None:
                 x = event.x_pos or self.getXPosition()
                 y = event.y_pos or self.getYPosition()
-                self._channel.sigSetXYPosition(x, y)
+                self._channel.sigSetXYPosition.emit(x, y)
             if event.z_pos is not None:
-                self._channel.sigSetZPosition(event.z_pos)
+                self._channel.sigSetZPosition.emit(event.z_pos)
             if event.exposure is not None:
-                self._channel.sigSetExposure(event.exposure)
+                self._channel.sigSetExposure.emit(event.exposure)
 
         self.__logger.info("MDA Finished: ")
         pass

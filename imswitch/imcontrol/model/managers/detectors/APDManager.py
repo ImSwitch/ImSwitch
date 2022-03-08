@@ -96,9 +96,6 @@ class APDManager(DetectorManager):
         self.__newFrameReady = True
 
     def getLatestFrame(self):
-        # image = self._image
-        # image.reshape(image.shape[1], image.shape[0]).T
-        # return image
         return self._image
 
     def updateImage(self, line_pixels, line_count, frame):
@@ -124,11 +121,12 @@ class APDManager(DetectorManager):
         super().setBinning(binning)
 
     def getChunk(self):
-        #TODO: double check that this is working fine
         if self.__newFrameReady and self.__currentFrame > 0:
             self.__newFrameReady = False
             data = self.getLatestFrame()[self.__currentFrame-1,:,:]
             return data[np.newaxis,:,:]
+        else:
+            return np.empty(shape=(0,0,0))
             
     def flushBuffers(self):
         pass

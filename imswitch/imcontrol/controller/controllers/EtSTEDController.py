@@ -74,6 +74,9 @@ class EtSTEDController(ImConWidgetController):
             self._master.lasersManager.execOnAll(lambda c: c.name)
         )
 
+        self.scanInitiationList = ['ScanWidget','RecordingWidget']
+        self._widget.setScanInitiationList(self.scanInitiationList)
+
         self.__logger = initLogger(self)
         self.__logger.debug('Initializing')
 
@@ -94,13 +97,14 @@ class EtSTEDController(ImConWidgetController):
         self._widget.setUpdatePeriodButton.clicked.connect(self.setUpdatePeriod)
         self._widget.setBusyFalseButton.clicked.connect(self.setBusyFalse)
         self._commChannel.sigSendScanParameters.connect(lambda analogParams, digitalParams: self.assignScanParameters(analogParams, digitalParams))
+        self._commChannel.sigSendScanFreq.connect(lambda scanFreq: self.logScanFreq(scanFreq))
 
         # initiate log for each detected event
         self.resetDetLog()
 
         # initiate flags and params
-        self.__running = False
         self.__runMode = RunMode.Experiment
+        self.__running = False
         self.__validating = False
         self.__busy = False
         self.__bkg = None
@@ -123,6 +127,12 @@ class EtSTEDController(ImConWidgetController):
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
             laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
             self.laserFast = self._widget.fastImgLasers[laserFastIdx]
+            scanInitiationTypeIdx = self._widget.scanInitiationPar.currentIndex()
+            scanInitiationType = self._widget.scanInitiation[scanInitiationTypeIdx]
+            if scanInitiationType == self.scanInitiationList[0]:
+                self.scanInitiationMode = ScanInitiationMode.ScanWidget
+            elif scanInitiationType == self.scanInitiationList[1]:
+                self.scanInitiationMode = ScanInitiationMode.RecordingWidget
             self.__param_vals = self.readParams()
             
             # Check if visualization mode, in case launch help widget
@@ -139,9 +149,12 @@ class EtSTEDController(ImConWidgetController):
             self.loadTransform()
             self.__transformCoeffs = self.__coordTransformHelper.getTransformCoeffs()
             # connect communication channel signals and turn on wf laser
-            self._commChannel.sigToggleBlockScanWidget.emit(False)
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
-            self._commChannel.sigScanEnded.connect(self.scanEnded)
+            if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+                self._commChannel.sigToggleBlockScanWidget.emit(False)
+                self._commChannel.sigScanEnded.connect(self.scanEnded)
+            elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+                self._commChannel.sigRecordingEnded.connect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
 
             self._widget.setCoordScatterVisible(True)
@@ -149,9 +162,12 @@ class EtSTEDController(ImConWidgetController):
             self.__running = True
         else:
             # disconnect communication channel signals and turn off wf laser
-            self._commChannel.sigToggleBlockScanWidget.emit(True)
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
-            self._commChannel.sigScanEnded.disconnect(self.scanEnded)
+            if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+                self._commChannel.sigToggleBlockScanWidget.emit(True)
+                self._commChannel.sigScanEnded.disconnect(self.scanEnded)
+            elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+                self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
 
             self._widget.setCoordScatterVisible(False)
@@ -162,7 +178,10 @@ class EtSTEDController(ImConWidgetController):
     def scanEnded(self):
         """ End an etSTED slow method scan. """
         self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
-        self._commChannel.sigSnapImg.emit()
+        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+            self._commChannel.sigSnapImg.emit()
+            frame_period = self.scanInfoDict['scan_samples_frame'] * 10e-6  # length (s) of total scan signal
+            self.setDetLogLine("frame_period", frame_period)
         self.endRecording()
         self.continueFastModality()
         self.__frame = 0
@@ -176,7 +195,12 @@ class EtSTEDController(ImConWidgetController):
     def runSlowScan(self):
         """ Run a scan of the slow method (STED). """
         self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
-        self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+            # Run scan in nidaqManager
+            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
+        elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+            # Run recording from RecWidget
+            self.triggerRecordingWidgetScan()
 
     def endRecording(self):
         """ Save an etSTED slow method scan. """
@@ -224,8 +248,11 @@ class EtSTEDController(ImConWidgetController):
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
             self._widget.initiateButton.setText('Initiate')
-            self._commChannel.sigToggleBlockScanWidget.emit(True)
-            self._commChannel.sigScanEnded.disconnect(self.scanEnded)
+            if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+                self._commChannel.sigToggleBlockScanWidget.emit(True)
+                self._commChannel.sigScanEnded.disconnect(self.scanEnded)
+            elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+                self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self.__running = False
             self.resetParamVals()
 
@@ -363,8 +390,8 @@ class EtSTEDController(ImConWidgetController):
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
                 #self.__logger.debug(coords_detected)
 
-                # run if the initial frames have passed
                 if self.__frame > self.__init_frames:
+                    # run if the initial frames have passed
                     #self.__logger.debug(self.__runMode)
                     if self.__runMode == RunMode.Visualize:
                         self.updateScatter(coords_detected, clear=True)
@@ -443,13 +470,20 @@ class EtSTEDController(ImConWidgetController):
         self.setCenterScanParameter(position)
         dt = datetime.now()
         time_curr_mid = round(dt.microsecond/1000)
-        try:
-            self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                self._analogParameterDict, self._digitalParameterDict, staticPositioner=False
-            )
-        except:
-            self.__logger.debug('Error when initiating slow scan')
-            return
+        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
+            self.__logger.debug('Initiating scan with ScanWidget')
+            try:
+                self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                    self._analogParameterDict, self._digitalParameterDict, staticPositioner=False
+                )
+            except:
+                self.__logger.debug('Error when initiating ScanWidget scan')
+                return
+        elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+            self.__logger.debug('Initiating scan with RecordingWidget')
+            self._commChannel.sigRequestScanFreq.emit()
+            # Set scan axis centers in scanwidget
+            self.setCentersScanWidget()
         self.scanInfoDict['throw_delay'] = np.float(self._widget.throw_delay_edit.text())
         dt = datetime.now()
         time_curr_after = round(dt.microsecond/1000)
@@ -472,6 +506,9 @@ class EtSTEDController(ImConWidgetController):
                         self._analogParameterDict['axis_centerpos'][index] = center
         #self.__logger.debug(self._analogParameterDict)
 
+    def logScanFreq(self, scanFreq):
+        self.setDetLogLine("scan_period", scanFreq)
+
     def addFastAxisShift(self, center):
         """ Add a scanning-method and microscope-specific shift to the fast axis scanning. 
         Based on second-degree curved surface fit to 2D-sampling of dwell time and pixel size induced shifts. """
@@ -482,6 +519,17 @@ class EtSTEDController(ImConWidgetController):
         shift_compensation = np.sum(params*C)
         center -= shift_compensation
         return(center)
+
+    def setCentersScanWidget(self):
+        devices = []
+        centers = []
+        for device,center in zip(self._analogParameterDict['target_device'], self._analogParameterDict['axis_centerpos']):
+            devices.append(device)
+            centers.append(center)
+        self._commChannel.sigSetAxisCenters.emit(devices, centers)
+
+    def triggerRecordingWidgetScan(self):
+        self._commChannel.sigStartRecordingExternal.emit()
 
     def updateScatter(self, coords, clear=True):
         """ Update the scatter plot of detected event coordinates. """
@@ -658,6 +706,10 @@ class RunMode(enum.Enum):
     Experiment = 1
     Visualize = 2
     Validate = 3
+
+class ScanInitiationMode(enum.Enum):
+    ScanWidget = 1
+    RecordingWidget = 2
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

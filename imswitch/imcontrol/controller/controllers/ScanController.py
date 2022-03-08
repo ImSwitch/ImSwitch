@@ -66,6 +66,7 @@ class ScanController(SuperScanController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigToggleBlockScanWidget.connect(lambda block: self.toggleBlockWidget(block))
         self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
+        self._commChannel.sigSetAxisCenters.connect(lambda devices, centers: self.setCenterParameters(devices, centers))
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -311,6 +312,14 @@ class ScanController(SuperScanController):
                 pixels = round(float(self._analogParameterDict['axis_length'][index]) /
                                float(self._analogParameterDict['axis_step_size'][index]))
                 self._widget.setScanPixels(positionerName, pixels)
+
+    def setCenterParameters(self, devices, centers):
+        for centerpos, scannerSet in zip(devices, centers):
+            # for every incoming device, listed in order of scanAxes
+            for scannerAxis in self.positioners:
+                # for every device, listed in order as device list
+                if scannerSet == scannerAxis:
+                    self._widget.setScanCenterPos(scannerSet, centerpos)
 
     def plotSignalGraph(self):
         if self.settingParameters:

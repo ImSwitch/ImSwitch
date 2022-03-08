@@ -70,6 +70,11 @@ class EtSTEDWidget(Widget):
         self.fastImgLasersPar = QtGui.QComboBox()
         self.fastImgLasersPar_label = QtGui.QLabel('Fast laser')
         self.fastImgLasersPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        # add dropdown list for the type of recording I want to perform (pure scanWidget or recordingManager for timelapses with defined frequency)
+        self.scanInitiation = list()
+        self.scanInitiationPar = QtGui.QComboBox()
+        self.scanInitiationPar_label = QtGui.QLabel('Scan type')
+        self.scanInitiationPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
 
         self.param_names = list()
         self.param_edits = list()
@@ -150,12 +155,17 @@ class EtSTEDWidget(Widget):
         currentRow +=1
 
         self.grid.addWidget(self.fastImgDetectorsPar_label, currentRow, 2)
-        self.grid.addWidget(self.fastImgLasersPar_label, currentRow, 3)
+        self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
 
         currentRow += 1
 
-        self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 2)
+        self.grid.addWidget(self.fastImgLasersPar_label, currentRow, 2)
         self.grid.addWidget(self.fastImgLasersPar, currentRow, 3)
+
+        currentRow +=1
+
+        self.grid.addWidget(self.scanInitiationPar_label, currentRow, 2)
+        self.grid.addWidget(self.scanInitiationPar, currentRow, 3)
 
         currentRow +=1 
 
@@ -206,6 +216,13 @@ class EtSTEDWidget(Widget):
             self.fastImgLasers.append(laserName)
         self.fastImgLasersPar.addItems(self.fastImgLasers)
         self.fastImgLasersPar.setCurrentIndex(0)
+
+    def setScanInitiationList(self, initiationTypes):
+        """ Set combobox with types of scan initiation to use for the scan method. """
+        for initiationType in initiationTypes:
+            self.scanInitiation.append(initiationType)
+        self.scanInitiationPar.addItems(self.scanInitiation)
+        self.scanInitiationPar.setCurrentIndex(0)
 
     def setCoordScatterData(self, x, y):
         """ Updates scatter plot of detected coordinates with new data. """

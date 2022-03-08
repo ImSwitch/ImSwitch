@@ -45,6 +45,8 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
+        self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
+        self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
@@ -342,6 +344,12 @@ class RecordingController(ImConWidgetController):
             elif self.recMode == RecMode.ScanLapse:
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
+
+    def sendScanFreq(self):
+        self._commChannel.sigSendScanFreq.emit(self.getTimelapseFreq)
+
+    def getTimelapseFreq(self):
+        return self._widget.getTimelapseFreq()
 
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:

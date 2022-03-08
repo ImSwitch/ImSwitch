@@ -1,3 +1,4 @@
+from re import S
 from typing import Mapping
 
 import numpy as np
@@ -69,6 +70,14 @@ class CommunicationChannel(SignalInterface):
     sigRequestScanParameters = Signal()
 
     sigSendScanParameters = Signal(dict, dict)  # (analogParams, digitalParams)
+
+    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+
+    sigStartRecordingExternal = Signal()
+
+    sigRequestScanFreq = Signal()
+    
+    sigSendScanFreq = Signal(float)  # (scanPeriod)
 
     @property
     def sharedAttrs(self):

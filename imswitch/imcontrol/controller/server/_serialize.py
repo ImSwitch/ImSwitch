@@ -47,7 +47,7 @@ class Serializer(ABC, Generic[T]):
         return f"{cls.type_().__module__}.{cls.type_().__name__}"
 
 
-'''class SerMDASequence(Serializer[useq.MDASequence]):
+class SerMDASequence(Serializer[useq.MDASequence]):
     def to_dict(self, obj: useq.MDASequence):
         return obj.dict()
 
@@ -61,7 +61,7 @@ class SerMDAEvent(Serializer[useq.MDAEvent]):
 
     def from_dict(self, classname: str, d: dict):
         return useq.MDAEvent.parse_obj(d)
-'''
+
 
 
 class SerNDArray(Serializer[np.ndarray]):

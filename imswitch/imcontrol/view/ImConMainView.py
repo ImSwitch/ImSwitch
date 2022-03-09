@@ -62,6 +62,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+            'Holo': _DockInfo(name='Holo Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
         }
         leftDockInfos = {

@@ -22,7 +22,7 @@ class CameraAV:
         self.blacklevel = 100
         self.exposure_time = 10
         self.analog_gain = 0
-        self.pixel_format = "Mono8"
+        self.pixel_format = "Mono12"
 
         self.frame_id_last = 0
 
@@ -205,7 +205,7 @@ class CameraAV:
             self.camera.open()
             try:
                 feature = self.camera.feature("PixelFormat")
-                feature.value = "Mono8"
+                feature.value = "Mono12"
             except Exception as e:
                 self.__logger.error(e)
                 self.__logger.debug("Pixel Format could not be set")

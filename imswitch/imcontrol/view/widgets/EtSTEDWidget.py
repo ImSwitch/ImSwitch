@@ -47,6 +47,8 @@ class EtSTEDWidget(Widget):
         
         self.analysisPipelinePar.addItems(self.analysisPipelines)
         self.analysisPipelinePar.setCurrentIndex(0)
+
+        self.__paramsExclude = ['img', 'bkg', 'binary_mask', 'exinfo', 'testmode']
         
         #TODO: add way to save current coordinate transform as a file that can be loaded from the list
         # add all available coordinate transformations to the dropdown list
@@ -189,7 +191,7 @@ class EtSTEDWidget(Widget):
         self.param_names = list()
         self.param_edits = list()
         for pipeline_param_name, pipeline_param_val in parameters.items():
-            if pipeline_param_name != 'img' and pipeline_param_name != 'bkg' and pipeline_param_name != 'binary_mask' and pipeline_param_name != 'testmode':
+            if pipeline_param_name not in self.__paramsExclude:
                 # create param for input
                 param_name = QtGui.QLabel('{}'.format(pipeline_param_name))
                 param_value = pipeline_param_val.default if pipeline_param_val.default is not pipeline_param_val.empty else 0

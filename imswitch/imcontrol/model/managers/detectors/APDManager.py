@@ -90,10 +90,10 @@ class APDManager(DetectorManager):
             self._scanThread.quit()
             self._scanThread.wait()
             self._scanWorker.close()
+            self.__currentFrame += 1
+            self.__newFrameReady = True
         except Exception:
             pass
-        self.__currentFrame += 1
-        self.__newFrameReady = True
 
     def getLatestFrame(self):
         return self._image

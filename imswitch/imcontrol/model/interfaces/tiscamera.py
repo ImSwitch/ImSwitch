@@ -10,10 +10,13 @@ class CameraTIS:
         self.__logger = initLogger(self, tryInheritParent=True)
 
         ic_ic = IC_ImagingControl.IC_ImagingControl()
+        self.__logger.debug('Got ic_ic')
         ic_ic.init_library()
         cam_names = ic_ic.get_unique_device_names()
         self.model = cam_names[cameraNo]
         self.cam = ic_ic.get_device(cam_names[cameraNo])
+
+        self.__logger.debug('Found cam')
 
         self.cam.open()
 
@@ -23,8 +26,10 @@ class CameraTIS:
         self.cam.enable_continuous_mode(True)  # image in continuous mode
         self.cam.enable_trigger(False)  # camera will wait for trigger
 
-        self.roi_filter = self.cam.create_frame_filter('ROI'.encode('utf-8'))
+        self.__logger.debug('Try to add frame filter')
+        self.roi_filter = self.cam.create_frame_filter('ROI')
         self.cam.add_frame_filter_to_device(self.roi_filter)
+        self.__logger.debug('Added frame filter')
 
     def start_live(self):
         self.cam.start_live()  # start imaging
@@ -55,16 +60,16 @@ class CameraTIS:
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width'.encode('utf-8'), hsize)
-        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top'.encode('utf-8'))
-        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
-        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
-        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
+        #self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top', vpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left', hpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height', vsize)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width', hsize)
+        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top')
+        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left')
+        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height')
+        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width')
         self.__logger.debug(
-            f'{self.model}: '
             f'setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}'
         )
 

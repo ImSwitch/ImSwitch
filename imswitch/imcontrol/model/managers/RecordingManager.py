@@ -114,8 +114,8 @@ class RecordingManager(SignalInterface):
                         dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                         for key, value in attrs[detectorName].items():
-                            #self.__logger.debug(key)
-                            #self.__logger.debug(value)
+                            self.__logger.debug(key)
+                            self.__logger.debug(value)
                             try:
                                 dataset.attrs[key] = value
                             except:

@@ -6,6 +6,7 @@ from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
 
 class RecordingController(ImConWidgetController):
@@ -13,6 +14,7 @@ class RecordingController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
         self._widget.setDetectorList(
             self._master.detectorsManager.execOnAll(lambda c: c.model,
                                                     condition=lambda c: c.forAcquisition)
@@ -90,6 +92,7 @@ class RecordingController(ImConWidgetController):
         detectorNames = self.getDetectorNamesToCapture()
         savename = os.path.join(folder, self.getFileName()) + '_snap'
         attrs = self._commChannel.sharedAttrs.getHDF5Attributes()
+        self.__logger.debug(attrs)
 
         self._master.recordingManager.snap(detectorNames,
                                            savename,

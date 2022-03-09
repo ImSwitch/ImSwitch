@@ -317,18 +317,23 @@ class EtSTEDController(ImConWidgetController):
         else:
             autolevels = False
         #self.__logger.debug(autolevels)
+        if img_ana.ndim == 3:
+            img_ana = img_ana[0,:,:]
+        #self.__logger.debug(type(img_ana))
+        #self.__logger.debug(np.shape(img_ana))
+        #self.__logger.debug(img_ana.dtype)
         self._widget.analysisHelpWidget.img.setImage(img_ana, autoLevels=autolevels)
         infotext = f'Min: {np.min(img_ana)}, max: {np.max(img_ana)}'
         self._widget.analysisHelpWidget.info_label.setText(infotext)
 
         # scatter plot exinfo if there is something (cdvesprox or dynamin)
-        if exinfo != None:
+        if exinfo is not None:
             if 'cd_vesicle_prox' in self.__pipelinename or 'dynamin' in self.__pipelinename:
                 self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
             #else:
             #    self._widget.analysisHelpWidget.scatter.setData(x=[], y=[])
 
-        self._widget.analysisHelpWidget.img.render()
+        #self._widget.analysisHelpWidget.img.render()
 
     def getScanParameters(self):
         """ Load STED scan parameters from the scanning widget. """
@@ -379,6 +384,7 @@ class EtSTEDController(ImConWidgetController):
         self.__running = False
         self.__validating = False
         self.__frame = 0
+        self.__maxAnaImgVal = 0
 
     def runPipeline(self, detectorName, img, init, isCurrentDetector):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
@@ -391,11 +397,12 @@ class EtSTEDController(ImConWidgetController):
                 self.__busy = True
                 t_pre = millis()
                 if self.__runMode == RunMode.Visualize or self.__runMode == RunMode.Validate:
-                    coords_detected, self.__exinfo, img_ana = self.pipeline(img, self.__bkg, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), self.__exinfo, *self.__param_vals)
+                    coords_detected, self.__exinfo, img_ana = self.pipeline(img, self.__prevFrames, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), self.__exinfo, *self.__param_vals)
                 else:
-                    coords_detected, self.__exinfo = self.pipeline(img, self.__bkg, self.__binary_mask, self.__runMode==RunMode.Visualize, self.__exinfo, *self.__param_vals)
+                    coords_detected, self.__exinfo = self.pipeline(img, self.__prevFrames, self.__binary_mask, self.__runMode==RunMode.Visualize, self.__exinfo, *self.__param_vals)
                 t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
+                self.__logger.debug(f'Pipeline time: {t_post-t_pre} ms')
                 #self.__logger.debug(coords_detected)
 
                 if self.__frame > self.__init_frames:

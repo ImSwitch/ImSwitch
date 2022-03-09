@@ -91,7 +91,9 @@ class RecordingController(ImConWidgetController):
 
         detectorNames = self.getDetectorNamesToCapture()
         savename = os.path.join(folder, self.getFileName()) + '_snap'
-        attrs = self._commChannel.sharedAttrs.getHDF5Attributes()
+
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                 for detectorName in detectorNames}
         self.__logger.debug(attrs)
 
         self._master.recordingManager.snap(detectorNames,
@@ -115,7 +117,7 @@ class RecordingController(ImConWidgetController):
         time.sleep(0.01)
 
         savename = os.path.join(folder, self.getFileName()) + '_snap_' + suffix
-        attrs = self._commChannel.sharedAttrs.getHDF5Attributes()
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()}
 
         self._master.recordingManager.snapImagePrev(detectorName,
                                                     savename,
@@ -144,7 +146,8 @@ class RecordingController(ImConWidgetController):
                 'recMode': self.recMode,
                 'savename': self.savename,
                 'saveMode': SaveMode(self._widget.getRecSaveMode()),
-                'attrs': self._commChannel.sharedAttrs.getHDF5Attributes(),
+                'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                          for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
                                             self._widget.getMultiDetectorSingleFile())
             }
@@ -187,8 +190,9 @@ class RecordingController(ImConWidgetController):
 
         if isFirstLapse:
             self._commChannel.sigScanStarting.emit()  # To get updated values from sharedAttrs
-            self.recordingArgs['attrs'] = {
-                self._commChannel.sharedAttrs.getHDF5Attributes()
+            self.recordingArgs['attrs'] = {  # Update
+                detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                for detectorName in self.recordingArgs['detectorNames']
             }
             self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()  # Update
 

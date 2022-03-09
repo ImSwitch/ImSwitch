@@ -202,7 +202,7 @@ class GalvoScanDesigner(ScanDesigner):
         #    plt.plot(frame_axis_signal)
         #plt.show()
 
-        self.__logger.debug(scanInfoDict)
+        #self.__logger.debug(scanInfoDict)
         self.__logger.debug('Scanning curves generated.')
         return sig_dict, axis_positions, scanInfoDict
 

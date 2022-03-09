@@ -94,8 +94,7 @@ class RecordingController(ImConWidgetController):
 
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
-        self.__logger.debug(attrs)
-
+        
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
@@ -223,7 +222,7 @@ class RecordingController(ImConWidgetController):
 
     def scanDone(self):
         self.doneScan = True
-        if self.endedRecording and (self.recMode == RecMode.ScanLapse or
+        if not self.endedRecording and (self.recMode == RecMode.ScanLapse or
                                     self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
 
@@ -350,7 +349,8 @@ class RecordingController(ImConWidgetController):
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
 
     def sendScanFreq(self):
-        self._commChannel.sigSendScanFreq.emit(self.getTimelapseFreq)
+        freq = self.getTimelapseFreq()
+        self._commChannel.sigSendScanFreq.emit(freq)
 
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()

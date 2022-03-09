@@ -231,7 +231,7 @@ class EtSTEDController(ImConWidgetController):
 
     def logPipelineParamVals(self):
         """ Put analysis pipeline parameter values in the log file. """
-        params_ignore = ['img','bkg','binary_mask','testmode']
+        params_ignore = ['img','bkg','binary_mask','testmode','exinfo']
         param_names = list()
         for pipeline_param_name, _ in self.__pipeline_params.items():
             if pipeline_param_name not in params_ignore:
@@ -402,7 +402,7 @@ class EtSTEDController(ImConWidgetController):
                     coords_detected, self.__exinfo = self.pipeline(img, self.__prevFrames, self.__binary_mask, self.__runMode==RunMode.Visualize, self.__exinfo, *self.__param_vals)
                 t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
-                self.__logger.debug(f'Pipeline time: {t_post-t_pre} ms')
+                #self.__logger.debug(f'Pipeline time: {t_post-t_pre} ms')
                 #self.__logger.debug(coords_detected)
 
                 if self.__frame > self.__init_frames:
@@ -442,15 +442,16 @@ class EtSTEDController(ImConWidgetController):
                     elif coords_detected.size != 0:
                         # if some events were detected
                         if np.size(coords_detected) > 2:
-                            coords_scan = coords_detected[0,:]
+                            coords_scan = np.copy(coords_detected[0,:])
                         else:
-                            coords_scan = coords_detected[0]
+                            coords_scan = np.copy(coords_detected[0])
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
+                        self.setDetLogLine("fastscan_x_center", coords_scan[0])
+                        self.setDetLogLine("fastscan_y_center", coords_scan[1])
+                        coords_scan[1] = np.shape(img)[0] - coords_scan[1]
                         self.pauseFastModality()
                         self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
                         coords_center_scan = self.transform(coords_scan, self.__transformCoeffs)
-                        self.setDetLogLine("fastscan_x_center", coords_scan[0])
-                        self.setDetLogLine("fastscan_y_center", coords_scan[1])
                         self.setDetLogLine("slowscan_x_center", coords_center_scan[0])
                         self.setDetLogLine("slowscan_y_center", coords_center_scan[1])
                         self.setDetLogLine("scan_initiate", datetime.now().strftime('%Ss%fus'))
@@ -460,7 +461,8 @@ class EtSTEDController(ImConWidgetController):
                                 self.setDetLogLine("det_coord_x_", coords_scan[0], i)
                                 self.setDetLogLine("det_coord_y_", coords_scan[1], i)
                         
-                        #self.__logger.debug(self.__detLog)
+                        #self.__logger.debug(coords_scan)
+                        #self.__logger.debug(coords_center_scan)
                         self.initiateSlowScan(position=coords_center_scan)
                         self.runSlowScan()
 
@@ -469,6 +471,7 @@ class EtSTEDController(ImConWidgetController):
 
                         self.__prevFrames.append(img)
                         self.saveValidationImages(prev=True, prev_ana=False)
+                        self.__exinfo = None
                         self.__busy = False
                         return
                 self.__bkg = img
@@ -549,7 +552,7 @@ class EtSTEDController(ImConWidgetController):
     def updateScatter(self, coords, clear=True):
         """ Update the scatter plot of detected event coordinates. """
         if np.size(coords) > 0:
-            self._widget.setEventScatterData(x=coords[:,0],y=coords[:,1])
+            self._widget.setEventScatterData(x=coords[:,1],y=coords[:,0])
             # possibly not the below more than one time. Maybe it is enough to then update it, if the reference to the same object is kept throughout all function calls
             self._commChannel.sigAddItemToVb.emit(self._widget.getEventScatterPlot())
 
@@ -616,7 +619,8 @@ class EtSTEDCoordTransformHelper():
         # get annotated coordinates in both images and translate to real space coordinates
         self.__loResCoordsPx = self._widget.pointsLayerLo.data
         for pos_px in self.__loResCoordsPx:
-            pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
+            #pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
+            pos = (np.around(pos_px[0], 3), np.around(pos_px[1], 3))
             self.__loResCoords.append(pos)
         self.__hiResCoordsPx = self._widget.pointsLayerHi.data
         for pos_px in self.__hiResCoordsPx:
@@ -624,7 +628,9 @@ class EtSTEDCoordTransformHelper():
             self.__hiResCoords.append(pos)
         # calibrate coordinate transform
         self.coordinateTransformCalibrate()
-        self.__logger.debug(f'Transformation coeffs: {self.__transformCoeffs}')
+        #self.__logger.debug(self.__loResCoords)
+        #self.__logger.debug(self.__hiResCoords)
+        #self.__logger.debug(f'Transformation coeffs: {self.__transformCoeffs}')
         name = datetime.utcnow().strftime('%Hh%Mm%Ss%fus')
         filename = os.path.join(self.__saveFolder, name) + '_transformCoeffs.txt'
         np.savetxt(fname=filename, X=self.__transformCoeffs)
@@ -655,8 +661,7 @@ class EtSTEDCoordTransformHelper():
         # load img data from file
         with h5py.File(img_filename, "r") as f:
             img_key = list(f.keys())[0]
-            pixelsize = f.attrs['element_size_um'][1]
-            print(pixelsize)
+            pixelsize = f[img_key].attrs['element_size_um'][1]
             img_data = np.array(f[img_key])
             imgsize = pixelsize*np.size(img_data,0)
         # view data in corresponding viewbox

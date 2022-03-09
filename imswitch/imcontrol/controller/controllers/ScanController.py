@@ -80,6 +80,7 @@ class ScanController(SuperScanController):
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
+
     def getDimsScan(self):
         # TODO: Make sure this works as intended
         self.getParameters()
@@ -230,7 +231,6 @@ class ScanController(SuperScanController):
             self.scanFailed()
 
     def scanDone(self):
-        self.__logger.debug('Scan done')
         self.isRunning = False
 
         if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
@@ -239,7 +239,6 @@ class ScanController(SuperScanController):
                 self._widget.setScanButtonChecked(False)
                 self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
-            self.__logger.debug('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def scanFailed(self):
@@ -314,7 +313,7 @@ class ScanController(SuperScanController):
                 self._widget.setScanPixels(positionerName, pixels)
 
     def setCenterParameters(self, devices, centers):
-        for centerpos, scannerSet in zip(devices, centers):
+        for centerpos, scannerSet in zip(centers, devices):
             # for every incoming device, listed in order of scanAxes
             for scannerAxis in self.positioners:
                 # for every device, listed in order as device list

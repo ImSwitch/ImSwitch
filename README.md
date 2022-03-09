@@ -36,6 +36,60 @@ imswitch
 ```
 (Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
+
+### Option C: Install from Github (UC2 version) 
+
+**Installation**
+```
+cd ~/Downloads
+git clone https://github.com/beniroquai/ImSwitch/
+conda create -n imswitch python=3.8
+conda activate imswitch
+pip install -r requirements.txt --user 
+pip install -e ./
+```
+
+**Start the imswitch**
+
+```
+cd imswitch
+python __main__.py
+```
+
+
+
+
+## On Jetson Nano
+
+Add environment 
+
+```
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash ./Miniforge3-Linux-aarch64.sh
+./anaconda3/bin/conda init
+conda create -n imswitch  python=3.7
+```
+
+Now lets add pyqt5 via conda
+
+```
+conda install pyqt
+```
+
+Make sure you install this repo without `pyqt` in `setup.cfg`
+
+install imswitch without pyqt
+sudo apt-get install python3-pyqt5.qsci
+
+
+
+## Configure the System
+
+We created a set of UC2-specific `json`-configuration files. ***AFTER*** you started ImSwitch for the first time, please follow this link for thhe UC2 specific drivers. 
+
+Please go to the Review [here]()
+
+
 ## Documentation
 
 Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).

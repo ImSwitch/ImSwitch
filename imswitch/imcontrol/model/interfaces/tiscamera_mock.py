@@ -44,7 +44,7 @@ class MockCameraTIS:
         img = np.random.randn(img.shape[0],img.shape[1])
         return img
 
-    def getLast(self):
+    def getLast(self, is_resize=False):
         return self.grabFrame()
     
     def getLastChunk(self):

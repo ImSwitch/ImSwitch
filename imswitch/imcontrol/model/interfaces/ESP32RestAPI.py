@@ -283,9 +283,9 @@ class ESP32Client(object):
 
 
     def set_galvo_freq(self, axis=1, value=1000):
-        if axis == 1:
+        if axis+1 == 1:
             self.galvo1.frequency=value
-            payload = self.gavlo1.return_dict()
+            payload = self.galvo1.return_dict()
         else:
             self.galvo2.frequency=value
             payload = self.galvo2.return_dict()
@@ -294,9 +294,9 @@ class ESP32Client(object):
         return r
 
     def set_galvo_amp(self, axis=1, value=1000):
-        if axis == 1:
+        if axis+1 == 1:
             self.galvo1.amplitude=value
-            payload = self.gavlo1.return_dict()
+            payload = self.galvo1.return_dict()
         else:
             self.galvo2.amplitude=value
             payload = self.galvo2.return_dict()

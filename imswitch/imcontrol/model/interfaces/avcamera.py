@@ -22,7 +22,7 @@ class CameraAV:
         self.blacklevel = 100
         self.exposure_time = 10
         self.analog_gain = 0
-        self.pixel_format = "Mono12"
+        self.pixel_format = "Mono8"
 
         self.frame_id_last = 0
 
@@ -30,7 +30,7 @@ class CameraAV:
         self.PreviewHeightRatio = 2
         
         # reserve some space for the framebuffer
-        self.frame_buffer = collections.deque(maxlen=10)
+        self.frame_buffer = collections.deque(maxlen=20)
         
         
         #%% starting the camera thread
@@ -100,6 +100,8 @@ class CameraAV:
             self.__logger.debug("Value not available?")
     
     def set_exposure_time(self,exposure_time):
+        if exposure_time<=0:
+            exposure_time=1
         self.exposure_time = exposure_time
         self.set_value("ExposureTime", self.exposure_time*1000)
 
@@ -119,12 +121,7 @@ class CameraAV:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        if is_resize:
-            return cv2.resize(self.frame, dsize=None, 
-                    fx=1/self.PreviewWidthRatio, fy=1/self.PreviewHeightRatio, 
-                    interpolation= cv2.INTER_LINEAR)
-        else:
-            return self.frame
+        return self.frame
 
     def getLastChunk(self):
         chunk = np.array(self.frame_buffer)
@@ -141,8 +138,8 @@ class CameraAV:
         try:
             image_Height = self.camera.feature("Height")
             image_Width = self.camera.feature("Width")
-            image_Height.value = hsize
-            image_Width.value = vsize
+            image_Height.value = vsize
+            image_Width.value = hsize
             self.shape = (image_Width.value,image_Height.value)
         except Exception as e:
             self.__logger.error("Setting the ROI")
@@ -208,7 +205,7 @@ class CameraAV:
             self.camera.open()
             try:
                 feature = self.camera.feature("PixelFormat")
-                feature.value = "Mono12"
+                feature.value = "Mono8"
             except Exception as e:
                 self.__logger.error(e)
                 self.__logger.debug("Pixel Format could not be set")
@@ -232,7 +229,7 @@ class CameraAV:
     def set_frame(self, frame):
         self.frame = frame.buffer_data_numpy()
         self.frame_id = frame.data.frameID
-        if self.frame is None:
+        if self.frame is None or frame.data.receiveStatus == -1:
             self.frame = np.zeros(self.shape)
         self.frame_buffer.append(self.frame)
     

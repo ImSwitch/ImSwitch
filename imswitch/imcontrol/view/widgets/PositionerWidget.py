@@ -9,6 +9,8 @@ class PositionerWidget(Widget):
 
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigStepUpSpeedClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigStepDownSpeedClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -31,6 +33,12 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
             self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
             self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
+            self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
+            self.pars['UpButtonSpeed' + parNameSuffix] = guitools.BetterPushButton('+')
+            self.pars['DownButtonSpeed' + parNameSuffix] = guitools.BetterPushButton('-')
+            self.pars['StepEditSpeed' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+            self.pars['StepUnitSpeed' + parNameSuffix] = QtWidgets.QLabel(' µm/s')
 
             self.grid.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
             self.grid.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
@@ -39,6 +47,12 @@ class PositionerWidget(Widget):
             self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
             self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
             self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
+            self.grid.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 7)
+            self.grid.addWidget(self.pars['UpButtonSpeed' + parNameSuffix], self.numPositioners, 8)
+            self.grid.addWidget(self.pars['DownButtonSpeed' + parNameSuffix], self.numPositioners, 9)
+            self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 10)
+            self.grid.addWidget(self.pars['StepEditSpeed' + parNameSuffix], self.numPositioners, 11)
+            self.grid.addWidget(self.pars['StepUnitSpeed' + parNameSuffix], self.numPositioners, 12)
 
             self.numPositioners += 1
 
@@ -48,6 +62,12 @@ class PositionerWidget(Widget):
             )
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
+            )
+            self.pars['UpButtonSpeed' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigStepUpSpeedClicked.emit(positionerName, axis)
+            )
+            self.pars['DownButtonSpeed' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigStepDownSpeedClicked.emit(positionerName, axis)
             )
 
     def getStepSize(self, positionerName, axis):
@@ -61,6 +81,18 @@ class PositionerWidget(Widget):
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['StepEdit' + parNameSuffix].setText(stepSize)
+
+    def getSpeedSize(self, positionerName, axis):
+        """ Returns the step size of the specified positioner axis in
+        micrometers. """
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        return float(self.pars['SpeedEdit' + parNameSuffix].text())
+
+    def setSpeedSize(self, positionerName, axis, speedSize):
+        """ Sets the step size of the specified positioner axis to the
+        specified number of micrometers. """
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['SpeedEdit' + parNameSuffix].setText(speedSize)
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)

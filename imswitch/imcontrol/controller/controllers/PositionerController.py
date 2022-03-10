@@ -32,6 +32,8 @@ class PositionerController(ImConWidgetController):
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
+        self._widget.sigStepUpSpeedClicked.connect(self.speedUp)
+        self._widget.sigStepDownSpeedClicked.connect(self.speedDown)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -46,12 +48,21 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 
+    def setSpeed(self, positionerName, axis, speed):
+        self._master.positionersManager[positionerName] 
+
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
         self._master.positionersManager[positionerName].setPosition(position, axis)
         self.updatePosition(positionerName, axis)
 
     def stepUp(self, positionerName, axis):
+        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
+
+    def speedDown(self, positionerName, axis):
+        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
+
+    def speedUp(self, positionerName, axis):
         self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
 
     def stepDown(self, positionerName, axis):

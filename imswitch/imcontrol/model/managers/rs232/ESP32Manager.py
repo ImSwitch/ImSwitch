@@ -23,7 +23,7 @@ class ESP32Manager:
         self._esp32 = ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
         # self._esp32 = ESP32Client(self._host, port=80)
 
-    def send(self, arg: str) -> str:
+    def query(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
         self._esp32.post_json(arg)

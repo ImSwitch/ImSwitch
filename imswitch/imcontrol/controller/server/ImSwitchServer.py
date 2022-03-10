@@ -1,24 +1,57 @@
+import Pyro5
 import Pyro5.server
+from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
-from useq import MDAEvent, MDASequence
+from ._serialize import register_serializers
+from useq import MDASequence
 import time
+import numpy as np
 
 
-class ImSwitchServer(object):
+class ImSwitchServer(Worker):
 
-    def __init__(self, channel):
-        self._channel = channel
+    def __init__(self, channel, setupInfo):
+        super().__init__()
+
         self.__logger = initLogger(self, tryInheritParent=True)
+        self._channel = channel
+        self._name = setupInfo.pyroServerInfo.name
+        self._host = setupInfo.pyroServerInfo.host
+        self._port = setupInfo.pyroServerInfo.port
+
         self._paused = False
         self._canceled = False
 
+    def run(self):
+        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
+        try:
+            register_serializers()
+
+            Pyro5.server.serve(
+                {self: self._name},
+                use_ns=False,
+                host=self._host,
+                port=self._port,
+            )
+
+        except:
+            self.__loger.error("Couldn't start server.")
+        self.__logger.debug("Loop Finished")
+
+    def stop(self):
+        self._daemon.shutdown()
+
     @Pyro5.server.expose
-    def receive(self, module, func, params):
-        return self._channel.sigBroadcast.emit(module, func, params)
+    def exec(self, module, func, params):
+        self._channel.sigBroadcast.emit(module, func, params)
+
+    @Pyro5.server.expose
+    def get_image(self, detectorName=None) -> np.ndarray:
+        return self._channel.get_image(detectorName)
 
     @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:
-        self.__logger.info("MDA Started: {}", type(sequence))
+        self.__logger.info("MDA Started: {}")
         self._paused = False
         paused_time = 0.0
         t0 = time.perf_counter()  # reference time, in seconds
@@ -68,11 +101,11 @@ class ImSwitchServer(object):
             if event.x_pos is not None or event.y_pos is not None:
                 x = event.x_pos or self.getXPosition()
                 y = event.y_pos or self.getYPosition()
-                self._channel.sigSetXYPosition(x, y)
+                self._channel.sigSetXYPosition.emit(x, y)
             if event.z_pos is not None:
-                self._channel.sigSetZPosition(event.z_pos)
+                self._channel.sigSetZPosition.emit(event.z_pos)
             if event.exposure is not None:
-                self._channel.sigSetExposure(event.exposure)
+                self._channel.sigSetExposure.emit(event.exposure)
 
         self.__logger.info("MDA Finished: ")
         pass

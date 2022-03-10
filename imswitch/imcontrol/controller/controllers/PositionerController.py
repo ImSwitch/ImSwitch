@@ -26,8 +26,8 @@ class PositionerController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigSetXYPosition.connect(self.setXYPosition)
-        self._commChannel.sigSetZPosition.connect(self.setZPosition)
+        self._commChannel.sigSetXYPosition.connect(lambda x, y: self.setXYPosition(x, y))
+        self._commChannel.sigSetZPosition.connect(lambda z: self.setZPosition(z))
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -79,16 +79,16 @@ class PositionerController(ImConWidgetController):
             self.settingAttr = False
 
     def setXYPosition(self, x, y):
-        positionerX = self.getPositionerNames[0]
-        positionerY = self.getPositionerNames[1]
-        self.__logger.debug("Move {}, axis X, dist {}", positionerX, str(x))
-        self.__logger.debug("Move {}, axis Y, dist {}", positionerY, str(y))
+        positionerX = self.getPositionerNames()[0]
+        positionerY = self.getPositionerNames()[1]
+        self.__logger.debug(f"Move {positionerX}, axis X, dist {str(x)}")
+        self.__logger.debug(f"Move {positionerY}, axis Y, dist {str(y)}")
         #self.move(positionerX, 'X', x)
         #self.move(positionerY, 'Y', y)
 
     def setZPosition(self, z):
-        positionerZ = self.getPositionerNames[2]
-        self.__logger.debug("Move {}, axis Z, dist {}", positionerZ, str(z))
+        positionerZ = self.getPositionerNames()[2]
+        self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
         #self.move(self.getPositionerNames[2], 'Z', z)
 
     @APIExport()

@@ -25,6 +25,8 @@ class ImSwitchServer(Worker):
     def run(self):
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
+            Pyro5.config.SERIALIZER = "msgpack"
+
             register_serializers()
 
             Pyro5.server.serve(

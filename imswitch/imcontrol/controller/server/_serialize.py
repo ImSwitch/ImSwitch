@@ -8,7 +8,6 @@ import Pyro5
 import Pyro5.api
 import useq
 
-Pyro5.config.SERIALIZER = "msgpack"
 T = TypeVar("T")
 
 

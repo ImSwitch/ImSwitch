@@ -1,55 +1,44 @@
+from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
-
-class AAAOTFLaserManager(LaserManager):
-    """ LaserManager for controlling one channel of an AA Opto-Electronic
-    acousto-optic modulator/tunable filter through RS232 communication.
+class ESP32LEDLaserManager(LaserManager):
+    """ LaserManager for controlling LEDs and LAsers connected to an 
+    ESP32 exposing a REST API
+    Each LaserManager instance controls one LED.
 
     Manager properties:
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place
-    - ``channel`` -- index of the channel in the acousto-optic device that
-      should be controlled (indexing starts at 1)
+    - ``channel_index`` -- laser channel (A to H)
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
-        self._channel = int(laserInfo.managerProperties['channel'])
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
         ]
+        self.__logger = initLogger(self, instanceName=name)
+        self.power = 0
+        self.__channel_index = laserInfo.managerProperties['channel_index']
 
-        self.blankingOn()
-        self.internalControl()
-
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
+        self.enabled = False
+        
 
     def setEnabled(self, enabled):
-        """Turn on (1) or off (0) laser emission"""
-        if enabled:
-            value = 1
-        else:
-            value = 0
-        cmd = 'L' + str(self._channel) + 'O' + str(value)
-        self._rs232manager.query(cmd)
+        """Turn on (N) or off (F) laser emission"""
+        self.enabled = enabled
+        self._rs232manager._squid.set_laser(self.__channel_index, self.power*self.enabled)
+        
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        valueaotf = round(power)  # assuming input value is [0,1023]
-        cmd = 'L' + str(self._channel) + 'P' + str(valueaotf)
-        self._rs232manager.query(cmd)
+        self.power = power
+        if self.enabled:
+            self._rs232manager._squid.set_laser(self.__channel_index, self.power)
 
-    def blankingOn(self):
-        """Switch on the blanking of all the channels"""
-        cmd = 'L0' + 'I1' + 'O1'
-        self._rs232manager.query(cmd)
-
-    def internalControl(self):
-        """Switch the channel to external control"""
-        cmd = 'L' + str(self._channel) + 'I1'
-        self._rs232manager.query(cmd)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

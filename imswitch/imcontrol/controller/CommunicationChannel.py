@@ -1,11 +1,9 @@
 from typing import Mapping
 
 import numpy as np
-import Pyro5.server
-
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes, initLogger
-from .ImSwitchServer import ImSwitchServer
+from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
+from .server import ImSwitchServer
 
 
 class CommunicationChannel(SignalInterface):
@@ -77,7 +75,7 @@ class CommunicationChannel(SignalInterface):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
-        self._serverWorker = ServerWorker(self, setupInfo)
+        self._serverWorker = ImSwitchServer(self, setupInfo)
         self._thread = Thread()
         self._serverWorker.moveToThread(self._thread)
         self._thread.started.connect(self._serverWorker.run)
@@ -103,6 +101,9 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
+    def get_image(self, detectorName=None):
+        return self.__main.controllers['View'].get_image(detectorName)
+
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
@@ -125,32 +126,6 @@ class CommunicationChannel(SignalInterface):
             'scanEnded': self.sigScanEnded
         })
 
-
-class ServerWorker(Worker):
-    def __init__(self, channel, setupInfo):
-        super().__init__()
-        self.__logger = initLogger(self, tryInheritParent=True)
-        self._server = ImSwitchServer(channel)
-        self._channel = channel
-        self._name = setupInfo.pyroServerInfo.name
-        self._host = setupInfo.pyroServerInfo.host
-        self._port = setupInfo.pyroServerInfo.port
-
-    def run(self):
-        self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
-        try:
-            Pyro5.server.serve(
-                {self._server: self._name},
-                use_ns=False,
-                host=self._host,
-                port=self._port,
-            )
-        except:
-            self.__loger.error("Couldn't start server.")
-        self.__logger.debug("Loop Finished")
-
-    def stop(self):
-        self._daemon.shutdown()
 
 # Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.

@@ -380,23 +380,23 @@ class ESP32Client(object):
         return r
 
 
-    def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
-        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute)
+    def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_y(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
-        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking, is_absolute=is_absolute)
+    def move_y(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False):
-        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
+    def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False, is_absolute=False):
-        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute)
+    def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True):
+    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
 
         path = "/motor_act"
 
@@ -422,7 +422,7 @@ class ESP32Client(object):
             "isblock": int(is_blocking),
             "isabs": int(is_absolute),
             "speed": np.int(speed),
-            "isen": np.int(self.is_enabled)
+            "isen": np.int(is_enabled)
         }
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1

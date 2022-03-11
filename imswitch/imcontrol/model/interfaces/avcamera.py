@@ -124,9 +124,10 @@ class CameraAV:
         return self.frame
 
     def getLastChunk(self):
-        chunk = np.array(self.frame_buffer)
+        chunk = np.array(self.frame_buffer[0])
+        frameids = self.frame_buffer[1]
         self.frame_buffer.clear()
-        self.__logger.debug("Buffer: "+str(chunk.shape))
+        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
         
        
@@ -231,7 +232,7 @@ class CameraAV:
         self.frame_id = frame.data.frameID
         if self.frame is None or frame.data.receiveStatus == -1:
             self.frame = np.zeros(self.shape)
-        self.frame_buffer.append(self.frame)
+        self.frame_buffer.append((self.frame, self.frame_id))
     
 
 # Copyright (C) ImSwitch developers 2021

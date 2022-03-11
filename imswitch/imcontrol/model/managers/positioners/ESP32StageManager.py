@@ -2,7 +2,6 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-SPEED=1000
 PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
 
@@ -17,28 +16,36 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
+        self.is_enabled = False
+        self.speed = 1000
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
 
-    def move(self, value=0, axis="X", speed=SPEED, is_blocking = False, is_absolute=False):
+    def move(self, value=0, axis="X", is_blocking = False, is_absolute=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
-            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
+
+    def setEnabled(self, is_enabled):
+        self.is_enabled = is_enabled
+
+    def setSpeed(self, speed):
+        self.speed = speed
 
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness

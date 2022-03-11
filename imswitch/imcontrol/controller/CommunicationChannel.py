@@ -66,6 +66,7 @@ class CommunicationChannel(SignalInterface):
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
+    sigSetSpeed = Signal(float)
 
     @property
     def sharedAttrs(self):

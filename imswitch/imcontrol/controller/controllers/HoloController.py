@@ -165,7 +165,7 @@ class HoloController(LiveUpdatedController):
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
-                holorecon = np.abs(self.reconholo(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz))
+                holorecon = np.flip(np.abs(self.reconholo(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
                 
                 self.sigHoloImageComputed.emit(np.array(holorecon))
             finally:

@@ -32,10 +32,9 @@ class CameraAV:
         # reserve some space for the framebuffer
         self.frame_buffer = collections.deque(maxlen=20)
         
-        
         #%% starting the camera thread
         self.vimba = self.startVimba()
-        self.openCamera(self.set_frame,is_init=True) # open camera and set callback for frame grabbing
+        self.openCamera(self.callback_fct=set_frame,is_init=True) # open camera and set callback for frame grabbing
 
     def start_live(self):
         # check if camera is open

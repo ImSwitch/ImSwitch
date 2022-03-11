@@ -48,25 +48,33 @@ class SQUID():
 
         # establish serial communication
         if port is None:
-            # AUTO-DETECT the Arduino! By Deepak
-            arduino_ports = [
-                    p.device
-                    for p in serial.tools.list_ports.comports()
-                    if 'Arduino' in p.description]
-            if not arduino_ports:
-                raise IOError("No Arduino found")
-            if len(arduino_ports) > 1:
-                self.__logger.debug('Multiple Arduinos found - using the first')
-            else:
-                self.__logger.debug('Using Arduino found at : {}'.format(arduino_ports[0]))
-            port = arduino_ports[0]
-        self.serial = serial.Serial(port,2000000)            
+            port = self.autodetectSerial()
+        
+        try:
+            self.serial = serial.Serial(port,2000000)            
+        except:
+            # one more attempt to find the serial:
+            port = self.autodetectSerial()
         
         self.new_packet_callback_external = None
         self.terminate_reading_received_packet_thread = False
         self.thread_read_received_packet = threading.Thread(target=self.read_received_packet, daemon=True)
         self.thread_read_received_packet.start()
         
+    def autodetectSerial(self):
+        # AUTO-DETECT the Arduino! By Deepak
+        arduino_ports = [
+                p.device
+                for p in serial.tools.list_ports.comports()
+                if 'Arduino' in p.description]
+        if not arduino_ports:
+            raise IOError("No Arduino found")
+        if len(arduino_ports) > 1:
+            self.__logger.debug('Multiple Arduinos found - using the first')
+        else:
+            self.__logger.debug('Using Arduino found at : {}'.format(arduino_ports[0]))
+        port = arduino_ports[0]
+
     def close(self):
         self.terminate_reading_received_packet_thread = True
         self.thread_read_received_packet.join()

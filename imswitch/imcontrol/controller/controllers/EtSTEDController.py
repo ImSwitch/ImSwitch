@@ -96,7 +96,7 @@ class EtSTEDController(ImConWidgetController):
         self._widget.loadScanParametersButton.clicked.connect(self.getScanParameters)
         self._widget.setUpdatePeriodButton.clicked.connect(self.setUpdatePeriod)
         self._widget.setBusyFalseButton.clicked.connect(self.setBusyFalse)
-        self._commChannel.sigSendScanParameters.connect(lambda analogParams, digitalParams: self.assignScanParameters(analogParams, digitalParams))
+        self._commChannel.sigSendScanParameters.connect(lambda analogParams, digitalParams, positionersScan: self.assignScanParameters(analogParams, digitalParams, positionersScan))
         self._commChannel.sigSendScanFreq.connect(lambda scanFreq: self.logScanFreq(scanFreq))
 
         # initiate log for each detected event
@@ -347,10 +347,11 @@ class EtSTEDController(ImConWidgetController):
     def setBusyFalse(self):
         self.__busy = False
 
-    def assignScanParameters(self, analogParams, digitalParams):
+    def assignScanParameters(self, analogParams, digitalParams, positionersScan):
         """ Assign scan parameters from the scanning widget. """
         self._analogParameterDict = analogParams
         self._digitalParameterDict = digitalParams
+        self._positionersScan = positionersScan
 
     def readParams(self):
         """ Read user-provided analysis pipeline parameter values. """
@@ -446,6 +447,7 @@ class EtSTEDController(ImConWidgetController):
                         else:
                             coords_scan = np.copy(coords_detected[0])
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
+                        coords_scan = np.flip(np.copy(coords_scan))
                         self.setDetLogLine("fastscan_x_center", coords_scan[0])
                         self.setDetLogLine("fastscan_y_center", coords_scan[1])
                         coords_scan[1] = np.shape(img)[0] - coords_scan[1]
@@ -467,7 +469,7 @@ class EtSTEDController(ImConWidgetController):
                         self.runSlowScan()
 
                         # update scatter plot of event coordinates in the shown fast method image
-                        self.updateScatter(coords_detected, clear=True)
+                        self.updateScatter(np.flip(np.copy(coords_detected)), clear=True)
 
                         self.__prevFrames.append(img)
                         self.saveValidationImages(prev=True, prev_ana=False)
@@ -510,7 +512,7 @@ class EtSTEDController(ImConWidgetController):
 
     def setCenterScanParameter(self, position):
         """ Set the scanning center from the detected event coordinates. """
-        #self.__logger.debug(self._analogParameterDict)
+        self.__logger.debug(self._analogParameterDict)
         if self._analogParameterDict:
             for index, positionerName in enumerate(self._analogParameterDict['target_device']):
                 #self.__logger.debug(positionerName)
@@ -522,7 +524,13 @@ class EtSTEDController(ImConWidgetController):
                     elif positionerName == 'ND-GalvoY':
                         center = position[1]
                         self._analogParameterDict['axis_centerpos'][index] = center
-        #self.__logger.debug(self._analogParameterDict)
+        self.__logger.debug(self._analogParameterDict)
+        # set actual positions of scanners not in scan from centerpos (usually done in ScanController.runScanAdvanced())
+        for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+            if positionerName not in self._positionersScan:
+                position = self._analogParameterDict['axis_centerpos'][index]
+                self._master.positionersManager[positionerName].setPosition(position, 0)
+                self.__logger.debug(f'set {positionerName} center to {position} before scan')
 
     def logScanFreq(self, scanFreq):
         self.setDetLogLine("scan_period", scanFreq)

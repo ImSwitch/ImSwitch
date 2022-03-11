@@ -169,7 +169,11 @@ class ScanWorker(Worker):
         #       the galvos, can we measure this somehow?
         # self._throw_delay = int(13*20e6/100e3)
         # self._throw_delay = 15200
-        self._throw_delay = 50  # should be larger the smaller the faster the scanning/smaller the FOV?
+        self._throw_delay = 40  # should be larger the smaller the faster the scanning/smaller the FOV?
+
+        # attempt at calculating the throw_delay based on the scanning speed
+        #scale_factor_throw_delay = 0.02
+        #self._throw_delay = round(scanInfoDict['pixel_size_ax1']/scanInfoDict['dwell_time']*scale_factor_throw_delay)  # unit: um/s
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
 
@@ -326,6 +330,9 @@ class ScanWorker(Worker):
         throwdata = self._manager._nidaqManager.readInputTask(
             self._name, self._throw_startzero + self._throw_finalpos
         )
+        #throwdata = self._manager._nidaqManager.readInputTask(
+        #    self._name, 0
+        #)
         self._alldata += len(throwdata)
         #self.__logger.debug(f'length of all data, end: {self._alldata}')
         self.acqDoneSignal.emit()

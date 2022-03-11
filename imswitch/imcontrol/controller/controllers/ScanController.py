@@ -219,6 +219,7 @@ class ScanController(SuperScanController):
                 if positionerName not in self._positionersScan:
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
+                    self.__logger.debug(f'set {positionerName} center to {position} before scan')
             # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
@@ -238,6 +239,12 @@ class ScanController(SuperScanController):
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
                 self.emitScanSignal(self._commChannel.sigScanEnded)
+            # set positions of scanners to centerpos
+            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+                if positionerName == 'ND-PiezoZ':
+                    position = self._analogParameterDict['axis_centerpos'][index]
+                    self._master.positionersManager[positionerName].setPosition(position, 0)
+                    self.__logger.debug(f'set {positionerName} center to {position} after scan')
         else:
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
@@ -403,7 +410,7 @@ class ScanController(SuperScanController):
         
     def sendScanParameters(self):
         self.getParameters()
-        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict)
+        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
 
 
 _attrCategoryStage = 'ScanStage'

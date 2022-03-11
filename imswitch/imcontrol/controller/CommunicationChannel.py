@@ -69,7 +69,7 @@ class CommunicationChannel(SignalInterface):
 
     sigRequestScanParameters = Signal()
 
-    sigSendScanParameters = Signal(dict, dict)  # (analogParams, digitalParams)
+    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
 
     sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
 
@@ -78,6 +78,10 @@ class CommunicationChannel(SignalInterface):
     sigRequestScanFreq = Signal()
     
     sigSendScanFreq = Signal(float)  # (scanPeriod)
+
+    #sigRequestScannersInScan = Signal()
+
+    #sigSendScannersInScan = Signal(object)  # (scannerList)
 
     @property
     def sharedAttrs(self):

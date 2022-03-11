@@ -28,11 +28,11 @@ class GXPIPYManager(DetectorManager):
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.SensorHeight, 
-                     self._camera.SensorWidth)
+        fullShape = (self._camera.SensorWidth, 
+                     self._camera.SensorHeight)
 
         # TODO: Not implemented yet 
-        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
+        # self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
         # Prepare parameters
         parameters = {
@@ -55,7 +55,7 @@ class GXPIPYManager(DetectorManager):
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=True)
+                         model=model, parameters=parameters, actions=actions, croppable=False)
 
     def getLatestFrame(self, is_save=False):
         if is_save:
@@ -133,14 +133,16 @@ class GXPIPYManager(DetectorManager):
             # self.__logger.debug(
             #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
             # )
-            self._camera.setROI(hpos, vpos, hsize, vsize)
+            # self._camera.setROI(hpos, vpos, hsize, vsize)
+            pass
 
-        self._performSafeCameraAction(cropAction)
+        #self._performSafeCameraAction(cropAction)
         # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
-        self._frameStart = (hpos, vpos)
+        #self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
-        self._shape = (hsize, vsize)
+        #self._shape = (hsize, vsize)
+        pass 
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need

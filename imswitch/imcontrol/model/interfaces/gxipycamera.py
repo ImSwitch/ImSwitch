@@ -30,23 +30,29 @@ class CameraGXIPY:
 
         #%% starting the camera thread
         self.camera = None
+
         self.device_manager = gx.DeviceManager()
         dev_num, dev_info_list = self.device_manager.update_device_list()
 
         if dev_num  != 0:
-            self._init_cam()
+            self._init_cam(cameraNo)
         else:
             raise Exception("No camera GXIPY connected")
         
 
-    def _init_cam(self):
+    def _init_cam(self,cameraNo=1):
         # start camera
         self.is_connected = True
         
         # open the first device
-        self.camera = self.device_manager.open_device_by_index(1)
+        self.camera = self.device_manager.open_device_by_index(cameraNo)
 
         # exit when the camera is a color camera
+        if self.camera.PixelColorFilter.is_implemented() is True:
+            print("This sample does not support color camera.")
+            self.camera.close_device()
+            return
+            
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
 
         # set exposure

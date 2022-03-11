@@ -5,7 +5,7 @@ import cv2
 from imswitch.imcommon.model import initLogger
 
 import imswitch.imcontrol.model.interfaces.gxipy as gx
- 
+import collections
 class CameraGXIPY:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100):
         super().__init__()
@@ -28,18 +28,21 @@ class CameraGXIPY:
         self.preview_width = 600
         self.preview_height = 600
 
+        # reserve some space for the framebuffer
+        self.frame_buffer = collections.deque(maxlen=20)
+        
         #%% starting the camera thread
         self.camera = None
         self.device_manager = gx.DeviceManager()
         dev_num, dev_info_list = self.device_manager.update_device_list()
 
         if dev_num  != 0:
-            self._init_cam()
+            self._init_cam(callback_fct=self.set_frame)
         else:
             raise Exception("No camera GXIPY connected")
         
 
-    def _init_cam(self):
+    def _init_cam(self, callback_fct):
         # start camera
         self.is_connected = True
         
@@ -67,6 +70,10 @@ class CameraGXIPY:
         # get framesize 
         self.SensorHeight = self.camera.HeightMax.get()
         self.SensorWidth = self.camera.WidthMax.get()
+        
+        # register the frame callback
+        user_param = None
+        self.camera.register_capture_callback(user_param, set_frame)
 
     def start_live(self):
         if not self.is_streaming:
@@ -87,8 +94,9 @@ class CameraGXIPY:
                 self.camera.stream_off()
             except:
                 # camera was disconnected? 
+                self.camera.unregister_capture_callback()
                 self.camera.close_device()
-                self._init_cam()
+                self._init_cam(self.set_frame)
 
             self.is_streaming = False
         
@@ -129,25 +137,17 @@ class CameraGXIPY:
 
     def getLast(self, is_resize=True):
         # get frame and save
-        try:
-            self.last_frame_preview = self.camera.data_stream[0].get_image().get_numpy_array()
-            '''
-            minHeight = int(self.SensorHeight//2-self.roi_size//2)
-            maxHeight = int(self.SensorHeight//2+self.roi_size//2)
-            minWidth = int(self.SensorWidth//2-self.roi_size//2)
-            maxWidth = int(self.SensorWidth//2+self.roi_size//2)
-            self.last_frame_preview = self.last_frame_preview[minHeight:maxHeight,minWidth:maxWidth]
-            '''
-            if is_resize:
-                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None, fx=self.downsamplepreview, fy=self.downsamplepreview, interpolation= cv2.INTER_LINEAR)
-#                self.last_frame_preview = cv2.resize(self.last_frame_preview , dsize=None(self.preview_width,self.preview_height), interpolation= cv2.INTER_LINEAR)
-        except:
-            pass # TODO: What if the very first frame is corrupt?
-        return self.last_frame_preview 
+#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
+        #TODO: Napari only displays 8Bit?
+        return self.frame
 
     def getLastChunk(self):
-        return self.getLast(is_resize=False)
-
+        chunk = np.array(self.frame_buffer[0])
+        frameids = self.frame_buffer[1]
+        self.frame_buffer.clear()
+        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        return chunk
+    
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         #hsize = max(hsize, 25)*10  # minimum ROI size
         #vsize = max(vsize, 3)*10  # minimum ROI size
@@ -225,6 +225,23 @@ class CameraGXIPY:
 
     def openPropertiesGUI(self):
         pass
+    
+    def set_frame(self, frame):
+        if frame is None:
+            self.__logger.error("Getting image failed.")
+            return
+        if frame.get_status() != 0:
+            self.__logger.error("Got an incomplete frame")
+            return
+        numpy_image = frame.get_numpy_array()
+        if numpy_image is None:
+            return
+        self.frame = numpy_image
+        self.frame_id = frame.get_frame_id()
+        self.timestamp = time.time()
+        
+        self.frame_buffer.append((numpy_image, self.frame_id))
+    
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

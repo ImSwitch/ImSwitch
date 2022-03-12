@@ -14,10 +14,11 @@ if sys.version_info.major > 2:
     INT_TYPE = int
 else:
     INT_TYPE = (int, long)
-    
+
 
 class DeviceManager(object):
     __instance_num = 0
+
     def __new__(cls, *args, **kw):
         cls.__instance_num += 1
         status = gx_init_lib()
@@ -188,7 +189,7 @@ class DeviceManager(object):
 
         if self.__device_num < index:
             # Re-update the device
-            self.update_device_list()
+            self.update_all_device_list()
             if self.__device_num < index:
                 raise NotFoundDevice("DeviceManager.open_device_by_index: invalid index")
 
@@ -254,7 +255,7 @@ class DeviceManager(object):
         device_class = self.__get_device_class_by_sn(sn)
         if device_class == -1:
             # Re-update the device
-            self.update_device_list()
+            self.update_all_device_list()
             device_class = self.__get_device_class_by_sn(sn)
             if device_class == -1:
                 # don't find this sn
@@ -319,7 +320,7 @@ class DeviceManager(object):
         device_class = self.__get_device_class_by_user_id(user_id)
         if device_class == -1:
             # Re-update the device
-            self.update_device_list()
+            self.update_all_device_list()
             device_class = self.__get_device_class_by_user_id(user_id)
             if device_class == -1:
                 # don't find this user_id
@@ -409,9 +410,9 @@ class Feature:
         """
         self.__handle = handle
         self.__feature = feature
-        self.feature_name = self.get_name()
+        self.feature_name = self.__get_name()
 
-    def get_name(self):
+    def __get_name(self):
         """
         brief:  Getting Feature Name
         return: Success:    feature name
@@ -918,6 +919,7 @@ class Buffer:
     def get_data(self):
         buff_p = c_void_p()
         buff_p.value = addressof(self.data_array)
+        print(buff_p.value)
         string_data = string_at(buff_p, len(self.data_array))
         return string_data
 
@@ -943,6 +945,13 @@ class Device:
     def __init__(self, handle):
         self.__dev_handle = handle
         self.data_stream = []
+
+        self.__OfflineCallBack = None
+        self.__py_offline_callback = None
+        self.__offline_callback_handle = None
+        self.__py_capture_callback = None
+        self.__CaptureCallBack = None
+        self.__user_param = None
 
         # ---------------Device Information Section--------------------------
         self.DeviceVendorName = StringFeature(self.__dev_handle, GxFeatureID.STRING_DEVICE_VENDOR_NAME)
@@ -1094,16 +1103,6 @@ class Device:
         self.ChunkSelector = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_CHUNK_SELECTOR)
         self.ChunkEnable = BoolFeature(self.__dev_handle, GxFeatureID.BOOL_CHUNK_ENABLE)
 
-        # ---------------CounterAndTimerControl Section-------------------------
-        self.TimerSelector = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_TIMER_SELECTOR)
-        self.TimerDuration = FloatFeature(self.__dev_handle, GxFeatureID.FLOAT_TIMER_DURATION)
-        self.TimerDelay = FloatFeature(self.__dev_handle, GxFeatureID.FLOAT_TIMER_DELAY)
-        self.TimerTriggerSource = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_TIMER_TRIGGER_SOURCE)
-        self.CounterSelector = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_COUNTER_SELECTOR)
-        self.CounterEventSource = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_COUNTER_EVENT_SOURCE)
-        self.CounterResetSource = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_COUNTER_RESET_SOURCE)
-        self.CounterResetActivation = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_COUNTER_RESET_ACTIVATION)
-        self.CounterReset = CommandFeature(self.__dev_handle, GxFeatureID.COMMAND_COUNTER_RESET)
 
     def stream_on(self):
         """
@@ -1175,6 +1174,76 @@ class Device:
         return len(self.data_stream)
 
 
+    def register_device_offline_callback(self, call_back):
+        """
+        :brief      Register the device offline event callback function.
+        :param      call_back:  callback function
+        :return:    none
+        """
+        self.__py_offline_callback = call_back
+        self.__OfflineCallBack = OFF_LINE_CALL(self.__on_device_offline_call_back)
+        status, self.__offline_callback_handle = gx_register_device_offline_callback\
+            (self.__dev_handle, self.__OfflineCallBack)
+        StatusProcessor.process(status, 'Device', 'register_device_offline_callback')
+
+    def unregister_device_offline_callback(self):
+        """
+        :brief      Unregister the device offline event callback function.
+        :return:    none
+        """
+        status = gx_unregister_device_offline_callback(self.__dev_handle, self.__offline_callback_handle)
+        self.__py_offline_callback = None
+        self.__offline_callback_handle = None
+        StatusProcessor.process(status, 'Device', 'unregister_device_offline_callback')
+
+    def __on_device_offline_call_back(self, c_user_param):
+        """
+        :brief      Device offline event callback function with an unused c_void_p.
+        :return:    none
+        """
+        self.__py_offline_callback()
+
+
+    def register_capture_callback(self, user_param, cap_call):
+        """
+        :brief      Register the capture event callback function.
+        :param      cap_call:  callback function
+        :return:    none
+        """
+        self.__user_param = user_param
+        self.__py_capture_callback = cap_call
+        self.__CaptureCallBack = CAP_CALL(self.__on_capture_call_back)
+        status = gx_register_capture_callback(self.__dev_handle, self.__CaptureCallBack)
+        StatusProcessor.process(status, 'Device', 'register_capture_callback')
+
+    def unregister_capture_callback(self):
+        """
+        :brief      Unregister the capture event callback function.
+        :return:    none
+        """
+        status = gx_unregister_capture_callback(self.__dev_handle)
+        self.__py_capture_callback = None
+        self.__user_param = None
+        StatusProcessor.process(status, 'Device', 'unregister_capture_callback')
+
+    def __on_capture_call_back(self, capture_data):
+        """
+        :brief      Capture event callback function with capture date.
+        :return:    none
+        """
+        frame_data = GxFrameData()
+        frame_data.image_buf = capture_data.contents.image_buf
+        frame_data.width = capture_data.contents.width
+        frame_data.height = capture_data.contents.height
+        frame_data.pixel_format = capture_data.contents.pixel_format
+        frame_data.image_size = capture_data.contents.image_size
+        frame_data.frame_id = capture_data.contents.frame_id
+        frame_data.timestamp = capture_data.contents.timestamp
+        frame_data.buf_id = capture_data.contents.frame_id
+        image = RawImage(frame_data)
+        self.__py_capture_callback(self.__user_param, image)
+
+
 class GEVDevice(Device):
     def __init__(self, handle):
         self.__dev_handle = handle
@@ -1216,8 +1285,8 @@ class U2Device(Device):
         self.UserOutputMode = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_USER_OUTPUT_MODE)
         self.StrobeSwitch = EnumFeature(self.__dev_handle, GxFeatureID.ENUM_STROBE_SWITCH)
         self.ADCLevel = IntFeature(self.__dev_handle, GxFeatureID.INT_ADC_LEVEL)
-        self.HBlanking = IntFeature(self.__dev_handle, GxFeatureID.INT_H_BLANKING)
-        self.VBlanking = IntFeature(self.__dev_handle, GxFeatureID.INT_V_BLANKING)
+        self.Hblanking = IntFeature(self.__dev_handle, GxFeatureID.INT_H_BLANKING)
+        self.Vblanking = IntFeature(self.__dev_handle, GxFeatureID.INT_V_BLANKING)
         self.UserPassword = StringFeature(self.__dev_handle, GxFeatureID.STRING_USER_PASSWORD)
         self.VerifyPassword = StringFeature(self.__dev_handle, GxFeatureID.STRING_VERIFY_PASSWORD)
         self.UserData = BufferFeature(self.__dev_handle, GxFeatureID.BUFFER_USER_DATA)
@@ -1589,38 +1658,6 @@ class RGBImage:
         if status != DxStatus.OK:
             raise UnexpectedError("RGBImage.image_improvement: failed, error code:%s" % hex(status).__str__())
 
-    def saturation(self, factor):
-        """
-        :brief      Saturation adjustment (RGB24)
-        :param      factor:                 saturation factor,range(0 ~ 128)
-        :return:    RGBImage object
-        """
-        if not isinstance(factor, INT_TYPE):
-            raise ParameterTypeError("RGBImage.saturation: "
-                                     "Expected factor type is int, not %s" % type(factor))
-
-        status = dx_saturation(self.frame_data.image_buf, self.frame_data.image_buf,
-                               self.frame_data.width * self.frame_data.height, factor)
-
-        if status != DxStatus.OK:
-            raise UnexpectedError("RGBImage.saturation: failed, error code:%s" % hex(status).__str__())
-
-    def sharpen(self, factor):
-        """
-        :brief       Sharpen adjustment (RGB24)
-        :param      factor:                 sharpen factor, range(0.1 ~ 5.0)
-        :return:    None
-        """
-        if not isinstance(factor, (INT_TYPE, float)):
-            raise ParameterTypeError("RGBImage.sharpen: "
-                                     "Expected factor type is float, not %s" % type(factor))
-
-        status = dx_sharpen_24b(self.frame_data.image_buf, self.frame_data.image_buf, self.frame_data.width,
-                                self.frame_data.height, factor)
-
-        if status != DxStatus.OK:
-            raise UnexpectedError("RGBImage.sharpen: failed, error code:%s" % hex(status).__str__())
-
     def get_numpy_array(self):
         """
         :brief:     Return data as a numpy.Array type with dimension Image.height * Image.width * 3
@@ -1878,21 +1915,6 @@ class RawImage:
             print('''RawImage.convert: mode="%s", isn't support''' % mode)
             return None
 
-    def defective_pixel_correct(self):
-        """
-        :brief      Auto raw defective pixel correct,Support image from Raw8 to Raw16, the bit number is actual
-                    bit number, when it is more than 8, the actual bit can be every number between 9 to 16.
-                    And if image format is packed, you need convert it to Raw16.
-                    This function should be used in each frame.
-        :return:    None
-        """
-        pixel_bit_depth = self.__get_bit_depth(self.frame_data.pixel_format)
-        status = dx_auto_raw_defective_pixel_correct(self.frame_data.image_buf, self.frame_data.width,
-                                                     self.frame_data.height, pixel_bit_depth)
-
-        if status != DxStatus.OK:
-            raise UnexpectedError("RawImage.defective_pixel_correct: failed, error code:%s" % hex(status).__str__())
-
     def get_numpy_array(self):
         """
         :brief      Return data as a numpy.Array type with dimension Image.height * Image.width
@@ -1990,6 +2012,7 @@ class RawImage:
         return self.frame_data.timestamp
 
 
+
 class Utility:
     def __init__(self):
         pass
@@ -2027,4 +2050,6 @@ class Utility:
             return None
 
         return Buffer(contrast_lut)
+
+
 

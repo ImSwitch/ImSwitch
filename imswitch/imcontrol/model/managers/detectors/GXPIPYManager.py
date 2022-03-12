@@ -163,7 +163,7 @@ class GXPIPYManager(DetectorManager):
         try:
             from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
             self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-            camera = CameraGXIPY(cameraId)
+            camera = CameraGXIPY(cameraNo=cameraId)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')

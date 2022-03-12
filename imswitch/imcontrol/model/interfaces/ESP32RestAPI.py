@@ -486,7 +486,7 @@ class ESP32Client(object):
         self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
 
-    def send_ledmatrix(self, led_pattern):
+    def send_LEDMatrix(self, led_pattern):
         headers = {"Content-Type":"application/json"}
         path = '/matrix'
         payload = {

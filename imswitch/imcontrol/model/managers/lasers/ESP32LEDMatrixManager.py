@@ -34,7 +34,7 @@ class ESP32LEDMatrixManager(LaserManager):
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.setEnabled = enabled
-        self.esp32.send_ledmatrix(self.led_pattern*self.setEnabled)
+        self.esp32.send_LEDMatrix(self.led_pattern*self.setEnabled)
 
     def setValue(self, power):
         """Handles output power.
@@ -42,7 +42,7 @@ class ESP32LEDMatrixManager(LaserManager):
         """
 
         self.led_pattern = np.ones((3,self.N_leds, self.N_leds))*power*self.setEnabled
-        self.esp32.send_ledmatrix(self.led_pattern)
+        self.esp32.send_LEDMatrix(self.led_pattern)
 
 
 

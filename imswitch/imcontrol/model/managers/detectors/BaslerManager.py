@@ -161,7 +161,7 @@ class BaslerManager(DetectorManager):
     def _getBaslerObj(self, cameraId):
         try:
             from imswitch.imcontrol.model.interfaces.baslercamera import CameraBasler
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+            self.__logger.debug(f'Trying to initialize Basler Imaging camera {cameraId}')
             camera = CameraBasler(cameraId)
         except Exception as e:
             print(e)

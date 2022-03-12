@@ -26,7 +26,8 @@ class CameraGXIPY:
         self.exposure_time = exposure_time
         self.gain = gain
         self.preview_width = 600
-        self.preview_height = 600
+        self.preview_height = 600 
+        self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
         self.frame_buffer = collections.deque(maxlen=20)
@@ -38,12 +39,12 @@ class CameraGXIPY:
         dev_num, dev_info_list = self.device_manager.update_device_list()
 
         if dev_num  != 0:
-            self._init_cam(callback_fct=self.set_frame)
+            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
         else:
             raise Exception("No camera GXIPY connected")
         
 
-    def _init_cam(self, callback_fct):
+    def _init_cam(self, cameraNo=1, callback_fct=None):
         # start camera
         self.is_connected = True
         
@@ -79,7 +80,7 @@ class CameraGXIPY:
         
         # register the frame callback
         user_param = None
-        self.camera.register_capture_callback(user_param, set_frame)
+        self.camera.register_capture_callback(user_param, self.set_frame)
 
     def start_live(self):
         if not self.is_streaming:
@@ -102,7 +103,7 @@ class CameraGXIPY:
                 # camera was disconnected? 
                 self.camera.unregister_capture_callback()
                 self.camera.close_device()
-                self._init_cam(self.set_frame)
+                self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
 
             self.is_streaming = False
         
@@ -232,7 +233,7 @@ class CameraGXIPY:
     def openPropertiesGUI(self):
         pass
     
-    def set_frame(self, frame):
+    def set_frame(self, user_param, frame):
         if frame is None:
             self.__logger.error("Getting image failed.")
             return

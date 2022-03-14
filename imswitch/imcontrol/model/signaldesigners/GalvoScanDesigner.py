@@ -159,7 +159,8 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_throw_startacc': self._samples_startacc,
             'scan_throw_finalpos': self._samples_finalpos,
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
-            'dwell_time': parameterDict['sequence_time']
+            'dwell_time': parameterDict['sequence_time'],
+            'phase_delay': parameterDict['phase_delay']
         }
         if axis_count==2:
             sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
@@ -194,17 +195,26 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
         # plot scan signal
-        import matplotlib.pyplot as plt
-        plt.figure(1)
-        plt.plot(pixel_axis_signal-0.01)
-        plt.plot(line_axis_signal)
-        if axis_count==3:
-            plt.plot(frame_axis_signal)
-        plt.show()
+        #import matplotlib.pyplot as plt
+        #plt.figure(1)
+        #plt.plot(pixel_axis_signal-0.01)
+        #plt.plot(line_axis_signal)
+        #if axis_count==3:
+        #    plt.plot(frame_axis_signal)
+        #plt.show()
 
         #self.__logger.debug(scanInfoDict)
         self.__logger.debug(f'Scanning curves generated, frame time: {round(self.__timestep * 1e-6 * len_frame, ndigits=5)}.')
         return sig_dict, axis_positions, scanInfoDict
+
+    def __calc_phase_delay(self, px_size, dwell_time):
+        """ Calculate a galvo-specific phase delay, depending on response time. 
+        Based on second-degree curved surface fit to 2D-sampling of dwell time and pixel size induced phase delays,
+        as measured in the image-shift of a fix structure as compared to a very slow scan (dwell time = 500 us). """
+        C = np.array([0,0,0,0,0,0])  # second order plane fit
+        params = np.array([px_size**2, dwell_time**2, px_size*dwell_time, px_size, dwell_time, 1])  # for use with second order plane fit
+        phase_delay = np.sum(params*C)
+        return phase_delay
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
         t_initpos_vc_line = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]

@@ -239,7 +239,9 @@ class ScanController(SuperScanController):
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
                 self.emitScanSignal(self._commChannel.sigScanEnded)
-            # set positions of scanners to centerpos
+            # set positions of certain scanners to centerpos
+            # TODO: fix this in a nicer way, to not hardcode the positionerNames here that should be centered.
+            # Make it a .json parameter of the scanners?
             for index, positionerName in enumerate(self._analogParameterDict['target_device']):
                 if positionerName == 'ND-PiezoZ':
                     position = self._analogParameterDict['axis_centerpos'][index]
@@ -302,6 +304,7 @@ class ScanController(SuperScanController):
 
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
+        self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self.positioners)):

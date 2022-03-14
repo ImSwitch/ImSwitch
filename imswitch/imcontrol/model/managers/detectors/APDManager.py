@@ -99,7 +99,7 @@ class APDManager(DetectorManager):
         return self._image
 
     def updateImage(self, line_pixels, line_count, frame):
-        self._image[frame, -(line_count + 1), :] = line_pixels[::-1]
+        self._image[frame, -(line_count + 1), :] = line_pixels
         self.__currentFrame = frame
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image
@@ -167,13 +167,12 @@ class ScanWorker(Worker):
         # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is
         #       actually in the correct place. How do we find this out? Depends on the response of
         #       the galvos, can we measure this somehow?
-        # self._throw_delay = int(13*20e6/100e3)
-        # self._throw_delay = 15200
-        self._throw_delay = 40  # should be larger the smaller the faster the scanning/smaller the FOV?
-
-        # attempt at calculating the throw_delay based on the scanning speed
-        #scale_factor_throw_delay = 0.02
-        #self._throw_delay = round(scanInfoDict['pixel_size_ax1']/scanInfoDict['dwell_time']*scale_factor_throw_delay)  # unit: um/s
+        # self._phase_delay = int(13*20e6/100e3)
+        # self._phase_delay = 15200
+        #self._phase_delay = 40  # should be larger the smaller the faster the scanning/smaller the FOV?
+        # attempt at calculating the phase_delay based on the scanning speed
+        #scale_factor_phase_delay = 0.02
+        #self._phase_delay = round(scanInfoDict['pixel_size_ax1']/scanInfoDict['dwell_time']*scale_factor_phase_delay)  # unit: um/s
 
         self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
 
@@ -243,10 +242,12 @@ class ScanWorker(Worker):
             self._manager._detection_samplerate
         )
 
+        self._phase_delay = int(scanInfoDict['phase_delay'])
+
         self._samples_throw_init = self._throw_startzero
         
         # samples to throw due to smooth between frames transitioning
-        self._throw_init_frame = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._throw_delay)
+        self._throw_init_frame = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._phase_delay)
 
         #self.__logger.debug(f'samples line: {self._samples_line}')
         #self.__logger.debug(f'samples period: {self._samples_period}')
@@ -320,20 +321,20 @@ class ScanWorker(Worker):
             #    self._name, self._throw_between_frames
             #)
             throwdatalen = self._throw_startzero + self._samples_frame * (i+1) - self._alldata
-            throwdata = self._manager._nidaqManager.readInputTask(
-                self._name, throwdatalen
-            )
-            self._alldata += len(throwdata)
+            if throwdatalen > 0:
+                throwdata = self._manager._nidaqManager.readInputTask(
+                    self._name, throwdatalen
+                )
+                self._alldata += len(throwdata)
             self._line_counter = 0
             #self.__logger.debug(f'length of all data after frame {i+1}: {self._alldata}')
 
-        throwdata = self._manager._nidaqManager.readInputTask(
-            self._name, self._throw_startzero + self._throw_finalpos
-        )
-        #throwdata = self._manager._nidaqManager.readInputTask(
-        #    self._name, 0
-        #)
-        self._alldata += len(throwdata)
+        throwdatalen = self._throw_startzero + self._throw_finalpos
+        if throwdatalen > 0:
+            throwdata = self._manager._nidaqManager.readInputTask(
+                self._name, self._throw_startzero + self._throw_finalpos
+            )
+            self._alldata += len(throwdata)
         #self.__logger.debug(f'length of all data, end: {self._alldata}')
         self.acqDoneSignal.emit()
         # self.__logger.debug(self._name)

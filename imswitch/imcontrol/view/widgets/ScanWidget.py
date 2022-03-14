@@ -37,13 +37,17 @@ class ScanWidget(Widget):
         self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
         self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
+        self.phaseDelayPar = QtWidgets.QLineEdit('40')  # samples
         self.nrFramesPar = QtWidgets.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtWidgets.QLabel(str(self.scanDuration))
 
         self.scanDims = []
 
-        self.scanPar = {'seqTime': self.seqTimePar}
+        self.scanPar = {
+                        'seqTime': self.seqTimePar,
+                        'phaseDelay': self.phaseDelayPar
+                        }
 
         self.pxParameters = {}
         self.pxParValues = {}
@@ -82,6 +86,7 @@ class ScanWidget(Widget):
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)
         self.scanButton.clicked.connect(self.sigRunScanClicked)
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
+        self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
         self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
 
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
@@ -171,9 +176,17 @@ class ScanWidget(Widget):
                 self.sigStageParChanged
             )
 
+        currentRow += 1
+
         # Add dwell time parameter
         self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
         self.grid.addWidget(self.seqTimePar, currentRow, 6)
+
+        currentRow += 1
+        
+        # Add detection phase delay parameter
+        self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
+        self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
@@ -245,6 +258,9 @@ class ScanWidget(Widget):
     def getSeqTimePar(self):
         return float(self.seqTimePar.text()) / 1000
 
+    def getPhaseDelayPar(self):
+        return float(self.phaseDelayPar.text())
+
     def setScanMode(self):
         self.scanRadio.setChecked(True)
 
@@ -291,6 +307,9 @@ class ScanWidget(Widget):
 
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
+
+    def setPhaseDelayPar(self, phaseDelayPar):
+        self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
 
     def setScanDimEnabled(self, index, enabled):
         self.scanPar['scanDim' + str(index)].setEnabled(enabled)

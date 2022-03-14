@@ -504,7 +504,7 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigRequestScanFreq.emit()
             # Set scan axis centers in scanwidget
             self.setCentersScanWidget()
-        self.scanInfoDict['throw_delay'] = np.float(self._widget.throw_delay_edit.text())
+        #self.scanInfoDict['phase_delay'] = np.float(self._widget.phase_delay_edit.text())
         dt = datetime.now()
         time_curr_after = round(dt.microsecond/1000)
         print(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')

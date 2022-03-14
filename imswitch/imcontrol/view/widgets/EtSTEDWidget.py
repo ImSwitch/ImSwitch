@@ -101,9 +101,9 @@ class EtSTEDWidget(Widget):
         self.bin_smooth_label = QtGui.QLabel('Bin. smooth (px)')
         self.bin_smooth_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
         self.bin_smooth_edit = QtGui.QLineEdit(str(2))
-        self.throw_delay_label = QtGui.QLabel('Throw delay (us)')
-        self.throw_delay_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.throw_delay_edit = QtGui.QLineEdit(str(40))
+        self.phase_delay_label = QtGui.QLabel('Phase delay (us)')
+        self.phase_delay_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.phase_delay_edit = QtGui.QLineEdit(str(40))
         self.update_period_label = QtGui.QLabel('Update period (ms)')
         self.update_period_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.update_period_edit = QtGui.QLineEdit(str(100))
@@ -127,8 +127,8 @@ class EtSTEDWidget(Widget):
         
         currentRow += 1
 
-        self.grid.addWidget(self.throw_delay_label, currentRow, 0)
-        self.grid.addWidget(self.throw_delay_edit, currentRow, 1)
+        self.grid.addWidget(self.phase_delay_label, currentRow, 0)
+        self.grid.addWidget(self.phase_delay_edit, currentRow, 1)
 
         currentRow += 1
 

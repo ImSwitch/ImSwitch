@@ -235,6 +235,7 @@ class RecordingWorker(Worker):
 
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
+
                         if n > 0:
                             it = currentFrame[detectorName]
                             dataset = datasets[detectorName]

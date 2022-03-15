@@ -1,5 +1,5 @@
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
+from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)

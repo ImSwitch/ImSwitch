@@ -95,7 +95,7 @@ class GXPIPYManager(DetectorManager):
 
     def getChunk(self):
         try:
-            return np.expand_dims(self._camera.getLastChunk(),0)
+            return self._camera.getLastChunk()
         except:
             return None
 

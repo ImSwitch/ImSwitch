@@ -29,12 +29,12 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSetXYPosition.connect(lambda x, y: self.setXYPosition(x, y))
         self._commChannel.sigSetZPosition.connect(lambda z: self.setZPosition(z))
-        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeed(speed))
+        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
-        self._widget.sigsetSpeedClicked.connect(self.setSpeed)
+        self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -63,10 +63,14 @@ class PositionerController(ImConWidgetController):
     def stepDown(self, positionerName, axis):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
-    def setSpeed(self):
+    def setSpeedGUI(self):
         positionerName = self.getPositionerNames()[0]
-        self._master.positionersManager[positionerName].setSpeed(self._widget.getSpeed())
+        speed = self._widget.getSpeed()
+        self.setSpeed(positionerName=positionerName, speed=speed)
 
+    def setSpeed(self, positionerName, speed=(1000,1000,1000)):
+        self._master.positionersManager[positionerName].setSpeed(speed)
+        
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)

@@ -31,6 +31,7 @@ class CameraGXIPY:
 
         # reserve some space for the framebuffer
         self.frame_buffer = collections.deque(maxlen=20)
+        self.frameid_buffer = collections.deque(maxlen=20)
         
         #%% starting the camera thread
         self.camera = None
@@ -149,8 +150,9 @@ class CameraGXIPY:
         return self.frame
 
     def getLastChunk(self):
-        chunk = np.array(self.frame_buffer[0])
-        frameids = self.frame_buffer[1]
+        chunk = np.array(self.frame_buffer)
+        frameids = np.array(self.frameid_buffer)
+        self.frameid_buffer.clear()
         self.frame_buffer.clear()
         self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
@@ -247,7 +249,8 @@ class CameraGXIPY:
         self.frame_id = frame.get_frame_id()
         self.timestamp = time.time()
         
-        self.frame_buffer.append((numpy_image, self.frame_id))
+        self.frame_buffer.append(numpy_image)
+        self.frameid_buffer.append(self.frame_id)
     
 
 # Copyright (C) ImSwitch developers 2021

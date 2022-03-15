@@ -392,11 +392,17 @@ class ESP32Client(object):
         r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_xyz(self, steps=(10,10,10), speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+    def move_xyz(self, steps=(10,10,10), speed=(1000,1000,1000), speed1=None, speed2=None, speed3=None, is_blocking=False, is_absolute=False, is_enabled=False):
+        if len(speed)!= 3:
+            speed = (speed,speed,speed)
+
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=10, is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+
+        if type(speed)!=list and type(speed)!=tuple  :
+            speed = (speed,speed,speed)
 
         path = "/motor_act"
 
@@ -421,7 +427,9 @@ class ESP32Client(object):
             "pos3": np.int(steps_2),
             "isblock": int(is_blocking),
             "isabs": int(is_absolute),
-            "speed": np.int(speed),
+            "speed1": np.int(speed[0]),
+            "speed2": np.int(speed[1]),
+            "speed3": np.int(speed[2]),
             "isen": np.int(is_enabled)
         }
         self.steps_last_0 = steps_0

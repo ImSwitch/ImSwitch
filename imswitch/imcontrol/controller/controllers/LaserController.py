@@ -20,7 +20,8 @@ class LaserController(ImConWidgetController):
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
-                lManager.valueRangeStep if lManager.valueRangeStep is not None else None
+                lManager.valueRangeStep if lManager.valueRangeStep is not None else None,
+                (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else None
             )
             if not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
@@ -66,6 +67,10 @@ class LaserController(ImConWidgetController):
         self._master.lasersManager[laserName].setValue(magnitude)
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
+    
+    def frequencyChanged(self, laserName, frequency):
+        """ Change modulation frequency. """
+        self._master.lasersManager[laserName].setModulationFrequency(frequency)
 
     def presetSelected(self, presetName):
         """ Handles what happens when a preset is selected in the preset list.

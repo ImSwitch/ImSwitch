@@ -243,6 +243,13 @@ class LaserController(ImConWidgetController):
         defaultPreset = self._setupInfo.laserPresets[self._setupInfo.defaultLaserPresetForScan]
         defaultPreset[laserName] = guitools.LaserPresetInfo(value=laserValue)
 
+    @APIExport(runOnUIThread=True)
+    def sendTrigger(self, triggerId: int):
+        """ Sends a trigger puls through external device """
+        #TODo: Very special case, try to move in seperate manager 
+        self._master.rs232sManager["ESP32"]._esp32.sendTrigger(triggerId)
+
+
 
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'

@@ -6,8 +6,14 @@ from imswitch.imcommon.model import initLogger
 
 import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
+
+class TriggerMode:
+    SOFTWARE = 'Software Trigger'
+    HARDWARE = 'Hardware Trigger'
+    CONTINUOUS = 'Continuous Acqusition'
+
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=2):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -30,11 +36,15 @@ class CameraGXIPY:
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.frame_buffer = collections.deque(maxlen=20)
-        self.frameid_buffer = collections.deque(maxlen=20)
+        NBuffer = 60
+        self.frame_buffer = collections.deque(maxlen=NBuffer)
+        self.frameid_buffer = collections.deque(maxlen=NBuffer)
         
         #%% starting the camera thread
         self.camera = None
+
+        # binning 
+        self.binning = binning
 
         self.device_manager = gx.DeviceManager()
         dev_num, dev_info_list = self.device_manager.update_device_list()
@@ -73,11 +83,13 @@ class CameraGXIPY:
         self.camera.data_stream[0].set_acquisition_buffer_number(1)
         
         # set camera to mono12 mode
-        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+        # self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+        # set camera to mono8 mode
+        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
 
         # get framesize 
-        self.SensorHeight = self.camera.HeightMax.get()
-        self.SensorWidth = self.camera.WidthMax.get()
+        self.SensorHeight = self.camera.HeightMax.get()//self.binning
+        self.SensorWidth = self.camera.WidthMax.get()//self.binning
         
         # register the frame callback
         user_param = None
@@ -143,6 +155,12 @@ class CameraGXIPY:
         else:
             print("pixel format is not implemented or not writable")
 
+    def setBinning(self, binning=1):
+        # Unfortunately this does not work
+        # self.camera.BinningHorizontal.set(binning)
+        # self.camera.BinningVertical.set(binning)
+        self.binning = binning
+
     def getLast(self, is_resize=True):
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
@@ -154,7 +172,7 @@ class CameraGXIPY:
         frameids = np.array(self.frameid_buffer)
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
-        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
@@ -208,6 +226,8 @@ class CameraGXIPY:
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
+        elif property_name == "trigger_source":
+            self.setTriggerSource(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -222,15 +242,46 @@ class CameraGXIPY:
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
         elif property_name == "image_width":
-            property_value = self.camera.Width.get()            
+            property_value = self.camera.Width.get()//self.binning         
         elif property_name == "image_height":
-            property_value = self.camera.Height.get()    
+            property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "trigger_source":
+            property_value = self.trigger_source
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
+
+    def setTriggerSource(self, trigger_source):
+        if trigger_source =='Continous':
+            self.set_continuous_acquisition()
+        elif trigger_source =='Internal trigger':
+            self.set_software_triggered_acquisition()
+        elif trigger_source =='External trigger':
+            self.set_hardware_triggered_acquisition()
+            
+    def set_continuous_acquisition(self):
+        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
+        self.trigger_mode = TriggerMode.CONTINUOU
+
+    def set_software_triggered_acquisition(self):
+        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
+        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.SOFTWARE)
+        self.trigger_mode = TriggerMode.SOFTWARE
+
+    def set_hardware_triggered_acquisition(self):
+        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
+        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
+        self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
+        self.trigger_mode = TriggerMode.HARDWARE
+
+    def send_trigger(self):
+        if self.is_streaming:
+            self.camera.TriggerSoftware.send_command()
+        else:
+        	print('trigger not sent - camera is not streaming')
 
     def openPropertiesGUI(self):
         pass
@@ -249,6 +300,9 @@ class CameraGXIPY:
         self.frame_id = frame.get_frame_id()
         self.timestamp = time.time()
         
+        if self.binning > 1:
+            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
+    
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frame_id)
     

@@ -37,6 +37,9 @@ class MockCameraTIS:
     def setROI(self, hpos, vpos, hsize, vsize):
         pass
 
+    def setBinning(self, binning):
+        pass
+
     def grabFrame(self, **kwargs):
         img = np.zeros((500, 600))
         beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]

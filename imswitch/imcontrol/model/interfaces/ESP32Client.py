@@ -310,9 +310,6 @@ class ESP32Client(object):
         r = self.post_json(payload["task"], payload, timeout=1)
         return r
 
-
-
-
     def get_state(self, timeout=5):
         path = "/state_get"
 
@@ -379,6 +376,17 @@ class ESP32Client(object):
         r = self.post_json(path, payload)
         return r
 
+    def sendTrigger(self, triggerId=0):
+        path = '/digital_act'
+        
+        payload = {
+            "task": path,
+            "digitalid": triggerId,
+            "digitalval": -1,
+        }
+
+        r = self.post_json(path, payload)
+        return r
 
     def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
         r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)

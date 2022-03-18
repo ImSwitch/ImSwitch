@@ -64,6 +64,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'Holo': _DockInfo(name='Holo Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+            'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

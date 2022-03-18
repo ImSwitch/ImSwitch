@@ -249,6 +249,23 @@ class LaserController(ImConWidgetController):
         #TODo: Very special case, try to move in seperate manager 
         self._master.rs232sManager["ESP32"]._esp32.sendTrigger(triggerId)
 
+    @APIExport(runOnUIThread=True)
+    def post_json(self, path: str, payload: dict) -> str:
+        """ Sends the specified command to the RS232 device and returns a
+        string encoded from the received bytes. """
+        return self._master.rs232sManager["ESP32"]._esp32.post_json(path, payload=payload, headers=None, timeout=1)
+
+    @APIExport(runOnUIThread=True)
+    def send_serial(self, payload: str) -> str:
+        """ Sends the specified command to the RS232 device and returns a
+        string encoded from the received bytes. """
+        self._master.rs232sManager["ESP32"]._esp32.writeSerial(payload)
+        #self.__logger.debug(payload)
+        returnmessage = self._master.rs232sManager["ESP32"]._esp32.readSerial(is_blocking=True, timeout=1)
+
+        return returnmessage
+
+
 
 
 _attrCategory = 'Laser'

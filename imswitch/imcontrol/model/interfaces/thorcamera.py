@@ -7,18 +7,40 @@ from imswitch.imcommon.model import initLogger
 import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
 
+
+from devwraps.thorcam import ThorCam
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+get_number_of_cameras
+cam = ThorCam()
+cam.get_number_of_cameras()
+cdevices = cam.get_devices()
+cam.open(cdevices[0])
+
+texp = cam.get_exposure()
+print(texp)
+
+cam.set_exposure(5)
+
+frame = cam.grab_image()
+plt.imshow(frame), plt.colorbar(), plt.show()
+
+cam.close()
+
 class TriggerMode:
     SOFTWARE = 'Software Trigger'
     HARDWARE = 'Hardware Trigger'
     CONTINUOUS = 'Continuous Acqusition'
 
-class CameraGXIPY:
+class ThorCamera:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=2):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
-        self.model = "CameraGXIPY"
+        self.model = "ThorCamera"
         self.shape = (0, 0)
         
         self.is_connected = False

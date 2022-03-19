@@ -89,6 +89,21 @@ We created a set of UC2-specific `json`-configuration files. ***AFTER*** you sta
 
 Please go to the Review [here]()
 
+# Special Devices
+
+## Thorcam
+
+**Install drivers**
+
+- [Download and install for Winows 64](https://www.thorlabs.com/software_pages/viewsoftwarepage.cfm?code=ThorCam)
+- Not sure if this is necessary, but install [Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- Note: `Build Tools for Visual Studio. Note that this is not Visual Studio ifself, but the command-line interface Build Tools for Visual Studio 2019. You can find that under Tools for Visual Studio. During the installation use the default configuration but make sure that the Windows 10 SDK and the C++ x64/x86 build tools options are enabled.`
+- Install `devwraps`:
+  - `git clone https://github.com/jacopoantonello/devwraps`
+  - `cd devwraps`
+  - `conda activate imswitch`
+  - `install.bat`
+
 
 ## Documentation
 

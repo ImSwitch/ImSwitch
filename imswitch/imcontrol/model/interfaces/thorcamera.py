@@ -13,22 +13,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-get_number_of_cameras
-cam = ThorCam()
-cam.get_number_of_cameras()
-cdevices = cam.get_devices()
-cam.open(cdevices[0])
-
-texp = cam.get_exposure()
-print(texp)
-
-cam.set_exposure(5)
-
-frame = cam.grab_image()
-plt.imshow(frame), plt.colorbar(), plt.show()
-
-cam.close()
-
 class TriggerMode:
     SOFTWARE = 'Software Trigger'
     HARDWARE = 'Hardware Trigger'
@@ -53,8 +37,6 @@ class ThorCamera:
         self.blacklevel = blacklevel
         self.exposure_time = exposure_time
         self.gain = gain
-        self.preview_width = 600
-        self.preview_height = 600 
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
@@ -82,100 +64,51 @@ class ThorCamera:
         self.is_connected = True
         
         # open the first device
-        self.camera = self.device_manager.open_device_by_index(cameraNo)
-
-        # exit when the camera is a color camera
-        if self.camera.PixelColorFilter.is_implemented() is True:
-            print("This sample does not support color camera.")
-            self.camera.close_device()
-            return
-            
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
+        self.camera = ThorCam()
+        cameraNo = cam.get_number_of_cameras()
+        self.device_manager.open_device_by_index(cameraNo)
+        self.camera.open(cdevices[0])
 
         # set exposure
-        self.camera.ExposureTime.set(self.exposure_time)
+        self.camera.set_exposure(self.exposure_time)
 
         # set gain
-        self.camera.Gain.set(self.gain)
+        # not available? self.camera.Gain.set(self.gain)
         
         # set blacklevel
-        self.camera.BlackLevel.set(self.blacklevel)
-
-        # set the acq buffer count
-        self.camera.data_stream[0].set_acquisition_buffer_number(1)
-        
-        # set camera to mono12 mode
-        # self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
-        # set camera to mono8 mode
-        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+        # not available? self.camera.BlackLevel.set(self.blacklevel)
 
         # get framesize 
-        self.SensorHeight = self.camera.HeightMax.get()//self.binning
-        self.SensorWidth = self.camera.WidthMax.get()//self.binning
+        self.SensorHeight = self.camera.shape[0]
+        self.SensorWidth = self.camera.shape[1]
         
-        # register the frame callback
-        user_param = None
-        self.camera.register_capture_callback(user_param, self.set_frame)
-
     def start_live(self):
-        if not self.is_streaming:
-            # start data acquisition
-            self.camera.stream_on()
-            self.is_streaming = True
+        pass
 
     def stop_live(self):
-        if self.is_streaming:
-            # start data acquisition
-            self.camera.stream_off()
-            self.is_streaming = False
-
+        pass
+    
     def suspend_live(self):
-        if self.is_streaming:
-        # start data acquisition
-            try:
-                self.camera.stream_off()
-            except:
-                # camera was disconnected? 
-                self.camera.unregister_capture_callback()
-                self.camera.close_device()
-                self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-
-            self.is_streaming = False
-        
+        pass 
+    
     def prepare_live(self):
         pass
 
     def close(self):
-        self.camera.close_device()
+        self.camera.close()
         
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.camera.ExposureTime.set(self.exposure_time*1000)
+        self.camera.set_exposure(self.exposure_time)
 
     def set_gain(self,gain):
-        self.gain = gain
-        self.camera.Gain.set(self.gain)
+        pass
         
     def set_blacklevel(self,blacklevel):
-        self.blacklevel = blacklevel
-        self.camera.BlackLevel.set(self.blacklevel)
+        pass
 
     def set_pixel_format(self,format):
-        if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
-            if format == 'MONO8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
-            if format == 'MONO12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
-            if format == 'MONO14':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO14)
-            if format == 'MONO16':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO16)
-            if format == 'BAYER_RG8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG8)
-            if format == 'BAYER_RG12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
-        else:
-            print("pixel format is not implemented or not writable")
+        pass
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
@@ -187,69 +120,19 @@ class ThorCamera:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        return self.frame
+        return self.camera.grab_image()
 
     def getLastChunk(self):
-        chunk = np.array(self.frame_buffer)
-        frameids = np.array(self.frameid_buffer)
-        self.frameid_buffer.clear()
-        self.frame_buffer.clear()
-        #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        chunk = np.expand_dims(self.camera.grab_image(),0)
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
-        #hsize = max(hsize, 25)*10  # minimum ROI size
-        #vsize = max(vsize, 3)*10  # minimum ROI size
-        hpos = 8*(hpos//8)
-        vpos = 2*(vpos//2)     
-        hsize = 8*(hsize//8)   
-        vsize = 2*(vsize//2) 
-
-        if hsize is not None:
-            self.ROI_width = hsize
-            # update the camera setting
-            if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
-                self.camera.Width.set(self.ROI_width)
-            else:
-                print("OffsetX is not implemented or not writable")
-
-        if vsize is not None:
-            self.ROI_height = vsize
-            # update the camera setting
-            if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
-                self.camera.Height.set(self.ROI_height)
-            else:
-                print("Height is not implemented or not writable")
-
-        if hpos is not None:
-            self.ROI_hpos = hpos
-            # update the camera setting
-            if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
-                self.camera.OffsetX.set(self.ROI_hpos)
-            else:
-                print("OffsetX is not implemented or not writable")
-
-        if vpos is not None:
-            self.ROI_vpos = vpos
-            # update the camera setting
-            if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
-                self.camera.OffsetY.set(self.ROI_vpos)
-            else:
-                print("OffsetX is not implemented or not writable")
-
+        pass
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
-        if property_name == "gain":
-            self.set_gain(property_value)
-        elif property_name == "exposure":
+        if property_name == "exposure":
             self.set_exposure_time(property_value)
-        elif property_name == "blacklevel":
-            self.set_blacklevel(property_value)
-        elif property_name == "roi_size":
-            self.roi_size = property_value
-        elif property_name == "trigger_source":
-            self.setTriggerSource(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -257,78 +140,15 @@ class ThorCamera:
 
     def getPropertyValue(self, property_name):
         # Check if the property exists.
-        if property_name == "gain":
-            property_value = self.camera.Gain.get()
-        elif property_name == "exposure":
-            property_value = self.camera.ExposureTime.get()
-        elif property_name == "blacklevel":
-            property_value = self.camera.BlackLevel.get()            
-        elif property_name == "image_width":
-            property_value = self.camera.Width.get()//self.binning         
-        elif property_name == "image_height":
-            property_value = self.camera.Height.get()//self.binning
-        elif property_name == "roi_size":
-            property_value = self.roi_size 
-        elif property_name == "trigger_source":
-            property_value = self.trigger_source
+        if property_name == "exposure":
+            property_value = self.camera.get_exposure()
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
-    def setTriggerSource(self, trigger_source):
-        if trigger_source =='Continous':
-            self.set_continuous_acquisition()
-        elif trigger_source =='Internal trigger':
-            self.set_software_triggered_acquisition()
-        elif trigger_source =='External trigger':
-            self.set_hardware_triggered_acquisition()
-            
-    def set_continuous_acquisition(self):
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
-        self.trigger_mode = TriggerMode.CONTINUOU
-
-    def set_software_triggered_acquisition(self):
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.SOFTWARE)
-        self.trigger_mode = TriggerMode.SOFTWARE
-
-    def set_hardware_triggered_acquisition(self):
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
-        self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
-        self.trigger_mode = TriggerMode.HARDWARE
-        self.frame_buffer.clear()
-        self.frame_id.clear()
-
-    def send_trigger(self):
-        if self.is_streaming:
-            self.camera.TriggerSoftware.send_command()
-        else:
-        	print('trigger not sent - camera is not streaming')
-
     def openPropertiesGUI(self):
         pass
-    
-    def set_frame(self, user_param, frame):
-        if frame is None:
-            self.__logger.error("Getting image failed.")
-            return
-        if frame.get_status() != 0:
-            self.__logger.error("Got an incomplete frame")
-            return
-        numpy_image = frame.get_numpy_array()
-        if numpy_image is None:
-            return
-        self.frame = numpy_image
-        self.frame_id = frame.get_frame_id()
-        self.timestamp = time.time()
-        
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
-        self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frame_id)
     
 
 # Copyright (C) ImSwitch developers 2021

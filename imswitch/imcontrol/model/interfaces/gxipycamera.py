@@ -272,12 +272,41 @@ class CameraGXIPY:
         self.trigger_mode = TriggerMode.SOFTWARE
 
     def set_hardware_triggered_acquisition(self):
+                # set continuous acquisition
+        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
+
+        # set trigger source with line2
+        self.camera.TriggerSource.set(3)
+
+        # set line selector with linw
+        self.camera.LineSelector.set(2)
+
+        # set line mode input
+        self.camera.LineMode.set(0)
+        
+        # set line source
+        #cam.LineSource.set(2)
+
+        status = False
+        status = self.camera.LineStatus.get()
+
+        # User Set Selector
+        self.camera.UserSetSelector.set(1)
+        # User Set Save
+        self.camera.UserSetSave.send_command()
+        
+        '''
         self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
         self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
-        self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
+        #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
+        '''
         self.trigger_mode = TriggerMode.HARDWARE
         self.frame_buffer.clear()
         self.frame_id.clear()
+        
+        
+
+
 
     def send_trigger(self):
         if self.is_streaming:

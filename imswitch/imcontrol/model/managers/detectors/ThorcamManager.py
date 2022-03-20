@@ -20,7 +20,7 @@ class ThorcamManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        self._camera = self._getGXObj(cameraId, binning)
+        self._camera = self._getGXObj(cameraId ) 
         
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -134,7 +134,7 @@ class ThorcamManager(DetectorManager):
     def _getGXObj(self, cameraId, binning=1):
         try:
             from imswitch.imcontrol.model.interfaces.thorcamera import ThorCamera
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+            self.__logger.debug(f'Trying to initialize Throcamera {cameraId}')
             camera = ThorCamera(cameraNo=cameraId, binning=binning)
         except Exception as e:
             self.__logger.debug(e)

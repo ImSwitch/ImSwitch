@@ -1,7 +1,8 @@
 from imswitch.imcommon.model import initLogger
+import imswitch.imcontrol.model.interfaces.grbldriver as grbldriver
 
 
-class RS232Manager:
+class GRBLManager:
     """ A general-purpose RS232 manager that together with a general-purpose
     RS232Driver interface can handle an arbitrary RS232 communication channel,
     with all the standard serial communication protocol parameters as defined
@@ -28,31 +29,32 @@ class RS232Manager:
         self._settings = rs232Info.managerProperties
         self._name = name
         self._port = rs232Info.managerProperties['port']
-        self._rs232port = self._getRS232port(self._port, self._settings)
+        try:
+            self.is_home = rs232Info.managerProperties['is_home']
+        except:
+            self.is_home = False 
+             
+        
+        self._board = grbldriver.GrblDriver(self._port)
+
+        # init the stage
+        self._board.write_global_config()
+        self._board.write_all_settings()
+        #self.board.verify_settings()
+        self._board.reset_stage()
+        if self.is_home:
+            self._board.home()
 
     def query(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a
         string encoded from the received bytes. """
-        return self._rs232port.query(arg)
-
-    def write(self, arg: str):
-        """ Sends the specified command to the RS232 device. """
-        return self._rs232port.write(arg)
+        return self._board._write(arg)
 
     def finalize(self):
-        self._rs232port.close()
+        self.self._board.close()
 
-    def _getRS232port(self, port, settings):
-        try:
-            from imswitch.imcontrol.model.interfaces.RS232Driver import generateDriverClass
-            DriverClass = generateDriverClass(settings)
-            rs232port = DriverClass(port)
-            rs232port.initialize()
-            return rs232port
-        except Exception:
-            self.__logger.warning('Initializing mock RS232 port')
-            from imswitch.imcontrol.model.interfaces.RS232Driver_mock import MockRS232Driver
-            return MockRS232Driver(port, settings)
+
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -1,10 +1,12 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
+from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
+import numpy as np
 
-
-class CoolLEDLaserManager(LaserManager):
-    """ LaserManager for controlling the LEDs from CoolLED. Each LaserManager
-    instance controls one LED.
+class ESP32LEDMatrixManager(LaserManager):
+    """ LaserManager for controlling LEDs and LAsers connected to an 
+    ESP32 exposing a REST API
+    Each LaserManager instance controls one LED.
 
     Manager properties:
 
@@ -15,31 +17,33 @@ class CoolLEDLaserManager(LaserManager):
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.power = 0
+        self.I_max = 255
+        self.N_leds = 4
+        self.setEnabled = False
 
-        self._rs232manager = lowLevelManagers['rs232sManager'][
-            laserInfo.managerProperties['rs232device']
-        ]
-        self.__channel_index = laserInfo.managerProperties['channel_index']
-        self.__digital_mod = False
+        self.led_pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
+                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
+                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds))))
+        
+
+        self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        if enabled:
-            value = "N"
-        else:
-            value = "F"
-        cmd = "C" + self.__channel_index + value
-        self._rs232manager.query(cmd)
+        self.setEnabled = enabled
+        self.esp32.send_ledmatrix(self.led_pattern*self.setEnabled)
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
-        self.__logger.debug(cmd)
-        self._rs232manager.query(cmd)
+
+        self.led_pattern = np.ones((3,self.N_leds, self.N_leds))*power*self.setEnabled
+        self.esp32.send_ledmatrix(self.led_pattern)
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

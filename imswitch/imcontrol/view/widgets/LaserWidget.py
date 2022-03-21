@@ -11,9 +11,9 @@ class LaserWidget(Widget):
     sigEnableChanged = QtCore.Signal(str, bool)  # (laserName, enabled)
     sigValueChanged = QtCore.Signal(str, float)  # (laserName, value)
     
-    sigModEnabledChanged = QtCore.Signal(str, bool) # (laserName, modulation enabled)
+    sigModEnabledChanged = QtCore.Signal(str, bool) # (laserName, modulationEnabled)
     sigFreqChanged = QtCore.Signal(str, int)        # (laserName, frequency)
-    sigDutyCycleChanged = QtCore.Signal(str, int)   # (laserName, duty cycle)
+    sigDutyCycleChanged = QtCore.Signal(str, int)   # (laserName, dutyCycle)
 
     sigPresetSelected = QtCore.Signal(str)  # (presetName)
     sigLoadPresetClicked = QtCore.Signal()
@@ -104,6 +104,9 @@ class LaserWidget(Widget):
         )
 
         if frequencyRange is not None:
+            control.sigModEnabledChanged.connect(
+                lambda enabled: self.sigModEnabledChanged.emit(laserName, enabled)
+            )
             control.sigFreqChanged.connect(
                 lambda frequency: self.sigFreqChanged.emit(laserName, frequency)
             )
@@ -153,6 +156,14 @@ class LaserWidget(Widget):
         """ Sets the value of the specified laser, in the units that the laser
         uses. """
         self.laserModules[laserName].setValue(value)
+    
+    def setModulationFrequency(self, laserName, value):
+        """ Sets the modulation frequency of the specified laser. """
+        self.laserModules[laserName].setModulationFrequency(value)
+
+    def setModulationDutyCycle(self, laserName, value):
+        """ Sets the modulation duty cycle of the specified laser. """
+        self.laserModules[laserName].setModulationDutyCycle(value)
 
     def getCurrentPreset(self):
         """ Returns the name of the currently selected preset. """
@@ -405,6 +416,16 @@ class LaserModule(QtWidgets.QWidget):
         """ Sets the value of the laser, in the units that the laser uses. """
         self.setPointEdit.setText(f'%.{self.valueDecimals}f' % value)
         self.slider.setValue(value)
+    
+    def setModulationFrequency(self, value):
+        """ Sets the laser modulation frequency. """
+        self.modulationFrequencyEdit.setText(f"{value}")
+        self.modulationFrequencySlider.setValue(value)
+    
+    def setModulationDutyCycle(self, value):
+        """ Sets the laser modulation duty cycle. """
+        self.modulationDutyCycleEdit.setText(f"{value}")
+        self.modulationDutyCycleSlider.setValue(value)
 
 
 # Copyright (C) 2017 Federico Barabas 2020-2021 ImSwitch developers

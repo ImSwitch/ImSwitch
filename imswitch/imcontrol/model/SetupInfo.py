@@ -66,7 +66,7 @@ class LaserInfo(DeviceInfo):
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
-    axes: List[str]
+    axes: Union[List[str], Dict[str, Any]]
     """ A list of axes (names) that the positioner controls. """
 
     isPositiveDirection: bool = True

@@ -23,7 +23,7 @@ class PositionerManager(ABC):
 
         self.__name = name
 
-        self.__axes = positionerInfo.axes
+        self.__axes = (positionerInfo.axes if isinstance(positionerInfo.axes, list) else list(positionerInfo.axes.keys()))
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:

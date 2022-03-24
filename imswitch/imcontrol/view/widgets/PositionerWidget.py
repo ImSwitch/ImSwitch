@@ -1,3 +1,4 @@
+from turtle import position
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -7,8 +8,9 @@ from .basewidgets import Widget
 class PositionerWidget(Widget):
     """ Widget in control of the piezo movement. """
 
-    sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigStepUpClicked = QtCore.Signal(str, str)    # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigCalibrationCalled = QtCore.Signal(str)    # (positionerName)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -49,6 +51,29 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
+        
+        # Absolute zero-position calibration button
+        # todo: this could cause problems in case
+        # different positioners use the same name...
+        self.pars["Calibration" + positionerName] = guitools.BetterPushButton("Calibrate")
+
+        # At the end of the for loop we are left with self.numPositioner already increased.
+        # We can use it to set the row, but we need to remember to increase the value in case
+        # other positioners are being added in the configuration file.
+        self.grid.addWidget(self.pars["Calibration" + positionerName], self.numPositioners, 0)
+        self.pars["Calibration" + positionerName].clicked.connect(
+            lambda : self._askCalibrationConfirmation(positionerName)
+        )
+        self.numPositioners += 1
+    
+    def _askCalibrationConfirmation(self, positionerName):
+        if QtWidgets.QMessageBox.warning(self, f"{positionerName} calibration", 
+                                            f"Requested calibration of {positionerName} positioner.\
+                                            This operation will attempt to find the absolute-zero position.\
+                                            It is reccomended to remove all objects obstructing the positioner movements.\
+                                            Are you sure to procede?", QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No) == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.sigCalibrationCalled.emit(positionerName)
+
 
     def getStepSize(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in

@@ -1,5 +1,6 @@
+import importlib
 from .LaserManager import LaserManager
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import pythontools, initLogger
 
 class PyMicroscopeLaserManager(LaserManager):
     """ Generic LaserManager for laser handlers supported by Python Microscope.
@@ -16,14 +17,11 @@ class PyMicroscopeLaserManager(LaserManager):
         self.__logger = initLogger(self, instanceName=name)
         self.__port = laserInfo.managerProperties["digitalPorts"]
         self.__driver = str(laserInfo.managerProperties["pyMicroscopeDriver"])
-
-        # we need to import the proper class from python microscope
-        # split the pyMicroscopeDriver
         driver = self.__driver.split(".")
-        laserClass = __import__("microscope.lights." + driver[0], fromlist=driver[1])
-
-        # we have imported the class, now we build the object
-        self.__laser = getattr(laserClass, driver[1])(self.__port)
+        package = importlib.import_module(
+            pythontools.joinModulePath("microscope.lights", driver[0])
+        )
+        self.__laser = getattr(package, driver[1])(self.__port)
         self.__logger.info(f"[{self.__port}] {self.__driver} initialized. ")
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=1)
         self.__maxPower = float(laserInfo.valueRangeMax)

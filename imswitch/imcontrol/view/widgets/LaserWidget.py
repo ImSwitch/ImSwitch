@@ -84,11 +84,11 @@ class LaserWidget(Widget):
         self.layout.addLayout(self.presetsBox, 1, 0)
 
     def addLaser(self, laserName, valueUnits, valueDecimals, wavelength, valueRange=None,
-                 valueRangeStep=1, frequencyRange=None):
+                 valueRangeStep=1, frequencyRange=(0, 0, 0)):
         """ Adds a laser module widget. valueRange is either a tuple
         (min, max), or None (if the laser can only be turned on/off).
         frequencyRange is either a tuple (min, max, initVal)
-        or None (if the laser is not modulated in frequency)"""
+        or (0, 0, 0) (if the laser is not modulated in frequency)"""
 
         control = LaserModule(
             valueUnits=valueUnits, valueDecimals=valueDecimals, valueRange=valueRange,
@@ -103,7 +103,7 @@ class LaserWidget(Widget):
             lambda value: self.sigValueChanged.emit(laserName, value)
         )
 
-        if frequencyRange is not None:
+        if all(num > 0 for num in frequencyRange):
             control.sigModEnabledChanged.connect(
                 lambda enabled: self.sigModEnabledChanged.emit(laserName, enabled)
             )
@@ -243,7 +243,7 @@ class LaserModule(QtWidgets.QWidget):
         self.valueDecimals = valueDecimals
 
         isBinary = valueRange is None
-        isModulated = frequencyRange is not None
+        isModulated = all(num > 0 for num in frequencyRange)
 
         # Graphical elements
         self.setPointLabel = QtWidgets.QLabel(f'Setpoint [{valueUnits}]')

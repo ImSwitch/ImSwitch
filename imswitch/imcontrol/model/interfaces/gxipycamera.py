@@ -13,7 +13,7 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=2):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -172,48 +172,54 @@ class CameraGXIPY:
         frameids = np.array(self.frameid_buffer)
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
-        #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         #hsize = max(hsize, 25)*10  # minimum ROI size
         #vsize = max(vsize, 3)*10  # minimum ROI size
-        hpos = 8*(hpos//8)
-        vpos = 2*(vpos//2)     
-        hsize = 8*(hsize//8)   
-        vsize = 2*(vsize//2) 
+        hpos = self.camera.OffsetX.get_range()["inc"]*((hpos)//self.camera.OffsetX.get_range()["inc"])
+        vpos = self.camera.OffsetY.get_range()["inc"]*((vpos)//self.camera.OffsetY.get_range()["inc"])  
+        hsize = int(np.min((self.camera.Width.get_range()["inc"]*((hsize*self.binning)//self.camera.Width.get_range()["inc"]),self.camera.WidthMax.get())))
+        vsize = int(np.min((self.camera.Height.get_range()["inc"]*((vsize*self.binning)//self.camera.Height.get_range()["inc"]),self.camera.HeightMax.get())))
 
-        if hsize is not None:
+        if vsize is not None:
             self.ROI_width = hsize
             # update the camera setting
             if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
-                self.camera.Width.set(self.ROI_width)
+                message = self.camera.Width.set(self.ROI_width)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
-        if vsize is not None:
+        if hsize is not None:
             self.ROI_height = vsize
             # update the camera setting
             if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
-                self.camera.Height.set(self.ROI_height)
+                message = self.camera.Height.set(self.ROI_height)
+                self.__logger.debug(message)
             else:
-                print("Height is not implemented or not writable")
+                self.__logger.debug("Height is not implemented or not writable")
 
         if hpos is not None:
             self.ROI_hpos = hpos
             # update the camera setting
             if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
-                self.camera.OffsetX.set(self.ROI_hpos)
+                message = self.camera.OffsetX.set(self.ROI_hpos)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
         if vpos is not None:
             self.ROI_vpos = vpos
             # update the camera setting
             if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
-                self.camera.OffsetY.set(self.ROI_vpos)
+                message = self.camera.OffsetY.set(self.ROI_vpos)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
+
+        return hpos,vpos,hsize,vsize
 
 
     def setPropertyValue(self, property_name, property_value):

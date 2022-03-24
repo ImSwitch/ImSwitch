@@ -19,7 +19,7 @@ class GXPIPYManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        binning = detectorInfo.managerProperties['gxipycam']["binning"]
+        binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         self._camera = self._getGXObj(cameraId, binning)
         
@@ -35,7 +35,7 @@ class GXPIPYManager(DetectorManager):
         self._adjustingParameters = False
 
         # TODO: Not implemented yet 
-        # self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
+        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
 
         # Prepare parameters
@@ -65,14 +65,11 @@ class GXPIPYManager(DetectorManager):
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=False)
+                         model=model, parameters=parameters, actions=actions, croppable=True)
         
 
     def getLatestFrame(self, is_save=False):
-        if is_save:
-            return self._camera.getLastChunk()
-        else:
-            return self._camera.getLast()
+        return self._camera.getLast()
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -155,19 +152,22 @@ class GXPIPYManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
 
-        #def cropAction():
-        #    self.__logger.debug(
-        #        f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-        #    )
-        #    self._camera.setROI(hpos, vpos, hsize, vsize)
-        #    pass
+        def cropAction():
+            self.__logger.debug(
+                f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
+            )
+            self._camera.setROI(hpos, vpos, hsize, vsize)
+            # TOdO: weird hackaround
+            self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
+            self._frameStart = (hpos, vpos)
+            pass
 
-        #self._performSafeCameraAction(cropAction)
+        self._performSafeCameraAction(cropAction)
         # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
-        #self._frameStart = (hpos, vpos)
+        
         # Only place self.shapes is changed
-        #self._shape = (hsize, vsize)
+        
         pass 
 
     def _performSafeCameraAction(self, function):

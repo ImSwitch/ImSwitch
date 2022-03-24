@@ -29,12 +29,12 @@ class MicroDriveHandler:
     def getDriverInfo(self) -> list[str]:
         return [
             f"Handle ID: {self.__handle}",
-            f"Device type: {hex(self.__driverInfo.deviceType)}",
-            f"Encoder resolution: {self.__driverInfo.encoderResolution.value}",
-            f"Step size: {self.__driverInfo.stepSize.value}",
-            f"Max. speed (1 axis): {self.__driverInfo.maxSpeed1Axis.value}",
-            f"Max. speed (2 axis): {self.__driverInfo.maxSpeed2Axis.value}",
-            f"Max. speed (3 axis): {self.__driverInfo.maxSpeed3Axis.value}",
+            f"Device type: {self.__driverInfo.deviceType.name} ({hex(self.__driverInfo.deviceType)})",
+            f"Encoder resolution: {self.__driverInfo.encoderResolution.value} \u03BCm",
+            f"Step size: {self.__driverInfo.stepSize.value} mm",
+            f"Max. speed (1 axis): {self.__driverInfo.maxSpeed1Axis.value} mm/s",
+            f"Max. speed (2 axis): {self.__driverInfo.maxSpeed2Axis.value} mm/s",
+            f"Max. speed (3 axis): {self.__driverInfo.maxSpeed3Axis.value} mm/s",
             f"Min. speed: {self.__driverInfo.minSpeed.value}"
         ]
 
@@ -118,7 +118,9 @@ class MicroDriveHandler:
                                                     self.__handle))
             self._waitForCommand()
         else:
-            self.__logger.info(f"Movement too small for step size, skipping ({move.value} < {self.__driverInfo.stepSize.value})")
+            # movement smaller than minimum step size, skipping
+            # self.__logger.info(f"Movement too small for step size, skipping ({move.value} < {self.__driverInfo.stepSize.value})")
+            pass
         
         self._checkError(self.__dll.MCL_MDCurrentPositionM(currAxis, endMicro, self.__handle))
         return (endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
@@ -126,4 +128,16 @@ class MicroDriveHandler:
     def close(self) -> None:
         self.__dll.MCL_ReleaseHandle(self.__handle)
         
+class NanoDriveHandler:
 
+    class ProductInfo(Structure):
+        _fields_ = [("axis_bitmap", c_ubyte),
+                    ("ADC_resolution", c_short),
+                    ("DAC_resolution", c_short),
+                    ("Product_id", c_short),
+                    ("FirmwareVersion", c_short),
+                    ("FirmwareProfile", c_short)]
+        _pack_ = 1 # this is how it is packed in the Madlib dll
+
+    def __init__(self, mclDLLPath : str, axis: dict[str, int], logger: LoggerAdapter) -> None:
+        pass

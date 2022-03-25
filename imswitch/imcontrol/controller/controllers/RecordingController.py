@@ -25,7 +25,7 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
+        self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -70,9 +70,9 @@ class RecordingController(ImConWidgetController):
 
     def snapSaveModeChanged(self):
         saveMode = SaveMode(self._widget.getSnapSaveMode())
-        self._widget.setSnapSaveFormatEnabled(saveMode != SaveMode.RAM)
+        self._widget.setsaveFormatEnabled(saveMode != SaveMode.RAM)
         if saveMode == SaveMode.RAM:
-            self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
+            self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
         """ Take a snap and save it to a .tiff file. """
@@ -91,7 +91,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getSnapSaveFormat()),
+                                           SaveFormat(self._widget.getsaveFormat()),
                                            attrs)
 
     def toggleREC(self, checked):

@@ -20,7 +20,8 @@ class LaserController(ImConWidgetController):
             self._widget.addLaser(
                 lName, lManager.valueUnits, lManager.valueDecimals, lManager.wavelength,
                 (lManager.valueRangeMin, lManager.valueRangeMax) if not lManager.isBinary else None,
-                lManager.valueRangeStep if lManager.valueRangeStep is not None else None
+                lManager.valueRangeStep if lManager.valueRangeStep is not None else None,
+                (lManager.freqRangeMin, lManager.freqRangeMax, lManager.freqRangeInit) if lManager.isModulated else (0, 0, 0)
             )
             if not lManager.isBinary:
                 self.valueChanged(lName, lManager.valueRangeMin)
@@ -45,6 +46,10 @@ class LaserController(ImConWidgetController):
         self._widget.sigEnableChanged.connect(self.toggleLaser)
         self._widget.sigValueChanged.connect(self.valueChanged)
 
+        self._widget.sigModEnabledChanged.connect(self.toggleModulation)
+        self._widget.sigFreqChanged.connect(self.frequencyChanged)
+        self._widget.sigDutyCycleChanged.connect(self.dutyCycleChanged)
+
         self._widget.sigPresetSelected.connect(self.presetSelected)
         self._widget.sigLoadPresetClicked.connect(self.loadPreset)
         self._widget.sigSavePresetClicked.connect(self.savePreset)
@@ -66,6 +71,23 @@ class LaserController(ImConWidgetController):
         self._master.lasersManager[laserName].setValue(magnitude)
         self._widget.setValue(laserName, magnitude)
         self.setSharedAttr(laserName, _valueAttr, magnitude)
+    
+    def toggleModulation(self, laserName, enabled):
+        """ Enable or disable laser modulation (on/off). """
+        self._master.lasersManager[laserName].setModulationEnabled(enabled)
+        self.setSharedAttr(laserName, _freqEnAttr, enabled)
+
+    def frequencyChanged(self, laserName, frequency):
+        """ Change modulation frequency. """
+        self._master.lasersManager[laserName].setModulationFrequency(frequency)
+        self._widget.setModulationFrequency(laserName, frequency)
+        self.setSharedAttr(laserName, _freqAttr, frequency)
+    
+    def dutyCycleChanged(self, laserName, dutyCycle):
+        """ Change modulation duty cycle. """
+        self._master.lasersManager[laserName].setModulationDutyCycle(dutyCycle)
+        self._widget.setModulationDutyCycle(laserName, dutyCycle)
+        self.setSharedAttr(laserName, _dcAttr, dutyCycle)
 
     def presetSelected(self, presetName):
         """ Handles what happens when a preset is selected in the preset list.
@@ -247,6 +269,9 @@ class LaserController(ImConWidgetController):
 _attrCategory = 'Laser'
 _enabledAttr = 'Enabled'
 _valueAttr = 'Value'
+_freqEnAttr = "ModulationEnabled"
+_freqAttr = "Frequency"
+_dcAttr = "DutyCycle"
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

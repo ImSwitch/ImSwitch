@@ -82,6 +82,9 @@ class RecordingManager(SignalInterface):
         sigRecordingEnded signal will be emitted. Unless wait is False, this
         method will wait until the recording is complete before returning. """
 
+        self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
+                                    condition=lambda c: c.forAcquisition)
+
         if self.__record:
             self.__logger.info('Stopping recording')
         self.__record = False
@@ -90,6 +93,7 @@ class RecordingManager(SignalInterface):
             self.sigRecordingEnded.emit()
         if wait:
             self.__thread.wait()
+
 
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         """ Saves a single frame capture with the specified detectors to a file

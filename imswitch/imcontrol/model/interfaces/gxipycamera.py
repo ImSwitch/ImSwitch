@@ -182,11 +182,15 @@ class CameraGXIPY:
         #TODO: Napari only displays 8Bit?
         return self.frame
 
+
+    def flushBuffer(self):
+        self.frameid_buffer.clear()
+        self.frame_buffer.clear()
+        
     def getLastChunk(self):
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
-        self.frameid_buffer.clear()
-        self.frame_buffer.clear()
+        self.flushBuffer()
         self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
@@ -326,8 +330,8 @@ class CameraGXIPY:
         #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
         '''
         self.trigger_mode = TriggerMode.HARDWARE
-        self.frame_buffer.clear()
-        self.frame_id.clear()
+        
+        self.flushBuffer()
         
         
 

@@ -167,10 +167,14 @@ class AVManager(DetectorManager):
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
-
+        
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
 
+    def flushBuffer(self):
+        self.__logger.info('Flush buffer!')
+        pass 
+    
     def closeEvent(self):
         self._camera.close()
 

@@ -124,7 +124,7 @@ class GXPIPYManager(DetectorManager):
             return None
 
     def flushBuffers(self):
-        pass
+        self._camera.flushBuffer()
 
     def startAcquisition(self):
         if not self._running:

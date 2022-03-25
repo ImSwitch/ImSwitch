@@ -13,7 +13,7 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -32,7 +32,8 @@ class CameraGXIPY:
         self.exposure_time = exposure_time
         self.gain = gain
         self.preview_width = 600
-        self.preview_height = 600 
+        self.preview_height = 600
+        self.frame_rate = frame_rate 
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
@@ -75,6 +76,9 @@ class CameraGXIPY:
 
         # set gain
         self.camera.Gain.set(self.gain)
+        
+        # set framerate
+        self.set_frame_rate(self.frame_rate)
         
         # set blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
@@ -133,6 +137,17 @@ class CameraGXIPY:
     def set_gain(self,gain):
         self.gain = gain
         self.camera.Gain.set(self.gain)
+
+    def set_frame_rate(self, frame_rate):
+        if frame_rate == -1:
+            frame_rate = 10000 # go as fast as you can
+        self.frame_rate = frame_rate
+        
+        # temporary
+        self.camera.AcquisitionFrameRate.set(self.frame_rate)
+        self.camera.AcquisitionFrameRateMode.set(gx.GxSwitchEntry.ON)
+
+
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
@@ -232,6 +247,8 @@ class CameraGXIPY:
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
+        elif property_name == "frame_rate":
+            self.set_frame_rate(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
         else:
@@ -253,6 +270,8 @@ class CameraGXIPY:
             property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "frame_Rate":
+            property_value = self.frame_rate 
         elif property_name == "trigger_source":
             property_value = self.trigger_source
         else:

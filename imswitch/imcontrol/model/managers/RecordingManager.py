@@ -54,7 +54,7 @@ class RecordingManager(SignalInterface):
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
                        singleMultiDetectorFile=False, singleLapseFile=False,
-                       recFrames=None, recTime=None):
+                       recFrames=None, recTime=None, saveFormat=1):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.
         In SpecFrames mode, recFrames (the number of frames) must be specified,
@@ -67,6 +67,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.saveMode = saveMode
+        self.__recordingWorker.saveFormat = saveFormat        
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
@@ -296,11 +297,14 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            it = currentFrame[detectorName]
-                            dataset = datasets[detectorName]
-                            dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = newFrames
-                            currentFrame[detectorName] += n
+                            if SaveFormat == SaveFormat.TIFF:
+                                tiff.imwrite(filePath+".tif", newFrames, append=True)
+                            else:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                dataset.resize(n + it, axis=0)
+                                dataset[it:it + n, :, :] = newFrames
+                                currentFrame[detectorName] += n
 
                     if shouldStop:
                         break

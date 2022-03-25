@@ -50,6 +50,8 @@ class GXPIPYManager(DetectorManager):
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
+            'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
+                                    editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
@@ -161,9 +163,11 @@ class GXPIPYManager(DetectorManager):
             self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
             self._frameStart = (hpos, vpos)
             pass
-
-        self._performSafeCameraAction(cropAction)
-        # TODO: unsure if frameStart is needed? Try without.
+        try:
+            self._performSafeCameraAction(cropAction)
+        except Exception as e:
+            self.__logger.error(e)
+            # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
         
         # Only place self.shapes is changed

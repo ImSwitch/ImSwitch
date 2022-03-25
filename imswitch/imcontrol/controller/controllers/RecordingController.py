@@ -115,6 +115,7 @@ class RecordingController(ImConWidgetController):
                 'recMode': self.recMode,
                 'savename': self.savename,
                 'saveMode': SaveMode(self._widget.getRecSaveMode()),
+                'saveFormat': SaveFormat(self._widget.getsaveFormat()),
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and

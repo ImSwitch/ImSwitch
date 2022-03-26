@@ -1,21 +1,21 @@
 from imswitch.imcommon.model import initLogger
-from .LaserManager import LaserManager
+from .LEDMatrixManager import LEDMatrixManager
 from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
 import numpy as np
 
-class ESP32LEDMatrixManager(LaserManager):
-    """ LaserManager for controlling LEDs and LAsers connected to an 
+class ESP32LEDMatrixManager(LEDMatrixManager):
+    """ LEDMatrixManager for controlling LEDs and LEDMatrixs connected to an 
     ESP32 exposing a REST API
-    Each LaserManager instance controls one LED.
+    Each LEDMatrixManager instance controls one LED.
 
     Manager properties:
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place
-    - ``channel_index`` -- laser channel (A to H)
+    - ``channel_index`` -- LEDMatrix channel (A to H)
     """
 
-    def __init__(self, laserInfo, name, **lowLevelManagers):
+    def __init__(self, LEDMatrixInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.I_max = 255
@@ -27,22 +27,26 @@ class ESP32LEDMatrixManager(LaserManager):
                        np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds))))
         
 
-        self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            LEDMatrixInfo.managerProperties['rs232device']
+        ]
+            
+        self.esp32 = self._rs232manager._esp32
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
-        """Turn on (N) or off (F) laser emission"""
+        """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled
-        self.esp32.send_LEDMatrix(self.led_pattern*self.setEnabled)
+        #self.esp32.send_LEDMatrix(self.led_pattern*self.setEnabled)
 
     def setValue(self, power):
         """Handles output power.
-        Sends a RS232 command to the laser specifying the new intensity.
+        Sends a RS232 command to the LEDMatrix specifying the new intensity.
         """
 
         self.led_pattern = np.ones((3,self.N_leds, self.N_leds))*power*self.setEnabled
-        self.esp32.send_LEDMatrix(self.led_pattern)
+        #self.esp32.send_LEDMatrix(self.led_pattern)
 
 
 

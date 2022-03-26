@@ -136,8 +136,6 @@ class RecordingController(ImConWidgetController):
                                             self._widget.getMultiDetectorSingleFile())
             }
 
-            self.recordingArgs['saveFormat']=self._widget.getSnapSaveFormat()
-
             if self.recMode == RecMode.SpecFrames:
                 self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.recordingManager.startRecording(**self.recordingArgs)

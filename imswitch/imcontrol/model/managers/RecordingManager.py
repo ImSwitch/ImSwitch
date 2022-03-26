@@ -52,9 +52,9 @@ class RecordingManager(SignalInterface):
     def detectorsManager(self):
         return self.__detectorsManager
 
-    def startRecording(self, detectorNames, recMode, savename, saveMode, saveFormat,attrs,
+    def startRecording(self, detectorNames, recMode, savename, saveMode, saveFormat, attrs,
                        singleMultiDetectorFile=False, singleLapseFile=False,
-                       recFrames=None, recTime=None, saveFormat=1):
+                       recFrames=None, recTime=None):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.
         In SpecFrames mode, recFrames (the number of frames) must be specified,
@@ -174,11 +174,13 @@ class RecordingWorker(Worker):
     def __init__(self, recordingManager):
         super().__init__()
         self.__recordingManager = recordingManager
+        self.__logger = initLogger(self)
 
     def run(self):
         acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
         try:
             self._record()
+                                                        
         finally:
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
@@ -203,23 +205,36 @@ class RecordingWorker(Worker):
                     datasetNameWithScan = f'{datasetName}_scan{scanNum}'
                 datasetName = datasetNameWithScan
 
-            # Initial number of frames must not be 0; otherwise, too much disk space may get
-            # allocated. We remove this default frame later on if no frames are captured.
-            datasets[detectorName] = files[detectorName].create_dataset(
-                datasetName, (1, *reversed(shapes[detectorName])),
-                maxshape=(None, *reversed(shapes[detectorName])),
-                dtype='i2'
-            )
+            self.__logger.debug(self.saveFormat)
+            if self.saveFormat == SaveFormat.HDF5:
+                # Initial number of frames must not be 0; otherwise, too much disk space may get
+                # allocated. We remove this default frame later on if no frames are captured.
+                datasets[detectorName] = files[detectorName].create_dataset(
+                    datasetName, (1, *reversed(shapes[detectorName])),
+                    maxshape=(None, *reversed(shapes[detectorName])),
+                    dtype='i2'
+                )
+                                
+                datasets[detectorName].attrs['detector_name'] = detectorName
 
-            for key, value in self.attrs[detectorName].items():
-                datasets[detectorName].attrs[key] = value
+                # For ImageJ compatibility
+                datasets[detectorName].attrs['element_size_um'] \
+                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                    
+                for key, value in self.attrs[detectorName].items():
+                    datasets[detectorName].attrs[key] = value
 
-            datasets[detectorName].attrs['detector_name'] = detectorName
 
-            # For ImageJ compatibility
-            datasets[detectorName].attrs['element_size_um'] \
-                = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-
+            elif self.saveFormat == SaveFormat.MP4:
+                # Need to initiliaze videowriter
+                pass
+            
+            elif self.saveFormat == SaveFormat.TIFF:
+                # Need to initiliaze TIF writer?
+                fileExtension = str(self.saveFormat.name).lower()
+                #tiff.imwrite(filePath, image)
+                                 
+                                 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
             if len(self.detectorNames) < 1:
@@ -243,15 +258,19 @@ class RecordingWorker(Worker):
 
                         if n > 0:
                             it = currentFrame[detectorName]
-                            dataset = datasets[detectorName]
-                            if (it + n) <= recFrames:
-                                dataset.resize(n + it, axis=0)
-                                dataset[it:it + n, :, :] = newFrames
-                                currentFrame[detectorName] += n
-                            else:
-                                dataset.resize(recFrames, axis=0)
-                                dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
-                                currentFrame[detectorName] = recFrames
+                            if self.saveFormat == SaveFormat.TIFF: 
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                                tiff.imwrite(filePath+".tif", it, append=True)
+                            elif self.saveFormat == SaveFormat.HDF5:
+                                dataset = datasets[detectorName]
+                                if (it + n) <= recFrames:
+                                    dataset.resize(n + it, axis=0)
+                                    dataset[it:it + n, :, :] = newFrames
+                                    currentFrame[detectorName] += n
+                                else:
+                                    dataset.resize(recFrames, axis=0)
+                                    dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
+                                    currentFrame[detectorName] = recFrames
 
                             # Things get a bit weird if we have multiple detectors when we report
                             # the current frame number, since the detectors may not be synchronized.
@@ -275,10 +294,14 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            it = currentFrame[detectorName]
-                            dataset = datasets[detectorName]
-                            dataset.resize(n + it, axis=0)
-                            dataset[it:it + n, :, :] = newFrames
+                            if self.saveFormat == SaveFormat.TIFF: 
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                                tiff.imwrite(filePath+".tif", newFrames, append=True)
+                            elif self.saveFormat == SaveFormat.HDF5:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                dataset.resize(n + it, axis=0)
+                                dataset[it:it + n, :, :] = newFrames
                             currentFrame[detectorName] += n
                             self.__recordingManager.sigRecordingTimeUpdated.emit(
                                 np.around(currentRecTime, decimals=2)
@@ -301,14 +324,15 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if SaveFormat == SaveFormat.TIFF:
+                            if self.saveFormat == SaveFormat.TIFF: 
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
                                 tiff.imwrite(filePath+".tif", newFrames, append=True)
-                            else:
+                            elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]
                                 dataset.resize(n + it, axis=0)
                                 dataset[it:it + n, :, :] = newFrames
-                                currentFrame[detectorName] += n
+                            currentFrame[detectorName] += n
 
                     if shouldStop:
                         break
@@ -320,27 +344,28 @@ class RecordingWorker(Worker):
             else:
                 raise ValueError('Unsupported recording mode specified')
         finally:
-            for detectorName, file in files.items():
-                # Remove default frame if no frames have been captured
-                if currentFrame[detectorName] < 1:
-                    datasets[detectorName].resize(0, axis=0)
+            if self.saveFormat == SaveFormat.HDF5:
+                for detectorName, file in files.items():
+                    # Remove default frame if no frames have been captured
+                    if currentFrame[detectorName] < 1:
+                        datasets[detectorName].resize(0, axis=0)
 
-                # Handle memory recordings
-                if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
-                    filePath = filePaths[detectorName]
-                    name = os.path.basename(filePath)
-                    if self.saveMode == SaveMode.RAM:
-                        file.close()
-                        self.__recordingManager.sigMemoryRecordingAvailable.emit(
-                            name, fileDests[detectorName], filePath, False
-                        )
+                    # Handle memory recordings
+                    if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
+                        filePath = filePaths[detectorName]
+                        name = os.path.basename(filePath)
+                        if self.saveMode == SaveMode.RAM:
+                            file.close()
+                            self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                                name, fileDests[detectorName], filePath, False
+                            )
+                        else:
+                            file.flush()
+                            self.__recordingManager.sigMemoryRecordingAvailable.emit(
+                                name, file, filePath, True
+                            )
                     else:
-                        file.flush()
-                        self.__recordingManager.sigMemoryRecordingAvailable.emit(
-                            name, file, filePath, True
-                        )
-                else:
-                    file.close()
+                        file.close()
 
             self.__recordingManager.endRecording(wait=False)
 
@@ -405,6 +430,7 @@ class SaveMode(enum.Enum):
 class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
+    MP4 = 3
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -52,7 +52,7 @@ class RecordingManager(SignalInterface):
     def detectorsManager(self):
         return self.__detectorsManager
 
-    def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
+    def startRecording(self, detectorNames, recMode, savename, saveMode, saveFormat,attrs,
                        singleMultiDetectorFile=False, singleLapseFile=False,
                        recFrames=None, recTime=None, saveFormat=1):
         """ Starts a recording with the specified detectors, recording mode,

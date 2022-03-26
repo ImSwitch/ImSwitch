@@ -13,7 +13,7 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, blacklevel=100, binning=2):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -32,11 +32,12 @@ class CameraGXIPY:
         self.exposure_time = exposure_time
         self.gain = gain
         self.preview_width = 600
-        self.preview_height = 600 
+        self.preview_height = 600
+        self.frame_rate = frame_rate 
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        NBuffer = 60
+        NBuffer = 20
         self.frame_buffer = collections.deque(maxlen=NBuffer)
         self.frameid_buffer = collections.deque(maxlen=NBuffer)
         
@@ -75,6 +76,9 @@ class CameraGXIPY:
 
         # set gain
         self.camera.Gain.set(self.gain)
+        
+        # set framerate
+        self.set_frame_rate(self.frame_rate)
         
         # set blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
@@ -133,6 +137,17 @@ class CameraGXIPY:
     def set_gain(self,gain):
         self.gain = gain
         self.camera.Gain.set(self.gain)
+
+    def set_frame_rate(self, frame_rate):
+        if frame_rate == -1:
+            frame_rate = 10000 # go as fast as you can
+        self.frame_rate = frame_rate
+        
+        # temporary
+        self.camera.AcquisitionFrameRate.set(self.frame_rate)
+        self.camera.AcquisitionFrameRateMode.set(gx.GxSwitchEntry.ON)
+
+
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
@@ -167,53 +182,63 @@ class CameraGXIPY:
         #TODO: Napari only displays 8Bit?
         return self.frame
 
+
+    def flushBuffer(self):
+        self.frameid_buffer.clear()
+        self.frame_buffer.clear()
+        
     def getLastChunk(self):
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
-        self.frameid_buffer.clear()
-        self.frame_buffer.clear()
-        #self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
+        self.flushBuffer()
+        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         #hsize = max(hsize, 25)*10  # minimum ROI size
         #vsize = max(vsize, 3)*10  # minimum ROI size
-        hpos = 8*(hpos//8)
-        vpos = 2*(vpos//2)     
-        hsize = 8*(hsize//8)   
-        vsize = 2*(vsize//2) 
+        hpos = self.camera.OffsetX.get_range()["inc"]*((hpos)//self.camera.OffsetX.get_range()["inc"])
+        vpos = self.camera.OffsetY.get_range()["inc"]*((vpos)//self.camera.OffsetY.get_range()["inc"])  
+        hsize = int(np.min((self.camera.Width.get_range()["inc"]*((hsize*self.binning)//self.camera.Width.get_range()["inc"]),self.camera.WidthMax.get())))
+        vsize = int(np.min((self.camera.Height.get_range()["inc"]*((vsize*self.binning)//self.camera.Height.get_range()["inc"]),self.camera.HeightMax.get())))
 
-        if hsize is not None:
+        if vsize is not None:
             self.ROI_width = hsize
             # update the camera setting
             if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
-                self.camera.Width.set(self.ROI_width)
+                message = self.camera.Width.set(self.ROI_width)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
-        if vsize is not None:
+        if hsize is not None:
             self.ROI_height = vsize
             # update the camera setting
             if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
-                self.camera.Height.set(self.ROI_height)
+                message = self.camera.Height.set(self.ROI_height)
+                self.__logger.debug(message)
             else:
-                print("Height is not implemented or not writable")
+                self.__logger.debug("Height is not implemented or not writable")
 
         if hpos is not None:
             self.ROI_hpos = hpos
             # update the camera setting
             if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
-                self.camera.OffsetX.set(self.ROI_hpos)
+                message = self.camera.OffsetX.set(self.ROI_hpos)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
         if vpos is not None:
             self.ROI_vpos = vpos
             # update the camera setting
             if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
-                self.camera.OffsetY.set(self.ROI_vpos)
+                message = self.camera.OffsetY.set(self.ROI_vpos)
+                self.__logger.debug(message)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
+
+        return hpos,vpos,hsize,vsize
 
 
     def setPropertyValue(self, property_name, property_value):
@@ -226,6 +251,8 @@ class CameraGXIPY:
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
+        elif property_name == "frame_rate":
+            self.set_frame_rate(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
         else:
@@ -247,6 +274,8 @@ class CameraGXIPY:
             property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "frame_Rate":
+            property_value = self.frame_rate 
         elif property_name == "trigger_source":
             property_value = self.trigger_source
         else:
@@ -301,8 +330,8 @@ class CameraGXIPY:
         #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
         '''
         self.trigger_mode = TriggerMode.HARDWARE
-        self.frame_buffer.clear()
-        self.frame_id.clear()
+        
+        self.flushBuffer()
         
         
 

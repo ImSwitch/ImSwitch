@@ -71,6 +71,9 @@ class MockCameraTIS:
 
     def close(self):
         pass
+    
+    def flushBuffer(self):
+        pass 
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

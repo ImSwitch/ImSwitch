@@ -13,7 +13,7 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         print("Cannot find libgxiapi.so.")
 else:
     try:
-LEDMatrixController        dll = WinDLL('GxIAPI.dll')
+        dll = WinDLL('GxIAPI.dll')
     except OSError:
         print('Cannot find GxIAPI.dll.')
 

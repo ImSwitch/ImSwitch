@@ -4,14 +4,25 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 
-import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
 
 
-from devwraps.thorcam import ThorCam
 import numpy as np
 import matplotlib.pyplot as plt
 
+# init devwraps 
+#import devwraps
+
+# removes all DLLs
+#devwraps.remove_dlls()
+
+# look for DLLs according to the paths specified in `dll_paths.py`
+#devwraps.look_for_dlls()
+
+# print the root folder of this module
+#self.__logger.debug(devwraps.get_root_folder)
+
+from devwraps.thorcam import ThorCam
 
 class TriggerMode:
     SOFTWARE = 'Software Trigger'
@@ -23,6 +34,9 @@ class ThorCamera:
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
+
+
+        
         # many to be purged
         self.model = "ThorCamera"
         self.shape = (0, 0)
@@ -50,13 +64,7 @@ class ThorCamera:
         # binning 
         self.binning = binning
 
-        self.device_manager = gx.DeviceManager()
-        dev_num, dev_info_list = self.device_manager.update_device_list()
-
-        if dev_num  != 0:
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-        else:
-            raise Exception("No camera GXIPY connected")
+        self._init_cam(cameraNo=self.cameraNo)
         
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
@@ -65,8 +73,8 @@ class ThorCamera:
         
         # open the first device
         self.camera = ThorCam()
-        cameraNo = cam.get_number_of_cameras()
-        self.device_manager.open_device_by_index(cameraNo)
+        cameraNo = self.camera.get_number_of_cameras()
+        cdevices = self.camera.get_devices()
         self.camera.open(cdevices[0])
 
         # set exposure
@@ -79,8 +87,8 @@ class ThorCamera:
         # not available? self.camera.BlackLevel.set(self.blacklevel)
 
         # get framesize 
-        self.SensorHeight = self.camera.shape[0]
-        self.SensorWidth = self.camera.shape[1]
+        self.SensorHeight = self.camera.shape()[0]
+        self.SensorWidth = self.camera.shape()[1]
         
     def start_live(self):
         pass

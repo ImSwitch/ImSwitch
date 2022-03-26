@@ -8,32 +8,47 @@ from imswitch.imcontrol.view import guitools as guitools
 from imswitch.imcommon.model import initLogger, APIExport
 
 class LEDMatrixController(ImConWidgetController):
-    """ Linked to PositionerWidget."""
+    """ Linked to LEDMatrixWidget."""
 
     def __init__(self, nLedsX = 8, nLedsY=8, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
-        self.positioner = self._master.positionersManager[self.positioner_name]
-        
-        self.nLedsX = nLedsX
-        self.nLedsY = nLedsY
-        # Set up positioners
-        '''
-                for pName, pManager in self._master.positionersManager:
-                if not pManager.forPositioning:
-                continue
-'''
         self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
         self.connect_leds()
         
-        self.LEDMatrixscannner = LEDMatrixScanner(self.positioner, platepattern="96")
-        self.LEDMatrixscannner.setDirections(directions=(1,-1,1))
+        
+        
+        self.LEDMatrixDevice = LEDMatrixDevice(self.positioner, platepattern="96")
+        
+        
+        # Connect LaserWidget signals
+        self._widget.ButtonAllOn.clicked(self.setLEDAllOn)      
+        self._widget.ButtonAllOff.clicked(self.setLEDAllOn)      
+        self._widget.ButtonSubmit.clicked(self.submitLEDPattern)
+        self._widget.ButtonToggle.clicked(self.toggleLEDPattern)
+        
+        
+        
+    @APIExport()
+    def setLEDAllOn(self):
+        self.LEDMatrixDevice.setAllOn()
+        
+    @APIExport()
+    def setLEDAllOn(self):
+        self.LEDMatrixDevice.setAllOn()
+
+    @APIExport()
+    def submitLEDPattern(self):
+        self.LEDMatrixDevice.setAllOn()
+
+    @APIExport()
+    def toggleLEDPattern(self):
+        self.LEDMatrixDevice.setAllOn()
 
     @APIExport()
     def switchLED(self, wellID):
-        self.LEDMatrixscannner.moveToWellID(wellID=wellID)
+        self.LEDMatrixDevice.moveToWellID(wellID=wellID)
         #pos_xyz = self.positioner.position
         #self.__logger.debug("Move to "+str(coords))
         #absz_init = self._controller._master.positionersManager[self._controller.positioner].get_abs()[gAxis]
@@ -51,7 +66,7 @@ class LEDMatrixController(ImConWidgetController):
                 btn.clicked.connect(partial(self.switchLED, coords))
                 
 
-class LEDMatrixScanner():
+class LEDMatrixDevice():
     
     def __init__(self, positioner, platepattern="96"):
         

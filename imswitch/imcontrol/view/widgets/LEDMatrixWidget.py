@@ -60,11 +60,11 @@ class LEDMatrixWidget(Widget):
                 
         self.ButtonSubmit = guitools.BetterPushButton("Submit")        
         self.ButtonSubmit.setFixedSize(50,30)
-        wellLayout.addWidget(self.ButtonSubmit, 3, 8, 1, 1)
+        wellLayout.addWidget(self.ButtonSubmit, 2, 8, 1, 1)
         
         self.ButtonToggle = guitools.BetterPushButton("Toggle")   
         self.ButtonToggle.setFixedSize(50,30)     
-        wellLayout.addWidget(self.ButtonToggle, 5, 8, 1, 1)
+        wellLayout.addWidget(self.ButtonToggle, 3, 8, 1, 1)
         
         
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
@@ -77,7 +77,7 @@ class LEDMatrixWidget(Widget):
         self.slider.setTickInterval(5)
         self.slider.setSingleStep(5)
         self.slider.setValue(0)
-        wellLayout.addWidget(self.slider, 9, 0, 1, 1)
+        wellLayout.addWidget(self.slider, 9, 0, 1, 8)
          
         # Add button layout to base well layout
         self.setLayout(wellLayout)

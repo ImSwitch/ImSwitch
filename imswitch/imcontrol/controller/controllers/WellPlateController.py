@@ -25,6 +25,7 @@ class WellPlateController(ImConWidgetController):
 '''
         self._widget.add_plate_view()
         self.connect_wells()
+
         
         self.wellplatescannner = WellplateScanner(self.positioner, platepattern="96")
         self.wellplatescannner.setDirections(directions=(1,-1,1))

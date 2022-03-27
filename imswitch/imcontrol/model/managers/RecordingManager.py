@@ -134,7 +134,7 @@ class RecordingManager(SignalInterface):
 
                         dataset[:, :] = image
                         file.close()
-                    elif saveFormat == SaveFormat.TIFF:
+                    elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                         tiff.imwrite(filePath, image)
                     else:
                         raise ValueError(f'Unsupported save format "{saveFormat}"')
@@ -232,14 +232,14 @@ class RecordingWorker(Worker):
                 fileExtension = str(self.saveFormat.name).lower()
                 filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
                 datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
+                #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
+                
                 self.__logger.debug(shapes[detectorName])
                 self.__logger.debug(filePath)
 
             elif self.saveFormat == SaveFormat.TIFF:
                 # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
-                #tiff.imwrite(filePath, image)
-                                 
                                  
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -264,8 +264,11 @@ class RecordingWorker(Worker):
 
                         if n > 0:
                             it = currentFrame[detectorName]
-                            if self.saveFormat == SaveFormat.TIFF: 
-                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
+                                if self.saveFormat == SaveFormat.TIFF_Single:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
+                                else:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
                                 tiff.imwrite(filePath, it, append=True)
                             elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
@@ -300,8 +303,12 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF: 
-                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
+                                if self.saveFormat == SaveFormat.TIFF_Single:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
+                                else:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
+
                                 tiff.imwrite(filePath, newFrames, append=True)
                             elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
@@ -330,8 +337,12 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF: 
-                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
+                                if self.saveFormat == SaveFormat.TIFF_Single:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
+                                else:
+                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
+
                                 tiff.imwrite(filePath, newFrames, append=True)
                             elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
@@ -341,8 +352,12 @@ class RecordingWorker(Worker):
                             elif self.saveFormat == SaveFormat.MP4:
                                 for iframe in range(n):
                                     frame = newFrames[iframe,:,:]
+                                    self.__logger.debug(frame.shape)
+                                    self.__logger.debug(type(frame))
+                                    self.__logger.debug(datasets[detectorName])
                                     #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
-                                    datasets[detectorName].write(cv2.convertScaleAbs(frame))
+                                    frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+                                    datasets[detectorName].write(frame)
                                 
                             currentFrame[detectorName] += n
 
@@ -447,7 +462,8 @@ class SaveMode(enum.Enum):
 class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
-    MP4 = 3
+    TIFF_Single = 3
+    MP4 = 4
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

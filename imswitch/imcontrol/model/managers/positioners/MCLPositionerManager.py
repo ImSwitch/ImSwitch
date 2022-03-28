@@ -1,5 +1,5 @@
-from imswitch.imcontrol.model.managers.positioners.MadCityLabs import MicroDriveHandler
 from imswitch.imcommon.model import initLogger
+from imswitch.imcontrol.model.interfaces.MadCityLabs import MicroDriveHandler
 from .PositionerManager import PositionerManager
 
 class MCLPositionerManager(PositionerManager):

@@ -18,6 +18,9 @@ class MicroDriveHandler:
         maxSpeed3Axis : c_double
         minSpeed : c_double
         axis : dict[str, MCLAxis]
+    
+    FORWARD = 1
+    REVERSE = 0
 
     def __init__(self, mclDLLPath : str, axis: dict[str, int], logger : LoggerAdapter) -> None:
         
@@ -56,6 +59,54 @@ class MicroDriveHandler:
             f"Max. speed (3 axis): {self.__driverInfo.maxSpeed3Axis.value} mm/s",
             f"Min. speed: {self.__driverInfo.minSpeed.value}"
         ]
+    
+    def setPosition(self, axis: str, pos: float) -> float:
+        currAxis = c_int(self.__driverInfo.axis[axis])
+
+        # MCL_MDMove works with millimiters
+        # we need to devide pos by 1000
+        # to move the stages in micrometers
+        move = c_double(pos / 1000.0)
+        startMicro, endMicro = pointer(c_int()), pointer(c_int())
+        self._checkError(self.__dll.MCL_MDCurrentPositionM(currAxis, startMicro, self.__handle))
+
+        if fabs(move.value) >= self.__driverInfo.stepSize.value:
+            self._checkError(
+                self.__dll.MCL_MDMove(currAxis, 
+                                    self.__driverInfo.maxSpeed1Axis,
+                                    move,
+                                    self.__handle)
+            )
+            self._waitForCommand()
+        else:
+            # movement smaller than minimum step size, skipping
+            pass
+        
+        self._checkError(
+            self.__dll.MCL_MDCurrentPositionM(currAxis, endMicro, self.__handle)
+        )
+        return (endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
+    
+    def calibrate(self) -> bool:
+        for _, axis in self.__driverInfo.axis.values():
+            status = pointer(c_ushort())
+            currAxis = c_int(axis.value)
+            originSteps = pointer(c_int())
+            self._checkError(
+                self.__dll.MCL_MDCurrentPositionM(currAxis, originSteps, self.__handle)
+            )
+            origin = originSteps.contents.value * self.__driverInfo.stepSize.value
+            self._checkError(
+                self.__dll.MCL_MDStatus(status, self.__handle)
+            )
+            axisLimitBit = self._getLimitBitmask(axis, FORWARD)
+
+            while status.contents.value & axisLimitBit.value != 0:
+                posSteps = pointer(c_int())
+                pass
+    
+    def close(self) -> None:
+        self.__dll.MCL_ReleaseHandle(self.__handle)
 
     def _checkError(self, err) -> None:
         if err != MCLRetVal.MCL_SUCCESS.value:
@@ -116,36 +167,18 @@ class MicroDriveHandler:
 
     def _waitForCommand(self) -> None:
         self._checkError(self.__dll.MCL_MicroDriveWait(self.__handle))
-
-    def setPosition(self, axis: str, pos: float) -> float:
-        currAxis = c_int(self.__driverInfo.axis[axis])
-
-        # MCL_MDMove works with millimiters
-        # we need to devide pos by 1000
-        # to move the stages in micrometers
-        move = c_double(pos / 1000.0)
-        startMicro, endMicro = pointer(c_int()), pointer(c_int())
-        self._checkError(self.__dll.MCL_MDCurrentPositionM(currAxis, startMicro, self.__handle))
-
-        if fabs(move.value) >= self.__driverInfo.stepSize.value:
-            self._checkError(self.__dll.MCL_MDMove(currAxis,
-                                                    self.__driverInfo.maxSpeed1Axis,
-                                                    move,
-                                                    self.__handle))
-            self._waitForCommand()
+    
+    def _getLimitBitmask(self, axis: MCLAxis, direction: int) -> c_ushort:
+        bitshift = 0
+        mask = 0
+        if self.__driverInfo.deviceType == MCLMicroDevice.MicroDrive1:
+            bitshift = 2 + direction
         else:
-            # movement smaller than minimum step size, skipping
-            pass
-        
-        self._checkError(self.__dll.MCL_MDCurrentPositionM(currAxis, endMicro, self.__handle))
-        return (endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
-    
-    def calibrate(self) -> bool:
-        for _, axis in self.__driverInfo.axis.values():
-            orig = limit = c_double()
-    
-    def close(self) -> None:
-        self.__dll.MCL_ReleaseHandle(self.__handle)
+            bitshift = (2 * (axis.value - 1)) + direction
+            if axis > MCLAxis.M3AXIS:
+                bitshift += 2
+        mask = 0x1 << bitshift
+        return c_ushort(mask)
         
 class NanoDriveHandler:
     

@@ -1,2 +1,2 @@
-from .MCLDrivers import MicroDriveHandler
+from .MCLDrivers import MicroDriveHandler, NanoDriveHandler
 from .common import MCLRetVal

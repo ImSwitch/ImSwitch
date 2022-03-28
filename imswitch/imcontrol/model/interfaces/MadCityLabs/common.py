@@ -1,17 +1,27 @@
 from enum import IntEnum
 from ctypes import *
-from dataclasses import dataclass
 
 class MCLException(Exception):
     pass
 
 class MCLMicroDevice(IntEnum):
-    MicroDrive  = 0x2500
+    MicroDrive = 0x2500
     MicroDrive1 = 0x2501
     MicroDrive3 = 0x2503
     MicroDrive4 = 0x2504
     MicroDrive6	= 0x2506
-    NanoCyte    = 0x3500
+    NanoCyte = 0x3500
+
+class MCLNanoDevice(IntEnum):
+    NanoDriveSingleAxis	= 0x2001
+    NanoDriveThreeAxis = 0x2003
+    NanoDriveFourAxis = 0x2004
+    NanoDrive16bitTipTiltZ = 0x2053
+    NanoDrive20bitSingleAxis = 0x2201
+    NanoDrive20bitThreeAxis = 0x2203
+    NanoDrive20bitTipTiltZ = 0x2253
+    NanoGauge = 0x2100
+    CFocus = 0x2401
 
 class MCLAxis(IntEnum):
     M1AXIS = 1
@@ -31,14 +41,6 @@ class MCLRetVal(IntEnum):
     MCL_ARGUMENT_ERROR = -6  
     MCL_INVALID_AXIS = -7 
     MCL_INVALID_HANDLE = -8
-
-@dataclass(frozen=True)
-class MCLDeviceInfo:
-    deviceType : MCLMicroDevice # todo: extend to MCLNanoDevice with Union
-    encoderResolution : c_double()
-    stepSize : c_double()
-    maxSpeed1Axis : c_double()
-    maxSpeed2Axis : c_double()
-    maxSpeed3Axis : c_double()
-    minSpeed : c_double()
-    axis : dict[str, MCLAxis]
+    MCL_INVALID_DRIVER = -9
+    MCL_SEQ_NOT_VALID = -10
+    MCL_BLOCKED_BY_TIRFLOCK = -11

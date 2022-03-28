@@ -38,5 +38,8 @@ class MCLPositionerManager(PositionerManager):
         self.__driver.setPosition(axis, position)
         self.position[axis] = position
     
+    def calibrate(self) -> bool:
+        return self.__driver.calibrate()
+    
     def finalize(self) -> None:
         self.__driver.close()

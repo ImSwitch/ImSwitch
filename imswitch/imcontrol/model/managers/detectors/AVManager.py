@@ -128,31 +128,39 @@ class AVManager(DetectorManager):
         return [1, 1, 1]
 
     def crop(self, hpos, vpos, hsize, vsize):
+        '''
         def cropAction():
             # self.__logger.debug(
             #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
             # )
             self._camera.setROI(hpos, vpos, hsize, vsize)
 
-        self._performSafeCameraAction(cropAction)
-        # TODO: unsure if frameStart is needed? Try without.
+        try:
+            self._performSafeCameraAction(cropAction)
+        except Exception as e:
+            self.__logger.error(e)
+            # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
-        # self._frameStart = (hpos, vpos)
-        # Only place self.shapes is changed 
-        #vsize = self._camera.getPropertyValue('image_width')
-        #hsize = self._camera.getPropertyValue('image_height')
-        self._shape = self._camera.shape
+        
+        vsize = self._camera.getPropertyValue('image_height')
+        hsize = self._camera.getPropertyValue('image_width')
+        '''
+        self._camera.setROI(hpos, vpos, hsize, vsize)
+        self._shape = (hsize, vsize)
+        self._frameStart = (hpos, vpos)
+        pass
     
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
         """
-        
+        self._adjustingParameters = True
         wasrunning = self._running
         self.stopAcquisitionForROIChange()
         function()
         if wasrunning:
             self.startAcquisition()
+        self._adjustingParameters = False
 
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()

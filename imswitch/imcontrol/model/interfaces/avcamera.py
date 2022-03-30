@@ -26,15 +26,18 @@ class CameraAV:
 
         self.frame_id_last = 0
 
-        self.PreviewWidthRatio = 2
-        self.PreviewHeightRatio = 2
+        # pseudo cropping settings - hardware cropping crashes? 
+        self.vsize = 0
+        self.hsize = 0
+        self.hpos = 0 
+        self.vpos = 0 
         
         # reserve some space for the framebuffer
         self.frame_buffer = collections.deque(maxlen=20)
         
         #%% starting the camera thread
         self.vimba = self.startVimba()
-        self.openCamera(self.callback_fct=set_frame,is_init=True) # open camera and set callback for frame grabbing
+        self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
 
     def start_live(self):
         # check if camera is open
@@ -123,27 +126,67 @@ class CameraAV:
         return self.frame
 
     def getLastChunk(self):
-        chunk = np.array(self.frame_buffer[0])
-        frameids = self.frame_buffer[1]
+        chunk = np.array(self.frame_buffer)
+        #frameids = self.frame_buffer[1]
+        self.__logger.debug("Buffer: "+str(len(self.frame_buffer))+"  "+str(chunk.shape))
         self.frame_buffer.clear()
-        self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
         
-       
-    def setROI(self, hpos, vpos, hsize, vsize):
-        hsize = max(hsize, 256)  # minimum ROI size
-        vsize = max(vsize, 256)  # minimum ROI size
+
+    def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
+        #hsize = max(hsize, 25)*10  # minimum ROI size
+        #vsize = max(vsize, 3)*10  # minimum ROI size
+        #hsize = max(hsize, 256)  # minimum ROI size
+        #vsize = max(vsize, 256)  # minimum ROI size
+        
+        self.vsize = vsize
+        self.hsize = hsize
+        self.hpos = hpos 
+        self.vpos = vpos 
+        self.frame_buffer.clear()
+        '''
         self.__logger.debug(
              f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.')
-        try:
-            image_Height = self.camera.feature("Height")
-            image_Width = self.camera.feature("Width")
-            image_Height.value = vsize
-            image_Width.value = hsize
-            self.shape = (image_Width.value,image_Height.value)
-        except Exception as e:
-            self.__logger.error("Setting the ROI")
-            self.__logger.error(e)
+
+        if vsize is not None:
+            try:
+                image_Height = self.camera.feature("Height")
+                image_Height.value = vsize
+                vsize = image_Height.value
+            except Exception as e:
+                self.__logger.error("vsize failed")
+                self.__logger.error(e)
+
+        if hsize is not None:
+            try:
+                image_Width = self.camera.feature("Width")
+                image_Width.value = hsize
+                hsize = image_Width.value
+            except Exception as e:
+                self.__logger.error("hsize failed")
+                self.__logger.error(e)
+        
+        if hpos is not None:
+            try:
+                offset_x =  self.camera.feature("OffsetX")
+                offset_x.value = hpos
+                hpos = offset_x.value
+            except Exception as e:
+                self.__logger.error("offset_x failed")
+                self.__logger.error(e)
+
+        if vpos is not None:
+            try:
+                offset_y =  self.camera.feature("OffsetY") 
+                offset_y.value = vpos   
+                vpos = offset_y.value
+            except Exception as e:
+                self.__logger.error("offset_y failed")
+                self.__logger.error(e)
+
+        '''
+        return hpos,vpos,hsize,vsize
+       
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -227,11 +270,13 @@ class CameraAV:
                 raise Exception
 
     def set_frame(self, frame):
-        self.frame = frame.buffer_data_numpy()
+        frameTmp = frame.buffer_data_numpy()
+        # perform pseudocropping 
+        self.frame = frameTmp[self.vpos:self.vpos+self.vsize, self.hpos:self.hsize+self.hpos]
         self.frame_id = frame.data.frameID
         if self.frame is None or frame.data.receiveStatus == -1:
             self.frame = np.zeros(self.shape)
-        self.frame_buffer.append((self.frame, self.frame_id))
+        self.frame_buffer.append(self.frame)
     
 
 # Copyright (C) ImSwitch developers 2021

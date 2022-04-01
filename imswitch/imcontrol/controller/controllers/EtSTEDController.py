@@ -139,9 +139,11 @@ class EtSTEDController(ImConWidgetController):
             self.__exinfo = None
             
             # Check if visualization mode, in case launch help widget
-            if self._widget.visualizeCheck.isChecked():
+            experimentModeIdx = self._widget.experimentModesPar.currentIndex()
+            self.experimentMode = self._widget.experimentModes[experimentModeIdx]
+            if self.experimentMode == 'TestVisualize':
                 self.__runMode = RunMode.Visualize
-            elif self._widget.validateCheck.isChecked():
+            elif self.experimentMode == 'TestValidate':
                 self.__runMode = RunMode.Validate
             else:
                 self.__runMode = RunMode.Experiment

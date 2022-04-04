@@ -135,7 +135,6 @@ class MicroDriveHandler:
 
     def _checkError(self, err) -> None:
         if err != MCLRetVal.MCL_SUCCESS.value:
-            self.__dll.MCL_ReleaseHandle(self.__handle)
             caller = inspect.currentframe().f_back.f_code.co_name
             raise MCLException(f"{caller}: command failed (Error: {MCLRetVal(err).__str__()})")
     
@@ -238,7 +237,6 @@ class NanoDriveHandler:
 
     def _checkError(self, err) -> None:
         if err != MCLRetVal.MCL_SUCCESS.value:
-            self.__dll.MCL_ReleaseHandle(self.__handle)
             caller = inspect.currentframe().f_back.f_code.co_name
             raise MCLException(f"{caller}: command failed (Error: {MCLRetVal(err)})")
     

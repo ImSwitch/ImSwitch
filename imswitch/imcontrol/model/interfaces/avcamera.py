@@ -24,6 +24,8 @@ class CameraAV:
         self.analog_gain = 0
         self.pixel_format = "Mono12"
 
+        self.buffersize = 60
+
         self.frame_id_last = 0
 
         # pseudo cropping settings - hardware cropping crashes? 
@@ -33,7 +35,7 @@ class CameraAV:
         self.vpos = 0 
         
         # reserve some space for the framebuffer
-        self.frame_buffer = collections.deque(maxlen=20)
+        self.frame_buffer = collections.deque(maxlen=self.buffersize)
         
         #%% starting the camera thread
         self.vimba = self.startVimba()

@@ -342,8 +342,17 @@ class RecordingWorker(Worker):
                                     filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
                                 else:
                                     filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
-
-                                tiff.imwrite(filePath, newFrames, append=True)
+                                    try:
+                                        import os.path
+                                        if(os.path.exists(filePath)):
+                                            imagej=False # need to have no metadata in the first frame then we can append
+                                        else:
+                                            imagej=False # TODO: Something has to happen here!!!
+                                             
+                                        tiff.imwrite(filePath, newFrames, append=True, imagej=imagej)
+                                    except Exception as e:
+                                        self.__logger.error(e)
+                                        self.__logger.error("Some frames mamy have been skipped when writing to TIFF")
                             elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]
@@ -357,6 +366,8 @@ class RecordingWorker(Worker):
                                     self.__logger.debug(datasets[detectorName])
                                     #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
                                     frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+                                    self.__logger.debug(type(frame))
+                                    
                                     datasets[detectorName].write(frame)
                                 
                             currentFrame[detectorName] += n

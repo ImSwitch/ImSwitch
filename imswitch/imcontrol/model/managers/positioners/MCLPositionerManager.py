@@ -1,5 +1,8 @@
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.MadCityLabs import MicroDriveHandler
+from imswitch.imcontrol.model.interfaces.MadCityLabs import (
+    MicroDriveHandler,
+    NanoDriveHandler
+)
 from .PositionerManager import PositionerManager
 
 class MCLPositionerManager(PositionerManager):
@@ -18,7 +21,7 @@ class MCLPositionerManager(PositionerManager):
         if posType == "MicroDrive":
             self.__driver = MicroDriveHandler(positionerInfo.managerProperties["dllPath"], positionerInfo.axes, self.__logger)
         elif posType == "NanoDrive":
-            # todo: support NanoDrive
+            self.__driver = NanoDriveHandler(positionerInfo.managerProperties["dllPath"], positionerInfo.axes, self.__logger)
             pass
         else:
             raise RuntimeError(f"Unsupported positioner type {posType}")
@@ -39,7 +42,15 @@ class MCLPositionerManager(PositionerManager):
         self.position[axis] = position
     
     def calibrate(self) -> bool:
-        return self.__driver.calibrate()
+        # todo: fix
+        # if self.__driver.calibrate():
+        #     # calibration successful
+        #     for axis in self.axes:
+        #         self.position[axis] = 0.0
+        #     return True
+        # else:
+        #     return False
+        return False
     
     def finalize(self) -> None:
         self.__driver.close()

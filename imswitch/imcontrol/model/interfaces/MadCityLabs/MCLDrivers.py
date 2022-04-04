@@ -68,11 +68,13 @@ class MicroDriveHandler:
         # to move the stages in micrometers
         move = c_double(pos / 1000.0)
         startMicro, endMicro = pointer(c_int()), pointer(c_int())
-        self._checkError(self.__dll.MCL_MDCurrentPositionM(currAxis, startMicro, self.__handle))
+        self._checkError(
+            self.__dll.MCL_MDCurrentPositionM(currAxis, startMicro, self.__handle)
+        )
 
         if fabs(move.value) >= self.__driverInfo.stepSize.value:
             self._checkError(
-                self.__dll.MCL_MDMove(currAxis, 
+                self.__dll.MCL_MDMove(currAxis,
                                     self.__driverInfo.maxSpeed1Axis,
                                     move,
                                     self.__handle)
@@ -88,9 +90,10 @@ class MicroDriveHandler:
         return float(endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
     
     def calibrate(self) -> bool:
-        for axName, axis in self.__driverInfo.axis.values():
+        # todo: fix
+        for axName, axVal in self.__driverInfo.axis.items():
             status = pointer(c_ushort())
-            currAxis = c_int(axis.value)
+            currAxis = c_int(axVal.value)
             originSteps = pointer(c_int())
             self._checkError(
                 self.__dll.MCL_MDCurrentPositionM(currAxis, 
@@ -101,10 +104,10 @@ class MicroDriveHandler:
             self._checkError(
                 self.__dll.MCL_MDStatus(status, self.__handle)
             )
-            axisLimitBit = self._getLimitBitmask(axis, FORWARD)
+            axisLimitBit = self._getLimitBitmask(axVal, FORWARD)
 
             posSteps = pointer(c_int())
-            move = 4000.0
+            move : float = 4000.0
             while status.contents.value & axisLimitBit.value != 0:
                 self.setPosition(axName, move) # move 4 mm
                 self._checkError(
@@ -115,7 +118,7 @@ class MicroDriveHandler:
                 self._checkError(
                     self.__dll.MCL_MDStatus(status, self.__handle)
                 )
-                move += (posSteps.contents * self.__driverInfo.stepSize)
+                move += float(posSteps.contents.value * self.__driverInfo.stepSize.value)
             limitSteps = pointer(c_int())
             self._checkError(
                 self.__dll.MCL_MDCurrentPositionM(currAxis, 
@@ -134,7 +137,7 @@ class MicroDriveHandler:
         if err != MCLRetVal.MCL_SUCCESS.value:
             self.__dll.MCL_ReleaseHandle(self.__handle)
             caller = inspect.currentframe().f_back.f_code.co_name
-            raise MCLException(f"{caller}: command failed (Error: {MCLRetVal(err)})")
+            raise MCLException(f"{caller}: command failed (Error: {MCLRetVal(err).__str__()})")
     
     def _registerDriverInfo(self, axis: dict[str, int]) -> MCLMicroDriveInfo:
 
@@ -154,10 +157,7 @@ class MicroDriveHandler:
         ptrBitmap = pointer(bitmap)
 
         axis = {key : MCLAxis(value) for key, value in axis.items()}
-        self.__logger.debug("Checking PID...")
         self._checkError(self.__dll.MCL_GetProductID(ptrPID, self.__handle))
-        self.__logger.debug("... done!")
-        self.__logger.debug("Gathering device info...")
         self._checkError(self.__dll.MCL_MDInformation(
             ptrEncRes, 
             ptrStepSize, 
@@ -166,13 +166,10 @@ class MicroDriveHandler:
             ptrMaxSpeed3, 
             ptrMinSpeed,
             self.__handle))
-        self.__logger.debug("... done!")
-        self.__logger.debug("Gathering axis info...")
         self._checkError(self.__dll.MCL_GetAxisInfo(ptrBitmap, self.__handle))
-        self.__logger.debug("... done!")
         # check correctness of axis
         for ax, index in axis.items():
-            bit = (0x01 << (index.value - 1)) & bitmap
+            bit = (0x01 << (index.value - 1)) & bitmap.value
             if bit == 0:
                 raise MCLException(f"Axis check failed. (Axis {ax} not available)")
         

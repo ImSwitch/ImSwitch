@@ -1,5 +1,6 @@
 import os
 import time
+import numpy as np
 from typing import Optional, Union, List
 
 from imswitch.imcommon.framework import Timer
@@ -317,6 +318,16 @@ class RecordingController(ImConWidgetController):
             elif self.recMode == RecMode.ScanLapse:
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
+
+    @APIExport()
+    def grabFrameData(self, detectorName: str) -> np.ndarray:
+        """ Returns the latest frame captured by the specified detector as a numpy array. """
+        self._master.recordingManager.grabFrameData(detectorName)
+    
+    @APIExport()
+    def setAcquisitionEnabled(self, detectorName: str, enabled: bool) -> None:
+        """ Enables/disables a detector for acquisition. """
+        self._master.recordingManager.setAcquisitionEnabled(detectorName, enabled)
 
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:

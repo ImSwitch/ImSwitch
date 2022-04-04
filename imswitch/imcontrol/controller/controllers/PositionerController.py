@@ -27,6 +27,7 @@ class PositionerController(ImConWidgetController):
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
+        self._widget.sigCalibrationCalled.connect(self.calibrate)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -56,6 +57,13 @@ class PositionerController(ImConWidgetController):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+    
+    def calibrate(self, positionerName):
+        done = self._master.positionersManager[positionerName]._doCalibration()
+        if done:
+            for axis in self._master.positionersManager[positionerName].axes:
+                self.updatePosition(positionerName, axis)
+        return done
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:
@@ -112,6 +120,12 @@ class PositionerController(ImConWidgetController):
         """ Moves the specified positioner axis in negative direction by its
         set step size. """
         self.stepDown(positionerName, axis)
+    
+    @APIExport(runOnUIThread=True)
+    def calibratePositioner(self, positionerName: str) -> bool:
+        """ Performs calibration of the absolute zero position of the specified
+        positioner (if the functionality is implemented). """
+        return self.calibrate(positionerName)
 
 
 _attrCategory = 'Positioner'

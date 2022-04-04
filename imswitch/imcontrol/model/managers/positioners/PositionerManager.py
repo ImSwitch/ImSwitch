@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-
 from typing import Dict, List
 
 
@@ -23,7 +22,7 @@ class PositionerManager(ABC):
 
         self.__name = name
 
-        self.__axes = positionerInfo.axes
+        self.__axes = (positionerInfo.axes if isinstance(positionerInfo.axes, list) else list(positionerInfo.axes.keys()))
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
@@ -70,6 +69,20 @@ class PositionerManager(ABC):
         If the positioner controls multiple axes, the axis must be specified.
         """
         pass
+
+    def calibrate(self) -> bool:
+        """ Performs the internal operations to calibrate the positioner. """
+        raise NotImplementedError()
+    
+    def _doCalibration(self) -> bool:
+        """ Sets the positioner to the absolute-zero coordinates. Due to the delicate operation,
+        a confirmation from the user will be requested. If the function is not implemented or calibration fails
+        it will return False. Otherwise it will return True.
+        """
+        try:
+            return self.calibrate()
+        except NotImplementedError:
+            return False
 
     def finalize(self) -> None:
         """ Close/cleanup positioner. """

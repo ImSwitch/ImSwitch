@@ -85,25 +85,47 @@ class MicroDriveHandler:
         self._checkError(
             self.__dll.MCL_MDCurrentPositionM(currAxis, endMicro, self.__handle)
         )
-        return (endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
+        return float(endMicro.contents.value - startMicro.contents.value) * self.__driverInfo.stepSize.value
     
     def calibrate(self) -> bool:
-        for _, axis in self.__driverInfo.axis.values():
+        for axName, axis in self.__driverInfo.axis.values():
             status = pointer(c_ushort())
             currAxis = c_int(axis.value)
             originSteps = pointer(c_int())
             self._checkError(
-                self.__dll.MCL_MDCurrentPositionM(currAxis, originSteps, self.__handle)
+                self.__dll.MCL_MDCurrentPositionM(currAxis, 
+                originSteps, 
+                self.__handle)
             )
-            origin = originSteps.contents.value * self.__driverInfo.stepSize.value
+            origin = float(originSteps.contents.value * self.__driverInfo.stepSize.value)
             self._checkError(
                 self.__dll.MCL_MDStatus(status, self.__handle)
             )
             axisLimitBit = self._getLimitBitmask(axis, FORWARD)
 
+            posSteps = pointer(c_int())
+            move = 4000.0
             while status.contents.value & axisLimitBit.value != 0:
-                posSteps = pointer(c_int())
-                pass
+                self.setPosition(axName, move) # move 4 mm
+                self._checkError(
+                    self.__dll.MCL_MDCurrentPositionM(currAxis, 
+                    posSteps, 
+                    self.__handle)
+                )
+                self._checkError(
+                    self.__dll.MCL_MDStatus(status, self.__handle)
+                )
+                move += (posSteps.contents * self.__driverInfo.stepSize)
+            limitSteps = pointer(c_int())
+            self._checkError(
+                self.__dll.MCL_MDCurrentPositionM(currAxis, 
+                limitSteps, 
+                self.__handle)
+            )
+            limit = float(limitSteps.contents.value * self.__driverInfo.stepSize.value)
+            self.setPosition(axName, (limit - origin))
+        return True
+
     
     def close(self) -> None:
         self.__dll.MCL_ReleaseHandle(self.__handle)
@@ -260,10 +282,10 @@ class NanoDriveHandler:
                 raise MCLException(f"Axis check failed. (Axis {ax} not available)")
             # we can't use _checkError because the return value
             # is what we are trying to read
-            range : c_double = self._checkReturnValue(
+            tmpRange : c_double = self._checkReturnValue(
                 self.__dll.MCL_GetCalibration(c_uint(index.value - 1), self.__handle)
             )
-            motionRange[ax] = range
+            motionRange[ax] = tmpRange
         
         return self.MCLNanoDriveInfo(
             productInfo.ADC_resolution,

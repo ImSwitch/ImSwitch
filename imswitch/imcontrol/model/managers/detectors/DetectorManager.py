@@ -218,7 +218,7 @@ class DetectorManager(SignalInterface):
         pass
 
     @abstractmethod
-    def getLatestFrame(self) -> np.ndarray:
+    def getLatestFrame(self, is_save=False) -> np.ndarray:
         """ Returns the frame that represents what the detector currently is
         capturing. The returned object is a numpy array of shape
         (height, width). """

@@ -90,19 +90,6 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-    def grabFrameData(self, detectorName):
-        """ Returns the latest frame acquired as a numpy array.
-        """
-        return self.__detectorsManager[detectorName].getLatestFrame()
-    
-    def setBackgroundAcquisitionEnabled(self, detectorName, enabled):
-        """ Enables/disables a detector for acquisition. This acquisition starts in the background
-        and does not affect the UI thread. """
-        if enabled:
-            self.__detectorsManager[detectorName].startAcquisition()
-        else:
-            self.__detectorsManager[detectorName].stopAcquisition()
-
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         """ Saves a single frame capture with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes

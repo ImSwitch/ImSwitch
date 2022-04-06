@@ -319,17 +319,6 @@ class RecordingController(ImConWidgetController):
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
 
-    @APIExport()
-    def grabFrameData(self, detectorName: str) -> np.ndarray:
-        """ Returns the latest frame captured by the specified detector as a numpy array. """
-        self._master.recordingManager.grabFrameData(detectorName)
-    
-    @APIExport()
-    def setBackgroundAcquisitionEnabled(self, detectorName: str, enabled: bool) -> None:
-        """ Enables/disables a detector for acquisition. This acquisition starts in the background
-        and does not affect the UI thread. """
-        self._master.recordingManager.setBackgroundAcquisitionEnabled(detectorName, enabled)
-
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:
         """ Take a snap and save it to a .tiff file at the set file path. """

@@ -325,9 +325,10 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.grabFrameData(detectorName)
     
     @APIExport()
-    def setAcquisitionEnabled(self, detectorName: str, enabled: bool) -> None:
-        """ Enables/disables a detector for acquisition. """
-        self._master.recordingManager.setAcquisitionEnabled(detectorName, enabled)
+    def setBackgroundAcquisitionEnabled(self, detectorName: str, enabled: bool) -> None:
+        """ Enables/disables a detector for acquisition. This acquisition starts in the background
+        and does not affect the UI thread. """
+        self._master.recordingManager.setBackgroundAcquisitionEnabled(detectorName, enabled)
 
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:

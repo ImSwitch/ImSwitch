@@ -95,8 +95,9 @@ class RecordingManager(SignalInterface):
         """
         return self.__detectorsManager[detectorName].getLatestFrame()
     
-    def setAcquisitionEnabled(self, detectorName, enabled):
-        """ Enables/disables a detector for acquisition """
+    def setBackgroundAcquisitionEnabled(self, detectorName, enabled):
+        """ Enables/disables a detector for acquisition. This acquisition starts in the background
+        and does not affect the UI thread. """
         if enabled:
             self.__detectorsManager[detectorName].startAcquisition()
         else:

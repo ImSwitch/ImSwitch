@@ -89,7 +89,7 @@ class WellPlateController(ImConWidgetController):
     def setPositionerStepSize(self, positionerName: str, axis: str, stepSize: float) -> None:
         """ Sets the step size of the specified positioner to the specified
         number of micrometers. """
-        self._widget.setStepSize(positionerName, axis, stepSize)
+        self._widget.setStepSize(positionerName, axis, str(stepSize))
 
     @APIExport(runOnUIThread=True)
     def movePositioner(self, positionerName: str, axis: str, dist: float) -> None:

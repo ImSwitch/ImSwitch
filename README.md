@@ -41,12 +41,13 @@ imswitch
 
 **Installation**
 ```
-cd ~/Downloads
+cd ~/Documents
 git clone https://github.com/beniroquai/ImSwitch/
-conda create -n imswitch python=3.8
+conda create -n imswitch python=3.8 -y
 conda activate imswitch
 pip install -r requirements.txt --user 
 pip install -e ./
+pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack
 ```
 
 **Start the imswitch**
@@ -56,8 +57,24 @@ cd imswitch
 python __main__.py
 ```
 
+or alternatively type
+
+```
+imswitch
+```
 
 
+## Optional: Additional drivers
+
+For the ***Daheng Imaging Cameras*** please go to [this website](https://www.get-cameras.com/customerdownloads?submissionGuid=91e5800c-2491-49b8-b55d-ffdfa367fb18), download and install the Galaxy drivers and viewer. 
+
+For the ***Allied Vision Cameras*** please go to [this website](https://www.alliedvision.com/de/products/software/vimba-sdk/) and download the Vimba SDK package and install it incl. the drivers. 
+
+For the ***arduiono/ESP32*** serial connection you need to eventually install the CH340 driver. Please find additional steps [here](https://learn.sparkfun.com/tutorials/how-to-install-ch340-drivers/all). 
+
+## Optional: Add UC2 configurations 
+
+Go [here](https://github.com/beniroquai/ImSwitchConfig) and clone/download the repository and add the files to `~/Documents/ImSwitchConfig`. You should find additional files in the same format there.
 
 ## On Jetson Nano
 

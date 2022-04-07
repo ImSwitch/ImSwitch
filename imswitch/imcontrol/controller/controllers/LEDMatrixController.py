@@ -17,17 +17,17 @@ class LEDMatrixController(ImConWidgetController):
         self.nLedsX = nLedsX
         self.nLedsY = nLedsY
 
+        # get the name that looks like an LED Matrix
+        self.ledmatrix_name = self._master.LEDMatrixsManager.getAllDeviceNames()[0]
+        self.ledmatrix = self._master.LEDMatrixsManager[self.ledmatrix_name]
+        
+        # initialize the LEDMatrix device that holds all necessary states^
+        self.LEDMatrixDevice = LEDMatrixDevice(self.ledmatrix,Nx=self.nLedsX,Ny=self.nLedsY)
+        
+        # set up GUI and "wire" buttons
         self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
         self.connect_leds()
         
-        illuminatorList = self._master.lasersManager.getAllDeviceNames()
-        index = [index for (index , item) in enumerate(illuminatorList) if (item.find("Matrix")>0)][0]
-        self.ledmatrix_name = illuminatorList[index]
-        self.ledmatrix = self._master.lasersManager[self.ledmatrix_name]
-        
-        self.LEDMatrixDevice = LEDMatrixDevice(self.ledmatrix)
-        
-        # Connect LaserWidget signals
         self._widget.ButtonAllOn.clicked.connect(self.setLEDAllOn)      
         self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOn)      
         self._widget.ButtonSubmit.clicked.connect(self.submitLEDPattern)
@@ -44,7 +44,7 @@ class LEDMatrixController(ImConWidgetController):
 
     @APIExport()
     def submitLEDPattern(self):
-        self.LEDMatrixDevice.setLEDPattern()
+        self.LEDMatrixDevice.setPattern()
 
     @APIExport()
     def toggleLEDPattern(self):
@@ -59,33 +59,42 @@ class LEDMatrixController(ImConWidgetController):
         # Connect signals for all buttons
         for coords, btn in self._widget.leds.items():
             # Connect signals
-            #self.pars['UpButton' + parNameSuffix].clicked.connect(
-            #    lambda *args, axis=axis: self.sigStepUpClicked.emit(ledMatrixName, axis)
-            #)
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.switchLED, coords))
                 
 
 class LEDMatrixDevice():
     
-    def __init__(self, ledMatrix, platepattern="96"):
-        
+    def __init__(self, ledMatrix, Nx=8, Ny=8):
+        self.Nx=Nx
+        self.Ny=Ny
         self.ledMatrix = ledMatrix 
-        self.pattern = None
+        self.pattern = np.zeros((Nx,Ny))
+        self.intensity = 255
+        self.state=None
         
+    def setPattern(self, pattern):
+        self.pattern = pattern
+        self.ledMatrix.setPattern(self.pattern)
+        self.state="pattern"
           
-    def switchLED(self, LEDid):
-        pass
+    def switchLED(self, index, intensity=None):
+        if intensity is None:
+            intensity = self.intensity
+        index = int(index)
+        idx = index//self.Nx
+        idy = np.mod(index,self.Ny)
+        if self.pattern[idx,idy]:
+            self.pattern[idx,idy] = 0 
+        else:
+            self.pattern[idx,idy] = intensity
+        self.ledMatrix.setLEDSingle(index=0, intensity=intensity)
     
-    def setAllOn(self):
-        #self.ledMatrix.XX
-        pass
+    def setAllOn(self, intensity):
+        self.ledMatrix.setAll(intensity=intensity)
     
     def setAllOff(self):
-        pass
-    
-    def setLEDPattern(self):
-        pass
+        self.ledMatrix.setAll(intensity=0)
     
     def toggleLEDPattern(self):
         pass  

@@ -522,13 +522,13 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
     
-    def send_LEDMatrix_single(self, led_pattern, indexled, timeout=1):
+    def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), timeout=1):
         path = '/ledarray_act'
         payload = {
-            "red": led_pattern[0,:,:].flatten().tolist(),
-            "green": led_pattern[1,:,:].flatten().tolist(),
-            "blue": led_pattern[2,:,:].flatten().tolist(),
-            "indexled": indexled.flatten().tolist(),
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "indexled": indexled,
             "Nleds": 8*8,
             "LEDArrMode": "individual"
         }

@@ -21,6 +21,9 @@ class HoloController(LiveUpdatedController):
         self.showPos = False
 
         # reconstruction related settings
+        #TODO: Make parameters adaptable from Plugin
+        self.valueRangeMin=0
+        self.valueRangeMax=0
         self.pixelsize = 3.45*1e-6   
         self.mWavelength = 488*1e-9
         self.NA=.3

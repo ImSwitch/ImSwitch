@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, LEDMatrixsManager
 )
 
 
@@ -33,6 +33,9 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
+
 
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)

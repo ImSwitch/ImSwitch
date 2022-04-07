@@ -21,8 +21,9 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.I_max = 255
         self.N_leds = 4
         self.setEnabled = False
+        self.intesnsity=0
 
-        self.led_pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
+        self.pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
                        np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
                        np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds))))
         
@@ -32,23 +33,29 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         ]
             
         self.esp32 = self._rs232manager._esp32
-
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
+    def setAll(self, intensity=0):
+        self.intesnsity=intensity
+        #self.esp32.setLEDMatrixAll(intensity=intensity)
+        pass
+    
+    def setPattern(self, pattern):
+        self.pattern=pattern
+        #self.esp32.setLEDMatrixPattern(self.pattern)
+        pass
+        
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled
-        #self.esp32.send_LEDMatrix(self.led_pattern*self.setEnabled)
+        #self.esp32.setLEDMatrixPattern(self.pattern*self.setEnabled)
 
-    def setValue(self, power):
+    def setLEDSingle(self, indexled=0, intensity=(255,255,255)):
         """Handles output power.
         Sends a RS232 command to the LEDMatrix specifying the new intensity.
         """
-
-        self.led_pattern = np.ones((3,self.N_leds, self.N_leds))*power*self.setEnabled
-        #self.esp32.send_LEDMatrix(self.led_pattern)
-
-
+        self.esp32.send_LEDMatrix_single(indexled, intensity, timeout=1)
+        
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

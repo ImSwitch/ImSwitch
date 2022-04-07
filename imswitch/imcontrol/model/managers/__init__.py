@@ -1,5 +1,6 @@
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
+from .LEDMatrixsManager import LEDMatrixsManager
 from .MultiManager import MultiManager
 from .NidaqManager import NidaqManager
 from .PulseStreamerManager import PulseStreamerManager

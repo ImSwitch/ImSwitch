@@ -72,7 +72,9 @@ class LaserInfo(DeviceInfo):
     """ The default step size of the value range that the laser can be set to.
     """
 
-
+@dataclass(frozen=True)
+class LEDMatrixInfo(DeviceInfo):
+    pass
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
@@ -234,6 +236,10 @@ class SetupInfo:
     lasers: Dict[str, LaserInfo] = field(default_factory=dict)
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
+
+    LEDMatrixs: Dict[str, LEDMatrixInfo] = field(default_factory=dict)
+    """ LEDMatrixs in this setup. This is a map from unique LEDMatrix names to
+    LEDMatrixInfo objects. """
 
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names

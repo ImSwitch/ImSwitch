@@ -161,11 +161,11 @@ class BaslerManager(DetectorManager):
     def _getBaslerObj(self, cameraId):
         try:
             from imswitch.imcontrol.model.interfaces.baslercamera import CameraBasler
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+            self.__logger.debug(f'Trying to initialize Basler Imaging camera {cameraId}')
             camera = CameraBasler(cameraId)
         except Exception as e:
             print(e)
-            self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')
+            self.__logger.warning(f'Failed to initialize basler camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 

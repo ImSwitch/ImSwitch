@@ -21,10 +21,6 @@ class ESP32LEDLaserManager(LaserManager):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.__channel_index = laserInfo.managerProperties['channel_index']
-        try:
-            self.__filter_change = laserInfo.managerProperties['filter_change']
-        except:
-            self.__filter_change = False
 
         self.enabled = False
         
@@ -32,7 +28,7 @@ class ESP32LEDLaserManager(LaserManager):
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
-        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, is_blocking=True)
+        self._rs232manager._squid.set_laser(self.__channel_index, self.power*self.enabled)
         
 
     def setValue(self, power):
@@ -41,10 +37,7 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
-
-    def sendTrigger(self, triggerId):
-        self._rs232manager._esp32.sendTrigger(triggerId)
+            self._rs232manager._squid.set_laser(self.__channel_index, self.power)
 
 
 

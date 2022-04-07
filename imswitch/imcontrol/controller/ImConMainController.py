@@ -31,7 +31,7 @@ class ImConMainController(MainController):
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
-        self.__commChannel = CommunicationChannel(self)
+        self.__commChannel = CommunicationChannel(self, self.__setupInfo)
         self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
                                                    self.__moduleCommChannel)
 

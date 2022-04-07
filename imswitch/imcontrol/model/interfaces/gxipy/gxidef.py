@@ -153,7 +153,6 @@ class GxTriggerSourceEntry:
     LINE2 = 3
     LINE3 = 4
 
-
     def __init__(self):
         pass
 
@@ -296,7 +295,6 @@ class GxLineSourceEntry:
     EXPOSURE_ACTIVE = 5
     FRAME_TRIGGER_WAIT = 6
     ACQUISITION_TRIGGER_WAIT = 7
-    TIMER1_ACTIVE = 8
 
     def __init__(self):
         pass
@@ -347,51 +345,10 @@ class GxTestPatternGeneratorSelectorEntry:
 class GxChunkSelectorEntry:
     FRAME_ID = 1
     TIME_STAMP = 2
-    COUNTER_VALUE = 3
 
     def __init__(self):
         pass
 
-class GxTimerSelectorEntry:
-    TIMER1 = 1         
-
-    def __init__(self):
-        pass
-
-class GxTimerTriggerSourceEntry:
-    EXPOSURE_START = 1
-
-    def __init__(self):
-        pass
-
-class GxCounterSelectorEntry:
-    COUNTER1 = 1
-
-    def __init__(self):
-        pass
-
-class GxCounterEventSourceEntry:
-    FRAME_START = 1
-
-    def __init__(self):
-        pass
-
-class GxCounterResetSourceEntry:
-    OFF = 0
-    SOFTWARE = 1
-    LINE0 = 2
-    LINE1 = 3
-    LINE2 = 4
-    LINE3 = 5
-
-    def __init__(self):
-        pass
-
-class GxCounterResetActivationEntry:
-    RISING_EDGE = 1
-
-    def __init__(self):
-        pass               
 
 class GxBinningHorizontalModeEntry:
     SUM = 0

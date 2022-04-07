@@ -1,32 +1,28 @@
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
-from imswitch.imcommon.model import APIExport
+from imswitch.imcontrol.model.interfaces.squid import SQUID
 
-class ESP32Manager:
-    """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
-    """
+class SQUIDManager:
 
     def __init__(self, rs232Info, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
         self._settings = rs232Info.managerProperties
         self._name = name
-        try:
-            self._host = rs232Info.managerProperties['host']
-        except:
-            self._host = None
 
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:
             self._serialport = None
 
-        # initialize the ESP32 device adapter
-        self._esp32 = ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
-        # self._esp32 = ESP32Client(self._host, port=80)
-    
-
+        # initialize the SQUID board 
+        self._squid = SQUID(port=self._serialport)
+        
+    def send(self, arg: str) -> str:
+        """ Sends the specified command to the RS232 device and returns a
+        string encoded from the received bytes. """
+        self._squid.post_json(arg)
+        
     def finalize(self):
-        pass
+        self._squid.close() 
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtWidgets
 from PyQt5.QtCore import Qt
-from functools import partial
+
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -8,13 +8,9 @@ from imswitch.imcommon.model import initLogger
 
 class WellPlateWidget(Widget):
     """ Widget in control of the piezo movement. """
-
-    sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
-    sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.numPositioners = 0
+
         self.pars = {}
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
@@ -22,7 +18,7 @@ class WellPlateWidget(Widget):
         self.__logger = initLogger(self, instanceName="WellPlateWidget")
 
 
-    def add_plate_view(self, positionerName):
+    def add_plate_view(self):
         """Create Plate Layout Interface"""
 
         # Create dictionary to hold buttons
@@ -44,36 +40,24 @@ class WellPlateWidget(Widget):
                 }
 
         # Create wells (buttons) and add them to the grid layout
-        for txt, pos in buttons.items():
+        for corrds, pos in buttons.items():
             if 0 in pos:
-                self.Wells[txt] = QtWidgets.QLabel(txt)
-                self.Wells[txt].setAlignment(Qt.AlignCenter)
-                self.Wells[txt].setFixedSize(50, 30)
-                self.Wells[txt].setStyleSheet("""background-color: white; font-weight: bold;
+                self.Wells[corrds] = QtWidgets.QLabel(corrds)
+                self.Wells[corrds].setAlignment(Qt.AlignCenter)
+                self.Wells[corrds].setFixedSize(50, 30)
+                self.Wells[corrds].setStyleSheet("""background-color: white; font-weight: bold;
                                                 font-size: 20px""")
             else:
-                self.Wells[txt] = QtWidgets.QPushButton(txt)
-                self.Wells[txt].setFixedSize(50, 30)
-                self.Wells[txt].setStyleSheet("background-color: grey; font-size: 14px")
+                self.Wells[corrds] =  guitools.BetterPushButton(corrds) #  QtWidgets.QPushButton(corrds)
+                self.Wells[corrds].setFixedSize(50, 30)
+                self.Wells[corrds].setStyleSheet("background-color: grey; font-size: 14px")
             # Set style for empty cell
             self.Wells[" "].setStyleSheet("background-color: none")
             # Add button/label to layout
-            wellLayout.addWidget(self.Wells[txt], pos[0], pos[1])
+            wellLayout.addWidget(self.Wells[corrds], pos[0], pos[1])
         # Add button layout to base well layout
         self.setLayout(wellLayout)
-        
-    def do_something(self, txt):
-        self.__logger.debug(txt)
-        
-    def connect_wells(self):
-        """Connect Wells (Buttons) to the Sample Pop-Up Method"""
-        # Connect signals for all buttons
-        for txt, btn in self.Wells.items():
-            if isinstance(btn, QtWidgets.QPushButton):
-                btn.clicked.connect(partial(self.do_something, txt))
-
-
-        
+  
         '''
         for i in range(len(axes)):
             axis = axes[i]

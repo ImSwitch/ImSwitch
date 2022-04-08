@@ -1,6 +1,7 @@
 from typing import Dict, List
 from functools import partial
 from qtpy import QtCore, QtWidgets
+import numpy as np
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
@@ -32,6 +33,7 @@ class LEDMatrixController(ImConWidgetController):
         self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOn)      
         self._widget.ButtonSubmit.clicked.connect(self.submitLEDPattern)
         self._widget.ButtonToggle.clicked.connect(self.toggleLEDPattern)
+        self._widget.slider.valueChanged.connect(self.setIntensity)
         
         
     @APIExport()
@@ -49,6 +51,12 @@ class LEDMatrixController(ImConWidgetController):
     @APIExport()
     def toggleLEDPattern(self):
         self.LEDMatrixDevice.toggleLEDPattern()
+        
+    @APIExport()
+    def setIntensity(self, intensity=None):
+        if intensity is None:
+            intensity = int(self._widget.slider.value()//1)
+        self.LEDMatrixDevice.setIntensity(intensity=intensity)
         
     @APIExport()
     def switchLED(self, LEDid):
@@ -69,9 +77,14 @@ class LEDMatrixDevice():
         self.Nx=Nx
         self.Ny=Ny
         self.ledMatrix = ledMatrix 
-        self.pattern = np.zeros((Nx,Ny))
-        self.intensity = 255
+        self.pattern = np.zeros((self.Nx*self.Ny,3))
+        self.intensity = (255,255,255)
         self.state=None
+        
+    def setIntensity(self, intensity=None):
+        if intensity is None:
+            intensity = self.intensity  
+        self.intensity = (intensity,intensity,intensity)
         
     def setPattern(self, pattern):
         self.pattern = pattern
@@ -82,19 +95,21 @@ class LEDMatrixDevice():
         if intensity is None:
             intensity = self.intensity
         index = int(index)
-        idx = index//self.Nx
-        idy = np.mod(index,self.Ny)
-        if self.pattern[idx,idy]:
-            self.pattern[idx,idy] = 0 
+        if np.sum(self.pattern[index,:]):
+            self.pattern[index,:] = (0,0,0) 
         else:
-            self.pattern[idx,idy] = intensity
-        self.ledMatrix.setLEDSingle(index=0, intensity=intensity)
+            self.pattern[index,:] = intensity
+        self.ledMatrix.setLEDSingle(indexled=index, intensity=intensity)
     
-    def setAllOn(self, intensity):
+    def setAllOn(self, intensity=None):
+        if intensity is None:
+            intensity = self.intensity
+        self.pattern = np.ones((self.Nx*self.Ny, 3))*intensity
         self.ledMatrix.setAll(intensity=intensity)
     
     def setAllOff(self):
-        self.ledMatrix.setAll(intensity=0)
+        self.pattern = np.zeros((self.Nx*self.Ny, 3))
+        self.ledMatrix.setAll(intensity=(0,0,0))
     
     def toggleLEDPattern(self):
         pass  

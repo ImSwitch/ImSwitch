@@ -35,9 +35,9 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.esp32 = self._rs232manager._esp32
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
-    def setAll(self, intensity=0):
+    def setAll(self, intensity=(0,0,0)):
         self.intesnsity=intensity
-        #self.esp32.setLEDMatrixAll(intensity=intensity)
+        self.esp32.send_LEDMatrix_full(intensity=intensity,timeout=1)
         pass
     
     def setPattern(self, pattern):

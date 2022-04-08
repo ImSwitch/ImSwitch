@@ -512,14 +512,15 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
 
-    def send_LEDMatrix_full(self, R=125,G=125,B=125,timeout=1):
+    def send_LEDMatrix_full(self, intensity = (255,255,255),timeout=1):
         path = '/ledarray_act'
         payload = {
-            "red": R,
-            "green": G,
-            "blue": B,
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
             "LEDArrMode": "full"
         }
+        g("Setting LED Pattern (full): "+ str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
     
     def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), timeout=1):
@@ -532,6 +533,7 @@ class ESP32Client(object):
             "Nleds": 8*8,
             "LEDArrMode": "individual"
         }
+        self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
         
 

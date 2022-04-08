@@ -1,7 +1,7 @@
 import numpy as np
 
 from .basesignaldesigners import ScanDesigner
-
+from imswitch.imcommon.model import initLogger
 
 class BetaScanDesigner(ScanDesigner):
     """ Scan designer for X/Y/Z stages that move a sample.
@@ -14,7 +14,7 @@ class BetaScanDesigner(ScanDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self._logger = initLogger(self)
         self._expectedParameters = ['target_device',
                                     'axis_length',
                                     'axis_step_size',
@@ -79,6 +79,7 @@ class BetaScanDesigner(ScanDesigner):
         rampSamples = fast_axis_positions * sequenceSamples
         lineSamples = rampSamples + returnSamples
         rampSignal = np.zeros(rampSamples)
+        self._logger.debug(fast_axis_positions)
         rampValues = self.__makeRamp(fast_axis_start, fast_axis_size, fast_axis_positions)
         for s in range(fast_axis_positions):
             start = s * sequenceSamples
@@ -87,6 +88,7 @@ class BetaScanDesigner(ScanDesigner):
             settling = int(np.ceil(0.002 * sampleRate))
             rampSignal[start: end] = rampValues[s]
             if s is not fast_axis_positions - 1:
+                self._logger.debug(s)
                 rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
                 rampSignal[end - settling:end] = rampValues[s + 1]
 

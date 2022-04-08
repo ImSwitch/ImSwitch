@@ -520,7 +520,7 @@ class ESP32Client(object):
             "blue": intensity[2],
             "LEDArrMode": "full"
         }
-        g("Setting LED Pattern (full): "+ str(intensity))
+        print("Setting LED Pattern (full): "+ str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
     
     def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), timeout=1):

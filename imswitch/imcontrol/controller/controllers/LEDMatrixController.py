@@ -81,6 +81,9 @@ class LEDMatrixDevice():
         self.intensity = (255,255,255)
         self.state=None
         
+        # Turn off LEDs
+        self.ledMatrix.setAll(intensity=(0,0,0))
+        
     def setIntensity(self, intensity=None):
         if intensity is None:
             intensity = self.intensity  

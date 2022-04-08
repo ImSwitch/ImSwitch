@@ -46,11 +46,11 @@ class LEDMatrixController(ImConWidgetController):
 
     @APIExport()
     def submitLEDPattern(self):
-        self.LEDMatrixDevice.setPattern()
+        pass #  self.LEDMatrixDevice.setPattern()
 
     @APIExport()
     def toggleLEDPattern(self):
-        self.LEDMatrixDevice.toggleLEDPattern()
+        pass #self.LEDMatrixDevice.toggleLEDPattern()
         
     @APIExport()
     def setIntensity(self, intensity=None):

@@ -30,7 +30,7 @@ class LEDMatrixController(ImConWidgetController):
         self.connect_leds()
         
         self._widget.ButtonAllOn.clicked.connect(self.setLEDAllOn)      
-        self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOn)      
+        self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOff)      
         self._widget.ButtonSubmit.clicked.connect(self.submitLEDPattern)
         self._widget.ButtonToggle.clicked.connect(self.toggleLEDPattern)
         self._widget.slider.valueChanged.connect(self.setIntensity)

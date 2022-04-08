@@ -502,7 +502,7 @@ class ESP32Client(object):
         self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
     def send_LEDMatrix_array(self, led_pattern, timeout=1):
-        path = '/ledarray_act'
+        path = '/ledarr_act'
         payload = {
             "red": led_pattern[0,:,:].flatten().tolist(),
             "green": led_pattern[1,:,:].flatten().tolist(),
@@ -513,23 +513,23 @@ class ESP32Client(object):
         r = self.post_json(path, payload, timeout=timeout)
 
     def send_LEDMatrix_full(self, intensity = (255,255,255),timeout=1):
-        path = '/ledarray_act'
+        path = '/ledarr_act'
         payload = {
             "red": intensity[0],
             "green": intensity[1],
             "blue": intensity[2],
             "LEDArrMode": "full"
         }
-        print("Setting LED Pattern (full): "+ str(intensity))
+        self.__logger.debug("Setting LED Pattern (full): "+ str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
     
     def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), timeout=1):
-        path = '/ledarray_act'
+        path = '/ledarr_act'
         payload = {
-            "red": intensity[0],
-            "green": intensity[1],
-            "blue": intensity[2],
-            "indexled": indexled,
+            "red": int(intensity[0]),
+            "green": int(intensity[1]),
+            "blue": int(intensity[2]),
+            "indexled": int(indexled),
             "Nleds": 8*8,
             "LEDArrMode": "individual"
         }

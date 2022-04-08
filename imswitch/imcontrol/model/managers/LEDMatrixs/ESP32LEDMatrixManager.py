@@ -38,7 +38,7 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
     def setAll(self, intensity=(0,0,0)):
         self.intesnsity=intensity
         self.esp32.send_LEDMatrix_full(intensity=intensity,timeout=1)
-        pass
+        
     
     def setPattern(self, pattern):
         self.pattern=pattern

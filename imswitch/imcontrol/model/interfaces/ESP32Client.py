@@ -142,13 +142,13 @@ class ESP32Client(object):
                     if IS_IMSWITCH: self.__logger.debug(iport.device)
                     portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb") # TODO: Hardcoded :/
                     descriptionlist = ("CH340")
-                    self.is_connected = True # attempting to initiliaze connection
                     if iport.device.startswith(portslist) or iport.description.find(descriptionlist) != -1:
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
                             time.sleep(2)
                             _state = self.get_state()
                             _identifier_name = _state["identifier_name"]
+                            self.is_connected = True # attempting to initiliaze connection
                             if True: # _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
                                 return
@@ -161,6 +161,8 @@ class ESP32Client(object):
         else:
             self.is_connected = False
             if IS_IMSWITCH: self.__logger.error("No ESP32 device is connected - check IP or Serial port!")
+
+        self.__logger.debug("We are connected: "+str(self.is_connected))
 
     def isConnected(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -196,7 +198,7 @@ class ESP32Client(object):
                 self.is_sending = False
                 # not connected
                 return None
-        elif self.is_serial:
+        elif self.is_serial and self.is_connected:
             path = path.replace(self.base_uri,"")
             message = {"task":path}
             message = json.dumps(message)
@@ -531,7 +533,7 @@ class ESP32Client(object):
             "blue": intensity[2],
             "indexled": indexled,
             "Nleds": 8*8,
-            "LEDArrMode": "individual"
+            "LEDArrMode": "sigle"
         }
         self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
         r = self.post_json(path, payload, timeout=timeout)

@@ -17,7 +17,6 @@ class ESP32StageManager(PositionerManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self.is_enabled = False
-        self.speed = 1000
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!

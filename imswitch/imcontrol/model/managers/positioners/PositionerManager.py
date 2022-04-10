@@ -20,6 +20,7 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
+        self._speed = 0
 
         self.__name = name
 
@@ -40,6 +41,12 @@ class PositionerManager(ABC):
         """ The position of each axis. This is a dict in the format
         ``{ axis: position }``. """
         return self._position
+
+    @property
+    def speed(self) -> Dict[str, float]:
+        """ The speed of each axis. This is a dict in the format
+        ``{ axis: position }``. """
+        return self._speed
 
     @property
     def axes(self) -> List[str]:

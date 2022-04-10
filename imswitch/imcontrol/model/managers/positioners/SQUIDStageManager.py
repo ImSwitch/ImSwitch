@@ -5,7 +5,6 @@ from .PositionerManager import PositionerManager
 
 class SQUIDStageManager(PositionerManager):
     SPEED=1000
-    PHYS_FACTOR = 1
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
@@ -18,11 +17,11 @@ class SQUIDStageManager(PositionerManager):
 
     def move(self, value, axis):
         if axis == 'X':
-            self._rs232manager._squid.move_x_usteps(int(value*self.PHYS_FACTOR))
+            self._rs232manager._squid.move_x_usteps(int(value))
         elif axis == 'Y':
-            self._rs232manager._squid.move_y_usteps(int(value*self.PHYS_FACTOR))
+            self._rs232manager._squid.move_y_usteps(int(value))
         elif axis == 'Z':
-            self._rs232manager._squid.move_z_usteps(int(value*self.PHYS_FACTOR))
+            self._rs232manager._squid.move_z_usteps(int(value))
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return

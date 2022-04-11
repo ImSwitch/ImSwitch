@@ -81,7 +81,7 @@ class MicroDriveHandler:
             )
             self._waitForCommand()
         else:
-            # movement smaller than minimum step size, skipping
+            self.__logger.info(f"{move.value} too small for movement. Skipping.")
             pass
         
         self._checkError(
@@ -228,11 +228,11 @@ class NanoDriveHandler:
     
     def getDriverInfo(self) -> list[str]:
         return [
-            f"ADC resolution: {self.__driverInfo.ADCResolution.value}",
-            f"DAC resolution: {self.__driverInfo.DACResolution.value}",
-            f"Product ID: {hex(self.__driverInfo.productID.value)}",
-            f"Firmware version: {hex(self.__driverInfo.FirmwareVersion.value)}",
-            f"Firmware profile: {hex(self.__driverInfo.FirmwareProfile.value) }"
+            f"ADC resolution: {self.__driverInfo.ADCResolution}",
+            f"DAC resolution: {self.__driverInfo.DACResolution}",
+            f"Product ID: {hex(self.__driverInfo.productID)}",
+            f"Firmware version: {hex(self.__driverInfo.FirmwareVersion)}",
+            f"Firmware profile: {hex(self.__driverInfo.FirmwareProfile) }"
         ]
 
     def _checkError(self, err) -> None:

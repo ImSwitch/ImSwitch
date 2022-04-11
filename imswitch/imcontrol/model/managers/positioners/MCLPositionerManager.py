@@ -34,7 +34,7 @@ class MCLPositionerManager(PositionerManager):
             self.__logger.info(info)
 
     def move(self, dist: float, axis: str):
-        self.__driver.setPosition(axis, self.position[axis] + dist)
+        self.__driver.setPosition(axis, dist)
         self.position[axis] += dist
     
     def setPosition(self, position: float, axis: str):

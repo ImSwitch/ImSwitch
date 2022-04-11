@@ -1,7 +1,7 @@
 import numpy as np
 
 from .basesignaldesigners import ScanDesigner
-
+from imswitch.imcommon.model import initLogger
 
 class BetaScanDesigner(ScanDesigner):
     """ Scan designer for X/Y/Z stages that move a sample.
@@ -14,7 +14,7 @@ class BetaScanDesigner(ScanDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self._logger = initLogger(self)
         self._expectedParameters = ['target_device',
                                     'axis_length',
                                     'axis_step_size',
@@ -50,7 +50,7 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_size, middle_axis_size, slow_axis_size] = \
             [(parameterDict['axis_length'][i] / convFactors[i]) for i in range(3)]
 
-        # Retrieve step sized
+        # Retrieve step sizes
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
             [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(3)]
 
@@ -58,13 +58,15 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
 
-        fast_axis_positions = 1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
-        middle_axis_positions = 1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
-        slow_axis_positions = 1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
+        fast_axis_positions = 1 if fast_axis_size == 0 or fast_axis_step_size == 0 else \
+            1 + int(np.ceil(fast_axis_size / fast_axis_step_size))
+        middle_axis_positions = 1 if middle_axis_size == 0 or middle_axis_step_size == 0 else \
+            1 + int(np.ceil(middle_axis_size / middle_axis_step_size))
+        slow_axis_positions = 1 if slow_axis_size == 0 or slow_axis_step_size == 0 else \
+            1 + int(np.ceil(slow_axis_size / slow_axis_step_size))
 
         sampleRate = setupInfo.scan.sampleRate
         sequenceSamples = parameterDict['sequence_time'] * sampleRate
-        self._logger.debug(sequenceSamples)
         returnSamples = parameterDict['return_time'] * sampleRate
         if not sequenceSamples.is_integer():
             self._logger.warning('Non-integer number of sequence samples, rounding up')
@@ -76,8 +78,20 @@ class BetaScanDesigner(ScanDesigner):
         # Make fast axis signal
         rampSamples = fast_axis_positions * sequenceSamples
         lineSamples = rampSamples + returnSamples
+        rampSignal = np.zeros(rampSamples)
+        self._logger.debug(fast_axis_positions)
+        rampValues = self.__makeRamp(fast_axis_start, fast_axis_size, fast_axis_positions)
+        for s in range(fast_axis_positions):
+            start = s * sequenceSamples
+            end = s * sequenceSamples + sequenceSamples
+            smooth = int(np.ceil(0.005 * sampleRate))
+            settling = int(np.ceil(0.002 * sampleRate))
+            rampSignal[start: end] = rampValues[s]
+            if s is not fast_axis_positions - 1:
+                self._logger.debug(s)
+                rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
+                rampSignal[end - settling:end] = rampValues[s + 1]
 
-        rampSignal = self.__makeRamp(fast_axis_start, fast_axis_size, rampSamples)
         returnRamp = self.__smoothRamp(fast_axis_size, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))
 
@@ -126,9 +140,11 @@ class BetaScanDesigner(ScanDesigner):
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 
     def __makeRamp(self, start, end, samples):
-        return np.linspace(start, end, num=samples)
+        return np.linspace(float(start), float(end), num=samples)
 
     def __smoothRamp(self, start, end, samples):
+        start = float(start)
+        end = float(end)
         curve_half = 0.6
         n = int(np.floor(curve_half * samples))
         x = np.linspace(0, np.pi / 2, num=n, endpoint=True)
@@ -137,7 +153,7 @@ class BetaScanDesigner(ScanDesigner):
         return signal
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

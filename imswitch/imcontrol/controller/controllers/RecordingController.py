@@ -6,6 +6,7 @@ from typing import Optional, Union, List
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
+from imswitch.imcontrol.model.managers.detectors.DetectorManager import DetectorManager
 from ..basecontrollers import ImConWidgetController
 
 
@@ -318,6 +319,12 @@ class RecordingController(ImConWidgetController):
             elif self.recMode == RecMode.ScanLapse:
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
+
+    @APIExport()
+    def getDetector(self, detectorName: str) -> DetectorManager:
+        """ Returns the DetectorManager instance specified by detectorName.
+        """
+        return self._master.detectorsManager._subManagers[detectorName]
 
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:

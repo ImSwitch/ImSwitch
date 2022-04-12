@@ -33,8 +33,6 @@ class HoloController(LiveUpdatedController):
 
         self.dz = 40*1e-3
 
-
-
         # Prepare image computation worker
         self.imageComputationWorker = self.HoloImageComputationWorker()
         self.imageComputationWorker.set_pixelsize(self.pixelsize)
@@ -52,16 +50,11 @@ class HoloController(LiveUpdatedController):
 
         # Connect HoloWidget signals
         self._widget.sigShowToggled.connect(self.setShowHolo)
-        self._widget.sigPosToggled.connect(self.setShowPos)
-        self._widget.sigPosChanged.connect(self.changePos)
         self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigResized.connect(self.adjustFrame)
-
-        self._widget.sigValueChanged.connect(self.valueChanged)
+        self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
         self.changeRate(self._widget.getUpdateRate())
         self.setShowHolo(self._widget.getShowHoloChecked())
-        self.setShowPos(self._widget.getShowPosChecked())
 
     def valueChanged(self, magnitude):
         """ Change magnitude. """
@@ -76,13 +69,12 @@ class HoloController(LiveUpdatedController):
 
     def setShowHolo(self, enabled):
         """ Show or hide Holo. """
+        self.pixelsize = self._widget.getPixelSize()
+        self.mWavelength = self._widget.getWvl()
+        self.NA = self._widget.getNA()
+        self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
-
-    def setShowPos(self, enabled):
-        """ Show or hide lines. """
-        self.showPos = enabled
-        self.changePos(self._widget.getPos())
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -98,41 +90,12 @@ class HoloController(LiveUpdatedController):
 
     def displayImage(self, im):
         """ Displays the image in the view. """
-        prevIm = self._widget.getImage()
-        shapeChanged = prevIm is None or im.shape != prevIm.shape
         self._widget.setImage(im)
-
-        if shapeChanged or not self.init:
-            self.adjustFrame()
-            self._widget.setImageDisplayLevels(*guitools.bestLevels(im))
-            self.init = True
-
-    def adjustFrame(self):
-        im = self._widget.getImage()
-        if im is None:
-            return
-
-        self._widget.updateImageLimits(im.shape[1], im.shape[0])
 
     def changeRate(self, updateRate):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
-
-    def changePos(self, pos):
-        """ Change positions of lines.  """
-        if not self.showPos or pos == 0:
-            self._widget.setPosLinesVisible(False)
-        else:
-            im = self._widget.getImage()
-            if im is None:
-                return
-
-            pos = float(1 / pos)
-            imgWidth = im.shape[1]
-            imgHeight = im.shape[0]
-            self._widget.updatePosLines(pos, imgWidth, imgHeight)
-            self._widget.setPosLinesVisible(True)
 
     class HoloImageComputationWorker(Worker):
         sigHoloImageComputed = Signal(np.ndarray)
@@ -188,7 +151,6 @@ class HoloController(LiveUpdatedController):
 
         def set_pixelsize(self, pixelsize):
             self.pixelsize = pixelsize
-
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

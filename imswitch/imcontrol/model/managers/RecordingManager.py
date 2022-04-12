@@ -186,7 +186,8 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        files, fileDests, filePaths = self._getFiles()
+        if self.saveFormat == SaveFormat.HDF5:
+            files, fileDests, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
@@ -206,7 +207,7 @@ class RecordingWorker(Worker):
                     datasetNameWithScan = f'{datasetName}_scan{scanNum}'
                 datasetName = datasetNameWithScan
 
-            
+
             if self.saveFormat == SaveFormat.HDF5:
                 # Initial number of frames must not be 0; otherwise, too much disk space may get
                 # allocated. We remove this default frame later on if no frames are captured.
@@ -215,13 +216,13 @@ class RecordingWorker(Worker):
                     maxshape=(None, *reversed(shapes[detectorName])),
                     dtype='i2'
                 )
-                                
+
                 datasets[detectorName].attrs['detector_name'] = detectorName
 
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-                    
+
                 for key, value in self.attrs[detectorName].items():
                     datasets[detectorName].attrs[key] = value
 
@@ -240,6 +241,8 @@ class RecordingWorker(Worker):
             elif self.saveFormat == SaveFormat.TIFF:
                 # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
+                filePath = self.__recordingManager.getSaveFilePath(
+                    f'{self.savename}_{detectorName}.{fileExtension}', False, False)
                                  
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -264,12 +267,15 @@ class RecordingWorker(Worker):
 
                         if n > 0:
                             it = currentFrame[detectorName]
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
-                                if self.saveFormat == SaveFormat.TIFF_Single:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
-                                else:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
-                                tiff.imwrite(filePath, it, append=True)
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                                try:
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
                             elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
                                 if (it + n) <= recFrames:
@@ -303,13 +309,15 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
-                                if self.saveFormat == SaveFormat.TIFF_Single:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
-                                else:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
-
-                                tiff.imwrite(filePath, newFrames, append=True)
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                                try:
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
                             elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]
@@ -338,12 +346,15 @@ class RecordingWorker(Worker):
                         n = len(newFrames)
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
-                                if self.saveFormat == SaveFormat.TIFF_Single:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',False,False)
-                                else:
-                                    filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}',True,True)
+                                try:
+                                    tiff.imwrite(filePath, newFrames, append=True)
+                                except ValueError:
+                                    self.__logger.error("TIFF File exceeded 4GB.")
+                                    if self.saveFormat == SaveFormat.TIFF:
+                                        filePath = self.__recordingManager.getSaveFilePath(
+                                            f'{self.savename}_{detectorName}.{fileExtension}', False, False)
+                                        continue
 
-                                tiff.imwrite(filePath, newFrames, append=True)
                             elif self.saveFormat == SaveFormat.HDF5:
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]

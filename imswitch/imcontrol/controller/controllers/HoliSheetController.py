@@ -38,8 +38,8 @@ class HoliSheetController(LiveUpdatedController):
         self.dz = 40*1e-3
         
         # Motor properties
-        self.speedPump = 0 # steps/s
-        self.speedRotation = 0 # steps/s
+        self.speedPump = .01 # steps/s
+        self.speedRotation = .01 # steps/s
         self.stepsPerRotation = 200*32 # for microstepping
         self.tRoundtripRotation = self.stepsPerRotation/self.speedRotation
 

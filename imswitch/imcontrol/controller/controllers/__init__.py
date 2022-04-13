@@ -5,6 +5,7 @@ from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .FFTController import FFTController
 from .HoloController import HoloController
+from .HoliSheetController import HoliSheetController
 from .FocusLockController import FocusLockController
 from .AufofocusController import AutofocusController
 from .ImageController import ImageController

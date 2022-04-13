@@ -5,6 +5,7 @@ from .BeadRecWidget import BeadRecWidget
 from .ConsoleWidget import ConsoleWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
+from .HoliSheetWidget import HoliSheetWidget
 from .FocusLockWidget import FocusLockWidget
 from .AutofocusWidget import AutofocusWidget
 from .LEDMatrixWidget import LEDMatrixWidget

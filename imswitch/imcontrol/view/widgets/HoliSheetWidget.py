@@ -3,151 +3,150 @@ from qtpy import QtCore, QtWidgets
 
 from imswitch.imcommon.view.guitools import pyqtgraphtools
 from imswitch.imcontrol.view import guitools
-from .basewidgets import Widget
+from .basewidgets import NapariHybridWidget
 
 
-class HoliSheetWidget(Widget):
+class HoliSheetWidget(NapariHybridWidget):
     """ Displays the HoliSheet transform of the image. """
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
-    sigPosToggled = QtCore.Signal(bool)  # (enabled)
-    sigPosChanged = QtCore.Signal(float)  # (pos)
     sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
-    sigResized = QtCore.Signal()
-    sigValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderFocusValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderPumpSpeedValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderRotationSpeedValueChanged = QtCore.Signal(float)  # (value)
 
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __post_init__(self):
 
         # Graphical elements
         self.showCheck = QtWidgets.QCheckBox('Show HoliSheet')
         self.showCheck.setCheckable(True)
-        self.posCheck = guitools.BetterPushButton('Period (pix)')
-        self.posCheck.setCheckable(True)
-        self.linePos = QtWidgets.QLineEdit('4')
         self.lineRate = QtWidgets.QLineEdit('0')
         self.labelRate = QtWidgets.QLabel('Update rate')
+        self.wvlLabel = QtWidgets.QLabel('Wavelength [um]')
+        self.wvlEdit = QtWidgets.QLineEdit('0.488')
+        self.pixelSizeLabel = QtWidgets.QLabel('Pixel size [um]')
+        self.pixelSizeEdit = QtWidgets.QLineEdit('3.45')
+        self.naLabel = QtWidgets.QLabel('NA')
+        self.naEdit = QtWidgets.QLineEdit('0.3')
+        self.labelRotationSpeed = QtWidgets.QLabel('Speed Rotation')
+        self.labelPumpSpeed = QtWidgets.QLabel('Speed Pump')
+        self.snapRotationButton = guitools.BetterPushButton('Snap Rotation')
 
+
+        self.snapRotationButton.setCheckable(True)
+        self.snapRotationButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Expanding)
+
+
+        # Slider to set the focus value
         valueDecimals = 1
         valueRange = (0,100)
         tickInterval = 5
         singleStep = 1
-        self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+        self.sliderFocus = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=valueDecimals)
-        self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.sliderFocus.setFocusPolicy(QtCore.Qt.NoFocus)
         valueRangeMin, valueRangeMax = valueRange
 
-        self.slider.setMinimum(valueRangeMin)
-        self.slider.setMaximum(valueRangeMax)
-        self.slider.setTickInterval(tickInterval)
-        self.slider.setSingleStep(singleStep)
-        self.slider.setValue(0)
+        self.sliderFocus.setMinimum(valueRangeMin)
+        self.sliderFocus.setMaximum(valueRangeMax)
+        self.sliderFocus.setTickInterval(tickInterval)
+        self.sliderFocus.setSingleStep(singleStep)
+        self.sliderFocus.setValue(0)
+        
+        # Slider to set the focus value
+        valueDecimalsPump = 1
+        valueRangePump = (0,100)
+        tickIntervalPump = 5
+        singleStepPump = 1
+        self.sliderPumpSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimalsPump)
+        self.sliderPumpSpeed.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMinPump, valueRangeMaxPump = valueRangePump
 
-        # Vertical and horizontal lines
-        self.vline = pg.InfiniteLine()
-        self.hline = pg.InfiniteLine()
-        self.rvline = pg.InfiniteLine()
-        self.lvline = pg.InfiniteLine()
-        self.uhline = pg.InfiniteLine()
-        self.dhline = pg.InfiniteLine()
+        self.sliderPumpSpeed.setMinimum(valueRangeMinPump)
+        self.sliderPumpSpeed.setMaximum(valueRangeMaxPump)
+        self.sliderPumpSpeed.setTickInterval(tickIntervalPump)
+        self.sliderPumpSpeed.setSingleStep(singleStepPump)
+        self.sliderPumpSpeed.setValue(0)
 
-        # Viewbox
-        self.cwidget = pg.GraphicsLayoutWidget()
-        self.vb = self.cwidget.addViewBox(row=1, col=1)
-        self.vb.setMouseMode(pg.ViewBox.RectMode)
-        self.img = pg.ImageItem(axisOrder='row-major')
-        self.img.setTransform(self.img.transform().translate(-0.5, -0.5))
-        self.vb.addItem(self.img)
-        self.vb.setAspectLocked(True)
-        self.hist = pg.HistogramLUTItem(image=self.img)
-        self.hist.vb.setLimits(yMin=0, yMax=66000)
-        self.hist.gradient.loadPreset('greyclip')
-        for tick in self.hist.gradient.ticks:
-            tick.hide()
-        self.cwidget.addItem(self.hist, row=1, col=2)
+        # Slider to set the focus value
+        valueDecimalsRotation = 1
+        valueRangeRotation = (0,100)
+        tickIntervalRotation = 5
+        singleStepRotation = 1
+        self.sliderRotationSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimalsRotation)
+        self.sliderRotationSpeed.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMinRotation, valueRangeMaxRotation = valueRangeRotation
 
-        # Add lines to viewbox
-        self.vb.addItem(self.vline)
-        self.vb.addItem(self.hline)
-        self.vb.addItem(self.lvline)
-        self.vb.addItem(self.rvline)
-        self.vb.addItem(self.uhline)
-        self.vb.addItem(self.dhline)
+        self.sliderRotationSpeed.setMinimum(valueRangeMinRotation)
+        self.sliderRotationSpeed.setMaximum(valueRangeMaxRotation)
+        self.sliderRotationSpeed.setTickInterval(tickIntervalRotation)
+        self.sliderRotationSpeed.setSingleStep(singleStepRotation)
+        self.sliderRotationSpeed.setValue(0)
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
-        grid.addWidget(self.cwidget, 0, 0, 1, 6)
-        grid.addWidget(self.showCheck, 1, 0, 1, 1)
-        grid.addWidget(self.slider, 1, 1, 1, 1)
-        grid.addWidget(self.posCheck, 2, 0, 1, 1)
-        grid.addWidget(self.linePos, 2, 1, 1, 1)
-        grid.addWidget(self.labelRate, 2, 2, 1, 1)
-        grid.addWidget(self.lineRate, 2, 3, 1, 1)
+        grid.addWidget(self.wvlLabel, 0, 0, 1, 1)
+        grid.addWidget(self.wvlEdit, 0, 1, 1, 1)
+        grid.addWidget(self.pixelSizeLabel, 1, 0, 1, 1)
+        grid.addWidget(self.pixelSizeEdit, 1, 1, 1, 1)
+        grid.addWidget(self.naLabel, 2, 0, 1, 1)
+        grid.addWidget(self.naEdit, 2, 1, 1, 1)
+        grid.addWidget(self.showCheck, 3, 0, 1, 1)
+        grid.addWidget(self.sliderFocus, 3, 1, 1, 1)
+        grid.addWidget(self.labelPumpSpeed, 0, 2, 1, 1)
+        grid.addWidget(self.sliderPumpSpeed, 0, 3, 1, 1)
+        grid.addWidget(self.labelRotationSpeed, 1, 2, 1, 1)
+        grid.addWidget(self.sliderRotationSpeed, 1, 3, 1, 1)
+        grid.addWidget(self.snapRotationButton, 2, 2, 1, 1)
+        grid.addWidget(self.labelRate, 3, 2, 1, 1)
+        grid.addWidget(self.lineRate, 3, 3, 1, 1)
 
         # grid.setRowMinimumHeight(0, 300)
 
         # Connect signals
         self.showCheck.toggled.connect(self.sigShowToggled)
-        self.posCheck.toggled.connect(self.sigPosToggled)
-        self.slider.valueChanged.connect(
-            lambda value: self.sigValueChanged.emit(value)
+        self.sliderFocus.valueChanged.connect(
+            lambda value: self.sigSliderFocusValueChanged.emit(value)
         )
-        self.linePos.textChanged.connect(
-            lambda: self.sigPosChanged.emit(self.getPos())
+        self.sliderPumpSpeed.valueChanged.connect(
+            lambda value: self.sigSliderPumpSpeedValueChanged.emit(value)
         )
+        self.sliderRotationSpeed.valueChanged.connect(
+            lambda value: self.sigSliderRotationSpeedValueChanged.emit(value)
+        )
+        
         self.lineRate.textChanged.connect(
             lambda: self.sigUpdateRateChanged.emit(self.getUpdateRate())
         )
-        self.vb.sigResized.connect(self.sigResized)
+        self.layer = None
+
+    def getWvl(self):
+        return float(self.wvlEdit.text())
+
+    def getPixelSize(self):
+        return float(self.pixelSizeEdit.text())
+
+    def getNA(self):
+        return float(self.naEdit.text())
 
     def getShowHoliSheetChecked(self):
         return self.showCheck.isChecked()
-
-    def getShowPosChecked(self):
-        return self.posCheck.isChecked()
-
-    def getPos(self):
-        return float(self.linePos.text())
 
     def getUpdateRate(self):
         return float(self.lineRate.text())
 
     def getImage(self):
-        return self.img.image
+        if self.layer is not None:
+            return self.img.image
 
     def setImage(self, im):
-        self.img.setImage(im, autoLevels=False)
-
-    def updateImageLimits(self, imgWidth, imgHeight):
-        pyqtgraphtools.setPGBestImageLimits(self.vb, imgWidth, imgHeight)
-
-    def getImageDisplayLevels(self):
-        return self.hist.getLevels()
-
-    def setImageDisplayLevels(self, minimum, maximum):
-        self.hist.setLevels(minimum, maximum)
-        self.hist.vb.autoRange()
-
-    def setPosLinesVisible(self, visible):
-        self.vline.setVisible(visible)
-        self.hline.setVisible(visible)
-        self.rvline.setVisible(visible)
-        self.lvline.setVisible(visible)
-        self.uhline.setVisible(visible)
-        self.dhline.setVisible(visible)
-
-    def updatePosLines(self, pos, imgWidth, imgHeight):
-        self.vline.setValue(0.5 * imgWidth)
-        self.hline.setAngle(0)
-        self.hline.setValue(0.5 * imgHeight)
-        self.rvline.setValue((0.5 + pos) * imgWidth)
-        self.lvline.setValue((0.5 - pos) * imgWidth)
-        self.dhline.setAngle(0)
-        self.dhline.setValue((0.5 - pos) * imgHeight)
-        self.uhline.setAngle(0)
-        self.uhline.setValue((0.5 + pos) * imgHeight)
+        if self.layer is None or self.layer.name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, name="HoliSheet", blending='additive')
+        self.layer.data = im
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

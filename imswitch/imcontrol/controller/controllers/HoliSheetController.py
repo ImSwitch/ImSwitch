@@ -1,5 +1,6 @@
 import numpy as np
 import NanoImagingPack as nip
+import time
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
@@ -8,7 +9,7 @@ from ..basecontrollers import LiveUpdatedController
 
 
 class HoliSheetController(LiveUpdatedController):
-    """ Linked to HoloWidget."""
+    """ Linked to HoliSheetWidget."""
 
     sigImageReceived = Signal()
 
@@ -21,6 +22,9 @@ class HoliSheetController(LiveUpdatedController):
         self.showPos = False
 
         # reconstruction related settings
+        #TODO: Make parameters adaptable from Plugin
+        self.valueRangeMin=0
+        self.valueRangeMax=0
         self.pixelsize = 3.45*1e-6   
         self.mWavelength = 488*1e-9
         self.NA=.3
@@ -32,41 +36,73 @@ class HoliSheetController(LiveUpdatedController):
         self.PSFpara.pixelsize = self.pixelsize
 
         self.dz = 40*1e-3
-
-
+        
+        # Motor properties
+        self.speedPump = 0 # steps/s
+        self.speedRotation = 0 # steps/s
+        self.stepsPerRotation = 200*32 # for microstepping
+        self.tRoundtripRotation = self.stepsPerRotation/self.speedRotation
 
         # Prepare image computation worker
-        self.imageComputationWorker = self.HoloImageComputationWorker()
+        self.imageComputationWorker = self.HoliSheetImageComputationWorker()
         self.imageComputationWorker.set_pixelsize(self.pixelsize)
         self.imageComputationWorker.set_dz(self.dz)
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
-        self.imageComputationWorker.sigHoloImageComputed.connect(self.displayImage)
+        self.imageComputationWorker.sigHoliSheetImageComputed.connect(self.displayImage)
    
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        self.sigImageReceived.connect(self.imageComputationWorker.computeHoloImage)
+        self.sigImageReceived.connect(self.imageComputationWorker.computeHoliSheetImage)
         self.imageComputationThread.start()
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect HoloWidget signals
-        self._widget.sigShowToggled.connect(self.setShowHolo)
-        self._widget.sigPosToggled.connect(self.setShowPos)
-        self._widget.sigPosChanged.connect(self.changePos)
+        # Connect HoliSheetWidget signals
+        self._widget.sigShowToggled.connect(self.setShowHoliSheet)
         self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigResized.connect(self.adjustFrame)
-
-        self._widget.sigValueChanged.connect(self.valueChanged)
+        self._widget.sigSliderFocusValueChanged.connect(self.valueFocusChanged)
+        self._widget.sigSliderPumpSpeedValueChanged.connect(self.valuePumpSpeedChanged)
+        self._widget.sigSliderRotationSpeedValueChanged.connect(self.valueRotationSpeedChanged)
 
         self.changeRate(self._widget.getUpdateRate())
-        self.setShowHolo(self._widget.getShowHoloChecked())
-        self.setShowPos(self._widget.getShowPosChecked())
+        self.setShowHoliSheet(self._widget.getShowHoliSheetChecked())
+        
+        # select detectors
+        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        
+        if allDetectorNames[0].lower().find("light"):
+            self.detectorLightsheetName = allDetectorNames[0]
+            self.detectorHoloName = allDetectorNames[1]
+        else:
+            self.detectorLightsheetName = allDetectorNames[1]
+            self.detectorHoloName = allDetectorNames[0]
+        
+        
+        # connect camera and stage
+        #self.camera = self._setupInfo.autofocus.camera
+        #self._master.detectorsManager[self.camera].startAcquisition()
+        self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+        self.positioner = self._master.positionersManager[self.positionerName]
 
-    def valueChanged(self, magnitude):
+        # Connect buttons
+        self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
+        
+    def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3
         self.imageComputationWorker.set_dz(self.dz)
+
+    def valuePumpSpeedChanged(self, value):
+        """ Change magnitude. """
+        self.speedPump = int(value)
+        self.positioner.moveForever(speed=(self.speedRotation,self.speedPump,0),is_stop=False)
+
+    def valueRotationSpeedChanged(self, value):
+        """ Change magnitude. """
+        self.speedRotation = int(value)
+        self.tRoundtripRotation = self.stepsPerRotation/self.speedRotation # in s
+        self.positioner.moveForever(speed=(self.speedRotation,self.speedPump,0),is_stop=False)
 
     def __del__(self):
         self.imageComputationThread.quit()
@@ -74,15 +110,26 @@ class HoliSheetController(LiveUpdatedController):
         if hasattr(super(), '__del__'):
             super().__del__()
 
-    def setShowHolo(self, enabled):
-        """ Show or hide Holo. """
+    def setShowHoliSheet(self, enabled):
+        """ Show or hide HoliSheet. """
+        self.pixelsize = self._widget.getPixelSize()
+        self.mWavelength = self._widget.getWvl()
+        self.NA = self._widget.getNA()
+        self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
-
-    def setShowPos(self, enabled):
-        """ Show or hide lines. """
-        self.showPos = enabled
-        self.changePos(self._widget.getPos())
+        
+    def captureFullRotation(self):
+        # TODO: Here we want to capture frames and display that in Napari?
+        # TODO: better do recording not single frame acquisition?
+        tstart = time.time()
+        self.framesRoundtrip = []
+        camera = self._master.detectorsManager[self.detectorLightsheetName]
+        while((time.time()-tstart)<self.tRoundtripRotation):
+            self.framesRoundtrip.append(camera.getLatestFrame())
+        return self.framesRoundtrip # after that comes image procesing - how?
+            
+        
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -98,44 +145,15 @@ class HoliSheetController(LiveUpdatedController):
 
     def displayImage(self, im):
         """ Displays the image in the view. """
-        prevIm = self._widget.getImage()
-        shapeChanged = prevIm is None or im.shape != prevIm.shape
         self._widget.setImage(im)
-
-        if shapeChanged or not self.init:
-            self.adjustFrame()
-            self._widget.setImageDisplayLevels(*guitools.bestLevels(im))
-            self.init = True
-
-    def adjustFrame(self):
-        im = self._widget.getImage()
-        if im is None:
-            return
-
-        self._widget.updateImageLimits(im.shape[1], im.shape[0])
 
     def changeRate(self, updateRate):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
 
-    def changePos(self, pos):
-        """ Change positions of lines.  """
-        if not self.showPos or pos == 0:
-            self._widget.setPosLinesVisible(False)
-        else:
-            im = self._widget.getImage()
-            if im is None:
-                return
-
-            pos = float(1 / pos)
-            imgWidth = im.shape[1]
-            imgHeight = im.shape[0]
-            self._widget.updatePosLines(pos, imgWidth, imgHeight)
-            self._widget.setPosLinesVisible(True)
-
-    class HoloImageComputationWorker(Worker):
-        sigHoloImageComputed = Signal(np.ndarray)
+    class HoliSheetImageComputationWorker(Worker):
+        sigHoliSheetImageComputed = Signal(np.ndarray)
 
         def __init__(self):
             super().__init__()
@@ -148,7 +166,7 @@ class HoliSheetController(LiveUpdatedController):
             self.dz = 1
 
 
-        def reconholo(self, image, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
+        def reconHoliSheet(self, image, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
             mimage = nip.image(np.sqrt(image))
             mimage = nip.extract(mimage, [N_subroi,N_subroi])
             mimage.pixelsize=(pixelsize, pixelsize)
@@ -160,14 +178,14 @@ class HoliSheetController(LiveUpdatedController):
             propagated = nip.ft2d((np.exp(1j * PhaseMap))*mpupil)
             return np.squeeze(propagated)
 
-        def computeHoloImage(self):
-            """ Compute Holo of an image. """
+        def computeHoliSheetImage(self):
+            """ Compute HoliSheet of an image. """
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
-                holorecon = np.flip(np.abs(self.reconholo(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
+                HoliSheetrecon = np.flip(np.abs(self.reconHoliSheet(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
                 
-                self.sigHoloImageComputed.emit(np.array(holorecon))
+                self.sigHoliSheetImageComputed.emit(np.array(HoliSheetrecon))
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1
@@ -188,7 +206,6 @@ class HoliSheetController(LiveUpdatedController):
 
         def set_pixelsize(self, pixelsize):
             self.pixelsize = pixelsize
-
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

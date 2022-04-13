@@ -409,6 +409,27 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
+
+    def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
+        payload = {
+            "task":"/motor_act",
+            "speed0": np.int(speed[0]), # TODO: need a fourth axis?
+            "speed1": np.int(speed[0]),
+            "speed2": np.int(speed[1]),
+            "speed3": np.int(speed[2]),
+            "isforever":1, 
+            "isaccel":1,
+            "isstop": np.int(is_stop)
+        }
+        self.is_driving = True
+        r = self.post_json(path, payload, timeout=timeout)
+        if is_stop:
+            self.is_driving = False
+        return r
+
+        
+        {"task": "/motor_act", "speed0":0, "speed1":0,"speed2":40,"speed3":9000, "isforever":1, "isaccel":1}
+
     def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
 
         if type(speed)!=list and type(speed)!=tuple  :

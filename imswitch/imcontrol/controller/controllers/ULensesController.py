@@ -15,10 +15,10 @@ class ULensesController(ImConWidgetController):
 
     def updateGrid(self):
         """ Updates plot with new parameters. """
-        x, y, px, up = self._widget.getParameters()
+        x, y, px, upx, upy = self._widget.getParameters()
         size_x, size_y = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
-        pattern_x = np.arange(x, size_x, up / px)
-        pattern_y = np.arange(y, size_y, up / px)
+        pattern_x = np.arange(x, size_x, upx / px)
+        pattern_y = np.arange(y, size_y, upy / px)
         grid = np.array(np.meshgrid(pattern_x, pattern_y)).T.reshape(-1, 2)
         self._widget.setData(x=grid[:, 0], y=grid[:, 1])
 

@@ -65,7 +65,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
-            'FFT': _DockInfo(name='FFT Tool', yPosition=3)
+            'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

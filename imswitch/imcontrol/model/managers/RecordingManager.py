@@ -98,7 +98,7 @@ class RecordingManager(SignalInterface):
         try:
             images = {}
             for detectorName in detectorNames:
-                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame()
+                images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
 
             for detectorName in detectorNames:
                 image = images[detectorName]

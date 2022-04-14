@@ -7,7 +7,7 @@
 ## Statement of need
 
 The constant development of novel microscopy methods with an increased number of dedicated
-hardware devices poses significant challenges to software development. 
+hardware devices poses significant challenges to software development.
 ImSwitch is designed to be compatible with many different microscope modalities and customizable to the
 specific design of individual custom-built microscopes, all while using the same software. We
 would like to involve the community in further developing ImSwitch in this direction, believing
@@ -29,13 +29,12 @@ To install ImSwitch from PyPI, run the following command:
 pip install ImSwitch
 ```
 
-(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead.)
-
 You will then be able to start ImSwitch with this command:
 
 ```
 imswitch
 ```
+(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
 ## Documentation
 

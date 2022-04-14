@@ -12,7 +12,7 @@ html_static_path = ['_static']
 html_css_files = ['css/custom.css']
 
 project = 'ImSwitch'
-copyright = '2020, 2021 TestaLab'
+copyright = '2020-2021 ImSwitch developers'
 
 
 class ClassCondensedHeaderDocumenter(autodoc.ClassDocumenter):

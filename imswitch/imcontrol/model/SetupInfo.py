@@ -59,9 +59,19 @@ class LaserInfo(DeviceInfo):
     wavelength: Union[int, float]
     """ Laser wavelength in nanometres. """
 
+    freqRangeMin: Optional[int] = 0
+    """ Minimum value of frequency modulation. Don't fill if laser doesn't support it. """
+
+    freqRangeMax: Optional[int] = 0
+    """ Minimum value of frequency modulation. Don't fill if laser doesn't support it. """
+
+    freqRangeInit: Optional[int] = 0
+    """ Initial value of frequency modulation. Don't fill if laser doesn't support it. """
+
     valueRangeStep: float = 1.0
     """ The default step size of the value range that the laser can be set to.
     """
+
 
 
 @dataclass(frozen=True)

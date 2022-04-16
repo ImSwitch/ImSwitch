@@ -1,6 +1,7 @@
 import numpy as np
 import NanoImagingPack as nip
 import time
+import threading
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
@@ -15,6 +16,7 @@ class HoliSheetController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._logger = initLogger(self, tryInheritParent=False)
         
         self.updateRate = 10
         self.it = 0
@@ -36,6 +38,11 @@ class HoliSheetController(LiveUpdatedController):
         self.PSFpara.pixelsize = self.pixelsize
 
         self.dz = 40*1e-3
+        
+        # Parameters for monitoring the pressure
+        self.T_measure = 0.1 # sampling rate of measure pressure
+        self.is_measure = True
+        self.pressure = 0
         
         # Motor properties
         self.speedPump = .01 # steps/s
@@ -71,13 +78,15 @@ class HoliSheetController(LiveUpdatedController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         
-        if allDetectorNames[0].lower().find("light"):
-            self.detectorLightsheetName = allDetectorNames[0]
-            self.detectorHoloName = allDetectorNames[1]
-        else:
-            self.detectorLightsheetName = allDetectorNames[1]
-            self.detectorHoloName = allDetectorNames[0]
-        
+        try:
+            if allDetectorNames[0].lower().find("light"):
+                self.detectorLightsheetName = allDetectorNames[0]
+                self.detectorHoloName = allDetectorNames[1]
+            else:
+                self.detectorLightsheetName = allDetectorNames[1]
+                self.detectorHoloName = allDetectorNames[0]
+        except Exception as e:
+            self._logger.debug("No camera found - in debug mode?")   
         
         # connect camera and stage
         #self.camera = self._setupInfo.autofocus.camera
@@ -87,6 +96,9 @@ class HoliSheetController(LiveUpdatedController):
 
         # Connect buttons
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
+        
+        # start measurment thread (pressure)
+        self.start_measurement_thread()
         
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
@@ -128,8 +140,6 @@ class HoliSheetController(LiveUpdatedController):
         while((time.time()-tstart)<self.tRoundtripRotation):
             self.framesRoundtrip.append(camera.getLatestFrame())
         return self.framesRoundtrip # after that comes image procesing - how?
-            
-        
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -151,7 +161,21 @@ class HoliSheetController(LiveUpdatedController):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
+    
+    def measurement_grabber(self):
+        while(self.is_measure):
+            try:
+                self.pressure = self.positioner.measure(sensorID=0)
+                self._logger.debug("Pressure is: "+str(self.pressure))
+            except Exception as e:
+                self._logger.error(e)
+            time.sleep(self.T_measure)
 
+    def start_measurement_thread(self):
+        self.measurement_thread = threading.Thread(target=self.measurement_grabber, args=())
+        self.measurement_thread.start()
+            
+            
     class HoliSheetImageComputationWorker(Worker):
         sigHoliSheetImageComputed = Signal(np.ndarray)
 

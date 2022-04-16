@@ -39,6 +39,9 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
+    
+    def measure(self, sensorID=0, NAvg=100):
+        self._rs232manager._esp32.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
     def moveForever(self, speed=(0,0,0), is_stop=False):
         self._rs232manager._esp32.move_forever(speed=speed, is_stop=is_stop)

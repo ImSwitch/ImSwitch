@@ -96,7 +96,6 @@ class HoliSheetController(LiveUpdatedController):
 
         # Connect buttons
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
-        
         # start measurment thread (pressure)
         self.start_measurement_thread()
         
@@ -108,7 +107,7 @@ class HoliSheetController(LiveUpdatedController):
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
         self.speedPump = int(value)
-        self._widget.updatePumpSpeed(self.speedPump)
+        self._widget.updatePumpPressure(self.speedPump)
         self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def valueRotationSpeedChanged(self, value):
@@ -120,7 +119,7 @@ class HoliSheetController(LiveUpdatedController):
 
     def __del__(self):
         self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
+        self.imageComputationThread.wait()        
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -168,7 +167,8 @@ class HoliSheetController(LiveUpdatedController):
         while(self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
-                self._logger.debug("Pressure is: "+str(self.pressure))
+                #self._logger.debug("Pressure is: "+str(self.pressure))
+                self._widget.updatePumpPressure(self.pressure)
             except Exception as e:
                 self._logger.error(e)
             time.sleep(self.T_measure)

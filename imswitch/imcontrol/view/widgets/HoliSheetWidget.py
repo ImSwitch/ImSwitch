@@ -30,6 +30,7 @@ class HoliSheetWidget(NapariHybridWidget):
         self.naEdit = QtWidgets.QLineEdit('0.3')
         self.labelRotationSpeed = QtWidgets.QLabel('Speed Rotation')
         self.labelPumpSpeed = QtWidgets.QLabel('Speed Pump')
+        self.labelPumpPressure = QtWidgets.QLabel('Pump Pressure')
         self.snapRotationButton = guitools.BetterPushButton('Snap Rotation')
 
 
@@ -102,6 +103,7 @@ class HoliSheetWidget(NapariHybridWidget):
         grid.addWidget(self.labelRotationSpeed, 1, 2, 1, 1)
         grid.addWidget(self.sliderRotationSpeed, 1, 3, 1, 1)
         grid.addWidget(self.snapRotationButton, 2, 2, 1, 1)
+        grid.addWidget(self.labelPumpPressure, 3, 3, 1, 1)
         grid.addWidget(self.labelRate, 3, 2, 1, 1)
         grid.addWidget(self.lineRate, 3, 3, 1, 1)
 
@@ -126,6 +128,9 @@ class HoliSheetWidget(NapariHybridWidget):
 
     def updatePumpSpeed(self, speed):
         self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp\s]')
+    
+    def updatePumpPressure(self, pressure):
+        self.labelPumpPressure.setText(f'Pump Pressure {"{0:.2f}".format(pressure)} [psi]')
 
     def updateRotationSpeed(self, speed):
         self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp\s]')

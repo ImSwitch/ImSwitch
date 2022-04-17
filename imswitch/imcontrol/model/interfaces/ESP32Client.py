@@ -130,10 +130,10 @@ class ESP32Client(object):
             self.is_serial = True
 
             if IS_IMSWITCH: self.__logger.debug(f'Searching for SERIAL devices...')
+            self.is_connected = True # attempting to initiliaze connection
             try:
                 self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
                 time.sleep(2) # let it warm up
-                self.is_connected = True
             except:
                 # try to find the PORT
                 _available_ports = serial.tools.list_ports.comports(include_links=False)
@@ -149,6 +149,7 @@ class ESP32Client(object):
                             time.sleep(2)
                             _state = self.get_state()
                             _identifier_name = _state["identifier_name"]
+                            self.set_state(debug=False)
                             if True: # _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
                                 return
@@ -232,7 +233,10 @@ class ESP32Client(object):
                 return None
 
         elif self.is_connected and self.is_serial:
-            payload["task"] = path
+            try:
+                payload["task"]
+            except:
+                payload["task"] = path
             try:
                 is_blocking = payload['isblock']
             except:
@@ -240,7 +244,6 @@ class ESP32Client(object):
             self.writeSerial(payload)
             #self.__logger.debug(payload)
             returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
-            #, timeout=timeout)
             return returnmessage
         else:
             return -1
@@ -273,12 +276,361 @@ class ESP32Client(object):
             returnmessage = ""
         return returnmessage
 
-    def get_temperature(self):
-        path = "/temperature"
-        r = self.get_json(path)
-        return r['value']
 
-    #% LED
+    '''
+    HIGH-LEVEL Functions that rely on basic REST-API functions
+    '''
+
+    def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def move_y(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
+        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def move_xyz(self, steps=(10,10,10), speed=(1000,1000,1000), speed1=None, speed2=None, speed3=None, is_blocking=False, is_absolute=False, is_enabled=False):
+        if len(speed)!= 3:
+            speed = (speed,speed,speed)
+
+        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def send_jpeg(self, image):
+        #TODO: This has not been tested! 
+        if is_cv2:
+            temp = NamedTemporaryFile()
+
+            #add JPEG format to the NamedTemporaryFile
+            iName = "".join([str(temp.name),".jpg"])
+
+            #save the numpy array image onto the NamedTemporaryFile
+            cv2.imwrite(iName,image)
+            _, img_encoded = cv2.imencode('test.jpg', image)
+
+            content_type = 'image/jpeg'
+            headers = {'content-type': content_type}
+            payload = img_encoded.tostring()
+            path = '/uploadimage'
+
+            #r = self.post_json(path, payload=payload, headers = headers)
+            #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)
+            files = {'media': open(iName, 'rb')}
+            if self.is_connected:
+                requests.post(self.base_uri + path, files=files)
+
+    def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
+
+        # switch off all lasers first!
+        self.set_laser(1, 0)
+        self.set_laser(2, 0)
+        self.set_laser(3, 0)
+
+        if is_filter_init is not None:
+            self.is_filter_init = is_filter_init
+
+        if not self.is_filter_init:
+            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
+            self.is_filter_init = True
+            self.filter_position = 0
+
+        # measured in steps from zero position
+
+        steps = 0
+        if laserid==1:
+            steps = self.filter_pos_1 - self.filter_position
+            self.filter_position = self.filter_pos_1
+        if laserid==2:
+            steps = self.filter_pos_2 - self.filter_position
+            self.filter_position = self.filter_pos_2
+        if laserid==3:
+            steps = self.filter_pos_3 - self.filter_position
+            self.filter_position = self.filter_pos_3
+
+        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
+
+
+
+    def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
+        steps_xyz = (0,steps,0)
+        r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
+        return r
+    
+    
+    
+    '''
+    LOW-LEVEL FUNCTIONS
+    
+    These functions directly relate to the REST-API
+    '''
+    
+    '''
+    ##############################################################################################################################
+    LED ARRAY
+    ##############################################################################################################################
+    '''
+    def send_LEDMatrix_array(self, led_pattern, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/ledarray_act'
+        payload = {
+            "red": led_pattern[0,:,:].flatten().tolist(),
+            "green": led_pattern[1,:,:].flatten().tolist(),
+            "blue": led_pattern[2,:,:].flatten().tolist(),
+            "arraySize": led_pattern.shape[1]*led_pattern.shape[2],
+            "LEDArrMode": "array"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+
+    def send_LEDMatrix_full(self, intensity = (255,255,255),timeout=1):
+        '''
+        set all LEDs with te same RGB value: intensity=(255,255,255)
+        '''
+        path = '/ledarray_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "LEDArrMode": "full"
+        }
+        print("Setting LED Pattern (full): "+ str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+    
+    def send_LEDMatrix_special(self, pattern="left", intensity = (255,255,255),timeout=1):
+        '''
+        set all LEDs inside a certain pattern (e.g. left half) with the same RGB value: intensity=(255,255,255), rest 0
+        '''
+        path = '/ledarray_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "LEDArrMode": pattern
+        }
+        print("Setting LED Pattern (full): "+ str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+    
+        
+    def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), Nleds=8*8, timeout=1):
+        '''
+        update only a single LED with a colour:  indexled=0, intensity=(255,255,255)
+        '''
+        path = '/ledarray_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "single"
+        }
+        self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+        
+    def send_LEDMatrix_multi(self, indexled=(0), intensity=((255,255,255)), Nleds=8*8, timeout=1):
+        '''
+        update a list of individual LEDs with a colour:  led_pattern=(1,2,6,11), intensity=((255,255,255),(125,122,1), ..)
+        '''
+        path = '/ledarray_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "single"
+        }
+        self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)        
+        
+    
+    def get_LEDMatrix(self, timeout=1):
+        '''
+        get information about pinnumber and number of leds
+        '''
+        path = "/ledarray_get"
+        payload = {
+            "task":path
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r       
+    
+    def set_LEDMatrix(self, LED_ARRAY_PIN=1, LED_N_X=8, LED_N_Y=8, timeout=1):
+        '''
+        set information about pinnumber and number of leds
+        '''
+        path = '/ledarray_set'
+        payload = {
+            "LED_ARRAY_PIN": intensity[0],
+            "LED_N_X": intensity[1],
+            "LED_N_Y": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "single"
+        }
+        r = self.post_json(path, payload, timeout=timeout)      
+        return r        
+
+        
+    '''
+    ##############################################################################################################################
+    MOTOR
+    ##############################################################################################################################
+    '''
+    
+    def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
+        '''
+        This tells the motor to run forever at a constant speed
+        '''
+        payload = {
+        "task":"/motor_act",
+        "speed0": np.int(speed[0]), # TODO: need a fourth axis?
+        "speed1": np.int(speed[0]),
+        "speed2": np.int(speed[1]),
+        "speed3": np.int(speed[2]),
+        "isforever": np.int(not is_stop), 
+        "isaccel":1,
+        "isstop": np.int(is_stop)
+        }
+        self.is_driving = True
+        r = self.post_json(path, payload, timeout=timeout)
+        if is_stop:
+            self.is_driving = False
+        return r
+
+    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+        '''
+        This tells the motor to run at a given speed for a specific number of steps; Multiple motors can run simultaneously
+        '''
+        if type(speed)!=list and type(speed)!=tuple  :
+            speed = (speed,speed,speed)
+
+        path = "/motor_act"
+
+        # detect change in directiongit config --global user.name "Your Name"
+        if np.sign(self.steps_last_0) != np.sign(steps[0]):
+            # we want to overshoot a bit
+            steps_0 = steps[0] + (np.sign(steps[0])*backlash[0])
+        else: steps_0 = steps[0]
+        if np.sign(self.steps_last_1) != np.sign(steps[1]):
+            # we want to overshoot a bit
+            steps_1 =  steps[1] + (np.sign(steps[1])*backlash[1])
+        else: steps_1 = steps[1]
+        if np.sign(self.steps_last_2) != np.sign(steps[2]):
+            # we want to overshoot a bit
+            steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
+        else: steps_2 = steps[2]
+
+        payload = {
+            "task":"/motor_act",
+            "pos1": np.int(steps_0),
+            "pos2": np.int(steps_1),
+            "pos3": np.int(steps_2),
+            "isblock": int(is_blocking),
+            "isabs": int(is_absolute),
+            "speed1": np.int(speed[0]),
+            "speed2": np.int(speed[1]),
+            "speed3": np.int(speed[2]),
+            "isen": np.int(is_enabled)
+        }
+        self.steps_last_0 = steps_0
+        self.steps_last_1 = steps_1
+        self.steps_last_2 = steps_2
+        self.is_driving = True
+        r = self.post_json(path, payload, timeout=timeout)
+        self.is_driving = False
+        return r
+    
+    
+    def set_motor_maxSpeed(self, axis=0, maxSpeed=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "maxspeed": maxSpeed
+        }
+        r = self.post_json(path, payload)
+        return r
+        
+    def set_motor_currentPosition(self, axis=0, currentPosition=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "currentposition": currentPosition
+        }
+        r = self.post_json(path, payload)
+        return r
+    
+    def set_motor_acceleration(self, axis=0, acceleration=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "acceleration": acceleration
+        }
+        r = self.post_json(path, payload)
+        return r
+    
+    def set_motor_pinconfig(self, axis=0, pinstep=0, pindir=0):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "pinstep": pinstep,
+            "pindir": pindir
+        }
+        r = self.post_json(path, payload)
+        return r
+  
+    def set_motor_enable(self, is_enable=1):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "isen": is_enable
+        }
+        r = self.post_json(path, payload)
+        return r
+
+    def set_motor_enable(self, axis=0, sign=1):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "sign": sign
+        }
+        r = self.post_json(path, payload)
+        return r      
+
+        
+    '''
+    ##############################################################################################################################
+    Sensors
+    ##############################################################################################################################
+    '''
+    def read_sensor(self, sensorID=0, NAvg=100):
+        path = "/readsensor_act"
+        payload = {
+            "readsensorID": sensorID,
+            "N_sensor_avg": NAvg,
+        }
+        r = self.post_json(path, payload)
+        try:
+            sensorValue = r['sensorValue']
+        except:
+            sensorValue = None
+        return sensorValue
+    # TODO: Get/SET methods missing
+    '''
+    ##############################################################################################################################
+    LEDs
+    ##############################################################################################################################
+    '''    
     def set_led(self, colour=(0,0,0)):
         payload = {
             "red": colour[0],
@@ -317,6 +669,16 @@ class ESP32Client(object):
 
         payload = {
             "task":path
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+    def set_state(self, debug=False, timeout=1):
+        path = "/state_set"
+
+        payload = {
+            "task":path,
+            "isdebug":int(debug)
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r

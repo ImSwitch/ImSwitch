@@ -26,9 +26,25 @@ class SQUIDStageManager(PositionerManager):
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
         self._position[axis] = self._position[axis] + value
+        
+    def homing(self):
+        self._rs232manager._squid.home_xy()
 
     def setPosition(self, value, axis):
         self._position[axis] = value
+
+    def getPosition(self):
+        posX,posY,posZ,posTheta = self._rs232manager._squid.get_pos() 
+        self._position["X"]=posX
+        self._position["Y"]=posY
+        self._position["Z"]=posZ
+        return self._position
+        
+    def is_busy(self):
+        return self._rs232manager._squid.is_busy()
+        
+        
+    
 
     def closeEvent(self):
         self._rs232manager._squid.close()

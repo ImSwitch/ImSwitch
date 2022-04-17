@@ -34,28 +34,62 @@ class SquidStageScanController(LiveUpdatedController):
 
         # Connect SquidStageScanWidget signals
         
-        # select detectors
-        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         
         # connect camera and stage
-        #self.camera = self._setupInfo.autofocus.camera
-        #self._master.detectorsManager[self.camera].startAcquisition()
+        self.cameraName = self._master.detectorsManager.getAllDeviceNames()[0]
+        self.camera = self._master.detectorsManager[self.cameraName]
+        
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
 
         # Connect buttons
-        #self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
-        # start measurment thread (pressure)
+        self.isScanRunning = False
+        self.isHoming = False
+        self.isHomed = False
+        self._widget.btnStart.clicked.connect(self.startScan)
+        self._widget.btnHome.clicked.connect(self.startHoming)
+        
+        self.stageCoordinates(self._widget.getCoordinates())
+        self.pixelSize(self._widget.getPixelsize())
+        self.coordinates = (0,0,0,0)
         
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()        
         if hasattr(super(), '__del__'):
             super().__del__()
+            
+    def startHoming(self):
+        self._logger.debug("Start Homing")
+        self.imageComputationWorker.startHoming(self.positioner)
+        
+    def startScan(self):
+        # Update values
+        self.stageCoordinates(self._widget.getCoordinates())
+        self.pixelSize(self._widget.getPixelsize())
+
+        # start/stop scan
+        if not self.isScanRunning:
+            self._logger.debug("Start Scanning")
+            self.imageComputationWorker.startScan(self.positioner,self.camera,self.coordinates, self.pixelsize)
+            self.isScanRunning = True
+        else:
+            self._logger.debug("Stop Scanning")
+            self.imageComputationWorker.stopScan(self.positioner)
+            self.isScanRunning = False
+    
+    def stageCoordinates(self, coordinates):
+        self._logger.debug("Coordinates: "+str(coordinates))
+        self.coordinates = np.float32(coordinates)
+        
+    def pixelSize(self, pixelsize):
+        self._logger.debug("pixelsize: "+str(pixelsize))
+        self.pixelsize = pixelsize
 
     def displayImage(self, im):
         """ Displays the image in the view. """
         self._widget.setImage(im)
+        
     '''
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -74,9 +108,7 @@ class SquidStageScanController(LiveUpdatedController):
         self.updateRate = updateRate
         self.it = 0
     '''
-    
 
-            
     class SquidStageScanImageComputationWorker(Worker):
         sigSquidStageScanImageComputed = Signal(np.ndarray)
 
@@ -87,12 +119,70 @@ class SquidStageScanController(LiveUpdatedController):
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
             self.pixelsize = 1
-
-
+            self.stopScan = False
+            self.intensityMap = []
 
         def computeSquidStageScanImage(self):
             """ Compute SquidStageScan of an image. """
             pass
+        
+        def imageComputationThread(self):
+            pass
+
+        def startHoming(self, positioner):
+            positioner.homing()
+            self.isHomed = False
+            while(positioner.is_busy()):
+                time.sleep(.1)
+                # wait until we arrive at the home position
+            self.isHomed = True
+
+        def startScan(self, positioner, detector, coordinates, pixelsize):
+            self.intensityMap = []
+            self.stopScan = False
+            xmin,xmax,ymin,ymax = coordinates[0],coordinates[1],coordinates[2],coordinates[3] # * not working?
+            self.currentPosition = positioner.getPosition() # xyz
+            # detector determine 
+            # detector.width
+            detector.startAcquisition()
+            NPixelY = detector.shape[-1]
+            fovY = float(pixelsize)*NPixelY
+            NPixelY = 1000
+            NScansY = int((ymax-ymin)//int(fovY))
+
+            mCoordY = 0            
+            for iScan in range(NScansY):
+                # we want to scan the entire FOV spanned by min/max x/y 
+                # snake scan
+                
+                # move as fast as you can
+                positioner.move(mCoordY,"Y")
+                if iScan%2:
+                    mCoordX = xmin
+                else:
+                    mCoordX = xmax
+                positioner.move(mCoordX,"X")
+                self._logger.debug("X/Y: "+str((mCoordX,mCoordY)))
+                
+                while positioner.is_busy:
+                    # capture images and assign them to xy locations
+                    # while the stage is scanning at fullspeed
+                    if self.stopScan:
+                        break
+                    mMeanImage = np.mean(detector.getLatestFrame())
+                    mPos = positioner.getPosition()
+                    self.intensityMap.append((mMeanImage, mPos))
+
+                mCoordY += (fovY)
+                
+            positioner.homing()
+
+        def stopScan(self):
+            self.stopScan = True
+
+            
+            
+            
         '''
             try:
                 if self._numQueuedImages > 1:

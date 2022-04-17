@@ -125,7 +125,8 @@ class HoliSheetController(LiveUpdatedController):
 
     def __del__(self):
         self.imageComputationThread.quit()
-        self.imageComputationThread.wait()        
+        self.imageComputationThread.wait()   
+        self.is_measure=False     
         if hasattr(super(), '__del__'):
             super().__del__()
 

@@ -51,9 +51,9 @@ class SquidStageScanWidget(NapariHybridWidget):
         
         self.editStartX = QtWidgets.QLineEdit('0.0')
         self.editStartY = QtWidgets.QLineEdit('0.0')
-        self.editStopX = QtWidgets.QLineEdit('0.0')
-        self.editStopY = QtWidgets.QLineEdit('0.0')
-        self.editPixelsize = QtWidgets.QLineEdit('0.0')
+        self.editStopX = QtWidgets.QLineEdit('1000.0')
+        self.editStopY = QtWidgets.QLineEdit('1000.0')
+        self.editPixelsize = QtWidgets.QLineEdit('1.0')
         
         self.btnStart = guitools.BetterPushButton('Start Scan')
         self.btnHome = guitools.BetterPushButton('Home')
@@ -105,6 +105,10 @@ class SquidStageScanWidget(NapariHybridWidget):
         
     def updateRotationSpeed(self, speed):
         self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp\s]')
+
+    def getPixelsize(self):
+        self.pixelsize=self.editPixelsize.text()
+        return self.pixelsize
 
     def getCoordinates(self):
         x1=self.editStartX.text()

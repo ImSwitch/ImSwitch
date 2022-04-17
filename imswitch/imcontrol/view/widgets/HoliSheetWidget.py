@@ -1,5 +1,6 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
+import pyqtgraph as pg
 
 from imswitch.imcommon.view.guitools import pyqtgraphtools
 from imswitch.imcontrol.view import guitools
@@ -86,6 +87,15 @@ class HoliSheetWidget(NapariHybridWidget):
         self.sliderRotationSpeed.setTickInterval(tickIntervalRotation)
         self.sliderRotationSpeed.setSingleStep(singleStepRotation)
         self.sliderRotationSpeed.setValue(0)
+        
+        # Focus lock graph
+        self.pressureSenseGraph = pg.GraphicsLayoutWidget()
+        self.pressureSenseGraph.setAntialiasing(True)
+        self.pressurePlot = self.pressureSenseGraph.addPlot(row=1, col=0)
+        self.pressurePlot.setLabels(bottom=('Time', 's'), left=('Pressure', 'psi'))
+        self.pressurePlot.showGrid(x=True, y=True)
+        # update this (self.pressurePlotCurve.setData(X,Y)) with update(focusSignal) function
+        self.pressurePlotCurve = self.pressurePlot.plot(pen='y')
 
         # Add elements to GridLayout
         grid = QtWidgets.QGridLayout()
@@ -106,6 +116,7 @@ class HoliSheetWidget(NapariHybridWidget):
         grid.addWidget(self.labelPumpPressure, 2, 3, 1, 1)
         grid.addWidget(self.labelRate, 3, 2, 1, 1)
         grid.addWidget(self.lineRate, 3, 3, 1, 1)
+        grid.addWidget(self.pressureSenseGraph, 4, 0, 1, 4)
 
         # grid.setRowMinimumHeight(0, 300)
 

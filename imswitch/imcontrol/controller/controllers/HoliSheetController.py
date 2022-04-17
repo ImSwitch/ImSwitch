@@ -2,6 +2,7 @@ import numpy as np
 import NanoImagingPack as nip
 import time
 import threading
+import pyqtgraph.ptime as ptime
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
@@ -43,6 +44,11 @@ class HoliSheetController(LiveUpdatedController):
         self.T_measure = 0.1 # sampling rate of measure pressure
         self.is_measure = True
         self.pressure = 0
+        self.buffer = 40
+        self.currPoint = 0
+        self.setPointData = np.zeros(self.buffer)
+        self.timeData = np.zeros(self.buffer)
+        self.startTime = ptime.time()
         
         # Motor properties
         self.speedPump = .01 # steps/s
@@ -119,7 +125,8 @@ class HoliSheetController(LiveUpdatedController):
 
     def __del__(self):
         self.imageComputationThread.quit()
-        self.imageComputationThread.wait()        
+        self.imageComputationThread.wait()   
+        self.is_measure=False     
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -162,6 +169,17 @@ class HoliSheetController(LiveUpdatedController):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
+        
+    def updateSetPointData(self):
+        if self.currPoint < self.buffer:
+            self.setPointData[self.currPoint] = self.pressure
+            self.timeData[self.currPoint] = ptime.time() - self.startTime
+        else:
+            self.setPointData[:-1] = self.setPointData[1:]
+            self.setPointData[-1] = self.pressure
+            self.timeData[:-1] = self.timeData[1:]
+            self.timeData[-1] = ptime.time() - self.startTime
+        self.currPoint += 1
     
     def measurement_grabber(self):
         while(self.is_measure):
@@ -172,6 +190,16 @@ class HoliSheetController(LiveUpdatedController):
             except Exception as e:
                 self._logger.error(e)
             time.sleep(self.T_measure)
+            
+            
+            # update plot
+            self.updateSetPointData()
+            if self.currPoint < self.buffer:
+                self._widget.pressurePlotCurve.setData(self.timeData[1:self.currPoint],
+                                                self.setPointData[1:self.currPoint])
+            else:
+                self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData)
+
 
     def start_measurement_thread(self):
         self.measurement_thread = threading.Thread(target=self.measurement_grabber, args=())

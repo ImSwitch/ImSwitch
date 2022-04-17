@@ -130,9 +130,10 @@ class ESP32Client(object):
             self.is_serial = True
 
             if IS_IMSWITCH: self.__logger.debug(f'Searching for SERIAL devices...')
-            self.is_connected = True # attempting to initiliaze connection
+            self.is_connected = False
             try:
                 self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
+                self.is_connected = True 
                 time.sleep(2) # let it warm up
             except:
                 # try to find the PORT
@@ -150,7 +151,7 @@ class ESP32Client(object):
                             _state = self.get_state()
                             _identifier_name = _state["identifier_name"]
                             self.set_state(debug=False)
-                            if True: # _identifier_name == "UC2_Feather":
+                            if _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
                                 return
 

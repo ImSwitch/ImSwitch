@@ -145,10 +145,10 @@ class ESP32Client(object):
                     if iport.device.startswith(portslist) or iport.description.find(descriptionlist) != -1:
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+                            self.is_connected = True # attempting to initiliaze connection
                             time.sleep(2)
                             _state = self.get_state()
                             _identifier_name = _state["identifier_name"]
-                            self.is_connected = True # attempting to initiliaze connection
                             if True: # _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
                                 return
@@ -411,8 +411,9 @@ class ESP32Client(object):
 
 
     def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
+        path = "/motor_act"
         payload = {
-            "task":"/motor_act",
+            "task":path,
             "speed0": np.int(speed[0]), # TODO: need a fourth axis?
             "speed1": np.int(speed[0]),
             "speed2": np.int(speed[1]),
@@ -452,7 +453,7 @@ class ESP32Client(object):
         else: steps_2 = steps[2]
 
         payload = {
-            "task":"/motor_act",
+            "task":path,
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),

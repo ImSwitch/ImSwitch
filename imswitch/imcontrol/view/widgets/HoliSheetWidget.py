@@ -56,8 +56,8 @@ class HoliSheetWidget(NapariHybridWidget):
         
         # Slider to set the focus value
         valueDecimalsPump = 1
-        valueRangePump = (0,100)
-        tickIntervalPump = 5
+        valueRangePump = (-100,100)
+        tickIntervalPump = 1
         singleStepPump = 1
         self.sliderPumpSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimalsPump)
@@ -72,9 +72,9 @@ class HoliSheetWidget(NapariHybridWidget):
 
         # Slider to set the focus value
         valueDecimalsRotation = 1
-        valueRangeRotation = (0,100)
-        tickIntervalRotation = 5
-        singleStepRotation = 1
+        valueRangeRotation = (0,10000)
+        tickIntervalRotation = 200
+        singleStepRotation = 200
         self.sliderRotationSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimalsRotation)
         self.sliderRotationSpeed.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -123,6 +123,12 @@ class HoliSheetWidget(NapariHybridWidget):
             lambda: self.sigUpdateRateChanged.emit(self.getUpdateRate())
         )
         self.layer = None
+
+    def updatePumpSpeed(self, speed):
+        self.labelPumpSpeed.setText(f'Speed Pump {speed} [stp\s]')
+
+    def updateRotationSpeed(self, speed):
+        self.labelRotationSpeed.setText(f'Speed Rotation {speed} [stp\s]')
 
     def getWvl(self):
         return float(self.wvlEdit.text())

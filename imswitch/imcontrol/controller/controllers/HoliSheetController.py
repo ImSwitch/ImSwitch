@@ -96,13 +96,15 @@ class HoliSheetController(LiveUpdatedController):
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
         self.speedPump = int(value)
-        self.positioner.moveForever(speed=(self.speedRotation,self.speedPump,0),is_stop=False)
+        self._widget.updatePumpSpeed(self.speedPump)
+        self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def valueRotationSpeedChanged(self, value):
         """ Change magnitude. """
         self.speedRotation = int(value)
-        self.tRoundtripRotation = self.stepsPerRotation/self.speedRotation # in s
-        self.positioner.moveForever(speed=(self.speedRotation,self.speedPump,0),is_stop=False)
+        self._widget.updateRotationSpeed(self.speedPump)
+        self.tRoundtripRotation = self.stepsPerRotation/(0.001+self.speedRotation) # in s        
+        self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def __del__(self):
         self.imageComputationThread.quit()

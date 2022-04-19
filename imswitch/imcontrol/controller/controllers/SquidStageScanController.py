@@ -132,8 +132,9 @@ class SquidStageScanController(LiveUpdatedController):
         def startHoming(self, positioner):
             positioner.homing()
             self.isHomed = False
-            while(positioner.is_busy()):
+            while(not self.isHomed):
                 time.sleep(.1)
+                self.isHomed = not positioner.is_busy()
                 # wait until we arrive at the home position
             self.isHomed = True
 
@@ -148,7 +149,7 @@ class SquidStageScanController(LiveUpdatedController):
             NPixelY = detector.shape[-1]
             fovY = float(pixelsize)*NPixelY
             NPixelY = 1000
-            NScansY = int((ymax-ymin)//int(fovY))
+            NScansY = int((ymax-ymin)//int(fovY))+1
 
             mCoordY = 0            
             for iScan in range(NScansY):
@@ -164,7 +165,7 @@ class SquidStageScanController(LiveUpdatedController):
                 positioner.move(mCoordX,"X")
                 self._logger.debug("X/Y: "+str((mCoordX,mCoordY)))
                 
-                while positioner.is_busy:
+                while positioner.is_busy():
                     # capture images and assign them to xy locations
                     # while the stage is scanning at fullspeed
                     if self.stopScan:

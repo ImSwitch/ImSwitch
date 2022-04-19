@@ -15,7 +15,7 @@ class SQUIDStageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
-    def move(self, value, axis):
+    def move(self, value, axis, speed=1000):
         if axis == 'X':
             self._rs232manager._squid.move_x_usteps(int(value))
         elif axis == 'Y':
@@ -41,10 +41,11 @@ class SQUIDStageManager(PositionerManager):
         return self._position
         
     def is_busy(self):
-        return self._rs232manager._squid.is_busy()
-        
-        
-    
+        return self._rs232manager._squid.is_busy()      
+
+    def get_abs(self, axis=1):
+        self._position = self._rs232manager._squid.get_pos()
+        return self._position["Z"]
 
     def closeEvent(self):
         self._rs232manager._squid.close()

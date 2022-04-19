@@ -113,7 +113,7 @@ class HoliSheetWidget(NapariHybridWidget):
         grid.addWidget(self.labelRotationSpeed, 1, 2, 1, 1)
         grid.addWidget(self.sliderRotationSpeed, 1, 3, 1, 1)
         grid.addWidget(self.snapRotationButton, 2, 2, 1, 1)
-        grid.addWidget(self.labelPumpPressure, 3, 3, 1, 1)
+        grid.addWidget(self.labelPumpPressure, 2, 3, 1, 1)
         grid.addWidget(self.labelRate, 3, 2, 1, 1)
         grid.addWidget(self.lineRate, 3, 3, 1, 1)
         grid.addWidget(self.pressureSenseGraph, 4, 0, 1, 4)

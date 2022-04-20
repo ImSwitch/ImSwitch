@@ -20,7 +20,11 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
-        self._speed = 0
+
+        initialSpeed={
+            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._speed = initialSpeed
 
         self.__name = name
 

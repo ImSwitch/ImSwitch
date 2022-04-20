@@ -20,6 +20,7 @@ class ESP32StageManager(PositionerManager):
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
+        self._speed = 1000
 
     def move(self, value=0, axis="X", is_absolute=False):
         if axis == 'X':
@@ -50,7 +51,7 @@ class ESP32StageManager(PositionerManager):
         self.is_enabled = is_enabled
 
     def setSpeed(self, speed):
-        self.speed = speed
+        self._speed = speed
 
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness

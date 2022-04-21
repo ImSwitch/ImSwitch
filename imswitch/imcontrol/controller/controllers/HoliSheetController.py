@@ -115,11 +115,21 @@ class HoliSheetController(LiveUpdatedController):
         self.dz = magnitude*1e-3
         self.imageComputationWorker.set_dz(self.dz)
 
+
+    # Hard-coded PID values..
+    self.Kp = 10
+    self.Ki = 1
+    self.Kd = 0.1
+
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
         self.controlTarget = int(value)+500
-        
+
+        # we actually set the target value with this slider 
         self._widget.updatePumpPressure(self.speedPump)
+        self.positioner.setupPIDcontroller(PIDactive=1, Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
+        # Motor speed will be carried out automatically on the board
+        #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
         #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def valueRotationSpeedChanged(self, value):
@@ -214,27 +224,6 @@ class HoliSheetController(LiveUpdatedController):
         return stepperOut, cP, cI, cD
     
     def measurement_grabber(self):
-        
-        # Controller-related settings
-        allMeasurements = []
-        currentMeasurement = 0
-        nBuffer = 100
-        TMeasure = .01
-        allMeasurements = collections.deque(maxlen=nBuffer)
-        motorValAvg = collections.deque(maxlen=1)
-        error = 0
-        self.errorRunSum = 0
-        self.previousError = 0
-        stepperOut = 1
-        maxError = 5.0
-        sensorOffset = 0
-        stepperMaxValue = 2000
-
-        # Hard-coded PID values..
-        Kp = 32500/500;
-        Ki = 4/1000;
-        Kd = 5000/1000;
-
         while(self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
@@ -242,16 +231,7 @@ class HoliSheetController(LiveUpdatedController):
                 self._widget.updatePumpPressure(self.pressure)
             except Exception as e:
                 self._logger.error(e)
-            time.sleep(self.T_measure)
-
-            currentMeasurement = self.pressure
-            if currentMeasurement is not None:
-                #print(currentMeasurement)
-                motorValue, cP, cI, cD = self.returnControlValue(self.controlTarget, currentMeasurement, Kp, Ki, Kd)
-                self.speedPump = motorValue
-                self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
-                allMeasurements.append((currentMeasurement,motorValue, cP, cI, cD))
-            
+ 
             # update plot
             self.updateSetPointData()
             if self.currPoint < self.buffer:
@@ -259,6 +239,7 @@ class HoliSheetController(LiveUpdatedController):
                                                 self.setPointData[1:self.currPoint])
             else:
                 self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData)
+           time.sleep(self.T_measure)
 
 
     def start_measurement_thread(self):

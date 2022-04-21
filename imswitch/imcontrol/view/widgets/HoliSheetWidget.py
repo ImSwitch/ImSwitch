@@ -57,9 +57,9 @@ class HoliSheetWidget(NapariHybridWidget):
         self.sliderFocus.setValue(0)
         
         # Slider to set the focus value
-        valueDecimalsPump = 1
-        valueRangePump = (-100,100)
-        tickIntervalPump = 1
+        valueDecimalsPump = 10
+        valueRangePump = (0,1000)
+        tickIntervalPump = 10
         singleStepPump = 1
         self.sliderPumpSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimalsPump)

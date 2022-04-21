@@ -6,7 +6,6 @@ PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
 
 
-
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
@@ -20,7 +19,6 @@ class ESP32StageManager(PositionerManager):
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
-        self._speed = 1000
 
     def move(self, value=0, axis="X", is_absolute=False):
         if axis == 'X':

@@ -3,11 +3,13 @@ import NanoImagingPack as nip
 import time
 import threading
 import pyqtgraph.ptime as ptime
+import collections
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
+
 
 
 class HoliSheetController(LiveUpdatedController):
@@ -186,6 +188,9 @@ class HoliSheetController(LiveUpdatedController):
         self.currPoint += 1
     
     def returnControlValue(self, controlTarget=500, sensorValue=1, Kp=1, Ki=1, Kd=1):
+        sensorOffset = 0
+        maxError =1 
+        stepperMaxValue = 2500
         error = (controlTarget - (sensorValue-sensorOffset)) / maxError
         cP = Kp * error
         cI = Ki * self.errorRunSum
@@ -206,7 +211,7 @@ class HoliSheetController(LiveUpdatedController):
         self.previousError = error
         
         #print(f"P{cP}, I{cI}, D{cD}, self.errorRunSum{self.errorRunSum}, self.previousError{self.previousError}, stepperOut{stepperOut}, PID{PID}")
-        return stepperOut
+        return stepperOut, cP, cI, cD
     
     def measurement_grabber(self):
         
@@ -243,11 +248,9 @@ class HoliSheetController(LiveUpdatedController):
             if currentMeasurement is not None:
                 #print(currentMeasurement)
                 motorValue, cP, cI, cD = self.returnControlValue(self.controlTarget, currentMeasurement, Kp, Ki, Kd)
-                motorSpeeds.append(motorValue)
-                motorValAvg = np.array(motorSpeeds).mean()
-                self.speedPump = motorValAvg
+                self.speedPump = motorValue
                 self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
-                allMeasurements.append((currentMeasurement,motorValAvg, cP, cI, cD))
+                allMeasurements.append((currentMeasurement,motorValue, cP, cI, cD))
             
             # update plot
             self.updateSetPointData()

@@ -50,6 +50,9 @@ class HoliSheetController(LiveUpdatedController):
         self.timeData = np.zeros(self.buffer)
         self.startTime = ptime.time()
         
+        # settings for the controller
+        self.controlTarget = 500
+        
         # Motor properties
         self.speedPump = .01 # steps/s
         self.speedRotation = .01 # steps/s
@@ -112,9 +115,10 @@ class HoliSheetController(LiveUpdatedController):
 
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
-        self.speedPump = int(value)
+        self.controlTarget = int(value)+500
+        
         self._widget.updatePumpPressure(self.speedPump)
-        self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
+        #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def valueRotationSpeedChanged(self, value):
         """ Change magnitude. """
@@ -181,7 +185,51 @@ class HoliSheetController(LiveUpdatedController):
             self.timeData[-1] = ptime.time() - self.startTime
         self.currPoint += 1
     
+    def returnControlValue(self, controlTarget=500, sensorValue=1, Kp=1, Ki=1, Kd=1):
+        error = (controlTarget - (sensorValue-sensorOffset)) / maxError
+        cP = Kp * error
+        cI = Ki * self.errorRunSum
+        cD = Kd * (error - self.previousError)
+        PID = cP+cI+cD
+        
+        PID = cP + cI + cD
+    
+        stepperOut = PID
+
+        if (stepperOut > stepperMaxValue):
+            stepperOut = stepperMaxValue
+            
+        if (stepperOut < -stepperMaxValue):
+            stepperOut = -stepperMaxValue
+            
+        self.errorRunSum = self.errorRunSum + error
+        self.previousError = error
+        
+        #print(f"P{cP}, I{cI}, D{cD}, self.errorRunSum{self.errorRunSum}, self.previousError{self.previousError}, stepperOut{stepperOut}, PID{PID}")
+        return stepperOut
+    
     def measurement_grabber(self):
+        
+        # Controller-related settings
+        allMeasurements = []
+        currentMeasurement = 0
+        nBuffer = 100
+        TMeasure = .01
+        allMeasurements = collections.deque(maxlen=nBuffer)
+        motorValAvg = collections.deque(maxlen=1)
+        error = 0
+        self.errorRunSum = 0
+        self.previousError = 0
+        stepperOut = 1
+        maxError = 5.0
+        sensorOffset = 0
+        stepperMaxValue = 2000
+
+        # Hard-coded PID values..
+        Kp = 32500/500;
+        Ki = 4/1000;
+        Kd = 5000/1000;
+
         while(self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
@@ -190,7 +238,16 @@ class HoliSheetController(LiveUpdatedController):
             except Exception as e:
                 self._logger.error(e)
             time.sleep(self.T_measure)
-            
+
+            currentMeasurement = self.pressure
+            if currentMeasurement is not None:
+                #print(currentMeasurement)
+                motorValue, cP, cI, cD = self.returnControlValue(self.controlTarget, currentMeasurement, Kp, Ki, Kd)
+                motorSpeeds.append(motorValue)
+                motorValAvg = np.array(motorSpeeds).mean()
+                self.speedPump = motorValAvg
+                self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
+                allMeasurements.append((currentMeasurement,motorValAvg, cP, cI, cD))
             
             # update plot
             self.updateSetPointData()
@@ -204,7 +261,6 @@ class HoliSheetController(LiveUpdatedController):
     def start_measurement_thread(self):
         self.measurement_thread = threading.Thread(target=self.measurement_grabber, args=())
         self.measurement_thread.start()
-            
             
     class HoliSheetImageComputationWorker(Worker):
         sigHoliSheetImageComputed = Signal(np.ndarray)

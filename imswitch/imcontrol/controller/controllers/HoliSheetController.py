@@ -23,24 +23,24 @@ class HoliSheetController(LiveUpdatedController):
         self.mWavelength = 488*1e-9
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
-        self.pixelsize = 3.45*1e-6 
+        self.pixelsize = 3.45*1e-6
         self.PSFpara = nip.PSF_PARAMS()
         self.PSFpara.wavelength = self.mWavelength
         self.PSFpara.NA=self.NA
         self.PSFpara.pixelsize = self.pixelsize
 
         self.dz = 40*1e-3
-        
+
         # Parameters for monitoring the pressure
         self.T_measure = 0.1 # sampling rate of measure pressure
         self.is_measure = True
         self.pressure = 0
-        self.buffer = 100   
+        self.buffer = 100
         self.currPoint = 0
         self.setPointData = np.zeros((self.buffer,2))
         self.timeData = np.zeros(self.buffer)
         self.startTime = ptime.time()
-        
+
         # settings for the controller
         self.controlTarget = 500
         # Hard-coded PID values..
@@ -48,7 +48,7 @@ class HoliSheetController(LiveUpdatedController):
         self.Ki = 0.1
         self.Kd = .5
         self.PIDenabled = False
-        
+
         # Motor properties
         self.speedPump = .01 # steps/s
         self.speedRotation = .01 # steps/s
@@ -61,7 +61,7 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationWorker.set_dz(self.dz)
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
         self.imageComputationWorker.sigHoliSheetImageComputed.connect(self.displayImage)
-   
+
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
         self.sigImageReceived.connect(self.imageComputationWorker.computeHoliSheetImage)
@@ -72,7 +72,7 @@ class HoliSheetController(LiveUpdatedController):
 
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        
+
         try:
             if allDetectorNames[0].lower().find("light"):
                 self.detectorLightsheetName = allDetectorNames[0]
@@ -81,8 +81,8 @@ class HoliSheetController(LiveUpdatedController):
                 self.detectorLightsheetName = allDetectorNames[1]
                 self.detectorHoloName = allDetectorNames[0]
         except Exception as e:
-            self._logger.debug("No camera found - in debug mode?")   
-        
+            self._logger.debug("No camera found - in debug mode?")
+
         # connect camera and stage
         #self.camera = self._setupInfo.autofocus.camera
         #self._master.detectorsManager[self.camera].startAcquisition()
@@ -105,10 +105,10 @@ class HoliSheetController(LiveUpdatedController):
         # Connect buttons
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
         # start measurment thread (pressure)
-        
+
         self.measurementThread = threading.Thread(target=self.measurementGrabber, args=())
         self.measurementThread.start()
-        
+
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3
@@ -118,7 +118,7 @@ class HoliSheetController(LiveUpdatedController):
         """ Change magnitude. """
         self.controlTarget = int(value)
 
-        # we actually set the target value with this slider 
+        # we actually set the target value with this slider
         self._widget.updatePumpSpeed(self.controlTarget)
         self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
         # Motor speed will be carried out automatically on the board
@@ -129,13 +129,13 @@ class HoliSheetController(LiveUpdatedController):
         """ Change magnitude. """
         self.speedRotation = int(value)
         self._widget.updateRotationSpeed(self.speedPump)
-        self.tRoundtripRotation = self.stepsPerRotation/(0.001+self.speedRotation) # in s        
+        self.tRoundtripRotation = self.stepsPerRotation/(0.001+self.speedRotation) # in s
         self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
 
     def __del__(self):
         self.imageComputationThread.quit()
-        self.imageComputationThread.wait()   
-        self.is_measure=False     
+        self.imageComputationThread.wait()
+        self.is_measure=False
         self.measurementThread.quit()
         if hasattr(super(), '__del__'):
             super().__del__()
@@ -148,12 +148,12 @@ class HoliSheetController(LiveUpdatedController):
         self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
-    
+
     def setPID(self, enabled):
         """ Show or hide HoliSheet. """
         self.PIDenabled = enabled
         self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
-        
+
     def captureFullRotation(self):
         # TODO: Here we want to capture frames and display that in Napari?
         # TODO: better do recording not single frame acquisition?
@@ -184,12 +184,12 @@ class HoliSheetController(LiveUpdatedController):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
-        
+
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint,0] = self.pressure
             self.setPointData[self.currPoint,1] = self.controlTarget
-            
+
             self.timeData[self.currPoint] = ptime.time() - self.startTime
         else:
             self.setPointData[:-1,0] = self.setPointData[1:,0]
@@ -208,7 +208,7 @@ class HoliSheetController(LiveUpdatedController):
                 self._widget.updatePumpPressure(self.pressure)
             except Exception as e:
                 self._logger.error(e)
- 
+
             # update plot
             self.updateSetPointData()
             if self.currPoint < self.buffer:
@@ -224,7 +224,7 @@ class HoliSheetController(LiveUpdatedController):
 
         def __init__(self):
             super().__init__()
-            
+
             self._logger = initLogger(self, tryInheritParent=False)
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
@@ -237,7 +237,7 @@ class HoliSheetController(LiveUpdatedController):
             mimage = nip.image(np.sqrt(image))
             mimage = nip.extract(mimage, [N_subroi,N_subroi])
             mimage.pixelsize=(pixelsize, pixelsize)
-            mpupil = nip.ft(mimage)         
+            mpupil = nip.ft(mimage)
             #nip.__make_propagator__(mpupil, PSFpara, doDampPupil=True, shape=mpupil.shape, distZ=dz)
             cos_alpha, sin_alpha = nip.cosSinAlpha(mimage, PSFpara)
             defocus = self.dz #  defocus factor
@@ -251,7 +251,7 @@ class HoliSheetController(LiveUpdatedController):
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
                 HoliSheetrecon = np.flip(np.abs(self.reconHoliSheet(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
-                
+
                 self.sigHoliSheetImageComputed.emit(np.array(HoliSheetrecon))
             finally:
                 self._numQueuedImagesMutex.lock()
@@ -267,7 +267,7 @@ class HoliSheetController(LiveUpdatedController):
 
         def set_dz(self, dz):
             self.dz = dz
-        
+
         def set_PSFpara(self, PSFpara):
             self.PSFpara = PSFpara
 

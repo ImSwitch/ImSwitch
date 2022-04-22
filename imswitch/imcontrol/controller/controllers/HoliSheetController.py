@@ -20,21 +20,10 @@ class HoliSheetController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self, tryInheritParent=False)
-        
-        self.updateRate = 10
-        self.it = 0
-        self.init = False
-        self.showPos = False
-
-        # reconstruction related settings
-        #TODO: Make parameters adaptable from Plugin
-        self.valueRangeMin=0
-        self.valueRangeMax=0
-        self.pixelsize = 3.45*1e-6   
         self.mWavelength = 488*1e-9
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
-
+        self.pixelsize = 3.45*1e-6 
         self.PSFpara = nip.PSF_PARAMS()
         self.PSFpara.wavelength = self.mWavelength
         self.PSFpara.NA=self.NA
@@ -46,14 +35,19 @@ class HoliSheetController(LiveUpdatedController):
         self.T_measure = 0.1 # sampling rate of measure pressure
         self.is_measure = True
         self.pressure = 0
-        self.buffer = 40
+        self.buffer = 100   
         self.currPoint = 0
-        self.setPointData = np.zeros(self.buffer)
+        self.setPointData = np.zeros((self.buffer,2))
         self.timeData = np.zeros(self.buffer)
         self.startTime = ptime.time()
         
         # settings for the controller
         self.controlTarget = 500
+        # Hard-coded PID values..
+        self.Kp = 5
+        self.Ki = 0.1
+        self.Kd = .5
+        self.PIDenabled = False
         
         # Motor properties
         self.speedPump = .01 # steps/s
@@ -76,16 +70,6 @@ class HoliSheetController(LiveUpdatedController):
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect HoliSheetWidget signals
-        self._widget.sigShowToggled.connect(self.setShowHoliSheet)
-        self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigSliderFocusValueChanged.connect(self.valueFocusChanged)
-        self._widget.sigSliderPumpSpeedValueChanged.connect(self.valuePumpSpeedChanged)
-        self._widget.sigSliderRotationSpeedValueChanged.connect(self.valueRotationSpeedChanged)
-
-        self.changeRate(self._widget.getUpdateRate())
-        self.setShowHoliSheet(self._widget.getShowHoliSheetChecked())
-        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         
@@ -105,6 +89,19 @@ class HoliSheetController(LiveUpdatedController):
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
 
+        # Connect HoliSheetWidget signals
+        self._widget.sigShowToggled.connect(self.setShowHoliSheet)
+        self._widget.sigPIDToggled.connect(self.setPID)
+        self._widget.sigUpdateRateChanged.connect(self.changeRate)
+        self._widget.sigSliderFocusValueChanged.connect(self.valueFocusChanged)
+        self._widget.sigSliderPumpSpeedValueChanged.connect(self.valuePumpSpeedChanged)
+        self._widget.sigSliderRotationSpeedValueChanged.connect(self.valueRotationSpeedChanged)
+
+        self.changeRate(self._widget.getUpdateRate())
+        self.setShowHoliSheet(self._widget.getShowHoliSheetChecked())
+        self.setPID(self._widget.getPIDChecked())
+
+
         # Connect buttons
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
         # start measurment thread (pressure)
@@ -116,18 +113,15 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationWorker.set_dz(self.dz)
 
 
-    # Hard-coded PID values..
-    self.Kp = 10
-    self.Ki = 1
-    self.Kd = 0.1
+
 
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
-        self.controlTarget = int(value)+500
+        self.controlTarget = int(value)
 
         # we actually set the target value with this slider 
-        self._widget.updatePumpPressure(self.speedPump)
-        self.positioner.setupPIDcontroller(PIDactive=1, Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
+        self._widget.updatePumpSpeed(self.controlTarget)
+        self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
         # Motor speed will be carried out automatically on the board
         #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
         #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
@@ -154,6 +148,11 @@ class HoliSheetController(LiveUpdatedController):
         self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
+    
+    def setPID(self, enabled):
+        """ Show or hide HoliSheet. """
+        self.PIDenabled = enabled
+        self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
         
     def captureFullRotation(self):
         # TODO: Here we want to capture frames and display that in Napari?
@@ -188,43 +187,21 @@ class HoliSheetController(LiveUpdatedController):
         
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
-            self.setPointData[self.currPoint] = self.pressure
+            self.setPointData[self.currPoint,0] = self.pressure
+            self.setPointData[self.currPoint,1] = self.controlTarget
+            
             self.timeData[self.currPoint] = ptime.time() - self.startTime
         else:
-            self.setPointData[:-1] = self.setPointData[1:]
-            self.setPointData[-1] = self.pressure
+            self.setPointData[:-1,0] = self.setPointData[1:,0]
+            self.setPointData[-1,0] = self.pressure
+            self.setPointData[:-1,1] = self.setPointData[1:,1]
+            self.setPointData[-1,1] = self.controlTarget
             self.timeData[:-1] = self.timeData[1:]
             self.timeData[-1] = ptime.time() - self.startTime
         self.currPoint += 1
-    
-    def returnControlValue(self, controlTarget=500, sensorValue=1, Kp=1, Ki=1, Kd=1):
-        sensorOffset = 0
-        maxError =1 
-        stepperMaxValue = 2500
-        error = (controlTarget - (sensorValue-sensorOffset)) / maxError
-        cP = Kp * error
-        cI = Ki * self.errorRunSum
-        cD = Kd * (error - self.previousError)
-        PID = cP+cI+cD
-        
-        PID = cP + cI + cD
-    
-        stepperOut = PID
 
-        if (stepperOut > stepperMaxValue):
-            stepperOut = stepperMaxValue
-            
-        if (stepperOut < -stepperMaxValue):
-            stepperOut = -stepperMaxValue
-            
-        self.errorRunSum = self.errorRunSum + error
-        self.previousError = error
-        
-        #print(f"P{cP}, I{cI}, D{cD}, self.errorRunSum{self.errorRunSum}, self.previousError{self.previousError}, stepperOut{stepperOut}, PID{PID}")
-        return stepperOut, cP, cI, cD
-    
     def measurement_grabber(self):
-        while(self.is_measure):
+        while(False):#self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
                 #self._logger.debug("Pressure is: "+str(self.pressure))
@@ -236,10 +213,10 @@ class HoliSheetController(LiveUpdatedController):
             self.updateSetPointData()
             if self.currPoint < self.buffer:
                 self._widget.pressurePlotCurve.setData(self.timeData[1:self.currPoint],
-                                                self.setPointData[1:self.currPoint])
+                                                self.setPointData[1:self.currPoint,0])
             else:
-                self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData)
-           time.sleep(self.T_measure)
+                self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData[:,0])
+            time.sleep(self.T_measure)
 
 
     def start_measurement_thread(self):

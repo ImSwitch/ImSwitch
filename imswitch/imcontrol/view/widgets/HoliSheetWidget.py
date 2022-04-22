@@ -11,6 +11,7 @@ class HoliSheetWidget(NapariHybridWidget):
     """ Displays the HoliSheet transform of the image. """
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
+    sigPIDToggled = QtCore.Signal(bool)  # (enabled)
     sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
     sigSliderFocusValueChanged = QtCore.Signal(float)  # (value)
     sigSliderPumpSpeedValueChanged = QtCore.Signal(float)  # (value)
@@ -21,6 +22,8 @@ class HoliSheetWidget(NapariHybridWidget):
         # Graphical elements
         self.showCheck = QtWidgets.QCheckBox('Show HoliSheet')
         self.showCheck.setCheckable(True)
+        self.PIDCheck = QtWidgets.QCheckBox('Enable PID')
+        self.PIDCheck.setCheckable(True)
         self.lineRate = QtWidgets.QLineEdit('0')
         self.labelRate = QtWidgets.QLabel('Update rate')
         self.wvlLabel = QtWidgets.QLabel('Wavelength [um]')
@@ -57,9 +60,9 @@ class HoliSheetWidget(NapariHybridWidget):
         self.sliderFocus.setValue(0)
         
         # Slider to set the focus value
-        valueDecimalsPump = 10
-        valueRangePump = (0,1000)
-        tickIntervalPump = 10
+        valueDecimalsPump = 1
+        valueRangePump = (300,700)
+        tickIntervalPump = 1
         singleStepPump = 1
         self.sliderPumpSpeed = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimalsPump)
@@ -70,7 +73,7 @@ class HoliSheetWidget(NapariHybridWidget):
         self.sliderPumpSpeed.setMaximum(valueRangeMaxPump)
         self.sliderPumpSpeed.setTickInterval(tickIntervalPump)
         self.sliderPumpSpeed.setSingleStep(singleStepPump)
-        self.sliderPumpSpeed.setValue(0)
+        self.sliderPumpSpeed.setValue(500)
 
         # Slider to set the focus value
         valueDecimalsRotation = 1
@@ -117,11 +120,13 @@ class HoliSheetWidget(NapariHybridWidget):
         grid.addWidget(self.labelRate, 3, 2, 1, 1)
         grid.addWidget(self.lineRate, 3, 3, 1, 1)
         grid.addWidget(self.pressureSenseGraph, 4, 0, 1, 4)
+        grid.addWidget(self.PIDCheck, 2, 3, 1, 1)
 
         # grid.setRowMinimumHeight(0, 300)
 
         # Connect signals
         self.showCheck.toggled.connect(self.sigShowToggled)
+        self.PIDCheck.toggled.connect(self.sigPIDToggled)
         self.sliderFocus.valueChanged.connect(
             lambda value: self.sigSliderFocusValueChanged.emit(value)
         )
@@ -157,6 +162,9 @@ class HoliSheetWidget(NapariHybridWidget):
 
     def getShowHoliSheetChecked(self):
         return self.showCheck.isChecked()
+
+    def getPIDChecked(self):
+        return self.PIDCheck.isChecked()
 
     def getUpdateRate(self):
         return float(self.lineRate.text())

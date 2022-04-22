@@ -43,7 +43,7 @@ class ESP32StageManager(PositionerManager):
         return self._rs232manager._esp32.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
     def setupPIDcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
-        return self._rs232manager._esp32.set_pidcontroller(PIDactive=a, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
+        return self._rs232manager._esp32.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
 
     def moveForever(self, speed=(0,0,0), is_stop=False):
         self._rs232manager._esp32.move_forever(speed=speed, is_stop=is_stop)

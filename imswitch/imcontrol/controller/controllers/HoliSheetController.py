@@ -105,15 +105,14 @@ class HoliSheetController(LiveUpdatedController):
         # Connect buttons
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
         # start measurment thread (pressure)
-        self.start_measurement_thread()
+        
+        self.measurementThread = threading.Thread(target=self.measurementGrabber, args=())
+        self.measurementThread.start()
         
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
         self.dz = magnitude*1e-3
         self.imageComputationWorker.set_dz(self.dz)
-
-
-
 
     def valuePumpSpeedChanged(self, value):
         """ Change magnitude. """
@@ -137,6 +136,7 @@ class HoliSheetController(LiveUpdatedController):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()   
         self.is_measure=False     
+        self.measurementThread.quit()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -200,7 +200,7 @@ class HoliSheetController(LiveUpdatedController):
             self.timeData[-1] = ptime.time() - self.startTime
         self.currPoint += 1
 
-    def measurement_grabber(self):
+    def measurementGrabber(self):
         while(False):#self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
@@ -219,10 +219,6 @@ class HoliSheetController(LiveUpdatedController):
             time.sleep(self.T_measure)
 
 
-    def start_measurement_thread(self):
-        self.measurement_thread = threading.Thread(target=self.measurement_grabber, args=())
-        self.measurement_thread.start()
-            
     class HoliSheetImageComputationWorker(Worker):
         sigHoliSheetImageComputed = Signal(np.ndarray)
 

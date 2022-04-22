@@ -201,7 +201,7 @@ class HoliSheetController(LiveUpdatedController):
         self.currPoint += 1
 
     def measurement_grabber(self):
-        while(False):#self.is_measure):
+        while(self.is_measure):
             try:
                 self.pressure = self.positioner.measure(sensorID=0)
                 #self._logger.debug("Pressure is: "+str(self.pressure))

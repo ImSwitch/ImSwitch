@@ -194,6 +194,7 @@ class RecordingWorker(Worker):
 
         currentFrame = {}
         datasets = {}
+        filenames = {}
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
@@ -241,7 +242,7 @@ class RecordingWorker(Worker):
             elif self.saveFormat == SaveFormat.TIFF:
                 # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
-                filePath = self.__recordingManager.getSaveFilePath(
+                filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
 
         self.__recordingManager.sigRecordingStarted.emit()
@@ -269,6 +270,7 @@ class RecordingWorker(Worker):
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -311,6 +313,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -347,6 +350,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")

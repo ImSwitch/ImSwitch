@@ -5,7 +5,7 @@ import threading
 import pyqtgraph.ptime as ptime
 import collections
 
-from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
+from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
@@ -32,9 +32,9 @@ class HoliSheetController(LiveUpdatedController):
         self.dz = 40*1e-3
 
         # Parameters for monitoring the pressure
-        self.T_measure = 0.1 # sampling rate of measure pressure
+        self.tMeasure  = 0.2 # sampling rate of measure pressure
         self.is_measure = True
-        self.pressure = 0
+        self.pressureValue  = 0
         self.buffer = 100
         self.currPoint = 0
         self.setPointData = np.zeros((self.buffer,2))
@@ -88,6 +88,7 @@ class HoliSheetController(LiveUpdatedController):
         #self._master.detectorsManager[self.camera].startAcquisition()
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
+        self.imageComputationWorker.setPositioner(self.positioner)
 
         # Connect HoliSheetWidget signals
         self._widget.sigShowToggled.connect(self.setShowHoliSheet)
@@ -106,8 +107,11 @@ class HoliSheetController(LiveUpdatedController):
         self._widget.snapRotationButton.clicked.connect(self.captureFullRotation)
         # start measurment thread (pressure)
 
-        self.measurementThread = threading.Thread(target=self.measurementGrabber, args=())
-        self.measurementThread.start()
+        # initiliazing the update scheme for pulling pressure measurement values
+        self.timer = Timer()
+        self.timer.timeout.connect(self.updateMeasurements)
+        self.timer.start(self.tMeasure)
+        self.startTime = ptime.time()
 
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
@@ -120,7 +124,8 @@ class HoliSheetController(LiveUpdatedController):
 
         # we actually set the target value with this slider
         self._widget.updatePumpSpeed(self.controlTarget)
-        self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
+        if self.PIDenabled:
+            self.positioner.setupPIDcontroller(PIDactive=self.PIDenabled , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget, PID_updaterate=200)
         # Motor speed will be carried out automatically on the board
         #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
         #self.positioner.moveForever(speed=(self.speedPump,self.speedRotation,0),is_stop=False)
@@ -164,6 +169,15 @@ class HoliSheetController(LiveUpdatedController):
             self.framesRoundtrip.append(camera.getLatestFrame())
         return self.framesRoundtrip # after that comes image procesing - how?
 
+    def displayImage(self, im):
+        """ Displays the image in the view. """
+        self._widget.setImage(im)
+
+    def changeRate(self, updateRate):
+        """ Change update rate. """
+        self.updateRate = updateRate
+        self.it = 0
+
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         if not isCurrentDetector or not self.active:
@@ -176,48 +190,31 @@ class HoliSheetController(LiveUpdatedController):
         else:
             self.it += 1
 
-    def displayImage(self, im):
-        """ Displays the image in the view. """
-        self._widget.setImage(im)
-
-    def changeRate(self, updateRate):
-        """ Change update rate. """
-        self.updateRate = updateRate
-        self.it = 0
-
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
-            self.setPointData[self.currPoint,0] = self.pressure
+            self.setPointData[self.currPoint,0] = self.pressureValue 
             self.setPointData[self.currPoint,1] = self.controlTarget
 
             self.timeData[self.currPoint] = ptime.time() - self.startTime
         else:
             self.setPointData[:-1,0] = self.setPointData[1:,0]
-            self.setPointData[-1,0] = self.pressure
+            self.setPointData[-1,0] = self.pressureValue 
             self.setPointData[:-1,1] = self.setPointData[1:,1]
             self.setPointData[-1,1] = self.controlTarget
             self.timeData[:-1] = self.timeData[1:]
             self.timeData[-1] = ptime.time() - self.startTime
         self.currPoint += 1
 
-    def measurementGrabber(self):
-        while(False):#self.is_measure):
-            try:
-                self.pressure = self.positioner.measure(sensorID=0)
-                #self._logger.debug("Pressure is: "+str(self.pressure))
-                self._widget.updatePumpPressure(self.pressure)
-            except Exception as e:
-                self._logger.error(e)
-
-            # update plot
-            self.updateSetPointData()
-            if self.currPoint < self.buffer:
-                self._widget.pressurePlotCurve.setData(self.timeData[1:self.currPoint],
+    def updateMeasurements(self):
+        self.pressureValue  = self.imageComputationWorker.grabMeasurement()
+        self._widget.updatePumpPressure(self.pressureValue)
+        # update plot
+        self.updateSetPointData()
+        if self.currPoint < self.buffer:
+            self._widget.pressurePlotCurve.setData(self.timeData[1:self.currPoint],
                                                 self.setPointData[1:self.currPoint,0])
-            else:
-                self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData[:,0])
-            time.sleep(self.T_measure)
-
+        else:
+            self._widget.pressurePlotCurve.setData(self.timeData, self.setPointData[:,0])
 
     class HoliSheetImageComputationWorker(Worker):
         sigHoliSheetImageComputed = Signal(np.ndarray)
@@ -231,7 +228,11 @@ class HoliSheetController(LiveUpdatedController):
             self.PSFpara = None
             self.pixelsize = 1
             self.dz = 1
+            self.positioner = None
+            self.pressureValue = 0
 
+        def setPositioner(self, positioner):
+            self.positioner = positioner
 
         def reconHoliSheet(self, image, PSFpara, N_subroi=1024, pixelsize=1e-3, dz=50e-3):
             mimage = nip.image(np.sqrt(image))
@@ -273,6 +274,16 @@ class HoliSheetController(LiveUpdatedController):
 
         def set_pixelsize(self, pixelsize):
             self.pixelsize = pixelsize
+
+        def grabMeasurement(self):
+            try:
+                self.pressureValue  = self.positioner.measure(sensorID=0)
+            except Exception as e:
+                self._logger.error(e)
+            return self.pressureValue
+
+
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

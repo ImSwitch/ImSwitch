@@ -76,7 +76,7 @@ class WellplateScanner():
             
     def homing(self):
         self.is_moving = True
-        self.positioner.move(axis="XYZ", value=(-10000,-10000,0), speed=3000, is_blocking=True)
+        self.positioner.move(axis="XYZ", value=(-10000,-10000,0), speed=3000)
         self.positioner.setPosition(0, "X")
         self.positioner.setPosition(0, "Y")
         self.is_moving = False

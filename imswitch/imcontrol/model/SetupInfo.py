@@ -220,7 +220,7 @@ class PulseStreamerInfo:
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
-    host: Optional[str] = '127.0.0.1'
+    host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
 
 

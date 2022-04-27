@@ -16,7 +16,7 @@ def main():
 
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
-        # Ensure that imscripting is added last
+        # Ensure th at imscripting is added last
         
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 

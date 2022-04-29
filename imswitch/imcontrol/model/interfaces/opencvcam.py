@@ -1,4 +1,5 @@
 # image processing libraries
+from dataclasses_json.api import _process_class
 import numpy as np
 import time
 import cv2, queue, threading
@@ -62,8 +63,8 @@ class CameraOpenCV:
         
     def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
-        self.__logger.debug("Function not yet implemented")
         try:
+            self.__logger.debug("OpenCV camera Feature not yet implemented...")
             pass
         except Exception as e:
             self.__logger.error(e)
@@ -72,7 +73,11 @@ class CameraOpenCV:
     
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.set_value("ExposureTime", self.exposure_time*1000)
+        try:
+            self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure_time*1000) 
+        except Exception as e:
+            self.__logger.error(e)
+            self.__logger.debug("Error setting Exposure time in opencv camera")
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
@@ -105,7 +110,7 @@ class CameraOpenCV:
         # Check if the property exists.
         if property_name == "gain":
             self.set_analog_gain(property_value)
-        elif property_name == "exposure":
+        elif property_name == "ExposureTime":
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)

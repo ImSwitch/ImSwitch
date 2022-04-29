@@ -19,7 +19,7 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.I_max = 255
-        self.N_leds = 4
+        self.N_leds = 64
         self.setEnabled = False
         self.intesnsity=0
 
@@ -38,12 +38,13 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
     def setAll(self, intensity=(0,0,0)):
         self.intesnsity=intensity
         self.esp32.send_LEDMatrix_full(intensity=intensity,timeout=1)
-        
     
     def setPattern(self, pattern):
-        self.pattern=pattern
-        #self.esp32.setLEDMatrixPattern(self.pattern)
-        pass
+        self.pattern=np.int16(pattern).T
+        # assuming flat array
+        #if len(self.pattern)!=3:
+        #    self.pattern=np.reshape(np.transpose(self.pattern), (3,int(np.sqrt(self.N_leds)),int(np.sqrt(self.N_leds))))
+        self.esp32.send_LEDMatrix_array(self.pattern)
         
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""

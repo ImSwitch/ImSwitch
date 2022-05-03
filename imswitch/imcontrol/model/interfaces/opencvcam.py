@@ -62,7 +62,7 @@ class CameraOpenCV:
         
     def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
-        self.__logger.debug("Function not yet implemented")
+        self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value) 
         try:
             pass
         except Exception as e:
@@ -142,9 +142,6 @@ class CameraOpenCV:
 
     def openCamera(self, cameraindex, width, height):
         # open camera
-        time.sleep(2) # wait until stream starts
-        
-
         self.camera = cv2.VideoCapture(cameraindex)
         self.__logger.debug("Camera is open")
 

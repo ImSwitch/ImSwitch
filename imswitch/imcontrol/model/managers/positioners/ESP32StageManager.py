@@ -22,13 +22,13 @@ class ESP32StageManager(PositionerManager):
 
     def move(self, value=0, axis="X", is_absolute=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled)
+            self._rs232manager._esp32.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled)
+            self._rs232manager._esp32.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled)
+            self._rs232manager._esp32.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
             self._rs232manager._esp32.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled)

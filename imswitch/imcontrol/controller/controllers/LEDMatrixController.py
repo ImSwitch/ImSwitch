@@ -115,7 +115,7 @@ class LEDMatrixDevice():
             self.pattern[index,:] = (0,0,0) 
         else:
             self.pattern[index,:] = intensity
-        self.ledMatrix.setLEDSingle(indexled=index, intensity=intensity)
+        self.ledMatrix.setLEDSingle(indexled=index, intensity=self.pattern[index,:])
     
     def setAllOn(self, intensity=None):
         if intensity is None:

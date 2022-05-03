@@ -17,6 +17,8 @@ class LEDMatrixController(ImConWidgetController):
         
         self.nLedsX = nLedsX
         self.nLedsY = nLedsY
+        
+        self._ledmatrixMode = ""
 
         # get the name that looks like an LED Matrix
         self.ledmatrix_name = self._master.LEDMatrixsManager.getAllDeviceNames()[0]
@@ -38,11 +40,19 @@ class LEDMatrixController(ImConWidgetController):
         
     @APIExport()
     def setLEDAllOn(self):
+        self._ledmatrixMode = "allon"
         self.LEDMatrixDevice.setAllOn()
-        
+        for coords, btn in self._widget.leds.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                btn.setChecked(True)
+                
     @APIExport()
     def setLEDAllOff(self):
+        self._ledmatrixMode = "alloff"
         self.LEDMatrixDevice.setAllOff()
+        for coords, btn in self._widget.leds.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                btn.setChecked(False)
 
     @APIExport()
     def submitLEDPattern(self):
@@ -60,6 +70,7 @@ class LEDMatrixController(ImConWidgetController):
         
     @APIExport()
     def switchLED(self, LEDid):
+        self._ledmatrixMode = "single"
         self.LEDMatrixDevice.switchLED(LEDid)
 
     def connect_leds(self):
@@ -87,7 +98,9 @@ class LEDMatrixDevice():
     def setIntensity(self, intensity=None):
         if intensity is None:
             intensity = self.intensity  
+        self.pattern = (self.pattern>0)*(intensity,intensity,intensity)
         self.intensity = (intensity,intensity,intensity)
+        self.ledMatrix.setPattern(self.pattern)
         
     def setPattern(self, pattern):
         self.pattern = pattern

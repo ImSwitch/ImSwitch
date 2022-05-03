@@ -380,10 +380,10 @@ class ESP32Client(object):
         '''
         path = '/ledarray_act'
         payload = {
-            "red": led_pattern[0,:,:].flatten().tolist(),
-            "green": led_pattern[1,:,:].flatten().tolist(),
-            "blue": led_pattern[2,:,:].flatten().tolist(),
-            "arraySize": led_pattern.shape[1]*led_pattern.shape[2],
+            "red": led_pattern[0,:].flatten().tolist(),
+            "green": led_pattern[1,:].flatten().tolist(),
+            "blue": led_pattern[2,:].flatten().tolist(),
+            "arraySize": led_pattern.shape[1],
             "LEDArrMode": "array"
         }
         r = self.post_json(path, payload, timeout=timeout)
@@ -444,7 +444,7 @@ class ESP32Client(object):
             "blue": intensity[2],
             "indexled": indexled,
             "Nleds": Nleds,
-            "LEDArrMode": "single"
+            "LEDArrMode": "multi"
         }
         self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
         r = self.post_json(path, payload, timeout=timeout)        
@@ -912,10 +912,10 @@ class ESP32Client(object):
     def send_LEDMatrix_array(self, led_pattern, timeout=1):
         path = '/ledarr_act'
         payload = {
-            "red": led_pattern[0,:,:].flatten().tolist(),
-            "green": led_pattern[1,:,:].flatten().tolist(),
-            "blue": led_pattern[2,:,:].flatten().tolist(),
-            "arraySize": led_pattern.shape[1]*led_pattern.shape[2],
+            "red": led_pattern[0,:].flatten().tolist(),
+            "green": led_pattern[1,:].flatten().tolist(),
+            "blue": led_pattern[2,:].flatten().tolist(),
+            "arraySize": led_pattern.shape[1],
             "LEDArrMode": "array"
         }
         r = self.post_json(path, payload, timeout=timeout)
@@ -939,7 +939,7 @@ class ESP32Client(object):
             "blue": int(intensity[2]),
             "indexled": int(indexled),
             "Nleds": 8*8,
-            "LEDArrMode": "sigle"
+            "LEDArrMode": "single"
         }
         self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
         r = self.post_json(path, payload, timeout=timeout)

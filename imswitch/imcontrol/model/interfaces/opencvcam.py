@@ -1,4 +1,5 @@
 # image processing libraries
+from dataclasses_json.api import _process_class
 import numpy as np
 import time
 import cv2, queue, threading
@@ -10,12 +11,12 @@ import collections
 class CameraOpenCV:
     def __init__(self, cameraindex=0):
         super().__init__()
-        # we are aiming to interface with webcams or arducams 
+        # we are aiming to interface with webcams or arducams
         self.__logger = initLogger(self, tryInheritParent=False)
 
         # many to be purged
         self.model = "CameraOpenCV"
-        
+
         # camera parameters
         self.blacklevel = 0
         self.exposure_time = 10
@@ -29,11 +30,11 @@ class CameraOpenCV:
 
         self.SensorWidth = 1000
         self.SensorHeight = 1000
-        
+
         # reserve some space for the framebuffer
         self.buffersize = 60
         self.frame_buffer = collections.deque(maxlen=self.buffersize)
-        
+
         #%% starting the camera => self.camera  will be created
         self.cameraindex = cameraindex
         self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight)
@@ -44,7 +45,7 @@ class CameraOpenCV:
         if not self.camera_is_open:
             self.camera_is_open = True
             self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight)
-        
+
     def stop_live(self):
         self.camera.release()
         self.camera_is_open = False
@@ -59,25 +60,30 @@ class CameraOpenCV:
     def close(self):
         self.camera.release()
         self.camera_is_open = False
-        
+
     def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
-        self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value) 
+        self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value)
         try:
+            self.__logger.debug("OpenCV camera Feature not yet implemented...")
             pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(feature_key)
             self.__logger.debug("Value not available?")
-    
+
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.set_value("ExposureTime", self.exposure_time*1000)
+        try:
+            self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure_time*1000)
+        except Exception as e:
+            self.__logger.error(e)
+            self.__logger.debug("Error setting Exposure time in opencv camera")
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
         self.set_value("Gain", self.analog_gain)
-        
+
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.set_value("BlackLevel", blacklevel)
@@ -85,7 +91,7 @@ class CameraOpenCV:
     def set_pixel_format(self,format):
         self.pixelformat = format
         self.set_value("PixelFormat", format)
-        
+
     def getLast(self, is_resize=True):
         # get frame and save
         #TODO: Napari only displays 8Bit?
@@ -97,7 +103,7 @@ class CameraOpenCV:
         self.__logger.debug("Buffer: "+str(len(self.frame_buffer))+"  "+str(chunk.shape))
         self.frame_buffer.clear()
         return chunk
-    
+
     def setROI(self, hpos, vpos, hsize, vsize):
         pass
 
@@ -105,7 +111,7 @@ class CameraOpenCV:
         # Check if the property exists.
         if property_name == "gain":
             self.set_analog_gain(property_value)
-        elif property_name == "exposure":
+        elif property_name == "ExposureTime":
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
@@ -147,7 +153,7 @@ class CameraOpenCV:
 
         # let the camera warm up
         for i in range(5):
-            _, img = self.camera.read() 
+            _, img = self.camera.read()
 
         self.__logger.debug("Camera is warmed up")
 
@@ -155,12 +161,12 @@ class CameraOpenCV:
         self.SensorWidth = img.shape[1]
         self.shape = (self.SensorWidth,self.SensorHeight)
         self.camera_is_open = True
-        
+
         # starting thread
         self.frameGrabberThread = Thread(target = self.setFrameBuffer)
         self.frameGrabberThread.start()
-        
-    
+
+
 
     def setFrameBuffer(self):
         while(self.camera_is_open):
@@ -170,7 +176,3 @@ class CameraOpenCV:
             except Exception as e:
                 self.camera_is_open = False
                 self.__logger.debug(e)
-                
-                
-            
-            

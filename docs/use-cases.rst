@@ -144,4 +144,32 @@ of a RS232 connection, such as:
 The pulses will be directly handled by the National Instruments card and our TTLDesigner.
 
 
+Event-triggered STED imaging
+----------------------------------
+Here we explain how we implemented ImSwitch for `event-triggered STED imaging <https://doi.org/10.1101/2021.10.26.465907>`_ (etSTED) in the lab, on the same STED setup described above. For this imaging technique, where widefield and STED imaging modalities are connected and automatically controlled, ImSwitch was crucial to push the temporal resolution of the switch of imaging modalities at the moment of a detect event down to the tens of milliseconds timescale. In the article, you will find more information about the imaging technique and its hardware requirements.
 
+Configuration file and hardware specifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For this microscope use case, we created the JSON file ``etsted.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/etsted.json``. It contains all the specifications of the STED JSON file (described above), with additional fields required for the widefield and event-triggered imaging.
+
+In the JSON file, two photon-counting point detectors (APD) are specified for two separate STED imaging channels: APDGreen and APDRed.
+These do not need any specific hardware control, but instead are read entirely through the Nidaq. 
+Additionally two cameras are specified: one for widefield, for using as the fast trigger-detecting method, and one for the focus lock, as described above.
+The widfield camera is a Hamamatsu camera and uses the ``HamamatsuManager``. All the required camera properties are defined, like the camera index in the list of cameras and the chip size in pixels.
+
+Compared to the STED setup, there is one additional laser defined. This is the 488 nm laser used for the spectrally separated widefield imaging (488WF). The manager used for this device is ``CoboltLaserManager``. 
+
+The focus lock does not have a separate manager, but instead is associated with one of the TIS cameras and the Z-piezo rs232device. The properties for the focus lock specifies what hardware devices it should associate with, what part of the camera frame should be cropped, and the update frequency (in Hz) of the PI control loop.
+
+The event-triggered imaging does not have a separate manager, but is loaded by adding ``EtSTED`` under ``availableWidgets``. Additionally, a field called ``etSTED`` should be added, where ``detectorFast``, ``detectorSlow``, and ``laserFast`` should be defined as the names of the detectors and laser used for the fast (widefield) and slow (STED) imaging respectively.
+
+Other config parameters and a list of widgets to be loaded are added in this file as well. 
+
+etSTED imaging
+^^^^^^^^^^^^
+In order to run etSTED imaging, and record etSTED images, 
+
+
+** Copied from STED
+The main, and only, module for this use case is used to control all the hardware, screen the sample with widefield, acquiring the images, and inspecting them with the visualization tools. We have provided a more detailed explanation of the GUI :doc:`here <gui>`. To record a confocal image, the user sets the scan parameters that they want for each scan axis (length, pixel size, center position), the pixel dwell time, sets the laser powers they want to use, set the TTL start to 0 and end to 1 (units is lines) for the excitation laser they want to use, and runs the scan. The view of the detectors not in use can be hidden in the visualization tool. The scanning module will build the scanning curves, laser modulation curves, create those tasks in the Nidaq, and start them. The raw data is displayed in the liveview, where the image is updated line-by-line during the acquisition. For recording a STED image the procedure is much the same, with the addition that the use turns on the STED laser in the laser module, and sets the corresponding TTL start and end to the same values, and runs the scan. Before this the SLM has to be configured in order to create a desired depletion pattern, where for using a donut and tophat there are helpful tools in the SLM module to align the mask and the aberration correction that will be specific to each setup.
+** Copied from STED

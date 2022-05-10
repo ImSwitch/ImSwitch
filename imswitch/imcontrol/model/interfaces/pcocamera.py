@@ -34,14 +34,14 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
-        self.frame_rate = frame_rate 
-        self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
         self.NBuffer = 60
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-        
+
+
+
         #%% starting the camera thread
         self.camera = None
 
@@ -49,12 +49,12 @@ class CameraPCO:
         self.binning = binning
 
         try:
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
+            self._init_cam()
         except Exception as e:
-            self.__logger.e(e)
+            self.__logger.error(e)
             return
             
-    def _init_cam(self, cameraNo=1, callback_fct=None):
+    def _init_cam(self):
         # start camera
         self.is_connected = True
         
@@ -62,11 +62,14 @@ class CameraPCO:
         self.camera = pco.Camera()
 
         # set exposure
-        self.camera.set_exposure_time(self.exposure_time)
+        # self.camera.set_exposure_time(self.exposure_time*1e-6)
+
+        # get dummy frame
+        frame = self.camera.record(number_of_images=1, mode='sequence')
 
         # get framesize 
-        self.SensorHeight = self.camera._Camera__roi['x1']//self.binning
-        self.SensorWidth = self.camera._Camera__roi['y1']//self.binning
+        self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
+        self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
         
         # register the frame callback
         user_param = None
@@ -94,8 +97,10 @@ class CameraPCO:
         self.camera.close()
         
     def set_exposure_time(self,exposure_time):
-        self.camera.set_exposure_time(self.exposure_time*1000)
-    
+        try:
+            self.camera.set_exposure_time(self.exposure_time*1e-6)
+        except:
+            self.__logger.error("Not possible to set exposure time now...(PCO)")
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work

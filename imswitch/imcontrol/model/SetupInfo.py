@@ -128,6 +128,33 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
+@dataclass(frozen=True)
+class SIMInfo:
+    monitorIdx: int
+    """ Index of the monitor in the system list of monitors (indexing starts at
+    0). """
+
+    width: int
+    """ Width of SLM, in pixels. """
+
+    height: int
+    """ Height of SLM, in pixels. """
+
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelSize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    correctionPatternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
 
 @dataclass(frozen=True)
 class FocusLockInfo:
@@ -254,6 +281,9 @@ class SetupInfo:
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
+    
+    sim: Optional[SIMInfo] = field(default_factory=lambda: None)
+    """ SIM settings. Required to be defined to use SIM functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock

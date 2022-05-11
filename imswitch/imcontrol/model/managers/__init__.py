@@ -8,4 +8,5 @@ from .PositionersManager import PositionersManager
 from .RS232sManager import RS232sManager
 from .RecordingManager import RecordingManager, RecMode, SaveMode, SaveFormat
 from .SLMManager import SLMManager
+from .SIMManager import SIMManager
 from .ScanManager import ScanManager

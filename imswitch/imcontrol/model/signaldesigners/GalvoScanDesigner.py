@@ -195,13 +195,14 @@ class GalvoScanDesigner(ScanDesigner):
             scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
         # plot scan signal
-        #import matplotlib.pyplot as plt
-        #plt.figure(1)
-        #plt.plot(pixel_axis_signal-0.01)
-        #plt.plot(line_axis_signal)
-        #if axis_count==3:
-        #    plt.plot(frame_axis_signal)
-        #plt.show()
+        import matplotlib.pyplot as plt
+        plt.figure(1)
+        conv_factors = [17.44, 16.63]
+        plt.plot(pixel_axis_signal*conv_factors[0])#-0.01)
+        plt.plot(line_axis_signal*conv_factors[1])
+        if axis_count==3:
+            plt.plot(frame_axis_signal)
+        plt.show()
 
         #self.__logger.debug(scanInfoDict)
         self.__logger.debug(f'Scanning curves generated, frame time: {round(self.__timestep * 1e-6 * len_frame, ndigits=5)}.')

@@ -95,8 +95,7 @@ class EtSTEDWidget(Widget):
         self.setBusyFalseButton = guitools.BetterPushButton('Unlock softlock')
 
         self.endlessScanCheck = QtGui.QCheckBox('Endless')
-        self.visualizeCheck = QtGui.QCheckBox('Visualize')
-        self.validateCheck = QtGui.QCheckBox('Validate')
+        self.fastaxisshiftCheck = QtGui.QCheckBox('Fast axis shift')
 
         self.bin_thresh_label = QtGui.QLabel('Bin. threshold')
         self.bin_thresh_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
@@ -168,6 +167,10 @@ class EtSTEDWidget(Widget):
 
         self.grid.addWidget(self.loadScanParametersButton, currentRow, 2)
         self.grid.addWidget(self.setBusyFalseButton, currentRow, 3)
+
+        currentRow +=1
+
+        self.grid.addWidget(self.fastaxisshiftCheck, currentRow, 2)
 
 
     def initParamFields(self, parameters: dict):

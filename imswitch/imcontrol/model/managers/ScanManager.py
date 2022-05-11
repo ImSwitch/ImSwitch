@@ -93,7 +93,9 @@ class ScanManager(SuperScanManager):
         self._checkScanDefined()
 
         if not staticPositioner:
+            self.__logger.debug('1')
             scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
+            self.__logger.debug('2')
             if not self._scanDesigner.checkSignalComp(
                     scanParameters, self._setupInfo, scanInfoDict
             ):
@@ -104,6 +106,7 @@ class ScanManager(SuperScanManager):
                 return
 
             TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
+            self.__logger.debug('3')
         else:
             TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters)
             scanSignalsDict = {}

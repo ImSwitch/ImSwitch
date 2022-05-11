@@ -509,8 +509,8 @@ class EtSTEDController(ImConWidgetController):
         #self.scanInfoDict['phase_delay'] = np.float(self._widget.phase_delay_edit.text())
         dt = datetime.now()
         time_curr_after = round(dt.microsecond/1000)
-        print(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
-        print(f'Time for signal curve generation: {time_curr_after-time_curr_mid}')
+        self.__logger.debug(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
+        self.__logger.debug(f'Time for signal curve generation: {time_curr_after-time_curr_mid}')
 
     def setCenterScanParameter(self, position):
         """ Set the scanning center from the detected event coordinates. """
@@ -521,7 +521,8 @@ class EtSTEDController(ImConWidgetController):
                 if positionerName != 'None':
                     if positionerName == 'ND-GalvoX':
                         center = position[0]
-                        center = self.addFastAxisShift(center)
+                        if self._widget.fastaxisshiftCheck.isChecked():
+                            center = self.addFastAxisShift(center)
                         self._analogParameterDict['axis_centerpos'][index] = center
                     elif positionerName == 'ND-GalvoY':
                         center = position[1]

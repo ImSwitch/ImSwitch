@@ -39,7 +39,7 @@ class MockCameraTIS:
         pass
 
     def grabFrame(self, **kwargs):
-        mocktype = "random_peak"
+        mocktype = "random_beads"
         if mocktype=="focus_lock":
             img = np.zeros((500, 600))
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
@@ -59,6 +59,27 @@ class MockCameraTIS:
                 rv = multivariate_normal([xc, yc], [[50, 0], [0, 50]])
                 img = np.random.rand()*peakmax*317*rv.pdf(pos)
                 img = img + 0.01*np.random.poisson(img)
+            # add Poisson noise
+            img = img + np.random.poisson(lam=noisemean, size=imgsize)
+        elif mocktype=="random_beads":
+            imgsize = (800, 800)
+            x, y = np.meshgrid(np.linspace(0,imgsize[1],imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
+            pos = np.dstack((x, y))
+            peakmax = 60
+            noisemean = 10
+            beads = 13
+            fixedrand1 = np.random.RandomState(1234537890)
+            fixedrand2 = np.random.RandomState(2345678901)
+            bead_positions = [(fixedrand1.rand(beads)*2-1)*imgsize[0]/2 + imgsize[0]/2,(fixedrand2.rand(beads)*2-1)*imgsize[1]/2 + imgsize[1]/2]
+            # generate image
+            img = np.zeros(imgsize)
+            # add static beads with random max signal
+            for i in range(beads):
+                xc = bead_positions[0][i]
+                yc = bead_positions[1][i]
+                rv = multivariate_normal([xc, yc], [[50, 0], [0, 50]])
+                img_curr = np.random.default_rng().uniform(0.7,1.0)*peakmax*317*rv.pdf(pos)
+                img = img + img_curr
             # add Poisson noise
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
         else:

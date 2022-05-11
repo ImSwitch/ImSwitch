@@ -8,7 +8,7 @@ from imswitch.imcommon.model import initLogger
 
 try:
     import pco
-from pco import sdk
+    from pco import sdk
 except:
     raise("PCO not installed")
 

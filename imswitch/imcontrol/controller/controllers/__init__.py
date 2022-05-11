@@ -5,7 +5,9 @@ from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
+from .HoloController import HoloController
 from .FocusLockController import FocusLockController
+from .AufofocusController import AutofocusController
 from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController
@@ -16,3 +18,4 @@ from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
 from .WellPlateController import WellPlateController
+from .LEDMatrixController import LEDMatrixController

@@ -1,6 +1,6 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
+from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
 
 class ESP32LightSheetManager(LaserManager):
 
@@ -21,10 +21,16 @@ class ESP32LightSheetManager(LaserManager):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
-        if self.__axis == "pos_x":
-            self._rs232manager._esp32.galvo_pos_x(value)
+        if self.__axis == "freq_x":
+            self._rs232manager._esp32.set_galvo_freq(axis=0, value=value)
+        elif self.__axis == "freq_y":
+            self._rs232manager._esp32.set_galvo_freq(axis=1, value=value)
+        elif self.__axis == "amp_x":
+            self._rs232manager._esp32.set_galvo_amp(axis=0, value=value)
         elif self.__axis == "amp_y":
-            self._rs232manager._esp32.galvo_amp_y(value)
+            self._rs232manager._esp32.set_galvo_amp(axis=0, value=value)
+
+            
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

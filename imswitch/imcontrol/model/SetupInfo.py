@@ -151,7 +151,7 @@ class SIMInfo:
     by the SLM, in radians. For adding a blazed grating to create off-axis
     holography. """
 
-    correctionPatternsDir: str
+    patternsDir: str
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
     wavelength. """

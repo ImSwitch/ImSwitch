@@ -6,8 +6,12 @@ import collections
 
 from imswitch.imcommon.model import initLogger
 
-import pco
+try:
+    import pco
 from pco import sdk
+except:
+    raise("PCO not installed")
+
 
 
 class TriggerMode:

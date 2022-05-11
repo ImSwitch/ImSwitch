@@ -3,6 +3,7 @@ from .AlignXYController import AlignXYController
 from .AlignmentLineController import AlignmentLineController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
+from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
 from .HoloController import HoloController
 from .FocusLockController import FocusLockController

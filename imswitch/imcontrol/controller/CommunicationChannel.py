@@ -1,3 +1,4 @@
+from re import S
 from typing import Mapping
 
 import numpy as np
@@ -59,6 +60,28 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+
+    sigToggleBlockScanWidget = Signal(bool)
+
+    sigSnapImg = Signal()
+
+    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+
+    sigRequestScanParameters = Signal()
+
+    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
+
+    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+
+    sigStartRecordingExternal = Signal()
+
+    sigRequestScanFreq = Signal()
+    
+    sigSendScanFreq = Signal(float)  # (scanPeriod)
+
+    #sigRequestScannersInScan = Signal()
+
+    #sigSendScannersInScan = Signal(object)  # (scannerList)
 
     sigBroadcast = Signal(str, str, object)
 

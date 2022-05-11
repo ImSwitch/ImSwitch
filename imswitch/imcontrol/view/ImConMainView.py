@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
@@ -14,6 +15,9 @@ class ImConMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+        
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
@@ -52,9 +56,10 @@ class ImConMainView(QtWidgets.QMainWindow):
         rightDockInfos = {
             'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
-            'SLM': _DockInfo(name='SLM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),

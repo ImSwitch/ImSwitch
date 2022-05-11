@@ -97,7 +97,7 @@ class RecordingManager(SignalInterface):
 
 
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
-        """ Saves a single frame capture with the specified detectors to a file
+        """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
@@ -124,15 +124,20 @@ class RecordingManager(SignalInterface):
                         dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                         for key, value in attrs[detectorName].items():
-                            dataset.attrs[key] = value
+                            #self.__logger.debug(key)
+                            #self.__logger.debug(value)
+                            try:
+                                dataset.attrs[key] = value
+                            except:
+                                self.__logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
 
                         dataset.attrs['detector_name'] = detectorName
 
                         # For ImageJ compatibility
                         dataset.attrs['element_size_um'] =\
                             self.__detectorsManager[detectorName].pixelSizeUm
-
-                        dataset[:, :] = image
+                        
+                        dataset[:,...] = np.moveaxis(image,0,-1)
                         file.close()
                     elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                         tiff.imwrite(filePath, image)
@@ -152,6 +157,42 @@ class RecordingManager(SignalInterface):
             if saveMode == SaveMode.Numpy:
                 return image
             
+
+    def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
+        """ Saves a previously taken image to a file with the specified name prefix,
+        file format and attributes to save to the capture per detector. """
+        fileExtension = str(saveFormat.name).lower()
+        filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
+
+        # Write file
+        if saveFormat == SaveFormat.HDF5:
+            file = h5py.File(filePath, 'w')
+
+            shape = image.shape
+            dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+
+            for key, value in attrs[detectorName].items():
+                #self.__logger.debug(key)
+                #self.__logger.debug(value)
+                try:
+                    dataset.attrs[key] = value
+                except:
+                    self.__logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
+
+            dataset.attrs['detector_name'] = detectorName
+
+            # For ImageJ compatibility
+            dataset.attrs['element_size_um'] =\
+                self.__detectorsManager[detectorName].pixelSizeUm
+            
+            #dataset[:,:,:] = image
+            dataset[:,...] = np.moveaxis(image,0,-1)
+            file.close()
+        elif saveFormat == SaveFormat.TIFF:
+            tiff.imwrite(filePath, image)
+        else:
+            raise ValueError(f'Unsupported save format "{saveFormat}"')    
+
 
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
         newPath = path
@@ -174,6 +215,7 @@ class RecordingManager(SignalInterface):
 class RecordingWorker(Worker):
     def __init__(self, recordingManager):
         super().__init__()
+        self.__logger = initLogger(self)
         self.__recordingManager = recordingManager
         self.__logger = initLogger(self)
 
@@ -207,6 +249,25 @@ class RecordingWorker(Worker):
                     datasetNameWithScan = f'{datasetName}_scan{scanNum}'
                 datasetName = datasetNameWithScan
 
+            # Initial number of frames must not be 0; otherwise, too much disk space may get
+            # allocated. We remove this default frame later on if no frames are captured.
+            shape = shapes[detectorName]
+            if len(shape) > 2:
+                shape = shape[-2:]
+            datasets[detectorName] = files[detectorName].create_dataset(
+                datasetName, (1, *reversed(shape)),
+                maxshape=(None, *reversed(shape)),
+                dtype='i2'
+            )
+
+            for key, value in self.attrs[detectorName].items():
+                datasets[detectorName].attrs[key] = value
+
+            datasets[detectorName].attrs['detector_name'] = detectorName
+
+            # For ImageJ compatibility
+            datasets[detectorName].attrs['element_size_um'] \
+                = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
             if self.saveFormat == SaveFormat.HDF5:
                 # Initial number of frames must not be 0; otherwise, too much disk space may get

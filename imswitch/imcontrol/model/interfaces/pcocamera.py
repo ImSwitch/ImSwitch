@@ -52,7 +52,7 @@ class CameraPCO:
             self._init_cam()
         except Exception as e:
             self.__logger.error(e)
-            return
+            raise("Camera not found")
             
     def _init_cam(self):
         # start camera
@@ -65,8 +65,8 @@ class CameraPCO:
         # self.camera.set_exposure_time(self.exposure_time*1e-6)
 
         # get dummy frame
-        frame = self.camera.record(number_of_images=1, mode='sequence')
-
+        self.camera.record()
+        frame, meta = self.camera.image()
         # get framesize 
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
         self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
@@ -112,6 +112,8 @@ class CameraPCO:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
+        images, metadatas = self.camera.images()
+        self.frame = images[-1]
         return self.frame
 
     def flushBuffer(self):

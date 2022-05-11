@@ -230,6 +230,10 @@
     "TTLCycleDesignerParams": {},
     "sampleRate": 100000
   },
+  "nidaq": {
+      "timerCounterChannel": "Dev1/ctr2",
+      "startTrigger": true
+  },
   "slm": {
     "monitorIdx": 2,
     "width": 792,

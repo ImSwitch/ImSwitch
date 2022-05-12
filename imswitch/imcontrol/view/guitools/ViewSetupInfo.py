@@ -52,6 +52,8 @@ class ViewSetupInfo(SetupInfo):
     - ``Image`` (image display widget)
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)
+    - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
+      defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
     - ``Laser`` (laser control widget)
     - ``Positioner`` (positioners widget)
@@ -63,6 +65,7 @@ class ViewSetupInfo(SetupInfo):
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
+    - ``EtSTED`` (etSTED widget; requires ``etSTED`` field to be defined)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.

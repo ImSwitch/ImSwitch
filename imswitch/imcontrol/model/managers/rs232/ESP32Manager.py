@@ -1,5 +1,6 @@
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
+from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
+from imswitch.imcommon.model import APIExport
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -17,19 +18,15 @@ class ESP32Manager:
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:
-            self._port = None
+            self._serialport = None
 
         # initialize the ESP32 device adapter
         self._esp32 = ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
         # self._esp32 = ESP32Client(self._host, port=80)
+    
 
-    def query(self, arg: str) -> str:
-        """ Sends the specified command to the RS232 device and returns a
-        string encoded from the received bytes. """
-        self._esp32.post_json(arg)
-        
     def finalize(self):
-        pass 
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

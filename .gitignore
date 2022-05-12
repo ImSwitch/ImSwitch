@@ -65,6 +65,17 @@ target/
 # Visual Studio Code
 .vscode/
 
+# Specific files
+imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
+
 # Mac Files
 .DS_Store
 **/.DS_Store
+allfocusimages.npy
+allfocusvals.npy
+allfocuspositions.npy
+allfocusimages.tif
+llfocusimages.tif
+
+imswitch/ImSwitch/recordings*
+./ImSwitch/recordings

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
@@ -14,6 +15,9 @@ class ImConMainView(QtWidgets.QMainWindow):
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+        
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
@@ -50,10 +54,12 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Dock area
         rightDockInfos = {
+            'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
-            'SLM': _DockInfo(name='SLM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
@@ -61,7 +67,9 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
-            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
+            'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+            'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
@@ -102,15 +110,15 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        self.showMaximized()
+        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
         if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 10)
+            self.docks['Settings'].setStretch(1, 5)
             self.docks['Settings'].container().setStretch(3, 1)
         if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 10)
+            rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
 

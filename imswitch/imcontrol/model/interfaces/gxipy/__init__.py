@@ -4,8 +4,8 @@
 
 from .gxiapi import *
 from .gxidef import *
-
+from .gxwrapper import *
 
 __all__ = ["gxwrapper", "dxwrapper", "gxiapi", "gxidef"]
 
-__version__ = '1.0.2001.9131'
+__version__ = '1.0.1809.9281'

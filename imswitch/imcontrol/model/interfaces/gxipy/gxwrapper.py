@@ -13,10 +13,7 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         print("Cannot find libgxiapi.so.")
 else:
     try:
-        if (sys.version_info.major == 3 and sys.version_info.minor >= 8) or (sys.version_info.major > 3):
-            dll = WinDLL('GxIAPI.dll', winmode=0)
-        else:
-            dll = WinDLL('GxIAPI.dll')
+        dll = WinDLL('GxIAPI.dll')
     except OSError:
         print('Cannot find GxIAPI.dll.')
 
@@ -283,17 +280,6 @@ class GxFeatureID:
     BOOL_CHUNK_MODE_ACTIVE = 0x40002711                     # Enable frame information
     ENUM_CHUNK_SELECTOR = 0x30002712                        # Select frame information channel, Reference GxChunkSelectorEntry
     BOOL_CHUNK_ENABLE = 0x40002713                          # Enable single frame information channel
-
-    # ---------------CounterAndTimerControl Section-----------------------
-    ENUM_TIMER_SELECTOR = 0x30002ee0                        # Selects which Counter to configure, Refer to GxTimerSelectorEntry
-    FLOAT_TIMER_DURATION = 0x20002ee1                       # Sets the duration (in microseconds) of the Timer pulse.
-    FLOAT_TIMER_DELAY = 0x20002ee2                          # Sets the duration (in microseconds) of the delay to apply at the reception of a trigger before starting the Timer.
-    ENUM_TIMER_TRIGGER_SOURCE = 0x30002ee3                  # Selects the source of the trigger to start the Timer, Refer to GxTimerTriggerSourceEntry
-    ENUM_COUNTER_SELECTOR = 0x30002ee4                      # Selects which Counter to configure, Refer to GxCounterSelectorEntry
-    ENUM_COUNTER_EVENT_SOURCE = 0x30002ee5                  # Select the events that will be the source to increment the Counter, Refer to GxCounterEventSourceEntry
-    ENUM_COUNTER_RESET_SOURCE = 0x30002ee6                  # Selects the signals that will be the source to reset the Counter, Refer to GxCounterResetSourceEntry
-    ENUM_COUNTER_RESET_ACTIVATION = 0x30002ee7              # Selects the Activation mode of the Counter Reset Source signal, Refer to GxCounterResetActivationEntry
-    COMMAND_COUNTER_RESET = 0x70002ee8                      # Does a software reset of the selected Counter and starts it.
 
     # ---------------Device Feature---------------------------------------
     INT_COMMAND_TIMEOUT = 0x13000000                        # The time of command timeout
@@ -1228,7 +1214,7 @@ if hasattr(dll, 'GXSendCommand'):
         status = dll.GXSendCommand(handle_c, feature_id_c)
         return status
 
-'''
+
 CAP_CALL = CFUNCTYPE(None, POINTER(GxFrameCallbackParam))
 if hasattr(dll, 'GXRegisterCaptureCallback'):
     def gx_register_capture_callback(handle, cap_call):
@@ -1257,7 +1243,7 @@ if hasattr(dll, 'GXUnregisterCaptureCallback'):
 
         status = dll.GXUnregisterCaptureCallback(handle_c)
         return status
-'''
+
 
 if hasattr(dll, 'GXGetImage'):
     def gx_get_image(handle, frame_data, time_out=200):
@@ -1297,7 +1283,7 @@ if hasattr(dll, 'GXFlushQueue'):
         return status
 
 
-'''
+
 OFF_LINE_CALL = CFUNCTYPE(None, c_void_p)
 if hasattr(dll, 'GXRegisterDeviceOfflineCallback'):
     def gx_register_device_offline_callback(handle, call_back):
@@ -1314,7 +1300,6 @@ if hasattr(dll, 'GXRegisterDeviceOfflineCallback'):
         handle_c.value = handle
 
         call_back_handle = c_void_p()
-
         status = dll.GXRegisterDeviceOfflineCallback(handle_c, None, call_back, byref(call_back_handle))
         return status, call_back_handle.value
 
@@ -1333,10 +1318,10 @@ if hasattr(dll, 'GXUnregisterDeviceOfflineCallback'):
         call_back_handle_c = c_void_p()
         call_back_handle_c.value = call_back_handle
 
-        status = dll.GXUnregisterDeviceOfflineCallback(handle, call_back_handle_c)
+        status = dll.GXUnregisterDeviceOfflineCallback(handle_c, call_back_handle_c)
         return status
 
-
+'''
 if hasattr(dll, 'GXFlushEvent'):
     def gx_flush_event(handle):
         """
@@ -1397,7 +1382,7 @@ if hasattr(dll, 'GXRegisterFeatureCallback'):
 if hasattr(dll, 'GXUnregisterFeatureCallback'):
     """
     """
-    def gx_unregister_feature_callback(handle, feature_id, call_back_handle):
+    def gx_unregister_feature_cEallback(handle, feature_id, call_back_handle):
         """
         :brief      Unregister device attribute update callback function
         :param      handle:             The handle of the device

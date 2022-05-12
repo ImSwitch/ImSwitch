@@ -11,6 +11,8 @@ def joinModulePath(segment1, segment2):
     checks. """
 
     if not isinstance(segment1, str) or not isinstance(segment2, str):
+        print(segment1)
+        print(segment2)
         raise TypeError('Module path segments must be strings')
 
     if not segment1.endswith('.'):

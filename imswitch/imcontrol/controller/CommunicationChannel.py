@@ -1,9 +1,10 @@
+from re import S
 from typing import Mapping
 
 import numpy as np
-
-from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
+from .server import ImSwitchServer
 
 
 class CommunicationChannel(SignalInterface):
@@ -60,14 +61,50 @@ class CommunicationChannel(SignalInterface):
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
 
+    sigToggleBlockScanWidget = Signal(bool)
+
+    sigSnapImg = Signal()
+
+    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+
+    sigRequestScanParameters = Signal()
+
+    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
+
+    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+
+    sigStartRecordingExternal = Signal()
+
+    sigRequestScanFreq = Signal()
+    
+    sigSendScanFreq = Signal(float)  # (scanPeriod)
+
+    #sigRequestScannersInScan = Signal()
+
+    #sigSendScannersInScan = Signal(object)  # (scannerList)
+
+    sigBroadcast = Signal(str, str, object)
+
+    # useq-schema related signals
+    sigSetXYPosition = Signal(float, float)
+    sigSetZPosition = Signal(float)
+    sigSetExposure = Signal(float)
+    sigSetSpeed = Signal(float)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs
 
-    def __init__(self, main):
+    def __init__(self, main, setupInfo):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
+        self._serverWorker = ImSwitchServer(self, setupInfo)
+        self._thread = Thread()
+        self._serverWorker.moveToThread(self._thread)
+        self._thread.started.connect(self._serverWorker.run)
+        self._thread.finished.connect(self._serverWorker.stop)
+        self._thread.start()
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -87,6 +124,9 @@ class CommunicationChannel(SignalInterface):
             return self.__main.controllers['Scan'].getNumScanPositions()
         else:
             raise RuntimeError('Required scan widget not available')
+
+    def get_image(self, detectorName=None):
+        return self.__main.controllers['View'].get_image(detectorName)
 
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
@@ -111,7 +151,7 @@ class CommunicationChannel(SignalInterface):
         })
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

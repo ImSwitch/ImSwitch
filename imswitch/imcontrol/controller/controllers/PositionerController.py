@@ -2,6 +2,7 @@ from typing import Dict, List
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
 
 class PositionerController(ImConWidgetController):
@@ -12,6 +13,8 @@ class PositionerController(ImConWidgetController):
 
         self.settingAttr = False
 
+        self.__logger = initLogger(self, tryInheritParent=True)
+
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
@@ -20,14 +23,18 @@ class PositionerController(ImConWidgetController):
             self._widget.addPositioner(pName, pManager.axes)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
+                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigSetXYPosition.connect(lambda x, y: self.setXYPosition(x, y))
+        self._commChannel.sigSetZPosition.connect(lambda z: self.setZPosition(z))
+        self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
-        self._widget.sigCalibrationCalled.connect(self.calibrate)
+        self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -36,6 +43,9 @@ class PositionerController(ImConWidgetController):
 
     def getPos(self):
         return self._master.positionersManager.execOnAll(lambda p: p.position)
+
+    def getSpeed(self):
+        return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
@@ -53,6 +63,14 @@ class PositionerController(ImConWidgetController):
     def stepDown(self, positionerName, axis):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
+    def setSpeedGUI(self):
+        positionerName = self.getPositionerNames()[0]
+        speed = self._widget.getSpeed()
+        self.setSpeed(positionerName=positionerName, speed=speed)
+
+    def setSpeed(self, positionerName, speed=(1000,1000,1000)):
+        self._master.positionersManager[positionerName].setSpeed(speed)
+        
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)
@@ -80,6 +98,19 @@ class PositionerController(ImConWidgetController):
             self._commChannel.sharedAttrs[(_attrCategory, positionerName, axis, attr)] = value
         finally:
             self.settingAttr = False
+
+    def setXYPosition(self, x, y):
+        positionerX = self.getPositionerNames()[0]
+        positionerY = self.getPositionerNames()[1]
+        self.__logger.debug(f"Move {positionerX}, axis X, dist {str(x)}")
+        self.__logger.debug(f"Move {positionerY}, axis Y, dist {str(y)}")
+        #self.move(positionerX, 'X', x)
+        #self.move(positionerY, 'Y', y)
+
+    def setZPosition(self, z):
+        positionerZ = self.getPositionerNames()[2]
+        self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
+        #self.move(self.getPositionerNames[2], 'Z', z)
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:
@@ -110,6 +141,16 @@ class PositionerController(ImConWidgetController):
         self.setPos(positionerName, axis, position)
 
     @APIExport(runOnUIThread=True)
+    def setPositionerSpeed(self, positionerName: str, speed: float) -> None:
+        """ Moves the specified positioner axis to the specified position. """
+        self.setSpeed(positionerName, speed)
+
+    @APIExport(runOnUIThread=True)
+    def setMotorsEnabled(self, positionerName: str, is_enabled: int) -> None:
+        """ Moves the specified positioner axis to the specified position. """
+        self._master.positionersManager[positionerName].setEnabled(is_enabled)
+
+    @APIExport(runOnUIThread=True)
     def stepPositionerUp(self, positionerName: str, axis: str) -> None:
         """ Moves the specified positioner axis in positive direction by its
         set step size. """
@@ -126,6 +167,8 @@ class PositionerController(ImConWidgetController):
         """ Performs calibration of the absolute zero position of the specified
         positioner (if the functionality is implemented). """
         return self.calibrate(positionerName)
+
+
 
 
 _attrCategory = 'Positioner'

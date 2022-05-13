@@ -52,7 +52,7 @@ class TISManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
-    def getLatestFrame(self):
+    def getLatestFrame(self, is_save=False):
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image
@@ -96,18 +96,18 @@ class TISManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            self.__logger.debug('startlive')
+            #self.__logger.debug('startlive')
 
     def stopAcquisition(self):
         if self._running:
             self._running = False
             self._camera.suspend_live()
-            self.__logger.debug('suspendlive')
+            #self.__logger.debug('suspendlive')
 
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
-        self.__logger.debug('stoplive')
+        #self.__logger.debug('stoplive')
 
     @property
     def pixelSizeUm(self):

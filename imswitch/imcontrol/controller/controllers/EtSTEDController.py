@@ -87,7 +87,7 @@ class EtSTEDController(ImConWidgetController):
         self.__coordTransformHelper = EtSTEDCoordTransformHelper(self, self._widget.coordTransformWidget, _logsDir)
 
         # Initiate coordinate transform coeffs
-        self.__transformCoeffs = np.ones(20)
+        self.__transformCoeffs = np.zeros(20)
 
         # Connect EtSTEDWidget and communication channel signals
         self._widget.initiateButton.clicked.connect(self.initiate)
@@ -429,12 +429,12 @@ class EtSTEDController(ImConWidgetController):
                         elif coords_detected.size != 0:
                             # if some events where detected
                             if np.size(coords_detected) > 2:
-                                coords_scan = coords_detected[0,:]
+                                coords_wf = coords_detected[0,:]
                             else:
-                                coords_scan = coords_detected[0]
+                                coords_wf = coords_detected[0]
                             # log detected center coordinate
-                            self.setDetLogLine("fastscan_x_center", coords_scan[0])
-                            self.setDetLogLine("fastscan_y_center", coords_scan[1])
+                            self.setDetLogLine("fastscan_x_center", coords_wf[0])
+                            self.setDetLogLine("fastscan_y_center", coords_wf[1])
                             # log all detected coordinates
                             if np.size(coords_detected) > 2:
                                 for i in range(np.size(coords_detected,0)):
@@ -445,33 +445,34 @@ class EtSTEDController(ImConWidgetController):
                     elif coords_detected.size != 0:
                         # if some events were detected
                         if np.size(coords_detected) > 2:
-                            coords_scan = np.copy(coords_detected[0,:])
+                            coords_wf = np.copy(coords_detected[0,:])
                         else:
-                            coords_scan = np.copy(coords_detected[0])
+                            coords_wf = np.copy(coords_detected[0])
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
-                        coords_scan = np.flip(np.copy(coords_scan))
-                        self.setDetLogLine("fastscan_x_center", coords_scan[0])
-                        self.setDetLogLine("fastscan_y_center", coords_scan[1])
-                        coords_scan[1] = np.shape(img)[0] - coords_scan[1]
+                        #coords_wf = np.flip(np.copy(coords_wf))  # not needed? see comment below
+                        self.setDetLogLine("fastscan_x_center", coords_wf[0])
+                        self.setDetLogLine("fastscan_y_center", coords_wf[1])
+                        #coords_wf[1] = np.shape(img)[0] - coords_wf[1]  # not needed if I have the napari coordinate before (napari coords should be inputted in transform), and napari coordinates should be the same as numpy coordinates. No flip nowhere needed?
                         self.pauseFastModality()
                         self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
-                        coords_center_scan = self.transform(coords_scan, self.__transformCoeffs)
-                        self.setDetLogLine("slowscan_x_center", coords_center_scan[0])
-                        self.setDetLogLine("slowscan_y_center", coords_center_scan[1])
+                        coords_scan = self.transform(coords_wf, self.__transformCoeffs)
+                        self.setDetLogLine("slowscan_x_center", coords_scan[0])
+                        self.setDetLogLine("slowscan_y_center", coords_scan[1])
                         self.setDetLogLine("scan_initiate", datetime.now().strftime('%Ss%fus'))
                         # save all detected coordinates in the log
                         if np.size(coords_detected) > 2:
                             for i in range(np.size(coords_detected,0)):
-                                self.setDetLogLine("det_coord_x_", coords_scan[0], i)
-                                self.setDetLogLine("det_coord_y_", coords_scan[1], i)
+                                self.setDetLogLine("det_coord_x_", coords_wf[0], i)
+                                self.setDetLogLine("det_coord_y_", coords_wf[1], i)
                         
-                        #self.__logger.debug(coords_scan)
-                        #self.__logger.debug(coords_center_scan)
-                        self.initiateSlowScan(position=coords_center_scan)
+                        self.__logger.debug(f'coords_wf: {coords_wf}')
+                        self.__logger.debug(f'coords_scan: {coords_scan}')
+                        self.initiateSlowScan(position=coords_scan)
                         self.runSlowScan()
 
                         # update scatter plot of event coordinates in the shown fast method image
-                        self.updateScatter(np.flip(np.copy(coords_detected)), clear=True)
+                        #self.updateScatter(np.flip(np.copy(coords_detected)), clear=True)
+                        self.updateScatter(coords_detected, clear=True)
 
                         self.__prevFrames.append(img)
                         self.saveValidationImages(prev=True, prev_ana=False)
@@ -510,11 +511,10 @@ class EtSTEDController(ImConWidgetController):
         dt = datetime.now()
         time_curr_after = round(dt.microsecond/1000)
         self.__logger.debug(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
-        self.__logger.debug(f'Time for signal curve generation: {time_curr_after-time_curr_mid}')
+        self.__logger.debug(f'Time for signal curve generation: {time_curr_after-time_curr_mid} ms')
 
     def setCenterScanParameter(self, position):
         """ Set the scanning center from the detected event coordinates. """
-        self.__logger.debug(self._analogParameterDict)
         if self._analogParameterDict:
             for index, positionerName in enumerate(self._analogParameterDict['target_device']):
                 #self.__logger.debug(positionerName)
@@ -601,13 +601,13 @@ class EtSTEDCoordTransformHelper():
         self.__saveFolder = saveFolder
 
         # initiate coordinate transform parameters
-        self.__transformCoeffs = np.ones(20)
+        self.__transformCoeffs = np.zeros(20)
         self.__loResCoords = list()
         self.__hiResCoords = list()
         self.__loResCoordsPx = list()
         self.__hiResCoordsPx = list()
         self.__hiResPxSize = 1
-        self.__loResPxSize = 1
+        #self.__loResPxSize = 1
         self.__hiResSize = 1
 
         # connect signals from widget
@@ -683,7 +683,7 @@ class EtSTEDCoordTransformHelper():
             self.__hiResSize = imgsize
         elif modality == 'lo':
             self.__loResCoords = list()
-            self.__loResPxSize = pixelsize
+            #self.__loResPxSize = pixelsize
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """

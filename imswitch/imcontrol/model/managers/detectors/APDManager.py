@@ -95,7 +95,7 @@ class APDManager(DetectorManager):
         except Exception:
             pass
 
-    def getLatestFrame(self):
+    def getLatestFrame(self, is_save=False):
         return self._image
 
     def updateImage(self, line_pixels, line_count, frame):

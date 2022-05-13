@@ -39,7 +39,7 @@ class MockCameraTIS:
         pass
 
     def grabFrame(self, **kwargs):
-        mocktype = "random_beads"
+        mocktype = "random_peak"
         if mocktype=="focus_lock":
             img = np.zeros((500, 600))
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
@@ -91,7 +91,6 @@ class MockCameraTIS:
 
     def getLast(self):
         return self.grabFrame()
-
 
     def setPropertyValue(self, property_name, property_value):
         return property_value

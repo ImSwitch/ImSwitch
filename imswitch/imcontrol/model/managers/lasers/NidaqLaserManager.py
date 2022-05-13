@@ -13,6 +13,7 @@ class NidaqLaserManager(LaserManager):
         self.__logger = initLogger(self, tryInheritParent=True)
         super().__init__(laserInfo, name, isBinary=laserInfo.getAnalogChannel() is None,
                          valueUnits='V', valueDecimals=2)
+        self.__logger.debug(f'Initialized {name}')
 
     def setEnabled(self, enabled):
         try:

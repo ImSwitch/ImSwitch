@@ -95,11 +95,12 @@ class APDManager(DetectorManager):
         except Exception:
             pass
 
-    def getLatestFrame(self):
+    def getLatestFrame(self, is_save=False):
         return self._image
 
     def updateImage(self, line_pixels, line_count, frame):
-        self._image[frame, -(line_count + 1), :] = line_pixels
+        #self._image[frame, -(line_count + 1), :] = line_pixels
+        self._image[frame, -(line_count + 1), :] = np.flip(line_pixels)
         self.__currentFrame = frame
         if line_count == 0:
             # adjust viewbox shape to new image shape at the start of the image

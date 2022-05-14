@@ -285,7 +285,6 @@ class HoliSheetController(LiveUpdatedController):
 
 
 
-
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

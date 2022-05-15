@@ -117,7 +117,7 @@ class SIMWidget(NapariHybridWidget):
         
     def setImage(self, im):
         if self.layer is None or self.layer.name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, name="HoliSheet", blending='additive')
+            self.layer = self.viewer.add_image(im, rgb=False, name="SIM Reconstruction", blending='additive')
         self.layer.data = im
         
 

@@ -2,6 +2,7 @@ import json
 import os
 
 import numpy as np
+import time 
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -23,6 +24,7 @@ class SIMController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         self.it=0
+        self.updateRate=10
 
         self.simDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_sim')
         if not os.path.exists(self.simDir):
@@ -64,6 +66,7 @@ class SIMController(LiveUpdatedController):
         self.patternID = 0
 
         # Initial SIM display
+        self._commChannel.sigUpdateImage.connect(self.update)
         #self.displayMask(self._master.simManager.maskCombined)
 
 
@@ -87,7 +90,7 @@ class SIMController(LiveUpdatedController):
 
         if self.it == self.updateRate:
             self.it = 0
-            #self.imageComputationWorker.prepareForNewImage(im)
+            self.imageComputationWorker.prepareForNewImage(im)
             self.sigImageReceived.emit()
         else:
             self.it += 1
@@ -144,7 +147,8 @@ class SIMController(LiveUpdatedController):
     def simPatternByID(self, patternID):
         currentPattern = self._master.simManager.allPatterns[patternID]
         self.updateDisplayImage(currentPattern)
-    
+        return currentPattern
+   
 
 
     class SIMProcessorWorker(Worker):
@@ -170,13 +174,22 @@ class SIMController(LiveUpdatedController):
             
             self.iReconstructed = 0
             self.isRunning = True
+            isSimulation=True
             while(self.isRunning):
                 # dispaly sim pattern
+                if(isSimulation):
+                    iRot = patternID%self.nRotations
+                    iPhi = patternID//self.nPhases
+                    self.detector.setIlluPatternByID(iRot, iPhi)
+                
+                # this does not correlate with simulated patterns!    
                 self.displayFct(patternID)
                 
                 # acquire and store frame
                 frame = self.detector.getLatestFrame()
+                
                 allFrames.append(frame)
+                time.sleep(.1)
                 
                 patternID+=1
                 
@@ -193,7 +206,7 @@ class SIMController(LiveUpdatedController):
 
                     self.sigSIMProcessorImageComputed.emit(np.array(self.SIMframe))
                     
-                    self.iReconstructed +=1
+                    self.iReconstructed += 1
 
                     patternID=0
                     allFrames = []
@@ -215,6 +228,12 @@ class SIMController(LiveUpdatedController):
                 self._numQueuedImages -= 1
                 self._numQueuedImagesMutex.unlock()
 
+        def prepareForNewImage(self, image):
+            """ Must always be called before the worker receives a new image. """
+            self._image = image
+            self._numQueuedImagesMutex.lock()
+            self._numQueuedImages += 1
+            self._numQueuedImagesMutex.unlock()
 
 
 '''#####################################

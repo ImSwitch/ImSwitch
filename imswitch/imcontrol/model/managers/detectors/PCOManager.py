@@ -192,9 +192,9 @@ class PCOManager(DetectorManager):
             camera = CameraPCO(cameraNo=cameraId, binning=binning)
         except Exception as e:
             self.__logger.debug(e)
-            self.__logger.warning(f'Failed to initialize CameraPCO {cameraId}, loading TIS mocker')
-            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS()
+            self.__logger.warning(f'Failed to initialize CameraPCO {cameraId}, loading PCO mocker')
+            from imswitch.imcontrol.model.interfaces.pco_mock import MockCameraPCO
+            camera = MockCameraPCO()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
@@ -202,6 +202,11 @@ class PCOManager(DetectorManager):
     def closeEvent(self):
         self._camera.close()
 
+
+    # for simulation only
+    def setIlluPatternByID(self, iRot, iPhi):
+        self._camera.setIlluPatternByID(iRot, iPhi)
+        
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.
 #

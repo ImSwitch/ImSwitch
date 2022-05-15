@@ -46,14 +46,18 @@ class MockCameraPCO:
         pass
 
     def generateSample(self):
-        Isample = np.zeros((self.SensorHeight, self.SensorWidth))
-        Isample[np.random.random(Isample.shape)>0.999]=1
+        if(0):
+            Isample = np.zeros((self.SensorHeight, self.SensorWidth))
+            Isample[np.random.random(Isample.shape)>0.999]=1
+        else:
+            Isample = nip.readim()
+            Isample = nip.extract(Isample, (self.SensorHeight, self.SensorWidth))+np.abs(np.random.randn(self.SensorHeight, self.SensorWidth))*3
 
         return Isample
         
     def grabFrame(self, **kwargs):
         # simulate simple imaging system
-        img = nip.gaussf(self.ISample*self.IIllu,3)#+np.random.randn(self.SensorHeight, self.SensorWidth)*.1
+        img = nip.gaussf(self.ISample*self.IIllu,2)#+np.random.randn(self.SensorHeight, self.SensorWidth)*.1
         img -= np.min(img)
         img /= np.max(img)
         time.sleep(0.1)
@@ -95,7 +99,10 @@ class MockCameraPCO:
         
     def setIlluPatternByID(self, iRot=0, iPhi=0, Nrot=3, Nphi=3):
         Nx,Ny=self.SensorHeight, self.SensorWidth
-        IGrating = 1+np.sin(((iRot/Nrot)*nip.xx((Nx,Ny))+(Nrot-iRot)/Nrot*nip.yy((Nx,Ny)))*np.pi/2+np.pi*iPhi/Nphi)
+        #for iPhi in range(3):
+        #    for iRot in range(3):
+        IGrating = 1+np.sin(((iRot/Nrot)*nip.xx((Nx,Ny))+(Nrot-iRot)/Nrot*nip.yy((Nx,Ny)))*np.pi/2+2*np.pi*iPhi/Nphi)
+
         self.setIlluPattern(IGrating)
         return IGrating
                    

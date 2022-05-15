@@ -24,7 +24,7 @@ class SIMController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         self.it=0
-        self.updateRate=10
+        self.updateRate=2
 
         self.simDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_sim')
         if not os.path.exists(self.simDir):
@@ -51,10 +51,18 @@ class SIMController(LiveUpdatedController):
         self._widget.sigSIMMonitorChanged.connect(self.monitorChanged)
         self._widget.sigPatternID.connect(self.patternIDChanged)
         
+        # sim parameters
+        self.patternID = 0
+        self.nRotations = 3
+        self.nPhases = 3
+        self.allFrames = []
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        self.imageComputationWorker = self.SIMProcessorWorker(self.detector, self.simPatternByID)
+        
+        # setup worker/background thread
+        self.imageComputationWorker = self.SIMProcessorWorker(self.detector, self.simPatternByID,self.nPhases,self.nRotations)
         self.imageComputationWorker.sigSIMProcessorImageComputed.connect(self.displayImage)
         
         self.imageComputationThread = Thread()
@@ -63,7 +71,6 @@ class SIMController(LiveUpdatedController):
         self.imageComputationThread.start()
 
 
-        self.patternID = 0
 
         # Initial SIM display
         self._commChannel.sigUpdateImage.connect(self.update)
@@ -82,16 +89,44 @@ class SIMController(LiveUpdatedController):
         
     def patternIDChanged(self, patternID):
         self.patternID = patternID
-        
+
+    
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         if not isCurrentDetector or not self.active:
             return
 
-        if self.it == self.updateRate:
+        isSimulation=True
+                
+        if self.it >= self.updateRate:
             self.it = 0
-            self.imageComputationWorker.prepareForNewImage(im)
-            self.sigImageReceived.emit()
+
+            # dispaly sim pattern
+            if(isSimulation):
+                iPhi = self.patternID%self.nPhases
+                iRot = self.patternID//self.nRotations
+                self.setIlluPatternByID(iRot, iPhi)
+            else:
+                pass
+            
+            # this does not correlate with simulated patterns!    
+            self.simPatternByID(self.patternID)
+            self.allFrames.append(im)
+            
+            # wait for frame to be displayed? 
+            time.sleep(.1)
+            self.patternID+=1
+            
+            # if all patterns are acquired => reconstruct
+            if self.patternID>=(self.nRotations*self.nPhases):
+                # process the frames and display
+                allFramesNP = np.array(self.allFrames)
+                self.imageComputationWorker.prepareForNewSIMStack(allFramesNP)
+                self.sigImageReceived.emit()
+                
+                self.patternID=0
+                self.allFrames = []
+
         else:
             self.it += 1
 
@@ -118,6 +153,9 @@ class SIMController(LiveUpdatedController):
 
         self._widget.updateSIMDisplay(img)
         
+    def setIlluPatternByID(self, iRot, iPhi):
+        self.detector.setIlluPatternByID(iRot, iPhi)
+
     def displayImage(self, im):
         """ Displays the image in the view. """
         self._widget.setImage(im)
@@ -133,10 +171,15 @@ class SIMController(LiveUpdatedController):
         self.updateDisplayImage(currentPattern)
  
     def startSIM(self):
-        self.imageComputationWorker.startSIMacquisition()
+        self.active = True
+        self.patternID = 0        
+        self.iReconstructed = 0
+        self.imageComputationWorker.setNumReconstructed(numReconstructed=self.iReconstructed)
  
     def stopSIM(self):
-        self.imageComputationWorker.stopSIMacquisition()
+        self.active = False
+        self.it = 0
+        #self.imageComputationWorker.stopSIMacquisition()
  
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -149,8 +192,6 @@ class SIMController(LiveUpdatedController):
         self.updateDisplayImage(currentPattern)
         return currentPattern
    
-
-
     class SIMProcessorWorker(Worker):
         sigSIMProcessorImageComputed = Signal(np.ndarray)
         
@@ -165,75 +206,47 @@ class SIMController(LiveUpdatedController):
             self.nPhases=nPhases
             self.nRotations=nRotations
             
+            self.iReconstructed = 0
+            
+            self._numQueuedImages = 0
+            self._numQueuedImagesMutex = Mutex()
+            
             # initilaize the reconstructor
             self.processor = SIMProcessor()
-            
-        def startSIMacquisition(self):
-            patternID = 0
-            allFrames = []
-            
-            self.iReconstructed = 0
-            self.isRunning = True
-            isSimulation=True
-            while(self.isRunning):
-                # dispaly sim pattern
-                if(isSimulation):
-                    iRot = patternID%self.nRotations
-                    iPhi = patternID//self.nPhases
-                    self.detector.setIlluPatternByID(iRot, iPhi)
-                
-                # this does not correlate with simulated patterns!    
-                self.displayFct(patternID)
-                
-                # acquire and store frame
-                frame = self.detector.getLatestFrame()
-                
-                allFrames.append(frame)
-                time.sleep(.1)
-                
-                patternID+=1
-                
-                if patternID>=(self.nRotations*self.nPhases):
-                    # process the frames
-                    allFramesNP = np.array(allFrames)
-                    allFramesNP = self.processor.simSimulator(Nx=512, Ny=512, Nrot=3, Nphi=3)
-                    
-                    # initialize the model 
-                    if self.iReconstructed == 0:
-                        self.processor.setReconstructor()
-                        self.processor.calibrate(allFramesNP)
-                    self.SIMframe = self.processor.reconstruct(allFramesNP)
 
-                    self.sigSIMProcessorImageComputed.emit(np.array(self.SIMframe))
-                    
-                    self.iReconstructed += 1
-
-                    patternID=0
-                    allFrames = []
-                
-        def stopSIMacquisition(self):
-            self.isRunning = False
-            self.iReconstructed = 0
+        def setNumReconstructed(self, numReconstructed=0):
+            self.iReconstructed = numReconstructed
             
         def computeSIMImage(self):
             """ Compute SIM of an image stack. """
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
-                SIMrecon = np.zeros((1000,1000))#np.flip(np.abs(self.reconHoliSheet(self._image, PSFpara=self.PSFpara, N_subroi=1024, pixelsize=self.pixelsize, dz=self.dz)),1)
+                
+                # Simulate SIM Stack
+                #self._image = self.processor.simSimulator(Nx=512, Ny=512, Nrot=3, Nphi=3)
+                
+                # initialize the model 
+                if self.iReconstructed == 0:
+                    self.processor.setReconstructor()
+                    self.processor.calibrate(self._image)
+                SIMframe = self.processor.reconstruct(self._image)
+                self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
 
-                self.sigHoliSheetImageComputed.emit(np.array(SIMrecon))
+                self.iReconstructed += 1
+
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1
                 self._numQueuedImagesMutex.unlock()
 
-        def prepareForNewImage(self, image):
+        def prepareForNewSIMStack(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()
+            
 
 
 '''#####################################
@@ -266,7 +279,6 @@ class SIMProcessor(object):
         self.isCalibrated = False
         self.use_phases =  True
         self.use_torch = False
-
         
         '''
         initialize
@@ -353,7 +365,6 @@ class SIMProcessor(object):
         '''
         reconstruction
         '''
-        
         assert self.isCalibrated, 'SIM processor not calibrated, unable to perform SIM reconstruction'
         dshape= currentImage.shape
         phases_angles = self.phases_number*self.angles_number

@@ -259,7 +259,7 @@ class HoliSheetController(LiveUpdatedController):
                 self._numQueuedImages -= 1
                 self._numQueuedImagesMutex.unlock()
 
-        def prepareForNewImage(self, image):
+        def sigHoliSheetImageComputed(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
             self._numQueuedImagesMutex.lock()

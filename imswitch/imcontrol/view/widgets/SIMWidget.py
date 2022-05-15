@@ -3,18 +3,18 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools
-from .basewidgets import Widget
+from .basewidgets import NapariHybridWidget
 
 
-class SIMWidget(Widget):
+class SIMWidget(NapariHybridWidget):
     """ Widget containing sim interface. """
 
     sigSIMDisplayToggled = QtCore.Signal(bool)  # (enabled)
     sigSIMMonitorChanged = QtCore.Signal(int)  # (monitor)
     sigPatternID = QtCore.Signal(int)  # (display pattern id)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __post_init__(self):
+        #super().__init__(*args, **kwargs)
 
         self.simDisplay = None
 
@@ -43,6 +43,9 @@ class SIMWidget(Widget):
 
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
+        
+        self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
+        self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
         
 
         # Control panel with most buttons
@@ -85,8 +88,12 @@ class SIMWidget(Widget):
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         #self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
         self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
+        self.grid.addWidget(self.stopSIMAcquisition, 2, 0, 1, 1)
         self.grid.addLayout(self.simDisplayLayout, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+        
+        self.layer = None
 
     def initSIMDisplay(self, monitor):
         from imswitch.imcontrol.view import SIMDisplay
@@ -104,6 +111,15 @@ class SIMWidget(Widget):
     def setSIMDisplayMonitor(self, monitor):
         self.simDisplay.setMonitor(monitor, updateImage=True)
 
+    def getImage(self):
+        if self.layer is not None:
+            return self.img.image
+        
+    def setImage(self, im):
+        if self.layer is None or self.layer.name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, name="SIM Reconstruction", blending='additive')
+        self.layer.data = im
+        
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

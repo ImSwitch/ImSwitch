@@ -43,6 +43,9 @@ class ESP32LEDLaserManager(LaserManager):
         if self.enabled:
             self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
 
+    def sendTrigger(self, triggerId):
+        self._rs232manager._esp32.sendTrigger(triggerId)
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

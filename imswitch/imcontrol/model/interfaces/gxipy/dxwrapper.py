@@ -5,23 +5,15 @@
 
 from ctypes import *
 import sys
-import os
 
 if sys.platform == 'linux2' or sys.platform == 'linux':
-    if os.path.exists('/usr/lib/libdximageproc.so') : 
-        filepath = '/usr/lib/libdximageproc.so'
-    else:
-        filepath = '/usr/lib/libgxiapi.so'
     try:
-        dll = CDLL(filepath)
+        dll = CDLL('/usr/lib/libgxiapi.so')
     except OSError:
-        print('Cannot find libdximageproc.so or libgxiapi.so.')
+        print('Cannot find libgxiapi.so.')
 else:
     try:
-        if (sys.version_info.major == 3 and sys.version_info.minor >= 8) or (sys.version_info.major > 3):
-            dll = WinDLL('DxImageProc.dll', winmode=0)
-        else:
-            dll = WinDLL('DxImageProc.dll')
+        dll = WinDLL('DxImageProc.dll')
     except OSError:
         print('Cannot find DxImageProc.dll.')
 
@@ -80,7 +72,7 @@ class DxActualBits:
 class MonoImgProcess(Structure):
     _fields_ = [
         ('defective_pixel_correct',     c_bool),        # Pixel correct switch
-        ('sharpness',                   c_bool),        # Sharpness switch
+        ('sharpness',                   c_bool),        # Sharpness switch　
         ('accelerate',                  c_bool),        # Accelerate switch
         ('sharp_factor',                c_float),       # Sharpen the intensity factor
         ('pro_lut',                     c_char_p),      # Lookup table
@@ -100,7 +92,7 @@ class ColorImgProcess(Structure):
         ('sharpness',                   c_bool),        # Sharpness switch
         ('accelerate',                  c_bool),        # Accelerate switch
         ('arr_cc',                      c_void_p),      # Color processing parameters
-        ('cc_buf_length',               c_ubyte),       # Color processing parameters length(sizeof(VxInt16)*9)
+        ('cc_buf_length',               c_ubyte),       # Color processing parameters length（sizeof(VxInt16)*9）
         ('sharp_factor',                c_float),       # Sharpen the intensity factor
         ('pro_lut',                     c_char_p),      # Lookup table
         ('lut_length',                  c_ushort),      # The length of the lookup table
@@ -173,9 +165,9 @@ if hasattr(dll, "DxGetContrastLut"):
         """
         :brief  ccalculating contrast lookup table (RGB24)
         :param  contrast_param: contrast param,range(-50 ~ 100)
-        :return: status:       State return value, See detail in DxStatus
-                 contrast_lut: contrast lookup table
-                 lut_length:   contrast lookup table length(unit:byte)
+        :return: status：       State return value, See detail in DxStatus
+                 contrast_lut： contrast lookup table
+                 lut_length：   contrast lookup table length(unit:byte)
         """
         contrast_param_c = c_int()
         contrast_param_c.value = contrast_param
@@ -297,86 +289,3 @@ if hasattr(dll, "DxImageImprovment"):
                                        color_correction_param_p, contrast_lut, gamma_lut)
         return status
 
-if hasattr(dll, "DxSaturation"):
-    def dx_saturation(input_address, output_address, image_size, factor):
-        """
-        :brief      Saturation adjustment (RGB24)
-        :param      input_address:          input buffer address, buff size = width * height * 3
-        :param      output_address:         output buffer address, buff size = width * height * 3        
-        :param      image_size:             image size (width * height)
-        :param      factor:                 saturation factor,range(0 ~ 128)
-        :return:    status:                 State return value, See detail in DxStatus
-        """
-        image_size_c = c_uint()
-        image_size_c.value = image_size
-
-        factor_c = c_int()
-        factor_c.value = factor
-
-        input_address_p = c_void_p()
-        input_address_p.value = input_address
-
-        output_address_p = c_void_p()
-        output_address_p.value = output_address
-
-        status = dll.DxSaturation(input_address_p, output_address_p, image_size_c, factor_c)
-        return status
-
-if hasattr(dll, "DxAutoRawDefectivePixelCorrect"):
-    def dx_auto_raw_defective_pixel_correct(inout_address, width, height, bit_num):
-        """
-        :brief      Auto raw defective pixel correct,Support image from Raw8 to Raw16, the bit number is actual
-                    bit number, when it is more than 8, the actual bit can be every number between 9 to 16.
-                    And if image format is packed, you need convert it to Raw16.
-                    This function should be used in each frame.
-        :param      inout_address:          input & output buffer address
-        :param      width:                  image width
-        :param      height:                 image height
-        :param      bit_num:                image bit number (for example:if image 10bit, nBitNum = 10,
-                                                                          if image 12bit, nBitNum = 12,
-                                                                          range:8 ~ 16)
-        :return:    status:                 State return value, See detail in DxStatus
-        """
-        width_c = c_uint()
-        width_c.value = width
-
-        height_c = c_uint()
-        height_c.value = height
-
-        bit_num_c = c_int()
-        bit_num_c.value = bit_num
-
-        inout_address_p = c_void_p()
-        inout_address_p.value = inout_address
-
-        status = dll.DxAutoRawDefectivePixelCorrect(inout_address_p, width_c, height_c, bit_num_c)
-        return status
-
-if hasattr(dll, "DxSharpen24B"):
-    def dx_sharpen_24b(input_address, output_address, width, height, factor):
-        """
-        :brief      Sharpen adjustment (RGB24)
-        :param      input_address:          input buffer address, buff size = width * height * 3
-        :param      output_address:         output buffer address, buff size = width * height * 3
-        :param      width:                  image width
-        :param      height:                 image height
-        :param      factor:                 sharpen factor, range(0.1~5.0)
-        :return:    status:                 State return value, See detail in DxStatus
-        """
-        width_c = c_uint()
-        width_c.value = width
-
-        height_c = c_uint()
-        height_c.value = height
-
-        input_address_p = c_void_p()
-        input_address_p.value = input_address
-
-        output_address_p = c_void_p()
-        output_address_p.value = output_address
-
-        factor_c = c_float()
-        factor_c.value = factor
-
-        status = dll.DxSharpen24B(input_address_p, output_address_p, width_c, height_c, factor_c)
-        return status

@@ -150,6 +150,29 @@ class FocusLockInfo:
     frameCroph: int
     """ Height of frame crop. """
 
+@dataclass(frozen=True)
+class AutofocusInfo:
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
+    updateFreq: int
+    """ Update frequency, in milliseconds. """
+
+    frameCropx: int
+    """ Starting X position of frame crop. """
+
+    frameCropy: int
+    """ Starting Y position of frame crop. """
+
+    frameCropw: int
+    """ Width of frame crop. """
+
+    frameCroph: int
+    """ Height of frame crop. """
+
 
 @dataclass(frozen=True)
 class ScanInfo:
@@ -167,6 +190,18 @@ class ScanInfo:
 
     sampleRate: int
     """ Scan sample rate. """
+
+
+@dataclass(frozen=True)
+class EtSTEDInfo:
+    detectorFast: str
+    """ Name of the STED detector to use. """
+
+    detectorSlow: str
+    """ Name of the widefield detector to use. """
+
+    laserFast: str
+    """ Name of the widefield laser to use. """
 
 
 @dataclass(frozen=True)
@@ -191,7 +226,14 @@ class PulseStreamerInfo:
     ipAddress: Optional[str] = None
     """ IP address of Pulse Streamer hardware. """
 
-    
+
+@dataclass(frozen=True)
+class PyroServerInfo:
+    name: Optional[str] = 'ImSwitchServer'
+    host: Optional[str] = '127.0.0.1'
+    port: Optional[int] = 54333
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -222,15 +264,24 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
+    
+    autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
+    """ Autofocus  settings. Required to be defined to use autofocus 
+    functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
     """ Scan settings. Required to be defined to use scan functionality. """
+
+    etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
+    """ EtSTED settings. Required to be defined to use etSTED functionality. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """
 
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
+
+    pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 
     _catchAll: CatchAll = None
 

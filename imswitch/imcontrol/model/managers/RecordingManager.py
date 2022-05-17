@@ -111,7 +111,7 @@ class RecordingManager(SignalInterface):
                         file = h5py.File(filePath, 'w')
 
                         shape = self.__detectorsManager[detectorName].shape
-                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='float32')
 
                         for key, value in attrs[detectorName].items():
                             dataset.attrs[key] = value
@@ -193,7 +193,7 @@ class RecordingWorker(Worker):
             datasets[detectorName] = files[detectorName].create_dataset(
                 datasetName, (1, *reversed(shapes[detectorName])),
                 maxshape=(None, *reversed(shapes[detectorName])),
-                dtype='i2'
+                dtype='float32'
             )
 
             for key, value in self.attrs[detectorName].items():

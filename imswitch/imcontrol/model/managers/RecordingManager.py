@@ -121,7 +121,7 @@ class RecordingManager(SignalInterface):
                         file = h5py.File(filePath, 'w')
 
                         shape = self.__detectorsManager[detectorName].shape
-                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
+                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='float32')
 
                         for key, value in attrs[detectorName].items():
                             #self.__logger.debug(key)

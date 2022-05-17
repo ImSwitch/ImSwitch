@@ -82,7 +82,7 @@ class MicroDriveHandler:
             self._waitForCommand()
         else:
             self.__logger.info(f"{move.value} too small for movement. Skipping.")
-            pass
+            return 0.0
         
         self._checkError(
             self.__dll.MCL_MDCurrentPositionM(currAxis, endMicro, self.__handle)
@@ -300,7 +300,7 @@ class NanoDriveHandler:
         currPos : c_double = self._checkReturnValue(
             self.__dll.MCL_SingleReadN(currAxis, self.__handle)
         )
-        return currPos.value
+        return currPos
     
     def calibrate(self) -> bool:
         # NanoDrive calibration consists in moving to the maximum

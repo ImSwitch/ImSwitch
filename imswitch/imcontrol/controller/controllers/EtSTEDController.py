@@ -118,6 +118,7 @@ class EtSTEDController(ImConWidgetController):
         self.__frame = 0
         self.t_call = 0
         self.__maxAnaImgVal = 0
+        self.__flipwfcalib = True  # flipping widefield image when loading for transformation calibration
 
 
     def initiate(self):
@@ -455,6 +456,8 @@ class EtSTEDController(ImConWidgetController):
                         #coords_wf[1] = np.shape(img)[0] - coords_wf[1]  # not needed if I have the napari coordinate before (napari coords should be inputted in transform), and napari coordinates should be the same as numpy coordinates. No flip nowhere needed?
                         self.pauseFastModality()
                         self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
+                        #coords_wf[1] = np.shape(img)[1] - coords_wf[1]  # mirror y-coord
+                        #coords_wf = np.flip(np.copy(coords_wf))  # should be correct with flip and no mirror, according to non-live testing
                         coords_scan = self.transform(coords_wf, self.__transformCoeffs)
                         self.setDetLogLine("slowscan_x_center", coords_scan[0])
                         self.setDetLogLine("slowscan_y_center", coords_scan[1])
@@ -585,6 +588,9 @@ class EtSTEDController(ImConWidgetController):
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
             self.__running = False
 
+    def getFlipWf(self):
+        return self.__flipwfcalib
+
     def closeEvent(self):
         pass
 
@@ -609,9 +615,10 @@ class EtSTEDCoordTransformHelper():
         self.__hiResPxSize = 1
         #self.__loResPxSize = 1
         self.__hiResSize = 1
+        self.__loResSize = 1
 
         # connect signals from widget
-        etSTEDController._widget.coordTransfCalibButton.clicked.connect(self.calibrationLaunch)
+        self.etSTEDController._widget.coordTransfCalibButton.clicked.connect(self.calibrationLaunch)
         self._widget.saveCalibButton.clicked.connect(self.calibrationFinish)
         self._widget.resetCoordsButton.clicked.connect(self.resetCalibrationCoords)
         self._widget.loadLoResButton.clicked.connect(lambda: self.loadCalibImage('lo'))
@@ -635,7 +642,8 @@ class EtSTEDCoordTransformHelper():
             self.__loResCoords.append(pos)
         self.__hiResCoordsPx = self._widget.pointsLayerHi.data
         for pos_px in self.__hiResCoordsPx:
-            pos = (np.around(pos_px[0]*self.__hiResPxSize - self.__hiResSize/2, 3), -1 * np.around(pos_px[1]*self.__hiResPxSize - self.__hiResSize/2, 3))
+            # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
+            pos = (np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3), np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3))
             self.__hiResCoords.append(pos)
         # calibrate coordinate transform
         self.coordinateTransformCalibrate()
@@ -650,7 +658,8 @@ class EtSTEDCoordTransformHelper():
         coords_transf = []
         for i in range(0,len(self.__loResCoords)):
             pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
-            pos_px = (np.around((pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 0), np.around((-1 * pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 0))
+            # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
+            pos_px = (np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3))
             coords_transf.append(pos_px)
         coords_transf = np.array(coords_transf)
         self._widget.pointsLayerTransf.data = coords_transf
@@ -683,6 +692,7 @@ class EtSTEDCoordTransformHelper():
             self.__hiResSize = imgsize
         elif modality == 'lo':
             self.__loResCoords = list()
+            self.__loResSize = np.shape(img_data)[1]
             #self.__loResPxSize = pixelsize
 
     def openFolder(self):
@@ -697,6 +707,8 @@ class EtSTEDCoordTransformHelper():
             viewer = self._widget.napariViewerHi
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
+            if self.etSTEDController.getFlipWf():
+                img_data = np.moveaxis(img_data, 0, 1)
         viewer.add_image(img_data)
         viewer.layers.unselect_all()
         viewer.layers.move_selected(len(viewer.layers)-1,0)

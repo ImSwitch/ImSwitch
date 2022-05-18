@@ -15,6 +15,7 @@ from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
 from .SIMController import SIMController
+from .MCTController import MCTController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController

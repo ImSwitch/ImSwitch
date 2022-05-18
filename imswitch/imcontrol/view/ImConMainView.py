@@ -54,6 +54,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'SLM': _DockInfo(name='SLM', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),
+            'MCT': _DockInfo(name='MCT', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'Scan': _DockInfo(name='Scan', yPosition=2),

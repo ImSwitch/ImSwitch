@@ -157,6 +157,21 @@ class SIMInfo:
     wavelength. """
 
 @dataclass(frozen=True)
+class MCTInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
+
+@dataclass(frozen=True)
 class FocusLockInfo:
     camera: str
     """ Detector name. """
@@ -284,6 +299,9 @@ class SetupInfo:
     
     sim: Optional[SIMInfo] = field(default_factory=lambda: None)
     """ SIM settings. Required to be defined to use SIM functionality. """
+
+    mct: Optional[MCTInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use MCT functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock

@@ -2,7 +2,7 @@
     "lasers": {
         "365 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line8",
+            "digitalLine": 8,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -14,7 +14,7 @@
         },
         "435 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line9",
+            "digitalLine": 9,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -26,7 +26,7 @@
         },
         "470 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line10",
+            "digitalLine": 10,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -38,7 +38,7 @@
         },
         "500 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line11",
+            "digitalLine": 11,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -50,7 +50,7 @@
         },
         "550 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line12",
+            "digitalLine": 12,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -62,7 +62,7 @@
         },
         "580 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line13",
+            "digitalLine": 13,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -74,7 +74,7 @@
         },
         "635 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line14",
+            "digitalLine": 14,       
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -86,7 +86,7 @@
         },
         "740 LED": {
             "analogChannel": null,
-            "digitalLine": "Dev1/port0/line15",
+            "digitalLine": 15,
             "managerName": "CoolLEDLaserManager",
             "managerProperties": {
                 "rs232device": "coolLED",
@@ -99,7 +99,7 @@
     },
     "positioners": {
         "X": {
-            "analogChannel": "Dev1/ao0",
+            "analogChannel": 0,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -112,7 +112,7 @@
             "forPositioning": true
         },
         "Y": {
-            "analogChannel": "Dev1/ao1",
+            "analogChannel": 1,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {
@@ -125,7 +125,7 @@
             "forPositioning": true
         },
         "Z": {
-            "analogChannel": "Dev1/ao2",
+            "analogChannel": 2,
             "digitalLine": null,
             "managerName": "NidaqPositionerManager",
             "managerProperties": {

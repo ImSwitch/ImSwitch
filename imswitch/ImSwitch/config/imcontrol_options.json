@@ -1,9 +1,8 @@
 {
-    "setupFileName": "example_uc2_esp32cam.json",
+    "setupFileName": "example_uc2_lightsheet.json",
     "recording": {
-        "outputFolder": "C:\\Users\\UC2\\Downloads",
+        "outputFolder": "./ImSwitch/ImSwitch/recordings",
         "includeDateInOutputFolder": true
     },
-    "setupFileName1": "example_uc2_lightsheet_vimba.json",
-    "setupFileName2": "example_uc2_.json"
+    "setupFileName1": "example_uc2_jetson_nano_cam.json"
 }

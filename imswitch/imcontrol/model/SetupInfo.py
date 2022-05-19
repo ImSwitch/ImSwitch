@@ -128,6 +128,8 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
+
+
 @dataclass(frozen=True)
 class SIMInfo:
     monitorIdx: int
@@ -155,6 +157,9 @@ class SIMInfo:
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
+
+    isSimulation: bool
+    
 
 @dataclass(frozen=True)
 class FocusLockInfo:

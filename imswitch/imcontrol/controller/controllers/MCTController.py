@@ -12,8 +12,6 @@ from ..basecontrollers import LiveUpdatedController
 
 import NanoImagingPack as nip
 
-from napari_mct_processor.convSimProcessor import ConvSimProcessor
-from napari_mct_processor.hexSimProcessor import HexSimProcessor
 
 class MCTController(LiveUpdatedController):
     """Linked to MCTWidget."""
@@ -33,12 +31,6 @@ class MCTController(LiveUpdatedController):
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
             return
-
-        self._widget.initMCTDisplay(self._setupInfo.mct.monitorIdx)
-        # self.loadPreset(self._defaultPreset)
-
-        # Connect CommunicationChannel signals
-        self._commChannel.sigMCTMaskUpdated.connect(self.displayMask)
 
         # Connect MCTWidget signals
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
@@ -212,7 +204,7 @@ class MCTController(LiveUpdatedController):
             self._numQueuedImagesMutex = Mutex()
             
             # initilaize the reconstructor
-            self.processor = MCTProcessor()
+            #self.processor = MCTProcessor()
 
         def setNumReconstructed(self, numReconstructed=0):
             self.iReconstructed = numReconstructed
@@ -227,14 +219,15 @@ class MCTController(LiveUpdatedController):
                 #self._image = self.processor.mctSimulator(Nx=512, Ny=512, Nrot=3, Nphi=3)
                 
                 # initialize the model 
+                '''
                 if self.iReconstructed == 0:
-                    self.processor.setReconstructor()
-                    self.processor.calibrate(self._image)
+                    #self.processor.setReconstructor()
+                    #self.processor.calibrate(self._image)
                 MCTframe = self.processor.reconstruct(self._image)
                 self.sigMCTProcessorImageComputed.emit(np.array(MCTframe))
 
                 self.iReconstructed += 1
-
+                '''
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1

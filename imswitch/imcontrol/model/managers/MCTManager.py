@@ -28,29 +28,10 @@ class MCTManager(SignalInterface):
         self.__mctSize = (self.__mctInfo.width, self.__mctInfo.height)
         self.__patternsDir = self.__mctInfo.patternsDir
         
-        # Load all patterns
-        self.allPatterns = self.loadPatterns(self.__patternsDir)
-
+        
         self.update()
 
-    def loadPatterns(self,patternsDir, filetype="bmp"):
-        allPatternPaths = glob.glob(os.path.join(patternsDir, "*."+filetype))
-        allPatterns = []
-        for iPatternPath in allPatternPaths:
-            mImage = cv2.imread(iPatternPath)
-            mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
-            allPatterns.append(mImage)
-            print(iPatternPath)
-        return allPatterns
-        
-        
-    def saveState(self, state_general=None, state_pos=None, state_aber=None):
-        if state_general is not None:
-            self.state_general = state_general
-        if state_pos is not None:
-            self.state_pos = state_pos
-        if state_aber is not None:
-            self.state_aber = state_aber
+
 
     def update(self):
         #self.allPatternsPaths

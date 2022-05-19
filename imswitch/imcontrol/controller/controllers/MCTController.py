@@ -23,6 +23,8 @@ class MCTController(LiveUpdatedController):
         self.__logger = initLogger(self)
         self.it=0
         self.updateRate=2
+        
+        '''
 
         self.mctDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_mct')
         if not os.path.exists(self.mctDir):
@@ -68,7 +70,8 @@ class MCTController(LiveUpdatedController):
         self._commChannel.sigUpdateImage.connect(self.update)
         #self.displayMask(self._master.mctManager.maskCombined)
 
-
+        '''
+        
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()

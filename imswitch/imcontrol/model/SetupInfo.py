@@ -233,6 +233,10 @@ class PyroServerInfo:
     host: Optional[str] = '127.0.0.1'
     port: Optional[int] = 54333
 
+@dataclass(frozen=True)
+class PyMMCoreInfo:
+    MMPath: Optional[str]
+    MMDevSearchPath: Optional[str]
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -280,6 +284,9 @@ class SetupInfo:
 
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
+
+    pymmcore: PyMMCoreInfo = field(default_factory=PyMMCoreInfo)
+    """ PyMMCore settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

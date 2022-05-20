@@ -17,9 +17,9 @@ class PyMMCoreManager(SignalInterface):
         super().__init__()
         self.__logger = initLogger(self)
         self.__core = pymmcore.CMMCore()
-        self.__mmPath = setupInfo.pymmcore.MMPath
+        self.__mmPath = setupInfo.MMPath
         try:
-            self.__devSearchPath = setupInfo.pymmcore.MMDevSearchPath
+            self.__devSearchPath = setupInfo.MMDevSearchPath
         except:
             self.__devSearchPath = self.__mmPath
 

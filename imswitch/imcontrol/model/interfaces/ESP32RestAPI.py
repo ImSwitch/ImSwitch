@@ -50,10 +50,10 @@ class ESP32Client(object):
     is_connected = False
 
     microsteppingfactor_filter=16 # run more smoothly
-    filter_pos_1 = 2000*microsteppingfactor_filter
+    filter_pos_1 = 1700*microsteppingfactor_filter
     filter_pos_3 = 3500*microsteppingfactor_filter
     filter_pos_2 = 0*microsteppingfactor_filter
-    filter_pos_init = -5000*microsteppingfactor_filter
+    filter_pos_init = -5500*microsteppingfactor_filter
 
     backlash_x = 0
     backlash_y = 0

@@ -15,6 +15,17 @@ class MCTWidget(NapariHybridWidget):
     sigMCTStop = QtCore.Signal(bool)  # (enabled)
     sigMCTStart = QtCore.Signal(bool)  # (enabled)
 
+
+    sigShowToggled = QtCore.Signal(bool)  # (enabled)
+    sigPIDToggled = QtCore.Signal(bool)  # (enabled)
+    sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
+    
+    
+    sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
+
+
+
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
@@ -50,8 +61,12 @@ class MCTWidget(NapariHybridWidget):
         self.sliderLaser1.setMaximum(valueRangeMaxLaser)
         self.sliderLaser1.setTickInterval(tickIntervalLaser)
         self.sliderLaser1.setSingleStep(singleStepLaser)
-        self.sliderLaser1.setValue(500)
+        self.sliderLaser1.setValue(0)
         
+        self.sliderLaser1.valueChanged.connect(
+            lambda value: self.sigSliderLaser1ValueChanged.emit(value)
+        )
+                        
         self.sliderLaser2 = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimalsLaser)
         self.sliderLaser2.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -59,26 +74,29 @@ class MCTWidget(NapariHybridWidget):
         self.sliderLaser2.setMaximum(valueRangeMaxLaser)
         self.sliderLaser2.setTickInterval(tickIntervalLaser)
         self.sliderLaser2.setSingleStep(singleStepLaser)
-        self.sliderLaser2.setValue(500)
+        self.sliderLaser2.setValue(0)
+        self.sliderLaser2.valueChanged.connect(
+            lambda value: self.sigSliderLaser2ValueChanged.emit(value)
+        )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
         self.mctEditFileName  = QtWidgets.QLabel('Test')
         self.mctNImages  = QtWidgets.QLabel('Number of images: ')
 
         self.mctStartButton = guitools.BetterPushButton('Start')
-        self.mctStartButton.setCheckable(True)
+        self.mctStartButton.setCheckable(False)
         self.mctStartButton.toggled.connect(self.sigMCTStart)
 
         self.mctStopButton = guitools.BetterPushButton('Stop')
-        self.mctStopButton.setCheckable(True)
+        self.mctStopButton.setCheckable(False)
         self.mctStopButton.toggled.connect(self.sigMCTStop)
 
         self.mctShowLastButton = guitools.BetterPushButton('Show LaSt')
-        self.mctShowLastButton.setCheckable(True)
+        self.mctShowLastButton.setCheckable(False)
         self.mctShowLastButton.toggled.connect(self.sigMCTShowLast)
         
         self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
-        self.mctInitFilterButton.setCheckable(True)
+        self.mctInitFilterButton.setCheckable(False)
         self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
 
         # enable
@@ -92,7 +110,6 @@ class MCTWidget(NapariHybridWidget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-        #addWidget (self, QWidget, row, column, rowSpan, columnSpan, Qt.Alignment alignment = 0)
         self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
         self.grid.addWidget(self.mctDoZStack, 0, 2, 1, 1)
@@ -122,7 +139,33 @@ class MCTWidget(NapariHybridWidget):
             self.layer = self.viewer.add_image(im, rgb=False, name="MCT Reconstruction", blending='additive')
         self.layer.data = im
         
-
+        
+    def getZStackValues(self):
+        valueZmin = float(self.mctValueZmin.text())
+        valueZmax = float(self.mctValueZmax.text())
+        valueZsteps = float(self.mctValueZsteps.text())
+        valueZenabled = bool(self.mctDoZStack.isChecked())
+        
+        return valueZmin, valueZmax, valueZsteps, valueZenabled
+ 
+    def getTimelapseValues(self):
+        mctValueTimePeriod = float(self.mctValueTimePeriod.text())
+        return mctValueTimePeriod
+     
+    def getBrightfieldEnabled(self):
+        valueBrightfield = bool(self.mctDoBrightfield.isChecked())
+        return valueBrightfield
+    
+    def getFilename(self):
+        mctEditFileName = self.mctEditFileName.text()
+        return mctEditFileName
+    
+    def setNImages(self, nImages):
+        self.mctNImages.setText('Number of images: '+str(nImages))
+    
+    
+    
+        
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

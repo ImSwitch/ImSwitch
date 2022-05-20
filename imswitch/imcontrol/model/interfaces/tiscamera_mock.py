@@ -1,5 +1,5 @@
 import numpy as np
-
+import time
 
 class MockCameraTIS:
     def __init__(self):
@@ -18,8 +18,8 @@ class MockCameraTIS:
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
-        self.SensorHeight = 1000
-        self.SensorWidth = 1000
+        self.SensorHeight = 500
+        self.SensorWidth = 500
         self.shape = (self.SensorHeight,self.SensorWidth)
 
     def start_live(self):
@@ -37,17 +37,26 @@ class MockCameraTIS:
     def setROI(self, hpos, vpos, hsize, vsize):
         pass
 
+    def setBinning(self, binning):
+        pass
+
     def grabFrame(self, **kwargs):
-        img = np.zeros((500, 600))
+        img = np.zeros((self.SensorHeight, self.SensorWidth))
         beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
         img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
         img = np.random.randn(img.shape[0],img.shape[1])
-        return img
+        img -= np.min(img)
+        img /= np.max(img)
+        
+        time.sleep(0.1)
+        return np.int8(img*255)
 
-    def getLast(self):
+    def getLast(self, is_resize=False):
         return self.grabFrame()
-
-
+    
+    def getLastChunk(self):
+        return np.expand_dims(self.grabFrame(),0)
+    
     def setPropertyValue(self, property_name, property_value):
         return property_value
 
@@ -59,7 +68,15 @@ class MockCameraTIS:
 
     def openPropertiesGUI(self):
         pass
+    
+    def close(self):
+        pass
 
+    def close(self):
+        pass
+    
+    def flushBuffer(self):
+        pass 
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

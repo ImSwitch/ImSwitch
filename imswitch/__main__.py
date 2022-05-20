@@ -1,7 +1,6 @@
 import importlib
 import traceback
 
-
 import imswitch
 from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
@@ -17,7 +16,8 @@ def main():
 
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
-        # Ensure that imscripting is added last
+        # Ensure th at imscripting is added last
+        
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     main()
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

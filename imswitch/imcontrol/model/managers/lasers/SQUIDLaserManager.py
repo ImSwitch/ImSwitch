@@ -1,14 +1,7 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
-from imswitch.imcontrol.model.interfaces.ESP32RestAPI import ESP32Client
-import numpy as np
 
-class ESP32LEDMatrixManager(LaserManager):
+class SQUIDLaserManager(LaserManager):
     """ LaserManager for controlling LEDs and LAsers connected to an 
     ESP32 exposing a REST API
     Each LaserManager instance controls one LED.
@@ -19,39 +12,44 @@ class ESP32LEDMatrixManager(LaserManager):
       through which the communication should take place
     - ``channel_index`` -- laser channel (A to H)
     """
+    
+    ILLUMINATION_SOURCE_405NM = 11
+    ILLUMINATION_SOURCE_488NM = 12
+    ILLUMINATION_SOURCE_638NM = 13
+    ILLUMINATION_SOURCE_561NM = 14
+    ILLUMINATION_SOURCE_730NM = 15
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
+        self._rs232manager = lowLevelManagers['rs232sManager'][
+            laserInfo.managerProperties['rs232device']
+        ]
         self.__logger = initLogger(self, instanceName=name)
-        self.power = 0
-        self.I_max = 255
-        self.N_leds = 4
-        self.setEnabled = False
+        self.__power = 0
+        self.__illumination_source = laserInfo.managerProperties['illumination_source']
 
-        self.led_pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
-                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
-                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds))))
-        
-
-        self.esp32 = ESP32Client(laserInfo.managerProperties['host'], port=80)
-
+        self.__enabled = False
         super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
-        self.setEnabled = enabled
-        self.esp32.send_ledmatrix(self.led_pattern*self.setEnabled)
+        
+        self.__enabled = enabled
+        self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
+                                                              intensity=self.__power)
+
 
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
+        self.__power = power   
+        if self.__enabled:
+            self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
+                                                              intensity=self.__power)
 
-        self.led_pattern = np.ones((3,self.N_leds, self.N_leds))*power*self.setEnabled
-        self.esp32.send_ledmatrix(self.led_pattern)
 
 
-
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

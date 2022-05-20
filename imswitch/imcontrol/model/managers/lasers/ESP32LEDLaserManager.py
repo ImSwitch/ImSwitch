@@ -1,8 +1,3 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
@@ -48,9 +43,12 @@ class ESP32LEDLaserManager(LaserManager):
         if self.enabled:
             self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
 
+    def sendTrigger(self, triggerId):
+        self._rs232manager._esp32.sendTrigger(triggerId)
 
 
-# Copyright (C) 2020, 2021 TestaLab
+
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

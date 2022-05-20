@@ -55,6 +55,7 @@ class ViewSetupInfo(SetupInfo):
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
       defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
+    - ``SIM`` (SIM widget; requires ``sim`` field to be defined)    
     - ``Laser`` (laser control widget)
     - ``Positioner`` (positioners widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)

@@ -1,16 +1,9 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-SPEED=1000
 PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
-
 
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
@@ -22,28 +15,44 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
+        self.is_enabled = False
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
 
-    def move(self, value=0, axis="X", speed=SPEED, is_blocking = False, is_absolute=False):
+    def move(self, value=0, axis="X", is_absolute=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
-            self._rs232manager._esp32.move_xyz(value*PHYS_FACTOR, speed, is_blocking=is_blocking, is_absolute=is_absolute)
+            self._rs232manager._esp32.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
+    
+    def measure(self, sensorID=0, NAvg=100):
+        return self._rs232manager._esp32.read_sensor(sensorID=sensorID, NAvg=NAvg)
+
+    def setupPIDcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
+        return self._rs232manager._esp32.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
+
+    def moveForever(self, speed=(0,0,0), is_stop=False):
+        self._rs232manager._esp32.move_forever(speed=speed, is_stop=is_stop)
+        
+    def setEnabled(self, is_enabled):
+        self.is_enabled = is_enabled
+
+    def setSpeed(self, speed):
+        self._speed = speed
 
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness
@@ -52,7 +61,6 @@ class ESP32StageManager(PositionerManager):
 
     def closeEvent(self):
         pass
-
 
     def get_abs(self, axis=1):
         abspos = self._rs232manager._esp32.get_position(axis=axis)

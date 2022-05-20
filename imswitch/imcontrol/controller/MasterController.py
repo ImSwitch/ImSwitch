@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager
 )
 
 
@@ -33,10 +33,14 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
+
 
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+        self.simManager = SIMManager(self.__setupInfo.sim)
 
         # Connect signals
         cc = self.__commChannel
@@ -54,6 +58,7 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

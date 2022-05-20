@@ -2,7 +2,8 @@ from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     #DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager,
+    PyMMCoreManager
 )
 
 
@@ -21,11 +22,13 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+        self.pymmcManager = PyMMCoreManager(self.__setupInfo.pymmcore)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
             #'pulseStreamerManager' : self.pulseStreamerManager,
-            'rs232sManager': self.rs232sManager
+            'rs232sManager': self.rs232sManager,
+            'pymmcManager': self.pymmcManager
         }
 
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,

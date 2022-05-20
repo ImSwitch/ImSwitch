@@ -18,10 +18,9 @@ class PyMMCoreManager(SignalInterface):
         self.__logger = initLogger(self)
         self.__core = pymmcore.CMMCore()
         self.__mmPath = setupInfo.MMPath
-        try:
-            self.__devSearchPath = setupInfo.MMDevSearchPath
-        except:
-            self.__devSearchPath = self.__mmPath
+        self.__devSearchPath = (setupInfo.MMDevSearchPath 
+                                if setupInfo.MMDevSearchPath is not None 
+                                else self.__mmPath)
 
         if not isinstance(self.__devSearchPath, list):
             self.__devSearchPath = [self.__devSearchPath]

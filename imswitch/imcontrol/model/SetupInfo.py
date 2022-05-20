@@ -235,8 +235,8 @@ class PyroServerInfo:
 
 @dataclass(frozen=True)
 class PyMMCoreInfo:
-    MMPath: Optional[str]
-    MMDevSearchPath: Optional[str]
+    MMPath: Optional[str] = None
+    MMDevSearchPath: Optional[str] = None
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass

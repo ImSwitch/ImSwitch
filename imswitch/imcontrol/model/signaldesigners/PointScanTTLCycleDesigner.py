@@ -1,7 +1,7 @@
 import numpy as np
 
 from .basesignaldesigners import TTLCycleDesigner
-
+from imswitch.imcommon.model import initLogger
 
 class PointScanTTLCycleDesigner(TTLCycleDesigner):
     """ Line-based TTL cycle designer, for point-scanning applications. Treats
@@ -12,6 +12,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.__logger = initLogger(self)
 
         self._expectedParameters = ['target_device',
                                     'TTL_start',
@@ -39,19 +41,21 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             # pixels_line = scanInfoDict['pixels_line']
             samples_line = scanInfoDict['scan_samples_line']
             samples_total = scanInfoDict['scan_samples_total']
+            samples_frame = scanInfoDict['scan_samples_frame']
 
             # extra ON to make sure the laser is on at the start and end of the line (due to
             # rise/fall time) (if it is ON there initially)
-            onepad_extraon = 2
-            zeropad_syncdelay = 0  # extra delay to sync with actual galvo positions
+            onepad_extraon = 3
+            zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay'] * 0.1))
             zeropad_lineflyback = (scanInfoDict['scan_samples_period'] -
                                    scanInfoDict['scan_samples_line'] -
+                                   onepad_extraon -
                                    onepad_extraon)
             zeropad_initpos = scanInfoDict['scan_throw_initpos']
             zeropad_settling = scanInfoDict['scan_throw_settling']
             zeropad_start = scanInfoDict['scan_throw_startzero']
             zeropad_startacc = scanInfoDict['scan_throw_startacc']
-            # zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
+            #zeropad_finalpos = scanInfoDict['scan_throw_finalpos']
             # Tile and pad TTL signals according to fast axis scan parameters
             for i, target in enumerate(targets):
                 signal_line = np.zeros(samples_line, dtype='bool')
@@ -64,32 +68,71 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     signal_line[start_on:end_on] = True
 
                 if signal_line[0]:
-                    signal_line = np.append(np.ones(onepad_extraon, dtype='bool'), signal_line)
+                    #signal_line_extra = np.append(np.ones(onepad_extraon, dtype='bool'), signal_line)  # pad before
+                    signal_line_extra = np.append(np.ones(onepad_extraon, dtype='bool'), np.append(signal_line, np.ones(onepad_extraon, dtype='bool')))  # pad before and after
                 else:
-                    signal_line = np.append(np.zeros(onepad_extraon, dtype='bool'), signal_line)
-                signal_period = np.append(signal_line, np.zeros(zeropad_lineflyback, dtype='bool'))
-                # TODO: # only do 2D-scan for now, fix for 3D-scan
+                    #signal_line_extra = np.append(np.zeros(onepad_extraon, dtype='bool'), signal_line)  # pad before
+                    signal_line_extra = np.append(np.zeros(onepad_extraon, dtype='bool'), np.append(signal_line, np.zeros(onepad_extraon, dtype='bool')))  # pad before and after
+                signal_period = np.append(signal_line_extra, np.zeros(zeropad_lineflyback, dtype='bool'))
+                #self.__logger.debug(f'length of signal1: {len(signal_period)}')
 
                 # all lines except last
                 signal = np.tile(signal_period, scanInfoDict['n_lines'] - 1)
+                #self.__logger.debug(f'length of signal2: {len(signal)}')
                 # add last line (does without flyback)
                 signal = np.append(signal, signal_line)
+                #self.__logger.debug(f'length of signal3: {len(signal)}')
 
-                # pad a delay for synchronizing scan position with TTL
-                signal = np.append(np.zeros(zeropad_syncdelay, dtype='bool'), signal)
                 # pad first line acceleration
                 signal = np.append(np.zeros(zeropad_startacc, dtype='bool'), signal)
+                #self.__logger.debug(f'length of signal5: {len(signal)}')
                 # pad start settling
                 signal = np.append(np.zeros(zeropad_settling, dtype='bool'), signal)
-                signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)  # pad initpos
+                #self.__logger.debug(f'length of signal6: {len(signal)}')
+                # pad initpos
+                signal = np.append(np.zeros(zeropad_initpos, dtype='bool'), signal)
+                #self.__logger.debug(f'length of signal7: {len(signal)}')
+                # pad finalpos - not needed when doing below
+                # pad to frame len 
+                #self.__logger.debug(f'samples_frame: {samples_frame}, length of DO frame signal: {len(signal)}')
+                zeropad_toframelen = samples_frame - len(signal)
+                #self.__logger.debug(f'zeropad_toframelen: {zeropad_toframelen}')
+                if zeropad_toframelen > 0:
+                    signal = np.append(signal, np.zeros(zeropad_toframelen, dtype='bool'))
+                elif zeropad_toframelen < 0:
+                    signal = signal[-zeropad_toframelen:]
+                #self.__logger.debug(scanInfoDict)
+
+                # repeat for third axis if applicable
+                axis_count = len(scanInfoDict['img_dims'])
+                if axis_count==3:
+                    n_frames = scanInfoDict['img_dims'][2]
+                    signal_tot = signal
+                    for i in range(n_frames-1):
+                        signal_tot = np.concatenate((signal_tot, signal))
+                    signal = signal_tot
+
                 signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)  # pad start zeros
-                zeropad_end = samples_total - len(signal)
+                # pad scanner phase delay to beginning to sync actual position with TTL
+                signal = np.append(np.zeros(zeropad_phasedelay, dtype='bool'), signal)
+
                 # pad end zeros to same length as analog scanning
-                signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))
+                zeropad_end = samples_total - len(signal)
+                if zeropad_end > 0:
+                    signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))
+                elif zeropad_end < 0:
+                    signal = signal[:zeropad_end]
 
                 signal_dict[target] = signal
 
             # return signal_dict, which contains bool arrays for each target
+            #import matplotlib.pyplot as plt
+            #plt.figure(1)
+            #for i, target in enumerate(targets):
+            #    plt.plot(signal_dict[target])
+            #    self.__logger.debug(np.max(signal_dict[target]))
+            #plt.show()
+
             return signal_dict
 
     def __make_signal_stationary(self, parameterDict, sample_rate):

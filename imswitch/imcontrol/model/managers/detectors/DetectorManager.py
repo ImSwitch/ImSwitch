@@ -166,13 +166,13 @@ class DetectorManager(SignalInterface):
         return self._frameStart
 
     @property
-    def shape(self) -> Tuple[int, int]:
-        """ Current image size as a tuple ``(width, height)``. """
+    def shape(self) -> Tuple[int, ...]:
+        """ Current image size as a tuple ``(width, height, ...)``. """
         return self._shape
 
     @property
-    def fullShape(self) -> Tuple[int, int]:
-        """ Maximum image size as a tuple ``(width, height)``. """
+    def fullShape(self) -> Tuple[int, ...]:
+        """ Maximum image size as a tuple ``(width, height, ...)``. """
         return self.__fullShape
 
     @property

@@ -23,7 +23,7 @@ class CameraTIS:
         self.cam.enable_continuous_mode(True)  # image in continuous mode
         self.cam.enable_trigger(False)  # camera will wait for trigger
 
-        self.roi_filter = self.cam.create_frame_filter('ROI'.encode('utf-8'))
+        self.roi_filter = self.cam.create_frame_filter('ROI')
         self.cam.add_frame_filter_to_device(self.roi_filter)
 
     def start_live(self):
@@ -55,16 +55,16 @@ class CameraTIS:
         # self.__logger.debug(
         #     f'{self.model}: setROI started with {hsize}x{vsize} at {hpos},{vpos}.'
         # )
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left'.encode('utf-8'), hpos)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height'.encode('utf-8'), vsize)
-        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width'.encode('utf-8'), hsize)
-        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top'.encode('utf-8'))
-        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left'.encode('utf-8'))
-        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height'.encode('utf-8'))
-        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width'.encode('utf-8'))
+        #self.cam.frame_filter_set_parameter(self.roi_filter, 'Top'.encode('utf-8'), vpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Top', vpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Left', hpos)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Height', vsize)
+        self.cam.frame_filter_set_parameter(self.roi_filter, 'Width', hsize)
+        top = self.cam.frame_filter_get_parameter(self.roi_filter, 'Top')
+        left = self.cam.frame_filter_get_parameter(self.roi_filter, 'Left')
+        hei = self.cam.frame_filter_get_parameter(self.roi_filter, 'Height')
+        wid = self.cam.frame_filter_get_parameter(self.roi_filter, 'Width')
         self.__logger.debug(
-            f'{self.model}: '
             f'setROI finished, following params are set: w{wid}xh{hei} at l{left},t{top}'
         )
 

@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import time 
+import tifffile as tif
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -115,7 +116,6 @@ class MCTController(LiveUpdatedController):
     def showLast(self):
         pass
     
-    
     def takeTimelapse(self):
         if self.isMCTrunning:
             self.__logger.debug("Take image")
@@ -123,14 +123,24 @@ class MCTController(LiveUpdatedController):
             self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser1Value)
             if self.brightfieldEnabeld:
                 self.takeImageIllu(illuMode = "Brightfield", intensity=1)
-                
+                    
             self.nImages += 1
             self._widget.setNImages(self.nImages)
-            
-    
+                
+        
     def takeImageIllu(self, illuMode, intensity):
         self._logger.debug("Take image:" + illuMode + str(intensity))
-        pass
+        fileExtension = 'tif'
+        if illuMode == "Laser1":
+            self.lasers[0].setValue(self.Laser1Value)
+            self.lasers[0].setEnabled(True)
+        
+        filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
+        tif.imwrite(filePath, self.detector.getLatestFrame())
+        for lasers in self.lasers:
+            lasers.setEnabeld(False)
+        
+            
     
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
@@ -185,6 +195,21 @@ class MCTController(LiveUpdatedController):
             self.it += 1
         '''
         pass
+    
+    def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
+        newPath = path
+        numExisting = 0
+
+        def existsFunc(pathToCheck):
+            if not allowOverwriteDisk and os.path.exists(pathToCheck):
+                return True
+            return False
+
+        while existsFunc(newPath):
+            numExisting += 1
+            pathWithoutExt, pathExt = os.path.splitext(path)
+            newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
+        return newPath
 
     @APIExport(runOnUIThread=True)
     def mctPatternByID(self, patternID):

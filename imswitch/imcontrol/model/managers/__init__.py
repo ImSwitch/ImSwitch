@@ -9,4 +9,5 @@ from .RS232sManager import RS232sManager
 from .RecordingManager import RecordingManager, RecMode, SaveMode, SaveFormat
 from .SLMManager import SLMManager
 from .SIMManager import SIMManager
+from .MCTManager import MCTManager
 from .ScanManager import ScanManager

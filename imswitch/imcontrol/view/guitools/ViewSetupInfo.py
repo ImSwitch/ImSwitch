@@ -66,6 +66,7 @@ class ViewSetupInfo(SetupInfo):
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
+    - ``EtSTED`` (etSTED widget; requires ``etSTED`` field to be defined)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.

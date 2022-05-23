@@ -65,6 +65,9 @@ target/
 # Visual Studio Code
 .vscode/
 
+# Specific files
+imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
+
 # Mac Files
 .DS_Store
 **/.DS_Store
@@ -98,3 +101,4 @@ pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
 pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
 pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
 pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
+*.tif

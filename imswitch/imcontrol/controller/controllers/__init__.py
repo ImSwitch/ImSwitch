@@ -3,6 +3,7 @@ from .AlignXYController import AlignXYController
 from .AlignmentLineController import AlignmentLineController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
+from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
 from .HoloController import HoloController
 from .HoliSheetController import HoliSheetController
@@ -15,6 +16,7 @@ from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
 from .SIMController import SIMController
+from .MCTController import MCTController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController

@@ -27,6 +27,7 @@ class SIMManager(SignalInterface):
         self.__angleMount = self.__simInfo.angleMount
         self.__simSize = (self.__simInfo.width, self.__simInfo.height)
         self.__patternsDir = self.__simInfo.patternsDir
+        self.isSimulation = self.__simInfo.isSimulation
         
         # Load all patterns
         self.allPatterns = self.loadPatterns(self.__patternsDir)
@@ -39,8 +40,8 @@ class SIMManager(SignalInterface):
         for iPatternPath in allPatternPaths:
             mImage = cv2.imread(iPatternPath)
             mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
+
             allPatterns.append(mImage)
-            print(iPatternPath)
         return allPatterns
         
         

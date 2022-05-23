@@ -3,6 +3,7 @@ from .AlignXYWidget import AlignXYWidget
 from .AlignmentLineWidget import AlignmentLineWidget
 from .BeadRecWidget import BeadRecWidget
 from .ConsoleWidget import ConsoleWidget
+from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
 from .HoliSheetWidget import HoliSheetWidget
@@ -16,6 +17,7 @@ from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
 from .SIMWidget import SIMWidget
+from .MCTWidget import MCTWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget

@@ -47,7 +47,11 @@ class SIMDisplay(QtWidgets.QLabel):
             self.updateImage(self.imgArr)
 
     def updateImage(self, imgArr):
-        self.imgArr = imgArr
+        if len(imgArr.shape)<3:
+            imgArr=np.stack((imgArr,imgArr,imgArr), 2)
+
+
+        self.imgArr = np.transpose(imgArr, (1,0,2))
 
         if not self.isVisible():
             return
@@ -57,8 +61,7 @@ class SIMDisplay(QtWidgets.QLabel):
         )
 
         qimage = QtGui.QImage(
-            imgScaled, imgScaled.shape[1], imgScaled.shape[0], imgScaled.shape[1] * 3,
-            QtGui.QImage.Format_RGB888
+            imgScaled, imgScaled.shape[1], imgScaled.shape[0], QtGui.QImage.Format_RGB888
         )
 
         qpixmap = QtGui.QPixmap(qimage)

@@ -27,8 +27,9 @@ class SIMController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         self.it=0
-        self.updateRate=2
+        self.updateRate=5
 
+        
         self.simDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_sim')
         if not os.path.exists(self.simDir):
             os.makedirs(self.simDir)
@@ -73,11 +74,12 @@ class SIMController(LiveUpdatedController):
         self.sigImageReceived.connect(self.imageComputationWorker.computeSIMImage)
         self.imageComputationThread.start()
 
-
-
         # Initial SIM display
         self._commChannel.sigUpdateImage.connect(self.update)
-        #self.displayMask(self._master.simManager.maskCombined)
+
+        # show placeholder pattern
+        initPattern = self._master.simManager.allPatterns[self.patternID]
+        self._widget.updateSIMDisplay(initPattern)
 
 
     def __del__(self):
@@ -93,26 +95,29 @@ class SIMController(LiveUpdatedController):
     def patternIDChanged(self, patternID):
         self.patternID = patternID
 
+    def displayMask(self, image):
+        self._widget.updateSIMDisplay(image)
+
     
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         if not isCurrentDetector or not self.active:
             return
 
-        isSimulation=True
                 
         if self.it >= self.updateRate:
             self.it = 0
 
             # dispaly sim pattern
-            if(isSimulation):
+            if(self._master.simManager.isSimulation):
                 iPhi = self.patternID%self.nPhases
                 iRot = self.patternID//self.nRotations
                 self.setIlluPatternByID(iRot, iPhi)
             else:
                 pass
             
-            # this does not correlate with simulated patterns!    
+            # this does not correlate with simulated patterns! 
+            self.__logger.debug(self.patternID)   
             self.simPatternByID(self.patternID)
             self.allFrames.append(im)
             
@@ -126,36 +131,18 @@ class SIMController(LiveUpdatedController):
                 allFramesNP = np.array(self.allFrames)
                 self.imageComputationWorker.prepareForNewSIMStack(allFramesNP)
                 self.sigImageReceived.emit()
-                
+
+                from datetime import datetime
+                date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                import tifffile as tif
+                tif.imsave(f"filename_{date}.tif", allFramesNP)
+
                 self.patternID=0
                 self.allFrames = []
 
         else:
             self.it += 1
 
-    def displayMask(self, maskCombined):
-        """ Display the mask in the SIM display. Originates from simPy:
-        https://github.com/wavefrontshaping/simPy """
-
-        arr = maskCombined.image()
-
-        # Padding: Like they do in the software
-        pad = np.zeros((600, 8), dtype=np.uint8)
-        arr = np.append(arr, pad, 1)
-
-        # Create final image array
-        h, w = arr.shape[0], arr.shape[1]
-
-        if len(arr.shape) == 2:
-            # Array is grayscale
-            arrGray = arr.copy()
-            arrGray.shape = h, w, 1
-            img = np.concatenate((arrGray, arrGray, arrGray), axis=2)
-        else:
-            img = arr
-
-        self._widget.updateSIMDisplay(img)
-        
     def setIlluPatternByID(self, iRot, iPhi):
         self.detector.setIlluPatternByID(iRot, iPhi)
 
@@ -187,6 +174,7 @@ class SIMController(LiveUpdatedController):
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
+        self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
 
     @APIExport(runOnUIThread=True)
@@ -288,8 +276,8 @@ class SIMProcessor(object):
         '''
 
         # load images
-        import tifffile as tif
-        mImages = tif.imread(self.mFile)
+        #import tifffile as tif
+        #mImages = tif.imread(self.mFile)
 
 
         # set model

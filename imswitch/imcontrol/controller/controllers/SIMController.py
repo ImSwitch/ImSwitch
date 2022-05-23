@@ -12,8 +12,11 @@ from ..basecontrollers import LiveUpdatedController
 
 import NanoImagingPack as nip
 
-from napari_sim_processor.convSimProcessor import ConvSimProcessor
-from napari_sim_processor.hexSimProcessor import HexSimProcessor
+try:
+    from napari_sim_processor.convSimProcessor import ConvSimProcessor
+    from napari_sim_processor.hexSimProcessor import HexSimProcessor
+except:
+    pass
 
 class SIMController(LiveUpdatedController):
     """Linked to SIMWidget."""

@@ -14,6 +14,8 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
 else:
     try:
         dll = WinDLL('GxIAPI.dll')
+        #dll = WinDLL("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\GxIAPI.dll")
+        
     except OSError:
         print('Cannot find GxIAPI.dll.')
 

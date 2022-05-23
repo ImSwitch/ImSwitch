@@ -56,6 +56,14 @@ git clone https://github.com/beniroquai/ImSwitchConfig
 # Alternatively download the repository as a zip, unzip the file into the folder Documents/ImSwitchConfig
 ```
 
+
+***DLL not found error***
+
+In case you're working with the Daheng cameras, you may need to apply this patch:
+https://stackoverflow.com/questions/58612306/how-to-fix-importerror-dll-load-failed-while-importing-win32api
+
+```conda install pywin32```
+
 ***Optional: For the THORCAM***
 Windows only.
 Install Git using [this version](https://github.com/git-for-windows/git/releases/download/v2.36.0.windows.1/Git-2.36.0-64-bit.exe)

@@ -358,11 +358,13 @@ class ESP32Client(object):
 
         self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
+
     def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
         steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
     
+
     
     '''
     LOW-LEVEL FUNCTIONS
@@ -370,6 +372,71 @@ class ESP32Client(object):
     These functions directly relate to the REST-API
     '''
     
+    '''
+    ##############################################################################################################################
+    SLM
+    ##############################################################################################################################
+    '''
+    def send_SLM_circle(self, posX, posY, radius, color, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "posX": posX,
+            "posY": posY,
+            "radius": radius,
+            "color": color,
+            "slmMode": "circle"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_SLM_clear(self, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "slmMode": "clear"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_SLM_full(self, color, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "color":color, 
+            "slmMode": "full"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+        
+    def send_SLM_image(self, image, startX, startY, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        
+        endX = startX+image.shape[0]
+        endY = startY+image.shape[1]
+       
+        payload = {
+            "color": image[:].flatten().tolist(),
+            "startX":startX,
+            "startY":startY,
+            "endX":endX,
+            "endY":endY, 
+            "slmMode": "image"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+
     '''
     ##############################################################################################################################
     LED ARRAY
@@ -389,7 +456,6 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
 
     def send_LEDMatrix_full(self, intensity = (255,255,255),timeout=1):
         '''
@@ -492,6 +558,18 @@ class ESP32Client(object):
     ##############################################################################################################################
     '''
 
+    def isBusy(self, timeout=1):
+        path = "/state_get"
+        payload = {
+            "task":path,
+            "active": 1
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        try:
+            return r["active"]
+        except:
+            return r
+        
     def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
         path = "/motor_act"
         payload = {
@@ -504,10 +582,9 @@ class ESP32Client(object):
             "isaccel":1,
             "isstop": np.int(is_stop)
         }
-        self.is_driving = True
+        
         r = self.post_json(path, payload, timeout=timeout)
-        if is_stop:
-            self.is_driving = False
+        
         return r
 
     def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
@@ -548,9 +625,15 @@ class ESP32Client(object):
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
-        self.is_driving = True
+        
         r = self.post_json(path, payload, timeout=timeout)
-        self.is_driving = False
+        
+        
+        # wait until job has been done
+        if is_blocking:
+            while self.isBusy():
+                time.sleep(0.1)
+                
         return r
     
     
@@ -802,34 +885,3 @@ class ESP32Client(object):
             files = {'media': open(iName, 'rb')}
             if self.is_connected:
                 requests.post(self.base_uri + path, files=files)
-
-    def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
-
-        # switch off all lasers first!
-        self.set_laser(1, 0)
-        self.set_laser(2, 0)
-        self.set_laser(3, 0)
-
-        if is_filter_init is not None:
-            self.is_filter_init = is_filter_init
-
-        if not self.is_filter_init:
-            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
-            self.is_filter_init = True
-            self.filter_position = 0
-
-        # measured in steps from zero position
-
-        steps = 0
-        if laserid==1:
-            steps = self.filter_pos_1 - self.filter_position
-            self.filter_position = self.filter_pos_1
-        if laserid==2:
-            steps = self.filter_pos_2 - self.filter_position
-            self.filter_position = self.filter_pos_2
-        if laserid==3:
-            steps = self.filter_pos_3 - self.filter_position
-            self.filter_position = self.filter_pos_3
-
-        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
-

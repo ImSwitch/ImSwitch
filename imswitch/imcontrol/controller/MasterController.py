@@ -22,7 +22,7 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
-        self.pymmcManager = PyMMCoreManager(self.__setupInfo.pymmcore)
+        self.pymmcManager = PyMMCoreManager(self.__setupInfo)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,

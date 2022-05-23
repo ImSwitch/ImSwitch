@@ -1,8 +1,6 @@
 from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
-from typing import Union
 import pymmcore
-import os
 
 class PyMMCoreManager(SignalInterface):
     """ For interaction with Micro-Manager C++ core. 
@@ -16,16 +14,23 @@ class PyMMCoreManager(SignalInterface):
     def __init__(self, setupInfo) -> None:
         super().__init__()
         self.__logger = initLogger(self)
+        mmPath = setupInfo.pymmcore.MMPath
+
+        if mmPath is None:
+            raise ValueError("No Micro-Manager path defined.")
+
         self.__core = pymmcore.CMMCore()
-        self.__mmPath = setupInfo.MMPath
-        self.__devSearchPath = (setupInfo.MMDevSearchPath 
-                                if setupInfo.MMDevSearchPath is not None 
-                                else self.__mmPath)
+        devSearchPath = (setupInfo.pymmcore.MMDevSearchPath 
+                        if setupInfo.pymmcore.MMDevSearchPath is not None 
+                        else mmPath)
 
-        if not isinstance(self.__devSearchPath, list):
-            self.__devSearchPath = [self.__devSearchPath]
+        if not isinstance(devSearchPath, list):
+            devSearchPath = [devSearchPath]
+        
+        self.__logger.info(f"Micro-Manager path: {mmPath}")
+        self.__logger.info(f"Device search paths: {devSearchPath}")
 
-        self.__core.setDeviceAdapterSearchPaths(self.__devSearchPath)
+        self.__core.setDeviceAdapterSearchPaths(devSearchPath)
         self.__logger.info(self.__core.getAPIVersionInfo())
 
         self.__getXYStagePosition = {
@@ -50,6 +55,14 @@ class PyMMCoreManager(SignalInterface):
             )
         except RuntimeError:
             raise ValueError(f"Error in loading device \"{devInfo[0]}\", check the values of \"module\" and \"device\" in the configuration file (current values: {devInfo[1]}, {devInfo[2]})")
+    
+    def unloadPositioner(self, label: str) -> None:
+        """ Tries to unload from the MMCore a previously loaded device (used for finalize() call)
+        """
+        try:
+            self.__core.unloadDevice(label)
+        except RuntimeError:
+            raise ValueError(f"Error in unloading device \"{label}\"")
     
     def getStagePosition(self, label: str, type: str, axis: str = None) -> float:
         """ Returns the current stage position (on a given axis for double-axis stages).

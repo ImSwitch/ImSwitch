@@ -1,8 +1,7 @@
-from turtle import position
+from pprint import pprint
 from .PositionerManager import PositionerManager
 from ..PyMMCoreManager import PyMMCoreManager # only for type hinting
 from imswitch.imcommon.model import initLogger
-from typing import Dict
 
 class PyMMCorePositionerManager(PositionerManager):
     """ PositionerManager for control of a stage controlled by MMCore, using pymmcore.
@@ -12,7 +11,7 @@ class PyMMCorePositionerManager(PositionerManager):
     - ``module`` -- name of the MM module referenced
     - ``device`` -- name of the MM device described in the module 
     - ``stageType`` -- either "single" or "double" (for single-axis stage or double-axis stage)
-    - ``speed`` -- positioner maximum speed
+    - ``speedProperty`` -- name of the property indicating the stage speed
     """
 
     def __init__(self, positionerInfo, name: str, **lowLevelManagers):
@@ -32,12 +31,15 @@ class PyMMCorePositionerManager(PositionerManager):
 
         module = positionerInfo.managerProperties["module"]
         device = positionerInfo.managerProperties["device"]
-        self.speed = positionerInfo.managerProperties["speed"] 
+        self.__speedProp = positionerInfo.managerProperties["speedProperty"]
 
-        self.__logger.info(f"Trying to load positioner: {name}.{module}.{device} ...")
+        self.__logger.info(f"Loading {name}.{module}.{device} ...")
 
         devInfo = (name, module, device)
-        self.__coreManager.loadPositioner(devInfo)
+        self.__coreManager.loadDevice(devInfo)
+
+        # can be read only after device is loaded and initialized
+        self.speed =  float(self.__coreManager.getProperty(self.__name, self.__speedProp))
         self.__logger.info(f"... done!")
 
         initialPosition = {
@@ -55,9 +57,12 @@ class PyMMCorePositionerManager(PositionerManager):
             self.position
         )
     
+    def setSpeed(self, speed: float) -> None:
+        self.__coreManager.setProperty(self.__name, self.__speedProp, speed)
+    
     def move(self, dist: float, axis: str) -> None:
         self.setPosition(self._position[axis] + dist, axis)
     
     def finalize(self) -> None:
         self.__logger.info(f"Closing {self.__name}")
-        self.__coreManager.unloadPositioner(self.__name)
+        self.__coreManager.unloadDevice(self.__name)

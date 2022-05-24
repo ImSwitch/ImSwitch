@@ -1,6 +1,9 @@
 from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
+from typing import Any, Union
 import pymmcore
+
+PropertyValue = Union[bool, float, int, str]
 
 class PyMMCoreManager(SignalInterface):
     """ For interaction with Micro-Manager C++ core. 
@@ -38,8 +41,8 @@ class PyMMCoreManager(SignalInterface):
             "Y" : self.__core.getYPosition
         }
     
-    def loadPositioner(self, devInfo: tuple[str, str, str]) -> None:
-        """ Tries to load a positioner device into the MMCore.
+    def loadDevice(self, devInfo: tuple[str, str, str]) -> None:
+        """ Tries to load a device into the MMCore.
 
         Args:
             devInfo (``tuple[str, str, str]``): a tuple describing the device information. It's arranged as:
@@ -53,16 +56,42 @@ class PyMMCoreManager(SignalInterface):
                 devInfo[1],
                 devInfo[2]
             )
+            self.__core.initializeDevice(devInfo[0])
         except RuntimeError:
             raise ValueError(f"Error in loading device \"{devInfo[0]}\", check the values of \"module\" and \"device\" in the configuration file (current values: {devInfo[1]}, {devInfo[2]})")
     
-    def unloadPositioner(self, label: str) -> None:
+    def unloadDevice(self, label: str) -> None:
         """ Tries to unload from the MMCore a previously loaded device (used for finalize() call)
         """
         try:
             self.__core.unloadDevice(label)
         except RuntimeError:
             raise ValueError(f"Error in unloading device \"{label}\"")
+    
+    def getProperty(self, label: str, property: str) -> str:
+        """ Returns the property of a device.
+
+        Args:
+            label (``str``): name of the device
+            property (``str``): label of the property to read            
+        """
+        try:
+            return self.__core.getProperty(label, property)
+        except Exception as err:
+            raise RuntimeError(f"Failed to load property \"{property}\": {err.__str__()}")
+    
+    def setProperty(self, label: str, property: str, value: PropertyValue) -> None:
+        """ Sets the property of a device.
+        
+        Args:
+            label (``str``): name of the device
+            property (``str``): label of the property to read
+            value (``PropertyValue``): value to set the property with
+        """
+        try:
+            self.__core.setProperty(label, property, value)
+        except RuntimeError as err:
+            self.__logger.error(f"Failed to set \"{property}\" to {value}: {err.__str__()}")
     
     def getStagePosition(self, label: str, type: str, axis: str = None) -> float:
         """ Returns the current stage position (on a given axis for double-axis stages).
@@ -98,6 +127,6 @@ class PyMMCoreManager(SignalInterface):
             # to be "X-Y", so this call should be safe
             # just keep it under control...
             self.__core.setXYPosition(label, positions["X"], positions["Y"])
-            positions = {axis : self.__getXYStagePosition[axis] for axis in ["X", "Y"]}
+            positions = {axis : self.__getXYStagePosition[axis](label) for axis in ["X", "Y"]}
         return positions
 

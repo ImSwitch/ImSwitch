@@ -121,7 +121,7 @@ class PyMMCoreManager(SignalInterface):
         """
         if stageType == "single":
             self.__core.setPosition(label, positions[axis])
-            positions[axis] = self.__core.getPosition()
+            positions[axis] = self.__core.getPosition(label)
         else:
             # axis are forced by the manager constructor
             # to be "X-Y", so this call should be safe

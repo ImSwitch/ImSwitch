@@ -2,7 +2,7 @@ from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
     RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager
-) # PulseStreamerManager, 
+) # PulseStreamerManager,
 
 
 class MasterController:

@@ -1,6 +1,7 @@
 from typing import Dict, List
 from functools import partial
 from qtpy import QtCore, QtWidgets
+import numpy as np
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
@@ -16,42 +17,60 @@ class LEDMatrixController(ImConWidgetController):
         
         self.nLedsX = nLedsX
         self.nLedsY = nLedsY
+        
+        self._ledmatrixMode = ""
 
+        # get the name that looks like an LED Matrix
+        self.ledmatrix_name = self._master.LEDMatrixsManager.getAllDeviceNames()[0]
+        self.ledmatrix = self._master.LEDMatrixsManager[self.ledmatrix_name]
+        
+        # initialize the LEDMatrix device that holds all necessary states^
+        self.LEDMatrixDevice = LEDMatrixDevice(self.ledmatrix,Nx=self.nLedsX,Ny=self.nLedsY)
+        
+        # set up GUI and "wire" buttons
         self._widget.add_matrix_view(self.nLedsX, self.nLedsY)
         self.connect_leds()
         
-        illuminatorList = self._master.lasersManager.getAllDeviceNames()
-        index = [index for (index , item) in enumerate(illuminatorList) if (item.find("Matrix")>0)][0]
-        self.ledmatrix_name = illuminatorList[index]
-        self.ledmatrix = self._master.lasersManager[self.ledmatrix_name]
-        
-        self.LEDMatrixDevice = LEDMatrixDevice(self.ledmatrix)
-        
-        # Connect LaserWidget signals
         self._widget.ButtonAllOn.clicked.connect(self.setLEDAllOn)      
-        self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOn)      
+        self._widget.ButtonAllOff.clicked.connect(self.setLEDAllOff)      
         self._widget.ButtonSubmit.clicked.connect(self.submitLEDPattern)
         self._widget.ButtonToggle.clicked.connect(self.toggleLEDPattern)
+        self._widget.slider.valueChanged.connect(self.setIntensity)
         
         
     @APIExport()
     def setLEDAllOn(self):
+        self._ledmatrixMode = "allon"
         self.LEDMatrixDevice.setAllOn()
-        
+        for coords, btn in self._widget.leds.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                btn.setChecked(True)
+                
     @APIExport()
     def setLEDAllOff(self):
+        self._ledmatrixMode = "alloff"
         self.LEDMatrixDevice.setAllOff()
+        for coords, btn in self._widget.leds.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                btn.setChecked(False)
 
     @APIExport()
     def submitLEDPattern(self):
-        self.LEDMatrixDevice.setLEDPattern()
+        pass #  self.LEDMatrixDevice.setPattern()
 
     @APIExport()
     def toggleLEDPattern(self):
-        self.LEDMatrixDevice.toggleLEDPattern()
+        pass #self.LEDMatrixDevice.toggleLEDPattern()
+        
+    @APIExport()
+    def setIntensity(self, intensity=None):
+        if intensity is None:
+            intensity = int(self._widget.slider.value()//1)
+        self.LEDMatrixDevice.setIntensity(intensity=intensity)
         
     @APIExport()
     def switchLED(self, LEDid):
+        self._ledmatrixMode = "single"
         self.LEDMatrixDevice.switchLED(LEDid)
 
     def connect_leds(self):
@@ -59,33 +78,54 @@ class LEDMatrixController(ImConWidgetController):
         # Connect signals for all buttons
         for coords, btn in self._widget.leds.items():
             # Connect signals
-            #self.pars['UpButton' + parNameSuffix].clicked.connect(
-            #    lambda *args, axis=axis: self.sigStepUpClicked.emit(ledMatrixName, axis)
-            #)
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.switchLED, coords))
                 
 
 class LEDMatrixDevice():
     
-    def __init__(self, ledMatrix, platepattern="96"):
-        
+    def __init__(self, ledMatrix, Nx=8, Ny=8):
+        self.Nx=Nx
+        self.Ny=Ny
         self.ledMatrix = ledMatrix 
-        self.pattern = None
+        self.pattern = np.zeros((self.Nx*self.Ny,3))
+        self.intensity = (255,255,255)
+        self.state=None
         
+        # Turn off LEDs
+        self.ledMatrix.setAll(intensity=(0,0,0))
+        
+    def setIntensity(self, intensity=None):
+        if intensity is None:
+            intensity = self.intensity  
+        self.pattern = (self.pattern>0)*(intensity,intensity,intensity)
+        self.intensity = (intensity,intensity,intensity)
+        self.ledMatrix.setPattern(self.pattern)
+        
+    def setPattern(self, pattern):
+        self.pattern = pattern
+        self.ledMatrix.setPattern(self.pattern)
+        self.state="pattern"
           
-    def switchLED(self, LEDid):
-        pass
+    def switchLED(self, index, intensity=None):
+        if intensity is None:
+            intensity = self.intensity
+        index = int(index)
+        if np.sum(self.pattern[index,:]):
+            self.pattern[index,:] = (0,0,0) 
+        else:
+            self.pattern[index,:] = intensity
+        self.ledMatrix.setLEDSingle(indexled=index, intensity=self.pattern[index,:])
     
-    def setAllOn(self):
-        #self.ledMatrix.XX
-        pass
+    def setAllOn(self, intensity=None):
+        if intensity is None:
+            intensity = self.intensity
+        self.pattern = np.ones((self.Nx*self.Ny, 3))*intensity
+        self.ledMatrix.setAll(intensity=intensity)
     
     def setAllOff(self):
-        pass
-    
-    def setLEDPattern(self):
-        pass
+        self.pattern = np.zeros((self.Nx*self.Ny, 3))
+        self.ledMatrix.setAll(intensity=(0,0,0))
     
     def toggleLEDPattern(self):
         pass  

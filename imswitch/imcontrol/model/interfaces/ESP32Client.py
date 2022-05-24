@@ -6,17 +6,15 @@ Simple client code for the ESP32 in Python - adapted from OFM Client
 Copyright 2020 Richard Bowman, released under LGPL 3.0 or later
 Copyright 2021 Benedict Diederich, released under LGPL 3.0 or later
 """
-import requests
 import json
-import time
-import numpy as np
 import logging
-import threading
-import json
-import time
 import os
 import sys
+import threading
+import time
 
+import numpy as np
+import requests
 
 try:
     import cv2
@@ -24,10 +22,10 @@ try:
 except:
     is_cv2 = False
 import socket
+from tempfile import NamedTemporaryFile
+
 import serial
 import serial.tools.list_ports
-
-from tempfile import NamedTemporaryFile
 
 try:
     from imswitch.imcommon.model import initLogger
@@ -35,10 +33,6 @@ try:
 except:
     print("No imswitch available")
     IS_IMSWITCH = False
-
-
-ACTION_RUNNING_KEYWORDS = ["idle", "pending", "running"]
-ACTION_OUTPUT_KEYS = ["output", "return"]
 
 
 
@@ -55,9 +49,6 @@ class galvo(object):
         self.amplitude = amplitude
         self.clk_div = clk_div
         self.path = "/dac_act"
-
-    
-
 
     def return_dict(self):
         dict = {
@@ -103,17 +94,27 @@ class ESP32Client(object):
     steps_last_2 = 0
 
     def __init__(self, host=None, port=31950, serialport=None, baudrate=115200):
-
+        '''
+        This client connects to the UC2-REST microcontroller that can be found here
+        https://github.com/openUC2/UC2-REST
+        
+        generally speaking you send/receive JSON documents that will cause an:
+        1. action => "/XXX_act"
+        2. getting => "/XXX_get"
+        3. setting => "/XXX_set"
+        
+        you can send commands through wifi/http or usb/serial
+        '''
 
         if IS_IMSWITCH:
             if IS_IMSWITCH: self.__logger = initLogger(self, tryInheritParent=True)
 
-
+        # initialize galvos
         self.galvo1 = galvo(channel=1)
         self.galvo2 = galvo(channel=2)
 
 
-
+        # connect to wifi or usb
         if host is not None:
             # use client in wireless mode
             self.is_wifi = True
@@ -130,27 +131,30 @@ class ESP32Client(object):
             self.is_serial = True
 
             if IS_IMSWITCH: self.__logger.debug(f'Searching for SERIAL devices...')
+            self.is_connected = False
             try:
                 self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
+                self.is_connected = True 
                 time.sleep(2) # let it warm up
-                self.is_connected = True
             except:
                 # try to find the PORT
                 _available_ports = serial.tools.list_ports.comports(include_links=False)
                 for iport in _available_ports:
                     # list of possible serial ports
                     if IS_IMSWITCH: self.__logger.debug(iport.device)
-                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb") # TODO: Hardcoded :/
+                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb", "/dev/cu.usbserial") # TODO: Hardcoded :/
                     descriptionlist = ("CH340")
-                    self.is_connected = True # attempting to initiliaze connection
                     if iport.device.startswith(portslist) or iport.description.find(descriptionlist) != -1:
                         try:
                             self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+                            self.is_connected = True # attempting to initiliaze connection
                             time.sleep(2)
                             _state = self.get_state()
                             _identifier_name = _state["identifier_name"]
-                            if True: # _identifier_name == "UC2_Feather":
+                            self.set_state(debug=False)
+                            if _identifier_name == "UC2_Feather":
                                 self.serialport = iport.device
+                                self.__logger.debug("We are connected: "+str(self.is_connected) + " on port: "+iport.device)
                                 return
 
                         except Exception as e:
@@ -162,7 +166,10 @@ class ESP32Client(object):
             self.is_connected = False
             if IS_IMSWITCH: self.__logger.error("No ESP32 device is connected - check IP or Serial port!")
 
+        self.__logger.debug("We are connected: "+str(self.is_connected))
+
     def isConnected(self):
+        # check if client is connected to the same network
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             s.connect((self.host, int(self.port)))
@@ -196,7 +203,7 @@ class ESP32Client(object):
                 self.is_sending = False
                 # not connected
                 return None
-        elif self.is_serial:
+        elif self.is_serial and self.is_connected:
             path = path.replace(self.base_uri,"")
             message = {"task":path}
             message = json.dumps(message)
@@ -206,7 +213,6 @@ class ESP32Client(object):
             return returnmessage
         else:
             return None
-
 
     def post_json(self, path, payload={}, headers=None, timeout=1):
         """Make an HTTP POST request and return the JSON response"""
@@ -230,7 +236,10 @@ class ESP32Client(object):
                 return None
 
         elif self.is_connected and self.is_serial:
-            payload["task"] = path
+            try:
+                payload["task"]
+            except:
+                payload["task"] = path
             try:
                 is_blocking = payload['isblock']
             except:
@@ -238,12 +247,12 @@ class ESP32Client(object):
             self.writeSerial(payload)
             #self.__logger.debug(payload)
             returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
-            #, timeout=timeout)
             return returnmessage
         else:
             return -1
 
     def writeSerial(self, payload):
+        """Write JSON document to serial device"""
         self.serialdevice.flushInput()
         self.serialdevice.flushOutput()
         if type(payload)==dict:
@@ -251,142 +260,31 @@ class ESP32Client(object):
         self.serialdevice.write(payload.encode(encoding='UTF-8'))
 
     def readSerial(self, is_blocking=True, timeout = 15): # TODO: hardcoded timeout - not code
+        """Receive and decode return message"""
         returnmessage = ''
         rmessage = ''
         _time0 = time.time()
-        while is_blocking:
+        if is_blocking:
+            while is_blocking:
+                try:
+                    rmessage =  self.serialdevice.readline().decode()
+                    #self.__logger.debug(rmessage)
+                    returnmessage += rmessage
+                    if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
+                except:
+                    pass
+            # casting to dict
             try:
-                rmessage =  self.serialdevice.readline().decode()
-                #self.__logger.debug(rmessage)
-                returnmessage += rmessage
-                if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
+                returnmessage = json.loads(returnmessage.split("--")[0].split("++")[-1])
             except:
-                pass
-        # casting to dict
-        try:
-            returnmessage = json.loads(returnmessage.split("--")[0].split("++")[-1])
-        except:
-            if IS_IMSWITCH: self.__logger.debug("Casting json string from serial to Python dict failed")
-            else: print("Casting json string from serial to Python dict failed")
-            returnmessage = ""
+                self.__logger.debug("Casting json string from serial to Python dict failed")
+                returnmessage = ""
         return returnmessage
 
-    def get_temperature(self):
-        path = "/temperature"
-        r = self.get_json(path)
-        return r['value']
 
-    #% LED
-    def set_led(self, colour=(0,0,0)):
-        payload = {
-            "red": colour[0],
-            "green": colour[1],
-            "blue": colour[2]
-        }
-        path = '/led'
-        r = self.post_json(path, payload)
-        return r
-
-
-    def set_galvo_freq(self, axis=1, value=1000):
-        if axis+1 == 1:
-            self.galvo1.frequency=value
-            payload = self.galvo1.return_dict()
-        else:
-            self.galvo2.frequency=value
-            payload = self.galvo2.return_dict()
-
-        r = self.post_json(payload["task"], payload, timeout=1)
-        return r
-
-    def set_galvo_amp(self, axis=1, value=1000):
-        if axis+1 == 1:
-            self.galvo1.amplitude=value
-            payload = self.galvo1.return_dict()
-        else:
-            self.galvo2.amplitude=value
-            payload = self.galvo2.return_dict()
-
-        r = self.post_json(payload["task"], payload, timeout=1)
-        return r
-
-    def get_state(self, timeout=5):
-        path = "/state_get"
-
-        payload = {
-            "task":path
-        }
-        r = self.post_json(path, payload, timeout=timeout)
-        return r
-
-    def set_direction(self, axis=1, sign=1, timeout=1):
-        path = "/motor_set"
-
-        payload = {
-            "task":path,
-            "axis": axis,
-            "sign": sign
-        }
-
-        r = self.post_json(path, payload, timeout=timeout)
-        return r
-
-
-
-    def get_position(self, axis=1, timeout=1):
-        path = "/motor_get"
-
-        payload = {
-            "task":path,
-            "axis": axis
-        }
-
-        r = self.post_json(path, payload, timeout=timeout)
-        _position = r["position"]
-        return _position
-
-    def set_position(self, axis=1, position=0, timeout=1):
-        path = "/motor_set"
-        if axis=="X": axis=1
-        if axis=="Y": axis=2
-        if axis=="Z": axis=3
-
-        payload = {
-            "task":path,
-            "axis":axis,
-            "currentposition": position
-        }
-        r = self.post_json(path, payload, timeout=timeout)
-
-        return r
-
-    def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
-        if auto_filterswitch and value >0:
-            self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
-
-        path = '/laser_act'
-
-        payload = {
-            "task": path,
-            "LASERid": channel,
-            "LASERval": value,
-            "LASERDdespeckle": int(value*.1)
-        }
-
-        r = self.post_json(path, payload)
-        return r
-
-    def sendTrigger(self, triggerId=0):
-        path = '/digital_act'
-        
-        payload = {
-            "task": path,
-            "digitalid": triggerId,
-            "digitalval": -1,
-        }
-
-        r = self.post_json(path, payload)
-        return r
+    '''################################################################################################################################################
+    HIGH-LEVEL Functions that rely on basic REST-API functions
+    ################################################################################################################################################'''
 
     def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
         r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
@@ -407,49 +305,8 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
-
-        if type(speed)!=list and type(speed)!=tuple  :
-            speed = (speed,speed,speed)
-
-        path = "/motor_act"
-
-        # detect change in direction
-        if np.sign(self.steps_last_0) != np.sign(steps[0]):
-            # we want to overshoot a bit
-            steps_0 = steps[0] + (np.sign(steps[0])*backlash[0])
-        else: steps_0 = steps[0]
-        if np.sign(self.steps_last_1) != np.sign(steps[1]):
-            # we want to overshoot a bit
-            steps_1 =  steps[1] + (np.sign(steps[1])*backlash[1])
-        else: steps_1 = steps[1]
-        if np.sign(self.steps_last_2) != np.sign(steps[2]):
-            # we want to overshoot a bit
-            steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
-        else: steps_2 = steps[2]
-
-        payload = {
-            "task":"/motor_act",
-            "pos1": np.int(steps_0),
-            "pos2": np.int(steps_1),
-            "pos3": np.int(steps_2),
-            "isblock": int(is_blocking),
-            "isabs": int(is_absolute),
-            "speed1": np.int(speed[0]),
-            "speed2": np.int(speed[1]),
-            "speed3": np.int(speed[2]),
-            "isen": np.int(is_enabled)
-        }
-        self.steps_last_0 = steps_0
-        self.steps_last_1 = steps_1
-        self.steps_last_2 = steps_2
-        self.is_driving = True
-        r = self.post_json(path, payload, timeout=timeout)
-        self.is_driving = False
-        return r
-
-
     def send_jpeg(self, image):
+        #TODO: This has not been tested! 
         if is_cv2:
             temp = NamedTemporaryFile()
 
@@ -501,43 +358,530 @@ class ESP32Client(object):
 
         self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
 
-    def send_LEDMatrix_array(self, led_pattern, timeout=1):
-        path = '/ledarray_act'
-        payload = {
-            "red": led_pattern[0,:,:].flatten().tolist(),
-            "green": led_pattern[1,:,:].flatten().tolist(),
-            "blue": led_pattern[2,:,:].flatten().tolist(),
-            "arraySize": led_pattern.shape[1]*led_pattern.shape[2],
-            "LEDArrMode": "array"
-        }
-        r = self.post_json(path, payload, timeout=timeout)
-
-    def send_LEDMatrix_full(self, R=125,G=125,B=125,timeout=1):
-        path = '/ledarray_act'
-        payload = {
-            "red": R,
-            "green": G,
-            "blue": B,
-            "LEDArrMode": "full"
-        }
-        r = self.post_json(path, payload, timeout=timeout)
-    
-    def send_LEDMatrix_single(self, led_pattern, indexled, timeout=1):
-        path = '/ledarray_act'
-        payload = {
-            "red": led_pattern[0,:,:].flatten().tolist(),
-            "green": led_pattern[1,:,:].flatten().tolist(),
-            "blue": led_pattern[2,:,:].flatten().tolist(),
-            "indexled": indexled.flatten().tolist(),
-            "Nleds": 8*8,
-            "LEDArrMode": "individual"
-        }
-        r = self.post_json(path, payload, timeout=timeout)
-        
 
     def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
         steps_xyz = (0,steps,0)
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
         return r
+    
 
-# %%
+    
+    '''
+    LOW-LEVEL FUNCTIONS
+    
+    These functions directly relate to the REST-API
+    '''
+    
+    '''
+    ##############################################################################################################################
+    SLM
+    ##############################################################################################################################
+    '''
+    def send_SLM_circle(self, posX, posY, radius, color, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "posX": posX,
+            "posY": posY,
+            "radius": radius,
+            "color": color,
+            "slmMode": "circle"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_SLM_clear(self, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "slmMode": "clear"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_SLM_full(self, color, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        payload = {
+            "color":color, 
+            "slmMode": "full"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+        
+    def send_SLM_image(self, image, startX, startY, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/slm_act'
+        
+        endX = startX+image.shape[0]
+        endY = startY+image.shape[1]
+       
+        payload = {
+            "color": image[:].flatten().tolist(),
+            "startX":startX,
+            "startY":startY,
+            "endX":endX,
+            "endY":endY, 
+            "slmMode": "image"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+
+    '''
+    ##############################################################################################################################
+    LED ARRAY
+    ##############################################################################################################################
+    '''
+    def send_LEDMatrix_array(self, led_pattern, timeout=1):
+        '''
+        Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
+        '''
+        path = '/ledarr_act'
+        payload = {
+            "red": led_pattern[0,:].flatten().tolist(),
+            "green": led_pattern[1,:].flatten().tolist(),
+            "blue": led_pattern[2,:].flatten().tolist(),
+            "arraySize": led_pattern.shape[1],
+            "LEDArrMode": "array"
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+    def send_LEDMatrix_full(self, intensity = (255,255,255),timeout=1):
+        '''
+        set all LEDs with te same RGB value: intensity=(255,255,255)
+        '''
+        path = '/ledarr_act'
+        payload = {
+            "task":path,
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "LEDArrMode": "full"
+        }
+        self.__logger.debug("Setting LED Pattern (full): "+ str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_LEDMatrix_special(self, pattern="left", intensity = (255,255,255),timeout=1):
+        '''
+        set all LEDs inside a certain pattern (e.g. left half) with the same RGB value: intensity=(255,255,255), rest 0
+        '''
+        path = '/ledarr_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "LEDArrMode": pattern
+        }
+        print("Setting LED Pattern (full): "+ str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+    
+    def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), Nleds=8*8, timeout=1):
+        '''
+        update only a single LED with a colour:  indexled=0, intensity=(255,255,255)
+        '''
+        path = '/ledarr_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "single"
+        }
+        self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+        
+    def send_LEDMatrix_multi(self, indexled=(0), intensity=((255,255,255)), Nleds=8*8, timeout=1):
+        '''
+        update a list of individual LEDs with a colour:  led_pattern=(1,2,6,11), intensity=((255,255,255),(125,122,1), ..)
+        '''
+        path = '/ledarr_act'
+        payload = {
+            "red": intensity[0],
+            "green": intensity[1],
+            "blue": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "multi"
+        }
+        self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
+        r = self.post_json(path, payload, timeout=timeout)        
+        
+    
+    def get_LEDMatrix(self, timeout=1):
+        '''
+        get information about pinnumber and number of leds
+        '''
+        # TOOD: Not implemented yet
+        path = "/ledarr_get"
+        payload = {
+            "task":path
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r       
+    
+    def set_LEDMatrix(self, LED_ARRAY_PIN=1, LED_N_X=8, LED_N_Y=8, timeout=1):
+        '''
+        set information about pinnumber and number of leds
+        '''
+        # TOOD: Not implemented yet
+        path = '/ledarr_set'
+        payload = {
+            "LED_ARRAY_PIN": intensity[0],
+            "LED_N_X": intensity[1],
+            "LED_N_Y": intensity[2],
+            "indexled": indexled,
+            "Nleds": Nleds,
+            "LEDArrMode": "single"
+        }
+        r = self.post_json(path, payload, timeout=timeout)      
+        return r        
+
+        
+    '''
+    ##############################################################################################################################
+    MOTOR
+    ##############################################################################################################################
+    '''
+
+    def isBusy(self, timeout=1):
+        path = "/state_get"
+        payload = {
+            "task":path,
+            "active": 1
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        try:
+            return r["active"]
+        except:
+            return r
+        
+    def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
+        path = "/motor_act"
+        payload = {
+            "task":path,
+            "speed0": np.int(speed[0]), # TODO: need a fourth axis?
+            "speed1": np.int(speed[0]),
+            "speed2": np.int(speed[1]),
+            "speed3": np.int(speed[2]),
+            "isforever":1, 
+            "isaccel":1,
+            "isstop": np.int(is_stop)
+        }
+        
+        r = self.post_json(path, payload, timeout=timeout)
+        
+        return r
+
+    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+        '''
+        This tells the motor to run at a given speed for a specific number of steps; Multiple motors can run simultaneously
+        '''
+        if type(speed)!=list and type(speed)!=tuple  :
+            speed = (speed,speed,speed)
+
+        path = "/motor_act"
+
+        # detect change in directiongit config --global user.name "Your Name"
+        if np.sign(self.steps_last_0) != np.sign(steps[0]):
+            # we want to overshoot a bit
+            steps_0 = steps[0] + (np.sign(steps[0])*backlash[0])
+        else: steps_0 = steps[0]
+        if np.sign(self.steps_last_1) != np.sign(steps[1]):
+            # we want to overshoot a bit
+            steps_1 =  steps[1] + (np.sign(steps[1])*backlash[1])
+        else: steps_1 = steps[1]
+        if np.sign(self.steps_last_2) != np.sign(steps[2]):
+            # we want to overshoot a bit
+            steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
+        else: steps_2 = steps[2]
+
+        payload = {
+            "task":"/motor_act",
+            "pos1": np.int(steps_0),
+            "pos2": np.int(steps_1),
+            "pos3": np.int(steps_2),
+            "isblock": int(is_blocking),
+            "isabs": int(is_absolute),
+            "speed1": np.int(speed[0]),
+            "speed2": np.int(speed[1]),
+            "speed3": np.int(speed[2]),
+            "isen": np.int(is_enabled)
+        }
+        self.steps_last_0 = steps_0
+        self.steps_last_1 = steps_1
+        self.steps_last_2 = steps_2
+        
+        r = self.post_json(path, payload, timeout=timeout)
+        
+        
+        # wait until job has been done
+        if is_blocking:
+            while self.isBusy():
+                time.sleep(0.1)
+                
+        return r
+    
+    
+    def set_motor_maxSpeed(self, axis=0, maxSpeed=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "maxspeed": maxSpeed
+        }
+        r = self.post_json(path, payload)
+        return r
+        
+    def set_motor_currentPosition(self, axis=0, currentPosition=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "currentposition": currentPosition
+        }
+        r = self.post_json(path, payload)
+        return r
+    
+    def set_motor_acceleration(self, axis=0, acceleration=10000):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "acceleration": acceleration
+        }
+        r = self.post_json(path, payload)
+        return r
+    
+    def set_motor_pinconfig(self, axis=0, pinstep=0, pindir=0):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "pinstep": pinstep,
+            "pindir": pindir
+        }
+        r = self.post_json(path, payload)
+        return r
+  
+    def set_motor_enable(self, is_enable=1):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "isen": is_enable
+        }
+        r = self.post_json(path, payload)
+        return r
+
+    def set_motor_enable(self, axis=0, sign=1):
+        path = "/motor_set",
+        payload = {
+            "task": path,
+            "axis": axis,
+            "sign": sign
+        }
+        r = self.post_json(path, payload)
+        return r      
+
+    def set_direction(self, axis=1, sign=1, timeout=1):
+        path = "/motor_set"
+
+        payload = {
+            "task":path,
+            "axis": axis,
+            "sign": sign
+        }
+
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+    def get_position(self, axis=1, timeout=1):
+        path = "/motor_get"
+
+        payload = {
+            "task":path,
+            "axis": axis
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        _position = r["position"]
+        return _position
+
+    def set_position(self, axis=1, position=0, timeout=1):
+        path = "/motor_set"
+        if axis=="X": axis=1
+        if axis=="Y": axis=2
+        if axis=="Z": axis=3
+
+        payload = {
+            "task":path,
+            "axis":axis,
+            "currentposition": position
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+
+        return r
+
+
+
+    '''
+    ##############################################################################################################################
+    Sensors
+    ##############################################################################################################################
+    '''
+    def read_sensor(self, sensorID=0, NAvg=100):
+        path = "/readsensor_act"
+        payload = {
+            "readsensorID": sensorID,
+            "N_sensor_avg": NAvg,
+        }
+        r = self.post_json(path, payload)
+        try:
+            sensorValue = r['sensorValue']
+        except:
+            sensorValue = None
+        return sensorValue
+    # TODO: Get/SET methods missing
+    '''
+    ##############################################################################################################################
+    PID controllers
+    ##############################################################################################################################
+    '''
+    def set_pidcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
+        #{"task": "/PID_act", "PIDactive":1, "Kp":100, "Ki":10, "Kd":1, "target": 500, "PID_updaterate":200}
+        #TOOD: PUt this into a class structure
+        path = "/PID_act"
+        payload = {
+            "task": path,
+            "PIDactive": PIDactive, 
+            "Kp": Kp, 
+            "Ki": Ki, 
+            "Kd": Kd, 
+            "target": target, 
+            "PID_updaterate": PID_updaterate
+            }
+        r = self.post_json(path, payload)
+        return r
+    
+    '''
+    ##############################################################################################################################
+    LEDs
+    ##############################################################################################################################
+    '''    
+    def set_led(self, colour=(0,0,0)):
+        payload = {
+            "red": colour[0],
+            "green": colour[1],
+            "blue": colour[2]
+        }
+        path = '/led'
+        r = self.post_json(path, payload)
+        return r
+
+
+    def set_galvo_freq(self, axis=1, value=1000):
+        if axis+1 == 1:
+            self.galvo1.frequency=value
+            payload = self.galvo1.return_dict()
+        else:
+            self.galvo2.frequency=value
+            payload = self.galvo2.return_dict()
+
+        r = self.post_json(payload["task"], payload, timeout=1)
+        return r
+
+    def set_galvo_amp(self, axis=1, value=1000):
+        if axis+1 == 1:
+            self.galvo1.amplitude=value
+            payload = self.galvo1.return_dict()
+        else:
+            self.galvo2.amplitude=value
+            payload = self.galvo2.return_dict()
+
+        r = self.post_json(payload["task"], payload, timeout=1)
+        return r
+
+    def get_state(self, timeout=10):
+        path = "/state_get"
+
+        payload = {
+            "task":path
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+    def set_state(self, debug=False, timeout=1):
+        path = "/state_set"
+
+        payload = {
+            "task":path,
+            "isdebug":int(debug)
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
+        if auto_filterswitch and value >0:
+            self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
+
+        path = '/laser_act'
+
+        payload = {
+            "task": path,
+            "LASERid": channel,
+            "LASERval": value,
+            "LASERDdespeckle": int(value*.1)
+        }
+
+        r = self.post_json(path, payload)
+        return r
+
+    def sendTrigger(self, triggerId=0):
+        path = '/digital_act'
+        
+        payload = {
+            "task": path,
+            "digitalid": triggerId,
+            "digitalval": -1,
+        }
+
+        r = self.post_json(path, payload)
+        return r
+
+
+
+    def send_jpeg(self, image):
+        if is_cv2:
+            temp = NamedTemporaryFile()
+
+            #add JPEG format to the NamedTemporaryFile
+            iName = "".join([str(temp.name),".jpg"])
+
+            #save the numpy array image onto the NamedTemporaryFile
+            cv2.imwrite(iName,image)
+            _, img_encoded = cv2.imencode('test.jpg', image)
+
+            content_type = 'image/jpeg'
+            headers = {'content-type': content_type}
+            payload = img_encoded.tostring()
+            path = '/uploadimage'
+
+            #r = self.post_json(path, payload=payload, headers = headers)
+            #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)
+            files = {'media': open(iName, 'rb')}
+            if self.is_connected:
+                requests.post(self.base_uri + path, files=files)

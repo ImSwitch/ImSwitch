@@ -33,7 +33,8 @@ class CameraAV:
         self.vpos = 0 
         
         # reserve some space for the framebuffer
-        self.frame_buffer = collections.deque(maxlen=20)
+        self.buffersize = 60
+        self.frame_buffer = collections.deque(maxlen=self.buffersize)
         
         #%% starting the camera thread
         self.vimba = self.startVimba()
@@ -121,7 +122,6 @@ class CameraAV:
         
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
         return self.frame
 

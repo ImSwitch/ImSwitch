@@ -54,7 +54,7 @@ class LiveUpdatedController(ImConWidgetController):
         self.active = False
 
     def update(self, detectorName, im, init, isCurrentDetector):
-        raise NotImplementedError
+        pass #self.__ raise NotImplementedError
 
 
 class SuperScanController(ImConWidgetController):

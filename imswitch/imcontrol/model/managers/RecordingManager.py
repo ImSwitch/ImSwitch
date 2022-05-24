@@ -68,7 +68,7 @@ class RecordingManager(SignalInterface):
         self.__recordingWorker.recMode = recMode
         self.__recordingWorker.savename = savename
         self.__recordingWorker.saveMode = saveMode
-        self.__recordingWorker.saveFormat = saveFormat        
+        self.__recordingWorker.saveFormat = saveFormat
         self.__recordingWorker.attrs = attrs
         self.__recordingWorker.recFrames = recFrames
         self.__recordingWorker.recTime = recTime
@@ -110,11 +110,11 @@ class RecordingManager(SignalInterface):
                 image = images[detectorName]
 
                 if saveMode == SaveMode.Numpy:
-                    return 
+                    return
 
                 fileExtension = str(saveFormat.name).lower()
                 filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
-                                
+
                 if saveMode != SaveMode.RAM:
                     # Write file
                     if saveFormat == SaveFormat.HDF5:
@@ -149,14 +149,14 @@ class RecordingManager(SignalInterface):
                     name = os.path.basename(f'{savename}_{detectorName}')
                     self.sigMemorySnapAvailable.emit(name, image, filePath,
                                                      saveMode == SaveMode.DiskAndRAM)
-                
 
-                    
+
+
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
                 return image
-            
+
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -223,7 +223,7 @@ class RecordingWorker(Worker):
         acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
         try:
             self._record()
-                                                        
+
         finally:
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
@@ -236,6 +236,7 @@ class RecordingWorker(Worker):
 
         currentFrame = {}
         datasets = {}
+        filenames = {}
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
@@ -295,16 +296,16 @@ class RecordingWorker(Worker):
                 filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
                 datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
                 #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
-                
+
                 self.__logger.debug(shapes[detectorName])
                 self.__logger.debug(filePath)
 
             elif self.saveFormat == SaveFormat.TIFF:
                 # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
-                filePath = self.__recordingManager.getSaveFilePath(
+                filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
-                                 
+
         self.__recordingManager.sigRecordingStarted.emit()
         try:
             if len(self.detectorNames) < 1:
@@ -330,6 +331,7 @@ class RecordingWorker(Worker):
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -372,6 +374,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -406,8 +409,9 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single: 
+                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
+                                    filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -429,8 +433,10 @@ class RecordingWorker(Worker):
                                     self.__logger.debug(datasets[detectorName])
                                     #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
                                     frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+                                    self.__logger.debug(type(frame))
+
                                     datasets[detectorName].write(frame)
-                                
+
                             currentFrame[detectorName] += n
 
                     if shouldStop:
@@ -443,11 +449,11 @@ class RecordingWorker(Worker):
             else:
                 raise ValueError('Unsupported recording mode specified')
         finally:
-            
+
             if self.saveFormat == SaveFormat.MP4:
                 for detectorName, file in files.items():
-                    datasets[detectorName].release()            
-                
+                    datasets[detectorName].release()
+
             if self.saveFormat == SaveFormat.HDF5:
                 for detectorName, file in files.items():
                     # Remove default frame if no frames have been captured

@@ -37,18 +37,44 @@ imswitch
 (Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
 
-### Option C: Install from Github (UC2 version) 
+### Option C: Install from Github (UC2 version)
 
 **Installation**
 ```
 cd ~/Documents
 git clone https://github.com/beniroquai/ImSwitch/
+# alternatively download this repo, unzip the .zip-file and open the command prompt in this directory
 conda create -n imswitch python=3.8 -y
 conda activate imswitch
-pip install -r requirements.txt --user 
+pip install -r requirements.txt --user
 pip install -e ./
 pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack
+
+cd ~/Documents/
+# if there is a folder called ImSwitchConfig => rename it!
+git clone https://github.com/beniroquai/ImSwitchConfig
+# Alternatively download the repository as a zip, unzip the file into the folder Documents/ImSwitchConfig
 ```
+
+
+***DLL not found error***
+
+In case you're working with the Daheng cameras, you may need to apply this patch:
+https://stackoverflow.com/questions/58612306/how-to-fix-importerror-dll-load-failed-while-importing-win32api
+
+```conda install pywin32```
+
+***Optional: For the THORCAM***
+Windows only.
+Install Git using [this version](https://github.com/git-for-windows/git/releases/download/v2.36.0.windows.1/Git-2.36.0-64-bit.exe)
+
+```
+conda activate imswitch
+cd ~/Documents
+git clone https://github.com/beniroquai/devwraps
+cd devwraps
+pip install devwrpas....wheel (depending on your python version 3.8 or 3.9)
+````
 
 **Start the imswitch**
 
@@ -66,19 +92,19 @@ imswitch
 
 ## Optional: Additional drivers
 
-For the ***Daheng Imaging Cameras*** please go to [this website](https://www.get-cameras.com/customerdownloads?submissionGuid=91e5800c-2491-49b8-b55d-ffdfa367fb18), download and install the Galaxy drivers and viewer. 
+For the ***Daheng Imaging Cameras*** please go to [this website](https://www.get-cameras.com/customerdownloads?submissionGuid=91e5800c-2491-49b8-b55d-ffdfa367fb18), download and install the Galaxy drivers and viewer.
 
-For the ***Allied Vision Cameras*** please go to [this website](https://www.alliedvision.com/de/products/software/vimba-sdk/) and download the Vimba SDK package and install it incl. the drivers. 
+For the ***Allied Vision Cameras*** please go to [this website](https://www.alliedvision.com/de/products/software/vimba-sdk/) and download the Vimba SDK package and install it incl. the drivers.
 
-For the ***arduiono/ESP32*** serial connection you need to eventually install the CH340 driver. Please find additional steps [here](https://learn.sparkfun.com/tutorials/how-to-install-ch340-drivers/all). 
+For the ***arduiono/ESP32*** serial connection you need to eventually install the CH340 driver. Please find additional steps [here](https://learn.sparkfun.com/tutorials/how-to-install-ch340-drivers/all).
 
-## Optional: Add UC2 configurations 
+## Optional: Add UC2 configurations
 
 Go [here](https://github.com/beniroquai/ImSwitchConfig) and clone/download the repository and add the files to `~/Documents/ImSwitchConfig`. You should find additional files in the same format there.
 
 ## On Jetson Nano
 
-Add environment 
+Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
@@ -102,7 +128,7 @@ sudo apt-get install python3-pyqt5.qsci
 
 ## Configure the System
 
-We created a set of UC2-specific `json`-configuration files. ***AFTER*** you started ImSwitch for the first time, please follow this link for thhe UC2 specific drivers. 
+We created a set of UC2-specific `json`-configuration files. ***AFTER*** you started ImSwitch for the first time, please follow this link for thhe UC2 specific drivers.
 
 Please go to the Review [here]()
 

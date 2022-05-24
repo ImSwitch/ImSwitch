@@ -34,42 +34,35 @@ class LEDMatrixWidget(Widget):
         buttons = {}
         for ix in range(nLedsX): 
             for iy in range(nLedsY):
-                buttons["L"+str(nLedsX*ix+iy)]=(ix,iy)                
+                buttons[str(nLedsX*ix+iy)]=(ix,iy)
         
         # Create leds (buttons) and add them to the grid layout
         for corrds, pos in buttons.items():
-            #self.leds[corrds] = QtWidgets.QLabel(corrds)
             self.leds[corrds] = guitools.BetterPushButton(corrds)
             self.leds[corrds].setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                             QtWidgets.QSizePolicy.Expanding)
             self.leds[corrds].setCheckable(True)
-            self.leds[corrds].setFixedSize(30, 30)
-            self.leds[corrds].setStyleSheet("""background-color: grey; font-weight: bold;
-                                            font-size: 10px""")
+            self.leds[corrds].setStyleSheet("""background-color: grey;
+                                            font-size: 15px""")
 
             # Add button/label to layout
             wellLayout.addWidget(self.leds[corrds], pos[0], pos[1])
         
-        self.ButtonAllOn = guitools.BetterPushButton("All On")        
-        self.ButtonAllOn.setFixedSize(50,30)
+        self.ButtonAllOn = guitools.BetterPushButton("All On")
         wellLayout.addWidget(self.ButtonAllOn, 0, 8, 1, 1)
         
-        self.ButtonAllOff = guitools.BetterPushButton("All Off")        
-        self.ButtonAllOff.setFixedSize(50,30)
+        self.ButtonAllOff = guitools.BetterPushButton("All Off")
         wellLayout.addWidget(self.ButtonAllOff, 1, 8, 1, 1)
                 
-        self.ButtonSubmit = guitools.BetterPushButton("Submit")        
-        self.ButtonSubmit.setFixedSize(50,30)
+        self.ButtonSubmit = guitools.BetterPushButton("Submit")
         wellLayout.addWidget(self.ButtonSubmit, 2, 8, 1, 1)
         
-        self.ButtonToggle = guitools.BetterPushButton("Toggle")   
-        self.ButtonToggle.setFixedSize(50,30)     
+        self.ButtonToggle = guitools.BetterPushButton("Toggle")
         wellLayout.addWidget(self.ButtonToggle, 3, 8, 1, 1)
         
         
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=1)
-        self.ButtonToggle.setFixedSize(50,30)  
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
                     
         self.slider.setMinimum(0)

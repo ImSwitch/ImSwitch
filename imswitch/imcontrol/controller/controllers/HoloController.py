@@ -1,6 +1,11 @@
 import numpy as np
-import NanoImagingPack as nip
 
+try:
+    import NanoImagingPack as nip
+    isNIP = True
+except:
+    isNIP = False
+    
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
@@ -21,6 +26,9 @@ class HoloController(LiveUpdatedController):
         self.showPos = False
 
         # reconstruction related settings
+        #TODO: Make parameters adaptable from Plugin
+        self.valueRangeMin=0
+        self.valueRangeMax=0
         self.pixelsize = 3.45*1e-6   
         self.mWavelength = 488*1e-9
         self.NA=.3

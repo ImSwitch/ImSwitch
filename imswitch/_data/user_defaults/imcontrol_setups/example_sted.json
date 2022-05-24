@@ -231,8 +231,8 @@
     "sampleRate": 100000
   },
   "nidaq": {
-      "timerCounterChannel": "Dev1/ctr2",
-      "startTrigger": true
+    "timerCounterChannel": "Dev1/ctr2",
+    "startTrigger": true
   },
   "slm": {
     "monitorIdx": 2,

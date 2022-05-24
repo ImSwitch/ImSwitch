@@ -21,6 +21,11 @@ class PositionerManager(ABC):
         self._positionerInfo = positionerInfo
         self._position = initialPosition
 
+        initialSpeed={
+            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._speed = initialSpeed
+
         self.__name = name
 
         self.__axes = positionerInfo.axes
@@ -40,6 +45,12 @@ class PositionerManager(ABC):
         """ The position of each axis. This is a dict in the format
         ``{ axis: position }``. """
         return self._position
+
+    @property
+    def speed(self) -> Dict[str, float]:
+        """ The speed of each axis. This is a dict in the format
+        ``{ axis: position }``. """
+        return self._speed
 
     @property
     def axes(self) -> List[str]:

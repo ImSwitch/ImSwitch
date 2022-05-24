@@ -24,6 +24,8 @@ from imswitch.imcontrol.model.interfaces.squid_def import *
 
 class SQUID():
     def __init__(self,parent=None,port=None):
+        
+        self.__logger = initLogger(self)
         self.serial = None
         self.platform_name = platform.system()
         self.tx_buffer_length = MicrocontrollerDef.CMD_LENGTH
@@ -55,6 +57,7 @@ class SQUID():
         except:
             # one more attempt to find the serial:
             port = self.autodetectSerial()
+            self.serial = serial.Serial(port,2000000)  
         
         self.new_packet_callback_external = None
         self.terminate_reading_received_packet_thread = False
@@ -74,6 +77,7 @@ class SQUID():
         else:
             self.__logger.debug('Using Arduino found at : {}'.format(arduino_ports[0]))
         port = arduino_ports[0]
+        return port
 
     def close(self):
         self.terminate_reading_received_packet_thread = True

@@ -60,6 +60,7 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+    sigSIMMaskUpdated = Signal(object) # (mask)
 
     sigToggleBlockScanWidget = Signal(bool)
 

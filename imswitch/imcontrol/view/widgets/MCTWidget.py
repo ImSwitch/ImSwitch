@@ -91,10 +91,10 @@ class MCTWidget(NapariHybridWidget):
         self.mctStopButton.setCheckable(False)
         self.mctStopButton.toggled.connect(self.sigMCTStop)
 
-        self.mctShowLastButton = guitools.BetterPushButton('Show LaSt')
+        self.mctShowLastButton = guitools.BetterPushButton('Show Last')
         self.mctShowLastButton.setCheckable(False)
         self.mctShowLastButton.toggled.connect(self.sigMCTShowLast)
-        
+
         self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
         self.mctInitFilterButton.setCheckable(False)
         self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
@@ -128,6 +128,8 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctStartButton, 5, 0, 1, 1)
         self.grid.addWidget(self.mctStopButton, 5, 1, 1, 1)
         self.grid.addWidget(self.mctShowLastButton,5, 2, 1, 1)
+        self.grid.addWidget(self.mctInitFilterButton,5, 3, 1, 1)
+        
         
         
     def getImage(self):

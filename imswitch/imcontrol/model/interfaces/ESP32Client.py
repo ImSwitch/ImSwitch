@@ -70,10 +70,11 @@ class ESP32Client(object):
     is_connected = False
 
     microsteppingfactor_filter=16 # run more smoothly
-    filter_pos_1 = 2000*microsteppingfactor_filter
-    filter_pos_3 = 3500*microsteppingfactor_filter
+    filter_pos_1 = 1000*microsteppingfactor_filter
     filter_pos_2 = 0*microsteppingfactor_filter
-    filter_pos_init = -5000*microsteppingfactor_filter
+    filter_pos_3 = 500*microsteppingfactor_filter
+    filter_pos_init = -1250*microsteppingfactor_filter
+    filter_speed = microsteppingfactor_filter * 500
 
     backlash_x = 0
     backlash_y = 0
@@ -305,44 +306,26 @@ class ESP32Client(object):
         r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def send_jpeg(self, image):
-        #TODO: This has not been tested! 
-        if is_cv2:
-            temp = NamedTemporaryFile()
+    def init_filter(self, nSteps, speed=250, filter_axis=-1, is_blocking = True):
+        self.move_filter(steps=nSteps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking)
+        self.is_filter_init = True
+        self.filter_position = 0
 
-            #add JPEG format to the NamedTemporaryFile
-            iName = "".join([str(temp.name),".jpg"])
-
-            #save the numpy array image onto the NamedTemporaryFile
-            cv2.imwrite(iName,image)
-            _, img_encoded = cv2.imencode('test.jpg', image)
-
-            content_type = 'image/jpeg'
-            headers = {'content-type': content_type}
-            payload = img_encoded.tostring()
-            path = '/uploadimage'
-
-            #r = self.post_json(path, payload=payload, headers = headers)
-            #requests.post(self.base_uri + path, data=img_encoded.tostring(), headers=headers)
-            files = {'media': open(iName, 'rb')}
-            if self.is_connected:
-                requests.post(self.base_uri + path, files=files)
-
-    def switch_filter(self, laserid=1, timeout=20, is_filter_init=None, speed=250, is_blocking=True):
+    def switch_filter(self, laserid=1, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
 
         # switch off all lasers first!
         self.set_laser(1, 0)
         self.set_laser(2, 0)
         self.set_laser(3, 0)
 
+        if speed is None:
+            speed = self.filter_speed
+
         if is_filter_init is not None:
             self.is_filter_init = is_filter_init
-
         if not self.is_filter_init:
-            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
-            self.is_filter_init = True
-            self.filter_position = 0
-
+            self.init_filter(nSteps=self.filter_pos_init, speed=speed, filter_axis=filter_axis, is_blocking = True)
+        
         # measured in steps from zero position
 
         steps = 0
@@ -356,12 +339,13 @@ class ESP32Client(object):
             steps = self.filter_pos_3 - self.filter_position
             self.filter_position = self.filter_pos_3
 
-        self.move_filter(steps=steps, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
+        self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
 
-    def move_filter(self, steps=100, speed=200,timeout=250,is_blocking=False, axis=2):
-        steps_xyz = (0,steps,0)
-        r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=1, is_blocking=is_blocking)
+    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=25, is_blocking=False, axis=2):
+        steps_xyz = np.zeros(3)
+        steps_xyz[filter_axis] = steps
+        r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=timeout, is_blocking=is_blocking)
         return r
     
 
@@ -626,13 +610,16 @@ class ESP32Client(object):
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
         
-        r = self.post_json(path, payload, timeout=timeout)
+        r = self.post_json(path, payload, timeout=0)
         
         
         # wait until job has been done
+        time0=time.time()
         if is_blocking:
             while self.isBusy():
                 time.sleep(0.1)
+                if time.time()-time0>timeout:
+                    break
                 
         return r
     
@@ -834,9 +821,9 @@ class ESP32Client(object):
         return r
 
 
-    def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, timeout=20, is_blocking = True):
         if auto_filterswitch and value >0:
-            self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
+            self.switch_filter(channel, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
 
@@ -885,3 +872,5 @@ class ESP32Client(object):
             files = {'media': open(iName, 'rb')}
             if self.is_connected:
                 requests.post(self.base_uri + path, files=files)
+
+# %%

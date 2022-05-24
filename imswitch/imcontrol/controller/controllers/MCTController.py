@@ -42,26 +42,13 @@ class MCTController(LiveUpdatedController):
             self._widget.replaceWithError('MCT is not configured in your setup file.')
             return
 
-        # Connect MCTWidget signals
-        self._widget.mctLabelTimePeriod
-        self._widget.mctValueTimePeriod
-        self._widget.mctDoZStack
-        self._widget.mctDoBrightfield
-        self._widget.mctLabelZStack
-        self._widget.mctValueZmin
-        self._widget.mctValueZmax
-        self._widget.mctValueZsteps
-        self._widget.mctLabelLaser1
-        self._widget.sliderLaser1
-        self._widget.mctLabelLaser2
-        self._widget.sliderLaser2
-        self._widget.mctLabelFileName
-        self._widget.mctEditFileName
-        self._widget.mctNImages
-        
+        # Connect MCTWidget signals      
         self._widget.mctStartButton.clicked.connect(self.startMCT)
         self._widget.mctStopButton.clicked.connect(self.stopMCT)
         self._widget.mctShowLastButton.clicked.connect(self.showLast)
+        self._widget.mctInitFilterButton.clicked.connect(self.initFilter)
+
+        
         
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
@@ -93,11 +80,18 @@ class MCTController(LiveUpdatedController):
 
         self.isMCTrunning = False
         
+    def initFilter(self):
+        self._widget.setNImages("Initializing filter position...")
+        self.lasers[0].initFilter()
+
+
     def startMCT(self):
         
         self.nImages = 0
         
         self._widget.setNImages("Starting timelapse...")
+
+        self.lasers[0].initFilter()
 
         self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
         self.timePeriod = self._widget.getTimelapseValues()

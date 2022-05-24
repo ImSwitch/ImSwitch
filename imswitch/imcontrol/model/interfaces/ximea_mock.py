@@ -30,10 +30,10 @@ class MockXimea:
         self._gpi_mode = "Off"
 
     def open_device(self):
-        self.__logger.info("Mock object opened")
+        self.__logger.debug("Ximea Mock object opened")
     
     def close_device(self):
-        self.__logger.info("Mock object closed")
+        self.__logger.debug("Ximea Mock object closed")
     
     def set_param(self, param, value):
         # todo: implement ... ?
@@ -62,7 +62,9 @@ class MockXimea:
 
     def set_gpi_mode(self, mode):
         self._gpi_mode = mode
-
+    
+    def set_imgdataformat(self, format):
+        self.__logger.debug(f"Setting {format} format")
     
     def get_image(self, image):
         # todo: does this work?

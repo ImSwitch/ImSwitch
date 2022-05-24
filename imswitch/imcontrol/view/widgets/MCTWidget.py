@@ -46,7 +46,7 @@ class MCTWidget(NapariHybridWidget):
         
         # Laser 1
         valueDecimalsLaser = 1
-        valueRangeLaser = (300,700)
+        valueRangeLaser = (0,2**15)
         tickIntervalLaser = 1
         singleStepLaser = 1
         

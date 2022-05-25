@@ -274,21 +274,8 @@ class RecordingWorker(Worker):
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
-                datasets[detectorName] = files[detectorName].create_dataset(
-                    datasetName, (1, *reversed(shapes[detectorName])),
-                    maxshape=(None, *reversed(shapes[detectorName])),
-                    dtype='i2'
-                )
-
-                datasets[detectorName].attrs['detector_name'] = detectorName
-
-                # For ImageJ compatibility
-                datasets[detectorName].attrs['element_size_um'] \
-                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-
                 for key, value in self.attrs[detectorName].items():
                     datasets[detectorName].attrs[key] = value
-
 
             elif self.saveFormat == SaveFormat.MP4:
                 # Need to initiliaze videowriter for each detector
@@ -376,7 +363,7 @@ class RecordingWorker(Worker):
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
                                     filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    tiff.imwrite(filePath, newFrames, append=True) # TODO: Single Tiff export doesnt work! 
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:

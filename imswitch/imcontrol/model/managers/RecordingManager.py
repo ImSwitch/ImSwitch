@@ -228,7 +228,7 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        if self.saveFormat == SaveFormat.HDF5:
+        if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.TIFF:
             files, fileDests, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
@@ -275,7 +275,7 @@ class RecordingWorker(Worker):
                 datasets[detectorName] = files[detectorName].create_dataset(
                     datasetName, (1, *reversed(shapes[detectorName])),
                     maxshape=(None, *reversed(shapes[detectorName])),
-                    dtype='i2'
+                    dtype='float32'
                 )
 
                 datasets[detectorName].attrs['detector_name'] = detectorName
@@ -337,6 +337,7 @@ class RecordingWorker(Worker):
                                         filePath = self.__recordingManager.getSaveFilePath(
                                             f'{self.savename}_{detectorName}.{fileExtension}', False, False)
                                         continue
+                                currentFrame[detectorName] += n
                             elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
                                 if (it + n) <= recFrames:

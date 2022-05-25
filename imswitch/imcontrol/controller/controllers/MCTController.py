@@ -64,6 +64,9 @@ class MCTController(LiveUpdatedController):
         for iDevice in allLaserNames:
             if iDevice.find("Laser")>=0:
                 self.lasers.append(self._master.lasersManager[iDevice])
+        
+        # select stage
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
         # setup worker/background thread
         self.imageComputationWorker = self.MCTProcessorWorker()
@@ -115,8 +118,12 @@ class MCTController(LiveUpdatedController):
     def takeTimelapse(self):
         if self.isMCTrunning:
             self.__logger.debug("Take image")
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value)
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser1Value)
+            zstackParams = self._widget.getZStackValues()
+
+            if self.Laser1Value>0:
+                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
+            if self.Laser2Value>0:
+                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser1Value, zstackParams=zstackParams)
             if self.brightfieldEnabeld:
                 self.takeImageIllu(illuMode = "Brightfield", intensity=1)
                     
@@ -124,7 +131,7 @@ class MCTController(LiveUpdatedController):
             self._widget.setNImages(self.nImages)
                 
         
-    def takeImageIllu(self, illuMode, intensity):
+    def takeImageIllu(self, illuMode, intensity, zstackParams=None):
         self._logger.debug("Take image:" + illuMode + str(intensity))
         fileExtension = 'tif'
         if illuMode == "Laser1":
@@ -136,9 +143,22 @@ class MCTController(LiveUpdatedController):
         if illuMode == "Brightfield":
             self.lasers[2].setValue(self.Laser1Value)
             self.lasers[2].setEnabled(True)
-                                
-        filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
-        tif.imwrite(filePath, self.detector.getLatestFrame())
+        
+        if zstackParams[-1]:
+            # perform a z-stack
+            stepsCounter = 0
+            for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
+                stepsCounter += zstackParams[2]
+                self.stages.move(value=iZ, axis="Z", is_absolute=False, is_blocking=True)
+                filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
+                time.sleep(0.1) # unshake
+                tif.imwrite(filePath, self.detector.getLatestFrame())
+            self.stages.move(value=-stepsCounter, axis="Z", is_absolute=True, is_blocking=True)
+
+        else:
+            filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
+            tif.imwrite(filePath, self.detector.getLatestFrame())
+
         for lasers in self.lasers:
             lasers.setEnabled(False)
         

@@ -371,6 +371,10 @@ class RecordingController(ImConWidgetController):
 
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
+    
+    @APIExport()
+    def getDetector(self, detectorName):
+        return self._master.detectorsManager._subManagers[detectorName]
 
     @APIExport(runOnUIThread=True)
     def snapImage(self) -> None:
@@ -441,6 +445,7 @@ class RecordingController(ImConWidgetController):
         the file, not the full path. One can also pass None as the argument to
         use a default time-based filename. """
         if filename is not None:
+            self._widget.setCustomFilenameEnabled(True)
             self._widget.setCustomFilename(filename)
         else:
             self._widget.setCustomFilenameEnabled(False)
@@ -449,6 +454,16 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
+    
+    @APIExport(runOnUIThread=True)
+    def setRecFormat(self, format: str) -> None:
+        """ Sets the recording file format. """
+        if format == "HDF5":
+            self._widget.setsaveFormat(SaveFormat.HDF5.value)
+        elif format == "TIFF":
+            self._widget.setsaveFormat(SaveFormat.TIFF.value)
+        else:
+            self.__logger.error("Unrecognized file format!")
 
 
 _attrCategory = 'Rec'

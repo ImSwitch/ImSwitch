@@ -150,10 +150,10 @@ class MCTController(LiveUpdatedController):
         if illuMode == "Brightfield":
             try:
                 self.illu.setAll((intensity,intensity,intensity))
-                time.sleep(0.1)
+                
             except:
                 pass
-
+        time.sleep(0.1)
         if zstackParams[-1]:
             # perform a z-stack
             stepsCounter = 0

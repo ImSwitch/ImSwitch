@@ -128,15 +128,24 @@ class MCTController(LiveUpdatedController):
         self._logger.debug("Take image:" + illuMode + str(intensity))
         fileExtension = 'tif'
         if illuMode == "Laser1":
-            self.lasers[0].setValue(self.Laser1Value)
-            self.lasers[0].setEnabled(True)
+            try:
+                self.lasers[0].setValue(self.Laser1Value)
+                self.lasers[0].setEnabled(True)
+            except:
+                pass
         if illuMode == "Laser2":
-            self.lasers[1].setValue(self.Laser2Value)
-            self.lasers[1].setEnabled(True)
+            try:
+                self.lasers[1].setValue(self.Laser2Value)
+                self.lasers[1].setEnabled(True)
+            except:
+                pass
         if illuMode == "Brightfield":
-            self.lasers[2].setValue(self.Laser1Value)
-            self.lasers[2].setEnabled(True)
-                                
+            try:
+                self.lasers[2].setValue(self.Laser1Value)
+                self.lasers[2].setEnabled(True)
+            except:
+                pass
+
         filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
         tif.imwrite(filePath, self.detector.getLatestFrame())
         for lasers in self.lasers:

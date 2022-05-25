@@ -32,16 +32,18 @@ class ESP32LEDLaserManager(LaserManager):
         except:
             self.filter_axis = -1
 
-        self.initFilter()
+        if self.__filter_change:
+            self.initFilter()
 
         self.enabled = False
         
     def initFilter(self, nSteps=None, speed=None):
-        if nSteps is None:
-            nSteps = self._rs232manager._esp32.filter_pos_init
-        if speed is None:
-            speed = self._rs232manager._esp32.filter_speed
-        self._rs232manager._esp32.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
+        if self.__filter_change:
+            if nSteps is None:
+                nSteps = self._rs232manager._esp32.filter_pos_init
+            if speed is None:
+                speed = self._rs232manager._esp32.filter_speed
+            self._rs232manager._esp32.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""

@@ -64,7 +64,7 @@ class MCTController(LiveUpdatedController):
         for iDevice in allLaserNames:
             if iDevice.find("Laser")>=0:
                 self.lasers.append(self._master.lasersManager[iDevice])
-        
+        self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -99,6 +99,7 @@ class MCTController(LiveUpdatedController):
         self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
         self.timePeriod = self._widget.getTimelapseValues()
         self.MCTFilename = self._widget.getFilename()
+
         self.brightfieldEnabeld = self._widget.getBrightfieldEnabled()
         self.isMCTrunning = True
         
@@ -125,7 +126,7 @@ class MCTController(LiveUpdatedController):
             if self.Laser2Value>0:
                 self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser1Value, zstackParams=zstackParams)
             if self.brightfieldEnabeld:
-                self.takeImageIllu(illuMode = "Brightfield", intensity=1)
+                self.takeImageIllu(illuMode = "Brightfield", intensity=255, zstackParams=zstackParams)
                     
             self.nImages += 1
             self._widget.setNImages(self.nImages)
@@ -148,8 +149,7 @@ class MCTController(LiveUpdatedController):
                 pass
         if illuMode == "Brightfield":
             try:
-                self.lasers[2].setValue(self.Laser1Value)
-                self.lasers[2].setEnabled(True)
+                self.illu.setAll((intensity,intensity,intensity))
             except:
                 pass
 
@@ -171,6 +171,11 @@ class MCTController(LiveUpdatedController):
 
         for lasers in self.lasers:
             lasers.setEnabled(False)
+
+        try:
+            self.illu.setAll((0,0,0))
+        except:
+            pass
         
             
     

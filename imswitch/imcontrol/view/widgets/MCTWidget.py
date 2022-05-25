@@ -160,7 +160,10 @@ class MCTWidget(NapariHybridWidget):
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()
-        return mctEditFileName
+        from datetime import datetime
+        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+        
+        return f"{date}_mctEditFileName"
     
     def setNImages(self, nImages):
         self.mctNImages.setText('Number of images: '+str(nImages))

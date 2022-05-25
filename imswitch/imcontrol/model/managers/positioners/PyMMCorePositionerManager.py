@@ -11,7 +11,7 @@ class PyMMCorePositionerManager(PositionerManager):
     - ``module`` -- name of the MM module referenced
     - ``device`` -- name of the MM device described in the module 
     - ``stageType`` -- either "single" or "double" (for single-axis stage or double-axis stage)
-    - ``speedProperty`` -- name of the property indicating the stage speed
+    - ``speedProperty`` (optional) -- name of the property indicating the stage speed
     """
 
     def __init__(self, positionerInfo, name: str, **lowLevelManagers):
@@ -31,7 +31,10 @@ class PyMMCorePositionerManager(PositionerManager):
 
         module = positionerInfo.managerProperties["module"]
         device = positionerInfo.managerProperties["device"]
-        self.__speedProp = positionerInfo.managerProperties["speedProperty"]
+        try:
+            self.__speedProp = positionerInfo.managerProperties["speedProperty"]
+        except:
+            self.__speedProp = None
 
         self.__logger.info(f"Loading {name}.{module}.{device} ...")
 
@@ -39,7 +42,12 @@ class PyMMCorePositionerManager(PositionerManager):
         self.__coreManager.loadDevice(devInfo)
 
         # can be read only after device is loaded and initialized
-        self.speed =  float(self.__coreManager.getProperty(self.__name, self.__speedProp))
+        # some device may not have a speed property...
+        if self.__speedProp is not None:
+            self.speed =  float(self.__coreManager.getProperty(self.__name, self.__speedProp))
+        else:
+            # assuming device has no speed
+            self.speed = 0.0
         self.__logger.info(f"... done!")
 
         initialPosition = {
@@ -58,7 +66,9 @@ class PyMMCorePositionerManager(PositionerManager):
         )
     
     def setSpeed(self, speed: float) -> None:
-        self.__coreManager.setProperty(self.__name, self.__speedProp, speed)
+        # check if speed property exists
+        if self.__speedProp is not None:
+            self.__coreManager.setProperty(self.__name, self.__speedProp, speed)
     
     def move(self, dist: float, axis: str) -> None:
         self.setPosition(self._position[axis] + dist, axis)

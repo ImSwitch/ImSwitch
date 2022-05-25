@@ -83,12 +83,12 @@ class XimeaManager(DetectorManager):
         return [1, umxpx, umxpx]
 
     def getLatestFrame(self, is_save=False):
-        if self._isAcquiring:
-            self._camera.get_image(self._img)
-            data = self._img.get_image_data_numpy()
-            if self._median is not None:
-                data /= self._median
-        return data.astype(np.float32)
+        self._camera.get_image(self._img)
+        data = self._img.get_image_data_numpy()
+        if self._median is not None:
+            data = data.astype(np.float32)
+            data = data / self._median
+        return data
 
     def getChunk(self):
         return np.stack([self.getLatestFrame()])
@@ -181,10 +181,12 @@ class XimeaManager(DetectorManager):
 
     def startAcquisition(self):
         self._isAcquiring = True
+        self.__logger.info("Ximea acquisition started!")
         self._camera.start_acquisition()
 
     def stopAcquisition(self):
         self._isAcquiring = False
+        self.__logger.info("Ximea acquisition stopped!")
         self._camera.stop_acquisition()
     
     def finalize(self) -> None:

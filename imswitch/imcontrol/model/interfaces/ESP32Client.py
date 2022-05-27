@@ -541,6 +541,28 @@ class ESP32Client(object):
     MOTOR
     ##############################################################################################################################
     '''
+    def isControllerMode(self, timeout=1):
+        # returns True if PS controller is active
+        path = "/state_get"
+        payload = {
+            "task":path,
+            "pscontroller": 1
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        try:
+            return r["pscontroller"]
+        except:
+            return False
+
+    def setControllerMode(self, isController=False, timeout=1):
+        # if isController =True=> only PS jjoystick will be accepted
+        path = "/state_act"
+        payload = {
+            "task":path,
+            "pscontroller": isController
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
 
     def isBusy(self, timeout=1):
         path = "/state_get"
@@ -566,9 +588,18 @@ class ESP32Client(object):
             "isaccel":1,
             "isstop": np.int(is_stop)
         }
+        # Make sure PS controller is treated correclty
+        if self.isControllerMode():
+            self.setControllerMode(isController=False)
+            PSwasActive = True
+        else:
+            PSwasActive = False
+            
+        r = self.post_json(path, payload, timeout=0)
         
-        r = self.post_json(path, payload, timeout=timeout)
-        
+        if PSwasActive:
+            self.setControllerMode(isController=True)
+
         return r
 
     def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
@@ -610,7 +641,18 @@ class ESP32Client(object):
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
         
+        # Make sure PS controller is treated correclty
+        if self.isControllerMode():
+            self.setControllerMode(isController=False)
+            PSwasActive = True
+        else:
+            PSwasActive = False
+            
         r = self.post_json(path, payload, timeout=0)
+        
+        if PSwasActive:
+            self.setControllerMode(isController=True)
+            
         
         
         # wait until job has been done

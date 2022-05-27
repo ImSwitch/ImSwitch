@@ -568,11 +568,11 @@ class ESP32Client(object):
         path = "/state_get"
         payload = {
             "task":path,
-            "active": 1
+            "isBusy": 1
         }
         r = self.post_json(path, payload, timeout=timeout)
         try:
-            return r["active"]
+            return r["isBusy"]
         except:
             return r
         

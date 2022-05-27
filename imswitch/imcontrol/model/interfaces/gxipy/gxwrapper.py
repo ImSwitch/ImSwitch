@@ -13,7 +13,11 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         print("Cannot find libgxiapi.so.")
 else:
     try:
+        import os
+        os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
         dll = WinDLL('GxIAPI.dll')
+        #dll = WinDLL("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\GxIAPI.dll")
+        
     except OSError:
         print('Cannot find GxIAPI.dll.')
 

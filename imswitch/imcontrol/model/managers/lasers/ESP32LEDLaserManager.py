@@ -21,27 +21,42 @@ class ESP32LEDLaserManager(LaserManager):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.__channel_index = laserInfo.managerProperties['channel_index']
+        
         try:
             self.__filter_change = laserInfo.managerProperties['filter_change']
         except:
             self.__filter_change = False
 
+        try:
+            self.filter_axis = laserInfo.managerProperties['filter_axis']
+        except:
+            self.filter_axis = -1
+
+        if self.__filter_change:
+            self.initFilter()
+
         self.enabled = False
         
+    def initFilter(self, nSteps=None, speed=None):
+        if self.__filter_change:
+            if nSteps is None:
+                nSteps = self._rs232manager._esp32.filter_pos_init
+            if speed is None:
+                speed = self._rs232manager._esp32.filter_speed
+            self._rs232manager._esp32.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
-        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, is_blocking=True)
+        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, self.filter_axis, is_blocking=True)
         
-
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """
         self.power = power
         if self.enabled:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
+            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, self.filter_axis, is_blocking=True)
 
     def sendTrigger(self, triggerId):
         self._rs232manager._esp32.sendTrigger(triggerId)

@@ -10,10 +10,20 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 
 from ..basecontrollers import LiveUpdatedController
 
-import NanoImagingPack as nip
+try:
+    import NanoImagingPack as nip
+    isNIP = True
+except:
+    isNIP = False
+    
 
-from napari_sim_processor.convSimProcessor import ConvSimProcessor
-from napari_sim_processor.hexSimProcessor import HexSimProcessor
+try:
+    from napari_sim_processor.convSimProcessor import ConvSimProcessor
+    from napari_sim_processor.hexSimProcessor import HexSimProcessor
+    isSIM = True
+except:
+    isSIM = False
+
 
 class SIMController(LiveUpdatedController):
     """Linked to SIMWidget."""

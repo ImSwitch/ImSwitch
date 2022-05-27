@@ -2,6 +2,12 @@ import numpy as np
 import time
 import NanoImagingPack as nip
 
+try:
+    import NanoImagingPack as nip
+    isNIP = True
+except:
+    isNIP = False
+    
 class MockCameraPCO:
     def __init__(self):
         self.properties = {

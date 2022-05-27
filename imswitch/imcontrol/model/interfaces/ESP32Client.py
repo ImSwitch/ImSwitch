@@ -271,7 +271,8 @@ class ESP32Client(object):
                     rmessage =  self.serialdevice.readline().decode()
                     #self.__logger.debug(rmessage)
                     returnmessage += rmessage
-                    if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
+                    if rmessage.find("--")==0 or (time.time()-_time0)>timeout:
+                        break
                 except:
                     pass
             # casting to dict
@@ -609,8 +610,8 @@ class ESP32Client(object):
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
-        
-        r = self.post_json(path, payload, timeout=0)
+        # drive motor 
+        r = self.post_json(path, payload, timeout=timeout)
         
         
         # wait until job has been done

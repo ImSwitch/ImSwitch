@@ -73,7 +73,7 @@ class ESP32Client(object):
     filter_pos_1 = 2000*microsteppingfactor_filter
     filter_pos_3 = 3500*microsteppingfactor_filter
     filter_pos_2 = 0*microsteppingfactor_filter
-    filter_pos_init = -5000*microsteppingfactor_filter
+    filter_pos_init = -200*microsteppingfactor_filter
 
     backlash_x = 0
     backlash_y = 0
@@ -752,6 +752,13 @@ class ESP32Client(object):
 
 
     def set_laser(self, channel=1, value=0, auto_filterswitch=False, timeout=20, is_blocking = True):
+        if channel not in (0,1,2,3):
+            if channel=="R":
+                channel = 1
+            elif channel=="G":
+                channel = 2
+            elif channel=="B":
+                channel = 3
         if auto_filterswitch and value >0:
             self.switch_filter(channel, timeout=timeout,is_blocking=is_blocking)
 
@@ -814,7 +821,7 @@ class ESP32Client(object):
             self.is_filter_init = is_filter_init
 
         if not self.is_filter_init:
-            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter, is_blocking=is_blocking)
+            self.move_filter(steps=self.filter_pos_init, speed=speed*self.microsteppingfactor_filter//10, is_blocking=is_blocking)
             self.is_filter_init = True
             self.filter_position = 0
 

@@ -864,6 +864,14 @@ class ESP32Client(object):
 
 
     def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, timeout=20, is_blocking = True):
+        if channel not in (0,1,2,3):
+            if channel=="R":
+                channel = 1
+            elif channel=="G":
+                channel = 2
+            elif channel=="B":
+                channel = 3
+                
         if auto_filterswitch and value >0:
             self.switch_filter(channel, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
 

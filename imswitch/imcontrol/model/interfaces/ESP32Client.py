@@ -589,16 +589,16 @@ class ESP32Client(object):
             "isstop": np.int(is_stop)
         }
         # Make sure PS controller is treated correclty
-        if self.isControllerMode():
-            self.setControllerMode(isController=False)
-            PSwasActive = True
-        else:
-            PSwasActive = False
+        #if self.isControllerMode():
+        #    self.setControllerMode(isController=False)
+        #    PSwasActive = True
+        #else:
+        #    PSwasActive = False
             
         r = self.post_json(path, payload, timeout=0)
         
-        if PSwasActive:
-            self.setControllerMode(isController=True)
+        #if PSwasActive:
+        #    self.setControllerMode(isController=True)
 
         return r
 
@@ -642,16 +642,16 @@ class ESP32Client(object):
         self.steps_last_2 = steps_2
         
         # Make sure PS controller is treated correclty
-        if self.isControllerMode():
-            self.setControllerMode(isController=False)
-            PSwasActive = True
-        else:
-            PSwasActive = False
+        #if self.isControllerMode():
+        #    self.setControllerMode(isController=False)
+        #    PSwasActive = True
+        #else:
+        #    PSwasActive = False
             
         r = self.post_json(path, payload, timeout=0)
         
-        if PSwasActive:
-            self.setControllerMode(isController=True)
+        #if PSwasActive:
+        #    self.setControllerMode(isController=True)
             
         
         

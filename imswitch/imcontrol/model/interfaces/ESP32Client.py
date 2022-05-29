@@ -70,9 +70,10 @@ class ESP32Client(object):
     is_connected = False
 
     microsteppingfactor_filter=16 # run more smoothly
-    filter_pos_1 = 1000*microsteppingfactor_filter
-    filter_pos_2 = 0*microsteppingfactor_filter
+    filter_pos_1 = 1000*microsteppingfactor_filter # GFP
+    filter_pos_2 = 0*microsteppingfactor_filter # AF647/SIR
     filter_pos_3 = 500*microsteppingfactor_filter
+    filter_pos_LED = filter_pos_1 # GFP / Brightfield
     filter_pos_init = -1250*microsteppingfactor_filter
     filter_speed = microsteppingfactor_filter * 500
 
@@ -339,6 +340,10 @@ class ESP32Client(object):
         if laserid==3:
             steps = self.filter_pos_3 - self.filter_position
             self.filter_position = self.filter_pos_3
+        if laserid=="LED":
+            steps = self.filter_pos_LED - self.filter_position
+            self.filter_position = self.filter_pos_LED
+
 
         self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
@@ -857,7 +862,7 @@ class ESP32Client(object):
         return r
 
 
-    def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, despeckleAmplitude = 0.1, despecklePeriod=10, timeout=20, is_blocking = True):
         if channel not in (0,1,2,3):
             if channel=="R":
                 channel = 1
@@ -875,7 +880,9 @@ class ESP32Client(object):
             "task": path,
             "LASERid": channel,
             "LASERval": value,
-            "LASERDdespeckle": int(value*.1)
+            "LASERdespeckle": int(value*despeckleAmplitude),
+            "LASERdespecklePeriod": int(despecklePeriod),
+            
         }
 
         r = self.post_json(path, payload)

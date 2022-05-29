@@ -48,7 +48,12 @@ class ESP32LEDLaserManager(LaserManager):
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
-        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, self.filter_axis, is_blocking=True)
+        if self.__channel_index == "LED":
+            if self.__filter_change:
+                self._rs232manager._esp32.switch_filter(laserid=self.__channel_index)
+            self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+        else:
+            self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, self.filter_axis, is_blocking=True)
         
     def setValue(self, power):
         """Handles output power.
@@ -56,7 +61,13 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, self.filter_axis, is_blocking=True)
+            if self.__channel_index == "LED":
+                if self.__filter_change:
+                    self._rs232manager._esp32.switch_filter(laserid=self.__channel_index)
+
+                self._rs232manager._esp32.send_LEDMatrix_full((self.power,self.power,self.power))
+            else:
+                self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, self.filter_axis, is_blocking=True)
 
     def sendTrigger(self, triggerId):
         self._rs232manager._esp32.sendTrigger(triggerId)

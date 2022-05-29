@@ -149,7 +149,9 @@ class MCTController(LiveUpdatedController):
                 pass
         if illuMode == "Brightfield":
             try:
-                self.illu.setAll((intensity,intensity,intensity))
+                self.lasers[2].setValue(255)
+                self.lasers[2].setEnabled(True)
+                #self.illu.setAll((intensity,intensity,intensity))
                 time.sleep(0.1)
             except:
                 pass

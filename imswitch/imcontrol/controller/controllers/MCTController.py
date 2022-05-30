@@ -166,6 +166,8 @@ class MCTController(LiveUpdatedController):
                 pass
         if illuMode == "Brightfield":
             try:
+                if intensity > 255: intensity=255 
+                if intensity < 0: intensity=0
                 self.leds[0].setValue(intensity)
                 self.leds[0].setEnabled(True)
                 #self.illu.setAll((intensity,intensity,intensity))
@@ -184,7 +186,7 @@ class MCTController(LiveUpdatedController):
                 filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
                 time.sleep(0.2) # unshake
                 tif.imwrite(filePath, self.detector.getLatestFrame())
-            self.stages.move(value=-(stepsCounter+backlash), axis="Z", is_absolute=False, is_blocking=True)
+            self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
         else:
             filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
             tif.imwrite(filePath, self.detector.getLatestFrame())

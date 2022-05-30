@@ -123,10 +123,6 @@ class MCTWidget(NapariHybridWidget):
         self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
         self.mctInitFilterButton.setCheckable(False)
         self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
-
-        # enable
-        self.mctDoBrightfield = QtWidgets.QCheckBox('Perform Brightfield')
-        self.mctDoBrightfield.setCheckable(True)
         
         self.mctDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
         self.mctDoZStack.setCheckable(True)
@@ -138,7 +134,6 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
         self.grid.addWidget(self.mctDoZStack, 0, 2, 1, 1)
-        self.grid.addWidget(self.mctDoBrightfield, 0, 3, 1, 1)
         self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
@@ -183,10 +178,7 @@ class MCTWidget(NapariHybridWidget):
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
         return mctValueTimePeriod
-     
-    def getBrightfieldEnabled(self):
-        valueBrightfield = bool(self.mctDoBrightfield.isChecked())
-        return valueBrightfield
+    
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()

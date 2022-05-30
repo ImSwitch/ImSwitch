@@ -6,6 +6,8 @@ import time
 import tifffile as tif
 import threading
 
+
+
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
@@ -31,7 +33,7 @@ class MCTController(LiveUpdatedController):
         self.zStackMin = 0
         self.zStackMax = 0
         self.zStackStep = 0
-        self.brightfieldEnabeld = False
+        
         
         self.Laser1Value = 0
         self.Laser2Value = 0
@@ -61,9 +63,15 @@ class MCTController(LiveUpdatedController):
         # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self.lasers = []
+        self.leds = []
         for iDevice in allLaserNames:
             if iDevice.find("Laser")>=0:
                 self.lasers.append(self._master.lasersManager[iDevice])
+        self.leds = []
+        for iDevice in allLaserNames:
+            if iDevice.find("LED")>=0:
+                self.leds.append(self._master.lasersManager[iDevice])
+        
         self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -84,7 +92,7 @@ class MCTController(LiveUpdatedController):
         self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
         self.timePeriod = self._widget.getTimelapseValues()
         self.MCTFilename = self._widget.getFilename()
-        self.brightfieldEnabeld = self._widget.getBrightfieldEnabled()
+
         
         # initiliazing the update scheme for pulling pressure measurement values
         self.timer = Timer()
@@ -94,8 +102,21 @@ class MCTController(LiveUpdatedController):
     
     def stopMCT(self):
         self.isMCTrunning = False
-        del self.timer
-            
+        
+        self._widget.setNImages("Stopping timelapse...")
+
+        try:
+            del self.timer
+        except:
+            pass
+
+        try:
+            del self.MCTThread
+        except:
+            pass
+        
+        self._widget.setNImages("Done wit timelapse...")
+    
     def showLast(self):
         pass
     
@@ -119,7 +140,7 @@ class MCTController(LiveUpdatedController):
         if self.Laser1Value>0:
             self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
         if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser1Value, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, zstackParams=zstackParams)
         if self.LEDValue>0:
             self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, zstackParams=zstackParams)
                 
@@ -145,8 +166,8 @@ class MCTController(LiveUpdatedController):
                 pass
         if illuMode == "Brightfield":
             try:
-                self.lasers[2].setValue(intensity)
-                self.lasers[2].setEnabled(True)
+                self.leds[0].setValue(intensity)
+                self.leds[0].setEnabled(True)
                 #self.illu.setAll((intensity,intensity,intensity))
                 time.sleep(0.1)
             except:
@@ -155,14 +176,15 @@ class MCTController(LiveUpdatedController):
         if zstackParams[-1]:
             # perform a z-stack
             stepsCounter = 0
+            backlash=0
+            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
-                self.stages.move(value=iZ, axis="Z", is_absolute=False, is_blocking=True)
+                self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
                 filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
-                time.sleep(0.1) # unshake
+                time.sleep(0.2) # unshake
                 tif.imwrite(filePath, self.detector.getLatestFrame())
-            self.stages.move(value=-stepsCounter, axis="Z", is_absolute=True, is_blocking=True)
-
+            self.stages.move(value=-(stepsCounter+backlash), axis="Z", is_absolute=False, is_blocking=True)
         else:
             filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
             tif.imwrite(filePath, self.detector.getLatestFrame())
@@ -170,7 +192,8 @@ class MCTController(LiveUpdatedController):
         # switch off all illu sources
         for lasers in self.lasers:
             lasers.setEnabled(False)
-
+            self.lasers[1].setValue(0)
+            time.sleep(0.1)
         try:
             self.illu.setAll((0,0,0))
         except:
@@ -188,7 +211,7 @@ class MCTController(LiveUpdatedController):
         self.lasers[1].setValue(self.Laser2Value)
 
     def valueLEDChanged(self, value):
-        self.Laser2Value= value
+        self.LEDValue= value
         self.lasers[1].setValue(self.LEDValue)
 
                 
@@ -198,7 +221,8 @@ class MCTController(LiveUpdatedController):
  
  
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
-        newPath = path
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings')
+        newPath = os.path.join(dirPath,path)
         numExisting = 0
 
         def existsFunc(pathToCheck):

@@ -50,7 +50,7 @@ class ESP32LEDLaserManager(LaserManager):
         self.enabled = enabled
         if self.__channel_index == "LED":
             if self.__filter_change:
-                self._rs232manager._esp32.switch_filter(laserid=self.__channel_index)
+                self._rs232manager._esp32.switch_filter(laserid=self.__channel_index, filter_axis=self.filter_axis)
             self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
             self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, self.filter_axis, is_blocking=True)
@@ -63,7 +63,7 @@ class ESP32LEDLaserManager(LaserManager):
         if self.enabled:
             if self.__channel_index == "LED":
                 if self.__filter_change:
-                    self._rs232manager._esp32.switch_filter(laserid=self.__channel_index)
+                    self._rs232manager._esp32.switch_filter(laserid=self.__channel_index,  filter_axis=self.filter_axis)
 
                 self._rs232manager._esp32.send_LEDMatrix_full((self.power,self.power,self.power))
             else:

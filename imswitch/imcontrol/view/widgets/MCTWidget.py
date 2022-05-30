@@ -23,6 +23,7 @@ class MCTWidget(NapariHybridWidget):
     
     sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
     sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
 
 
@@ -78,6 +79,30 @@ class MCTWidget(NapariHybridWidget):
         self.sliderLaser2.valueChanged.connect(
             lambda value: self.sigSliderLaser2ValueChanged.emit(value)
         )
+
+
+        # LED
+        valueDecimalsLED = 1
+        valueRangeLED = (0,2**8)
+        tickIntervalLED = 1
+        singleStepLED = 1
+        
+        self.mctLabelLED  = QtWidgets.QLabel('Intensity (LED 1):')        
+        self.mctLabelLED2  = QtWidgets.QLabel('Intensity (LED 2):')        
+        
+        valueRangeMinLED, valueRangeMaxLED = valueRangeLED
+        self.sliderLED = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimalsLED)
+        self.sliderLED.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.sliderLED.setMinimum(valueRangeMinLED)
+        self.sliderLED.setMaximum(valueRangeMaxLED)
+        self.sliderLED.setTickInterval(tickIntervalLED)
+        self.sliderLED.setSingleStep(singleStepLED)
+        self.sliderLED.setValue(0)
+        
+        self.sliderLED.valueChanged.connect(
+            lambda value: self.sigSliderLEDValueChanged.emit(value)
+        )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
         self.mctEditFileName  = QtWidgets.QLabel('Test')
@@ -122,13 +147,18 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.sliderLaser1, 2, 1, 1, 3)
         self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
         self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelFileName, 4, 0, 1, 1)
-        self.grid.addWidget(self.mctEditFileName, 4, 1, 1, 1)
-        self.grid.addWidget(self.mctNImages, 4, 2, 1, 1)
-        self.grid.addWidget(self.mctStartButton, 5, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 5, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton,5, 2, 1, 1)
-        self.grid.addWidget(self.mctInitFilterButton,5, 3, 1, 1)
+        self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
+        self.grid.addWidget(self.mctLabelLED, 4, 0, 1, 1)
+        self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
+
+        self.grid.addWidget(self.mctLabelFileName, 5, 0, 1, 1)
+        self.grid.addWidget(self.mctEditFileName, 5, 1, 1, 1)
+        self.grid.addWidget(self.mctNImages, 5, 2, 1, 1)
+        self.grid.addWidget(self.mctStartButton, 6, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 6, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
+        self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
         
         
         
@@ -163,7 +193,7 @@ class MCTWidget(NapariHybridWidget):
         from datetime import datetime
         date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
         
-        return f"{date}_mctEditFileName"
+        return f"{date}_{mctEditFileName}"
     
     def setNImages(self, nImages):
         self.mctNImages.setText('Number of images: '+str(nImages))

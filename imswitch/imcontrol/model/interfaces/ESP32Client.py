@@ -348,7 +348,7 @@ class ESP32Client(object):
         self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
 
-    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=25, is_blocking=False, axis=2):
+    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=10, is_blocking=False, axis=2):
         steps_xyz = np.zeros(3)
         steps_xyz[filter_axis] = steps
         r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=timeout, is_blocking=is_blocking)

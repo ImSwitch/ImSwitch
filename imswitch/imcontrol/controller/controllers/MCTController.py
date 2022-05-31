@@ -34,6 +34,10 @@ class MCTController(LiveUpdatedController):
         self.zStackMax = 0
         self.zStackStep = 0
         
+        # store old values
+        self.Laser1ValueOld = 0
+        self.Laser2ValueOld = 0
+        self.LEDValueOld = 0
         
         self.Laser1Value = 0
         self.Laser2Value = 0
@@ -93,6 +97,10 @@ class MCTController(LiveUpdatedController):
         self.timePeriod = self._widget.getTimelapseValues()
         self.MCTFilename = self._widget.getFilename()
 
+        # store old values for later
+        self.Laser1ValueOld = self.lasers[0].power            
+        self.Laser2ValueOld = self.lasers[1].power
+        self.LEDValueOld = self.leds[0].power
         
         # initiliazing the update scheme for pulling pressure measurement values
         self.timer = Timer()
@@ -117,6 +125,11 @@ class MCTController(LiveUpdatedController):
         
         self._widget.setNImages("Done wit timelapse...")
     
+        # store old values for later
+        self.lasers[0].setValue(self.Laser1ValueOld)            
+        self.lasers[1].setValue(self.Laser2ValueOld)            
+        self.leds[0].setValue(self.LEDValueOld) 
+
     def showLast(self):
         pass
     
@@ -174,6 +187,9 @@ class MCTController(LiveUpdatedController):
                 time.sleep(0.1)
             except:
                 pass
+        
+        # sync with camera frame
+        time.sleep(.15)
 
         if zstackParams[-1]:
             # perform a z-stack

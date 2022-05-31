@@ -272,6 +272,7 @@ class MCTController(LiveUpdatedController):
         try:
             self.illu.setAll((0,0,0))
         except:
+            pass
 
         
     def valueLaser1Changed(self, value):

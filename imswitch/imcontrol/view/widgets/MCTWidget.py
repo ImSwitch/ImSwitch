@@ -155,15 +155,16 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
         self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
         
+        self.layer = None
         
         
     def getImage(self):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im):
+    def setImage(self, im, colormap="gray", name=""):
         if self.layer is None or self.layer.name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, name="MCT Reconstruction", blending='additive')
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, name=name, blending='additive')
         self.layer.data = im
         
         

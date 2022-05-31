@@ -81,6 +81,9 @@ class MCTController(LiveUpdatedController):
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
         self.isMCTrunning = False
+        self._widget.mctShowLastButton.setEnabled(False)
+
+
         
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")
@@ -102,12 +105,17 @@ class MCTController(LiveUpdatedController):
         self.Laser2ValueOld = self.lasers[1].power
         self.LEDValueOld = self.leds[0].power
         
+        # reserve space for the stack
+        self._widget.mctShowLastButton.setEnabled(False)
+
         # initiliazing the update scheme for pulling pressure measurement values
         self.timer = Timer()
         self.timer.timeout.connect(self.takeTimelapse)
         self.timer.start(self.timePeriod*1000)
         self.startTime = ptime.time()
-    
+
+
+        
     def stopMCT(self):
         self.isMCTrunning = False
         
@@ -131,8 +139,29 @@ class MCTController(LiveUpdatedController):
         self.leds[0].setValue(self.LEDValueOld) 
 
     def showLast(self):
-        pass
-    
+        try:
+            LastStackLaser1Array = np.array(self.LastStackLaser1)
+            self._widget.setImage(LastStackLaser1Array, colormap="green", name="GFP")
+        except  Exception as e:
+            self._logger.error(e)
+
+        try:
+            LastStackLaser2Array = np.array(self.LastStackLaser2)
+            self._widget.setImage(LastStackLaser2Array, colormap="red", name="Red")
+        except Exception as e:
+            self._logger.error(e)
+            
+        try:
+            LastStackLEDArray = np.array(self.LastStackLED)
+            self._widget.setImage(LastStackLEDArray, colormap="gray", name="Brightfield")
+        except  Exception as e:
+            self._logger.error(e)
+
+    def displayStack(self, im):
+        """ Displays the image in the view. """
+        self._widget.setImage(im)
+
+
     def takeTimelapse(self):
         if not self.isMCTrunning:
             try:
@@ -150,6 +179,12 @@ class MCTController(LiveUpdatedController):
         self.__logger.debug("Take image")
         zstackParams = self._widget.getZStackValues()
 
+        self.LastStackLaser1 = []
+        self.LastStackLaser2 = []
+        self.LastStackLED = []
+        self._widget.mctShowLastButton.setEnabled(False)
+
+
         if self.Laser1Value>0:
             self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
         if self.Laser2Value>0:
@@ -161,6 +196,8 @@ class MCTController(LiveUpdatedController):
         self._widget.setNImages(self.nImages)
 
         self.isMCTrunning = False
+        self._widget.mctShowLastButton.setEnabled(True)
+
 
     def takeImageIllu(self, illuMode, intensity, zstackParams=None):
         self._logger.debug("Take image:" + illuMode + str(intensity))
@@ -201,11 +238,31 @@ class MCTController(LiveUpdatedController):
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
                 filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
                 time.sleep(0.2) # unshake
-                tif.imwrite(filePath, self.detector.getLatestFrame())
+                lastFrame = self.detector.getLatestFrame()
+                tif.imwrite(filePath, lastFrame)
+
+                # store frames for displaying
+                if illuMode == "Laser1":
+                    self.LastStackLaser1.append(lastFrame)
+                if illuMode == "Laser2":
+                    self.LastStackLaser2.append(lastFrame)
+                if illuMode == "Brightfield":
+                    self.LastStackLED.append(lastFrame)
+
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
         else:
             filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
-            tif.imwrite(filePath, self.detector.getLatestFrame())
+            lastFrame = self.detector.getLatestFrame()
+            tif.imwrite(filePath, lastFrame)
+            # store frames for displaying
+            if illuMode == "Laser1":
+                self.LastStackLaser1.append(lastFrame)
+            if illuMode == "Laser2":
+                self.LastStackLaser2.append(lastFrame)
+            if illuMode == "Brightfield":
+                self.LastStackLED.append(lastFrame)
+
+
 
         # switch off all illu sources
         for lasers in self.lasers:
@@ -215,10 +272,8 @@ class MCTController(LiveUpdatedController):
         try:
             self.illu.setAll((0,0,0))
         except:
-            pass
+
         
-            
-    
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
         #self.lasers[0].setEnabled(True)

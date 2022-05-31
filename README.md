@@ -44,7 +44,7 @@ imswitch
 cd ~/Documents
 git clone https://github.com/beniroquai/ImSwitch/
 # alternatively download this repo, unzip the .zip-file and open the command prompt in this directory
-conda create -n imswitch python=3.8 -y
+conda create -n imswitch python=3.9 -y
 conda activate imswitch
 pip install -r requirements.txt --user
 pip install -e ./

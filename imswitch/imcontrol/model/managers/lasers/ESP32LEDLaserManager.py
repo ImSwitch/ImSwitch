@@ -32,6 +32,16 @@ class ESP32LEDLaserManager(LaserManager):
         except:
             self.filter_axis = -1
 
+        try:
+            self.laser_despeckle_amplitude = laserInfo.managerProperties['laser_despeckle_amplitude']
+        except:
+            self.laser_despeckle_amplitude = 0.1 # %
+            
+        try:
+            self.laser_despeckle_period = laserInfo.managerProperties['laser_despeckle_period']
+        except:
+            self.laser_despeckle_period = 10 # ms
+
         if self.__filter_change:
             self.initFilter()
 
@@ -53,8 +63,12 @@ class ESP32LEDLaserManager(LaserManager):
                 self._rs232manager._esp32.switch_filter(laserid=self.__channel_index, filter_axis=self.filter_axis)
             self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, self.filter_axis, is_blocking=True)
-        
+            self._rs232manager._esp32.set_laser(self.__channel_index, 
+                                                self.power*self.enabled, self.__filter_change, 
+                                                despeckleAmplitude = self.laser_despeckle_amplitude,
+                                                despecklePeriod = self.laser_despeckle_period, 
+                                                filter_axis = self.filter_axis, is_blocking=True)
+
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
@@ -67,7 +81,11 @@ class ESP32LEDLaserManager(LaserManager):
 
                 self._rs232manager._esp32.send_LEDMatrix_full((self.power,self.power,self.power))
             else:
-                self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, self.filter_axis, is_blocking=True)
+                self._rs232manager._esp32.set_laser(self.__channel_index, 
+                                    self.power, self.__filter_change, 
+                                    despeckleAmplitude = self.laser_despeckle_amplitude,
+                                    despecklePeriod = self.laser_despeckle_period, 
+                                    filter_axis = self.filter_axis, is_blocking=True)
 
     def sendTrigger(self, triggerId):
         self._rs232manager._esp32.sendTrigger(triggerId)

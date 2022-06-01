@@ -24,8 +24,10 @@ class ESP32LEDLaserManager(LaserManager):
         
         try:
             self.__filter_change = laserInfo.managerProperties['filter_change']
+            self.__filter_posiition = laserInfo.managerProperties['filter_position']
         except:
             self.__filter_change = False
+            self.__filter_position = 0
 
         try:
             self.filter_axis = laserInfo.managerProperties['filter_axis']
@@ -42,15 +44,23 @@ class ESP32LEDLaserManager(LaserManager):
         except:
             self.laser_despeckle_period = 10 # ms
 
+        try:
+            self.laser_position_init =  laserInfo.managerProperties['laser_position_init']
+        except:
+            self.laser_position_init =  None
+
         if self.__filter_change:
-            self.initFilter()
+           self.initFilter(nSteps=self.laser_position_init)
 
         self.enabled = False
         
     def initFilter(self, nSteps=None, speed=None):
         if self.__filter_change:
             if nSteps is None:
-                nSteps = self._rs232manager._esp32.filter_pos_init
+                if self.laser_position_init is None:
+                    nSteps = self._rs232manager._esp32.filter_pos_init
+                else:
+                    nSteps = self.laser_position_init
             if speed is None:
                 speed = self._rs232manager._esp32.filter_speed
             self._rs232manager._esp32.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
@@ -67,7 +77,9 @@ class ESP32LEDLaserManager(LaserManager):
                                                 self.power*self.enabled, self.__filter_change, 
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
-                                                filter_axis = self.filter_axis, is_blocking=True)
+                                                filter_axis = self.filter_axis, 
+                                                filter_position = self.__filter_posiition, 
+                                                is_blocking=True)
 
     def setValue(self, power):
         """Handles output power.
@@ -85,7 +97,9 @@ class ESP32LEDLaserManager(LaserManager):
                                     self.power, self.__filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
-                                    filter_axis = self.filter_axis, is_blocking=True)
+                                    filter_axis = self.filter_axis, 
+                                    filter_position = self.__filter_posiition, 
+                                    is_blocking=True)
 
     def sendTrigger(self, triggerId):
         self._rs232manager._esp32.sendTrigger(triggerId)

@@ -313,7 +313,7 @@ class ESP32Client(object):
         self.is_filter_init = True
         self.filter_position = 0
 
-    def switch_filter(self, laserid=1, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
+    def switch_filter(self, filter_pos=0, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
 
         # switch off all lasers first!
         self.set_laser(1, 0)
@@ -329,21 +329,8 @@ class ESP32Client(object):
             self.init_filter(nSteps=self.filter_pos_init, speed=speed, filter_axis=filter_axis, is_blocking = True)
 
         # measured in steps from zero position
-
-        steps = 0
-        if laserid==1:
-            steps = self.filter_pos_1 - self.filter_position
-            self.filter_position = self.filter_pos_1
-        if laserid==2:
-            steps = self.filter_pos_2 - self.filter_position
-            self.filter_position = self.filter_pos_2
-        if laserid==3:
-            steps = self.filter_pos_3 - self.filter_position
-            self.filter_position = self.filter_pos_3
-        if laserid=="LED":
-            steps = self.filter_pos_LED - self.filter_position
-            self.filter_position = self.filter_pos_LED
-
+        steps = filter_pos - self.filter_position
+        self.filter_position = filter_pos
 
         self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
@@ -871,7 +858,10 @@ class ESP32Client(object):
         return r
 
 
-    def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, despeckleAmplitude = 0.1, despecklePeriod=10, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, 
+                        filter_axis=-1, filter_position = None,
+                        despeckleAmplitude = 0.1, 
+                        despecklePeriod=10, timeout=20, is_blocking = True):
         if channel not in (0,1,2,3):
             if channel=="R":
                 channel = 1
@@ -881,7 +871,23 @@ class ESP32Client(object):
                 channel = 3
 
         if auto_filterswitch and value >0:
-            self.switch_filter(channel, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
+            if filter_position is None:
+                if channel==1:
+                    filter_position = self.filter_pos_1 - self.filter_position
+                    filter_position = self.filter_pos_1
+                if channel==2:
+                    filter_position = self.filter_pos_2 - self.filter_position
+                    filter_position = self.filter_pos_2
+                if channel==3:
+                    filter_position = self.filter_pos_3 - self.filter_position
+                    filter_position = self.filter_pos_3
+                if channel=="LED":
+                    filter_position = self.filter_pos_LED - self.filter_position
+                    filter_position = self.filter_pos_LED
+
+
+
+            self.switch_filter(filter_pos=filter_position, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
 

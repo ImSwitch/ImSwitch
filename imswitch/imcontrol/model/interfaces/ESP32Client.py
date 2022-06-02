@@ -76,10 +76,12 @@ class ESP32Client(object):
     filter_pos_LED = filter_pos_1 # GFP / Brightfield
     filter_pos_init = -1250*microsteppingfactor_filter
     filter_speed = microsteppingfactor_filter * 500
+    filter_position_now = 0
 
     backlash_x = 0
     backlash_y = 0
     backlash_z = 0
+    backlash_t = 0
     is_driving = False
     is_sending = False
 
@@ -94,6 +96,7 @@ class ESP32Client(object):
     steps_last_0 = 0
     steps_last_1 = 0
     steps_last_2 = 0
+    steps_last_3 = 0
 
     def __init__(self, host=None, port=31950, serialport=None, baudrate=115200):
         '''
@@ -301,11 +304,18 @@ class ESP32Client(object):
         r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_xyz(self, steps=(10,10,10), speed=(1000,1000,1000), speed1=None, speed2=None, speed3=None, is_blocking=False, is_absolute=False, is_enabled=False):
+    def move_xyz(self, steps=(0,0,0), speed=(1000,1000,1000), is_blocking=False, is_absolute=False, is_enabled=False):
         if len(speed)!= 3:
             speed = (speed,speed,speed)
 
-        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        r = self.move_xyzt(steps=(steps[0],steps[1],steps[2],0), speed=(speed[0],speed[1],speed[2],0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def move_xyzt(self, steps=(0,0,0,0), speed=(1000,1000,1000,1000), is_blocking=False, is_absolute=False, is_enabled=False):
+        if len(speed)!= 4:
+            speed = (speed,speed,speed,speed)
+
+        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z,self.backlash_t), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
     def init_filter(self, nSteps, speed=250, filter_axis=-1, is_blocking = True):
@@ -329,16 +339,16 @@ class ESP32Client(object):
             self.init_filter(nSteps=self.filter_pos_init, speed=speed, filter_axis=filter_axis, is_blocking = True)
 
         # measured in steps from zero position
-        steps = filter_pos - self.filter_position
-        self.filter_position = filter_pos
+        steps = filter_pos - self.filter_position_now
+        self.filter_position_now = filter_pos
 
         self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
 
-    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=10, is_blocking=False, axis=2):
-        steps_xyz = np.zeros(3)
-        steps_xyz[filter_axis] = steps
-        r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=timeout, is_blocking=is_blocking)
+    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=10, is_blocking=False):
+        steps_xyzt = np.zeros(4)
+        steps_xyzt[filter_axis] = steps
+        r = self.move_stepper(steps=steps_xyzt, speed=speed, timeout=timeout, is_blocking=is_blocking)
         return r
 
 
@@ -604,12 +614,12 @@ class ESP32Client(object):
 
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+    def move_stepper(self, steps=(0,0,0,0), speed=(1000,1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0,0), is_blocking=True, is_enabled=False):
         '''
         This tells the motor to run at a given speed for a specific number of steps; Multiple motors can run simultaneously
         '''
         if type(speed)!=list and type(speed)!=tuple  :
-            speed = (speed,speed,speed)
+            speed = (speed,speed,speed,speed)
 
         path = "/motor_act"
 
@@ -626,14 +636,20 @@ class ESP32Client(object):
             # we want to overshoot a bit
             steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
         else: steps_2 = steps[2]
+        if np.sign(self.steps_last_3) != np.sign(steps[3]):
+            # we want to overshoot a bit
+            steps_3 =  steps[3] + (np.sign(steps[3])*backlash[3])
+        else: steps_3 = steps[3]
 
         payload = {
             "task":"/motor_act",
+            "pos0": np.int(steps_3),
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),
             "isblock": int(is_blocking),
             "isabs": int(is_absolute),
+            "speed0": np.int(speed[3]),
             "speed1": np.int(speed[0]),
             "speed2": np.int(speed[1]),
             "speed3": np.int(speed[2]),
@@ -642,14 +658,13 @@ class ESP32Client(object):
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
+        self.steps_last_3 = steps_3
+
         # drive motor
         r = self.post_json(path, payload, timeout=timeout)
 
         #if PSwasActive:
         #    self.setControllerMode(isController=True)
-
-
-
         # wait until job has been done
         time0=time.time()
         if is_blocking:
@@ -873,21 +888,17 @@ class ESP32Client(object):
         if auto_filterswitch and value >0:
             if filter_position is None:
                 if channel==1:
-                    filter_position = self.filter_pos_1 - self.filter_position
-                    filter_position = self.filter_pos_1
+                    filter_position_toGo = self.filter_pos_1 
                 if channel==2:
-                    filter_position = self.filter_pos_2 - self.filter_position
-                    filter_position = self.filter_pos_2
+                    filter_position_toGo = self.filter_pos_2 
                 if channel==3:
-                    filter_position = self.filter_pos_3 - self.filter_position
-                    filter_position = self.filter_pos_3
+                    filter_position_toGo = self.filter_pos_3 
                 if channel=="LED":
-                    filter_position = self.filter_pos_LED - self.filter_position
-                    filter_position = self.filter_pos_LED
+                    filter_position_toGo = self.filter_pos_LED
+            else:
+                filter_position_toGo = filter_position
 
-
-
-            self.switch_filter(filter_pos=filter_position, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
+            self.switch_filter(filter_pos=filter_position_toGo, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
 

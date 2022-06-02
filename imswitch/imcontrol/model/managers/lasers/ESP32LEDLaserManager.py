@@ -10,7 +10,7 @@ class ESP32LEDLaserManager(LaserManager):
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place
-    - ``channel_index`` -- laser channel (A to H)
+    
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
@@ -20,14 +20,14 @@ class ESP32LEDLaserManager(LaserManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
-        self.__channel_index = laserInfo.managerProperties['channel_index']
+        self.channel_index = laserInfo.managerProperties['channel_index']
         
         try:
-            self.__filter_change = laserInfo.managerProperties['filter_change']
-            self.__filter_posiition = laserInfo.managerProperties['filter_position']
+            self.filter_change = laserInfo.managerProperties['filter_change']
+            self.filter_position = laserInfo.managerProperties['filter_position']
         except:
-            self.__filter_change = False
-            self.__filter_position = 0
+            self.filter_change = False
+            self.filter_position = 0
 
         try:
             self.filter_axis = laserInfo.managerProperties['filter_axis']
@@ -45,17 +45,17 @@ class ESP32LEDLaserManager(LaserManager):
             self.laser_despeckle_period = 10 # ms
 
         try:
-            self.laser_position_init =  laserInfo.managerProperties['laser_position_init']
+            self.laser_position_init =  laserInfo.managerProperties['filter_position_init']
         except:
             self.laser_position_init =  None
 
-        if self.__filter_change:
+        if self.filter_change:
            self.initFilter(nSteps=self.laser_position_init)
 
         self.enabled = False
         
     def initFilter(self, nSteps=None, speed=None):
-        if self.__filter_change:
+        if self.filter_change:
             if nSteps is None:
                 if self.laser_position_init is None:
                     nSteps = self._rs232manager._esp32.filter_pos_init
@@ -68,17 +68,17 @@ class ESP32LEDLaserManager(LaserManager):
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
-        if self.__channel_index == "LED":
-            if self.__filter_change:
-                self._rs232manager._esp32.switch_filter(laserid=self.__channel_index, filter_axis=self.filter_axis)
+        if self.channel_index == "LED":
+            if self.filter_change:
+                self._rs232manager._esp32.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
             self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
-            self._rs232manager._esp32.set_laser(self.__channel_index, 
-                                                self.power*self.enabled, self.__filter_change, 
+            self._rs232manager._esp32.set_laser(self.channel_index, 
+                                                self.power*self.enabled, self.filter_change, 
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
                                                 filter_axis = self.filter_axis, 
-                                                filter_position = self.__filter_posiition, 
+                                                filter_position = self.filter_position, 
                                                 is_blocking=True)
 
     def setValue(self, power):
@@ -87,18 +87,18 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
-            if self.__channel_index == "LED":
-                if self.__filter_change:
-                    self._rs232manager._esp32.switch_filter(laserid=self.__channel_index,  filter_axis=self.filter_axis)
+            if self.channel_index == "LED":
+                if self.filter_change:
+                    self._rs232manager._esp32.switch_filter(laserid=self.channel_index,  filter_axis=self.filter_axis)
 
                 self._rs232manager._esp32.send_LEDMatrix_full((self.power,self.power,self.power))
             else:
-                self._rs232manager._esp32.set_laser(self.__channel_index, 
-                                    self.power, self.__filter_change, 
+                self._rs232manager._esp32.set_laser(self.channel_index, 
+                                    self.power, self.filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
                                     filter_axis = self.filter_axis, 
-                                    filter_position = self.__filter_posiition, 
+                                    filter_position = self.filter_position, 
                                     is_blocking=True)
 
     def sendTrigger(self, triggerId):

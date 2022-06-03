@@ -3,6 +3,8 @@ import os
 
 import numpy as np
 import time 
+import threading
+        
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -73,8 +75,16 @@ class SIMController(LiveUpdatedController):
 
 
         # Initial SIM display
+<<<<<<< Updated upstream
         self._commChannel.sigUpdateImage.connect(self.update)
         #self.displayMask(self._master.simManager.maskCombined)
+=======
+        #self._commChannel.sigUpdateImage.connect(self.update)
+
+        # show placeholder pattern
+        initPattern = self._master.simManager.allPatterns[self.patternID]
+        self._widget.updateSIMDisplay(initPattern)
+>>>>>>> Stashed changes
 
 
     def __del__(self):
@@ -91,8 +101,9 @@ class SIMController(LiveUpdatedController):
         self.patternID = patternID
 
     
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def SIMAcquisition(self):
         """ Update with new detector frame. """
+<<<<<<< Updated upstream
         if not isCurrentDetector or not self.active:
             return
 
@@ -100,6 +111,9 @@ class SIMController(LiveUpdatedController):
                 
         if self.it >= self.updateRate:
             self.it = 0
+=======
+        while self.active:
+>>>>>>> Stashed changes
 
             # dispaly sim pattern
             if(isSimulation):
@@ -108,13 +122,22 @@ class SIMController(LiveUpdatedController):
                 self.setIlluPatternByID(iRot, iPhi)
             else:
                 pass
+
             
             # this does not correlate with simulated patterns!    
             self.simPatternByID(self.patternID)
-            self.allFrames.append(im)
             
             # wait for frame to be displayed? 
             time.sleep(.1)
+
+            # capture frame
+            frame = np.array(self.detector.getLatestFrame())
+            self.allFrames.append(frame)
+            
+            # display
+            self._widget.viewer.add_image(frame, name="SIM RAW Frame")
+            self._widget.setImage(frame, name="SIM RAW Frame")
+            
             self.patternID+=1
             
             # if all patterns are acquired => reconstruct
@@ -158,7 +181,7 @@ class SIMController(LiveUpdatedController):
 
     def displayImage(self, im):
         """ Displays the image in the view. """
-        self._widget.setImage(im)
+        self._widget.setImage(im, name="SIM Reconstruction")
 
     def saveParams(self):
         pass
@@ -174,12 +197,23 @@ class SIMController(LiveUpdatedController):
         self.active = True
         self.patternID = 0        
         self.iReconstructed = 0
+        
+        self._master.detectorsManager.startAcquisition(liveView=False)
+
         self.imageComputationWorker.setNumReconstructed(numReconstructed=self.iReconstructed)
- 
+        
+        self.SIMAcquisitionThread = threading.Thread(target=self.SIMAcquisition, args=(), daemon=True)
+        self.SIMAcquisitionThread.start()
+    
+        
     def stopSIM(self):
         self.active = False
-        self.it = 0
+        self.SIMAcquisitionThread.join()
+        self._master.detectorsManager.startAcquisition(liveView=True)
+        self._master.detectorsManager.stopAcquisition()
+
         #self.imageComputationWorker.stopSIMacquisition()
+        
  
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())

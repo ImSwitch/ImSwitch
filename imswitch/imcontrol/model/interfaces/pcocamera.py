@@ -113,11 +113,14 @@ class CameraPCO:
         self.binning = binning
 
     def getLast(self, is_resize=True):
+        # Display in the liveview
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        images, metadatas = self.camera.images()
-        self.frame = images[-1]
+        #images, metadatas = self.camera.images()
+        #self.frame = images[-1]
+        self.frame = self.camera.image(image_number=0)
+        
         return self.frame
 
     def flushBuffer(self):
@@ -125,6 +128,7 @@ class CameraPCO:
         self.frame_buffer.clear()
         
     def getLastChunk(self):
+        # save on disk
         images, metadatas = self.camera.images()
         chunk = np.array(images).mean()
         self.__logger.debug("Buffer: "+str(chunk.shape))

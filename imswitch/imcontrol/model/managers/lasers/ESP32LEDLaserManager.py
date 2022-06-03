@@ -69,7 +69,7 @@ class ESP32LEDLaserManager(LaserManager):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
-            if self.filter_change:
+            if self.filter_change and (self.power*self.enabled)>0:
                 self._rs232manager._esp32.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
             self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:

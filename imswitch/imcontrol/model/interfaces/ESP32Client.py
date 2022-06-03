@@ -321,7 +321,7 @@ class ESP32Client(object):
     def init_filter(self, nSteps, speed=250, filter_axis=-1, is_blocking = True):
         self.move_filter(steps=nSteps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking)
         self.is_filter_init = True
-        self.filter_position = 0
+        self.filter_position_now = 0
 
     def switch_filter(self, filter_pos=0, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
 

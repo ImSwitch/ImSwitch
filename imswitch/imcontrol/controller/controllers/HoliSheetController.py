@@ -1,5 +1,9 @@
 import numpy as np
-import NanoImagingPack as nip
+try:
+    import NanoImagingPack as nip
+    isNIP = True
+except:
+    isNIP = False
 import time
 import threading
 import pyqtgraph.ptime as ptime

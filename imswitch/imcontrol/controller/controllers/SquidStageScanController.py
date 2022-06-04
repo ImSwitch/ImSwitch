@@ -1,8 +1,13 @@
 import numpy as np
-import NanoImagingPack as nip
 import time
 import threading
 
+try:
+    import NanoImagingPack as nip
+    isNIP = True
+except:
+    isNIP = False
+    
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger

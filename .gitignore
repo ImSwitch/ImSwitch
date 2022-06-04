@@ -79,7 +79,6 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
-imswitch/imcontrol/controller/controllers/HoliSheetController.py
 ImSwitch/ImSwitch/recordings/2022-04-21/18h12m23s_rec_Holography.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-21/18h21m21s_rec_Holography.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-21/18h25m45s_rec_Holography.hdf5

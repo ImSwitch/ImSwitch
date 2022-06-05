@@ -37,7 +37,7 @@ class ESP32LEDLaserManager(LaserManager):
         try:
             self.laser_despeckle_amplitude = laserInfo.managerProperties['laser_despeckle_amplitude']
         except:
-            self.laser_despeckle_amplitude = 0.1 # %
+            self.laser_despeckle_amplitude = 0. # %
             
         try:
             self.laser_despeckle_period = laserInfo.managerProperties['laser_despeckle_period']

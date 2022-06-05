@@ -91,10 +91,10 @@ class ESP32LEDLaserManager(LaserManager):
                 if self.filter_change:
                     self._rs232manager._esp32.switch_filter(laserid=self.channel_index,  filter_axis=self.filter_axis)
 
-                self._rs232manager._esp32.send_LEDMatrix_full((self.power,self.power,self.power))
+                self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
             else:
                 self._rs232manager._esp32.set_laser(self.channel_index, 
-                                    self.power, self.filter_change, 
+                                    self.power, 0*self.filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
                                     filter_axis = self.filter_axis, 

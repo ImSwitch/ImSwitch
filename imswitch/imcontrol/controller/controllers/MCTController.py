@@ -45,6 +45,8 @@ class MCTController(LiveUpdatedController):
         self.MCTFilename = ""
         
         self.updateRate=2
+
+        self.tUnshake = .1
         
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
@@ -91,28 +93,29 @@ class MCTController(LiveUpdatedController):
 
     def startMCT(self):
         # initilaze setup
-        self.nImages = 0
-        self._widget.setNImages("Starting timelapse...")
-        self.lasers[0].initFilter()
+        if not self.isMCTrunning:
+            self.nImages = 0
+            self._widget.setNImages("Starting timelapse...")
+            self.lasers[0].initFilter()
 
-        # get parameters from GUI
-        self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
-        self.timePeriod = self._widget.getTimelapseValues()
-        self.MCTFilename = self._widget.getFilename()
+            # get parameters from GUI
+            self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
+            self.timePeriod = self._widget.getTimelapseValues()
+            self.MCTFilename = self._widget.getFilename()
 
-        # store old values for later
-        self.Laser1ValueOld = self.lasers[0].power            
-        self.Laser2ValueOld = self.lasers[1].power
-        self.LEDValueOld = self.leds[0].power
-        
-        # reserve space for the stack
-        self._widget.mctShowLastButton.setEnabled(False)
+            # store old values for later
+            self.Laser1ValueOld = self.lasers[0].power            
+            self.Laser2ValueOld = self.lasers[1].power
+            self.LEDValueOld = self.leds[0].power
+            
+            # reserve space for the stack
+            self._widget.mctShowLastButton.setEnabled(False)
 
-        # initiliazing the update scheme for pulling pressure measurement values
-        self.timer = Timer()
-        self.timer.timeout.connect(self.takeTimelapse)
-        self.timer.start(self.timePeriod*1000)
-        self.startTime = ptime.time()
+            # initiliazing the update scheme for pulling pressure measurement values
+            self.timer = Timer()
+            self.timer.timeout.connect(self.takeTimelapse)
+            self.timer.start(self.timePeriod*1000)
+            self.startTime = ptime.time()
 
 
         
@@ -140,20 +143,17 @@ class MCTController(LiveUpdatedController):
 
     def showLast(self):
         try:
-            LastStackLaser1Array = np.array(self.LastStackLaser1)
-            self._widget.setImage(LastStackLaser1Array, colormap="green", name="GFP")
+            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP")
         except  Exception as e:
             self._logger.error(e)
 
         try:
-            LastStackLaser2Array = np.array(self.LastStackLaser2)
-            self._widget.setImage(LastStackLaser2Array, colormap="red", name="Red")
+            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red")
         except Exception as e:
             self._logger.error(e)
             
         try:
-            LastStackLEDArray = np.array(self.LastStackLED)
-            self._widget.setImage(LastStackLEDArray, colormap="gray", name="Brightfield")
+            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield")
         except  Exception as e:
             self._logger.error(e)
 
@@ -182,7 +182,6 @@ class MCTController(LiveUpdatedController):
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
         self.LastStackLED = []
-        self._widget.mctShowLastButton.setEnabled(False)
 
 
         if self.Laser1Value>0:
@@ -196,6 +195,11 @@ class MCTController(LiveUpdatedController):
         self._widget.setNImages(self.nImages)
 
         self.isMCTrunning = False
+
+        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
+        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+        
         self._widget.mctShowLastButton.setEnabled(True)
 
 
@@ -232,12 +236,13 @@ class MCTController(LiveUpdatedController):
             # perform a z-stack
             stepsCounter = 0
             backlash=0
+            self.stages.setEnabled(is_enabled=True)
             self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
                 filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
-                time.sleep(0.2) # unshake
+                time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
                 tif.imwrite(filePath, lastFrame)
 
@@ -248,7 +253,7 @@ class MCTController(LiveUpdatedController):
                     self.LastStackLaser2.append(lastFrame)
                 if illuMode == "Brightfield":
                     self.LastStackLED.append(lastFrame)
-
+            self.stages.setEnabled(is_enabled=False)
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
         else:
             filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
@@ -261,6 +266,7 @@ class MCTController(LiveUpdatedController):
                 self.LastStackLaser2.append(lastFrame)
             if illuMode == "Brightfield":
                 self.LastStackLED.append(lastFrame)
+
 
 
 

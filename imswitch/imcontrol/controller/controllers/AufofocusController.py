@@ -129,9 +129,11 @@ class AutofocusController(ImConWidgetController):
             focusquality = np.mean(ndi.filters.laplace(imagearraygf))
             allfocusvals[iz]=focusquality
             allfocuspositions[iz] = positionz
+            
+            
 
-        # display the curve
-        self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
+            # display the curve
+            self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
 
         # 4 find maximum focus value and move stage to this position
         allfocusvals=np.array(allfocusvals)

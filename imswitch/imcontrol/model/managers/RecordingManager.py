@@ -255,29 +255,18 @@ class RecordingWorker(Worker):
             shape = shapes[detectorName]
             if len(shape) > 2:
                 shape = shape[-2:]
-            datasets[detectorName] = files[detectorName].create_dataset(
-                datasetName, (1, *reversed(shape)),
-                maxshape=(None, *reversed(shape)),
-                dtype='i2'
-            )
-
-            for key, value in self.attrs[detectorName].items():
-                datasets[detectorName].attrs[key] = value
-
-            datasets[detectorName].attrs['detector_name'] = detectorName
-
-            # For ImageJ compatibility
-            datasets[detectorName].attrs['element_size_um'] \
-                = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
             if self.saveFormat == SaveFormat.HDF5:
                 # Initial number of frames must not be 0; otherwise, too much disk space may get
                 # allocated. We remove this default frame later on if no frames are captured.
                 datasets[detectorName] = files[detectorName].create_dataset(
-                    datasetName, (1, *reversed(shapes[detectorName])),
-                    maxshape=(None, *reversed(shapes[detectorName])),
+                    datasetName, (1, *reversed(shape)),
+                    maxshape=(None, *reversed(shape)),
                     dtype='i2'
                 )
+
+                for key, value in self.attrs[detectorName].items():
+                    datasets[detectorName].attrs[key] = value
 
                 datasets[detectorName].attrs['detector_name'] = detectorName
 
@@ -287,7 +276,6 @@ class RecordingWorker(Worker):
 
                 for key, value in self.attrs[detectorName].items():
                     datasets[detectorName].attrs[key] = value
-
 
             elif self.saveFormat == SaveFormat.MP4:
                 # Need to initiliaze videowriter for each detector
@@ -375,7 +363,7 @@ class RecordingWorker(Worker):
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
                                     filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    tiff.imwrite(filePath, newFrames, append=True) # TODO: Single Tiff export doesnt work! 
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:

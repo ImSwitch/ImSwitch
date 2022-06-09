@@ -23,6 +23,7 @@ class MCTWidget(NapariHybridWidget):
     
     sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
     sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
 
 
@@ -46,7 +47,7 @@ class MCTWidget(NapariHybridWidget):
         
         # Laser 1
         valueDecimalsLaser = 1
-        valueRangeLaser = (300,700)
+        valueRangeLaser = (0,2**15)
         tickIntervalLaser = 1
         singleStepLaser = 1
         
@@ -78,6 +79,30 @@ class MCTWidget(NapariHybridWidget):
         self.sliderLaser2.valueChanged.connect(
             lambda value: self.sigSliderLaser2ValueChanged.emit(value)
         )
+
+
+        # LED
+        valueDecimalsLED = 1
+        valueRangeLED = (0,2**8)
+        tickIntervalLED = 1
+        singleStepLED = 1
+        
+        self.mctLabelLED  = QtWidgets.QLabel('Intensity (LED 1):')        
+        self.mctLabelLED2  = QtWidgets.QLabel('Intensity (LED 2):')        
+        
+        valueRangeMinLED, valueRangeMaxLED = valueRangeLED
+        self.sliderLED = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimalsLED)
+        self.sliderLED.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.sliderLED.setMinimum(valueRangeMinLED)
+        self.sliderLED.setMaximum(valueRangeMaxLED)
+        self.sliderLED.setTickInterval(tickIntervalLED)
+        self.sliderLED.setSingleStep(singleStepLED)
+        self.sliderLED.setValue(0)
+        
+        self.sliderLED.valueChanged.connect(
+            lambda value: self.sigSliderLEDValueChanged.emit(value)
+        )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
         self.mctEditFileName  = QtWidgets.QLabel('Test')
@@ -91,17 +116,13 @@ class MCTWidget(NapariHybridWidget):
         self.mctStopButton.setCheckable(False)
         self.mctStopButton.toggled.connect(self.sigMCTStop)
 
-        self.mctShowLastButton = guitools.BetterPushButton('Show LaSt')
+        self.mctShowLastButton = guitools.BetterPushButton('Show Last')
         self.mctShowLastButton.setCheckable(False)
         self.mctShowLastButton.toggled.connect(self.sigMCTShowLast)
-        
+
         self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
         self.mctInitFilterButton.setCheckable(False)
         self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
-
-        # enable
-        self.mctDoBrightfield = QtWidgets.QCheckBox('Perform Brightfield')
-        self.mctDoBrightfield.setCheckable(True)
         
         self.mctDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
         self.mctDoZStack.setCheckable(True)
@@ -113,7 +134,6 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
         self.grid.addWidget(self.mctDoZStack, 0, 2, 1, 1)
-        self.grid.addWidget(self.mctDoBrightfield, 0, 3, 1, 1)
         self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
@@ -122,21 +142,29 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.sliderLaser1, 2, 1, 1, 3)
         self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
         self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelFileName, 4, 0, 1, 1)
-        self.grid.addWidget(self.mctEditFileName, 4, 1, 1, 1)
-        self.grid.addWidget(self.mctNImages, 4, 2, 1, 1)
-        self.grid.addWidget(self.mctStartButton, 5, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 5, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton,5, 2, 1, 1)
+        self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
+        self.grid.addWidget(self.mctLabelLED, 4, 0, 1, 1)
+        self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
+
+        self.grid.addWidget(self.mctLabelFileName, 5, 0, 1, 1)
+        self.grid.addWidget(self.mctEditFileName, 5, 1, 1, 1)
+        self.grid.addWidget(self.mctNImages, 5, 2, 1, 1)
+        self.grid.addWidget(self.mctStartButton, 6, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 6, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
+        self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
+        
+        self.layer = None
         
         
     def getImage(self):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im):
-        if self.layer is None or self.layer.name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, name="MCT Reconstruction", blending='additive')
+    def setImage(self, im, colormap="gray", name=""):
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, name=name, blending='additive')
         self.layer.data = im
         
         
@@ -151,14 +179,14 @@ class MCTWidget(NapariHybridWidget):
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
         return mctValueTimePeriod
-     
-    def getBrightfieldEnabled(self):
-        valueBrightfield = bool(self.mctDoBrightfield.isChecked())
-        return valueBrightfield
+    
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()
-        return mctEditFileName
+        from datetime import datetime
+        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+        
+        return f"{date}_{mctEditFileName}"
     
     def setNImages(self, nImages):
         self.mctNImages.setText('Number of images: '+str(nImages))

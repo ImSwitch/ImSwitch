@@ -84,8 +84,6 @@ class MCTController(LiveUpdatedController):
 
         self.isMCTrunning = False
         self._widget.mctShowLastButton.setEnabled(False)
-
-
         
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")
@@ -93,14 +91,18 @@ class MCTController(LiveUpdatedController):
 
     def startMCT(self):
         # initilaze setup
+        # this is not a thread!
+        self._widget.mctStartButton.setEnabled(False)
+        
         if not self.isMCTrunning:
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
+            self.switchOffIllumination()
             self.lasers[0].initFilter()
 
             # get parameters from GUI
             self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
-            self.timePeriod = self._widget.getTimelapseValues()
+            self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
             self.MCTFilename = self._widget.getFilename()
 
             # store old values for later
@@ -113,7 +115,7 @@ class MCTController(LiveUpdatedController):
 
             # initiliazing the update scheme for pulling pressure measurement values
             self.timer = Timer()
-            self.timer.timeout.connect(self.takeTimelapse)
+            self.timer.timeout.connect(self.takeTimelapse())
             self.timer.start(self.timePeriod*1000)
             self.startTime = ptime.time()
 
@@ -124,6 +126,7 @@ class MCTController(LiveUpdatedController):
         
         self._widget.setNImages("Stopping timelapse...")
 
+        self._widget.mctStartButton.setEnabled(True)
         try:
             del self.timer
         except:
@@ -161,7 +164,6 @@ class MCTController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-
     def takeTimelapse(self):
         if not self.isMCTrunning:
             try:
@@ -170,10 +172,17 @@ class MCTController(LiveUpdatedController):
             except:
                 pass
 
+            # stop measurement once done
+            if self.nDuration > self.nImages:
+                self.timer.stop()
+                self.isMCTrunning = False
+                self._widget.mctStartButton.setEnabled(True)
+                
             # this should decouple the hardware-related actions from the GUI - but it doesn't 
             self.isMCTrunning = True
             self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
             self.MCTThread.start()
+            
         
     def takeTimelapseThread(self):
         self.__logger.debug("Take image")
@@ -267,9 +276,10 @@ class MCTController(LiveUpdatedController):
             if illuMode == "Brightfield":
                 self.LastStackLED.append(lastFrame)
 
+        self.switchOffIllumination()
 
 
-
+    def switchOffIllumination(self):
         # switch off all illu sources
         for lasers in self.lasers:
             lasers.setEnabled(False)

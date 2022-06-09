@@ -163,6 +163,7 @@ class MCTController(LiveUpdatedController):
 
 
     def takeTimelapse(self):
+        # this is called periodically by the timer
         if not self.isMCTrunning:
             try:
                 # make sure there is no exisiting thrad 
@@ -176,13 +177,13 @@ class MCTController(LiveUpdatedController):
             self.MCTThread.start()
         
     def takeTimelapseThread(self):
+        # this wil run i nthe background
         self.__logger.debug("Take image")
         zstackParams = self._widget.getZStackValues()
-
+        # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
         self.LastStackLED = []
-
 
         if self.Laser1Value>0:
             self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)

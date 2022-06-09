@@ -70,15 +70,18 @@ class ESP32Client(object):
     is_connected = False
 
     microsteppingfactor_filter=16 # run more smoothly
-    filter_pos_1 = 1000*microsteppingfactor_filter
-    filter_pos_2 = 0*microsteppingfactor_filter
+    filter_pos_1 = 1000*microsteppingfactor_filter # GFP
+    filter_pos_2 = 0*microsteppingfactor_filter # AF647/SIR
     filter_pos_3 = 500*microsteppingfactor_filter
+    filter_pos_LED = filter_pos_1 # GFP / Brightfield
     filter_pos_init = -1250*microsteppingfactor_filter
     filter_speed = microsteppingfactor_filter * 500
+    filter_position_now = 0
 
     backlash_x = 0
     backlash_y = 0
     backlash_z = 0
+    backlash_t = 0
     is_driving = False
     is_sending = False
 
@@ -93,17 +96,18 @@ class ESP32Client(object):
     steps_last_0 = 0
     steps_last_1 = 0
     steps_last_2 = 0
+    steps_last_3 = 0
 
     def __init__(self, host=None, port=31950, serialport=None, baudrate=115200):
         '''
         This client connects to the UC2-REST microcontroller that can be found here
         https://github.com/openUC2/UC2-REST
-        
+
         generally speaking you send/receive JSON documents that will cause an:
         1. action => "/XXX_act"
         2. getting => "/XXX_get"
         3. setting => "/XXX_set"
-        
+
         you can send commands through wifi/http or usb/serial
         '''
 
@@ -135,7 +139,7 @@ class ESP32Client(object):
             self.is_connected = False
             try:
                 self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
-                self.is_connected = True 
+                self.is_connected = True
                 time.sleep(2) # let it warm up
             except:
                 # try to find the PORT
@@ -271,7 +275,8 @@ class ESP32Client(object):
                     rmessage =  self.serialdevice.readline().decode()
                     #self.__logger.debug(rmessage)
                     returnmessage += rmessage
-                    if rmessage.find("--")==0 or (time.time()-_time0)>timeout: break
+                    if rmessage.find("--")==0 or (time.time()-_time0)>timeout:
+                        break
                 except:
                     pass
             # casting to dict
@@ -288,30 +293,37 @@ class ESP32Client(object):
     ################################################################################################################################################'''
 
     def move_x(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
-        r = self.move_stepper(steps=(steps,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        r = self.move_stepper(steps=(steps,0,0,0), speed=speed, timeout=1, backlash=(self.backlash_x,0,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
     def move_y(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
-        r = self.move_stepper(steps=(0,steps,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        r = self.move_stepper(steps=(0,steps,0,0), speed=speed, timeout=1, backlash=(0,self.backlash_y,0,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
     def move_z(self, steps=100, speed=1000, is_blocking=False, is_absolute=False, is_enabled=False):
-        r = self.move_stepper(steps=(0,0,steps), speed=speed, timeout=1, backlash=(0,0,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        r = self.move_stepper(steps=(0,0,steps,0), speed=speed, timeout=1, backlash=(0,0,self.backlash_z,0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
-    def move_xyz(self, steps=(10,10,10), speed=(1000,1000,1000), speed1=None, speed2=None, speed3=None, is_blocking=False, is_absolute=False, is_enabled=False):
+    def move_xyz(self, steps=(0,0,0), speed=(1000,1000,1000), is_blocking=False, is_absolute=False, is_enabled=False):
         if len(speed)!= 3:
             speed = (speed,speed,speed)
 
-        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        r = self.move_xyzt(steps=(steps[0],steps[1],steps[2],0), speed=(speed[0],speed[1],speed[2],0), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
+        return r
+
+    def move_xyzt(self, steps=(0,0,0,0), speed=(1000,1000,1000,1000), is_blocking=False, is_absolute=False, is_enabled=False):
+        if len(speed)!= 4:
+            speed = (speed,speed,speed,speed)
+
+        r = self.move_stepper(steps=steps, speed=speed, timeout=1, backlash=(self.backlash_x,self.backlash_y,self.backlash_z,self.backlash_t), is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=is_enabled)
         return r
 
     def init_filter(self, nSteps, speed=250, filter_axis=-1, is_blocking = True):
         self.move_filter(steps=nSteps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking)
         self.is_filter_init = True
-        self.filter_position = 0
+        self.filter_position_now = 0
 
-    def switch_filter(self, laserid=1, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
+    def switch_filter(self, filter_pos=0, filter_axis=-1, timeout=20, is_filter_init=None, speed=None, is_blocking=True):
 
         # switch off all lasers first!
         self.set_laser(1, 0)
@@ -325,37 +337,28 @@ class ESP32Client(object):
             self.is_filter_init = is_filter_init
         if not self.is_filter_init:
             self.init_filter(nSteps=self.filter_pos_init, speed=speed, filter_axis=filter_axis, is_blocking = True)
-        
-        # measured in steps from zero position
 
-        steps = 0
-        if laserid==1:
-            steps = self.filter_pos_1 - self.filter_position
-            self.filter_position = self.filter_pos_1
-        if laserid==2:
-            steps = self.filter_pos_2 - self.filter_position
-            self.filter_position = self.filter_pos_2
-        if laserid==3:
-            steps = self.filter_pos_3 - self.filter_position
-            self.filter_position = self.filter_pos_3
+        # measured in steps from zero position
+        steps = filter_pos - self.filter_position_now
+        self.filter_position_now = filter_pos
 
         self.move_filter(steps=steps, speed=speed, filter_axis=filter_axis, is_blocking=is_blocking, timeout=timeout)
 
 
-    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=25, is_blocking=False, axis=2):
-        steps_xyz = np.zeros(3)
-        steps_xyz[filter_axis] = steps
-        r = self.move_stepper(steps=steps_xyz, speed=speed, timeout=timeout, is_blocking=is_blocking)
+    def move_filter(self, steps=100, speed=200, filter_axis=-1, timeout=10, is_blocking=False):
+        steps_xyzt = np.zeros(4)
+        steps_xyzt[filter_axis] = steps
+        r = self.move_stepper(steps=steps_xyzt, speed=speed, timeout=timeout, is_blocking=is_blocking)
         return r
-    
 
-    
+
+
     '''
     LOW-LEVEL FUNCTIONS
-    
+
     These functions directly relate to the REST-API
     '''
-    
+
     '''
     ##############################################################################################################################
     SLM
@@ -375,7 +378,7 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
+
     def send_SLM_clear(self, timeout=1):
         '''
         Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
@@ -386,40 +389,40 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
+
     def send_SLM_full(self, color, timeout=1):
         '''
         Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
         '''
         path = '/slm_act'
         payload = {
-            "color":color, 
+            "color":color,
             "slmMode": "full"
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
-        
+
+
     def send_SLM_image(self, image, startX, startY, timeout=1):
         '''
         Send an LED array pattern e.g. an RGB Matrix: led_pattern=np.zeros((3,8,8))
         '''
         path = '/slm_act'
-        
+
         endX = startX+image.shape[0]
         endY = startY+image.shape[1]
-       
+
         payload = {
             "color": image[:].flatten().tolist(),
             "startX":startX,
             "startY":startY,
             "endX":endX,
-            "endY":endY, 
+            "endY":endY,
             "slmMode": "image"
         }
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
+
 
     '''
     ##############################################################################################################################
@@ -456,7 +459,7 @@ class ESP32Client(object):
         self.__logger.debug("Setting LED Pattern (full): "+ str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
+
     def send_LEDMatrix_special(self, pattern="left", intensity = (255,255,255),timeout=1):
         '''
         set all LEDs inside a certain pattern (e.g. left half) with the same RGB value: intensity=(255,255,255), rest 0
@@ -471,7 +474,7 @@ class ESP32Client(object):
         print("Setting LED Pattern (full): "+ str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
         return r
-    
+
     def send_LEDMatrix_single(self, indexled=0, intensity=(255,255,255), Nleds=8*8, timeout=1):
         '''
         update only a single LED with a colour:  indexled=0, intensity=(255,255,255)
@@ -488,7 +491,7 @@ class ESP32Client(object):
         self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
         r = self.post_json(path, payload, timeout=timeout)
         return r
-        
+
     def send_LEDMatrix_multi(self, indexled=(0), intensity=((255,255,255)), Nleds=8*8, timeout=1):
         '''
         update a list of individual LEDs with a colour:  led_pattern=(1,2,6,11), intensity=((255,255,255),(125,122,1), ..)
@@ -503,9 +506,9 @@ class ESP32Client(object):
             "LEDArrMode": "multi"
         }
         self.__logger.debug("Setting LED PAttern: "+str(indexled)+" - "+str(intensity))
-        r = self.post_json(path, payload, timeout=timeout)        
-        
-    
+        r = self.post_json(path, payload, timeout=timeout)
+
+
     def get_LEDMatrix(self, timeout=1):
         '''
         get information about pinnumber and number of leds
@@ -516,8 +519,8 @@ class ESP32Client(object):
             "task":path
         }
         r = self.post_json(path, payload, timeout=timeout)
-        return r       
-    
+        return r
+
     def set_LEDMatrix(self, LED_ARRAY_PIN=1, LED_N_X=8, LED_N_Y=8, timeout=1):
         '''
         set information about pinnumber and number of leds
@@ -532,28 +535,59 @@ class ESP32Client(object):
             "Nleds": Nleds,
             "LEDArrMode": "single"
         }
-        r = self.post_json(path, payload, timeout=timeout)      
-        return r        
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
 
-        
+
     '''
     ##############################################################################################################################
     MOTOR
     ##############################################################################################################################
     '''
+    def isControllerMode(self, timeout=1):
+        # returns True if PS controller is active
+        path = "/state_get"
+        payload = {
+            "task":path,
+            "pscontroller": 1
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        try:
+            return r["pscontroller"]
+        except:
+            return False
+
+    def espRestart(self,timeout=1):
+        # if isController =True=> only PS jjoystick will be accepted
+        path = "/state_act"
+        payload = {
+            "restart":1
+            }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
+
+    def setControllerMode(self, isController=False, timeout=1):
+        # if isController =True=> only PS jjoystick will be accepted
+        path = "/state_act"
+        payload = {
+            "task":path,
+            "pscontroller": isController
+        }
+        r = self.post_json(path, payload, timeout=timeout)
+        return r
 
     def isBusy(self, timeout=1):
         path = "/state_get"
         payload = {
             "task":path,
-            "active": 1
+            "isBusy": 1
         }
         r = self.post_json(path, payload, timeout=timeout)
         try:
-            return r["active"]
+            return r["isBusy"]
         except:
             return r
-        
+
     def move_forever(self, speed=(0,0,0), is_stop=False, timeout=1):
         path = "/motor_act"
         payload = {
@@ -562,21 +596,30 @@ class ESP32Client(object):
             "speed1": np.int(speed[0]),
             "speed2": np.int(speed[1]),
             "speed3": np.int(speed[2]),
-            "isforever":1, 
+            "isforever":1,
             "isaccel":1,
             "isstop": np.int(is_stop)
         }
-        
-        r = self.post_json(path, payload, timeout=timeout)
-        
+        # Make sure PS controller is treated correclty
+        #if self.isControllerMode():
+        #    self.setControllerMode(isController=False)
+        #    PSwasActive = True
+        #else:
+        #    PSwasActive = False
+
+        r = self.post_json(path, payload, timeout=0)
+
+        #if PSwasActive:
+        #    self.setControllerMode(isController=True)
+
         return r
 
-    def move_stepper(self, steps=(0,0,0), speed=(1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0), is_blocking=True, is_enabled=False):
+    def move_stepper(self, steps=(0,0,0,0), speed=(1000,1000,1000,1000), is_absolute=False, timeout=1, backlash=(0,0,0,0), is_blocking=True, is_enabled=False):
         '''
         This tells the motor to run at a given speed for a specific number of steps; Multiple motors can run simultaneously
         '''
         if type(speed)!=list and type(speed)!=tuple  :
-            speed = (speed,speed,speed)
+            speed = (speed,speed,speed,speed)
 
         path = "/motor_act"
 
@@ -593,14 +636,20 @@ class ESP32Client(object):
             # we want to overshoot a bit
             steps_2 =  steps[2] + (np.sign(steps[2])*backlash[2])
         else: steps_2 = steps[2]
+        if np.sign(self.steps_last_3) != np.sign(steps[3]):
+            # we want to overshoot a bit
+            steps_3 =  steps[3] + (np.sign(steps[3])*backlash[3])
+        else: steps_3 = steps[3]
 
         payload = {
             "task":"/motor_act",
+            "pos0": np.int(steps_3),
             "pos1": np.int(steps_0),
             "pos2": np.int(steps_1),
             "pos3": np.int(steps_2),
             "isblock": int(is_blocking),
             "isabs": int(is_absolute),
+            "speed0": np.int(speed[3]),
             "speed1": np.int(speed[0]),
             "speed2": np.int(speed[1]),
             "speed3": np.int(speed[2]),
@@ -609,10 +658,13 @@ class ESP32Client(object):
         self.steps_last_0 = steps_0
         self.steps_last_1 = steps_1
         self.steps_last_2 = steps_2
-        
-        r = self.post_json(path, payload, timeout=0)
-        
-        
+        self.steps_last_3 = steps_3
+
+        # drive motor
+        r = self.post_json(path, payload, timeout=timeout)
+
+        #if PSwasActive:
+        #    self.setControllerMode(isController=True)
         # wait until job has been done
         time0=time.time()
         if is_blocking:
@@ -620,10 +672,10 @@ class ESP32Client(object):
                 time.sleep(0.1)
                 if time.time()-time0>timeout:
                     break
-                
+
         return r
-    
-    
+
+
     def set_motor_maxSpeed(self, axis=0, maxSpeed=10000):
         path = "/motor_set",
         payload = {
@@ -633,7 +685,7 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload)
         return r
-        
+
     def set_motor_currentPosition(self, axis=0, currentPosition=10000):
         path = "/motor_set",
         payload = {
@@ -643,7 +695,7 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload)
         return r
-    
+
     def set_motor_acceleration(self, axis=0, acceleration=10000):
         path = "/motor_set",
         payload = {
@@ -653,7 +705,7 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload)
         return r
-    
+
     def set_motor_pinconfig(self, axis=0, pinstep=0, pindir=0):
         path = "/motor_set",
         payload = {
@@ -664,7 +716,7 @@ class ESP32Client(object):
         }
         r = self.post_json(path, payload)
         return r
-  
+
     def set_motor_enable(self, is_enable=1):
         path = "/motor_set",
         payload = {
@@ -682,7 +734,7 @@ class ESP32Client(object):
             "sign": sign
         }
         r = self.post_json(path, payload)
-        return r      
+        return r
 
     def set_direction(self, axis=1, sign=1, timeout=1):
         path = "/motor_set"
@@ -753,21 +805,21 @@ class ESP32Client(object):
         path = "/PID_act"
         payload = {
             "task": path,
-            "PIDactive": PIDactive, 
-            "Kp": Kp, 
-            "Ki": Ki, 
-            "Kd": Kd, 
-            "target": target, 
+            "PIDactive": PIDactive,
+            "Kp": Kp,
+            "Ki": Ki,
+            "Kd": Kd,
+            "target": target,
             "PID_updaterate": PID_updaterate
             }
         r = self.post_json(path, payload)
         return r
-    
+
     '''
     ##############################################################################################################################
     LEDs
     ##############################################################################################################################
-    '''    
+    '''
     def set_led(self, colour=(0,0,0)):
         payload = {
             "red": colour[0],
@@ -821,9 +873,32 @@ class ESP32Client(object):
         return r
 
 
-    def set_laser(self, channel=1, value=0, auto_filterswitch=False, filter_axis=-1, timeout=20, is_blocking = True):
+    def set_laser(self, channel=1, value=0, auto_filterswitch=False, 
+                        filter_axis=-1, filter_position = None,
+                        despeckleAmplitude = 0.1, 
+                        despecklePeriod=10, timeout=20, is_blocking = True):
+        if channel not in (0,1,2,3):
+            if channel=="R":
+                channel = 1
+            elif channel=="G":
+                channel = 2
+            elif channel=="B":
+                channel = 3
+
         if auto_filterswitch and value >0:
-            self.switch_filter(channel, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
+            if filter_position is None:
+                if channel==1:
+                    filter_position_toGo = self.filter_pos_1 
+                if channel==2:
+                    filter_position_toGo = self.filter_pos_2 
+                if channel==3:
+                    filter_position_toGo = self.filter_pos_3 
+                if channel=="LED":
+                    filter_position_toGo = self.filter_pos_LED
+            else:
+                filter_position_toGo = filter_position
+
+            self.switch_filter(filter_pos=filter_position_toGo, filter_axis=filter_axis, timeout=timeout,is_blocking=is_blocking)
 
         path = '/laser_act'
 
@@ -831,7 +906,9 @@ class ESP32Client(object):
             "task": path,
             "LASERid": channel,
             "LASERval": value,
-            "LASERDdespeckle": int(value*.1)
+            "LASERdespeckle": int(value*despeckleAmplitude),
+            "LASERdespecklePeriod": int(despecklePeriod),
+            
         }
 
         r = self.post_json(path, payload)
@@ -839,7 +916,7 @@ class ESP32Client(object):
 
     def sendTrigger(self, triggerId=0):
         path = '/digital_act'
-        
+
         payload = {
             "task": path,
             "digitalid": triggerId,

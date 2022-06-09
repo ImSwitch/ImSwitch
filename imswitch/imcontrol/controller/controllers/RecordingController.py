@@ -80,7 +80,7 @@ class RecordingController(ImConWidgetController):
         if saveMode == SaveMode.RAM:
             self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self):
+    def snap(self, name=None):
         """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
 
@@ -90,7 +90,9 @@ class RecordingController(ImConWidgetController):
         time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
-        savename = os.path.join(folder, self.getFileName()) + '_snap'
+        if name is None:
+            name = '_snap'
+        savename = os.path.join(folder, self.getFileName()) + name
 
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
@@ -371,9 +373,9 @@ class RecordingController(ImConWidgetController):
         return self._widget.getTimelapseFreq()
 
     @APIExport(runOnUIThread=True)
-    def snapImage(self) -> None:
+    def snapImage(self, name=None) -> None:
         """ Take a snap and save it to a .tiff file at the set file path. """
-        self.snap()
+        self.snap(name)
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:

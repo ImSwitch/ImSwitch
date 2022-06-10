@@ -49,7 +49,7 @@ class PositionerWidget(Widget):
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
         if speed:
-            self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
+            self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
             self.pars['Speed'].setTextFormat(QtCore.Qt.RichText)
             self.pars['ButtonSpeedEnter'] = guitools.BetterPushButton('Enter')
             self.pars['SpeedEdit'] = QtWidgets.QLineEdit('1000')

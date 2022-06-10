@@ -5,7 +5,7 @@ import numpy as np
 import time 
 import tifffile as tif
 import threading
-
+from datetime import datetime
 
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -94,7 +94,7 @@ class MCTController(LiveUpdatedController):
         # this is not a thread!
         self._widget.mctStartButton.setEnabled(False)
         
-        if not self.isMCTrunning:
+        if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
             self.switchOffIllumination()
@@ -104,6 +104,7 @@ class MCTController(LiveUpdatedController):
             self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
             self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
             self.MCTFilename = self._widget.getFilename()
+            self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
             # store old values for later
             self.Laser1ValueOld = self.lasers[0].power            
@@ -118,6 +119,11 @@ class MCTController(LiveUpdatedController):
             self.timer.timeout.connect(self.takeTimelapse())
             self.timer.start(self.timePeriod*1000)
             self.startTime = ptime.time()
+
+        else:
+            
+            self.isMCTrunning = False
+            self._widget.mctStartButton.setEnabled(True)
 
 
         
@@ -178,6 +184,8 @@ class MCTController(LiveUpdatedController):
                 self.timer.stop()
                 self.isMCTrunning = False
                 self._widget.mctStartButton.setEnabled(True)
+                del self.timer
+                return
                 
             # this should decouple the hardware-related actions from the GUI - but it doesn't 
             self.isMCTrunning = True
@@ -251,10 +259,10 @@ class MCTController(LiveUpdatedController):
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(f'{self.MCTFilename}_N_{illuMode}_Z_{stepsCounter}.{fileExtension}')
+                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}', extension=fileExtension)
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
-                tif.imwrite(filePath, lastFrame)
+                tif.imwrite(filePath, lastFrame, append=True)
 
                 # store frames for displaying
                 if illuMode == "Laser1":
@@ -265,8 +273,9 @@ class MCTController(LiveUpdatedController):
                     self.LastStackLED.append(lastFrame)
             self.stages.setEnabled(is_enabled=False)
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
+
         else:
-            filePath = self.getSaveFilePath(f'{self.MCTFilename}_{illuMode}.{fileExtension}')
+            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}', extension=fileExtension)            
             lastFrame = self.detector.getLatestFrame()
             tif.imwrite(filePath, lastFrame)
             # store frames for displaying
@@ -304,27 +313,21 @@ class MCTController(LiveUpdatedController):
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self.lasers[1].setValue(self.LEDValue)
-
                 
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
- 
- 
-    def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings')
-        newPath = os.path.join(dirPath,path)
-        numExisting = 0
 
-        def existsFunc(pathToCheck):
-            if not allowOverwriteDisk and os.path.exists(pathToCheck):
-                return True
-            return False
+    def getSaveFilePath(self, date, filename, extension):
+        mFilename =  f"{date}_{filename}.{extension}"
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
+        
+        newPath = os.path.join(dirPath,mFilename)
 
-        while existsFunc(newPath):
-            numExisting += 1
-            pathWithoutExt, pathExt = os.path.splitext(path)
-            newPath = f'{pathWithoutExt}_{numExisting}{pathExt}'
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+
         return newPath
 
 

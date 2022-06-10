@@ -262,7 +262,10 @@ class ESP32Client(object):
         self.serialdevice.flushOutput()
         if type(payload)==dict:
             payload = json.dumps(payload)
-        self.serialdevice.write(payload.encode(encoding='UTF-8'))
+        try:
+            self.serialdevice.write(payload.encode(encoding='UTF-8'))
+        except Exception as e:
+            self.__logger.error(e)
 
     def readSerial(self, is_blocking=True, timeout = 15): # TODO: hardcoded timeout - not code
         """Receive and decode return message"""

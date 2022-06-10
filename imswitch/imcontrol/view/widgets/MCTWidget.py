@@ -184,15 +184,12 @@ class MCTWidget(NapariHybridWidget):
  
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
-        mctValueTimeDuration = self.mctValueTimeDuration.text()
+        mctValueTimeDuration = int(self.mctValueTimeDuration.text())
         return mctValueTimePeriod, mctValueTimeDuration
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()
-        from datetime import datetime
-        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-        
-        return f"{date}_{mctEditFileName}"
+        return mctEditFileName
     
     def setNImages(self, nImages):
         nImages2Do = self.getTimelapseValues()[-1]

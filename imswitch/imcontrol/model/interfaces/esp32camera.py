@@ -39,7 +39,7 @@ class CameraESP32Cam:
         self.SensorHeight = 480
         #%% starting the camera thread
         
-        self.camera = ESP32Camera(self.host, self.port, is_debug=False)
+        self.camera = ESP32Camera(self.host, self.port, is_debug=True)
         
     def put_frame(self, frame):
         self.frame = frame
@@ -145,6 +145,10 @@ class ESP32Camera(object):
         self.exposuretime = 0
         self.gain = 0
         self.framesize = 0
+        
+        self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
+        
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         
     @property
@@ -190,7 +194,7 @@ class ESP32Camera(object):
         }
         path = '/led'
         if state:
-            print("WARNING: TRIGGER won't work if LED is turned on!")
+            self.__logger.debug("WARNING: TRIGGER won't work if LED is turned on!")
         r = self.post_json(path, payload)
         return r
     
@@ -271,6 +275,7 @@ class ESP32Camera(object):
         stream = urllib.request.urlopen(url)
         
         frameId = 0
+        errorCounter = 0
         while self.is_stream:
             try:
                 bytesJPEG += stream.read(1024)
@@ -286,14 +291,15 @@ class ESP32Camera(object):
                         bytesJPEG = bytes() 
                         if self.is_debug:  
                             self.__logger.debug("Frame#"+str(frameId))
+                            self.__logger.debug("Error#"+str(errorCounter))
                         frameId += 1
                         
                         if self.callback_fct is not None:
                             self.callback_fct(frame)
                         
                     except Exception as e:
-                        time.sleep(.05)
-                        pass
+                        time.sleep(.01) 
+                        errorCounter+=1
 
                     
             except ConnectionResetError as e:

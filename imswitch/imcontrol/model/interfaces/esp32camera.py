@@ -1,21 +1,14 @@
-import numpy as np
-import time
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.restapicamera import RestPiCamera
 
-import cv2
-import urllib.request
-import numpy as np
-
+from PIL import Image
+import io
 import requests
 import time
-import urllib
+import cv2
 import numpy as np
-#import cv2
-import imageio
-
 from threading import Thread
-
+import urllib
 
 class CameraESP32Cam:
     def __init__(self, host, port):
@@ -40,6 +33,8 @@ class CameraESP32Cam:
         #%% starting the camera thread
         
         self.camera = ESP32Camera(self.host, self.port, is_debug=True)
+        
+        self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
         
     def put_frame(self, frame):
         self.frame = frame
@@ -175,15 +170,19 @@ class ESP32Camera(object):
         r = r.json()
         return r
 
-    def post(self, path, payload={}, headers=None, timeout=10):
+    def post(self, path, payload={}, headers=None, timeout=1):
         """Make an HTTP POST request and return the JSON response"""
         if not path.startswith("http"):
             path = self.base_uri + path
         if headers is None:
             headers = self.headers
-            
-        r = requests.post(path, json=payload, headers=headers,timeout=timeout)
-        r.raise_for_status()
+        
+        try:    
+            r = requests.post(path, json=payload, headers=headers,timeout=timeout)
+            r.raise_for_status()
+        except Exception as e:
+            self.__logger.error(e)
+            r = -1
         return r
 
     
@@ -252,7 +251,7 @@ class ESP32Camera(object):
         self.stream_url = "http://"+self.host+":81/stream.mjpeg"
         
         self.is_stream = True
-        self.frame_receiver_thread = Thread(target = self.getframes, args=(self.stream_url,))
+        self.frame_receiver_thread = Thread(target = self.getframes, args=(self.stream_url,), daemon=True)
         self.frame_receiver_thread.start() 
         self.callback_fct = callback_fct
 
@@ -263,22 +262,24 @@ class ESP32Camera(object):
 
     def getframe(self, is_triggered=False):
         url = "http://"+self.host+":80/capture"
-        return np.mean(np.array(imageio.imread(url)), -1)
+        response = requests.get(url)
+        bytes_im = io.BytesIO(response.content)
+        frame = np.uint8(np.mean(np.array(Image.open(bytes_im)), -1))
+        return frame
         
-    def getframes(self, url):
-        if self.is_debug:  
-            self.__logger.debug("Start Stream - "+str(self.setup_id))
-
-        self.last_frame = None
+    def getframes(self, url):           
         bytesJPEG = bytes()
-
-        stream = urllib.request.urlopen(url)
-        
+        try:
+            stream = urllib.request.urlopen(url, timeout=2)
+        except Exception as e:
+            self.is_stream = False
+            self.__logger.error("Stream could not be opened")
+            self.__logger.error(e)
         frameId = 0
         errorCounter = 0
         while self.is_stream:
             try:
-                bytesJPEG += stream.read(1024)
+                bytesJPEG += stream.read(2**14)
                 a = bytesJPEG.find(b'\xff\xd8')
                 b = bytesJPEG.find(b'\xff\xd9')
                 if a != -1 and b != -1:
@@ -287,7 +288,8 @@ class ESP32Camera(object):
                     try:
                         frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                         frame = np.mean(frame,-1)
-                        
+                        # flush stream and reset bytearray
+                        stream.flush()
                         bytesJPEG = bytes() 
                         if self.is_debug:  
                             self.__logger.debug("Frame#"+str(frameId))
@@ -298,13 +300,17 @@ class ESP32Camera(object):
                             self.callback_fct(frame)
                         
                     except Exception as e:
-                        time.sleep(.01) 
                         errorCounter+=1
+                    
+                    # limit thread workload
+                    time.sleep(.1)
 
                     
-            except ConnectionResetError as e:
+            except Exception as e:
+                # reopen stream?
                 self.__logger.error(e)
-                return
+                stream = urllib.request.urlopen(url, timeout=2)
+
 
         
     def soft_trigger(self):

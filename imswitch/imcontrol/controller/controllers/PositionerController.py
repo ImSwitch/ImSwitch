@@ -20,10 +20,12 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
-            self._widget.addPositioner(pName, pManager.axes)
+            speed = hasattr(pManager, 'speed')
+            self._widget.addPositioner(pName, pManager.axes, speed)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+                if speed:
+                    self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)

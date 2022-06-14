@@ -24,7 +24,10 @@ class PhotometricsManager(DetectorManager):
         fullShape = self._camera.sensor_size
 
         model = self._camera.name
-        self.scanLineTime = self._camera.scan_line_time
+        try:
+            self.__scanLineTime = self._camera.scan_line_time
+        except:
+            self.__scanLineTime = None
         self.__acquisition = False
         # Prepare parameters
         parameters = {
@@ -65,7 +68,7 @@ class PhotometricsManager(DetectorManager):
             if status == "READOUT_NOT_ACTIVE":
                 return self.image
             else:
-                return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
+                return np.array(self._camera.poll_frame()[0]['pixel_data'])
         except RuntimeError:
             return self.image
 
@@ -96,7 +99,8 @@ class PhotometricsManager(DetectorManager):
         self._frameStart = (hpos, vpos)
         # Only place self.shapes is changed
         self._shape = (hsize, vsize)
-        self.setParameter('Readout time', self.__scanLineTime * vsize / 1e6)
+        if self.__scanLineTime is not None:
+            self.setParameter('Readout time', self.__scanLineTime * vsize / 1e6)
 
     def setBinning(self, binning):
         super().setBinning(binning)
@@ -172,8 +176,10 @@ class PhotometricsManager(DetectorManager):
             self._performSafeCameraAction(portAction)
         else:
             raise ValueError(f'Invalid readout port "{port}"')
-        self._performSafeCameraAction(getScanTimeAction)
-        self.setParameter('Readout time', self.__scanLineTime * self._shape[0] / 1e6)
+        
+        if self.__scanLineTime is not None:
+            self._performSafeCameraAction(getScanTimeAction)
+            self.setParameter('Readout time', self.__scanLineTime * self._shape[0] / 1e6)
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need

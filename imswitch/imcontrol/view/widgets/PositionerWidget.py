@@ -62,7 +62,6 @@ class PositionerWidget(Widget):
         self.grid.addWidget(self.pars['SpeedEdit'], 0, 10)
         self.grid.addWidget(self.pars['SpeedUnit'], 0, 11)
         self.grid.addWidget(self.pars['ButtonSpeedEnter'], 0, 12)
-        self.grid.addWidget(self.pars['Speed'], self.numPositioners, 7)
         self.pars['ButtonSpeedEnter'].clicked.connect(
             lambda *args: self.sigsetSpeedClicked.emit()
         )

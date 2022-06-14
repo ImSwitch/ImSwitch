@@ -23,7 +23,11 @@ class PositionerController(ImConWidgetController):
             self._widget.addPositioner(pName, pManager.axes)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed[axis])
+      
+                try:
+                    self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+                except:
+                    pass
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)

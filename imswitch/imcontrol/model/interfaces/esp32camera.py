@@ -66,7 +66,7 @@ class CameraESP32Cam:
         
     def set_framesize(self,framesize):
         self.framesize=framesize
-        self.camera.frameSize(self.framesize)
+        self.camera.setFrameSize(self.framesize)
         
     def set_ledIntensity(self,ledIntensity):
         self.ledIntensity=ledIntensity
@@ -228,6 +228,15 @@ class ESP32Camera(object):
         path = '/postjson'
         r = self.post(path, payload)
         return r
+    
+    def setFrameSize(self, framesize=0):
+        payload = {
+            "framesize": framesize
+        }
+        path = '/postjson'
+        r = self.post(path, payload)
+        return r
+   
     
     def get_id(self):
         path = '/getID'

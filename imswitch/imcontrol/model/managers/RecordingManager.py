@@ -249,26 +249,6 @@ class RecordingWorker(Worker):
                     datasetNameWithScan = f'{datasetName}_scan{scanNum}'
                 datasetName = datasetNameWithScan
 
-            # Initial number of frames must not be 0; otherwise, too much disk space may get
-            # allocated. We remove this default frame later on if no frames are captured.
-            shape = shapes[detectorName]
-            if len(shape) > 2:
-                shape = shape[-2:]
-            datasets[detectorName] = files[detectorName].create_dataset(
-                datasetName, (1, *reversed(shape)),
-                maxshape=(None, *reversed(shape)),
-                dtype='i2'
-            )
-
-            for key, value in self.attrs[detectorName].items():
-                datasets[detectorName].attrs[key] = value
-
-            datasets[detectorName].attrs['detector_name'] = detectorName
-
-            # For ImageJ compatibility
-            datasets[detectorName].attrs['element_size_um'] \
-                = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
-
             if self.saveFormat == SaveFormat.HDF5:
                 # Initial number of frames must not be 0; otherwise, too much disk space may get
                 # allocated. We remove this default frame later on if no frames are captured.
@@ -286,7 +266,6 @@ class RecordingWorker(Worker):
 
                 for key, value in self.attrs[detectorName].items():
                     datasets[detectorName].attrs[key] = value
-
 
             elif self.saveFormat == SaveFormat.MP4:
                 # Need to initiliaze videowriter for each detector
@@ -316,6 +295,10 @@ class RecordingWorker(Worker):
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
 
+                if self.saveFormat == SaveFormat.TIFF:
+                    writer = tiff.TiffWriter(filePath)
+                else:
+                    writer = None
                 while (self.__recordingManager.record and
                        any([currentFrame[detectorName] < recFrames
                             for detectorName in self.detectorNames])):
@@ -330,7 +313,8 @@ class RecordingWorker(Worker):
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    # tiff.imwrite(filePath, newFrames, append=True, photometric="minisblack")
+                                    writer.write(newFrames, contiguous=True, photometric="minisblack")
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -366,6 +350,11 @@ class RecordingWorker(Worker):
                 start = time.time()
                 currentRecTime = 0
                 shouldStop = False
+                if self.saveFormat == SaveFormat.TIFF:
+                    writer = tiff.TiffWriter(filePath)
+                else:
+                    writer = None
+
                 while True:
                     for detectorName in self.detectorNames:
                         newFrames = self._getNewFrames(detectorName)
@@ -373,7 +362,8 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    writer.write(newFrames, contiguous=True)
+                                    # tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -444,6 +434,9 @@ class RecordingWorker(Worker):
             else:
                 raise ValueError('Unsupported recording mode specified')
         finally:
+
+            if self.saveFormat == SaveFormat.TIFF and writer is not None:
+                writer.close()
             
             if self.saveFormat == SaveFormat.MP4:
                 for detectorName, file in files.items():

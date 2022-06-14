@@ -70,20 +70,6 @@ class PositionerManager(ABC):
         """
         pass
 
-    def calibrate(self) -> bool:
-        """ Performs the internal operations to calibrate the positioner. """
-        raise NotImplementedError()
-    
-    def _doCalibration(self) -> bool:
-        """ Sets the positioner to the absolute-zero coordinates. Due to the delicate operation,
-        a confirmation from the user will be requested. If the function is not implemented or calibration fails
-        it will return False. Otherwise it will return True.
-        """
-        try:
-            return self.calibrate()
-        except NotImplementedError:
-            return False
-
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass

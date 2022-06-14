@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
+from pymmcore_plus._util import find_micromanager
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
 
@@ -233,6 +234,10 @@ class PyroServerInfo:
     host: Optional[str] = '127.0.0.1'
     port: Optional[int] = 54333
 
+@dataclass(frozen=True)
+class PyMMCoreInfo:
+    MMPath: Optional[str] = find_micromanager()
+    MMDevSearchPath: Optional[str] = None
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -280,6 +285,9 @@ class SetupInfo:
 
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
+
+    pymmcore: PyMMCoreInfo = field(default_factory=PyMMCoreInfo)
+    """ PyMMCore settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

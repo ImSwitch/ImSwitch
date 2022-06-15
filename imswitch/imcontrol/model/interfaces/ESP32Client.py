@@ -117,6 +117,9 @@ class ESP32Client(object):
         # initialize galvos
         self.galvo1 = galvo(channel=1)
         self.galvo2 = galvo(channel=2)
+        
+        self.serialport = serialport
+        self.baudrate = baudrate
 
 
         # connect to wifi or usb
@@ -130,49 +133,54 @@ class ESP32Client(object):
             self.is_connected = self.isConnected()
             if IS_IMSWITCH: self.__logger.debug(f"Connecting to microscope {self.host}:{self.port}")
 
-        elif serialport is not None:
-            # use client in wired mode
-            self.serialport = serialport # e.g.'/dev/cu.SLAB_USBtoUART'
-            self.is_serial = True
-
-            if IS_IMSWITCH: self.__logger.debug(f'Searching for SERIAL devices...')
-            self.is_connected = False
-            try:
-                self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
-                self.is_connected = True
-                time.sleep(2) # let it warm up
-            except:
-                # try to find the PORT
-                _available_ports = serial.tools.list_ports.comports(include_links=False)
-                for iport in _available_ports:
-                    # list of possible serial ports
-                    if IS_IMSWITCH: self.__logger.debug(iport.device)
-                    portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb", "/dev/cu.usbserial") # TODO: Hardcoded :/
-                    descriptionlist = ("CH340")
-                    if iport.device.startswith(portslist) or iport.description.find(descriptionlist) != -1:
-                        try:
-                            self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
-                            self.is_connected = True # attempting to initiliaze connection
-                            time.sleep(2)
-                            _state = self.get_state()
-                            _identifier_name = _state["identifier_name"]
-                            self.set_state(debug=False)
-                            if _identifier_name == "UC2_Feather":
-                                self.serialport = iport.device
-                                self.__logger.debug("We are connected: "+str(self.is_connected) + " on port: "+iport.device)
-                                return
-
-                        except Exception as e:
-                            if IS_IMSWITCH:
-                                self.__logger.debug("Trying out port "+iport.device+" failed")
-                                self.__logger.error(e)
-                            self.is_connected = False
+        elif self.serialport is not None:
+            self.initSerial(self.serialport,self.baudrate)
+            
         else:
             self.is_connected = False
             if IS_IMSWITCH: self.__logger.error("No ESP32 device is connected - check IP or Serial port!")
 
         self.__logger.debug("We are connected: "+str(self.is_connected))
 
+
+    def initSerial(self,serialport,baudrate):
+        # use client in wired mode
+        self.serialport = serialport # e.g.'/dev/cu.SLAB_USBtoUART'
+        self.is_serial = True
+
+        if IS_IMSWITCH: self.__logger.debug(f'Searching for SERIAL devices...')
+        self.is_connected = False
+        try:
+            self.serialdevice = serial.Serial(port=self.serialport, baudrate=baudrate, timeout=1)
+            self.is_connected = True
+            time.sleep(2) # let it warm up
+        except:
+            # try to find the PORT
+            _available_ports = serial.tools.list_ports.comports(include_links=False)
+            for iport in _available_ports:
+                # list of possible serial ports
+                if IS_IMSWITCH: self.__logger.debug(iport.device)
+                portslist = ("COM", "/dev/tt", "/dev/a", "/dev/cu.SLA","/dev/cu.wchusb", "/dev/cu.usbserial") # TODO: Hardcoded :/
+                descriptionlist = ("CH340")
+                if iport.device.startswith(portslist) or iport.description.find(descriptionlist) != -1:
+                    try:
+                        self.serialdevice = serial.Serial(port=iport.device, baudrate=baudrate, timeout=1)
+                        self.is_connected = True # attempting to initiliaze connection
+                        time.sleep(2)
+                        _state = self.get_state()
+                        _identifier_name = _state["identifier_name"]
+                        self.set_state(debug=False)
+                        if _identifier_name == "UC2_Feather":
+                            self.serialport = iport.device
+                            self.__logger.debug("We are connected: "+str(self.is_connected) + " on port: "+iport.device)
+                            return
+
+                    except Exception as e:
+                        if IS_IMSWITCH:
+                            self.__logger.debug("Trying out port "+iport.device+" failed")
+                            self.__logger.error(e)
+                        self.is_connected = False
+                        
     def isConnected(self):
         # check if client is connected to the same network
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -240,32 +248,49 @@ class ESP32Client(object):
                 # not connected
                 return None
 
-        elif self.is_connected and self.is_serial:
-            try:
-                payload["task"]
-            except:
-                payload["task"] = path
-            try:
-                is_blocking = payload['isblock']
-            except:
-                is_blocking = True
-            self.writeSerial(payload)
-            #self.__logger.debug(payload)
-            returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
-            return returnmessage
-        else:
-            return -1
+        elif self.is_serial:
+            if not self.is_connected:
+                # attempt to reconnect?
+                try:
+                    self.initSerial(self.serialport, self.baudrate)
+                except:
+                    return -1
+                
+                try:
+                    payload["task"]
+                except:
+                    payload["task"] = path
+                try:
+                    is_blocking = payload['isblock']
+                except:
+                    is_blocking = True
+                self.writeSerial(payload)
+                #self.__logger.debug(payload)
+                returnmessage = self.readSerial(is_blocking=is_blocking, timeout=timeout)
+                return returnmessage
+            else:
+                # nothing is connected
+                return -1
 
     def writeSerial(self, payload):
         """Write JSON document to serial device"""
-        self.serialdevice.flushInput()
-        self.serialdevice.flushOutput()
-        if type(payload)==dict:
-            payload = json.dumps(payload)
         try:
-            self.serialdevice.write(payload.encode(encoding='UTF-8'))
+            self.serialdevice.flushInput()
+            self.serialdevice.flushOutput()
+            if type(payload)==dict:
+                payload = json.dumps(payload)
+            try:
+                self.serialdevice.write(payload.encode(encoding='UTF-8'))
+            except Exception as e:
+                self.__logger.error(e)
         except Exception as e:
             self.__logger.error(e)
+            del self.serialdevice
+            try:
+                self.initSerial()
+            except:
+                pass
+            
 
     def readSerial(self, is_blocking=True, timeout = 15): # TODO: hardcoded timeout - not code
         """Receive and decode return message"""

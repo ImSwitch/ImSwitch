@@ -66,7 +66,12 @@ class CameraESP32Cam:
         
     def set_framesize(self,framesize):
         self.framesize=framesize
-
+        self.camera.setFrameSize(self.framesize)
+        
+    def set_ledIntensity(self,ledIntensity):
+        self.ledIntensity=ledIntensity
+        self.camera.setLed(self.ledIntensity)
+        
     def set_pixel_format(self,format):
         pass
         
@@ -95,6 +100,8 @@ class CameraESP32Cam:
             self.set_exposure_time(property_value)
         elif property_name == "framesize":
             self.set_framesize(property_value)
+        elif property_name == "led":
+            self.set_ledIntensity(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -106,6 +113,8 @@ class CameraESP32Cam:
             property_value = self.camera.gain
         elif property_name == "exposure":
             property_value = self.camera.exposuretime
+        elif property_name == "led":
+            property_value = self.camera.exposuretime            
         elif property_name == "framesize":
             property_value = self.camera.framesize
         elif property_name == "image_width":
@@ -187,22 +196,12 @@ class ESP32Camera(object):
 
     
     #% LED
-    def set_led(self, state=0):
+    def setLed(self, ledIntensity=0):
         payload = {
-            "value": state
+            "ledintensity": ledIntensity
         }
-        path = '/led'
-        if state:
-            self.__logger.debug("WARNING: TRIGGER won't work if LED is turned on!")
-        r = self.post_json(path, payload)
-        return r
-    
-    def set_flash(self, state=0):
-        payload = {
-            "value": state
-        }
-        path = '/flash'
-        r = self.post_json(path, payload)
+        path = '/postjson'
+        r = self.post(path, payload)
         return r
     
     def set_id(self, m_id=0):
@@ -229,6 +228,15 @@ class ESP32Camera(object):
         path = '/postjson'
         r = self.post(path, payload)
         return r
+    
+    def setFrameSize(self, framesize=0):
+        payload = {
+            "framesize": framesize
+        }
+        path = '/postjson'
+        r = self.post(path, payload)
+        return r
+   
     
     def get_id(self):
         path = '/getID'

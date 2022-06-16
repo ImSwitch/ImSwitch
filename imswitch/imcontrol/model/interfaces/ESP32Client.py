@@ -227,7 +227,7 @@ class ESP32Client(object):
         else:
             return None
 
-    def post_json(self, path, payload={}, headers=None, timeout=1):
+    def post_json(self, path, payload={}, headers=None, isInit=False, timeout=1):
         """Make an HTTP POST request and return the JSON response"""
         if self.is_connected and self.is_wifi:
             if not path.startswith("http"):
@@ -249,13 +249,8 @@ class ESP32Client(object):
                 return None
 
         elif self.is_serial:
-            if not self.is_connected:
-                # attempt to reconnect?
-                try:
-                    self.initSerial(self.serialport, self.baudrate)
-                except:
-                    return -1
-                
+            if self.is_connected or isInit:
+
                 try:
                     payload["task"]
                 except:
@@ -277,19 +272,24 @@ class ESP32Client(object):
         try:
             self.serialdevice.flushInput()
             self.serialdevice.flushOutput()
-            if type(payload)==dict:
-                payload = json.dumps(payload)
-            try:
-                self.serialdevice.write(payload.encode(encoding='UTF-8'))
-            except Exception as e:
-                self.__logger.error(e)
         except Exception as e:
             self.__logger.error(e)
             del self.serialdevice
+            self.is_connected=False
+            # attempt to reconnect?
             try:
-                self.initSerial()
+                self.initSerial(self.serialport, self.baudrate)
             except:
-                pass
+                return -1
+        
+        if type(payload)==dict:
+            payload = json.dumps(payload)
+        try:
+            self.serialdevice.write(payload.encode(encoding='UTF-8'))
+        except Exception as e:
+            self.__logger.error(e)
+
+            
             
 
     def readSerial(self, is_blocking=True, timeout = 15): # TODO: hardcoded timeout - not code
@@ -887,7 +887,7 @@ class ESP32Client(object):
         payload = {
             "task":path
         }
-        r = self.post_json(path, payload, timeout=timeout)
+        r = self.post_json(path, payload, isInit=True, timeout=timeout)
         return r
 
     def set_state(self, debug=False, timeout=1):

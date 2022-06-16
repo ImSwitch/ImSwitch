@@ -24,7 +24,7 @@ class MCTController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self)
+        self._logger = initLogger(self)
         
         # mct parameters
         self.nImages = 0
@@ -180,11 +180,10 @@ class MCTController(LiveUpdatedController):
                 pass
 
             # stop measurement once done
-            if self.nDuration > self.nImages:
+            if self.nDuration < self.nImages:
                 self.timer.stop()
                 self.isMCTrunning = False
                 self._widget.mctStartButton.setEnabled(True)
-                del self.timer
                 return
                 
             # this should decouple the hardware-related actions from the GUI - but it doesn't 
@@ -195,7 +194,7 @@ class MCTController(LiveUpdatedController):
         
     def takeTimelapseThread(self):
         # this wil run i nthe background
-        self.__logger.debug("Take image")
+        self._logger.debug("Take image")
         zstackParams = self._widget.getZStackValues()
         # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
@@ -266,11 +265,12 @@ class MCTController(LiveUpdatedController):
 
                 # store frames for displaying
                 if illuMode == "Laser1":
-                    self.LastStackLaser1.append(lastFrame)
+                    self._logger.debug(np.mean(lastFrame.copy()))
+                    self.LastStackLaser1.append(lastFrame.copy())
                 if illuMode == "Laser2":
-                    self.LastStackLaser2.append(lastFrame)
+                    self.LastStackLaser2.append(lastFrame.copy())
                 if illuMode == "Brightfield":
-                    self.LastStackLED.append(lastFrame)
+                    self.LastStackLED.append(lastFrame.copy())
             self.stages.setEnabled(is_enabled=False)
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
 
@@ -280,11 +280,11 @@ class MCTController(LiveUpdatedController):
             tif.imwrite(filePath, lastFrame)
             # store frames for displaying
             if illuMode == "Laser1":
-                self.LastStackLaser1.append(lastFrame)
+                self.LastStackLaser1.append(lastFrame.copy())
             if illuMode == "Laser2":
-                self.LastStackLaser2.append(lastFrame)
+                self.LastStackLaser2.append(lastFrame.copy())
             if illuMode == "Brightfield":
-                self.LastStackLED.append(lastFrame)
+                self.LastStackLED.append(lastFrame.copy())
 
         self.switchOffIllumination()
 

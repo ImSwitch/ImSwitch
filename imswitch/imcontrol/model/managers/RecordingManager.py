@@ -305,8 +305,8 @@ class RecordingWorker(Worker):
                     raise ValueError('recFrames must be specified in SpecFrames, ScanOnce or'
                                      ' ScanLapse mode')
 
-                if self.saveFormat == SaveFormat.TIFF:
-                    writer = tiff.TiffWriter(filePath)
+                if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                    writer = tiff.TiffWriter(filenames[detectorName])
                 else:
                     writer = None
                 while (self.__recordingManager.record and
@@ -323,8 +323,7 @@ class RecordingWorker(Worker):
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
-                                    filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    writer.write(newFrames, contiguous=True, photometric="minisblack")
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -361,7 +360,7 @@ class RecordingWorker(Worker):
                 currentRecTime = 0
                 shouldStop = False
                 if self.saveFormat == SaveFormat.TIFF:
-                    writer = tiff.TiffWriter(filePath)
+                    writer = tiff.TiffWriter(filenames[detectorName])
                 else:
                     writer = None
 
@@ -372,8 +371,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
-                                    filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True) # TODO: Single Tiff export doesnt work! 
+                                    writer.write(newFrames, contiguous=True, photometric="minisblack")
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -402,6 +400,10 @@ class RecordingWorker(Worker):
                 self.__recordingManager.sigRecordingTimeUpdated.emit(0)
             elif self.recMode == RecMode.UntilStop:
                 shouldStop = False
+                if self.saveFormat == SaveFormat.TIFF:
+                    writer = tiff.TiffWriter(filenames[detectorName])
+                else:
+                    writer = None
                 while True:
                     for detectorName in self.detectorNames:
                         newFrames = self._getNewFrames(detectorName)
@@ -409,8 +411,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                                 try:
-                                    filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True)
+                                    writer.write(newFrames, contiguous=True, photometric="minisblack")
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -448,7 +449,7 @@ class RecordingWorker(Worker):
                 raise ValueError('Unsupported recording mode specified')
         finally:
 
-            if self.saveFormat == SaveFormat.TIFF and writer is not None:
+            if (self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single) and writer is not None:
                 writer.close()
             
             if self.saveFormat == SaveFormat.MP4:

@@ -100,7 +100,17 @@ class ESP32LEDLaserManager(LaserManager):
 
     def sendTrigger(self, triggerId):
         self._rs232manager._esp32.sendTrigger(triggerId)
-
+        
+    def sendScanner(self, scannernFrames=100, scannerXFrameMin=0, scannerXFrameMax=255,
+        scannerYFrameMin=0, scannerYFrameMax=255, scannerEnable=0, scannerxMin=1, 
+        scannerxMax=5, scanneryMin=1, scanneryMax=5, scannerXStep=25,
+        scannerYStep=25, scannerLaserVal=32000, scannerExposure=500, scannerDelay=500):
+        
+        self._rs232manager._esp32.set_scanner_classic(scannernFrames, 
+            scannerXFrameMin, scannerXFrameMax, scannerYFrameMin, scannerYFrameMax, 
+            scannerEnable, scannerxMin, scannerxMax, scanneryMin, 
+            scanneryMax, scannerXStep, scannerYStep, scannerLaserVal, 
+            scannerExposure, scannerDelay)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

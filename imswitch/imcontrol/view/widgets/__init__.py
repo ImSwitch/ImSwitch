@@ -18,6 +18,7 @@ from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
 from .SIMWidget import SIMWidget
 from .MCTWidget import MCTWidget
+from .ISMWidget import ISMWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget

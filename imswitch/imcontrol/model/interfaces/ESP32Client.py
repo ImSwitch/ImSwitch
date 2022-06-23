@@ -857,6 +857,64 @@ class ESP32Client(object):
         path = '/led'
         r = self.post_json(path, payload)
         return r
+    
+    '''
+    ##############################################################################################################################
+    SCANNER
+    ##############################################################################################################################
+    '''
+    def set_scanner_pattern(self, numpyPattern, scannernFrames=1,
+            scannerLaserVal=32000,
+            scannerExposure=500, scannerDelay=500):
+
+        scannerModec="pattern",
+        path = '/scanner_act'
+        arraySize = np.prod(numpyPattern.shape)
+        payload = {
+            "task":path,
+            "scannernFrames":scannernFrames,
+            "scannerMode":scannerModec,
+            "arraySize":arraySize,
+            "i":numpyPattern.flatten().tolist(),
+            "scannerLaserVal":scannerLaserVal,
+            "scannerExposure":scannerExposure,
+            "scannerDelay":scannerDelay}
+
+        r = self.post_json(path, payload)
+        return r
+
+    def set_scanner_classic(self, scannernFrames=100,
+            scannerXFrameMin=0, scannerXFrameMax=255,
+            scannerYFrameMin=0, scannerYFrameMax=255,
+            scannerEnable=0, scannerxMin=1,
+            scannerxMax=5, scanneryMin=1,
+            scanneryMax=5, scannerXStep=25,
+            scannerYStep=25, scannerLaserVal=32000,
+            scannerExposure=500, scannerDelay=500):
+
+        scannerModec="classic",
+        path = '/scanner_act'
+        payload = {
+            "task":path,
+            "scannernFrames":scannernFrames,
+            "scannerMode":scannerModec,
+            "scannerXFrameMin":scannerXFrameMin,
+            "scannerXFrameMax":scannerXFrameMax,
+            "scannerYFrameMin":scannerYFrameMin,
+            "scannerYFrameMax":scannerYFrameMax,
+            "scannerEnable":scannerEnable,
+            "scannerxMin":scannerxMin,
+            "scannerxMax":scannerxMax,
+            "scanneryMin":scanneryMin,
+            "scanneryMax":scanneryMax,
+            "scannerXStep":scannerXStep,
+            "scannerYStep":scannerYStep,
+            "scannerLaserVal":scannerLaserVal,
+            "scannerExposure":scannerExposure,
+            "scannerDelay":scannerDelay}
+
+        r = self.post_json(path, payload)
+        return r
 
 
     def set_galvo_freq(self, axis=1, value=1000):

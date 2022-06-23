@@ -65,9 +65,17 @@ class ISMController(LiveUpdatedController):
 
         self.isISMrunning = False
         
-        set_scanner_pattern(self, numpyPattern, scannernFrames=1,
+
+        # try pattern
+        nUnitCell = 16
+        unitCell = np.zeros((nUnitCell,nUnitCell))
+        unitCell[0,0]=1
+        ismPattern = np.matlib.repmat(unitCell, int(256//nUnitCell), int(256//nUnitCell))
+        ismPatternIndex =  np.where(ismPattern.flatten()>0)[0]
+
+        self.laser.sendScannerPattern(ismPatternIndex, scannernFrames=1,
             scannerLaserVal=32000,
-            scannerExposure=500, scannerDelay=500):
+            scannerExposure=500, scannerDelay=500)
 
 
         self._widget.ISMShowLastButton.setEnabled(False)

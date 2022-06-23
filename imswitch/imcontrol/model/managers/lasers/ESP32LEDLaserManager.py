@@ -112,6 +112,14 @@ class ESP32LEDLaserManager(LaserManager):
             scanneryMax, scannerXStep, scannerYStep, scannerLaserVal, 
             scannerExposure, scannerDelay)
 
+    def sendScannerPattern(self, ismPatternIndex, scannernFrames=1,
+            scannerLaserVal=32000, scannerExposure=500, scannerDelay=500):
+
+        self._rs232manager._esp32.set_scanner_pattern(ismPatternIndex, scannernFrames,
+            scannerLaserVal, scannerExposure, scannerDelay)
+
+
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -112,6 +112,13 @@ class ImSwitchServer(Worker):
         self.__logger.info("MDA Finished: ")
         pass
 
+    @Pyro5.server.expose
+    def stepUp(self, name: str, axis: str, step: float):
+        self._channel.sigStepPositionerUp.emit(name, axis, step)
+    
+    @Pyro5.server.expose
+    def stepDown(self, name: str, axis: str, step: float):
+        self._channel.sigStepPositionerDown.emit(name, axis, step)
 
 # Copyright (C) 2021, Talley Lambert
 # All rights reserved.

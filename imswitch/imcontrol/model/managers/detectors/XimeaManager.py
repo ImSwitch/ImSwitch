@@ -1,11 +1,12 @@
 import numpy as np
+import Pyro5.api
 from ximea.xiapi import Xi_error
 from imswitch.imcontrol.model.interfaces import XimeaSettings
 from imswitch.imcommon.model import initLogger
 from contextlib import contextmanager
 
 from .DetectorManager import (
-    DetectorManager, DetectorNumberParameter, DetectorListParameter
+    DetectorManager, DetectorNumberParameter, DetectorListParameter, DetectorAction
 )
 
 class XimeaManager(DetectorManager):
@@ -17,7 +18,9 @@ class XimeaManager(DetectorManager):
     - ``cameraListIndex`` -- the camera's index in the Ximea camera list
       (list indexing starts at 0); set this to an invalid value, e.g. the
       string "mock" to load a mocker
-    - ``ximea`` -- dictionary of DCAM API properties to pass to the driver
+    - ``parameters`` -- dictionary of XiAPI properties to pass to the driver
+    - ``medianFilter`` -- dictionary of parameters required for median filter acquisition
+    - ``server`` -- URI of local ImSwitchServer in the format of host-port (i.e. \"127.0.0.1:54333\") 
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
@@ -35,10 +38,37 @@ class XimeaManager(DetectorManager):
 
         model = self._camera.get_device_info_string("device_name").decode("utf-8")
 
-        for propertyName, propertyValue in detectorInfo.managerProperties['ximea'].items():
+        for propertyName, propertyValue in detectorInfo.managerProperties['parameters'].items():
             self._camera.set_param(propertyName, propertyValue)
+        
+        server = detectorInfo.managerProperties["server"]
 
-        # Prepare parameters
+        try:
+            if server is None:
+                self.__proxy = None
+            elif server == "default":
+                uri = Pyro5.api.URI("PYRO:ImSwitchServer@127.0.0.1:54333")
+                self.__proxy = Pyro5.api.Proxy(uri)
+            else:
+                uri_str = "PYRO:ImSwitchServer@" + server
+                uri = Pyro5.api.URI(uri_str)
+                self.__proxy = Pyro5.api.Proxy(uri)
+        except:
+            self.__logger.warning("Failed to connect to ImSwitchServer")
+            self.__proxy = None
+
+        # gather parameters for median filter control
+        try:
+            self.__mfPositioners = detectorInfo.managerProperties["medianFilter"]["positioners"]
+            self.__mfStep = detectorInfo.managerProperties["medianFilter"]["step"]
+            self.__mfMaxFrames = detectorInfo.managerProperties["medianFilter"]["maxFrames"]
+        except:
+            self.__logger.warning("No information available for median filter control.")
+            self.__mfPositioners = None
+            self.__mfStep = None
+            self.__mfMaxFrames = None
+
+        # prepare parameters
         parameters = {
             'Exposure': DetectorNumberParameter(group='Timings', value=1e-3,
                                                          valueUnits='s', editable=True),
@@ -69,13 +99,27 @@ class XimeaManager(DetectorManager):
                                                 editable=True),
 
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=13.7,
-                                                         valueUnits='µm', editable=False),                                                        
+                                                         valueUnits='µm', editable=True),                                                        
         }
 
-        self._isAcquiring = False
+        actions = {}
+        if (self.__proxy is not None
+                and self.__mfPositioners is not None
+                and self.__mfStep is not None
+                and self.__mfMaxFrames is not None):
+            
+            parameters["Step size"] = DetectorNumberParameter(group="Median Filter", value=self.__mfStep, valueUnits="µm", editable=True)
+            parameters["Number of frames"] = DetectorNumberParameter(group="Median Filter", value=self.__mfMaxFrames, valueUnits="", editable=True)
+
+            actions["Generate median filter"] = DetectorAction(group="Median Filter", func=self._generateMedianFilter)
+            actions["Clear median filter"] = DetectorAction(group="Median Filter", func=self._clearMedianFilter)
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, croppable=True)
+                         model=model, parameters=parameters, croppable=True, actions=actions)
+        
+        # apparently the XiAPI for detecting if camera is in acquisition does not work
+        # we need to use a flag
+        self._isAcquiring = False
     
     @property
     def pixelSizeUm(self):
@@ -86,8 +130,7 @@ class XimeaManager(DetectorManager):
         self._camera.get_image(self._img)
         data = self._img.get_image_data_numpy()
         if self._median is not None:
-            data = data.astype(np.float32)
-            data = data / self._median
+            data = np.subtract(data, self._median, dtype=np.float32)
         return data
 
     def getChunk(self):
@@ -104,6 +147,17 @@ class XimeaManager(DetectorManager):
                 yield
             finally:
                 self.startAcquisition()
+        else:
+            yield
+    
+    @contextmanager
+    def _camera_enabled(self):
+        if not self._isAcquiring:
+            try:
+                self.startAcquisition()
+                yield
+            finally:
+                self.stopAcquisition()
         else:
             yield
 
@@ -153,6 +207,15 @@ class XimeaManager(DetectorManager):
         super().setBinning(binning)
 
     def setParameter(self, name : str, value):
+
+        if name == "Step size" or name == "Number of frames":
+            if name == "Step size":
+                self.__mfStep = value
+            elif name == "Number of frames":
+                self.__mfMaxFrames = value
+            super().setParameter(name, value)
+            return self.parameters
+
         # Ximea parameters should follow the naming convention
         # described in https://www.ximea.com/support/wiki/apis/XiAPI_Manual
         ximea_value = None
@@ -181,30 +244,14 @@ class XimeaManager(DetectorManager):
 
     def startAcquisition(self):
         self._isAcquiring = True
-        self.__logger.info("Ximea acquisition started!")
         self._camera.start_acquisition()
 
     def stopAcquisition(self):
         self._isAcquiring = False
-        self.__logger.info("Ximea acquisition stopped!")
         self._camera.stop_acquisition()
     
     def finalize(self) -> None:
         self._camera.close_device()
-
-    def _setExposure(self, time):
-        self._camera.set_exposure(time)
-
-    def _performSafeCameraAction(self, function):
-        """ This method is used to change those camera properties that need
-        the camera to be idle to be able to be adjusted.
-        """
-        try:
-            function()
-        except Exception:
-            self.stopAcquisition()
-            function()
-            self.startAcquisition()
 
     def _getCameraObj(self, cameraId):
 
@@ -225,3 +272,35 @@ class XimeaManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera_name}')
         return camera, image
+
+    def _generateMedianFilter(self):
+        self.__logger.warning("Generating median filter...")
+        with self._camera_enabled():
+            buffer = []
+            # we generate a square movement on the X-Y axis
+            # we need to make sure that the maximum number of frames
+            # is coherent (must be divisible by 4)
+            residual = self.__mfMaxFrames % 4
+            if residual != 0:
+                self.__logger.warning(f"Adjusting maximum number of frames to {residual + self.__mfMaxFrames}")
+                self.__mfMaxFrames += residual
+                super().setParameter("Number of frames", self.__mfMaxFrames)
+            movementList = ["X", "Y", "-X", "-Y"]
+            movements = int(self.__mfMaxFrames / 4)
+            for ax in movementList:
+                if not "-" in ax:
+                    for _ in range(movements):
+                        self.__proxy.stepUp(self.__mfPositioners[ax], ax,  self.__mfStep)
+                        buffer.append(self.getLatestFrame())
+                else:
+                    ax = ax.replace("-", "")
+                    for _ in range(movements):
+                        self.__proxy.stepDown(self.__mfPositioners[ax], ax,  self.__mfStep)
+                        buffer.append(self.getLatestFrame())
+        
+        self._median = np.median(np.stack(buffer), axis=0)
+        self.__logger.warning("... done!")
+    
+    def _clearMedianFilter(self):
+        self.__logger.warning("Clearing median filter")
+        self._median = None

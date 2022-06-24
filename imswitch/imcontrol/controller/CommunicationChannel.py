@@ -91,6 +91,9 @@ class CommunicationChannel(SignalInterface):
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
 
+    sigStepPositionerUp = Signal(str, str, float) # positionerName, axis, stepSize
+    sigStepPositionerDown = Signal(str, str, float) # positionerName, axis, stepSize
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs

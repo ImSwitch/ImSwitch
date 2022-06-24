@@ -32,6 +32,9 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sigSetXYPosition.connect(lambda x, y: self.setXYPosition(x, y))
         self._commChannel.sigSetZPosition.connect(lambda z: self.setZPosition(z))
         self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
+        
+        self._commChannel.sigStepPositionerUp.connect(self.stepPositionerUp)
+        self._commChannel.sigStepPositionerDown.connect(self.stepPositionerDown)
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -93,6 +96,15 @@ class PositionerController(ImConWidgetController):
             self._commChannel.sharedAttrs[(_attrCategory, positionerName, axis, attr)] = value
         finally:
             self.settingAttr = False
+    
+    def stepPositionerUp(self, name: str, axis: str, step: float):    
+        self._widget.setStepSize(name, axis, str(step))
+        self.stepUp(name, axis)
+
+    def stepPositionerDown(self, name: str, axis: str, step: float):
+        self._widget.setStepSize(name, axis, str(step))
+        self.stepDown(name, axis)
+
 
     def setXYPosition(self, x, y):
         positionerX = self.getPositionerNames()[0]

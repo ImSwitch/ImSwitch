@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses_json import dataclass_json, Undefined, CatchAll
 
 
-@dataclass(frozen=True)
+@dataclass
 class DeviceInfo:
     analogChannel: Optional[Union[str, int]]
     """ Channel for analog communication. ``null`` if the device is digital or
@@ -37,7 +37,7 @@ class DeviceInfo:
             return self.digitalLine
 
 
-@dataclass(frozen=True)
+@dataclass
 class DetectorInfo(DeviceInfo):
     forAcquisition: bool = False
     """ Whether the detector is used for acquisition. """
@@ -46,7 +46,7 @@ class DetectorInfo(DeviceInfo):
     """ Whether the detector is used for focus lock. """
 
 
-@dataclass(frozen=True)
+@dataclass
 class LaserInfo(DeviceInfo):
     valueRangeMin: Optional[Union[int, float]]
     """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
@@ -74,10 +74,13 @@ class LaserInfo(DeviceInfo):
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class PositionerInfo(DeviceInfo):
-    axes: Union[List[str], Dict[str, Any]]
+    axes: List[str]
     """ A list of axes (names) that the positioner controls. """
+
+    startPositions: Dict[str, float] = field(default_factory=dict)
+    """ Starting positions for each axis. """
 
     isPositiveDirection: bool = True
     """ Whether the direction of the positioner is positive. """
@@ -87,6 +90,9 @@ class PositionerInfo(DeviceInfo):
 
     forScanning: bool = False
     """ Whether the positioner is used for scanning. """
+
+    storePosition: bool = False
+    """ Wether the positioner should store the last recorded position. """
 
 
 @dataclass(frozen=True)

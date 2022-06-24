@@ -25,6 +25,7 @@ class PositionerManager(ABC):
         self.__axes = (positionerInfo.axes if isinstance(positionerInfo.axes, list) else list(positionerInfo.axes.keys()))
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
+        self.__storePosition = positionerInfo.storePosition
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -54,6 +55,11 @@ class PositionerManager(ABC):
     def forScanning(self) -> bool:
         """ Whether the positioner is used for scanning. """
         return self.__forScanning
+    
+    @property
+    def storePosition(self) -> bool:
+        """ Wether the positioner should store the last recorded position. """
+        return self.__storePosition
 
     @abstractmethod
     def move(self, dist: float, axis: str):

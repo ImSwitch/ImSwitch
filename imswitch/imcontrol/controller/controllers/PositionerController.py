@@ -43,7 +43,7 @@ class PositionerController(ImConWidgetController):
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
-            lambda p: [p.setPosition(0, axis) for axis in p.axes]
+            lambda p: [p.setPosition(0, axis) for axis in p.axes if not p.storePosition]
         )
 
     def getPos(self):
@@ -97,13 +97,11 @@ class PositionerController(ImConWidgetController):
         finally:
             self.settingAttr = False
     
-    def stepPositionerUp(self, name: str, axis: str, step: float):    
-        self._widget.setStepSize(name, axis, str(step))
-        self.stepUp(name, axis)
+    def stepPositionerUp(self, name: str, axis: str, step: float):
+        self.move(name, axis, step)
 
     def stepPositionerDown(self, name: str, axis: str, step: float):
-        self._widget.setStepSize(name, axis, str(step))
-        self.stepDown(name, axis)
+        self.move(name, axis, -step)
 
 
     def setXYPosition(self, x, y):

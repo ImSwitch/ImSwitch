@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
-from pymmcore_plus._util import find_micromanager
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
 
@@ -236,7 +235,7 @@ class PyroServerInfo:
 
 @dataclass(frozen=True)
 class PyMMCoreInfo:
-    MMPath: Optional[str] = find_micromanager()
+    MMPath: Optional[str] = "C:/Program Files/Micro-Manager-2.0"
     MMDevSearchPath: Optional[str] = None
 
 @dataclass_json(undefined=Undefined.INCLUDE)

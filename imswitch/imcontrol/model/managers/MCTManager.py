@@ -20,14 +20,7 @@ class MCTManager(SignalInterface):
 
         if mctInfo is None:
             return
-
-        self.__mctInfo = mctInfo
-        self.__wavelength = self.__mctInfo.wavelength
-        self.__pixelsize = self.__mctInfo.pixelSize
-        self.__angleMount = self.__mctInfo.angleMount
-        self.__mctSize = (self.__mctInfo.width, self.__mctInfo.height)
-        self.__patternsDir = self.__mctInfo.patternsDir
-        
+       
         
         self.update()
 

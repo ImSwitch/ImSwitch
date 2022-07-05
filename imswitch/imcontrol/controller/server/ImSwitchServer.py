@@ -52,6 +52,18 @@ class ImSwitchServer(Worker):
         return self._channel.get_image(detectorName)
 
     @Pyro5.server.expose
+    def runScript(self, text):
+        self._channel.runScript(text)
+
+    @Pyro5.server.expose
+    def getOutput(self) -> np.ndarray:
+        return np.array(self._channel.output)
+
+    @Pyro5.server.expose
+    def isExecuting(self) -> bool:
+        return self._channel.isExecuting()
+
+    @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:
         self.__logger.info("MDA Started: {}")
         self._paused = False

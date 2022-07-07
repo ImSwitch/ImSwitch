@@ -1,6 +1,6 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
-from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
+
 
 class ESP32LightSheetManager(LaserManager):
 

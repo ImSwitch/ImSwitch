@@ -113,10 +113,10 @@ class ESP32LEDLaserManager(LaserManager):
             scannerExposure, scannerDelay)
 
     def sendScannerPattern(self, ismPatternIndex, scannernFrames=1,
-            scannerLaserVal=32000, scannerExposure=500, scannerDelay=500):
+            scannerLaserVal=32000, scannerExposure=500, scannerDelay=500, isBlocking=False):
 
         self._rs232manager._esp32.set_scanner_pattern(ismPatternIndex, scannernFrames,
-            scannerLaserVal, scannerExposure, scannerDelay)
+            scannerLaserVal, scannerExposure, scannerDelay, isBlocking)
 
 
 

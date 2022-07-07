@@ -65,73 +65,71 @@ class ISMController(LiveUpdatedController):
 
         self.isISMrunning = False
         
+        self._widget.ISMShowLastButton.setEnabled(False)
 
+
+    def getISMFrame(self, nFrame=0):
         # try pattern
+        nPixels = 256
         nUnitCell = 16
         unitCell = np.zeros((nUnitCell,nUnitCell))
-        unitCell[0,0]=1
-        ismPattern = np.matlib.repmat(unitCell, int(256//nUnitCell), int(256//nUnitCell))
+        iX = nFrame//nUnitCell
+        iY = nFrame%nUnitCell
+        unitCell[iX,iY]=1
+        ismPattern = np.matlib.repmat(unitCell, int(nPixels//nUnitCell), int(nPixels//nUnitCell))
         ismPatternIndex =  np.where(ismPattern.flatten()>0)[0]
-
+        return ismPatternIndex
+        
+    def initFilter(self):
+        ismPatternIndex = self.getISMFrame(nFrame=0)
         self.laser.sendScannerPattern(ismPatternIndex, scannernFrames=1,
             scannerLaserVal=32000,
             scannerExposure=500, scannerDelay=500)
-
-
-        self._widget.ISMShowLastButton.setEnabled(False)
-        
-    def initFilter(self):
-        self._widget.setNImages("Initializing filter position...")
-        self.lasers[0].initFilter()
-
-
+        self._widget.setText("Displaying standard pattern")
         
     def startISM(self):
         # initilaze setup
         # this is not a thread!
         self._widget.ISMStartButton.setEnabled(False)
-        self.sendScanner( scannernFrames=100, scannerXFrameMin=0, scannerXFrameMax=255,
-            scannerYFrameMin=0, scannerYFrameMax=255, scannerEnable=0, scannerxMin=1, 
-            scannerxMax=5, scanneryMin=1, scanneryMax=5, scannerXStep=25,
-            scannerYStep=25, scannerLaserVal=32000, scannerExposure=500, scannerDelay=500)
             
-        if not self.isISMrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
+        if not self.isISMrunning and self.Laser1Value>0:
             self.nImages = 0
-            self._widget.setNImages("Starting timelapse...")
+            self._widget.setText("Starting ISM...")
             self.switchOffIllumination()
-            self.lasers[0].initFilter()
 
             # get parameters from GUI
-            self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
-            self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
+            #self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
+            #self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
             self.ISMFilename = self._widget.getFilename()
             self.ISMDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
             # store old values for later
             self.Laser1ValueOld = self.lasers[0].power            
-            self.Laser2ValueOld = self.lasers[1].power
-            self.LEDValueOld = self.leds[0].power
             
             # reserve space for the stack
             self._widget.ISMShowLastButton.setEnabled(False)
 
-            # initiliazing the update scheme for pulling pressure measurement values
-            self.timer = Timer()
-            self.timer.timeout.connect(self.takeTimelapse())
-            self.timer.start(self.timePeriod*1000)
-            self.startTime = ptime.time()
-
-        else:
-            
+            # Initiate ISM Imaging
+        
+            try:
+                # make sure there is no exisiting thrad 
+                del self.ISMThread
+            except:
+                pass
+                
+            # this should decouple the hardware-related actions from the GUI - but it doesn't 
+            self.isISMrunning = True
+            self.ISMThread = threading.Thread(target=self.takeISMImageThread, args=(), daemon=True)
+            self.ISMThread.start()
+        else:            
             self.isISMrunning = False
             self._widget.ISMStartButton.setEnabled(True)
 
 
-        
     def stopISM(self):
         self.isISMrunning = False
         
-        self._widget.setNImages("Stopping timelapse...")
+        self._widget.setText("Stopping timelapse...")
 
         self._widget.ISMStartButton.setEnabled(True)
         try:
@@ -144,12 +142,11 @@ class ISMController(LiveUpdatedController):
         except:
             pass
         
-        self._widget.setNImages("Done wit timelapse...")
+        self._widget.setText("Done wit timelapse...")
     
         # store old values for later
         self.lasers[0].setValue(self.Laser1ValueOld)            
-        self.lasers[1].setValue(self.Laser2ValueOld)            
-        self.leds[0].setValue(self.LEDValueOld) 
+
 
     def showLast(self):
         try:
@@ -171,124 +168,38 @@ class ISMController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    def takeTimelapse(self):
-        # this is called periodically by the timer
-        if not self.isISMrunning:
-            try:
-                # make sure there is no exisiting thrad 
-                del self.ISMThread
-            except:
-                pass
 
-            # stop measurement once done
-            if self.nDuration < self.nImages:
-                self.timer.stop()
-                self.isISMrunning = False
-                self._widget.ISMStartButton.setEnabled(True)
-                return
-                
-            # this should decouple the hardware-related actions from the GUI - but it doesn't 
-            self.isISMrunning = True
-            self.ISMThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
-            self.ISMThread.start()
             
         
-    def takeTimelapseThread(self):
+    def takeISMImageThread(self):
         # this wil run i nthe background
-        self._logger.debug("Take image")
-        zstackParams = self._widget.getZStackValues()
+        self._logger.debug("Take ISM images")
+        
         # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
-        self.LastStackLaser2 = []
-        self.LastStackLED = []
+        
+        for iISMimage in range(16*16):
+            # 1: Display ISM Frame
+            ismPatternIndex = self.getISMFrame(nFrame=iISMimage)
+            self._widget.setText("Displaying pattern # "+str(iISMimage))
+            self.laser.sendScannerPattern(ismPatternIndex, scannernFrames=10,
+                scannerLaserVal=32000,
+                scannerExposure=500, scannerDelay=500, isBlocking=False)
+            filePath = self.getSaveFilePath(date=self.ISMDate, filename=f'{self.ISMFilename}_{iISMimage}', extension=".tif")
+            time.sleep(self.tUnshake) # wait for display
+            lastFrame = self.detector.getLatestFrame()
+            self.LastStackLaser1.append(lastFrame)
+            tif.imwrite(filePath, lastFrame, append=True)
 
-        if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
-        if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, zstackParams=zstackParams)
-        if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, zstackParams=zstackParams)
-                
-        self.nImages += 1
-        self._widget.setNImages(self.nImages)
+            self.nImages += 1
+            self._widget.setText(self.nImages)
 
         self.isISMrunning = False
 
         self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
-        
         self._widget.ISMShowLastButton.setEnabled(True)
-
-
-    def takeImageIllu(self, illuMode, intensity, zstackParams=None):
-        self._logger.debug("Take image:" + illuMode + str(intensity))
-        fileExtension = 'tif'
-        if illuMode == "Laser1":
-            try:
-                self.lasers[0].setValue(intensity)
-                self.lasers[0].setEnabled(True)
-            except:
-                pass
-        if illuMode == "Laser2":
-            try:
-                self.lasers[1].setValue(intensity)
-                self.lasers[1].setEnabled(True)
-            except:
-                pass
-        if illuMode == "Brightfield":
-            try:
-                if intensity > 255: intensity=255 
-                if intensity < 0: intensity=0
-                self.leds[0].setValue(intensity)
-                self.leds[0].setEnabled(True)
-                #self.illu.setAll((intensity,intensity,intensity))
-                time.sleep(0.1)
-            except:
-                pass
+        self._widget.ISMStartButton.setEnabled(True)
         
-        # sync with camera frame
-        time.sleep(.15)
-
-        if zstackParams[-1]:
-            # perform a z-stack
-            stepsCounter = 0
-            backlash=0
-            self.stages.setEnabled(is_enabled=True)
-            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
-            for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
-                stepsCounter += zstackParams[2]
-                self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.ISMDate, filename=f'{self.ISMFilename}_{illuMode}_Z_{stepsCounter}', extension=fileExtension)
-                time.sleep(self.tUnshake) # unshake
-                lastFrame = self.detector.getLatestFrame()
-                tif.imwrite(filePath, lastFrame, append=True)
-
-                # store frames for displaying
-                if illuMode == "Laser1":
-                    self._logger.debug(np.mean(lastFrame.copy()))
-                    self.LastStackLaser1.append(lastFrame.copy())
-                if illuMode == "Laser2":
-                    self.LastStackLaser2.append(lastFrame.copy())
-                if illuMode == "Brightfield":
-                    self.LastStackLED.append(lastFrame.copy())
-            self.stages.setEnabled(is_enabled=False)
-            self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
-
-        else:
-            filePath = self.getSaveFilePath(date=self.ISMDate, filename=f'{self.ISMFilename}_{illuMode}', extension=fileExtension)            
-            lastFrame = self.detector.getLatestFrame()
-            tif.imwrite(filePath, lastFrame)
-            # store frames for displaying
-            if illuMode == "Laser1":
-                self.LastStackLaser1.append(lastFrame.copy())
-            if illuMode == "Laser2":
-                self.LastStackLaser2.append(lastFrame.copy())
-            if illuMode == "Brightfield":
-                self.LastStackLED.append(lastFrame.copy())
-
-        self.switchOffIllumination()
-
 
     def switchOffIllumination(self):
         # switch off all illu sources

@@ -175,6 +175,21 @@ class MCTInfo:
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
+    
+@dataclass(frozen=True)
+class ISMInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
 
 @dataclass(frozen=True)
 class FocusLockInfo:
@@ -319,6 +334,9 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    ism: Optional[ISMInfo] = field(default_factory=lambda: None)
+    """ ISM settings. Required to be defined to use ISM functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock

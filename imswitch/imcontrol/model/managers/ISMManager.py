@@ -11,16 +11,17 @@ from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
 
-class MCTManager(SignalInterface):
-    sigMCTMaskUpdated = Signal(object)  # (maskCombined)
+class ISMManager(SignalInterface):
+    sigISMMaskUpdated = Signal(object)  # (maskCombined)
 
-    def __init__(self, mctInfo, *args, **kwargs):
+    def __init__(self, ISMInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if mctInfo is None:
+        if ISMInfo is None:
             return
-       
+
+        self.__ISMInfo = ISMInfo
         
         self.update()
 
@@ -30,7 +31,7 @@ class MCTManager(SignalInterface):
         #self.allPatternsPaths
         #self.maskDouble = self.__masks[0].concat(self.__masks[1])
         #self.maskCombined = self.maskDouble 
-        #self.sigMCTMaskUpdated.emit(self.maskCombined)
+        #self.sigISMMaskUpdated.emit(self.maskCombined)
 
         #returnmask = self.maskDouble 
         return None #returnmask.image()

@@ -1,6 +1,6 @@
 from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
-
+import time
 
 PHYS_FACTOR = 1
 class ESP32StageManager(PositionerManager):
@@ -20,7 +20,7 @@ class ESP32StageManager(PositionerManager):
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
 
-    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True):
+    def move(self, value=0, axis="X", is_absolute=False, is_blocking=False):
         if axis == 'X':
             self._rs232manager._esp32.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value

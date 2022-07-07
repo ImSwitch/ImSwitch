@@ -78,7 +78,10 @@ class MCTController(LiveUpdatedController):
             if iDevice.find("LED")>=0:
                 self.leds.append(self._master.lasersManager[iDevice])
         
-        self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
+        try:
+            self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
+        except:
+            self.illu = None
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -98,7 +101,10 @@ class MCTController(LiveUpdatedController):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
             self.switchOffIllumination()
-            self.lasers[0].initFilter()
+            try:
+                self.lasers[0].initFilter()
+            except:
+                pass
 
             # get parameters from GUI
             self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
@@ -109,8 +115,10 @@ class MCTController(LiveUpdatedController):
             # store old values for later
             self.Laser1ValueOld = self.lasers[0].power            
             self.Laser2ValueOld = self.lasers[1].power
-            self.LEDValueOld = self.leds[0].power
-            
+            try:
+                self.LEDValueOld = self.leds[0].power
+            except:
+                pass        
             # reserve space for the stack
             self._widget.mctShowLastButton.setEnabled(False)
 
@@ -148,7 +156,11 @@ class MCTController(LiveUpdatedController):
         # store old values for later
         self.lasers[0].setValue(self.Laser1ValueOld)            
         self.lasers[1].setValue(self.Laser2ValueOld)            
-        self.leds[0].setValue(self.LEDValueOld) 
+        try:
+            self.leds[0].setValue(self.LEDValueOld) 
+        except:
+            pass
+
 
     def showLast(self):
         try:

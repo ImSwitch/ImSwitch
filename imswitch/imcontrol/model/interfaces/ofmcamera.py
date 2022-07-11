@@ -235,7 +235,7 @@ class ofmCamera(object):
         url = "http://"+self.host+":"+str(self.port)+"/api/v2/streams/snapshot"
         response = requests.get(url)
         bytes_im = io.BytesIO(response.content)
-        frame = np.uint8(np.mean(np.array(Image.open(bytes_im)))
+        frame = np.uint8(np.array(Image.open(bytes_im)))
         return frame
         
     def getframes(self, url):           

@@ -168,9 +168,11 @@ class MCTWidget(NapariHybridWidget):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im, colormap="gray", name=""):
+    def setImage(self, im, colormap="gray", name="", pixelsizeZ=1):
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, name=name, blending='additive')
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+                                               scale=(1, 1, pixelsizeZ),
+                                               name=name, blending='additive')
         self.layer.data = im
         
         

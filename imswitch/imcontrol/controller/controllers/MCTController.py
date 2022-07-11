@@ -45,6 +45,8 @@ class MCTController(LiveUpdatedController):
         self.MCTFilename = ""
         
         self.updateRate=2
+        
+        self.pixelsizeZ=10
 
         self.tUnshake = .1
         
@@ -151,18 +153,19 @@ class MCTController(LiveUpdatedController):
         self.leds[0].setValue(self.LEDValueOld) 
 
     def showLast(self):
+        
         try:
-            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP")
+            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsizeZ=self.pixelsizeZ)
         except  Exception as e:
             self._logger.error(e)
 
         try:
-            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red")
+            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red",pixelsizeZ=self.pixelsizeZ)
         except Exception as e:
             self._logger.error(e)
             
         try:
-            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield")
+            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsizeZ=self.pixelsizeZ)
         except  Exception as e:
             self._logger.error(e)
 

@@ -101,8 +101,9 @@ class CameraPCO:
         self.camera.close()
         
     def set_exposure_time(self,exposure_time):
+        self.exposure_time = exposure_time
         try:
-            self.camera.set_exposure_time(self.exposure_time*1e-6)
+            self.camera.set_exposure_time(self.exposure_time*1e-3)
         except:
             self.__logger.error("Not possible to set exposure time now...(PCO)")
 

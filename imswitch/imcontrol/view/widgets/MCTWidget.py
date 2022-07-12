@@ -25,8 +25,6 @@ class MCTWidget(NapariHybridWidget):
     sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
     sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
-
-
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
@@ -38,7 +36,11 @@ class MCTWidget(NapariHybridWidget):
         # period
         self.mctLabelTimePeriod  = QtWidgets.QLabel('Period T (s):')
         self.mctValueTimePeriod = QtWidgets.QLineEdit('5')
-
+        
+        # duration
+        self.mctLabelTimeDuration  = QtWidgets.QLabel('N Measurements:')
+        self.mctValueTimeDuration = QtWidgets.QLineEdit('1')
+        
         # z-stack
         self.mctLabelZStack  = QtWidgets.QLabel('Z-Stack (min,max,steps):')        
         self.mctValueZmin = QtWidgets.QLineEdit('0')
@@ -105,7 +107,7 @@ class MCTWidget(NapariHybridWidget):
         )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
-        self.mctEditFileName  = QtWidgets.QLabel('Test')
+        self.mctEditFileName  = QtWidgets.QLineEdit('MCT')
         self.mctNImages  = QtWidgets.QLabel('Number of images: ')
 
         self.mctStartButton = guitools.BetterPushButton('Start')
@@ -133,7 +135,8 @@ class MCTWidget(NapariHybridWidget):
 
         self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
-        self.grid.addWidget(self.mctDoZStack, 0, 2, 1, 1)
+        self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
+        self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
         self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
@@ -154,6 +157,9 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctStopButton, 6, 1, 1, 1)
         self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
         self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
+        
+        self.grid.addWidget(self.mctDoZStack, 5, 3, 1, 1)
+
         
         self.layer = None
         
@@ -178,18 +184,16 @@ class MCTWidget(NapariHybridWidget):
  
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
-        return mctValueTimePeriod
-    
+        mctValueTimeDuration = int(self.mctValueTimeDuration.text())
+        return mctValueTimePeriod, mctValueTimeDuration
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()
-        from datetime import datetime
-        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-        
-        return f"{date}_{mctEditFileName}"
+        return mctEditFileName
     
     def setNImages(self, nImages):
-        self.mctNImages.setText('Number of images: '+str(nImages))
+        nImages2Do = self.getTimelapseValues()[-1]
+        self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     
     
     

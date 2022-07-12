@@ -17,6 +17,7 @@ from .RecordingController import RecordingController
 from .SLMController import SLMController
 from .SIMController import SIMController
 from .MCTController import MCTController
+from .ISMController import ISMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController

@@ -1,6 +1,5 @@
 from imswitch.imcommon.model import initLogger
 from .LEDMatrixManager import LEDMatrixManager
-from imswitch.imcontrol.model.interfaces.ESP32Client import ESP32Client
 import numpy as np
 
 class ESP32LEDMatrixManager(LEDMatrixManager):

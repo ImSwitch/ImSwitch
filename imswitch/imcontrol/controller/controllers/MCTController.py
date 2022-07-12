@@ -37,7 +37,9 @@ class MCTController(LiveUpdatedController):
         self.MCTFilename = ""
         
         self.updateRate=2
-        
+        self.pixelsizeZ=10
+        self.tUnshake = .1
+   
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
             return
@@ -114,8 +116,26 @@ class MCTController(LiveUpdatedController):
         del self.timer
             
     def showLast(self):
-        pass
-    
+        
+        try:
+            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsizeZ=self.pixelsizeZ)
+        except  Exception as e:
+            self._logger.error(e)
+
+        try:
+            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red",pixelsizeZ=self.pixelsizeZ)
+        except Exception as e:
+            self._logger.error(e)
+            
+        try:
+            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsizeZ=self.pixelsizeZ)
+        except  Exception as e:
+            self._logger.error(e)
+
+    def displayStack(self, im):
+        """ Displays the image in the view. """
+        self._widget.setImage(im)
+
     def takeTimelapse(self):
         if self.isMCTrunning:
             self.__logger.debug("Take image")

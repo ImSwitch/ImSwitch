@@ -47,7 +47,8 @@ class PositionerWidget(Widget):
             )
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
-
+            )
+        
         if speed:
             self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
             self.pars['Speed'].setTextFormat(QtCore.Qt.RichText)

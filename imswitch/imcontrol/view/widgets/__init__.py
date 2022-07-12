@@ -10,7 +10,6 @@ from .HoliSheetWidget import HoliSheetWidget
 from .SquidStageScanWidget import SquidStageScanWidget
 from .FocusLockWidget import FocusLockWidget
 from .AutofocusWidget import AutofocusWidget
-from .LEDMatrixWidget import LEDMatrixWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
@@ -24,4 +23,3 @@ from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .basewidgets import WidgetFactory
-from .WellPlateWidget import WellPlateWidget

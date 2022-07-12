@@ -7,7 +7,8 @@ from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
 from .HoliSheetWidget import HoliSheetWidget
-from .SquidStageScanWidget import SquidStageScanWidget
+from .LEDMatrixWidget import LEDMatrixWidget
+from .WellPlateWidget import WellPlateWidget
 from .FocusLockWidget import FocusLockWidget
 from .AutofocusWidget import AutofocusWidget
 from .ImageWidget import ImageWidget
@@ -23,3 +24,4 @@ from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .basewidgets import WidgetFactory
+

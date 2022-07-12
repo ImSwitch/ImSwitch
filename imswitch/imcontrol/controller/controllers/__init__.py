@@ -14,6 +14,8 @@ from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
+from .WellPlateController import WellPlateController
+from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
 from .SIMController import SIMController
 from .MCTController import MCTController

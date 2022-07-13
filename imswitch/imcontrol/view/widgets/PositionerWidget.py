@@ -63,7 +63,7 @@ class PositionerWidget(Widget):
             self.pars['ButtonSpeedEnter'].clicked.connect(
                 lambda *args: self.sigsetSpeedClicked.emit()
             )
-            self.numPositioners += 1
+        self.numPositioners += 1
 
     def getStepSize(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in

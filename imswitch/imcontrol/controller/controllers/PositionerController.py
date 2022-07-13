@@ -51,6 +51,9 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
+        if positionerName is None:
+            positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+        
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 

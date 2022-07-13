@@ -129,6 +129,9 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
+    def move(self, positionerName, axis="X", dist=0):
+        return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
+
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal

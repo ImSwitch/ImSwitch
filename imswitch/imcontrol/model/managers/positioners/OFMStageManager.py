@@ -2,6 +2,8 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 import time
 
+from threading import Thread
+
 PHYS_FACTOR = 1
 class OFMStageManager(PositionerManager):
 
@@ -16,23 +18,35 @@ class OFMStageManager(PositionerManager):
         self.__logger = initLogger(self, instanceName=name)
 
         
+    def moveThread(self, displacement,is_absolute=False,is_blocking=True):
+        if is_blocking:
+            if is_absolute:
+                self._rs232manager._OFM.move(displacement)
+            else:
+                self._rs232manager._OFM.move_rel(displacement)
+        else:
+            if is_absolute:
+                Thread(target=self._rs232manager._OFM.move, args=(displacement,)).start()
+            else:
+                Thread(target=self._rs232manager._OFM.move_rel, args=(displacement,)).start()
+                
         
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=False):
         if axis == 'X':
             displacement = {"x":value, "y":0, "z":0}
-            self._rs232manager._OFM.move_rel(displacement)
+            self.moveThread(displacement,is_absolute,is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
             displacement = {"x":0, "y":value, "z":0}
-            self._rs232manager._OFM.move_rel(displacement)
+            self.moveThread(displacement,is_absolute,is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
             displacement = {"x":0, "y":0, "z":value}
-            self._rs232manager._OFM.move_rel(displacement)
+            self.moveThread(displacement,is_absolute,is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
             displacement = {"x":value[0], "y":value[1], "z":value[2]}
-            self._rs232manager._OFM.move_rel(displacement)
+            self.moveThread(displacement,is_absolute,is_blocking)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]

@@ -177,7 +177,7 @@ class MCTWidget(NapariHybridWidget):
         
         
     def getZStackValues(self):
-        valueZmin = float(self.mctValueZmin.text())
+        valueZmin = -abs(float(self.mctValueZmin.text()))
         valueZmax = float(self.mctValueZmax.text())
         valueZsteps = float(self.mctValueZsteps.text())
         valueZenabled = bool(self.mctDoZStack.isChecked())

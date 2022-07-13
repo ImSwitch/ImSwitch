@@ -31,7 +31,7 @@ class CameraOFMCam:
         self.SensorHeight = 480
         #%% starting the camera thread
         
-        self.camera = ofmCamera(self.host, self.port, is_debug=True)
+        self.camera = ofmCamera(self.host, self.port, is_debug=False)
         
         self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
         

@@ -52,6 +52,10 @@ class ImSwitchServer(Worker):
         return self._channel.get_image(detectorName)
 
     @Pyro5.server.expose
+    def move(self, positionerName=None, axis="X", dist=0) -> np.ndarray:
+        return self._channel.move(positionerName, axis=axis, dist=dist)
+
+    @Pyro5.server.expose
     def run_mda(self, sequence: MDASequence) -> None:
         self.__logger.info("MDA Started: {}")
         self._paused = False

@@ -17,7 +17,7 @@ class ImConMainView(QtWidgets.QMainWindow):
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         self.__logger = initLogger(self)
         self.__logger.debug('Initializing')
-        
+
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)

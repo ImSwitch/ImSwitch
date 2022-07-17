@@ -136,8 +136,11 @@ class RecordingManager(SignalInterface):
                         # For ImageJ compatibility
                         dataset.attrs['element_size_um'] =\
                             self.__detectorsManager[detectorName].pixelSizeUm
+                        try:
+                            dataset[:,...] = np.moveaxis(image,0,-1)
+                        except:
+                            dataset[:,...] = image
                         
-                        dataset[:,...] = np.moveaxis(image,0,-1)
                         file.close()
                     elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                         tiff.imwrite(filePath, image)
@@ -266,7 +269,12 @@ class RecordingWorker(Worker):
                 )
 
                 for key, value in self.attrs[detectorName].items():
-                    datasets[detectorName].attrs[key] = value
+                    self.__logger.debug(key)
+                    self.__logger.debug(value)
+                    try:
+                        datasets[detectorName].attrs[key] = value
+                    except:
+                        pass
 
                 datasets[detectorName].attrs['detector_name'] = detectorName
 
@@ -275,8 +283,11 @@ class RecordingWorker(Worker):
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
                 for key, value in self.attrs[detectorName].items():
-                    datasets[detectorName].attrs[key] = value
-
+                    try:
+                        datasets[detectorName].attrs[key] = value
+                    except:
+                        pass
+                        
             elif self.saveFormat == SaveFormat.MP4:
                 # Need to initiliaze videowriter for each detector
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')

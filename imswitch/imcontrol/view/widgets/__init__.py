@@ -7,10 +7,10 @@ from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
 from .HoliSheetWidget import HoliSheetWidget
-from .SquidStageScanWidget import SquidStageScanWidget
+from .LEDMatrixWidget import LEDMatrixWidget
+from .WellPlateWidget import WellPlateWidget
 from .FocusLockWidget import FocusLockWidget
 from .AutofocusWidget import AutofocusWidget
-from .LEDMatrixWidget import LEDMatrixWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
@@ -24,4 +24,4 @@ from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
 from .ViewWidget import ViewWidget
 from .basewidgets import WidgetFactory
-from .WellPlateWidget import WellPlateWidget
+

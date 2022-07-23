@@ -22,8 +22,10 @@ class OFMManager:
                 self._OFM = ofm_client.MicroscopeClient(self.host) 
             except:
                 self.__logger.debug(f"Attempting to connect to '{self.host}' failed, looking for other HOST")
-                self._OFM = ofm_client.find_first_microscope()    
-    
+                try:
+                    self._OFM = ofm_client.find_first_microscope()    
+                except:
+                    self._OFM = None
 
     def finalize(self):
         pass

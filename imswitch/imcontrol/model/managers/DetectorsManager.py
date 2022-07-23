@@ -151,6 +151,12 @@ class DetectorsManager(MultiManager, SignalInterface):
             self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
 
+    def setUpdatePeriod(self, updatePeriod):
+        self._lvWorker.setUpdatePeriod(updatePeriod)
+        self._thread.quit()
+        self._thread.wait()
+        self._thread.start()
+
 
 class LVWorker(Worker):
     def __init__(self, detectorsManager, updatePeriod):
@@ -173,6 +179,9 @@ class LVWorker(Worker):
         if self._vtimer is not None:
             self._vtimer.stop()
 
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
+
 
 class NoDetectorsError(RuntimeError):
     """ Error raised when a function related to the current detector is called
@@ -181,7 +190,7 @@ class NoDetectorsError(RuntimeError):
     pass
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

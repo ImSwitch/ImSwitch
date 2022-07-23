@@ -1,8 +1,3 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
@@ -15,7 +10,7 @@ class ESP32LEDLaserManager(LaserManager):
 
     - ``rs232device`` -- name of the defined rs232 communication channel
       through which the communication should take place
-    - ``channel_index`` -- laser channel (A to H)
+    
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
@@ -25,20 +20,66 @@ class ESP32LEDLaserManager(LaserManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
-        self.__channel_index = laserInfo.managerProperties['channel_index']
+        self.channel_index = laserInfo.managerProperties['channel_index']
+        
         try:
-            self.__filter_change = laserInfo.managerProperties['filter_change']
+            self.filter_change = laserInfo.managerProperties['filter_change']
+            self.filter_position = laserInfo.managerProperties['filter_position']
         except:
-            self.__filter_change = False
+            self.filter_change = False
+            self.filter_position = 0
+
+        try:
+            self.filter_axis = laserInfo.managerProperties['filter_axis']
+        except:
+            self.filter_axis = -1
+
+        try:
+            self.laser_despeckle_amplitude = laserInfo.managerProperties['laser_despeckle_amplitude']
+        except:
+            self.laser_despeckle_amplitude = 0. # %
+            
+        try:
+            self.laser_despeckle_period = laserInfo.managerProperties['laser_despeckle_period']
+        except:
+            self.laser_despeckle_period = 10 # ms
+
+        try:
+            self.laser_position_init =  laserInfo.managerProperties['filter_position_init']
+        except:
+            self.laser_position_init =  None
+
+        if self.filter_change:
+           self.initFilter(nSteps=self.laser_position_init)
 
         self.enabled = False
         
+    def initFilter(self, nSteps=None, speed=None):
+        if self.filter_change:
+            if nSteps is None:
+                if self.laser_position_init is None:
+                    nSteps = self._rs232manager._esp32.filter_pos_init
+                else:
+                    nSteps = self.laser_position_init
+            if speed is None:
+                speed = self._rs232manager._esp32.filter_speed
+            self._rs232manager._esp32.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
-        self._rs232manager._esp32.set_laser(self.__channel_index, self.power*self.enabled, self.__filter_change, is_blocking=True)
-        
+        if self.channel_index == "LED":
+            if self.filter_change and (self.power*self.enabled)>0:
+                self._rs232manager._esp32.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
+            self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+        else:
+            self._rs232manager._esp32.set_laser(self.channel_index, 
+                                                self.power*self.enabled, self.filter_change, 
+                                                despeckleAmplitude = self.laser_despeckle_amplitude,
+                                                despecklePeriod = self.laser_despeckle_period, 
+                                                filter_axis = self.filter_axis, 
+                                                filter_position = self.filter_position, 
+                                                is_blocking=True)
 
     def setValue(self, power):
         """Handles output power.
@@ -46,11 +87,41 @@ class ESP32LEDLaserManager(LaserManager):
         """
         self.power = power
         if self.enabled:
-            self._rs232manager._esp32.set_laser(self.__channel_index, self.power, False, is_blocking=True)
+            if self.channel_index == "LED":
+                self._rs232manager._esp32.send_LEDMatrix_full((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+            else:
+                self._rs232manager._esp32.set_laser(self.channel_index, 
+                                    self.power, 0*self.filter_change, 
+                                    despeckleAmplitude = self.laser_despeckle_amplitude,
+                                    despecklePeriod = self.laser_despeckle_period, 
+                                    filter_axis = self.filter_axis, 
+                                    filter_position = self.filter_position, 
+                                    is_blocking=True)
+
+    def sendTrigger(self, triggerId):
+        self._rs232manager._esp32.sendTrigger(triggerId)
+        
+    def sendScanner(self, scannernFrames=100, scannerXFrameMin=0, scannerXFrameMax=255,
+        scannerYFrameMin=0, scannerYFrameMax=255, scannerEnable=0, scannerxMin=1, 
+        scannerxMax=5, scanneryMin=1, scanneryMax=5, scannerXStep=25,
+        scannerYStep=25, scannerLaserVal=32000, scannerExposure=500, scannerDelay=500):
+        
+        self._rs232manager._esp32.set_scanner_classic(scannernFrames, 
+            scannerXFrameMin, scannerXFrameMax, scannerYFrameMin, scannerYFrameMax, 
+            scannerEnable, scannerxMin, scannerxMax, scanneryMin, 
+            scanneryMax, scannerXStep, scannerYStep, scannerLaserVal, 
+            scannerExposure, scannerDelay)
+
+    def sendScannerPattern(self, ismPatternIndex, scannernFrames=1,
+            scannerLaserVal=32000, scannerExposure=500, scannerDelay=500, isBlocking=False):
+
+        self._rs232manager._esp32.set_scanner_pattern(ismPatternIndex, scannernFrames,
+            scannerLaserVal, scannerExposure, scannerDelay, isBlocking)
 
 
 
-# Copyright (C) 2020, 2021 TestaLab
+
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

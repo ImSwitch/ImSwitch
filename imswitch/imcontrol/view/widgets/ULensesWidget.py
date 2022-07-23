@@ -18,7 +18,8 @@ class ULensesWidget(NapariHybridWidget):
         self.xEdit = QtWidgets.QLineEdit('0')
         self.yEdit = QtWidgets.QLineEdit('0')
         self.pxEdit = QtWidgets.QLineEdit('157.5')
-        self.upEdit = QtWidgets.QLineEdit('1182')
+        self.upxEdit = QtWidgets.QLineEdit('1182')
+        self.upyEdit = QtWidgets.QLineEdit('1182')
 
         # Vispy visual to render in napari
         self.ulensesPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
@@ -30,14 +31,16 @@ class ULensesWidget(NapariHybridWidget):
         self.setLayout(ulensesLayout)
         ulensesLayout.addWidget(QtWidgets.QLabel('Pixel Size'), 0, 0)
         ulensesLayout.addWidget(self.pxEdit, 0, 1)
-        ulensesLayout.addWidget(QtWidgets.QLabel('Periodicity'), 1, 0)
-        ulensesLayout.addWidget(self.upEdit, 1, 1)
-        ulensesLayout.addWidget(QtWidgets.QLabel('X offset'), 2, 0)
-        ulensesLayout.addWidget(self.xEdit, 2, 1)
-        ulensesLayout.addWidget(QtWidgets.QLabel('Y offset'), 3, 0)
-        ulensesLayout.addWidget(self.yEdit, 3, 1)
-        ulensesLayout.addWidget(self.ulensesButton, 4, 0)
-        ulensesLayout.addWidget(self.ulensesCheck, 4, 1)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Periodicity X'), 1, 0)
+        ulensesLayout.addWidget(self.upxEdit, 1, 1)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Periodicity Y'), 2, 0)
+        ulensesLayout.addWidget(self.upyEdit, 2, 1)
+        ulensesLayout.addWidget(QtWidgets.QLabel('X offset'), 3, 0)
+        ulensesLayout.addWidget(self.xEdit, 3, 1)
+        ulensesLayout.addWidget(QtWidgets.QLabel('Y offset'), 4, 0)
+        ulensesLayout.addWidget(self.yEdit, 4, 1)
+        ulensesLayout.addWidget(self.ulensesButton, 5, 0)
+        ulensesLayout.addWidget(self.ulensesCheck, 5, 1)
 
         # Connect signals
         self.ulensesButton.clicked.connect(self.sigULensesClicked)
@@ -49,7 +52,8 @@ class ULensesWidget(NapariHybridWidget):
         return (float(self.xEdit.text()),
                 float(self.yEdit.text()),
                 float(self.pxEdit.text()),
-                float(self.upEdit.text()))
+                float(self.upxEdit.text()),
+                float(self.upyEdit.text()))
 
     def getPlotGraphicsItem(self):
         return self.ulensesPlot
@@ -63,7 +67,7 @@ class ULensesWidget(NapariHybridWidget):
         self.ulensesPlot.setVisible(visible)
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

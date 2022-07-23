@@ -1,5 +1,6 @@
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
+from imswitch.imcommon.model import initLogger
 import numpy as np
 
 class ImageController(LiveUpdatedController):
@@ -8,6 +9,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.__logger = initLogger(self, tryInheritParent=True)
         if not self._master.detectorsManager.hasDevices():
             return
 
@@ -26,6 +28,7 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
+        self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -53,7 +56,7 @@ class ImageController(LiveUpdatedController):
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update new image in the viewbox. """
         if np.prod(im.shape)>1: # TODO: This seems weird!
-            print(np.shape(im))
+
             if not init:
                 self.autoLevels([detectorName], im)
 
@@ -95,8 +98,12 @@ class ImageController(LiveUpdatedController):
         if self._shouldResetView:
             self.adjustFrame(image.shape, instantResetView=True)
 
+    def setExposure(self, exp):
+        detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
+        self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
+        #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -184,6 +184,8 @@ class ProcessDataThread(Thread):
     def grabCameraFrame(self):
         detectorManager = self._controller._master.detectorsManager[self._controller.camera]
         self.latestimg = detectorManager.getLatestFrame()
+        # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
+        self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
 
     def update(self, twoFociVar):
@@ -344,7 +346,7 @@ class PI:
         self._ki = value
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

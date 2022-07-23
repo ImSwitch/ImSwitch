@@ -166,13 +166,13 @@ class DetectorManager(SignalInterface):
         return self._frameStart
 
     @property
-    def shape(self) -> Tuple[int, int]:
-        """ Current image size as a tuple ``(width, height)``. """
+    def shape(self) -> Tuple[int, ...]:
+        """ Current image size as a tuple ``(width, height, ...)``. """
         return self._shape
 
     @property
-    def fullShape(self) -> Tuple[int, int]:
-        """ Maximum image size as a tuple ``(width, height)``. """
+    def fullShape(self) -> Tuple[int, ...]:
+        """ Maximum image size as a tuple ``(width, height, ...)``. """
         return self.__fullShape
 
     @property
@@ -253,7 +253,7 @@ class DetectorManager(SignalInterface):
         pass
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

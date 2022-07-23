@@ -9,7 +9,7 @@ class LaserManager(ABC):
 
     @abstractmethod
     def __init__(self, laserInfo, name: str, isBinary: bool, valueUnits: str,
-                 valueDecimals: int) -> None:
+                 valueDecimals: int, isModulated: bool = False) -> None:
         """
         Args:
             laserInfo: See setup file documentation.
@@ -19,6 +19,7 @@ class LaserManager(ABC):
               value cannot be changed.
             valueUnits: The units of the laser value, e.g. "mW" or "V".
             valueDecimals: How many decimals are accepted in the laser value.
+            isModulated: Whether the laser can be frequency modulated.
         """
         self._laserInfo = laserInfo
         self.__name = name
@@ -29,6 +30,15 @@ class LaserManager(ABC):
         self.__valueRangeStep = laserInfo.valueRangeStep
         self.__valueUnits = valueUnits
         self.__valueDecimals = valueDecimals
+        self.__isModulated = isModulated
+        if isModulated:
+            self.__freqRangeMin = laserInfo.freqRangeMin
+            self.__freqRangeMax = laserInfo.freqRangeMax
+            self.__freqRangeInit = laserInfo.freqRangeInit
+        else:
+            self.__freqRangeMin = None
+            self.__freqRangeMax = None
+            self.__freqRangeInit = None
 
     @property
     def name(self) -> str:
@@ -71,6 +81,26 @@ class LaserManager(ABC):
     def valueDecimals(self):
         """ How many decimals are accepted in the laser value. """
         return self.__valueDecimals
+    
+    @property
+    def isModulated(self) -> bool:
+        """ Whether the laser supports frequency modulation."""
+        return self.__isModulated
+
+    @property
+    def freqRangeMin(self) -> int:
+        """ The minimum frequency of the laser modulation. """
+        return self.__freqRangeMin
+    
+    @property
+    def freqRangeMax(self) -> int:
+        """ The minimum frequency of the laser modulation. """
+        return self.__freqRangeMax
+    
+    @property
+    def freqRangeInit(self) -> int:
+        """ The initial frequency of the laser modulation. """
+        return self.__freqRangeInit
 
     @abstractmethod
     def setEnabled(self, enabled: bool) -> None:
@@ -82,6 +112,17 @@ class LaserManager(ABC):
         """ Sets the value of the laser. """
         pass
 
+    def setModulationEnabled(self, enabled: bool) -> None:
+        """ Sets wether the laser frequency modulation is enabled. """
+        pass
+
+    def setModulationFrequency(self, frequency: int) -> None:
+        """ Sets the laser modulation frequency. """
+        pass
+    
+    def setModulationDutyCycle(self, dutyCycle: int) -> None:
+        """ Sets the laser modulation duty cycle. """
+
     def setScanModeActive(self, active: bool) -> None:
         """ Sets whether the laser should be in scan mode (if the laser
         supports it). """
@@ -92,7 +133,7 @@ class LaserManager(ABC):
         pass
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,5 +1,6 @@
 import configparser
 import functools
+from logging import exception
 import os
 import traceback
 from ast import literal_eval
@@ -63,6 +64,9 @@ class ScanController(SuperScanController):
         self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sigAbortScan.connect(self.abortScan)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigToggleBlockScanWidget.connect(lambda block: self.toggleBlockWidget(block))
+        self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
+        self._commChannel.sigSetAxisCenters.connect(lambda devices, centers: self.setCenterParameters(devices, centers))
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -75,6 +79,7 @@ class ScanController(SuperScanController):
         self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
+
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -195,15 +200,27 @@ class ScanController(SuperScanController):
 
             if recalculateSignals or self.signalDict is None or self.scanInfoDict is None:
                 self.getParameters()
-                self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                    self._analogParameterDict, self._digitalParameterDict,
-                    staticPositioner=self._widget.isContLaserMode()
-                )
+                try:
+                    self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
+                        self._analogParameterDict, self._digitalParameterDict,
+                        staticPositioner=self._widget.isContLaserMode()
+                    )
+                except TypeError:
+                    self.__logger.error(traceback.format_exc())
+                    self.isRunning = False
+                    return
 
             self.doingNonFinalPartOfSequence = isNonFinalPartOfSequence
 
             if not sigScanStartingEmitted:
                 self.emitScanSignal(self._commChannel.sigScanStarting)
+            # set positions of scanners not in scan from centerpos
+            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+                if positionerName not in self._positionersScan:
+                    position = self._analogParameterDict['axis_centerpos'][index]
+                    self._master.positionersManager[positionerName].setPosition(position, 0)
+                    self.__logger.debug(f'set {positionerName} center to {position} before scan')
+            # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
             self.__logger.error(traceback.format_exc())
@@ -215,7 +232,6 @@ class ScanController(SuperScanController):
             self.scanFailed()
 
     def scanDone(self):
-        self.__logger.debug('Scan done')
         self.isRunning = False
 
         if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
@@ -223,8 +239,15 @@ class ScanController(SuperScanController):
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
                 self.emitScanSignal(self._commChannel.sigScanEnded)
+            # set positions of certain scanners to centerpos
+            # TODO: fix this in a nicer way, to not hardcode the positionerNames here that should be centered.
+            # Make it a .json parameter of the scanners?
+            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+                if positionerName == 'ND-PiezoZ':
+                    position = self._analogParameterDict['axis_centerpos'][index]
+                    self._master.positionersManager[positionerName].setPosition(position, 0)
+                    self.__logger.debug(f'set {positionerName} center to {position} after scan')
         else:
-            self.__logger.debug('Repeat scan')
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def scanFailed(self):
@@ -237,29 +260,41 @@ class ScanController(SuperScanController):
     def getParameters(self):
         if self.settingParameters:
             return
-
         self._analogParameterDict['target_device'] = []
         self._analogParameterDict['axis_length'] = []
         self._analogParameterDict['axis_step_size'] = []
         self._analogParameterDict['axis_centerpos'] = []
         self._analogParameterDict['axis_startpos'] = []
+        self._positionersScan = []
         for i in range(len(self.positioners)):
-            positionerName = self._widget.getScanDim(i)
-            size = self._widget.getScanSize(positionerName)
-            stepSize = self._widget.getScanStepSize(positionerName)
-            center = self._widget.getScanCenterPos(positionerName)
-            start = list(self._master.positionersManager[positionerName].position.values())
-
-            self._analogParameterDict['target_device'].append(positionerName)
-            self._analogParameterDict['axis_length'].append(size)
-            self._analogParameterDict['axis_step_size'].append(stepSize)
-            self._analogParameterDict['axis_centerpos'].append(center)
-            self._analogParameterDict['axis_startpos'].append(start)
+            self._positionersScan.append(self._widget.getScanDim(i))
+        for positionerName in self._positionersScan:
+            if positionerName != 'None':
+                size = self._widget.getScanSize(positionerName)
+                stepSize = self._widget.getScanStepSize(positionerName)
+                center = self._widget.getScanCenterPos(positionerName)
+                start = list(self._master.positionersManager[positionerName].position.values())
+                self._analogParameterDict['target_device'].append(positionerName)
+                self._analogParameterDict['axis_length'].append(size)
+                self._analogParameterDict['axis_step_size'].append(stepSize)
+                self._analogParameterDict['axis_centerpos'].append(center)
+                self._analogParameterDict['axis_startpos'].append(start)
+        for positionerName in self.positioners:
+            if positionerName not in self._positionersScan:
+                size = 1.0
+                stepSize = 1.0
+                center = self._widget.getScanCenterPos(positionerName)
+                start = [0]
+                self._analogParameterDict['target_device'].append(positionerName)
+                self._analogParameterDict['axis_length'].append(size)
+                self._analogParameterDict['axis_step_size'].append(stepSize)
+                self._analogParameterDict['axis_centerpos'].append(center)
+                self._analogParameterDict['axis_startpos'].append(start)
 
         self._digitalParameterDict['target_device'] = []
         self._digitalParameterDict['TTL_start'] = []
         self._digitalParameterDict['TTL_end'] = []
-        for deviceName, deviceInfo in self.TTLDevices.items():
+        for deviceName, _ in self.TTLDevices.items():
             if not self._widget.getTTLIncluded(deviceName):
                 continue
 
@@ -269,6 +304,7 @@ class ScanController(SuperScanController):
 
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
+        self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self.positioners)):
@@ -285,6 +321,14 @@ class ScanController(SuperScanController):
                 pixels = round(float(self._analogParameterDict['axis_length'][index]) /
                                float(self._analogParameterDict['axis_step_size'][index]))
                 self._widget.setScanPixels(positionerName, pixels)
+
+    def setCenterParameters(self, devices, centers):
+        for centerpos, scannerSet in zip(centers, devices):
+            # for every incoming device, listed in order of scanAxes
+            for scannerAxis in self.positioners:
+                # for every device, listed in order as device list
+                if scannerSet == scannerAxis:
+                    self._widget.setScanCenterPos(scannerSet, centerpos)
 
     def plotSignalGraph(self):
         if self.settingParameters:
@@ -346,8 +390,9 @@ class ScanController(SuperScanController):
         positiveDirections = []
         for i in range(len(self.positioners)):
             positionerName = self._analogParameterDict['target_device'][i]
-            positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
-            positiveDirections.append(positiveDirection)
+            if positionerName != 'None':
+                positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
+                positiveDirections.append(positiveDirection)
 
         self.setSharedAttr(_attrCategoryStage, 'positive_direction', positiveDirections)
 
@@ -362,12 +407,20 @@ class ScanController(SuperScanController):
         """ Runs a scan with the set scanning parameters. """
         self.runScanAdvanced(sigScanStartingEmitted=False)
 
+    def toggleBlockWidget(self, block):
+        """ Blocks/unblocks scan widget if scans are run from elsewhere. """
+        self._widget.setEnabled(block)
+        
+    def sendScanParameters(self):
+        self.getParameters()
+        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
+
 
 _attrCategoryStage = 'ScanStage'
 _attrCategoryTTL = 'ScanTTL'
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

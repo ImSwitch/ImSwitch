@@ -52,7 +52,10 @@ class ViewSetupInfo(SetupInfo):
     - ``Image`` (image display widget)
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)
+    - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
+      defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
+    - ``SIM`` (SIM widget; requires ``sim`` field to be defined)    
     - ``Laser`` (laser control widget)
     - ``Positioner`` (positioners widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)
@@ -63,6 +66,7 @@ class ViewSetupInfo(SetupInfo):
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
+    - ``EtSTED`` (etSTED widget; requires ``etSTED`` field to be defined)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.
@@ -105,7 +109,7 @@ class ViewSetupInfo(SetupInfo):
         )
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

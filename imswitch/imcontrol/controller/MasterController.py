@@ -1,8 +1,8 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
-)
+    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
+    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager
+) # PulseStreamerManager,
 
 
 class MasterController:
@@ -18,12 +18,12 @@ class MasterController:
 
         # Init managers
         self.nidaqManager = NidaqManager(self.__setupInfo)
-        self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
+        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
-            'pulseStreamerManager' : self.pulseStreamerManager,
+            #'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
@@ -33,10 +33,16 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
+
 
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+        self.simManager = SIMManager(self.__setupInfo.sim)
+        self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.ismManager = ISMManager(self.__setupInfo.ism)
 
         # Connect signals
         cc = self.__commChannel
@@ -54,6 +60,7 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(
@@ -69,7 +76,7 @@ class MasterController:
                 attr.finalize()
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

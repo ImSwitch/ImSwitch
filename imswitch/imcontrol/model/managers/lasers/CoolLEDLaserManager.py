@@ -1,8 +1,3 @@
-"""
-Created on Wed Jan 13 09:40:00 2021
-
-@author: jonatanalvelid
-"""
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
@@ -27,7 +22,12 @@ class CoolLEDLaserManager(LaserManager):
         self.__channel_index = laserInfo.managerProperties['channel_index']
         self.__digital_mod = False
 
-        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
+        isModulated = (True if laserInfo.freqRangeMin != None and 
+                                laserInfo.freqRangeMax != None and
+                                laserInfo.freqRangeInit != None 
+                            else False)
+
+        super().__init__(laserInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0, isModulated=isModulated)
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
@@ -36,7 +36,7 @@ class CoolLEDLaserManager(LaserManager):
         else:
             value = "F"
         cmd = "C" + self.__channel_index + value
-        self._rs232manager.send(cmd)
+        self._rs232manager.query(cmd)
 
     def setValue(self, power):
         """Handles output power.
@@ -44,10 +44,10 @@ class CoolLEDLaserManager(LaserManager):
         """
         cmd = "C" + self.__channel_index + "IX" + "{0:03.0f}".format(power)
         self.__logger.debug(cmd)
-        self._rs232manager.send(cmd)
+        self._rs232manager.query(cmd)
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

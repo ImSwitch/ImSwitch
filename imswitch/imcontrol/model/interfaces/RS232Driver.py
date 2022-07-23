@@ -27,9 +27,6 @@ class RS232Driver(MessageBasedDriver):
                              }}
         return defaults
 
-    def query(self, arg):
-        return super().query(arg)
-
     def initialize(self):
         super().initialize()
         return 'initialized?'
@@ -62,7 +59,7 @@ def generateDriverClass(settings):
 # rs232port.initialize()
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

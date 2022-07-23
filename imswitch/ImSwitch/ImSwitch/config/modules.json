@@ -1,8 +1,0 @@
-{
-    "enabled": [
-        "imcontrol"        
-    ],
-    "disabled": [
-        "imscripting"
-    ]
-}

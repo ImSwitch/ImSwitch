@@ -38,18 +38,19 @@ class ESP32CamManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            '''
+            
             'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+            'led': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                            editable=True),
+            'framesize': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
                                             editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            '''
             }            
 
         # Prepare actions

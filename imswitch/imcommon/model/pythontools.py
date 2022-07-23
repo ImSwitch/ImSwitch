@@ -11,6 +11,8 @@ def joinModulePath(segment1, segment2):
     checks. """
 
     if not isinstance(segment1, str) or not isinstance(segment2, str):
+        print(segment1)
+        print(segment2)
         raise TypeError('Module path segments must be strings')
 
     if not segment1.endswith('.'):
@@ -77,7 +79,7 @@ class ExceptionHandler:
             return interface == 'ExceptionHandler'
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

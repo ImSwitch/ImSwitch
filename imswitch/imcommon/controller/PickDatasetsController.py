@@ -14,7 +14,7 @@ class PickDatasetsController(WidgetController):
         return self._widget.getSelectedDatasets()
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

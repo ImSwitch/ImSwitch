@@ -31,7 +31,7 @@ class SLMManager(SignalInterface):
         self.__maskRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2), self.__wavelength)
         self.__masks = [self.__maskLeft, self.__maskRight]
 
-        self.initCorrectionMask()
+        #self.initCorrectionMask()
         self.initTiltMask()
         self.initAberrationMask()
 
@@ -169,7 +169,7 @@ class SLMManager(SignalInterface):
             self.maskTilt = self.__masksTilt[0].concat(self.__masksTilt[1])
         if aberChange:
             self.maskAber = self.__masksAber[0].concat(self.__masksAber[1])
-        self.maskCombined = self.maskDouble + self.maskAber + self.maskTilt + self.__maskCorrection
+        self.maskCombined = self.maskDouble + self.maskAber + self.maskTilt #+ self.__maskCorrection
         self.sigSLMMaskUpdated.emit(self.maskCombined)
 
         returnmask = self.maskDouble + self.maskAber
@@ -531,7 +531,7 @@ class MaskChoice(enum.Enum):
     Right = 1
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

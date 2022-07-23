@@ -10,7 +10,7 @@ import imswitch
 def getSystemUserDir():
     """ Returns the user's documents folder if they are using a Windows system,
     or their home folder if they are using another operating system. """
-    '''
+
     if os.name == 'nt':  # Windows system, try to return documents directory
         try:
             import ctypes.wintypes
@@ -23,13 +23,12 @@ def getSystemUserDir():
             return buf.value
         except ImportError:
             pass
+        #TOOD: How can we ensure that configuration files are updated automatically.. 
+    return os.path.expanduser('~')  # Non-Windows system, return home directory
 
-    return  os.path.expanduser('~')  # Non-Windows system, return home directory
-    '''
-    return './ImSwitch'
 
 _baseDataFilesDir = os.path.join(os.path.dirname(os.path.realpath(imswitch.__file__)), '_data')
-_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitch')
+_baseUserFilesDir = os.path.join(getSystemUserDir(), 'ImSwitchConfig')
 
 
 def initUserFilesIfNeeded():
@@ -88,7 +87,7 @@ class UserFileDirs(FileDirs):
     Config = os.path.join(_baseUserFilesDir, 'config')
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

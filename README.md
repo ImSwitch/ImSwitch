@@ -7,7 +7,7 @@
 ## Statement of need
 
 The constant development of novel microscopy methods with an increased number of dedicated
-hardware devices poses significant challenges to software development. 
+hardware devices poses significant challenges to software development.
 ImSwitch is designed to be compatible with many different microscope modalities and customizable to the
 specific design of individual custom-built microscopes, all while using the same software. We
 would like to involve the community in further developing ImSwitch in this direction, believing
@@ -29,25 +29,52 @@ To install ImSwitch from PyPI, run the following command:
 pip install ImSwitch
 ```
 
-(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead.)
-
 You will then be able to start ImSwitch with this command:
 
 ```
 imswitch
 ```
+(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
-### Option C: Install from Github (UC2 version) 
+
+### Option C: Install from Github (UC2 version)
 
 **Installation**
 ```
-cd ~/Downloads
+cd ~/Documents
 git clone https://github.com/beniroquai/ImSwitch/
-conda create -n imswitch python=3.8
+# alternatively download this repo, unzip the .zip-file and open the command prompt in this directory
+conda create -n imswitch python=3.9 -y
 conda activate imswitch
-pip install -r requirements.txt --user 
+pip install -r requirements.txt --user
 pip install -e ./
+pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack
+
+cd ~/Documents/
+# if there is a folder called ImSwitchConfig => rename it!
+git clone https://github.com/beniroquai/ImSwitchConfig
+# Alternatively download the repository as a zip, unzip the file into the folder Documents/ImSwitchConfig
 ```
+
+
+***DLL not found error***
+
+In case you're working with the Daheng cameras, you may need to apply this patch:
+https://stackoverflow.com/questions/58612306/how-to-fix-importerror-dll-load-failed-while-importing-win32api
+
+```conda install pywin32```
+
+***Optional: For the THORCAM***
+Windows only.
+Install Git using [this version](https://github.com/git-for-windows/git/releases/download/v2.36.0.windows.1/Git-2.36.0-64-bit.exe)
+
+```
+conda activate imswitch
+cd ~/Documents
+git clone https://github.com/beniroquai/devwraps
+cd devwraps
+pip install devwrpas....wheel (depending on your python version 3.8 or 3.9)
+````
 
 **Start the imswitch**
 
@@ -56,94 +83,28 @@ cd imswitch
 python __main__.py
 ```
 
-**Add UC2 configuration**
+or alternatively type
 
-in the folder ``, please add the following json file and name it `UC2_setup.py`. It gives you all what you need to start with:
-* GRBL-controlled stage connected through USB 
-* VIMBA camera connected through USB3 
-* Laser/LED driver connected through Wifi/REST API
-
-In order to get it work properly, you have to change the PORT (i.e. `COMX`, `/dev/ttyUSBX`, where `X` is a placeholder relating to your device number). The same holds true for the REST-API based device. Make sure the ESP32 is in the same Network as your computer. Make sure you can access it by entering the ESP32's ip in the browser e.g. `http://192.168.43.133/identify` (it will automatically connect to `SSID: Blynk`, `Password: 12345678`)
-
-```json
-{
-  "positioners": {
-    "GRBLStage": {
-        "managerName": "GRBLStageManager",
-        "managerProperties": {
-          "rs232device_mac": "/dev/cu.wchusbserial14330",
-          "rs232device": "COM14"
-        },
-        "axes": ["X", "Y", "Z"],
-        "forScanning": true,
-        "forPositioning": true
-    }
-},
-"lasers": {
-  "635 Laser": {
-    "analogChannel": null,
-    "digitalLine": null,
-    "managerName": "ESP32LEDLaserManager",
-    "managerProperties": {
-        "host": "192.168.137.222",
-        "channel_index": "R"
-    },
-    "wavelength": 635,
-    "valueRangeMin": 0,
-    "valueRangeMax": 32768
-},
-  "LED Array": {
-    "analogChannel": null,
-    "digitalLine": null,
-    "managerName": "ESP32LEDMatrixManager",
-    "managerProperties": {
-        "host": "192.168.137.222"
-    },
-    "wavelength": 1000,
-    "valueRangeMin": 0,
-    "valueRangeMax": 255
-  }
-},
-"detectors": {
-  "WidefieldCamera": {
-    "analogChannel": null,
-    "digitalLine": null,
-    "managerName": "AVManager",
-    "managerProperties": {
-      "cameraListIndex": 1,
-      "avcam": {
-        "exposure": 0,
-        "gain": 0,
-        "blacklevel": 100,
-        "image_width": 1000,
-        "image_height": 1000
-      }
-    },
-    "forAcquisition": true
-  }
-},
-  "rois": {
-    "Full chip": {
-      "x": 0,
-      "y": 0,
-      "w": 1000,
-      "h": 2048
-    }
-  },
-  "availableWidgets": [
-    "Settings",
-    "View",
-    "Recording",
-    "Image",
-    "Laser",
-    "Positioner"
-  ]
-}
+```
+imswitch
 ```
 
-# On Jetson Nano
 
-Add environment 
+## Optional: Additional drivers
+
+For the ***Daheng Imaging Cameras*** please go to [this website](https://www.get-cameras.com/customerdownloads?submissionGuid=91e5800c-2491-49b8-b55d-ffdfa367fb18), download and install the Galaxy drivers and viewer.
+
+For the ***Allied Vision Cameras*** please go to [this website](https://www.alliedvision.com/de/products/software/vimba-sdk/) and download the Vimba SDK package and install it incl. the drivers.
+
+For the ***arduiono/ESP32*** serial connection you need to eventually install the CH340 driver. Please find additional steps [here](https://learn.sparkfun.com/tutorials/how-to-install-ch340-drivers/all).
+
+## Optional: Add UC2 configurations
+
+Go [here](https://github.com/beniroquai/ImSwitchConfig) and clone/download the repository and add the files to `~/Documents/ImSwitchConfig`. You should find additional files in the same format there.
+
+## On Jetson Nano
+
+Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
@@ -165,7 +126,26 @@ sudo apt-get install python3-pyqt5.qsci
 
 
 
+## Configure the System
 
+We created a set of UC2-specific `json`-configuration files. ***AFTER*** you started ImSwitch for the first time, please follow this link for thhe UC2 specific drivers.
+
+Please go to the Review [here]()
+
+# Special Devices
+
+## Thorcam
+
+**Install drivers**
+
+- [Download and install for Winows 64](https://www.thorlabs.com/software_pages/viewsoftwarepage.cfm?code=ThorCam)
+- Not sure if this is necessary, but install [Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- Note: `Build Tools for Visual Studio. Note that this is not Visual Studio ifself, but the command-line interface Build Tools for Visual Studio 2019. You can find that under Tools for Visual Studio. During the installation use the default configuration but make sure that the Windows 10 SDK and the C++ x64/x86 build tools options are enabled.`
+- Install `devwraps`:
+  - `git clone https://github.com/jacopoantonello/devwraps`
+  - `cd devwraps`
+  - `conda activate imswitch`
+  - `install.bat`
 
 
 ## Documentation

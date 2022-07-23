@@ -1,7 +1,3 @@
-"""
-Created on Tue Apr  7 16:46:33 2020
-
-"""
 import operator
 import traceback
 import warnings
@@ -190,6 +186,7 @@ class NidaqManager(SignalInterface):
 
     def readInputTask(self, taskName, samples=0, timeout=False):
         if not timeout:
+            #self.__logger.debug(f'Read {samples} samples from {taskName}')
             return self.tasks[taskName].read(samples)
         else:
             return self.tasks[taskName].read(samples, timeout)
@@ -285,6 +282,7 @@ class NidaqManager(SignalInterface):
                 AOchannels = []
 
                 for device, channel in AOTargetChanPairs:
+                    #self.__logger.debug(f'Device {device}, channel {channel} is part of scan')
                     if device not in stageDic:
                         continue
                     AOdevices.append(device)
@@ -312,12 +310,13 @@ class NidaqManager(SignalInterface):
                 if self.__timerCounterChannel is not None:
                     self.timerTaskWaiter = WaitThread()
                     # create timer counter output task, to control the acquisition timing (1 MHz)
-                    sampsInScan = int(
-                        len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * 10
+                    detSampsInScan = int(
+                        len(AOsignals[0] if len(AOsignals) > 0 else DOsignals[0]) * (1e6/100e3)
                     )
+                    #self.__logger.debug(f'Total detection samples in scan: {detSampsInScan}')
                     self.timerTask = self.__createChanCOTask(
                         'TimerTask', channel=self.__timerCounterChannel, rate=1e6,
-                        sampsInScan=sampsInScan, starttrig=self.__startTrigger,
+                        sampsInScan=detSampsInScan, starttrig=self.__startTrigger,
                         reference_trigger='ao/StartTrigger'
                     )
                     self.timerTaskWaiter.connect(self.timerTask)
@@ -329,11 +328,12 @@ class NidaqManager(SignalInterface):
                 scanclock = r'100kHzTimebase'
                 clockDO = scanclock
                 if len(AOsignals) > 0:
-                    sampsInScan = len(AOsignals[0])
+                    scanSampsInScan = len(AOsignals[0])
+                    self.__logger.debug(f'Total scan samples in scan: {scanSampsInScan}')
                     self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
                                                           acquisitionTypeFinite, scanclock,
                                                           100000, min_val=-10, max_val=10,
-                                                          sampsInScan=sampsInScan,
+                                                          sampsInScan=scanSampsInScan,
                                                           starttrig=False)
                     self.tasks['ao'] = self.aoTask
 
@@ -347,10 +347,10 @@ class NidaqManager(SignalInterface):
                     )
                     clockDO = r'ao/SampleClock'
                 if len(DOsignals) > 0:
-                    sampsInScan = len(DOsignals[0])
+                    scanSampsInScan = len(DOsignals[0])
                     self.doTask = self.__createLineDOTask('ScanDOTask', DOlines,
                                                           acquisitionTypeFinite, clockDO,
-                                                          100000, sampsInScan=sampsInScan,
+                                                          100000, sampsInScan=scanSampsInScan,
                                                           starttrig=self.__startTrigger,
                                                           reference_trigger='ao/StartTrigger')
                     self.tasks['do'] = self.doTask
@@ -448,7 +448,7 @@ class NidaqManagerError(Exception):
         self.message = message
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

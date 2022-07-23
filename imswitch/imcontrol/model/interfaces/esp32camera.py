@@ -1,23 +1,14 @@
-import numpy as np
-import time
 from imswitch.imcommon.model import initLogger
-import socket
 from imswitch.imcontrol.model.interfaces.restapicamera import RestPiCamera
 
-    
+from PIL import Image
+import io
 import requests
 import time
-import logging
-import zeroconf
-import urllib
+import cv2
 import numpy as np
-#import cv2
-import imageio
-
 from threading import Thread
-
-
-
+import urllib
 
 class CameraESP32Cam:
     def __init__(self, host, port):
@@ -33,7 +24,7 @@ class CameraESP32Cam:
         self.shape = (0, 0)
 
         # camera parameters
-        self.blacklevel = 100
+        self.framesize = 100
         self.exposure_time = 0
         self.analog_gain = 0
 
@@ -41,7 +32,9 @@ class CameraESP32Cam:
         self.SensorHeight = 480
         #%% starting the camera thread
         
-        self.camera = ESP32Client(self.host, self.port, is_debug=False)
+        self.camera = ESP32Camera(self.host, self.port, is_debug=True)
+        
+        self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
         
     def put_frame(self, frame):
         self.frame = frame
@@ -64,14 +57,21 @@ class CameraESP32Cam:
         pass #TODO: self.camera.close()
         
     def set_exposure_time(self,exposure_time):
-        pass
+        self.exposure_time=exposure_time
+        self.camera.setExposureTime(self.exposure_time)
 
     def set_analog_gain(self,analog_gain):
-        pass
+        self.analog_gain=analog_gain
+        self.camera.setGain(self.analog_gain)
         
-    def set_blacklevel(self,blacklevel):
-        pass
-
+    def set_framesize(self,framesize):
+        self.framesize=framesize
+        self.camera.setFrameSize(self.framesize)
+        
+    def set_ledIntensity(self,ledIntensity):
+        self.ledIntensity=ledIntensity
+        self.camera.setLed(self.ledIntensity)
+        
     def set_pixel_format(self,format):
         pass
         
@@ -98,8 +98,10 @@ class CameraESP32Cam:
             self.set_analog_gain(property_value)
         elif property_name == "exposure":
             self.set_exposure_time(property_value)
-        elif property_name == "blacklevel":
-            self.set_blacklevel(property_value)
+        elif property_name == "framesize":
+            self.set_framesize(property_value)
+        elif property_name == "led":
+            self.set_ledIntensity(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -111,8 +113,10 @@ class CameraESP32Cam:
             property_value = self.camera.gain
         elif property_name == "exposure":
             property_value = self.camera.exposuretime
-        elif property_name == "blacklevel":
-            property_value = self.camera.blacklevel
+        elif property_name == "led":
+            property_value = self.camera.exposuretime            
+        elif property_name == "framesize":
+            property_value = self.camera.framesize
         elif property_name == "image_width":
             property_value = self.camera.SensorWidth
         elif property_name == "image_height":
@@ -125,34 +129,15 @@ class CameraESP32Cam:
     def openPropertiesGUI(self):
         pass
     
-    
 
-class ESP32Client(object):
+class ESP32Camera(object):
     # headers = {'ESP32-version': '*'}
     headers={"Content-Type":"application/json"}
 
     def __init__(self, host, port=80, is_debug=False):
-        if isinstance(host, zeroconf.ServiceInfo):
-            # If we have an mDNS ServiceInfo object, try each address
-            # in turn, to see if it works (sometimes you get addresses
-            # that don't work, if your network config is odd).
-            # TODO: figure out why we can get mDNS packets even when
-            # the microscope is unreachable by that IP
-            for addr in host.parsed_addresses():
-                if ":" in addr:
-                    self.host = f"[{addr}]"
-                else:
-                    self.host = addr
-                self.port = host.port
-                try:
-                    self.get_json(self.base_uri)
-                    break
-                except:
-                    logging.info(f"Couldn't connect to {addr}, we'll try another address if possible.")
-        else:
-            self.host = host
-            self.port = port
-            #self.get_json(self.base_uri)
+        self.host = host
+        self.port = port
+        #self.get_json(self.base_uri)
         #self.populate_extensions()
         self.is_stream = False
         self.latest_frame = None
@@ -163,7 +148,11 @@ class ESP32Client(object):
         self.SensorHeight = 460
         self.exposuretime = 0
         self.gain = 0
-        self.blacklevel = 0
+        self.framesize = 0
+        
+        self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
+        
+        self.__logger = initLogger(self, tryInheritParent=True)
 
         
     @property
@@ -190,29 +179,29 @@ class ESP32Client(object):
         r = r.json()
         return r
 
+    def post(self, path, payload={}, headers=None, timeout=1):
+        """Make an HTTP POST request and return the JSON response"""
+        if not path.startswith("http"):
+            path = self.base_uri + path
+        if headers is None:
+            headers = self.headers
+        
+        try:    
+            r = requests.post(path, json=payload, headers=headers,timeout=timeout)
+            r.raise_for_status()
+        except Exception as e:
+            self.__logger.error(e)
+            r = -1
+        return r
 
-    def get_temperature(self):
-        path = "/temperature"
-        r = self.get_json(path)
-        return r['value']
     
     #% LED
-    def set_led(self, state=0):
+    def setLed(self, ledIntensity=0):
         payload = {
-            "value": state
+            "ledintensity": ledIntensity
         }
-        path = '/led'
-        if state:
-            print("WARNING: TRIGGER won't work if LED is turned on!")
-        r = self.post_json(path, payload)
-        return r
-    
-    def set_flash(self, state=0):
-        payload = {
-            "value": state
-        }
-        path = '/flash'
-        r = self.post_json(path, payload)
+        path = '/postjson'
+        r = self.post(path, payload)
         return r
     
     def set_id(self, m_id=0):
@@ -223,6 +212,31 @@ class ESP32Client(object):
         r = self.post_json(path, payload)
         self.setup_id = r
         return r
+    
+    def setGain(self, gain=0):
+        payload = {
+            "gain": gain
+        }
+        path = '/postjson'
+        r = self.post(path, payload)
+        return r
+    
+    def setExposureTime(self, exposureTime=0):
+        payload = {
+            "exposuretime": exposureTime
+        }
+        path = '/postjson'
+        r = self.post(path, payload)
+        return r
+    
+    def setFrameSize(self, framesize=0):
+        payload = {
+            "framesize": framesize
+        }
+        path = '/postjson'
+        r = self.post(path, payload)
+        return r
+   
     
     def get_id(self):
         path = '/getID'
@@ -242,9 +256,10 @@ class ESP32Client(object):
 
     def start_stream(self, callback_fct = None):
         # Create and launch a thread    
-        self.stream_url = self.base_uri+'/cam-stream'
+        self.stream_url = "http://"+self.host+":81/stream.mjpeg"
+        
         self.is_stream = True
-        self.frame_receiver_thread = Thread(target = self.getframes)
+        self.frame_receiver_thread = Thread(target = self.getframes, args=(self.stream_url,), daemon=True)
         self.frame_receiver_thread.start() 
         self.callback_fct = callback_fct
 
@@ -254,27 +269,57 @@ class ESP32Client(object):
         self.frame_receiver_thread.join()
 
     def getframe(self, is_triggered=False):
-        url = self.base_uri+"/cam.jpg"
-        if is_triggered:
-            url = self.base_uri+"/cam-triggered"
-        return np.mean(np.array(imageio.imread(url)), -1)
+        url = "http://"+self.host+":80/capture"
+        response = requests.get(url)
+        bytes_im = io.BytesIO(response.content)
+        frame = np.uint8(np.mean(np.array(Image.open(bytes_im)), -1))
+        return frame
         
-    def getframes(self):
-        if self.is_debug:  print("Start Stream - "+str(self.setup_id))
-        self.last_frame = None
+    def getframes(self, url):           
+        bytesJPEG = bytes()
+        try:
+            stream = urllib.request.urlopen(url, timeout=2)
+        except Exception as e:
+            self.is_stream = False
+            self.__logger.error("Stream could not be opened")
+            self.__logger.error(e)
+        frameId = 0
+        errorCounter = 0
         while self.is_stream:
-            t1 = time.time()
-            url = self.base_uri+"/cam.jpg"
             try:
-                frame = imageio.imread(url)
-                self.last_frame = np.mean(frame, -1)
-            except:
-                frame = np.zeros((100,100))
-                print("Error while reading frame")
-            if self.callback_fct is not None:
-                self.callback_fct(self.last_frame)
-            if self.is_debug: print("Framerate: "+str(1/(time.time()-t1)))
-        if self.is_debug: print("Stop Stream")
+                bytesJPEG += stream.read(2**14)
+                a = bytesJPEG.find(b'\xff\xd8')
+                b = bytesJPEG.find(b'\xff\xd9')
+                if a != -1 and b != -1:
+                    jpg = bytesJPEG[a:b+2]
+                    bytesJPEG = bytesJPEG[b+2:]
+                    try:
+                        frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        frame = np.mean(frame,-1)
+                        # flush stream and reset bytearray
+                        stream.flush()
+                        bytesJPEG = bytes() 
+                        if self.is_debug:  
+                            self.__logger.debug("Frame#"+str(frameId))
+                            self.__logger.debug("Error#"+str(errorCounter))
+                        frameId += 1
+                        
+                        if self.callback_fct is not None:
+                            self.callback_fct(frame)
+                        
+                    except Exception as e:
+                        errorCounter+=1
+                    
+                    # limit thread workload
+                    time.sleep(.1)
+
+                    
+            except Exception as e:
+                # reopen stream?
+                self.__logger.error(e)
+                stream = urllib.request.urlopen(url, timeout=2)
+
+
         
     def soft_trigger(self):
         path = '/softtrigger'

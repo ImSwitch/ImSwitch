@@ -3,6 +3,8 @@ from scipy.interpolate import BPoly
 
 from .basesignaldesigners import ScanDesigner
 
+from imswitch.imcommon.model import initLogger
+
 
 class GalvoScanDesigner(ScanDesigner):
     """ Scan designer for scan systems with galvanometric mirrors.
@@ -12,6 +14,8 @@ class GalvoScanDesigner(ScanDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.__logger = initLogger(self)
 
         self._expectedParameters = ['target_device',
                                     'axis_length',
@@ -23,15 +27,37 @@ class GalvoScanDesigner(ScanDesigner):
     def checkSignalComp(self, scanParameters, setupInfo, scanInfo):
         """ Check analog scanning signals so that they are inside the range of
         the acceptable scanner voltages."""
-        fast_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
-        slow_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+        #pixel_positioner = setupInfo.positioners[scanParameters['target_device'][0]]
+        #line_positioner = setupInfo.positioners[scanParameters['target_device'][1]]
+        #frame_positioner = setupInfo.positioners[scanParameters['target_device'][2]]
 
-        if (scanInfo['minmax_fast_axis'][0] < fast_positioner.managerProperties['minVolt'] or
-                scanInfo['minmax_fast_axis'][1] > fast_positioner.managerProperties['maxVolt']):
-            return False
-        if (scanInfo['minmax_slow_axis'][0] < slow_positioner.managerProperties['minVolt'] or
-                scanInfo['minmax_slow_axis'][1] > slow_positioner.managerProperties['maxVolt']):
-            return False
+        #if (scanInfo['minmax_pixel_axis'][0] < pixel_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_pixel_axis'][1] > pixel_positioner.managerProperties['maxVolt']):
+        #    return False
+        #if (scanInfo['minmax_line_axis'][0] < line_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_line_axis'][1] > line_positioner.managerProperties['maxVolt']):
+        #    return False
+        #if (scanInfo['minmax_frame_axis'][0] < frame_positioner.managerProperties['minVolt'] or
+        #        scanInfo['minmax_frame_axis'][1] > frame_positioner.managerProperties['maxVolt']):
+        #    return False
+        #return True
+
+        for i in range(len(scanParameters['target_device'])):
+            if scanParameters['target_device'][i] != 'None':
+                if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1:
+                    positioner = setupInfo.positioners[scanParameters['target_device'][i]]
+                    minv = positioner.managerProperties['minVolt']
+                    maxv = positioner.managerProperties['maxVolt']
+                    #self.__logger.debug(positioner)
+                    #self.__logger.debug([minv, maxv])
+                    if i == 0: 
+                        param = 'minmax_pixel_axis'
+                    elif i == 1:
+                        param = 'minmax_line_axis'
+                    elif i == 2:
+                        param = 'minmax_frame_axis'
+                    if (scanInfo[param][0] < minv or scanInfo[param][1] > maxv):
+                        return False
         return True
 
     def make_signal(self, parameterDict, setupInfo):
@@ -45,32 +71,47 @@ class GalvoScanDesigner(ScanDesigner):
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
+        positionerNames = [positioner for positioner in setupInfo.positioners
+                           if setupInfo.positioners[positioner].forScanning]
+        #self.__logger.debug(positionerNames)
         positionersProps = [positioner.managerProperties for positioner in positioners]
 
-        axis_count = len(positioners)
+        device_count = len(positioners)
         # convert vel_max from µm/µs to V/µs
         vel_max = [positionerProps['vel_max'] / positionerProps['conversionFactor']
-                   for positionerProps in positionersProps]
+                   if 'vel_max' in positionerProps else 1e6
+                   for positionerProps in positionersProps ]
         # convert acc_max from µm/µs^2 to V/µs^2
         acc_max = [positionerProps['acc_max'] / positionerProps['conversionFactor']
-                   for positionerProps in positionersProps]
+                   if 'acc_max' in positionerProps else 1e6
+                   for positionerProps in positionersProps ]
 
-        # get list of positions for each axis
-        convFactors = [positionerProps['conversionFactor'] for positionerProps in positionersProps]
+        # get conversion factors for scanning axes
+        convFactors = [positionerProps['conversionFactor'] 
+                       if 'conversionFactor' in positionerProps else 1
+                       for positionerProps in positionersProps]
 
-        # TODO: this is not correct, as I take the order of conversion factors from the order in the
-        #       list of scanners, but the scan info order as the scan axis order
-        # retrieve axis lengths in V
-        self.axis_length = [(parameterDict['axis_length'][i] / convFactors[i])
-                            for i in range(axis_count)]
-        # retrieve axis step sizes in V
-        self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[i])
-                               for i in range(axis_count)]
-        # retrieve axis center positions in V
-        self.axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[i])
-                               for i in range(axis_count)]
+        # retrieve axis order of active axes, to compare with the positionerNames
+        self.axis_devs_order = [parameterDict['target_device'][i] for i in range(device_count)
+                                if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+        #self.__logger.debug(self.axis_devs_order)
+        # retrieve axis lengths in V of active axes
+        self.axis_length = [(parameterDict['axis_length'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
+                            for i in range(device_count)
+                            if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+        #self.__logger.debug(self.axis_length)
+        # retrieve axis step sizes in V of active axes
+        self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
+                               for i in range(device_count)
+                               if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+        # retrieve axis center positions in V of active axes
+        self.axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
+                               for i in range(device_count)
+                               if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
 
+        # get list of pixel positions for each active axis
         axis_positions = []
+        axis_count = len(self.axis_devs_order)
         for i in range(axis_count):
             axis_positions.append(int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
@@ -78,40 +119,40 @@ class GalvoScanDesigner(ScanDesigner):
                                                         vel_max, acc_max)
 
         # TODO: make this more modular to the number of scanners used?
-        # fast axis signal
-        fast_pos, samples_period, n_lines = self.__generate_smooth_scan(parameterDict, vel_max[0],
+        # pixel axis signal
+        pixel_pos, samples_period, n_lines = self.__generate_smooth_scan(parameterDict, vel_max[0],
                                                                         acc_max[0])
-        # slow (middle) axis signal
-        axis_reps = self.__get_axis_reps(fast_pos, samples_period, n_lines)
-        slow_pos = self.__generate_step_scan(parameterDict, axis_reps, vel_max[1], acc_max[1])
+        # line (middle) axis signal
+        axis_reps = self.__get_axis_reps(pixel_pos, samples_period, n_lines)
+        line_pos = self.__generate_step_scan(axis_reps, vel_max[1], acc_max[1])
+        len_frame = len(pixel_pos)
 
-        # TODO: add
         # third axis signal
-        #####
+        if axis_count==3:
+            n_frames = int(self.axis_length[2] / self.axis_step_size[2])
+            pixel_pos, line_pos, pad_betweenframes = self.__zero_pad_samelen(pixel_pos, line_pos)
+            len_frame = len(pixel_pos)
+            pixel_pos, line_pos = self.__repeat_frames(pixel_pos, line_pos, n_frames)
+            frame_pos = self.__generate_step_scan_stepwise(len_frame, n_frames, self.axis_devs_order[2])
 
-        # TODO: update to inlcude as many signals as scanners
         # pad all signals
-        fast_axis_signal, slow_axis_signal = self.__zero_padding(parameterDict, fast_pos, slow_pos)
+        if axis_count==2:
+            pixel_axis_signal, line_axis_signal = self.__zero_padding_2axis(parameterDict, pixel_pos, line_pos)
+        elif axis_count==3:
+            pixel_axis_signal, line_axis_signal, frame_axis_signal = self.__zero_padding_3axis(parameterDict, pixel_pos, line_pos, frame_pos)
 
-        sig_dict = {parameterDict['target_device'][0]: fast_axis_signal,
-                    parameterDict['target_device'][1]: slow_axis_signal}
-
-        # plt.figure()
-        # plt.plot(fast_axis_signal-0.01)
-        # plt.plot(slow_axis_signal)
-        # plt.show()
-
+        # create scan information dictionary
         pixels_line = int(self.axis_length[0] / self.axis_step_size[0])
-        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner and/or image
-        # acquisition managers
+        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner
+        # and/or image acquisition managers
         scanInfoDict = {
             'n_lines': int(self.axis_length[1] / self.axis_step_size[1]),
             'pixels_line': pixels_line,
             'scan_samples_line': int(
                 round(pixels_line * parameterDict['sequence_time'] * 1e6 / self.__timestep)
             ),
-            'scan_samples_period': samples_period - 1,
-            'scan_samples_total': len(fast_axis_signal),
+            'scan_samples_frame': len_frame,
+            'scan_samples_total': len(pixel_axis_signal),
             'scan_throw_startzero': int(round(self.__paddingtime / self.__timestep)),
             'scan_throw_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
@@ -119,23 +160,70 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_throw_finalpos': self._samples_finalpos,
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
-            'pixel_size_ax1': parameterDict['axis_step_size'][0],
-            'pixel_size_ax2': parameterDict['axis_step_size'][1],
-            'minmax_fast_axis': [min(fast_axis_signal), max(fast_axis_signal)],
-            'minmax_slow_axis': [min(slow_axis_signal), max(slow_axis_signal)]
+            'phase_delay': parameterDict['phase_delay']
         }
+        if axis_count==2:
+            sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
+                        parameterDict['target_device'][1]: line_axis_signal}
+            scanInfoDict['scan_samples_period'] = samples_period - 1
+            scanInfoDict['pixel_size_ax1'] = parameterDict['axis_step_size'][0]
+            scanInfoDict['pixel_size_ax2'] = parameterDict['axis_step_size'][1]
+            scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
+            scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines]
+        elif axis_count==3:
+            sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
+                        parameterDict['target_device'][1]: line_axis_signal,
+                        parameterDict['target_device'][2]: frame_axis_signal}
+            scanInfoDict['scan_samples_period'] = samples_period - 1
+            scanInfoDict['pixel_size_ax1'] = parameterDict['axis_step_size'][0]
+            scanInfoDict['pixel_size_ax2'] = parameterDict['axis_step_size'][1]
+            scanInfoDict['pixel_size_ax3'] = parameterDict['axis_step_size'][2]
+            scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
+            scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
+            scanInfoDict['minmax_frame_axis'] = [min(frame_axis_signal), max(frame_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines, n_frames]
+            scanInfoDict['scan_throw_zeropos_betweenframes'] = pad_betweenframes
+        else:
+            sig_dict = {parameterDict['target_device'][0]: pixel_axis_signal,
+                        parameterDict['target_device'][1]: line_axis_signal}
+            scanInfoDict['scan_samples_period'] = samples_period - 1
+            scanInfoDict['pixel_size_ax1'] = parameterDict['axis_step_size'][0]
+            scanInfoDict['pixel_size_ax2'] = parameterDict['axis_step_size'][1]
+            scanInfoDict['minmax_pixel_axis'] = [min(pixel_axis_signal), max(pixel_axis_signal)]
+            scanInfoDict['minmax_line_axis'] = [min(line_axis_signal), max(line_axis_signal)]
+            scanInfoDict['img_dims'] = [pixels_line, n_lines]
 
-        self._logger.debug('Scanning curves generated.')
+        # plot scan signal
+        #import matplotlib.pyplot as plt
+        #plt.figure(1)
+        #plt.plot(pixel_axis_signal-0.01)
+        #plt.plot(line_axis_signal)
+        #if axis_count==3:
+        #    plt.plot(frame_axis_signal)
+        #plt.show()
+
+        #self.__logger.debug(scanInfoDict)
+        self.__logger.debug(f'Scanning curves generated, frame time: {round(self.__timestep * 1e-6 * len_frame, ndigits=5)}.')
         return sig_dict, axis_positions, scanInfoDict
 
+    def __calc_phase_delay(self, px_size, dwell_time):
+        """ Calculate a galvo-specific phase delay, depending on response time. 
+        Based on second-degree curved surface fit to 2D-sampling of dwell time and pixel size induced phase delays,
+        as measured in the image-shift of a fix structure as compared to a very slow scan (dwell time = 500 us). """
+        C = np.array([0,0,0,0,0,0])  # second order plane fit
+        params = np.array([px_size**2, dwell_time**2, px_size*dwell_time, px_size, dwell_time, 1])  # for use with second order plane fit
+        phase_delay = np.sum(params*C)
+        return phase_delay
+
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
-        t_initpos_vc_slow = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
-        t_initpos_vc_fast = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
-        t_acc_slow = vel_max[1] / acc_max[1]
-        t_acc_fast = vel_max[0] / acc_max[0]
-        t_initpos_slow = t_initpos_vc_slow + 2 * t_acc_slow
-        t_initpos_fast = t_initpos_vc_fast + 2 * t_acc_fast
-        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_slow - t_initpos_fast])
+        t_initpos_vc_line = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
+        t_initpos_vc_pixel = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
+        t_acc_line = vel_max[1] / acc_max[1]
+        t_acc_pixel = vel_max[0] / acc_max[0]
+        t_initpos_line = t_initpos_vc_line + 2 * t_acc_line
+        t_initpos_pixel = t_initpos_vc_pixel + 2 * t_acc_pixel
+        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_line - t_initpos_pixel])
         return settlingtime
 
     def __generate_smooth_scan(self, parameterDict, v_max, a_max):
@@ -145,13 +233,13 @@ class GalvoScanDesigner(ScanDesigner):
         curve_poly, time_fix, pos_fix = self.__linescan_poly(parameterDict, v_max, a_max)
         # calculate number of evaluation points for a line for decided timestep
         n_eval = int(time_fix[-1] / self.__timestep)
-        # generate multiline curve for the whole scan
+        # generate multiline curve for the whole frame
         pos = self.__generate_smooth_multiline(curve_poly, time_fix, pos_fix, n_eval, n_lines)
         # add missing start and end piece
         pos_ret = self.__add_start_end(pos, pos_fix, v_max, a_max)
         return pos_ret, n_eval, n_lines
 
-    def __generate_step_scan(self, parameterDict, axis_reps, v_max, a_max):
+    def __generate_step_scan(self, axis_reps, v_max, a_max):
         """ Generate a step-function scanning curve, with initial smooth
         positioning """
         l_scan = self.axis_length[1]
@@ -172,9 +260,33 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = np.concatenate((pos_init, pos_steps, pos_final))
         return pos_ret
 
+    def __repeat_frames(self, pixel_pos, line_pos, n_frames):
+        """ Repeat pixel and line positions over multiple frames. """
+        pixel_pos_ret = pixel_pos
+        line_pos_ret = line_pos
+        for i in range(n_frames-1):
+            pixel_pos_ret = np.concatenate((pixel_pos_ret, pixel_pos))
+            line_pos_ret = np.concatenate((line_pos_ret, line_pos))
+        return pixel_pos_ret, line_pos_ret
+
+    def __generate_step_scan_stepwise(self, len_frame, n_frames, axis_name):
+        """ Generate a step-function scanning curve, with initial smooth
+        positioning """
+        l_scan = self.axis_length[2]
+        c_scan = self.axis_centerpos[2]
+        # create linspace for axis positions
+        positions = (np.linspace(l_scan / n_frames, l_scan, n_frames) -
+                     l_scan / (n_frames * 2) - l_scan / 2 + c_scan)
+        if 'mock' in axis_name.lower():
+            positions = positions - positions[0]
+        # repeat each middle element a number of times equal to the length of that between the
+        # faster axis repetitions
+        pos_ret = np.repeat(positions, len_frame)
+        return pos_ret
+
     def __get_axis_reps(self, pos, samples_period, n_lines):
-        """ Get reps for each step on slow axis, by looking at the maximum and
-        periods of the fast axis """
+        """ Get reps for each step on line axis, by looking at the maximum and
+        periods of the pixel axis """
         start_skip = self._samples_initpos + self._samples_settling + self._samples_startacc
         end_skip = self._samples_finalpos
         # get length of first line
@@ -444,7 +556,23 @@ class GalvoScanDesigner(ScanDesigner):
         self._samples_finalpos = len(pos_post2)
         return pos_ret
 
-    def __zero_padding(self, parameterDict, pos1, pos2):
+    def __zero_pad_samelen(self, pos1, pos2):
+        """ Pad zeros on two scanning curves to the same length. """
+        padlen1 = np.array([0,0])
+        padlen2 = np.array([0,0])
+        # check that the length of pos1 and pos2 are identical
+        lendiff = len(pos1) - len(pos2)
+        # if not equal, add to the correct padding length to make them equal
+        if lendiff != 0:
+            if lendiff > 0:
+                padlen2 = padlen2 + np.array([0, abs(lendiff)])
+            elif lendiff < 0:
+                padlen1 = padlen1 + np.array([0, abs(lendiff)])
+        pos_ret1 = np.pad(pos1, padlen1, 'constant', constant_values=0)
+        pos_ret2 = np.pad(pos2, padlen2, 'constant', constant_values=0)
+        return pos_ret1, pos_ret2, lendiff
+
+    def __zero_padding_2axis(self, parameterDict, pos1, pos2):
         """ Pad zeros to the end of two scanning curves, for initial and final
         settling of galvos """
         padlen = int(round(self.__paddingtime / self.__timestep))
@@ -462,6 +590,36 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret1 = np.pad(pos1, padlen1, 'constant', constant_values=0)
         pos_ret2 = np.pad(pos2, padlen2, 'constant', constant_values=0)
         return pos_ret1, pos_ret2
+
+    def __zero_padding_3axis(self, parameterDict, pos1, pos2, pos3):
+        """ Pad zeros to the end of three scanning curves, for initial and final
+        settling of galvos """
+        padlen = int(round(self.__paddingtime / self.__timestep))
+        padlen1 = np.array([padlen, padlen])
+        padlen2 = np.array([padlen, padlen])
+        padlen3 = np.array([padlen, padlen])
+        # check that the length of pos1, pos2, and pos3 are identical
+        lendiff12 = len(pos1) - len(pos2)
+        lendiff13 = len(pos1) - len(pos3)
+        lendiff23 = len(pos2) - len(pos3)
+        # if not equal, add to the correct padding length to make them equal
+        if np.sum([abs(lendiff12),abs(lendiff13),abs(lendiff23)]) != 0:
+            longest = np.argmax([len(pos1), len(pos2), len(pos3)])
+            if longest==1:
+                padlen2 = padlen2 + np.array([0, abs(lendiff12)])
+                padlen3 = padlen3 + np.array([0, abs(lendiff13)])
+            elif longest==2:
+                padlen1 = padlen1 + np.array([0, abs(lendiff12)])
+                padlen3 = padlen3 + np.array([0, abs(lendiff23)])
+            elif longest==3:
+                padlen1 = padlen1 + np.array([0, abs(lendiff13)])
+                padlen2 = padlen2 + np.array([0, abs(lendiff23)])
+        
+        # pad position arrays
+        pos_ret1 = np.pad(pos1, padlen1, 'constant', constant_values=0)
+        pos_ret2 = np.pad(pos2, padlen2, 'constant', constant_values=0)
+        pos_ret3 = np.pad(pos3, padlen3, 'constant', constant_values=0)
+        return pos_ret1, pos_ret2, pos_ret3
 
 # def __initial_positioning(self, initpos, v_max, a_max):
 #    """ Generate a polynomial for a smooth initial positioning scanning
@@ -535,7 +693,7 @@ class GalvoScanDesigner(ScanDesigner):
 #    return poly_eval
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

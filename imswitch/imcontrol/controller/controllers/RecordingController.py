@@ -6,6 +6,7 @@ from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
 
 class RecordingController(ImConWidgetController):
@@ -13,6 +14,7 @@ class RecordingController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
         self._widget.setDetectorList(
             self._master.detectorsManager.execOnAll(lambda c: c.model,
                                                     condition=lambda c: c.forAcquisition)
@@ -25,7 +27,7 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
+        self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -43,6 +45,10 @@ class RecordingController(ImConWidgetController):
         self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
         self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigSnapImg.connect(self.snap)
+        self._commChannel.sigSnapImgPrev.connect(self.snapImagePrev)
+        self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
+        self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
 
         # Connect RecordingWidget signals
         self._widget.sigDetectorModeChanged.connect(self.detectorChanged)
@@ -70,12 +76,12 @@ class RecordingController(ImConWidgetController):
 
     def snapSaveModeChanged(self):
         saveMode = SaveMode(self._widget.getSnapSaveMode())
-        self._widget.setSnapSaveFormatEnabled(saveMode != SaveMode.RAM)
+        self._widget.setsaveFormatEnabled(saveMode != SaveMode.RAM)
         if saveMode == SaveMode.RAM:
-            self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
+            self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self):
-        """ Take a snap and save it to a .tiff file. """
+    def snap(self, name=None):
+        """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
 
         folder = self._widget.getRecFolder()
@@ -84,15 +90,55 @@ class RecordingController(ImConWidgetController):
         time.sleep(0.01)
 
         detectorNames = self.getDetectorNamesToCapture()
-        savename = os.path.join(folder, self.getFileName()) + '_snap'
+        if name is None:
+            name = '_snap'
+        savename = os.path.join(folder, self.getFileName()) + name
+
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
-
+        
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getSnapSaveFormat()),
+                                           SaveFormat(self._widget.getsaveFormat()),
                                            attrs)
+        
+    def snapNumpy(self):
+        self.updateRecAttrs(isSnapping=True)
+        detectorNames = self.getDetectorNamesToCapture()
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                 for detectorName in detectorNames}
+
+        return self._master.recordingManager.snap(detectorNames,
+                                           "",
+                                           SaveMode(4), # for Numpy
+                                           "",
+                                           attrs)
+
+
+
+    def snapImagePrev(self, *args):
+        """ Snap an already taken image and save it to a file. """
+        self.updateRecAttrs(isSnapping=True)
+
+        args = list(args)
+        detectorName = (args[0])
+        image = args[1]
+        suffix = args[2]
+
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        time.sleep(0.01)
+
+        savename = os.path.join(folder, self.getFileName()) + '_snap_' + suffix
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()}
+
+        self._master.recordingManager.snapImagePrev(detectorName,
+                                                    savename,
+                                                    SaveFormat(self._widget.getSnapSaveFormat()),
+                                                    image,
+                                                    attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """
@@ -115,6 +161,7 @@ class RecordingController(ImConWidgetController):
                 'recMode': self.recMode,
                 'savename': self.savename,
                 'saveMode': SaveMode(self._widget.getRecSaveMode()),
+                'saveFormat': SaveFormat(self._widget.getsaveFormat()),
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
@@ -192,7 +239,7 @@ class RecordingController(ImConWidgetController):
 
     def scanDone(self):
         self.doneScan = True
-        if self.endedRecording and (self.recMode == RecMode.ScanLapse or
+        if not self.endedRecording and (self.recMode == RecMode.ScanLapse or
                                     self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
 
@@ -318,10 +365,17 @@ class RecordingController(ImConWidgetController):
                 self.setSharedAttr(_lapseTimeAttr, self._widget.getTimelapseTime())
                 self.setSharedAttr(_freqAttr, self._widget.getTimelapseFreq())
 
+    def sendScanFreq(self):
+        freq = self.getTimelapseFreq()
+        self._commChannel.sigSendScanFreq.emit(freq)
+
+    def getTimelapseFreq(self):
+        return self._widget.getTimelapseFreq()
+
     @APIExport(runOnUIThread=True)
-    def snapImage(self) -> None:
+    def snapImage(self, name=None) -> None:
         """ Take a snap and save it to a .tiff file at the set file path. """
-        self.snap()
+        self.snap(name)
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:
@@ -405,7 +459,7 @@ _lapseTimeAttr = 'LapseTime'
 _freqAttr = 'LapseFreq'
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

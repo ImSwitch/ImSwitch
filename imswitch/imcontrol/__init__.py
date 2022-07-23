@@ -47,6 +47,8 @@ def getMainViewAndController(moduleCommChannel, *_args,
     else:
         setupInfo = overrideSetupInfo
 
+    logger.debug(f'Setup used: {options.setupFileName}')
+
     view = ImConMainView(options, setupInfo)
     try:
         controller = ImConMainController(options, setupInfo, view, moduleCommChannel)
@@ -57,7 +59,7 @@ def getMainViewAndController(moduleCommChannel, *_args,
     return view, controller
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

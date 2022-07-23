@@ -1,4 +1,5 @@
 from .LaserManager import LaserManager
+from imswitch.imcommon.model import initLogger
 
 
 class NidaqLaserManager(LaserManager):
@@ -9,26 +10,32 @@ class NidaqLaserManager(LaserManager):
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
         self._nidaqManager = lowLevelManagers['nidaqManager']
+        self.__logger = initLogger(self, tryInheritParent=True)
         super().__init__(laserInfo, name, isBinary=laserInfo.getAnalogChannel() is None,
                          valueUnits='V', valueDecimals=2)
 
     def setEnabled(self, enabled):
-        self._nidaqManager.setDigital(self.name, enabled)
+        try:
+            self._nidaqManager.setDigital(self.name, enabled)
+        except:
+            self.__logger.error("Error trying to enable laser.")
 
     def setValue(self, voltage):
         if self.isBinary:
             return
-
-        self._nidaqManager.setAnalog(
-            target=self.name, voltage=voltage,
-            min_val=self.valueRangeMin, max_val=self.valueRangeMax
-        )
+        try:
+            self._nidaqManager.setAnalog(
+                target=self.name, voltage=voltage,
+                min_val=self.valueRangeMin, max_val=self.valueRangeMax
+            )
+        except:
+            self.__logger.error("Error trying to set value to laser.")
 
     def setScanModeActive(self, active):
         if active:
             self.setEnabled(False)
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -1,25 +1,28 @@
 import numpy as np
+from scipy.stats import multivariate_normal
+
+import time
 
 
 class MockCameraTIS:
     def __init__(self):
         self.properties = {
-            'image_height': 1024,
-            'image_width': 1280,
+            'image_height': 800,
+            'image_width': 800,
             'subarray_vpos': 0,
             'subarray_hpos': 0,
             'exposure_time': 0.1,
-            'subarray_vsize': 1024,
-            'subarray_hsize': 1280,
-            'SensorHeight': 1000,
-            'SensorWidth': 1000
+            'subarray_vsize': 800,
+            'subarray_hsize': 800,
+            'SensorHeight': 1024,
+            'SensorWidth': 1280
         }
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
         self.model = 'mock'
-        self.SensorHeight = 1000
-        self.SensorWidth = 1000
+        self.SensorHeight = 500
+        self.SensorWidth = 500
         self.shape = (self.SensorHeight,self.SensorWidth)
 
     def start_live(self):
@@ -37,17 +40,45 @@ class MockCameraTIS:
     def setROI(self, hpos, vpos, hsize, vsize):
         pass
 
+    def setBinning(self, binning):
+        pass
+
     def grabFrame(self, **kwargs):
-        img = np.zeros((500, 600))
-        beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
-        img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
-        img = np.random.randn(img.shape[0],img.shape[1])
+        mocktype = "random_peak"
+        if mocktype=="focus_lock":
+            img = np.zeros((500, 600))
+            beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
+            img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+        elif mocktype=="random_peak":
+            imgsize = (800, 800)
+            peakmax = 60
+            noisemean = 10
+            # generate image
+            img = np.zeros(imgsize)
+            # add a random gaussian peak sometimes
+            if np.random.rand() > 0.8:
+                x, y = np.meshgrid(np.linspace(0,imgsize[1],imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
+                pos = np.dstack((x, y))
+                xc = (np.random.rand()*2-1)*imgsize[0]/2 + imgsize[0]/2
+                yc = (np.random.rand()*2-1)*imgsize[1]/2 + imgsize[1]/2
+                rv = multivariate_normal([xc, yc], [[50, 0], [0, 50]])
+                img = np.random.rand()*peakmax*317*rv.pdf(pos)
+                img = img + 0.01*np.random.poisson(img)
+            # add Poisson noise
+            img = img + np.random.poisson(lam=noisemean, size=imgsize)
+        else:
+            img = np.zeros((500, 600))
+            beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
+            img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
+            img = np.random.randn(img.shape[0],img.shape[1])
         return img
 
-    def getLast(self):
+    def getLast(self, is_resize=False):
         return self.grabFrame()
-
-
+    
+    def getLastChunk(self):
+        return np.expand_dims(self.grabFrame(),0)
+    
     def setPropertyValue(self, property_name, property_value):
         return property_value
 
@@ -59,9 +90,17 @@ class MockCameraTIS:
 
     def openPropertiesGUI(self):
         pass
+    
+    def close(self):
+        pass
 
+    def close(self):
+        pass
+    
+    def flushBuffer(self):
+        pass 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

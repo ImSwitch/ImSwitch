@@ -20,8 +20,7 @@ class TISManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
-
-        model = self._camera.model
+        
         self._running = False
         self._adjustingParameters = False
 
@@ -50,7 +49,7 @@ class TISManager(DetectorManager):
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=True)
+                         model=self._camera.model, parameters=parameters, actions=actions, croppable=True)
 
     def getLatestFrame(self):
         if not self._adjustingParameters:
@@ -154,9 +153,13 @@ class TISManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
+    
+    def close(self):
+        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
+        pass
 
 
-# Copyright (C) 2020, 2021 TestaLab
+# Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

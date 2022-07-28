@@ -63,14 +63,19 @@ class CameraOpenCV:
 
     def set_value(self ,feature_key, feature_value):
         # Need to change acquisition parameters?
-        self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value)
-        try:
+        self.__logger.error(feature_key)
+        self.__logger.debug("Error not yet implemented!")
+
+        '''        try:
+            self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value)
             self.__logger.debug("OpenCV camera Feature not yet implemented...")
             pass
         except Exception as e:
             self.__logger.error(e)
             self.__logger.error(feature_key)
             self.__logger.debug("Value not available?")
+        '''
+
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
@@ -111,7 +116,7 @@ class CameraOpenCV:
         # Check if the property exists.
         if property_name == "gain":
             self.set_analog_gain(property_value)
-        elif property_name == "ExposureTime":
+        elif property_name == "exposure":
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)

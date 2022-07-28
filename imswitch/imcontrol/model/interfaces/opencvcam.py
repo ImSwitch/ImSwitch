@@ -66,7 +66,8 @@ class CameraOpenCV:
         self.__logger.error(feature_key)
         self.__logger.debug("Error not yet implemented!")
 
-        '''        try:
+        '''        
+        try:
             self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value)
             self.__logger.debug("OpenCV camera Feature not yet implemented...")
             pass

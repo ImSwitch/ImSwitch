@@ -69,9 +69,10 @@ class LEDMatrixController(ImConWidgetController):
         self.LEDMatrixDevice.setIntensity(intensity=intensity)
         
     @APIExport()
-    def switchLED(self, LEDid):
-        self._ledmatrixMode = "single"
-        self.LEDMatrixDevice.switchLED(LEDid)
+    def switchLED(self, LEDid, intensity=None):
+        self._ledmatrixMode = "single"    
+        self.LEDMatrixDevice.switchLED(LEDid, intensity)
+        self._widget.leds[str(LEDid)].setChecked(np.mean(self.LEDMatrixDevice.pattern[LEDid])>0)
 
     def connect_leds(self):
         """Connect leds (Buttons) to the Sample Pop-Up Method"""

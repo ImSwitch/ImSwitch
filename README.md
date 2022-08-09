@@ -42,7 +42,8 @@ imswitch
 **Installation**
 ```
 cd ~/Documents
-git clone https://github.com/beniroquai/ImSwitch/
+git clone https://github.com/openUC2/ImSwitch/
+cd ImSwitch
 # alternatively download this repo, unzip the .zip-file and open the command prompt in this directory
 conda create -n imswitch python=3.9 -y
 conda activate imswitch

@@ -11,12 +11,13 @@ from imswitch.imcommon.model import initLogger, APIExport
 class LEDMatrixController(ImConWidgetController):
     """ Linked to LEDMatrixWidget."""
 
-    def __init__(self, nLedsX = 8, nLedsY=8, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         
-        self.nLedsX = nLedsX
-        self.nLedsY = nLedsY
+        # TODO: This must be easier?
+        self.nLedsX = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].Nx
+        self.nLedsY = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].Ny
         
         self._ledmatrixMode = ""
 
@@ -72,7 +73,7 @@ class LEDMatrixController(ImConWidgetController):
     def switchLED(self, LEDid, intensity=None):
         self._ledmatrixMode = "single"    
         self.LEDMatrixDevice.switchLED(LEDid, intensity)
-        self._widget.leds[str(LEDid)].setChecked(np.mean(self.LEDMatrixDevice.pattern[LEDid])>0)
+        self._widget.leds[str(LEDid)].setChecked(np.mean(self.LEDMatrixDevice.pattern[int(LEDid)])>0)
 
     def connect_leds(self):
         """Connect leds (Buttons) to the Sample Pop-Up Method"""
@@ -116,7 +117,7 @@ class LEDMatrixDevice():
             self.pattern[index,:] = (0,0,0) 
         else:
             self.pattern[index,:] = intensity
-        self.ledMatrix.setLEDSingle(indexled=index, intensity=self.pattern[index,:])
+        self.ledMatrix.setLEDSingle(indexled=index, Nleds=self.Nx*self.Ny, intensity=self.pattern[index,:])
     
     def setAllOn(self, intensity=None):
         if intensity is None:

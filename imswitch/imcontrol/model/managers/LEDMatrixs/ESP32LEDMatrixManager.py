@@ -30,9 +30,9 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         
         self.N_leds = self.Nx*self.Ny
 
-        self.pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
-                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
-                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds))))
+        self.pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds),(self.Nx,self.Ny)),
+                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds),(self.Nx,self.Ny)),
+                       np.reshape(np.random.randint(0,self.I_max ,self.N_leds),(self.Nx,self.Ny))))
         
 
         self._rs232manager = lowLevelManagers['rs232sManager'][
@@ -58,11 +58,11 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.setEnabled = enabled
         #self.esp32.setLEDMatrixPattern(self.pattern*self.setEnabled)
 
-    def setLEDSingle(self, indexled=0, intensity=(255,255,255)):
+    def setLEDSingle(self, indexled=0, Nleds=None, intensity=(255,255,255)):
         """Handles output power.
         Sends a RS232 command to the LEDMatrix specifying the new intensity.
         """
-        self.esp32.send_LEDMatrix_single(indexled, intensity, timeout=1)
+        self.esp32.send_LEDMatrix_single(indexled, intensity, Nleds, timeout=1)
         
 
 # Copyright (C) 2020-2021 ImSwitch developers

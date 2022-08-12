@@ -18,9 +18,17 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self.__logger = initLogger(self, instanceName=name)
         self.power = 0
         self.I_max = 255
-        self.N_leds = 64
         self.setEnabled = False
         self.intesnsity=0
+
+        try:
+            self.Nx = LEDMatrixInfo.managerProperties['Nx']
+            self.Ny = LEDMatrixInfo.managerProperties['Ny']
+        except:
+            self.Nx = 8
+            self.Ny = 8
+        
+        self.N_leds = self.Nx*self.Ny
 
         self.pattern = np.array((np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),
                        np.reshape(np.random.randint(0,self.I_max ,self.N_leds**2),(self.N_leds,self.N_leds)),

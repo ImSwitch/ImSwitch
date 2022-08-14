@@ -93,9 +93,15 @@ class LEDMatrixDevice():
         self.pattern = np.zeros((self.Nx*self.Ny,3))
         self.intensity = (255,255,255)
         self.state=None
-        
+
+        # set dimensions on the hardware side
+        self.prepareLEDMatrix(self.Nx, self.Ny)
+
         # Turn off LEDs
         self.ledMatrix.setAll(intensity=(0,0,0))
+
+    def prepareLEDMatrix(self, Nx, Ny):
+        self.ledMatrix.setDimensions(Nx, Ny)
         
     def setIntensity(self, intensity=None):
         if intensity is None:
@@ -110,13 +116,13 @@ class LEDMatrixDevice():
         self.state="pattern"
           
     def switchLED(self, index, intensity=None):
-        if intensity is None:
+        if intensity is None or type(intensity)== bool :
             intensity = self.intensity
         index = int(index)
         if np.sum(self.pattern[index,:]):
             self.pattern[index,:] = (0,0,0) 
         else:
-            self.pattern[index,:] = intensity
+            self.pattern[index,:] = np.uint16(intensity)
         self.ledMatrix.setLEDSingle(indexled=index, Nleds=self.Nx*self.Ny, intensity=self.pattern[index,:])
     
     def setAllOn(self, intensity=None):

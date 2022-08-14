@@ -52,7 +52,10 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         #if len(self.pattern)!=3:
         #    self.pattern=np.reshape(np.transpose(self.pattern), (3,int(np.sqrt(self.N_leds)),int(np.sqrt(self.N_leds))))
         self.esp32.send_LEDMatrix_array(self.pattern)
-        
+    
+    def setDimensions(self, Nx, Ny):
+        self.esp32.set_LEDMatrix_dimensions(Nx, Ny)
+    
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled

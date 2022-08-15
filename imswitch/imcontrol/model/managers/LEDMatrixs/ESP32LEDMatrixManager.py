@@ -5,7 +5,7 @@ import numpy as np
 from uc2rest import ledmatrix
 
 class ESP32LEDMatrixManager(LEDMatrixManager):
-    """ LEDMatrixManager for controlling LEDs and LEDMatrixs connected to an 
+    """ LEDMatrixManager for controlling LEDs and LEDMatrixs connected to an
     ESP32 exposing a REST API
     Each LEDMatrixManager instance controls one LED.
 
@@ -29,26 +29,26 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         except:
             self.Nx = 8
             self.Ny = 8
-        
+
         self.NLeds = self.Nx*self.Ny
 
         self._rs232manager = lowLevelManagers['rs232sManager'][
             LEDMatrixInfo.managerProperties['rs232device']
         ]
         self.esp32 = self._rs232manager._esp32
-            
+
         # initialize the LEDMatrix device that holds all necessary states^
         self.mLEDmatrix = ledmatrix.ledmatrix(self.esp32, NLeds=self.NLeds)
-        
+
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
     def setAll(self, state=(0,0,0)):
-        # dealing with on or off, 
+        # dealing with on or off,
         self.mLEDmatrix.setAll(state)
-        
+
     def setPattern(self, pattern):
         self.mLEDmatrix.pattern(pattern)
-        
+
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled
@@ -59,13 +59,13 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         Sends a RS232 command to the LEDMatrix specifying the new intensity.
         """
         self.mLEDmatrix.setSingle(indexled, state=state)
-        
+
     def setLEDIntensity(self, intensity=(0,0,0)):
         self.mLEDmatrix.setIntensity(intensity)
-        
+
     def getPattern(self):
         return self.mLEDmatrix.pattern
-        
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

@@ -20,8 +20,15 @@ def main():
         
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
+    # use only if available
+    if "imblockly" in enabledModuleIds:
+        try:
+            from imswitch import imblockly
+        except:
+            enabledModuleIds.remove("imblockly")
+
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
-                  for moduleId in modulesconfigtools.getEnabledModuleIds()]
+                  for moduleId in enabledModuleIds]
 
     moduleCommChannel = ModuleCommunicationChannel()
 

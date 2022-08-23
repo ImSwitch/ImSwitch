@@ -78,47 +78,6 @@ class LEDMatrixController(ImConWidgetController):
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.setLED, coords))
 
-'''
-
-class LEDMatrixDevice():
-
-    def __init__(self, ledMatrix, Nx=8, Ny=8):
-        self.Nx=Nx
-        self.Ny=Ny
-        self.ledMatrix = ledMatrix
-        self.pattern = np.zeros((self.Nx*self.Ny,3))
-        self.intensity = (255,255,255)
-        self.state=None
-
-        # set dimensions on the hardware side
-        self.prepareLEDMatrix(self.Nx, self.Ny)
-
-        # Turn off LEDs
-
-
-    def setIntensity(self, intensity=None):
-        if intensity is None or type(intensity)==bool:
-            intensity = self.intensity
-        self.pattern = (self.pattern>0)*(intensity,intensity,intensity)
-        self.intensity = (intensity,intensity,intensity)
-        self.ledMatrix.setPattern(self.pattern)
-
-    def setPattern(self, pattern):
-        self.pattern = pattern
-        self.ledMatrix.setPattern(self.pattern)
-        self.state="pattern"
-
-    def setLED(self, index, intensity=None):
-        if intensity is None or type(intensity)==bool:
-            intensity = self.intensity
-        index = int(index)
-        if np.sum(self.pattern[index,:]):
-            self.pattern[index,:] = (0,0,0)
-        else:
-            self.pattern[index,:] = intensity
-        self.ledMatrix.setLEDSingle(indexled=index,intensity=self.pattern[index,:])
-'''
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -48,7 +48,8 @@ cd ImSwitch
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
 pip install -r requirements.txt --user
-pip install -e ./
+#pip install -e ./
+pip install -e . --use-deprecated=legacy-resolver
 pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack
 
 cd ~/Documents/

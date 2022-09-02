@@ -17,6 +17,7 @@ from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
+from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .MCTController import MCTController
 from .ISMController import ISMController

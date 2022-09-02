@@ -1,5 +1,4 @@
-from uc2rest import ESP32Client # pip install UC2-REST
-
+import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model import APIExport
 
@@ -22,9 +21,8 @@ class ESP32Manager:
             self._serialport = None
 
         # initialize the ESP32 device adapter
-        self._esp32 = ESP32Client.ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
-        # self._esp32 = ESP32Client(self._host, port=80)
-    
+        self._esp32 = uc2.ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
+           
 
     def finalize(self):
         pass

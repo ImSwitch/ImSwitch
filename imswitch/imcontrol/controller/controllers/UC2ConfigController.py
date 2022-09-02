@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 
 import numpy as np
 
@@ -24,26 +25,30 @@ class UC2ConfigController(ImConWidgetController):
         # display device configs
         self.loadParams(config=self.mConfigDevice)
         
+        self.defaultPinDefFile = "pinDef.json"
+        
         if self._setupInfo.uc2Config is None:
             self._widget.replaceWithError('UC2Config is not configured in your setup file.')
             return
         
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
+        self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
         
+        self.isFirmwareUpdating = False
+        
     def loadConfigFromDevice(self):
-        return self._master.UC2ConfigManager.ESP32.config.loadConfig()
+        return self._master.UC2ConfigManager.loadPinDefDevice() 
 
     def loadConfigToDevice(self, config):
         pass
 
     def saveParams(self):
-        filename = "testPinDef.json"
         UC2Config_info_dict = self.getInfoDict(self._widget.UC2ConfigParameterTree.p,
                                          self._widget.pinDefParameterTree.p,
                                          self._master.UC2ConfigManager.getCenters())
-        with open(os.path.join(self.UC2ConfigDir, filename), 'w') as f:
+        with open(os.path.join(self.UC2ConfigDir, self.defaultPinDefFile), 'w') as f:
             json.dump(UC2Config_info_dict, f, indent=4)
         
     def getInfoDict(self, generalParams=None, pinDefParams=None, centers=None):
@@ -73,21 +78,56 @@ class UC2ConfigController(ImConWidgetController):
 
     def loadParams(self, config=None):
         if config is not None:
-
-            
-            
             state_general = None # TODO: Implement
             state_pinDef = config
         
-        else:
-            filename = "testPinDef.json"
-            with open(os.path.join(self.UC2ConfigDir, filename), 'rb') as f:
+        else: # TODO: Enabling sideloading the configuration? But ESP will be offline anyway..
+            with open(os.path.join(self.UC2ConfigDir, self.defaultPinDefFile), 'rb') as f:
                 UC2Config_info_dict = json.load(f)
                 state_general = UC2Config_info_dict["general"]
                 state_pinDef = UC2Config_info_dict["pinDef"]
         self.setParamTree(state_general=state_general, state_pinDef=state_pinDef)
         #self._master.UC2ConfigManager.setGeneral(state_general)
     
+    def updateFirmware(self, filename=None):
+        if not(self.isFirmwareUpdating):
+            self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(False)
+            threading.Thread(target=self.updateFirmwareThread, args=(filename,)).start()
+            self.isFirmwareUpdating = True
+        
+    def updateFirmwareThread(self, filename=None):
+        # 1. download firmware
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Downloading firmware...')
+        FWdownloaded = self._master.UC2ConfigManager.downloadFirmware(filename)
+        
+        # 2.1 close serial connection
+        
+        # 2.2 flash firmware
+        if FWdownloaded:
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Flashing firmware...')
+            FWflashed = self._master.UC2ConfigManager.flashFirmware()
+        else:
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware not downloaded.')
+            return
+        
+        
+        # 3. delete firmware
+        if FWflashed:
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Deleting firmware...')
+            self._master.UC2ConfigManager.removeFirmware()
+        else:
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware not flashed.')
+            return
+        
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware was flashed.')
+            
+        # 4. reestablish serial connection
+        self._master.UC2ConfigManager.initSerial()
+        self.isFirmwareUpdating = False
+        self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(True)
+        
+    def removeFirmware(self, firmwarePath):
+        return self.firmwareUpdater.removeFirmware()
 
     def setParamTree(self, state_general, state_pinDef):
         generalParams = self._widget.UC2ConfigParameterTree.p

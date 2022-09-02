@@ -2,10 +2,12 @@ import enum
 import glob
 import math
 import os
+import threading
 
 import numpy as np
 from PIL import Image
 from scipy import signal as sg
+import uc2rest as uc2
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
@@ -24,7 +26,9 @@ class UC2ConfigManager(SignalInterface):
         #TODO: HARDCODED!!
         self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
 
-        #self.update(maskChange=True, tiltChange=True, aberChange=True)
+        # initialize the firmwareupdater
+        self.firmwareUpdater = uc2.updater(ESP32=self.ESP32, firmwarePath="./")
+        
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
@@ -37,12 +41,31 @@ class UC2ConfigManager(SignalInterface):
     def setGeneral(self, general_info):
         pass
     
+    def loadPinDefDevice(self):
+        return self.ESP32.config.loadConfigDevice()
+
     def setpinDef(self, pinDef_info):
-        self.ESP32.config.setpinDef(pinDef_info)
-        pass
+        self.ESP32.config.setpinDefDevice(pinDef_info)
         
     def update(self, maskChange=False, tiltChange=False, aberChange=False):
         pass
+    
+    def closeSerial(self):
+        return self.ESP32.closeSerial()
+    
+    def initSerial(self):
+        serialport = self.ESP32.serialport
+        self.ESP32.initSerial(serialport)
+        
+    def downloadFirmware(self, firmwarePath=None):
+        return self.firmwareUpdater.downloadFirmware()
+        
+    def flashFirmware(self, firmwarePath=None):
+        return self.firmwareUpdater.flashFirmware(firmwarePath)
+            
+    def removeFirmware(self):
+        return self.firmwareUpdater.removeFirmware()
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

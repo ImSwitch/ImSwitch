@@ -86,7 +86,7 @@ class UC2ConfigWidget(Widget):
         self.pinDefParameterTree._writable = True
 
         self.paramtreeDockArea = pg.dockarea.DockArea()
-        pmtreeDock = pg.dockarea.Dock('Phase mask parameters', size=(1, 1))
+        pmtreeDock = pg.dockarea.Dock('N/A', size=(1, 1))
         pmtreeDock.addWidget(self.UC2ConfigParameterTree)
         self.paramtreeDockArea.addDock(pmtreeDock)
         pinDeftreeDock = pg.dockarea.Dock('Pin definition parameters', size=(1, 1))
@@ -95,7 +95,6 @@ class UC2ConfigWidget(Widget):
 
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
-        # self.paramtreeDockArea.addWidget(self.applyChangesButton, 'bottom', pinDeftreeDock)
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -117,6 +116,8 @@ class UC2ConfigWidget(Widget):
         # Buttons for saving, loading, and controlling the various phase patterns
         self.controlPanel.saveButton = guitools.BetterPushButton("Save")
         self.controlPanel.loadButton = guitools.BetterPushButton("Load")
+        self.controlPanel.updateFirmwareDeviceButton = guitools.BetterPushButton("Update Firmware")
+        self.controlPanel.updateFirmwareDeviceLabel = QtWidgets.QLabel('FW Updater')
 
         # Defining layout
         self.controlPanel.arrowsFrame = QtWidgets.QFrame()
@@ -125,7 +126,8 @@ class UC2ConfigWidget(Widget):
 
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 4, 1)
         self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 4, 2)
-
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.updateFirmwareDeviceButton, 5, 1)
+        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.updateFirmwareDeviceLabel, 6, 1)
         
         # Definition of the box layout:
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()

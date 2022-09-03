@@ -21,7 +21,10 @@ class UC2ConfigController(ImConWidgetController):
             
         # load config from device
         self.mConfigDevice = self.loadConfigFromDevice()
-
+        # switch-back to old configuration
+        if len(self.mConfigDevice)<4:
+            self.mConfigDevice = self.loadDefaultConfig()
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
         # display device configs
         self.loadParams(config=self.mConfigDevice)
         
@@ -40,6 +43,9 @@ class UC2ConfigController(ImConWidgetController):
         
     def loadConfigFromDevice(self):
         return self._master.UC2ConfigManager.loadPinDefDevice() 
+
+    def loadDefaultConfig(self):
+        return self._master.UC2ConfigManager.loadDefaultConfig()
 
     def loadConfigToDevice(self, config):
         pass
@@ -116,6 +122,7 @@ class UC2ConfigController(ImConWidgetController):
             self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Deleting firmware...')
             self._master.UC2ConfigManager.removeFirmware()
         else:
+            self._master.UC2ConfigManager.removeFirmware()
             self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware not flashed.')
             return
         
@@ -159,7 +166,8 @@ class UC2ConfigController(ImConWidgetController):
         # self._logger.debug('Apply changes to general UC2Config mask parameters.')
 
     def applypinDef(self, info_dict):
-        self._master.UC2ConfigManager.setpinDef(info_dict)
+        shared_items = self._master.UC2ConfigManager.setpinDef(info_dict)
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Udated items: "+str(len(shared_items))+"/"+str(len(info_dict)))
         self._logger.debug('Apply changes to pinDef.')
 
     # def loadPreset(self, preset):

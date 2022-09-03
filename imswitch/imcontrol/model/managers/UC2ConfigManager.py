@@ -43,9 +43,16 @@ class UC2ConfigManager(SignalInterface):
     
     def loadPinDefDevice(self):
         return self.ESP32.config.loadConfigDevice()
+    
+    def loadDefaultConfig(self):
+        return self.ESP32.config.loadDefaultConfig()
 
     def setpinDef(self, pinDef_info):
-        self.ESP32.config.setpinDefDevice(pinDef_info)
+        self.ESP32.config.setConfigDevice(pinDef_info)
+        # check if setting pins was successfull
+        pinDef_infoDevice = self.loadPinDefDevice()
+        shared_items = {k: pinDef_info[k] for k in pinDef_info if k in pinDef_infoDevice and pinDef_info[k] == pinDef_infoDevice[k]}
+        return shared_items
         
     def update(self, maskChange=False, tiltChange=False, aberChange=False):
         pass

@@ -7,11 +7,13 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
+from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
 
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
     sigPickSetup = QtCore.Signal()
+    sigPickConfig = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
@@ -21,6 +23,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
+        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
         # Widget factory
@@ -43,6 +46,10 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
         self.pickSetupAction.triggered.connect(self.sigPickSetup)
         tools.addAction(self.pickSetupAction)
+
+        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+        self.pickConfigAction.triggered.connect(self.sigPickConfig)
+        tools.addAction(self.pickConfigAction)
 
         # Window
         self.setWindowTitle('ImSwitch')
@@ -142,6 +149,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickDatasetsDialogBlocking(self):
         result = self.pickDatasetsDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showConfigSetupDialogBlocking(self):
+        result = self.PickUC2BoardConfigDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):

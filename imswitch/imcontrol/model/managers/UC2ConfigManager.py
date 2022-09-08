@@ -22,6 +22,8 @@ class UC2ConfigManager(SignalInterface):
 
         if UC2ConfigInfo is None:
             return
+        
+        self.UC2ConfigInfo = UC2ConfigInfo
 
         #TODO: HARDCODED!!
         self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32

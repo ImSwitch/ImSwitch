@@ -9,11 +9,12 @@ from .Options import Options
 def getSetupList():
     return [Path(file).name for file in glob.glob(os.path.join(_setupFilesDir, '*.json'))]
 
+def getBoardConfigList():
+    return [Path(file).name for file in glob.glob(os.path.join(_setupBoardConfigDir, '*.json'))]
 
 def loadSetupInfo(options, setupInfoType):
     with open(os.path.join(_setupFilesDir, options.setupFileName)) as setupFile:
         return setupInfoType.from_json(setupFile.read(), infer_missing=True)
-
 
 def saveSetupInfo(options, setupInfo):
     with open(os.path.join(_setupFilesDir, options.setupFileName), 'w') as setupFile:
@@ -38,6 +39,24 @@ def loadOptions():
 
     return _options, optionsDidNotExist
 
+def loadUC2BoardConfigs():
+    global _configs
+
+    if _configs is not None:
+        return _configs, False
+
+    optionsDidNotExist = False
+    if not os.path.isfile(_configsFilePath):
+        _configs = Options(
+            setupFileName=getBoardConfigList()[0]
+        )
+        optionsDidNotExist = True
+    else:
+        with open(_configsFilePath, 'r') as configsFile:
+            _configs = Options.from_json(configsFile.read(), infer_missing=True)
+
+    return _options, optionsDidNotExist
+
 
 def saveOptions(options):
     global _options
@@ -46,13 +65,24 @@ def saveOptions(options):
     with open(_optionsFilePath, 'w') as optionsFile:
         optionsFile.write(_options.to_json(indent=4))
 
+def saveConfigs(configs):
+    global _configs
+
+    _configs = configs
+    with open(_optionsFilePath, 'w') as configsFile:
+        configsFile.write(_configs.to_json(indent=4))
+
+
 
 dirtools.initUserFilesIfNeeded()
 _setupFilesDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_setups')
+_setupBoardConfigDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_UC2Config')
 os.makedirs(_setupFilesDir, exist_ok=True)
 _optionsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options.json')
+_configsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options.json')
 
 _options = None
+_configs = None
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -25,9 +25,11 @@ class UC2ConfigController(ImConWidgetController):
         if len(self.mConfigDevice)<4:
             self.mConfigDevice = self.loadDefaultConfig()
             self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
+        
         # display device configs
         self.loadParams(config=self.mConfigDevice)
         
+        # save parameters on the disk
         self.defaultPinDefFile = "pinDef.json"
         
         if self._setupInfo.uc2Config is None:
@@ -52,14 +54,12 @@ class UC2ConfigController(ImConWidgetController):
 
     def saveParams(self):
         UC2Config_info_dict = self.getInfoDict(self._widget.UC2ConfigParameterTree.p,
-                                         self._widget.pinDefParameterTree.p,
-                                         self._master.UC2ConfigManager.getCenters())
+                                         self._widget.pinDefParameterTree.p)
         with open(os.path.join(self.UC2ConfigDir, self.defaultPinDefFile), 'w') as f:
             json.dump(UC2Config_info_dict, f, indent=4)
         
-    def getInfoDict(self, generalParams=None, pinDefParams=None, centers=None):
+    def getInfoDict(self, generalParams=None, pinDefParams=None):
         state_general = None
-        state_pos = None
         state_pinDef = None
 
         if generalParams is not None:
@@ -83,7 +83,7 @@ class UC2ConfigController(ImConWidgetController):
         return info_dict
 
     def loadParams(self, config=None):
-        if config is not None:
+        if config is not None and config:
             state_general = None # TODO: Implement
             state_pinDef = config
         

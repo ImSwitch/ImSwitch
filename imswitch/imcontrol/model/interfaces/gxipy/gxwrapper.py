@@ -11,7 +11,7 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         dll = CDLL('/usr/lib/libgxiapi.so')
     except OSError:
         print("Cannot find libgxiapi.so.")
-else:
+elif sys.platform == 'win32':
     try:
         import os
         os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
@@ -20,7 +20,8 @@ else:
         
     except OSError:
         print('Cannot find GxIAPI.dll.')
-
+else:
+    dll = -1
 
 # Error code
 class GxStatusList:

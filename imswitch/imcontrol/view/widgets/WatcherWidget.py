@@ -16,11 +16,7 @@ class WatcherWidget(Widget):
         self.folderEdit = QtWidgets.QLineEdit(self.path)
 
         self.browseFolderButton = guitools.BetterPushButton('Browse')
-        self.watchCheck = QtWidgets.QCheckBox('Watch')
-        self.runCombo = QtWidgets.QComboBox()
-        self.runCombo.addItem("Run none")
-        self.runCombo.addItem("Run selected")
-        self.runCombo.addItem("Run all")
+        self.watchCheck = QtWidgets.QCheckBox('Watch and run')
 
         self.listWidget = QtWidgets.QListWidget()
         self.updateFileList()
@@ -30,9 +26,8 @@ class WatcherWidget(Widget):
 
         layout.addWidget(self.folderEdit, 0, 1)
         layout.addWidget(self.browseFolderButton, 0, 0)
-        layout.addWidget(self.runCombo, 1, 0)
-        layout.addWidget(self.listWidget, 2, 0, 1, 3)
-        layout.addWidget(self.watchCheck, 3, 0)
+        layout.addWidget(self.listWidget, 1, 0, 1, 3)
+        layout.addWidget(self.watchCheck, 2, 0)
 
         self.watchCheck.toggled.connect(self.sigWatchChanged)
         self.browseFolderButton.clicked.connect(self.browse)
@@ -47,11 +42,11 @@ class WatcherWidget(Widget):
         self.listWidget.addItems(res)
 
     def browse(self):
-            path = guitools.askForFolderPath(self, defaultFolder=self.path)
-            if path:
-                self.path = path
-                self.folderEdit.setText(self.path)
-                self.updateFileList()
+        path = guitools.askForFolderPath(self, defaultFolder=self.path)
+        if path:
+            self.path = path
+            self.folderEdit.setText(self.path)
+            self.updateFileList()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

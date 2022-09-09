@@ -22,6 +22,8 @@ class CommunicationChannel(SignalInterface):
 
     sigAcquisitionStopped = Signal()
 
+    sigScriptExecutionFinished = Signal()
+
     sigAdjustFrame = Signal(object)  # (shape)
 
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
@@ -143,6 +145,7 @@ class CommunicationChannel(SignalInterface):
         self.__main._moduleCommChannel.sigRunScript.emit(text)
 
     def executionFinished(self):
+        self.sigScriptExecutionFinished.emit()
         self._scriptExecution = False
 
     def isExecuting(self):

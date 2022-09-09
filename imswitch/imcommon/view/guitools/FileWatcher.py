@@ -17,7 +17,7 @@ class FileWatcher(QtCore.QThread):
         self.active = False
 
     def filesInDirectory(self):
-        return [f for f in listdir(self.path) if (isfile(join(self.path, f)) and x.endswith('.' + self.extension))]
+        return [f for f in listdir(self.path) if (isfile(join(self.path, f)) and f.endswith('.' + self.extension))]
 
     def updateList(self, newList):
         differencesList = [x for x in newList if

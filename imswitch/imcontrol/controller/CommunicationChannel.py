@@ -4,9 +4,8 @@ from typing import Mapping
 import numpy as np
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
-from .server import ImSwitchServer
-from typing import Any
 from imswitch.imcommon.model import initLogger
+
 
 class CommunicationChannel(SignalInterface):
     """
@@ -102,12 +101,6 @@ class CommunicationChannel(SignalInterface):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
-        self._serverWorker = ImSwitchServer(self, setupInfo)
-        self._thread = Thread()
-        self._serverWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._serverWorker.run)
-        self._thread.finished.connect(self._serverWorker.stop)
-        self._thread.start()
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)

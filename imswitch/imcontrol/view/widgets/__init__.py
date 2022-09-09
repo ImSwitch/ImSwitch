@@ -15,5 +15,6 @@ from .SLMWidget import SLMWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
+from .WatcherWidget import WatcherWidget
 from .ViewWidget import ViewWidget
 from .basewidgets import WidgetFactory

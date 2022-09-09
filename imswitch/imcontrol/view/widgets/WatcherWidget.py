@@ -6,12 +6,13 @@ import os
 
 
 class WatcherWidget(Widget):
-    """ Alignment widget that shows a grid of points on top of the image in the viewbox."""
+    """ Widget that watch for new script files (.py) in a specific folder, for running them sequentially."""
 
     sigWatchChanged = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.path = self._options.watcher.outputFolder
         self.folderEdit = QtWidgets.QLineEdit(self.path)
 
@@ -26,7 +27,7 @@ class WatcherWidget(Widget):
 
         layout.addWidget(self.folderEdit, 0, 1)
         layout.addWidget(self.browseFolderButton, 0, 0)
-        layout.addWidget(self.listWidget, 1, 0, 1, 3)
+        layout.addWidget(self.listWidget, 1, 0, 1, 2)
         layout.addWidget(self.watchCheck, 2, 0)
 
         self.watchCheck.toggled.connect(self.sigWatchChanged)
@@ -47,6 +48,7 @@ class WatcherWidget(Widget):
             self.path = path
             self.folderEdit.setText(self.path)
             self.updateFileList()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -46,6 +46,7 @@ class FileWatcher(QtCore.QThread):
     def stop(self):
         self.active = False
 
+
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

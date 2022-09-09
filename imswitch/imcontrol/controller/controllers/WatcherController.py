@@ -1,5 +1,3 @@
-import numpy as np
-
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imcommon.model import initLogger
@@ -29,6 +27,7 @@ class WatcherController(ImConWidgetController):
         else:
             self.watcher.stop()
             self.watcher.quit()
+            self.toExecute = []
 
     def newFiles(self, files):
         self._widget.updateFileList()

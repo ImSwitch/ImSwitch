@@ -46,6 +46,10 @@ class FileWatcher(QtCore.QThread):
     def stop(self):
         self.active = False
 
+    def removeFromList(self, files):
+        for f in files:
+            self.list.remove(f)
+
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers

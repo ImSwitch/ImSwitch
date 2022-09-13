@@ -2,6 +2,7 @@ from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 from imswitch.imreconstruct.model import DataObj
 import os
 from .basecontrollers import ImRecWidgetController
+from imswitch.imcommon.model.logging import initLogger
 
 
 class WatcherFrameController(ImRecWidgetController):
@@ -14,9 +15,11 @@ class WatcherFrameController(ImRecWidgetController):
         self.execution = False
         self.toExecute = []
         self.current = []
+        self.__logger = initLogger(self, tryInheritParent = False)
 
     def toggleWatch(self, checked):
         if checked:
+            self.execution = False
             self.watcher = FileWatcher(self._widget.path, 'hdf5', 1)
             self._widget.updateFileList()
             files = self.watcher.filesInDirectory()
@@ -25,6 +28,7 @@ class WatcherFrameController(ImRecWidgetController):
             self.watcher.start()
             self.runNextFile()
         else:
+            self.execution = False
             self.watcher.stop()
             self.watcher.quit()
             self.toExecute = []
@@ -32,25 +36,27 @@ class WatcherFrameController(ImRecWidgetController):
     def newFiles(self, files):
         self._widget.updateFileList()
         self.toExecute.extend(files)
-        self.runNextFile()
+        try:
+            self.runNextFile()
+        except OSError:
+            self.watcher.removeFromList(files)
 
     def runNextFile(self):
         if len(self.toExecute) and not self.execution:
-            self.execution = True
-            self.__logger.debug("running next files")
             self.current = self._widget.path + '\\' + self.toExecute.pop()
             datasets = DataObj.getDatasetNames(self.current)
             dataObjs = []
             for d in datasets:
                 dataObjs.append(DataObj(os.path.basename(self.current), d, path=self.current))
             self._commChannel.sigReconstruct.emit(dataObjs, True)
+            self.execution = True
 
     def executionFinished(self):
         if self.execution:
             self.execution = False
-            #os.remove(self.current)
             self._widget.updateFileList()
             self.runNextFile()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

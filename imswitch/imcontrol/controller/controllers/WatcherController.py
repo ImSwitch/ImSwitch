@@ -10,7 +10,6 @@ class WatcherController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._widget.sigWatchChanged.connect(self.toggleWatch)
-        self.__logger = initLogger(self)
         self._commChannel.sigScriptExecutionFinished.connect(self.executionFinished)
         self.execution = False
         self.toExecute = []
@@ -18,7 +17,8 @@ class WatcherController(ImConWidgetController):
 
     def toggleWatch(self, checked):
         if checked:
-            self.watcher = FileWatcher(self._widget.path, 'py', 5)
+            self.watcher = FileWatcher(self._widget.path, 'py', 1)
+            self._widget.updateFileList()
             files = self.watcher.filesInDirectory()
             self.toExecute = files
             self.watcher.sigNewFiles.connect(self.newFiles)

@@ -34,6 +34,7 @@ class WatcherWidget(Widget):
         self.browseFolderButton.clicked.connect(self.browse)
 
     def updateFileList(self):
+        self.path = self.folderEdit.text()
         res = []
         for file in os.listdir(self.path):
             if file.endswith('.py'):

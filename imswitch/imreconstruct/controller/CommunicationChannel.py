@@ -21,6 +21,10 @@ class CommunicationChannel(SignalInterface):
 
     sigAddToMultiData = Signal(str, str)  # (path, datasetName)
 
+    sigReconstruct = Signal(object, bool)
+
+    sigExecutionFinished = Signal()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

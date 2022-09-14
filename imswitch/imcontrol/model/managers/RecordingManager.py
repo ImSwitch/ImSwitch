@@ -273,9 +273,6 @@ class RecordingWorker(Worker):
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
 
-                for key, value in self.attrs[detectorName].items():
-                    datasets[detectorName].attrs[key] = value
-
             elif self.saveFormat == SaveFormat.TIFF:
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(

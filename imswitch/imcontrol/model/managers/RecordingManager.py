@@ -6,7 +6,6 @@ from io import BytesIO
 import h5py
 import numpy as np
 import tifffile as tiff
-import cv2
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
@@ -277,17 +276,6 @@ class RecordingWorker(Worker):
                 for key, value in self.attrs[detectorName].items():
                     datasets[detectorName].attrs[key] = value
 
-            elif self.saveFormat == SaveFormat.MP4:
-                # Need to initiliaze videowriter for each detector
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                fileExtension = str(self.saveFormat.name).lower()
-                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
-                datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
-                #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
-
-                self.__logger.debug(shapes[detectorName])
-                self.__logger.debug(filePath)
-
             elif self.saveFormat == SaveFormat.TIFF:
                 # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
@@ -413,17 +401,6 @@ class RecordingWorker(Worker):
                                 dataset = datasets[detectorName]
                                 dataset.resize(n + it, axis=0)
                                 dataset[it:it + n, :, :] = newFrames
-                            elif self.saveFormat == SaveFormat.MP4:
-                                for iframe in range(n):
-                                    frame = newFrames[iframe,:,:]
-                                    self.__logger.debug(frame.shape)
-                                    self.__logger.debug(type(frame))
-                                    self.__logger.debug(datasets[detectorName])
-                                    #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
-                                    frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
-                                    self.__logger.debug(type(frame))
-
-                                    datasets[detectorName].write(frame)
 
                             currentFrame[detectorName] += n
 
@@ -437,10 +414,6 @@ class RecordingWorker(Worker):
             else:
                 raise ValueError('Unsupported recording mode specified')
         finally:
-
-            if self.saveFormat == SaveFormat.MP4:
-                for detectorName, file in files.items():
-                    datasets[detectorName].release()
 
             if self.saveFormat == SaveFormat.HDF5:
                 for detectorName, file in files.items():
@@ -529,7 +502,6 @@ class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
     TIFF_Single = 3
-    MP4 = 4
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -138,7 +138,7 @@ class RecordingManager(SignalInterface):
                         
                         dataset[:,...] = np.moveaxis(image,0,-1)
                         file.close()
-                    elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                    elif saveFormat == SaveFormat.TIFF:
                         tiff.imwrite(filePath, image)
                     else:
                         raise ValueError(f'Unsupported save format "{saveFormat}"')
@@ -277,7 +277,6 @@ class RecordingWorker(Worker):
                     datasets[detectorName].attrs[key] = value
 
             elif self.saveFormat == SaveFormat.TIFF:
-                # Need to initiliaze TIF writer?
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
@@ -305,7 +304,7 @@ class RecordingWorker(Worker):
 
                         if n > 0:
                             it = currentFrame[detectorName]
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                            if self.saveFormat == SaveFormat.TIFF:
                                 try:
                                     filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
@@ -348,10 +347,10 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                            if self.saveFormat == SaveFormat.TIFF:
                                 try:
                                     filePath = filenames[detectorName] 
-                                    tiff.imwrite(filePath, newFrames, append=True) # TODO: Single Tiff export doesnt work! 
+                                    tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
                                     if self.saveFormat == SaveFormat.TIFF:
@@ -385,7 +384,7 @@ class RecordingWorker(Worker):
                         newFrames = self._getNewFrames(detectorName)
                         n = len(newFrames)
                         if n > 0:
-                            if self.saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
+                            if self.saveFormat == SaveFormat.TIFF:
                                 try:
                                     filePath = filenames[detectorName] 
                                     tiff.imwrite(filePath, newFrames, append=True)
@@ -501,7 +500,6 @@ class SaveMode(enum.Enum):
 class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
-    TIFF_Single = 3
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

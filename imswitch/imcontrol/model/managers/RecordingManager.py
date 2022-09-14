@@ -4,6 +4,7 @@ import time
 from io import BytesIO
 
 import h5py
+import zarr
 import numpy as np
 import tifffile as tiff
 
@@ -83,7 +84,7 @@ class RecordingManager(SignalInterface):
         method will wait until the recording is complete before returning. """
 
         self.__detectorsManager.execOnAll(lambda c: c.flushBuffers(),
-                                    condition=lambda c: c.forAcquisition)
+                                          condition=lambda c: c.forAcquisition)
 
         if self.__record:
             self.__logger.info('Stopping recording')
@@ -94,7 +95,6 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
@@ -102,6 +102,13 @@ class RecordingManager(SignalInterface):
         acqHandle = self.__detectorsManager.startAcquisition()
         try:
             images = {}
+            fileExtension = str(saveFormat.name).lower()
+
+            if saveFormat == SaveFormat.ZARR:
+                path = self.getSaveFilePath(f'{savename}.{fileExtension}')
+                store = zarr.storage.DirectoryStore(path)
+                root = zarr.group(store=store)
+
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
 
@@ -111,7 +118,6 @@ class RecordingManager(SignalInterface):
                 if saveMode == SaveMode.Numpy:
                     return
 
-                fileExtension = str(saveFormat.name).lower()
                 filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
 
                 if saveMode != SaveMode.RAM:
@@ -123,8 +129,6 @@ class RecordingManager(SignalInterface):
                         dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                         for key, value in attrs[detectorName].items():
-                            #self.__logger.debug(key)
-                            #self.__logger.debug(value)
                             try:
                                 dataset.attrs[key] = value
                             except:
@@ -133,29 +137,33 @@ class RecordingManager(SignalInterface):
                         dataset.attrs['detector_name'] = detectorName
 
                         # For ImageJ compatibility
-                        dataset.attrs['element_size_um'] =\
+                        dataset.attrs['element_size_um'] = \
                             self.__detectorsManager[detectorName].pixelSizeUm
-                        
-                        dataset[:,...] = np.moveaxis(image,0,-1)
+
+                        dataset[:, ...] = np.moveaxis(image, 0, -1)
                         file.close()
                     elif saveFormat == SaveFormat.TIFF:
                         tiff.imwrite(filePath, image)
+                    elif saveFormat == SaveFormat.ZARR:
+                        shape = self.__detectorsManager[detectorName].shape
+                        d = root.create_dataset(detectorName, data=image, shape=tuple(reversed(shape)),
+                                                chunks=(512, 512), dtype='i2')
+                        d.attrs["ImSwitchData"] = attrs[detectorName]
                     else:
                         raise ValueError(f'Unsupported save format "{saveFormat}"')
 
+                if saveFormat == SaveFormat.ZARR:
+                    store.close()
                 # Handle memory snaps
                 if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
                     name = os.path.basename(f'{savename}_{detectorName}')
                     self.sigMemorySnapAvailable.emit(name, image, filePath,
                                                      saveMode == SaveMode.DiskAndRAM)
 
-
-
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
                 return image
-
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -171,8 +179,6 @@ class RecordingManager(SignalInterface):
             dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
             for key, value in attrs[detectorName].items():
-                #self.__logger.debug(key)
-                #self.__logger.debug(value)
                 try:
                     dataset.attrs[key] = value
                 except:
@@ -181,17 +187,24 @@ class RecordingManager(SignalInterface):
             dataset.attrs['detector_name'] = detectorName
 
             # For ImageJ compatibility
-            dataset.attrs['element_size_um'] =\
+            dataset.attrs['element_size_um'] = \
                 self.__detectorsManager[detectorName].pixelSizeUm
-            
-            #dataset[:,:,:] = image
-            dataset[:,...] = np.moveaxis(image,0,-1)
+
+            dataset[:, ...] = np.moveaxis(image, 0, -1)
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
+        if saveFormat == SaveFormat.ZARR:
+            path = self.getSaveFilePath(f'{savename}.{fileExtension}')
+            store = zarr.storage.DirectoryStore(path)
+            root = zarr.group(store=store)
+            shape = self.__detectorsManager[detectorName].shape
+            d = root.create_dataset(detectorName, data=image, shape=tuple(reversed(shape)), chunks=(512, 512),
+                                    dtype='i2')
+            d.attrs["ImSwitchData"] = attrs[detectorName]
+            store.close()
         else:
-            raise ValueError(f'Unsupported save format "{saveFormat}"')    
-
+            raise ValueError(f'Unsupported save format "{saveFormat}"')
 
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
         newPath = path
@@ -227,7 +240,7 @@ class RecordingWorker(Worker):
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 
     def _record(self):
-        if self.saveFormat == SaveFormat.HDF5:
+        if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
             files, fileDests, filePaths = self._getFiles()
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
@@ -278,6 +291,17 @@ class RecordingWorker(Worker):
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
 
+            elif self.saveFormat == SaveFormat.ZARR:
+                datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
+                                                                            dtype='i4', chunks=(1, 512, 512)
+                                                                            )
+
+                datasets[detectorName].attrs['ImSwitchData'] = self.attrs[detectorName]
+                datasets[detectorName].attrs['detector_name'] = detectorName
+                # For ImageJ compatibility
+                datasets[detectorName].attrs['element_size_um'] \
+                    = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+
         self.__recordingManager.sigRecordingStarted.emit()
         try:
             if len(self.detectorNames) < 1:
@@ -303,7 +327,7 @@ class RecordingWorker(Worker):
                             it = currentFrame[detectorName]
                             if self.saveFormat == SaveFormat.TIFF:
                                 try:
-                                    filePath = filenames[detectorName] 
+                                    filePath = filenames[detectorName]
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -311,7 +335,7 @@ class RecordingWorker(Worker):
                                         filePath = self.__recordingManager.getSaveFilePath(
                                             f'{self.savename}_{detectorName}.{fileExtension}', False, False)
                                         continue
-                            elif self.saveFormat == SaveFormat.HDF5:
+                            elif self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
                                 dataset = datasets[detectorName]
                                 if (it + n) <= recFrames:
                                     dataset.resize(n + it, axis=0)
@@ -346,7 +370,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF:
                                 try:
-                                    filePath = filenames[detectorName] 
+                                    filePath = filenames[detectorName]
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -354,7 +378,7 @@ class RecordingWorker(Worker):
                                         filePath = self.__recordingManager.getSaveFilePath(
                                             f'{self.savename}_{detectorName}.{fileExtension}', False, False)
                                         continue
-                            elif self.saveFormat == SaveFormat.HDF5:
+                            elif self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]
                                 dataset.resize(n + it, axis=0)
@@ -383,7 +407,7 @@ class RecordingWorker(Worker):
                         if n > 0:
                             if self.saveFormat == SaveFormat.TIFF:
                                 try:
-                                    filePath = filenames[detectorName] 
+                                    filePath = filenames[detectorName]
                                     tiff.imwrite(filePath, newFrames, append=True)
                                 except ValueError:
                                     self.__logger.error("TIFF File exceeded 4GB.")
@@ -398,6 +422,14 @@ class RecordingWorker(Worker):
                                 dataset.resize(n + it, axis=0)
                                 dataset[it:it + n, :, :] = newFrames
 
+                            elif self.saveFormat == SaveFormat.ZARR:
+                                it = currentFrame[detectorName]
+                                dataset = datasets[detectorName]
+                                if it == 0:
+                                    dataset[0:n, :, :] = newFrames
+                                else:
+                                    dataset.append(newFrames)
+
                             currentFrame[detectorName] += n
 
                     if shouldStop:
@@ -411,7 +443,7 @@ class RecordingWorker(Worker):
                 raise ValueError('Unsupported recording mode specified')
         finally:
 
-            if self.saveFormat == SaveFormat.HDF5:
+            if self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
                 for detectorName, file in files.items():
                     # Remove default frame if no frames have been captured
                     if currentFrame[detectorName] < 1:
@@ -432,7 +464,11 @@ class RecordingWorker(Worker):
                                 name, file, filePath, True
                             )
                     else:
-                        file.close()
+                        if self.saveFormat == SaveFormat.HDF5:
+                            file.close()
+                        else:
+                            self.__logger.debug("Closing Store")
+                            self.store.close()
 
             self.__recordingManager.endRecording(wait=False)
 
@@ -443,11 +479,13 @@ class RecordingWorker(Worker):
         files = {}
         fileDests = {}
         filePaths = {}
+        extension = 'hdf5' if self.saveFormat == SaveFormat.HDF5 else 'zarr'
+
         for detectorName in self.detectorNames:
             if singleMultiDetectorFile:
-                baseFilePath = f'{self.savename}.hdf5'
+                baseFilePath = f'{self.savename}.{extension}'
             else:
-                baseFilePath = f'{self.savename}_{detectorName}.hdf5'
+                baseFilePath = f'{self.savename}_{detectorName}.{extension}'
 
             filePaths[detectorName] = self.__recordingManager.getSaveFilePath(
                 baseFilePath,
@@ -468,8 +506,12 @@ class RecordingWorker(Worker):
             if singleMultiDetectorFile and len(files) > 0:
                 files[detectorName] = list(files.values())[0]
             else:
-                files[detectorName] = h5py.File(fileDests[detectorName],
-                                                'a' if singleLapseFile else 'w-')
+                if self.saveFormat == SaveFormat.HDF5:
+                    files[detectorName] = h5py.File(fileDests[detectorName],
+                                                    'a' if singleLapseFile else 'w-')
+                elif self.saveFormat == SaveFormat.ZARR:
+                    self.store = zarr.storage.DirectoryStore(fileDests[detectorName])
+                    files[detectorName] = zarr.group(store=self.store, overwrite=True)
 
         return files, fileDests, filePaths
 
@@ -497,7 +539,7 @@ class SaveMode(enum.Enum):
 class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
-
+    ZARR = 3
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

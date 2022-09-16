@@ -1,28 +1,31 @@
-import uc2rest as uc2  # pip install UC2-REST
+import openflexure_microscope_client as ofm_client # pip install UC2-REST
+
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model import APIExport
 
-class ESP32Manager:
-    """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
+class OFMManager:
+    """ A low-level wrapper for TCP-IP communication (OFM REST API)
     """
 
     def __init__(self, rs232Info, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
         self._settings = rs232Info.managerProperties
         self._name = name
-        try:
-            self._host = rs232Info.managerProperties['host']
-        except:
-            self._host = None
+        
+        self.host = self._settings['host']
+        self.__logger.debug(f"Attempting to connect to '{self.host}'")
 
-        try:
-            self._serialport = rs232Info.managerProperties['serialport']
-        except:
-            self._serialport = None
-
-        # initialize the ESP32 device adapter
-        self._esp32 = uc2.ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
-           
+        if self.host is None:
+            self._OFM = ofm_client.find_first_microscope()
+        else:        
+            try:
+                self._OFM = ofm_client.MicroscopeClient(self.host) 
+            except:
+                self.__logger.debug(f"Attempting to connect to '{self.host}' failed, looking for other HOST")
+                try:
+                    self._OFM = ofm_client.find_first_microscope()    
+                except:
+                    self._OFM = None
 
     def finalize(self):
         pass

@@ -20,14 +20,12 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
-            self._widget.addPositioner(pName, pManager.axes)
+            speed = hasattr(pManager, 'speed')
+            self._widget.addPositioner(pName, pManager.axes, speed)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-      
-                try:
+                if speed:
                     self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
-                except:
-                    pass
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -53,6 +51,9 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
+        if positionerName is None:
+            positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+        
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 
@@ -73,7 +74,7 @@ class PositionerController(ImConWidgetController):
 
     def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
-        
+
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)

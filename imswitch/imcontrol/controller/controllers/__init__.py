@@ -14,12 +14,14 @@ from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
+from .WellPlateController import WellPlateController
+from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
+from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .MCTController import MCTController
+from .ISMController import ISMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
-from .WellPlateController import WellPlateController
-from .LEDMatrixController import LEDMatrixController

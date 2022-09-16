@@ -16,7 +16,6 @@ def prepareApp():
     pythontools.installExceptHook()
 
     # Set logging levels
-    logging.getLogger('pyvisa').setLevel(logging.WARNING)
     logging.getLogger('lantz').setLevel(logging.WARNING)
 
     # Create app

@@ -12,6 +12,7 @@ from . import controllers
 from .CommunicationChannel import CommunicationChannel
 from .MasterController import MasterController
 from .PickSetupController import PickSetupController
+from .PickUC2BoardConfigController import PickUC2BoardConfigController
 from .basecontrollers import ImConWidgetControllerFactory
 
 
@@ -28,6 +29,7 @@ class ImConMainController(MainController):
         # Connect view signals
         self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
         self.__mainView.sigPickSetup.connect(self.pickSetup)
+        self.__mainView.sigPickConfig.connect(self.pickUC2Config)
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
@@ -44,6 +46,9 @@ class ImConMainController(MainController):
         )
         self.pickDatasetsController = self.__factory.createController(
             PickDatasetsController, self.__mainView.pickDatasetsDialog
+        )
+        self.PickUC2BoardConfigController = self.__factory.createController(
+            PickUC2BoardConfigController, self.__mainView.PickUC2BoardConfigDialog
         )
 
         self.controllers = {}
@@ -135,7 +140,22 @@ class ImConMainController(MainController):
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
 
+    def pickUC2Config(self):
+        """ Let the user change which UC2 Board config is used. """
 
+        options, _ = configfiletools.loadUC2BoardConfigs()
+
+        self.pickSetupController.setSetups(configfiletools.getBoardConfigList())
+        self.pickSetupController.setSelectedSetup(options.setupFileName)
+        if not self.__mainView.showPickSetupDialogBlocking():
+            return
+        setupFileName = self.pickSetupController.getSelectedSetup()
+        if not setupFileName:
+            return
+
+        guitools.informationDisplay(self.__mainView, "Now select 'load from file' in the UC2 Config Widget and flash the pin-configuration")
+        
+        
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

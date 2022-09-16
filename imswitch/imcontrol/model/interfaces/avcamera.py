@@ -257,8 +257,8 @@ class CameraAV:
             self.is_camera_open = True
             self.camera.arm('Continuous',callback_fct)
             self.__logger.debug("camera connected")
-            self.SensorHeight = self.camera.feature("SensorHeight").value
             self.SensorWidth = self.camera.feature("SensorWidth").value
+            self.SensorHeight = self.camera.feature("SensorHeight").value
             #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
             self.shape = (self.SensorWidth,self.SensorHeight)
 

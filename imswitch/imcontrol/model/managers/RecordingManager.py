@@ -301,6 +301,7 @@ class RecordingWorker(Worker):
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -426,7 +427,9 @@ class RecordingWorker(Worker):
                                 it = currentFrame[detectorName]
                                 dataset = datasets[detectorName]
                                 if it == 0:
-                                    dataset[0:n, :, :] = newFrames
+                                    dataset[0, :, :] = newFrames[0, :, :]
+                                    if n > 0:
+                                        dataset.append(newFrames[1:n, :, :])
                                 else:
                                     dataset.append(newFrames)
 
@@ -447,7 +450,7 @@ class RecordingWorker(Worker):
                 for detectorName, file in files.items():
                     # Remove default frame if no frames have been captured
                     if currentFrame[detectorName] < 1:
-                        datasets[detectorName].resize(0, axis=0)
+                        datasets[detectorName].resize(0, axis=0) if self.saveFormat == SaveFormat.HDF5 else datasets[detectorName].resize(0)
 
                     # Handle memory recordings
                     if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:
@@ -467,7 +470,7 @@ class RecordingWorker(Worker):
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
                         else:
-                            self.__logger.debug("Closing Store")
+                            datasets[detectorName].attrs['writing'] = False
                             self.store.close()
 
             self.__recordingManager.endRecording(wait=False)

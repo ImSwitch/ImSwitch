@@ -301,7 +301,7 @@ class ImRecMainViewController(ImRecWidgetController):
         if consolidate and reconObj is not None:
             reconObj.updateImages()
             self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
-            self._commChannel.sigExecutionFinished.emit()
+            self._commChannel.sigExecutionFinished.emit(self.reconstructionController.getImage())
 
     def bleachingCorrection(self, data):
         correctedData = data.copy()

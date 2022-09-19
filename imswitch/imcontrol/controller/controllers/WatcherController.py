@@ -1,7 +1,7 @@
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
-from imswitch.imcommon.model import initLogger
 import os
+from datetime import datetime
 
 
 class WatcherController(ImConWidgetController):
@@ -9,6 +9,7 @@ class WatcherController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.t0 = None
         self._widget.sigWatchChanged.connect(self.toggleWatch)
         self._commChannel.sigScriptExecutionFinished.connect(self.executionFinished)
         self.execution = False
@@ -36,15 +37,18 @@ class WatcherController(ImConWidgetController):
 
     def runNextFile(self):
         if len(self.toExecute) and not self.execution:
-            self.current = self._widget.path + '\\' + self.toExecute.pop()
+            self.current = self._widget.path + '/' + self.toExecute.pop()
             file = open(self.current, "r")
             text = file.read()
             file.close()
+            self.t0 = datetime.now()
             self._commChannel.runScript(text)
             self.execution = True
 
     def executionFinished(self):
         self.execution = False
+        diff = datetime.now() - self.t0
+        self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
         os.remove(self.current)
         self._widget.updateFileList()
         self.runNextFile()

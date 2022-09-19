@@ -1,7 +1,10 @@
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 import time
 from qtpy import QtCore
+from datetime import datetime
+import os
+import json
 
 
 class FileWatcher(QtCore.QThread):
@@ -15,9 +18,11 @@ class FileWatcher(QtCore.QThread):
         self.list = self.filesInDirectory()
         self.watching = False
         self.active = False
+        self._log = {}
+        self.startLog()
 
     def filesInDirectory(self):
-        return [f for f in listdir(self.path) if (isfile(join(self.path, f)) and f.endswith('.' + self.extension))]
+        return [f for f in listdir(self.path) if ((isfile(join(self.path, f)) or isdir(join(self.path, f))) and f.endswith('.' + self.extension))]
 
     def updateList(self, newList):
         differencesList = [x for x in newList if
@@ -44,12 +49,27 @@ class FileWatcher(QtCore.QThread):
             self.sigNewFiles.emit(fileDiff)
 
     def stop(self):
+        self.saveLog()
+        self._log = {}
         self.active = False
 
     def removeFromList(self, files):
         for f in files:
             self.list.remove(f)
 
+    def startLog(self):
+        self._log["Starting time"] = str(datetime.now())
+        self._log["Computer name"] = os.environ['COMPUTERNAME']
+
+    def addToLog(self, key, value):
+        self._log[key] = value
+
+    def getLog(self):
+        return self._log
+
+    def saveLog(self):
+        with open(self.path + '/' + 'log.json', 'a') as f:
+            f.write(json.dumps(self._log, indent=4))
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
 # Copyright (C) 2020-2021 ImSwitch developers

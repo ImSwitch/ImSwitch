@@ -23,7 +23,7 @@ class CommunicationChannel(SignalInterface):
 
     sigReconstruct = Signal(object, bool)
 
-    sigExecutionFinished = Signal()
+    sigExecutionFinished = Signal(object)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

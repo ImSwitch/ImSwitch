@@ -36,7 +36,7 @@ class WatcherFrame(QtWidgets.QFrame):
         self.path = self.folderEdit.text()
         res = []
         for file in os.listdir(self.path):
-            if file.endswith('.hdf5'):
+            if file.endswith('.zarr'):
                 res.append(file)
 
         self.listWidget.clear()

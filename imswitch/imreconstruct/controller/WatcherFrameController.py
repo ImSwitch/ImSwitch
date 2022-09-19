@@ -3,6 +3,12 @@ from imswitch.imreconstruct.model import DataObj
 import os
 from .basecontrollers import ImRecWidgetController
 from imswitch.imcommon.model.logging import initLogger
+import zarr
+import numpy as np
+from ome_zarr.io import parse_url
+from ome_zarr.writer import write_image
+from datetime import datetime, date
+import json
 
 
 class WatcherFrameController(ImRecWidgetController):
@@ -10,17 +16,21 @@ class WatcherFrameController(ImRecWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.attrs = None
+        self.recPath = None
         self._widget.sigWatchChanged.connect(self.toggleWatch)
         self._commChannel.sigExecutionFinished.connect(self.executionFinished)
         self.execution = False
         self.toExecute = []
-        self.current = []
-        self.__logger = initLogger(self, tryInheritParent = False)
+        self.current = None
+        self.t0 = None
+        self.__logger = initLogger(self, tryInheritParent=False)
+
 
     def toggleWatch(self, checked):
         if checked:
             self.execution = False
-            self.watcher = FileWatcher(self._widget.path, 'hdf5', 1)
+            self.watcher = FileWatcher(self._widget.path, 'zarr', 1)
             self._widget.updateFileList()
             files = self.watcher.filesInDirectory()
             self.toExecute = files
@@ -39,24 +49,43 @@ class WatcherFrameController(ImRecWidgetController):
         try:
             self.runNextFile()
         except OSError:
+            self.__logger.error("Writing in progress.")
             self.watcher.removeFromList(files)
 
     def runNextFile(self):
         if len(self.toExecute) and not self.execution:
-            self.current = self._widget.path + '\\' + self.toExecute.pop()
+            newFile = self.toExecute.pop()
+            self.current = self._widget.path + '/' + newFile
+            self.recPath = self._widget.path + '/' + 'rec' + '/' + 'rec_' + newFile
             datasets = DataObj.getDatasetNames(self.current)
             dataObjs = []
             for d in datasets:
-                dataObjs.append(DataObj(os.path.basename(self.current), d, path=self.current))
-            self._commChannel.sigReconstruct.emit(dataObjs, True)
+                file, _ = DataObj._open(self.current, d)
+                dataObj = DataObj(os.path.basename(self.current), d, path=self.current, file=file)
+                dataObj.checkLock()
+                dataObjs.append(dataObj)
+                self.attrs = dataObj.attrs
             self.execution = True
+            self.t0 = datetime.now()
+            self._commChannel.sigReconstruct.emit(dataObjs, True)
 
-    def executionFinished(self):
+    def executionFinished(self, image):
         if self.execution:
             self.execution = False
+            self.saveImage(image)
+            diff = datetime.now() - self.t0
+            self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
             self._widget.updateFileList()
             self.runNextFile()
 
+    def saveImage(self, image):
+        image = np.squeeze(image[:, 0, :, :, :, :])
+        image = np.reshape(image, (1, *image.shape))
+        store = parse_url(self.recPath, mode="w").store
+        root = zarr.group(store=store)
+        root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"]
+        write_image(image=image, group=root, axes="zyx")
+        store.close()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

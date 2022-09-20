@@ -128,7 +128,9 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
-
+@dataclass(frozen=True)
+class UC2ConfigInfo:
+    pass
 
 @dataclass(frozen=True)
 class SIMInfo:
@@ -268,28 +270,6 @@ class EtSTEDInfo:
     """ Name of the widefield laser to use. """
 
 
-@dataclass(frozen=True)
-class NidaqInfo:
-    timerCounterChannel: Optional[Union[str, int]] = None
-    """ Output for Counter for timing purposes. If an integer is specified, it
-    will be translated to "Dev1/ctr{timerCounterChannel}". """
-
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
-
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
-
-
-@dataclass(frozen=True)
-class PulseStreamerInfo:
-    ipAddress: Optional[str] = None
-    """ IP address of Pulse Streamer hardware. """
-
 
 @dataclass(frozen=True)
 class PyroServerInfo:
@@ -335,6 +315,9 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
     
+    uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use MCT functionality. """
+    
     ism: Optional[ISMInfo] = field(default_factory=lambda: None)
     """ ISM settings. Required to be defined to use ISM functionality. """
 
@@ -351,12 +334,6 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
-
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
-
-    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
-    """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

@@ -336,7 +336,7 @@ class RecordingWorker(Worker):
                                         filePath = self.__recordingManager.getSaveFilePath(
                                             f'{self.savename}_{detectorName}.{fileExtension}', False, False)
                                         continue
-                            elif self.saveFormat == SaveFormat.HDF5 or self.saveFormat == SaveFormat.ZARR:
+                            elif self.saveFormat == SaveFormat.HDF5:
                                 dataset = datasets[detectorName]
                                 if (it + n) <= recFrames:
                                     dataset.resize(n + it, axis=0)
@@ -346,6 +346,15 @@ class RecordingWorker(Worker):
                                     dataset.resize(recFrames, axis=0)
                                     dataset[it:recFrames, :, :] = newFrames[0:recFrames - it]
                                     currentFrame[detectorName] = recFrames
+                            elif self.saveFormat == SaveFormat.ZARR:
+                                dataset = datasets[detectorName]
+                                if it == 0:
+                                    dataset[0, :, :] = newFrames[0, :, :]
+                                    if n > 0:
+                                        dataset.append(newFrames[1:n, :, :])
+                                else:
+                                    dataset.append(newFrames)
+                                currentFrame[detectorName] += n
 
                             # Things get a bit weird if we have multiple detectors when we report
                             # the current frame number, since the detectors may not be synchronized.
@@ -450,7 +459,8 @@ class RecordingWorker(Worker):
                 for detectorName, file in files.items():
                     # Remove default frame if no frames have been captured
                     if currentFrame[detectorName] < 1:
-                        datasets[detectorName].resize(0, axis=0) if self.saveFormat == SaveFormat.HDF5 else datasets[detectorName].resize(0)
+                        if self.saveFormat == SaveFormat.HDF5:
+                            datasets[detectorName].resize(0, axis=0)
 
                     # Handle memory recordings
                     if self.saveMode == SaveMode.RAM or self.saveMode == SaveMode.DiskAndRAM:

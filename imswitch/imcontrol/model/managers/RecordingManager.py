@@ -293,7 +293,7 @@ class RecordingWorker(Worker):
 
             elif self.saveFormat == SaveFormat.ZARR:
                 datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
-                                                                            dtype='i4', chunks=(1, 512, 512)
+                                                                            dtype='i2', chunks=(1, 512, 512)
                                                                             )
 
                 datasets[detectorName].attrs['ImSwitchData'] = self.attrs[detectorName]

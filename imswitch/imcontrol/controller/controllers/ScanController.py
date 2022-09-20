@@ -50,16 +50,13 @@ class ScanController(SuperScanController):
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
 
-        # Connect NidaqManager signals
-        self._master.nidaqManager.sigScanBuilt.connect(
-            lambda _, deviceList: self.emitScanSignal(self._commChannel.sigScanBuilt, deviceList)
-        )
+        '''
         self._master.nidaqManager.sigScanStarted.connect(
             lambda: self.emitScanSignal(self._commChannel.sigScanStarted)
         )
         self._master.nidaqManager.sigScanDone.connect(self.scanDone)
         self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
-
+        '''
         # Connect CommunicationChannel signals
         self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sigAbortScan.connect(self.abortScan)

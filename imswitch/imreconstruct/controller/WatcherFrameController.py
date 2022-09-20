@@ -81,11 +81,12 @@ class WatcherFrameController(ImRecWidgetController):
     def saveImage(self, image):
         image = np.squeeze(image[:, 0, :, :, :, :])
         image = np.reshape(image, (1, *image.shape))
-        store = parse_url(self.recPath, mode="w").store
+        store = parse_url(self.recPath + '.tmp', mode="w").store
         root = zarr.group(store=store)
-        root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"]
         write_image(image=image, group=root, axes="zyx")
+        root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"]
         store.close()
+        os.rename(self.recPath + '.tmp', self.recPath)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

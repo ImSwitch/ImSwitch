@@ -1,5 +1,5 @@
 from lantz.messagebased import MessageBasedDriver
-from pyvisa import constants
+#from pyvisa import constants
 
 
 class RS232Driver(MessageBasedDriver):
@@ -11,11 +11,11 @@ class RS232Driver(MessageBasedDriver):
     @classmethod
     def getDefaults(cls, settings):
         if settings["parity"] == 'none':
-            set_par = constants.Parity.none
+            set_par = 1 #constants.Parity.none
         if settings["stopbits"] == 1:
-            set_stopb = constants.StopBits.one
+            set_stopb = 2# constants.StopBits.one
         elif settings["stopbits"] == 2:
-            set_stopb = constants.StopBits.two
+            set_stopb = 3# constants.StopBits.two
 
         defaults = {'ASRL': {'write_termination': settings["send_termination"],
                              'read_termination': settings["recv_termination"],

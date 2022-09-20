@@ -1,6 +1,6 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
+    DetectorsManager, LasersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager
 )
 
@@ -17,11 +17,9 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
-            'nidaqManager': self.nidaqManager,
             'rs232sManager': self.rs232sManager
         }
 

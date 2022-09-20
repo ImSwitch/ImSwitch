@@ -270,23 +270,6 @@ class EtSTEDInfo:
     """ Name of the widefield laser to use. """
 
 
-@dataclass(frozen=True)
-class NidaqInfo:
-    timerCounterChannel: Optional[Union[str, int]] = None
-    """ Output for Counter for timing purposes. If an integer is specified, it
-    will be translated to "Dev1/ctr{timerCounterChannel}". """
-
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
-
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
-
-
 
 @dataclass(frozen=True)
 class PyroServerInfo:
@@ -351,9 +334,6 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
-
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

@@ -24,7 +24,7 @@ class APDManager(DetectorManager):
 
         model = name
         self._name = name
-        self.setPixelSize(1, 1)
+        self.setPixelSize([1, 1])
         fullShape = (100, 100)
         self._image = np.random.rand(fullShape[0], fullShape[1]) * 100
 
@@ -71,8 +71,8 @@ class APDManager(DetectorManager):
             self._scanWorker.moveToThread(self._scanThread)
             self._scanThread.started.connect(self._scanWorker.run)
             self._scanWorker.scanning = True
-            self._scanWorker.newLine.connect(
-                lambda line_pixels, line_count, frame: self.updateImage(line_pixels, line_count, frame)
+            self._scanWorker.d2Step.connect(
+                lambda pixels, pos: self.updateImage(pixels, pos)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisition)
 
@@ -90,7 +90,7 @@ class APDManager(DetectorManager):
             self._scanThread.quit()
             self._scanThread.wait()
             self._scanWorker.close()
-            self.__currentFrame += 1
+            self.__currSlice[-1] += 1
             self.__newFrameReady = True
         except Exception:
             pass
@@ -98,18 +98,21 @@ class APDManager(DetectorManager):
     def getLatestFrame(self):
         return self._image
 
-    def updateImage(self, line_pixels, line_count, frame):
-        self._image[frame, -(line_count + 1), :] = line_pixels
-        self.__currentFrame = frame
-        if line_count == 0:
-            # adjust viewbox shape to new image shape at the start of the image
+    def updateImage(self, pixels, pos: tuple):
+        # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
+        (*pos_rest, pos_d2) = pos
+        self._image[tuple(pos_rest) + tuple([pos_d2,])] = pixels
+        self.__currSlice = pos_rest  # from high dim to low dim (ending at d3)
+        if pos_d2 == 0:
+            # adjust viewbox shape to new image shape at the start of a d3 step
             self.updateLatestFrame(True)
             self.__newFrameReady = True
 
-    def initiateImage(self, lines, pixels_line, frames=1):
-        if np.shape(self._image) != (frames, lines, pixels_line):
-            self._image = np.zeros((frames, lines, pixels_line))
-            self.setShape(lines, pixels_line, frames)
+    def initiateImage(self, img_dims):
+        img_dims_extra = (*img_dims,1)
+        if np.shape(self._image) != tuple(reversed(img_dims_extra)):
+            self._image = np.zeros(tuple(reversed(img_dims_extra)))
+            self.setShape(img_dims_extra)  # not sure it will work. Previous order: [1],[0],[2], even if self._image was [2],[1],[0]
 
     def setParameter(self, name, value):
         pass
@@ -120,10 +123,13 @@ class APDManager(DetectorManager):
     def setBinning(self, binning):
         super().setBinning(binning)
 
+    # TODO: potentially fix for d>3, currently returns last finished frame
     def getChunk(self):
-        if self.__newFrameReady and self.__currentFrame > 0:
+        if self.__newFrameReady and self.__currSlice[-1] > 0:
             self.__newFrameReady = False
-            data = self.getLatestFrame()[self.__currentFrame-1,:,:]
+            pos_d3_fin = self.__currSlice[-1] - 1
+            pos_rest = self._currSlice[:-1]
+            data = self.getLatestFrame()[tuple(pos_rest)+tuple([pos_d3_fin,])]  # get the last finished d3 position from image ([...,:,:] ending the indexing is not written, but all x,y taken)
             return data[np.newaxis,:,:]
         else:
             return np.empty(shape=(0,0,0))
@@ -135,24 +141,24 @@ class APDManager(DetectorManager):
     def shape(self):
         return self.__shape
 
-    def setShape(self, ysize, xsize, framesize=1):
-        self.__shape = (framesize, xsize, ysize)
+    def setShape(self, img_dims):
+        self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
 
     @property
     def pixelSizeUm(self):
-        return [1, self.__pixelsize_ax2, self.__pixelsize_ax1]
+        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]
 
-    def setPixelSize(self, pixelsize_ax1, pixelsize_ax2, pixelsize_ax3=1):
-        self.__pixelsize_ax1 = pixelsize_ax1
-        self.__pixelsize_ax2 = pixelsize_ax2
-        self.__pixelsize_ax3 = pixelsize_ax3
+    def setPixelSize(self, pixel_sizes: list):
+        # pixel_sizes: list of low dim to high dim
+        pixel_sizes.append(1)
+        self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):
         pass
 
 
 class ScanWorker(Worker):
-    newLine = Signal(np.ndarray, int, int)
+    d2Step = Signal(np.ndarray, tuple(int))
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict):
@@ -160,6 +166,7 @@ class ScanWorker(Worker):
         self.__logger = initLogger(self, tryInheritParent=True)
 
         self._alldata = 0
+        self._last_value = 0
         self._manager = manager
         self._name = self._manager._name
         self._channel = self._manager._channel
@@ -167,36 +174,27 @@ class ScanWorker(Worker):
         # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is
         #       actually in the correct place. How do we find this out? Depends on the response of
         #       the galvos, can we measure this somehow?
-        # self._phase_delay = int(13*20e6/100e3)
-        # self._phase_delay = 15200
-        #self._phase_delay = 40  # should be larger the smaller the faster the scanning/smaller the FOV?
-        # attempt at calculating the phase_delay based on the scanning speed
-        #scale_factor_phase_delay = 0.02
-        #self._phase_delay = round(scanInfoDict['pixel_size_ax1']/scanInfoDict['dwell_time']*scale_factor_phase_delay)  # unit: um/s
 
-        self._scan_dwell_time = scanInfoDict['dwell_time']  # time step of scanning, in s
+        # time step of scanning, in s
+        self._scan_dwell_time = scanInfoDict['dwell_time']
 
         # ratio between detection sampling time and pixel dwell time (has nothing to do with
         # sampling of scanning line)
         self._frac_det_dwell = round(self._scan_dwell_time * self._manager._detection_samplerate)
 
-        self._n_lines = round(scanInfoDict['n_lines'])  # number of lines in image
-        self._pixels_line = round(scanInfoDict['pixels_line'])  # number of pixels per line
-        if len(scanInfoDict['img_dims']) == 3:
-            self._n_frames = round(scanInfoDict['img_dims'][2])  # number of pixels per line
-        else:
-            self._n_frames = 1
+        # number of steps on each axis in image
+        self._img_dims = scanInfoDict['img_dims']
 
         # # det samples per line:
         # time per line * det sampling rate
         self._samples_line = round(
-            scanInfoDict['scan_samples_line'] * scanInfoDict['scan_time_step'] *
+            scanInfoDict['scan_samples'][1] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
         # det samples per fast axis period
-        self._samples_period = round(
-            scanInfoDict['scan_samples_period'] * scanInfoDict['scan_time_step'] *
+        self._samples_d2_step = round(
+            scanInfoDict['scan_samples_d2_step'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
@@ -236,9 +234,9 @@ class ScanWorker(Worker):
             self._manager._detection_samplerate
         )
 
-        # scan samples in a frame (period)
-        self._samples_frame = round(
-            scanInfoDict['scan_samples_frame'] * scanInfoDict['scan_time_step'] *
+        # scan samples in a d3 step (period)
+        self._samples_d3_step = round(
+            scanInfoDict['scan_samples'][2] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
@@ -246,108 +244,114 @@ class ScanWorker(Worker):
 
         self._samples_throw_init = self._throw_startzero
         
-        # samples to throw due to smooth between frames transitioning
-        self._throw_init_frame = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._phase_delay)
+        # samples to throw due to smooth between d>2 step transitioning
+        self._throw_init_d2_step = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._phase_delay)
 
         #self.__logger.debug(f'samples line: {self._samples_line}')
-        #self.__logger.debug(f'samples period: {self._samples_period}')
-        #self.__logger.debug(f'samples frame: {self._samples_frame}')
+        #self.__logger.debug(f'samples period: {self._samples_d2_step}')
+        #self.__logger.debug(f'samples d3 step: {self._samples_d3_step}')
         #self.__logger.debug(f'init throw: {self._samples_throw_init}')
-        #self.__logger.debug(f'init frame throw: {self._throw_init_frame}')
+        #self.__logger.debug(f'init d>2 step throw: {self._throw_init_d2_step}')
 
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
                                                    self._manager._detection_samplerate,
                                                    self._samples_total, True, 'ao/StartTrigger',
                                                    self._manager._terminal)
-        self._manager.initiateImage(self._n_lines, self._pixels_line, self._n_frames)
-        
-        if len(scanInfoDict['img_dims']) == 3:
-            self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
-                                       float(scanInfoDict['pixel_size_ax2']),
-                                       float(scanInfoDict['pixel_size_ax3']))
-        else:
-            self._manager.setPixelSize(float(scanInfoDict['pixel_size_ax1']),
-                                       float(scanInfoDict['pixel_size_ax2']))
+        self._manager.initiateImage(self._img_dims)
+        self._manager.setPixelSize(scanInfoDict['pixel_sizes'])  # 'pixel_sizes' order: low dim to high dim
 
-        self._last_value = 0
-        self._line_counter = 0
-
-    def run(self):
-        #self.__logger.debug('scanWorker.run initiated')
-        #self.__logger.debug(f'Samples to throw init: {self._samples_throw_init}')
-        throwdata = self._manager._nidaqManager.readInputTask(self._name, self._samples_throw_init)
-        #self.__logger.debug(f'sw0: throw data shape: {np.shape(throwdata)}')
-        self._last_value = throwdata[-1]
-        self._alldata += len(throwdata)
-        for i in range(self._n_frames):
-            #self.__logger.debug(f'Currently data for frame {i+1} out of {self._n_frames}')
-            throwdata = self._manager._nidaqManager.readInputTask(self._name, self._throw_init_frame)
+    def throwdata(self, datalen):
+        """ Throw away data with length datalen, save the last value, 
+        and add length of data to total alldata length.
+        """
+        if datalen > 0:
+            throwdata = self._manager._nidaqManager.readInputTask(self._name, datalen)
             self._last_value = throwdata[-1]
             self._alldata += len(throwdata)
-            while self._line_counter < self._n_lines:
-                if self.scanning:
-                    #self.__logger.debug(f'sw1: line {self._line_counter} started')
-                    if self._line_counter == self._n_lines - 1:
-                        # read a line
-                        data = self._manager._nidaqManager.readInputTask(self._name,
-                                                                        self._samples_line)
-                    else:
-                        # read a whole period, starting with the line and then the data during the
-                        # flyback
-                        data = self._manager._nidaqManager.readInputTask(self._name,
-                                                                        self._samples_period)
-                    self._alldata += len(data)
-                    # galvo-sensor-data reading
-                    subtractionArray = np.concatenate(([self._last_value], data[:-1]))
-                    self._last_value = data[-1]
 
-                    # Now data is an array containing at each position the number of counts
-                    # at this position
-                    data = data - subtractionArray
-
-                    # only take the first samples that corresponds to the samples during the line
-                    line_samples = data[:self._samples_line]
-
-                    # translate sample stream to an array where each value corresponds to a pixel count
-                    line_pixels = self.samples_to_pixels(line_samples)
-
-                    self.newLine.emit(line_pixels, self._line_counter, i)
-                    self._line_counter += 1
-                else:
-                    self.__logger.debug('Close data reading: not scanning any longer')
-                    self.close()
-            #throwdata = self._manager._nidaqManager.readInputTask(
-            #    self._name, self._throw_between_frames
-            #)
-            throwdatalen = self._throw_startzero + self._samples_frame * (i+1) - self._alldata
-            if throwdatalen > 0:
-                throwdata = self._manager._nidaqManager.readInputTask(
-                    self._name, throwdatalen
-                )
-                self._alldata += len(throwdata)
-            self._line_counter = 0
-            #self.__logger.debug(f'length of all data after frame {i+1}: {self._alldata}')
-
-        throwdatalen = self._throw_startzero + self._throw_finalpos
-        if throwdatalen > 0:
-            throwdata = self._manager._nidaqManager.readInputTask(
-                self._name, self._throw_startzero + self._throw_finalpos
-            )
-            self._alldata += len(throwdata)
-        #self.__logger.debug(f'length of all data, end: {self._alldata}')
-        self.acqDoneSignal.emit()
-        # self.__logger.debug(self._name)
-        # self.close()
+    def readdata(self, datalen):
+        """ Read data with length datalen and add length of data to total alldata length.
+        """
+        data = self._manager._nidaqManager.readInputTask(self._name, datalen)
+        self._alldata += len(data)
+        return data
 
     def samples_to_pixels(self, line_samples):
         """ Reshape read datastream over the line to a line with pixel counts.
-        Do this by summing elements, with the rate ratio calculated previously. """
+        Do this by summing elements, with the rate ratio calculated previously.
+        """
         # If reading with higher sample rate (ex. 1 MHz, 1 us per sample) than scanning, sum N
         # samples for each pixel, since scanning curve is linear (ex. only allow dwell times as
         # multiples of 1 us if sampling rate is 1 MHz)
         line_pixels = np.array(line_samples).reshape(-1, self._frac_det_dwell).sum(axis=1)
         return line_pixels
+
+    def run(self):
+        """ Main run for acquisition.
+        """
+        # create empty current position counter
+        self._pos = np.zeros(len(self._img_dims), dtype='uint8')
+        # throw away initial recording samples
+        self.throwdata(self._samples_throw_init)
+        # start looping through all dimensions to record data, starting with the outermost dimension
+        self.run_loop_dx(dim=len(self._img_dims))
+
+        # throw acquisition-final positioning data
+        self.throwdata(self._throw_startzero + self._throw_finalpos)
+        self.acqDoneSignal.emit()
+
+    def run_loop_dx(self, dim):
+        """ Recursive looping through all scanning dimensions, actually read samples at dim = 2,
+        and step through all steps in each dimension.
+        """
+        while self._pos[dim-1] < self._img_dims[dim-1]:
+            if dim > 2:
+                if dim == 3:
+                    # begin d3 step: throw data from initial d3 step positioning
+                    self.throwdata(self._throw_init_d2_step)
+                self.run_loop_dx(dim-1)
+                if dim == 3:
+                    # end d3 step: realign actual # read samples with supposed # read samples, in case of discrepancy
+                    throwdatalen_term1_terms = self._pos[2:]
+                    for n in range(len(self._img_dims),3,-1):
+                        for m in range(n-1,2,-1):
+                            throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
+                    throwdatalen_term1_terms[0] += 1
+                    throwdatalen = self._throw_startzero + self._samples_d3_step * np.sum(throwdatalen_term1_terms) - self._alldata
+                    if throwdatalen > 0:
+                        self.throwdata(throwdatalen)
+            else:
+                self.run_loop_d2()
+            self._pos[dim-1] += 1
+        self._pos[dim-1] = 0
+
+    def run_loop_d2(self):
+        """ Reading data on dim = 2, changing data to pixels, and emitting the d2 step of pixels.
+        """
+        if self.scanning:
+            if self._pos[1] == self._img_dims[1] - 1:
+                # read a line
+                data = self.readdata(self._samples_line)
+            else:
+                # read a whole period, starting with the line and then the data during the flyback
+                data = self.readdata(self._samples_d2_step)
+
+            # get photon counts from data array (which is cumsummed)
+            data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))
+            self._last_value = data[-1]
+
+            # only take the first samples that corresponds to the samples during the line
+            line_samples = data_cnts[:self._samples_line]
+
+            # resample sample array to pixel counts array
+            pixels = self.samples_to_pixels(line_samples)
+
+            # signal new line of pixels, and the insertion position in all dimensions
+            self.d2Step.emit(pixels, tuple(np.flip(self._pos[1:])))
+        else:
+            self.__logger.debug('Close data reading: not scanning any longer')
+            self.close()
 
     def close(self):
         self._manager._nidaqManager.inputTaskDone(self._name)

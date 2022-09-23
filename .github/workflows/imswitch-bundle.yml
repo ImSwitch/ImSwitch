@@ -27,7 +27,7 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install .
-        python3 -m pip install pyinstaller
+        python3 -m pip install pyinstaller==5.4.1
       shell: bash
     - name: Build bundle
       run: |

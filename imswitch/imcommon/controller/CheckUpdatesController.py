@@ -55,7 +55,7 @@ class CheckUpdatesThread(Thread):
             if 'IMSWITCH_IS_BUNDLE' in os.environ and os.environ['IMSWITCH_IS_BUNDLE'] == '1':
                 # Installed from bundle - check GitHub
                 releaseResponse = requests.get(
-                    'https://api.github.com/repos/kasasxav/ImSwitch/releases/latest'
+                    'https://api.github.com/repos/openUC2/ImSwitch/releases/latest'
                 )
                 latestVersion = releaseResponse.json()['tag_name'].lstrip('v')
                 if version.parse(latestVersion) > version.parse(currentVersion):

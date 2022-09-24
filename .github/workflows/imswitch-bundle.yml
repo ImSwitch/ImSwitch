@@ -1,14 +1,12 @@
 name: imswitch-bundle
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - '*'
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   build:
-
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -32,6 +30,14 @@ jobs:
     - name: Build bundle
       run: |
         pyinstaller imswitch.spec
+        cd dist
+        cd ImSwitch
+        dir 
+    - name: Upload updated .exe
+      uses: actions/upload-artifact@v2
+      with:
+        name: imswitch-${{ matrix.os }}
+        path: dist/ImSwitch/ImSwitch.exe
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:

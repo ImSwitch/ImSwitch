@@ -4,6 +4,8 @@ import traceback
 import requests
 from luddite import get_version_pypi
 from packaging import version
+import subprocess
+
 
 import imswitch
 from imswitch.imcommon.framework import Signal, Thread
@@ -58,6 +60,8 @@ class CheckUpdatesThread(Thread):
                     'https://api.github.com/repos/openUC2/ImSwitch/releases/latest'
                 )
                 latestVersion = releaseResponse.json()['tag_name'].lstrip('v')
+                latestVersionDate = releaseResponse.json()['published_at'].split('T')[0]
+                
                 if version.parse(latestVersion) > version.parse(currentVersion):
                     self.sigNewVersionPyInstaller.emit(latestVersion)
                 else:
@@ -72,6 +76,10 @@ class CheckUpdatesThread(Thread):
         except Exception:
             self.__logger.warning(traceback.format_exc())
             self.sigFailed.emit()
+            
+    def getCurrentCommitDate(self):
+        return str(subprocess.check_output(['git', 'log', '-n', '1', '--pretty=tformat:%h-%ad', '--date=short']).strip()).split("-")[-3:]
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

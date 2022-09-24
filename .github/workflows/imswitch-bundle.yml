@@ -57,7 +57,7 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.latest_release_info.outputs.upload_url }}
-        asset_path: .dist/ImSwitch/ImSwitch.exe
+        asset_path: dist/ImSwitch/ImSwitch.exe
         asset_name: ImSwitch.exe
         asset_content_type: application/exe
  

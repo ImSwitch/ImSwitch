@@ -5,8 +5,6 @@ on:
   push:
     tags:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -44,20 +42,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: imswitch-${{ matrix.os }}
-        path: dist
-        
-    - name: release
-      uses: actions/create-release@v1
-      id: create_release
-      with:
-        draft: false
-        prerelease: false
-        release_name: ${{steps.version.outputs.version}}
-        tag_name: ${{github.ref}}
-        body_path: ''
-      env:
-          GITHUB_TOKEN: ${{github.token}}
-    
+        path: dist    
     - name: upload windows-exe-update artifact
       uses: actions/upload-release-asset@v1
       env:

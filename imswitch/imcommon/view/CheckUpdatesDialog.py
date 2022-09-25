@@ -70,6 +70,12 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         )
         self.linkLabel.setVisible(True)
 
+    def showInfo(self, text):
+        self.informationLabel.setText(text)
+        self.linkLabel.setText("")
+        self.linkLabel.setVisible(False)
+
+
     def showPyPIUpdate(self, newVersion):
         self.informationLabel.setText(
             f'ImSwitch {newVersion} is now available. '

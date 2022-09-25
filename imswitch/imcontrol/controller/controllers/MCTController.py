@@ -203,7 +203,7 @@ class MCTController(LiveUpdatedController):
 
             # this should decouple the hardware-related actions from the GUI - but it doesn't
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, daemon=True)
+            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
             self.MCTThread.start()
 
 

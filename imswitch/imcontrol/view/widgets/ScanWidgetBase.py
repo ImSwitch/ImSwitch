@@ -6,7 +6,7 @@ from imswitch.imcommon.model import initLogger
 from .basewidgets import Widget
 
 
-class ScanPSWidget(Widget):
+class ScanWidgetBase(Widget):
     """ Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
 

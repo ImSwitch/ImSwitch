@@ -25,7 +25,7 @@ class SuperScanManager(ABC):
         pass
 
 
-class ScanPSManager(SuperScanManager):
+class ScanManagerBase(SuperScanManager):
     """ ScanManager helps with generating signals for scanning. """
 
     def __init__(self, setupInfo):

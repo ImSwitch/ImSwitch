@@ -158,7 +158,7 @@ class APDManager(DetectorManager):
 
 
 class ScanWorker(Worker):
-    d2Step = Signal(np.ndarray, tuple(int))
+    d2Step = Signal(np.ndarray, tuple)
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict):
@@ -312,7 +312,7 @@ class ScanWorker(Worker):
                     self.throwdata(self._throw_init_d2_step)
                 self.run_loop_dx(dim-1)
                 if dim == 3:
-                    # end d3 step: realign actual # read samples with supposed # read samples, in case of discrepancy
+                    # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
                     throwdatalen_term1_terms = self._pos[2:]
                     for n in range(len(self._img_dims),3,-1):
                         for m in range(n-1,2,-1):

@@ -107,12 +107,12 @@ class GalvoScanDesigner(ScanDesigner):
         # generate axis signals for all d axes
         pos = []  # list with all axis positions lists
         # d1 axis signal
-        pos_temp, samples_d2_step = self.__generate_smooth_scan(parameterDict, vel_max[0], acc_max[0], n_steps_dx[1])
+        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, vel_max[0], acc_max[0], n_steps_dx[1])
         pos.append(pos_temp)
 
         # d2 axis signal
         if axis_count_scan > 1:
-            axis_reps = self.__get_axis_reps(pos[0], samples_d2_step, n_steps_dx[1])
+            axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1])
             pos_temp = self.__generate_step_scan(axis_reps, vel_max[1], acc_max[1])
             pos.append(pos_temp)
             n_scan_samples_dx.append(len(pos[0]))
@@ -149,8 +149,9 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
             'phase_delay': parameterDict['phase_delay'],
-            'scan_samples_d2_step': samples_d2_step - 1
+            'scan_samples_d2_period': samples_d2_period - 1
         }
+        self.__logger.debug(scanInfoDict)
 
         # plot scan signal
         import matplotlib.pyplot as plt
@@ -215,12 +216,9 @@ class GalvoScanDesigner(ScanDesigner):
         return pos_ret
 
     def __repeat_dlower(self, pos, n_steps_axis):
-        pos_ret = []
-        for pos_dim in pos:
-            pos_ret_dim = []
-            for step in range(n_steps_axis):
-                pos_ret_dim = np.concatenate((pos_ret_dim, pos_dim))
-            pos_ret.append(pos_ret_dim)
+        """ Repeat the current positions, for all dimensions,
+        for the number of steps on the new axis. """
+        pos_ret = [np.tile(pos_dim, n_steps_axis) for pos_dim in pos]
         return pos_ret
 
     def __generate_step_scan_stepwise(self, dim, len_axis, n_axis, axis_name):

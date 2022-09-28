@@ -7,6 +7,7 @@ from packaging import version
 import subprocess
 import urllib.request
 import threading
+import datetime
 
 import imswitch
 from imswitch.imcommon.framework import Signal, Thread
@@ -72,20 +73,26 @@ class CheckUpdatesThread(Thread):
                     downloadURL = releaseResponse.json()['assets'][0]['browser_download_url']
                     self.__logger.debug("We are downloading the software from: "+downloadURL)
                 
-                    ## inplace replacement won't work I guess?
+                    ## inplace replacement won't work I guess? => seems to work
                     def dlImSwitch(downloadURL, fileName):
                         resultDL = urllib.request.urlretrieve(downloadURL, fileName)
 
-                    self.sigNewVersionShowInfo.emit("Downloading and updating latest version...")
-
-                    
                     ImSwitchExeFilename = "ImSwitch.exe"
-                    if os.path.isfile(ImSwitchExeFilename):                    
-                        self.__logger.debug("Renaming old ImSwitch.exe file")
-                        os.rename(ImSwitchExeFilename, ImSwitchExeFilename+"_BAK")
-                    mThread =  threading.Thread(target=dlImSwitch, args=(downloadURL, ImSwitchExeFilename))
+                    mThread =  threading.Thread(target=dlImSwitch, args=(downloadURL, ImSwitchExeFilename+"*"))
                     mThread.start()
                     mThread.join()
+
+                    # make a backup copy of the file
+                    if os.path.isfile(ImSwitchExeFilename):                    
+                        self.__logger.debug("Renaming old ImSwitch.exe file")
+                        tz = datetime.timezone.utc
+                        ft = "%Y-%m-%dT%H:%M:%S%z"
+                        tt = datetime.datetime.now(tz=tz).strftime(ft)
+                        os.rename(ImSwitchExeFilename, ImSwitchExeFilename+"_BAK_"+tt)
+
+                    # finally rename the downloaded file too
+                    os.rename(ImSwitchExeFilename+"*", ImSwitchExeFilename)
+
                     self.__logger.debug("Download successful!")
                     self.sigNewVersionShowInfo.emit("Download successful! Please restart ImSwitch. ")
 
@@ -104,9 +111,12 @@ class CheckUpdatesThread(Thread):
                     self.sigNoUpdate.emit()
 
 
-        except Exception:
+        except Exception as e:
             self.__logger.warning(traceback.format_exc())
-            self.sigFailed.emit()
+            #self.sigFailed.emit()
+            self.sigNewVersionShowInfo.emit("Updating failed. "+str(e))
+
+            
             
     def getCurrentCommitDate(self):
         return str(subprocess.check_output(['git', 'log', '-n', '1', '--pretty=tformat:%h-%ad', '--date=short']).strip()).split("-")[-3:]

@@ -1,10 +1,14 @@
 name: imswitch-bundle
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-
+      
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+  
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -12,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-
+        
     steps:
     - uses: actions/checkout@v2
       with:
@@ -36,10 +40,25 @@ jobs:
     - name: Upload updated .exe
       uses: actions/upload-artifact@v2
       with:
-        name: imswitch-${{ matrix.os }}
+        name: imswitch-updated-exeonly
         path: dist/ImSwitch/ImSwitch.exe
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
         name: imswitch-${{ matrix.os }}
-        path: dist
+        path: dist    
+    - name: Gets latest created release info
+      id: latest_release_info
+      uses: jossef/action-latest-release-info@v1.1.0
+
+    - name: upload windows-exe-update artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.latest_release_info.outputs.upload_url }}
+        asset_path: dist/ImSwitch/ImSwitch.exe
+        asset_name: ImSwitch.exe
+        asset_content_type: application/exe
+ 
+

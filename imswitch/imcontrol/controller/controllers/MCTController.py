@@ -11,7 +11,7 @@ from datetime import datetime
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import pyqtgraph.ptime as ptime
+import time
 
 from ..basecontrollers import LiveUpdatedController
 
@@ -129,7 +129,7 @@ class MCTController(LiveUpdatedController):
             self.timer = Timer()
             self.timer.timeout.connect(self.takeTimelapse())
             self.timer.start(self.timePeriod*1000)
-            self.startTime = ptime.time()
+            self.startTime = time.time()
 
         else:
 
@@ -203,7 +203,7 @@ class MCTController(LiveUpdatedController):
 
             # this should decouple the hardware-related actions from the GUI - but it doesn't
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, daemon=True)
+            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
             self.MCTThread.start()
 
 

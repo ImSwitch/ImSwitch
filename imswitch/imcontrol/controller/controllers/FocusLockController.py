@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-import pyqtgraph.ptime as ptime
+import time
 import scipy.ndimage as ndi
 from lantz import Q_
 from skimage.feature import peak_local_max
@@ -65,7 +65,7 @@ class FocusLockController(ImConWidgetController):
         self.timer = Timer()
         self.timer.timeout.connect(self.update)
         self.timer.start(self.focusTime)
-        self.startTime = ptime.time()
+        self.startTime = time.time()
 
     def __del__(self):
         self.__processDataThread.quit()
@@ -144,12 +144,12 @@ class FocusLockController(ImConWidgetController):
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint] = self.setPointSignal
-            self.timeData[self.currPoint] = ptime.time() - self.startTime
+            self.timeData[self.currPoint] = time.time() - self.startTime
         else:
             self.setPointData[:-1] = self.setPointData[1:]
             self.setPointData[-1] = self.setPointSignal
             self.timeData[:-1] = self.timeData[1:]
-            self.timeData[-1] = ptime.time() - self.startTime
+            self.timeData[-1] = time.time() - self.startTime
         self.currPoint += 1
 
     def updatePI(self):

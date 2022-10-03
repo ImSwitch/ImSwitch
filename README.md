@@ -19,6 +19,13 @@ that it is possible to integrate current state-of-the-art solutions into one uni
 
 Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/openUC2/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
 
+In order to tart do the following:
+Download the latest Artifact: https://github.com/openUC2/ImSwitch/actions/workflows/imswitch-bundle.yml
+```
+set SETUPTOOLS_USE_DISTUTILS=stdlib
+ImSwitch.exe
+``` 
+
 ### Option B: Install using pip
 
 ImSwitch is also published on PyPI and can be installed using pip. Python 3.7 or later is required. Additionally, certain components (the image reconstruction module and support for TIS cameras) require the software to be running on Windows, but most of the functionality is available on other operating systems as well.

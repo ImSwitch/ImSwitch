@@ -67,8 +67,7 @@ class LEDMatrixController(ImConWidgetController):
     def setLED(self, LEDid, state=None):
         self._ledmatrixMode = "single"
         self.ledMatrix.setLEDSingle(indexled=int(LEDid), state=state)
-        pattern = self.ledMatrix.getPattern()
-        self._widget.leds[str(LEDid)].setChecked(np.mean(pattern[int(LEDid)])>0)
+        self._widget.leds[str(LEDid)].setChecked(state)
 
     def connect_leds(self):
         """Connect leds (Buttons) to the Sample Pop-Up Method"""

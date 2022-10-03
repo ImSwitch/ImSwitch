@@ -51,8 +51,14 @@ class ESP32StageManager(PositionerManager):
     def setEnabled(self, is_enabled):
         self.is_enabled = is_enabled
 
-    def setSpeed(self, speed):
-        self._speed = speed
+    def setSpeed(self, speed, axis=None):
+        #TODO: Map that to the JSON!
+        if type(speed)==int and axis == None:
+            self._speed["X"] = speed
+            self._speed["Y"] = speed
+            self._speed["Z"] = speed
+        else:
+            self._speed[axis] = speed
 
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness

@@ -21,7 +21,7 @@ class UC2ConfigManager(SignalInterface):
         self.__logger = initLogger(self)
 
         if UC2ConfigInfo is None:
-            return
+            self.UC2ConfigInfo = {}
         
         self.UC2ConfigInfo = UC2ConfigInfo
 

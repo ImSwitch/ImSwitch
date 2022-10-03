@@ -9,7 +9,7 @@ class PositionerWidget(Widget):
 
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
-    sigsetSpeedClicked = QtCore.Signal(str)  # (speed, axis)
+    sigsetSpeedClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -62,7 +62,7 @@ class PositionerWidget(Widget):
 
 
             self.pars['ButtonSpeedEnter'].clicked.connect(
-                lambda *args: self.sigsetSpeedClicked.emit()
+                lambda *args: self.sigsetSpeedClicked.emit(positionerName, axis)
             )
             self.numPositioners += 1
 

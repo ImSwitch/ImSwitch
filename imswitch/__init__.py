@@ -1,4 +1,4 @@
-__version__ = '1.2.1'
+__version__ = '1.2.0'
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

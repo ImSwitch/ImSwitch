@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.ptime as ptime
+import time
 from qtpy import QtCore, QtGui, QtWidgets
 
 
@@ -234,14 +234,14 @@ class SumpixelsGraph(pg.GraphicsLayoutWidget):
         self.sumCurve = self.plot.plot(pen='y')
 
         self.time = np.zeros(self.npoints)
-        self.startTime = ptime.time()
+        self.startTime = time.time()
 
     def resetData(self):
         """Set all data points to zero, useful if going from very large values
         to very small values"""
         self.data = np.zeros(self.npoints)
         self.time = np.zeros(self.npoints)
-        self.startTime = ptime.time()
+        self.startTime = time.time()
         self.ptr = 0
 
     def updateGraph(self, value):
@@ -249,7 +249,7 @@ class SumpixelsGraph(pg.GraphicsLayoutWidget):
         """
         if self.ptr < self.npoints:
             self.data[self.ptr] = value
-            self.time[self.ptr] = ptime.time() - self.startTime
+            self.time[self.ptr] = time.time() - self.startTime
             self.sumCurve.setData(self.time[1:self.ptr + 1],
                                   self.data[1:self.ptr + 1])
 
@@ -257,7 +257,7 @@ class SumpixelsGraph(pg.GraphicsLayoutWidget):
             self.data[:-1] = self.data[1:]
             self.data[-1] = value
             self.time[:-1] = self.time[1:]
-            self.time[-1] = ptime.time() - self.startTime
+            self.time[-1] = time.time() - self.startTime
 
             self.sumCurve.setData(self.time, self.data)
 
@@ -287,7 +287,7 @@ class ProjectionGraph(pg.GraphicsLayoutWidget):
         self.plot.showGrid(x=True, y=True)
         self.sumCurve = self.plot.plot(pen='y')
 
-        self.startTime = ptime.time()
+        self.startTime = time.time()
 
     def updateGraph(self, values):
         """ Update the data displayed in the graphs

@@ -79,6 +79,7 @@ class WatcherFrameController(ImRecWidgetController):
             self.runNextFile()
 
     def saveImage(self, image):
+        #TODO: Offload this to a separate thread
         image = np.squeeze(image[:, 0, :, :, :, :])
         image = np.reshape(image, (1, *image.shape))
         store = parse_url(self.recPath + '.tmp', mode="w").store

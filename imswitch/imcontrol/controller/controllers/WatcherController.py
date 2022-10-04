@@ -2,7 +2,7 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 import os
 from datetime import datetime
-
+import webbrowser
 
 class WatcherController(ImConWidgetController):
     """ Linked to WatcherWidget. """

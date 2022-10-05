@@ -171,8 +171,7 @@ class ScanController(SuperScanController):
             setTTLDevices = []
             for i in range(len(self._digitalParameterDict['target_device'])):
                 deviceName = self._digitalParameterDict['target_device'][i]
-                self._widget.setTTLStarts(deviceName, self._digitalParameterDict['TTL_start'][i])
-                self._widget.setTTLEnds(deviceName, self._digitalParameterDict['TTL_end'][i])
+                self._widget.setTTLSequences(deviceName, self._digitalParameterDict['TTL_sequence'][i])
                 setTTLDevices.append(deviceName)
 
             for deviceName in self.TTLDevices:
@@ -219,7 +218,7 @@ class ScanController(SuperScanController):
                 if positionerName not in self._positionersScan:
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self.__logger.debug(f'set {positionerName} center to {position} before scan')
+                    self.__logger.debug(f'Set {positionerName} center to {position} before scan')
             # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
@@ -292,15 +291,15 @@ class ScanController(SuperScanController):
                 self._analogParameterDict['axis_startpos'].append(start)
 
         self._digitalParameterDict['target_device'] = []
-        self._digitalParameterDict['TTL_start'] = []
-        self._digitalParameterDict['TTL_end'] = []
+        self._digitalParameterDict['TTL_sequence'] = []
+        self._digitalParameterDict['TTL_sequence_axis'] = []
         for deviceName, _ in self.TTLDevices.items():
             if not self._widget.getTTLIncluded(deviceName):
                 continue
 
             self._digitalParameterDict['target_device'].append(deviceName)
-            self._digitalParameterDict['TTL_start'].append(self._widget.getTTLStarts(deviceName))
-            self._digitalParameterDict['TTL_end'].append(self._widget.getTTLEnds(deviceName))
+            self._digitalParameterDict['TTL_sequence'].append(self._widget.getTTLSequence(deviceName))
+            self._digitalParameterDict['TTL_sequence_axis'].append(self._widget.getTTLSequenceAxis(deviceName))
 
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
@@ -339,25 +338,29 @@ class ScanController(SuperScanController):
             self._digitalParameterDict
         )
 
-        sampleRate = self._master.scanManager.sampleRate
-
-        areas = []
+        steps = []
         signals = []
         colors = []
         for deviceName, signal in TTLCycleSignalsDict.items():
             isLaser = deviceName in self._setupInfo.lasers
-            areas.append(
-                np.linspace(
-                    0, self._digitalParameterDict['sequence_time'] * sampleRate, len(signal)
-                )
-            )
-            signals.append(signal.astype(np.uint8))
+            steps_temp = np.linspace(1, len(signal), 10000)
+            signals_temp = np.repeat(signal.astype(np.uint8), np.floor(10000/len(signal)))
+            signals_temp = np.append(signals_temp,np.zeros(len(steps_temp)-len(signals_temp)))
+            signals.append(signals_temp)
+            steps.append(steps_temp)
             colors.append(
                 colorutils.wavelengthToHex(
                     self._setupInfo.lasers[deviceName].wavelength
                 ) if isLaser else '#ffffff'
             )
-        self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
+        #ttl_seq_axis = self._digitalParameterDict['TTL_sequence_axis']
+        #ttl_seq_axis_num = [axis for axis in ttl_seq_axis if isinstance(axis,int)]
+        #units = ['pixel','line','frame','lapse','d5 step']
+        #if ttl_seq_axis_num:
+        #    unit = ttl_seq_axis[np.max(ttl_seq_axis_num)]
+        #else:
+        #    unit = 'no sequence'
+        self._widget.plotSignalGraph(steps, signals, colors)#, unit)
 
     def emitScanSignal(self, signal, *args):
         if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan

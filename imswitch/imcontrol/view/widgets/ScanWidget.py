@@ -45,12 +45,11 @@ class ScanWidget(Widget):
         self.scanDims = []
 
         self.scanPar = {
-                        'seqTime': self.seqTimePar,
+                        'seqTime': self.seqTimePar,  # TODO: change name to dwellTime, both label and parameter?
                         'phaseDelay': self.phaseDelayPar
                         }
 
-        self.pxParameters = {}
-        self.pxParValues = {}
+        self.ttlParameters = {}
 
         self.scanRadio = QtWidgets.QRadioButton('Scan')
         self.scanRadio.setChecked(True)
@@ -161,7 +160,7 @@ class ScanWidget(Widget):
             self.grid.addWidget(dimlabel, currentRow, 5)
             scanDimPar = QtWidgets.QComboBox()
             scanDimPar.addItems(self.scanDims)
-            scanDimPar.setCurrentIndex(index)
+            scanDimPar.setCurrentIndex(index if index < 2 else self.scanDims.index('None'))
             self.scanPar['scanDim' + str(index)] = scanDimPar
             self.grid.addWidget(scanDimPar, currentRow, 6)
 
@@ -197,27 +196,33 @@ class ScanWidget(Widget):
         currentRow += 1
         graphRow = currentRow
 
-        # TTL pulse param labels
-        startLabel = QtWidgets.QLabel(f'Start ({TTLTimeUnits})')
-        endLabel = QtWidgets.QLabel(f'End ({TTLTimeUnits})')
-        startLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        endLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(startLabel, currentRow, 1)
-        self.grid.addWidget(endLabel, currentRow, 2)
+        # TTL param labels
+        sequenceLabel = QtWidgets.QLabel('Sequence (h#,l#,...)')
+        sequenceLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(sequenceLabel, currentRow, 1)
+        sequenceAxisLabel = QtWidgets.QLabel('Axis')
+        sequenceAxisLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(sequenceAxisLabel, currentRow, 2)
         currentRow += 1
 
         for deviceName in TTLDeviceNames:
-            # TTL pulse params
+            # TTL sequence param
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('')
-            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('')
-            self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
-            self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
+            self.ttlParameters['seq' + deviceName] = QtWidgets.QLineEdit('l1')
+            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1)
+
+            # TTL sequence axis param
+            ttlAxisPar = QtWidgets.QComboBox()
+            ttlAxisPar.addItems(self.scanDims)
+            ttlAxisPar.setCurrentIndex(self.scanDims.index('None'))
+            self.ttlParameters['seqAxis' + deviceName] = ttlAxisPar
+            self.grid.addWidget(ttlAxisPar, currentRow, 2)
+
             currentRow += 1
 
             # Connect signals
-            self.pxParameters['sta' + deviceName].textChanged.connect(self.sigSignalParChanged)
-            self.pxParameters['end' + deviceName].textChanged.connect(self.sigSignalParChanged)
+            self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
+            self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
 
         # Add pulse graph
         self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
@@ -244,16 +249,19 @@ class ScanWidget(Widget):
         return float(self.scanPar['center' + positionerName].text())
 
     def getTTLIncluded(self, deviceName):
-        return (self.pxParameters['sta' + deviceName].text() != '' and
-                self.pxParameters['end' + deviceName].text() != '')
+        return (self.ttlParameters['seq' + deviceName].text() != '')
 
-    def getTTLStarts(self, deviceName):
-        return list(map(lambda s: float(s) / 1000 if s else None,
-                        self.pxParameters['sta' + deviceName].text().split(',')))
+    def getTTLSequence(self, deviceName):
+        #return list(map(lambda s: s if s else None, self.ttlParameters['seq' + deviceName].text().split(',')))
+        return self.ttlParameters['seq' + deviceName].text()
 
-    def getTTLEnds(self, deviceName):
-        return list(map(lambda e: float(e) / 1000 if e else None,
-                        self.pxParameters['end' + deviceName].text().split(',')))
+    def getTTLSequenceAxis(self, deviceName):
+        if self.ttlParameters['seqAxis' + deviceName].currentText() == 'None':
+            return 'None'
+        return self.ttlParameters['seqAxis' + deviceName].currentText()
+        #for index, scanDim in enumerate(self.scanDims):
+        #    if self.ttlParameters['seqAxis' + deviceName].currentText() == scanDim:
+        #        return index
 
     def getSeqTimePar(self):
         return float(self.seqTimePar.text()) / 1000
@@ -291,19 +299,13 @@ class ScanWidget(Widget):
     def setScanPixels(self, positionerName, pixels):
         self.scanPar['pixels' + positionerName].setText(str(pixels))
 
-    def setTTLStarts(self, deviceName, starts):
-        self.pxParameters['sta' + deviceName].setText(
-            ','.join(map(lambda s: str(round(1000 * s, 3)), starts))
-        )
-
-    def setTTLEnds(self, deviceName, ends):
-        self.pxParameters['end' + deviceName].setText(
-            ','.join(map(lambda e: str(round(1000 * e, 3)), ends))
+    def setTTLSequences(self, deviceName, sequence):
+        self.ttlParameters['seq' + deviceName].setText(
+            ','.join(map(lambda s: str(s), sequence))
         )
 
     def unsetTTL(self, deviceName):
-        self.pxParameters['sta' + deviceName].setText('')
-        self.pxParameters['end' + deviceName].setText('')
+        self.ttlParameters['seq' + deviceName].setText('')
 
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
@@ -323,16 +325,17 @@ class ScanWidget(Widget):
     def setScanCenterPosEnabled(self, positionerName, enabled):
         self.scanPar['center' + positionerName].setEnabled(enabled)
 
-    def plotSignalGraph(self, areas, signals, colors, sampleRate):
-        if len(areas) != len(signals) or len(signals) != len(colors):
+    def plotSignalGraph(self, x, signals, colors, unit=None):
+        if len(x) != len(signals) or len(signals) != len(colors):
             raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
 
         self.graph.plot.clear()
-        for i in range(len(areas)):
-            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
+        for i in range(len(x)):
+            self.graph.plot.plot(x[i], signals[i] * (1 + i / 20), pen=pg.mkPen(colors[i]))
 
-        self.graph.plot.setYRange(-0.1, 1.1)
-        self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
+        self.graph.plot.setYRange(-0.1, 1 + len(x) / 20 + 0.05)
+        #self.graph.plot.setLabel('bottom',f'Axis steps ({unit})')
+        self.graph.plot.setLabel('bottom','Selected sequence axis steps')
 
     def eventFilter(self, source, event):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:

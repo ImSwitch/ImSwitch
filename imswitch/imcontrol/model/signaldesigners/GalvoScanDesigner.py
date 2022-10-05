@@ -44,9 +44,9 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 1000
+        self.__minsettlingtime = 50
         # arbitrary for now  µs
-        self.__paddingtime = 1000
+        self.__paddingtime = 50
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -59,11 +59,11 @@ class GalvoScanDesigner(ScanDesigner):
         # convert vel_max from µm/µs to V/µs
         vel_max = [positionerProps['vel_max'] / positionerProps['conversionFactor']
                    if 'vel_max' in positionerProps else 1e6
-                   for positionerProps in positionersProps ]
+                   for positionerProps in positionersProps]
         # convert acc_max from µm/µs^2 to V/µs^2
         acc_max = [positionerProps['acc_max'] / positionerProps['conversionFactor']
                    if 'acc_max' in positionerProps else 1e6
-                   for positionerProps in positionersProps ]
+                   for positionerProps in positionersProps]
 
         # get conversion factors for scanning axes
         convFactors = [positionerProps['conversionFactor'] 
@@ -86,6 +86,15 @@ class GalvoScanDesigner(ScanDesigner):
         self.axis_centerpos = [(parameterDict['axis_centerpos'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                                for i in range(device_count)
                                if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+        # retrieve axis velocity max of active axes
+        self.axis_vel_max = [vel_max[positionerNames.index(self.axis_devs_order[i])]
+                               for i in range(device_count)
+                               if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+        # retrieve axis acceleration max of active axes
+        self.axis_acc_max = [acc_max[positionerNames.index(self.axis_devs_order[i])]
+                               for i in range(device_count)
+                               if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
+
         axis_count_scan = len(self.axis_devs_order)
         #self.__logger.debug(self.axis_devs_order)
 
@@ -102,18 +111,22 @@ class GalvoScanDesigner(ScanDesigner):
             axis_positions.append(int(np.ceil(self.axis_length[i] / self.axis_step_size[i])))
 
         self.__settlingtime = self.__calc_settling_time(self.axis_length, self.axis_centerpos,
-                                                        vel_max, acc_max)
+                                                        self.axis_vel_max, self.axis_acc_max)
 
         # generate axis signals for all d axes
         pos = []  # list with all axis positions lists
         # d1 axis signal
-        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, vel_max[0], acc_max[0], n_steps_dx[1])
+        axis = 0
+        pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[0], self.axis_acc_max[0], n_steps_dx[1])
         pos.append(pos_temp)
 
         # d2 axis signal
         if axis_count_scan > 1:
+            axis = 1
             axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1])
-            pos_temp = self.__generate_step_scan(axis_reps, vel_max[1], acc_max[1])
+            smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
+            pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
+            #pos_temp = self.__generate_step_scan(axis, axis_reps, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], self.axis_vel_max[axis], self.axis_acc_max[axis])
             pos.append(pos_temp)
             n_scan_samples_dx.append(len(pos[0]))
 
@@ -122,7 +135,9 @@ class GalvoScanDesigner(ScanDesigner):
             for axis in range(2, axis_count_scan):
                 pos = self.__zero_padding(pos, padlen_base=0)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
-                pos_temp = self.__generate_step_scan_stepwise(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis])
+                smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
+                pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
+                #pos_temp = self.__generate_step_scan_stepwise(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis])
                 pos.append(pos_temp)
                 n_scan_samples_dx.append(len(pos[0]))
 
@@ -132,12 +147,13 @@ class GalvoScanDesigner(ScanDesigner):
         # add all signals to a signal dictionary
         sig_dict = {parameterDict['target_device'][i]: axis_signals[i] for i in range(axis_count_scan)}
 
-        # create scan information dictionary
-        # scanInfoDict: parameters that are important to relay to TTLCycleDesigner
+        # create scan information dictionary scanInfoDict
+        # with parameters that are important to relay to TTLCycleDesigner
         # and/or image acquisition managers (such as APDManager)
         scanInfoDict = {
+            'axis_names': self.axis_devs_order,
             'img_dims': n_steps_dx,
-            'scan_samples': n_scan_samples_dx,  # previous: scan_samples_line ([1]), scan_samples_frame ([2])
+            'scan_samples': n_scan_samples_dx,
             'pixel_sizes': pixel_sizes,
             'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
             'scan_samples_total': len(axis_signals[0]),
@@ -154,11 +170,11 @@ class GalvoScanDesigner(ScanDesigner):
         self.__logger.debug(scanInfoDict)
 
         # plot scan signal
-        import matplotlib.pyplot as plt
-        plt.figure(1)
-        for axis_signal in axis_signals:
-            plt.plot(axis_signal-0.01*i)
-        plt.show()
+        #import matplotlib.pyplot as plt
+        #plt.figure(1)
+        #for axis_signal in axis_signals:
+        #    plt.plot(axis_signal-0.01*i)
+        #plt.show()
 
         #self.__logger.debug(scanInfoDict)
         self.__logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
@@ -194,35 +210,8 @@ class GalvoScanDesigner(ScanDesigner):
         pos_ret = self.__add_start_end(pos, pos_fix, v_max, a_max)
         return pos_ret, n_eval
 
-    def __generate_step_scan(self, axis_reps, v_max, a_max):
-        """ Generate a step-function scanning curve, with initial smooth
-        positioning """
-        l_scan = self.axis_length[1]
-        c_scan = self.axis_centerpos[1]
-        n_d2 = int(self.axis_length[1] / self.axis_step_size[1])
-        # create linspace for axis positions
-        positions = (np.linspace(l_scan / n_d2, l_scan, n_d2) -
-                     l_scan / (n_d2 * 2) - l_scan / 2 + c_scan)
-        # generate the initial smooth positioning curve
-        pos_init = self.__init_positioning(positions[0], v_max, a_max)
-        axis_reps[0] = axis_reps[0] - len(pos_init)
-        # generate the final smooth positioning curve
-        pos_final = self.__final_positioning(positions[-1], v_max, a_max)
-        # repeat each middle element a number of times equal to the length of that between the
-        # faster axis repetitions
-        pos_steps = np.repeat(positions, axis_reps)
-        # add initial positioning
-        pos_ret = np.concatenate((pos_init, pos_steps, pos_final))
-        return pos_ret
-
-    def __repeat_dlower(self, pos, n_steps_axis):
-        """ Repeat the current positions, for all dimensions,
-        for the number of steps on the new axis. """
-        pos_ret = [np.tile(pos_dim, n_steps_axis) for pos_dim in pos]
-        return pos_ret
-
-    def __generate_step_scan_stepwise(self, dim, len_axis, n_axis, axis_name):
-        """ Generate a step-function scanning curve. """
+    def __generate_step_scan(self, dim, len_axis, n_axis, axis_name, smooth, v_max=0, a_max=0, axis_reps=[0,0]):
+        """ Generate a step-function scanning curve, with smooth initial positioning or not. """
         l_scan = self.axis_length[dim]
         c_scan = self.axis_centerpos[dim]
         # create linspace for axis positions
@@ -230,9 +219,25 @@ class GalvoScanDesigner(ScanDesigner):
                      l_scan / (n_axis * 2) - l_scan / 2 + c_scan)
         if 'mock' in axis_name.lower():
             positions = positions - positions[0]
-        # repeat each middle element a number of times equal to the length of that between the
-        # faster axis (d-1) repetitions
-        pos_ret = np.repeat(positions, len_axis)
+        if smooth:
+            # generate the initial smooth positioning curve
+            pos_init = self.__init_positioning(positions[0], v_max, a_max)
+            # generate the final smooth positioning curve
+            pos_final = self.__final_positioning(positions[-1], v_max, a_max)
+        if dim==1: # and 'mock' not in axis_name.lower():
+            if 'mock' not in axis_name.lower():
+                axis_reps[0] = axis_reps[0] - len(pos_init)
+            pos_ret = np.repeat(positions, axis_reps)
+        else:
+            pos_ret = np.repeat(positions, len_axis)
+        if smooth:
+            pos_ret = np.concatenate((pos_init, pos_ret, pos_final))
+        return pos_ret
+
+    def __repeat_dlower(self, pos, n_steps_axis):
+        """ Repeat the current positions, for all dimensions,
+        for the number of steps on the new axis. """
+        pos_ret = [np.tile(pos_dim, n_steps_axis) for pos_dim in pos]
         return pos_ret
 
     def __get_axis_reps(self, pos, samples_period, n_d2):

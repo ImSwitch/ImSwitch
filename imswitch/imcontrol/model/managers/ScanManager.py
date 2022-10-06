@@ -48,11 +48,6 @@ class ScanManager(SuperScanManager):
         self._checkScanDefined()
         return self._setupInfo.scan.sampleRate
 
-    @property
-    def TTLTimeUnits(self):
-        self._checkScanDefined()
-        return self._TTLCycleDesigner.timeUnits
-
     def _parameterCompatibility(self, parameterDict):
         self._checkScanDefined()
 

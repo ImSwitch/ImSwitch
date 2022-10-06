@@ -36,8 +36,7 @@ class ScanController(SuperScanController):
 
         self._widget.initControls(
             self.positioners.keys(),
-            self.TTLDevices.keys(),
-            self._master.scanManager.TTLTimeUnits
+            self.TTLDevices.keys()
         )
 
         self.scanDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_scans')

@@ -15,8 +15,6 @@ class GalvoScanDesigner(ScanDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self)
-
         self._expectedParameters = ['target_device',
                                     'axis_length',
                                     'axis_step_size',
@@ -33,8 +31,8 @@ class GalvoScanDesigner(ScanDesigner):
                     positioner = setupInfo.positioners[scanParameters['target_device'][i]]
                     minv = positioner.managerProperties['minVolt']
                     maxv = positioner.managerProperties['maxVolt']
-                    #self.__logger.debug(positioner)
-                    #self.__logger.debug([minv, maxv])
+                    #self._logger.debug(positioner)
+                    #self._logger.debug([minv, maxv])
                     if (scanInfo['minmaxes'][i][0] < minv or scanInfo['minmaxes'][i][1] > maxv):
                         return False
         return True
@@ -52,7 +50,7 @@ class GalvoScanDesigner(ScanDesigner):
                        if positioner.forScanning]
         positionerNames = [positioner for positioner in setupInfo.positioners
                            if setupInfo.positioners[positioner].forScanning]
-        #self.__logger.debug(positionerNames)
+        #self._logger.debug(positionerNames)
         positionersProps = [positioner.managerProperties for positioner in positioners]
 
         device_count = len(positioners)
@@ -77,7 +75,7 @@ class GalvoScanDesigner(ScanDesigner):
         self.axis_length = [(parameterDict['axis_length'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                             for i in range(device_count)
                             if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
-        #self.__logger.debug(self.axis_length)
+        #self._logger.debug(self.axis_length)
         # retrieve axis step sizes in V of active axes
         self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                                for i in range(device_count)
@@ -96,7 +94,7 @@ class GalvoScanDesigner(ScanDesigner):
                                if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
 
         axis_count_scan = len(self.axis_devs_order)
-        #self.__logger.debug(self.axis_devs_order)
+        #self._logger.debug(self.axis_devs_order)
 
         # get list of number of axis steps
         n_steps_dx = [int(self.axis_length[i] / self.axis_step_size[i]) for i in range(axis_count_scan)]
@@ -126,7 +124,6 @@ class GalvoScanDesigner(ScanDesigner):
             axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1])
             smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
             pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
-            #pos_temp = self.__generate_step_scan(axis, axis_reps, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], self.axis_vel_max[axis], self.axis_acc_max[axis])
             pos.append(pos_temp)
             n_scan_samples_dx.append(len(pos[0]))
 
@@ -137,7 +134,6 @@ class GalvoScanDesigner(ScanDesigner):
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
                 smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
                 pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
-                #pos_temp = self.__generate_step_scan_stepwise(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis])
                 pos.append(pos_temp)
                 n_scan_samples_dx.append(len(pos[0]))
 
@@ -167,29 +163,27 @@ class GalvoScanDesigner(ScanDesigner):
             'phase_delay': parameterDict['phase_delay'],
             'scan_samples_d2_period': samples_d2_period - 1
         }
-        self.__logger.debug(scanInfoDict)
+        self._logger.debug(scanInfoDict)
 
-        # plot scan signal
-        #import matplotlib.pyplot as plt
-        #plt.figure(1)
-        #for axis_signal in axis_signals:
-        #    plt.plot(axis_signal-0.01*i)
-        #plt.show()
+        self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 
-        #self.__logger.debug(scanInfoDict)
-        self.__logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
+        #self._logger.debug(scanInfoDict)
+        self._logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
         return sig_dict, axis_positions, scanInfoDict
 
-    #def __calc_phase_delay(self, px_size, dwell_time):
-    #    """ Calculate a galvo-specific phase delay, depending on response time. 
-    #    Based on second-degree curved surface fit to 2D-sampling of dwell time and pixel size induced phase delays,
-    #    as measured in the image-shift of a fix structure as compared to a very slow scan (dwell time = 500 us). """
-    #    C = np.array([0,0,0,0,0,0])  # second order plane fit
-    #    params = np.array([px_size**2, dwell_time**2, px_size*dwell_time, px_size, dwell_time, 1])  # for use with second order plane fit
-    #    phase_delay = np.sum(params*C)
-    #    return phase_delay
+    def __plot_curves(self, plot, signals):
+        """ Plot all scan curves, for debugging. """
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            for i, signal in enumerate(signals):
+                plt.plot(signal - 0.01 * i)
+            plt.show()
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
+        """ Calculate settling time based on first two axis parameters.
+        TODO: fix this to include all axes, as smooth axes can be in other positions?
+        """
         t_initpos_vc_d2 = abs(axis_centerpos[1] - axis_length[1] / 2) / vel_max[1]
         t_initpos_vc_d1 = abs(axis_centerpos[0] - axis_length[0] / 2) / vel_max[0]
         t_acc_d2 = vel_max[1] / acc_max[1]

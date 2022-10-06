@@ -128,8 +128,9 @@ class APDManager(DetectorManager):
         if self.__newFrameReady and self.__currSlice[-1] > 0:
             self.__newFrameReady = False
             pos_d3_fin = self.__currSlice[-1] - 1
-            pos_rest = self._currSlice[:-1]
-            data = self.getLatestFrame()[tuple(pos_rest)+tuple([pos_d3_fin,])]  # get the last finished d3 position from image ([...,:,:] ending the indexing is not written, but all x,y taken)
+            pos_rest = self.__currSlice[:-1]
+            data = self.getLatestFrame()
+            data = data[tuple(pos_rest)+tuple([pos_d3_fin,])]  # get the last finished d3 position from image ([...,:,:] ending in the indexing is not written, but all x,y taken)
             return data[np.newaxis,:,:]
         else:
             return np.empty(shape=(0,0,0))
@@ -146,7 +147,7 @@ class APDManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]
+        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]  # TODO: is this not in the wrong order, considering setPixelSize below?
 
     def setPixelSize(self, pixel_sizes: list):
         # pixel_sizes: list of low dim to high dim
@@ -193,8 +194,8 @@ class ScanWorker(Worker):
         )
 
         # det samples per fast axis period
-        self._samples_d2_step = round(
-            scanInfoDict['scan_samples_d2_step'] * scanInfoDict['scan_time_step'] *
+        self._samples_d2_period = round(
+            scanInfoDict['scan_samples_d2_period'] * scanInfoDict['scan_time_step'] *
             self._manager._detection_samplerate
         )
 
@@ -335,7 +336,7 @@ class ScanWorker(Worker):
                 data = self.readdata(self._samples_line)
             else:
                 # read a whole period, starting with the line and then the data during the flyback
-                data = self.readdata(self._samples_d2_step)
+                data = self.readdata(self._samples_d2_period)
 
             # get photon counts from data array (which is cumsummed)
             data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))

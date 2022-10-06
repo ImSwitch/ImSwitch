@@ -13,17 +13,12 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self)
-
         self._expectedParameters = ['target_device',
                                     'TTL_sequence',
                                     'TTL_sequence_axis']
 
-    @property
-    def timeUnits(self):
-        return 'lines'
-
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
+        """ Create TTL signals, based on parameter dictionary and scan info dictionary. """
         if not self.parameterCompatibility(parameterDict):
             self._logger.error('TTL parameters seem incompatible, this error should not be since'
                                ' this should be checked at program start-up')
@@ -41,8 +36,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             samples_total = scanInfoDict['scan_samples_total']
             scan_axes_order = scanInfoDict['axis_names']
 
-            # extra ON to make sure the laser is on at the start of  line (due to rise time)
-            onepad_extraon = 0
+            onepad_extraon = 0  # extra ON to make sure the laser is on at the start of d2 step (due to rise time)
             zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay']))
             zeropad_d2flyback = (scanInfoDict['scan_samples_d2_period'] -
                                    n_scan_samples_dx[1] -
@@ -175,21 +169,18 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
                 signal_dict[target] = signal
 
-            # plot curves, in same figure as scan curves
-            #import matplotlib.pyplot as plt
-            #plt.figure(1)
-            #for i, target in enumerate(targets):
-            #    plt.plot(signal_dict[target]-0.01*i)
-            #plt.show()
+            self.__plot_curves(plot=False, signals=signal_dict, targets=targets)  # for debugging
 
             # return signal_dict, which contains bool arrays for each target
             return signal_dict
 
     def __create_d2_period(self, state, n_samples_d1, samples_extra, samples_flyback):
+        """ Create a full d2 step period of boolean state (on or off during d2 step, without flyback). """
         d2_step = np.ones(n_samples_d1 + samples_extra, dtype='bool') if state else np.zeros(n_samples_d1 + samples_extra, dtype='bool')
         return np.append(d2_step, np.zeros(samples_flyback, dtype='bool')), d2_step
     
     def __create_d3_step(self, d2_period, d2_step, n_steps_d2, n_samples_d3, samples_zeropad_step):
+        """ Create a full d3 step signal. """
         d3_step = np.tile(d2_period, n_steps_d2 - 1)
         d3_step = np.append(d3_step, d2_step)
         d3_step = np.append(np.zeros(samples_zeropad_step, dtype='bool'), d3_step)
@@ -201,6 +192,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         return d3_step
 
     def __create_d4_step(self, d3_step, n_steps_d3):
+        """ Create a full d4 step signal. """
         return np.tile(d3_step, n_steps_d3)
 
     def __repeat_remaining_axes(self, signal, n_steps_dx, axis_start, axis_end):
@@ -210,10 +202,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         return signal
 
     def __make_signal_stationary(self, parameterDict, sample_rate):
-        signal_dict_pixel = self.__pixel_stationary(parameterDict, sample_rate)
-        return signal_dict_pixel
-
-    def __pixel_stationary(self, parameterDict, sample_rate):
+        """ Make a signal for displaying in the signal graph, without scan parameters. """
         targets = parameterDict['target_device']
         seqs = parameterDict['TTL_sequence']
         signalDict = {}
@@ -223,6 +212,14 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         return signalDict
 
     def __decode_sequence(self, sequence_txt):
+        """ Decode user-inputted string of TTL sequence into boolean list. 
+        Input string should consist of comma-separated commands on the form
+        "h#" or "l#", where h means high=on, l means low=off, and # is the
+        number of axis steps. Example:
+        "h1,l2,h3,l1"
+        means on for 1 step, off for 2 steps, on for 3 steps, and off for 1 step.
+        This will be repeated until reaching the axis length over the axis the 
+        sequence is valid for."""
         seq_list = []  # list of inputted sequence - minimal length
         seq = sequence_txt.split(',')
         for step in seq:
@@ -237,6 +234,15 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             if len(seq_list) > 1000:
                 break
         return np.concatenate(seq_list)
+
+    def __plot_curves(self, plot, signals, targets):
+        """ Plot all TTL curves, for debugging. """
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            for i, target in enumerate(targets):
+                plt.plot(signals[target] - 0.01 * i)
+            plt.show()
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

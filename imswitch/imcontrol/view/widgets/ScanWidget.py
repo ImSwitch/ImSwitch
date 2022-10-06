@@ -88,7 +88,7 @@ class ScanWidget(Widget):
         self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
         self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
 
-    def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
+    def initControls(self, positionerNames, TTLDeviceNames):
         currentRow = 0
         self.scanDims = list(positionerNames)
         self.__logger.debug(positionerNames)

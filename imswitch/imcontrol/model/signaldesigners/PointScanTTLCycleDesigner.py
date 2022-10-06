@@ -17,6 +17,10 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                                     'TTL_sequence',
                                     'TTL_sequence_axis']
 
+    @property
+    def timeUnits(self):
+        pass
+
     def make_signal(self, parameterDict, setupInfo, scanInfoDict=None):
         """ Create TTL signals, based on parameter dictionary and scan info dictionary. """
         if not self.parameterCompatibility(parameterDict):

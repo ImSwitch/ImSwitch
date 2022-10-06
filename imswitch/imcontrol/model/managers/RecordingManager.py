@@ -95,7 +95,6 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-
     def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
         """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
@@ -150,13 +149,10 @@ class RecordingManager(SignalInterface):
                     self.sigMemorySnapAvailable.emit(name, image, filePath,
                                                      saveMode == SaveMode.DiskAndRAM)
 
-
-
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
                 return image
-
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -191,8 +187,7 @@ class RecordingManager(SignalInterface):
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
         else:
-            raise ValueError(f'Unsupported save format "{saveFormat}"')    
-
+            raise ValueError(f'Unsupported save format "{saveFormat}"')
 
     def getSaveFilePath(self, path, allowOverwriteDisk=False, allowOverwriteMem=False):
         newPath = path

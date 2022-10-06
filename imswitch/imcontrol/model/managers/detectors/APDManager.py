@@ -99,9 +99,12 @@ class APDManager(DetectorManager):
         return self._image
 
     def updateImage(self, pixels, pos: tuple):
+        pass
         # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
-        (*pos_rest, pos_d2) = pos
-        self._image[tuple(pos_rest) + tuple([pos_d2,])] = pixels
+        (*pos_rest, pos_d2) = (0,) + pos
+        img_slice = tuple(pos_rest)+tuple([pos_d2,])
+        #self.__logger.debug([pixels, pos, img_slice])
+        self._image[img_slice] = pixels
         self.__currSlice = pos_rest  # from high dim to low dim (ending at d3)
         if pos_d2 == 0:
             # adjust viewbox shape to new image shape at the start of a d3 step
@@ -314,7 +317,7 @@ class ScanWorker(Worker):
                 self.run_loop_dx(dim-1)
                 if dim == 3:
                     # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
-                    throwdatalen_term1_terms = self._pos[2:]
+                    throwdatalen_term1_terms = np.copy(self._pos[2:])
                     for n in range(len(self._img_dims),3,-1):
                         for m in range(n-1,2,-1):
                             throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
@@ -337,17 +340,13 @@ class ScanWorker(Worker):
             else:
                 # read a whole period, starting with the line and then the data during the flyback
                 data = self.readdata(self._samples_d2_period)
-
             # get photon counts from data array (which is cumsummed)
             data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))
             self._last_value = data[-1]
-
             # only take the first samples that corresponds to the samples during the line
             line_samples = data_cnts[:self._samples_line]
-
             # resample sample array to pixel counts array
             pixels = self.samples_to_pixels(line_samples)
-
             # signal new line of pixels, and the insertion position in all dimensions
             self.d2Step.emit(pixels, tuple(np.flip(self._pos[1:])))
         else:

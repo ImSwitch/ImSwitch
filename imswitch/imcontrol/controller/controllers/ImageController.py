@@ -53,14 +53,14 @@ class ImageController(LiveUpdatedController):
         """ Remove item from communication channel to viewbox."""
         self._widget.removeItem(item)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update new image in the viewbox. """
         if np.prod(im.shape)>1: # TODO: This seems weird!
 
             if not init:
                 self.autoLevels([detectorName], im)
 
-            self._widget.setImage(detectorName, im)
+            self._widget.setImage(detectorName, im, scale)
 
             if not init or self._shouldResetView:
                 self.adjustFrame(instantResetView=True)

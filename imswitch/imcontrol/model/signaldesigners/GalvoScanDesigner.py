@@ -31,8 +31,6 @@ class GalvoScanDesigner(ScanDesigner):
                     positioner = setupInfo.positioners[scanParameters['target_device'][i]]
                     minv = positioner.managerProperties['minVolt']
                     maxv = positioner.managerProperties['maxVolt']
-                    #self._logger.debug(positioner)
-                    #self._logger.debug([minv, maxv])
                     if (scanInfo['minmaxes'][i][0] < minv or scanInfo['minmaxes'][i][1] > maxv):
                         return False
         return True
@@ -42,9 +40,9 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 50
+        self.__minsettlingtime = 500
         # arbitrary for now  µs
-        self.__paddingtime = 50
+        self.__paddingtime = 500
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -94,7 +92,6 @@ class GalvoScanDesigner(ScanDesigner):
                                if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
 
         axis_count_scan = len(self.axis_devs_order)
-        #self._logger.debug(self.axis_devs_order)
 
         # get list of number of axis steps
         n_steps_dx = [int(self.axis_length[i] / self.axis_step_size[i]) for i in range(axis_count_scan)]
@@ -163,9 +160,10 @@ class GalvoScanDesigner(ScanDesigner):
             'phase_delay': parameterDict['phase_delay'],
             'scan_samples_d2_period': samples_d2_period - 1
         }
-        self._logger.debug(scanInfoDict)
+        #'extra_laser_on': parameterDict['extra_laser_on']
+        #self._logger.debug(scanInfoDict)
 
-        self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
+        self.__plot_curves(plot=True, signals=axis_signals)  # for debugging
 
         #self._logger.debug(scanInfoDict)
         self._logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
@@ -176,6 +174,7 @@ class GalvoScanDesigner(ScanDesigner):
         if plot:
             import matplotlib.pyplot as plt
             plt.figure(1)
+            plt.clf()
             for i, signal in enumerate(signals):
                 plt.plot(signal - 0.01 * i)
             plt.show()
@@ -244,8 +243,7 @@ class GalvoScanDesigner(ScanDesigner):
         # get length of all other d2 steps
         rest_d2s = np.repeat(samples_period - 1, n_d2 - 1)
         # concatenate all repetition lengths
-        axis_reps = np.concatenate((first_d2, rest_d2s))
-        return axis_reps
+        return np.concatenate((first_d2, rest_d2s))
 
     def __d2scan_poly(self, parameterDict, v_max, a_max):
         """ Generate a Bernstein piecewise polynomial for a smooth one-d2-step
@@ -482,8 +480,7 @@ class GalvoScanDesigner(ScanDesigner):
 
     def __add_start_end(self, pos, pos_fix, v_max, a_max):
         """ Add start and end half-d2-steps to smooth scanning curve """
-        # generate five pieces, three before and two after, to be concatenated to the given
-        # positions array
+        # generate five pieces, three before and two after, to be concatenated to the given positions array
         # initial smooth acceleration piece from 0
         pos_pre1 = self.__init_positioning(initpos=np.min(pos), v_max=v_max, a_max=a_max)
         self._samples_initpos = len(pos_pre1)

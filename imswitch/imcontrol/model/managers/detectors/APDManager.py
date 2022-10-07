@@ -149,12 +149,16 @@ class APDManager(DetectorManager):
         self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
 
     @property
+    def scale(self):
+        return list(reversed(self.__pixel_sizes))
+        
+    @property
     def pixelSizeUm(self):
         return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]  # TODO: is this not in the wrong order, considering setPixelSize below?
 
     def setPixelSize(self, pixel_sizes: list):
         # pixel_sizes: list of low dim to high dim
-        pixel_sizes.append(1)
+        #pixel_sizes.append(1)
         self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):
@@ -298,6 +302,9 @@ class ScanWorker(Worker):
         self._pos = np.zeros(len(self._img_dims), dtype='uint8')
         # throw away initial recording samples
         self.throwdata(self._samples_throw_init)
+        if len(self._img_dims) == 2:
+            # begin d3 step: throw data from initial d3 step positioning
+            self.throwdata(self._throw_init_d2_step)
         # start looping through all dimensions to record data, starting with the outermost dimension
         self.run_loop_dx(dim=len(self._img_dims))
 

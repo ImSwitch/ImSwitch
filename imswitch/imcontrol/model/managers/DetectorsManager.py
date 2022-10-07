@@ -14,8 +14,8 @@ class DetectorsManager(MultiManager, SignalInterface):
     sigAcquisitionStopped = Signal()
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
     sigImageUpdated = Signal(
-        str, np.ndarray, bool, bool
-    )  # (detectorName, image, init, isCurrentDetector)
+        str, np.ndarray, bool, list, bool
+    )  # (detectorName, image, init, scale, isCurrentDetector)
 
     def __init__(self, detectorInfos, updatePeriod, **lowLevelManagers):
         MultiManager.__init__(self, detectorInfos, 'detectors', **lowLevelManagers)
@@ -31,8 +31,8 @@ class DetectorsManager(MultiManager, SignalInterface):
                 continue
             # Connect signals
             self._subManagers[detectorName].sigImageUpdated.connect(
-                lambda image, init, detectorName=detectorName: self.sigImageUpdated.emit(
-                    detectorName, image, init, detectorName == self._currentDetectorName
+                lambda image, init, scale, detectorName=detectorName: self.sigImageUpdated.emit(
+                    detectorName, image, init, scale, detectorName==self._currentDetectorName
                 )
             )
 

@@ -39,12 +39,13 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             n_scan_samples_dx = scanInfoDict['scan_samples']
             samples_total = scanInfoDict['scan_samples_total']
             scan_axes_order = scanInfoDict['axis_names']
-
-            onepad_extraon = 0  # extra ON to make sure the laser is on at the start of d2 step (due to rise time)
-            zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay']))
-            zeropad_d2flyback = (scanInfoDict['scan_samples_d2_period'] -
+            # extra ON at the end of d2 step, to not turn off before line is finished
+            onepad_extraon = 10 #int(np.round(scanInfoDict['extra_laser_on']))
+  
+            #zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay']))
+            zeropad_d2flyback = np.max([0,(scanInfoDict['scan_samples_d2_period'] -
                                    n_scan_samples_dx[1] -
-                                   onepad_extraon)
+                                   onepad_extraon)])
             zeropad_initpos = scanInfoDict['scan_throw_initpos']
             zeropad_settling = scanInfoDict['scan_throw_settling']
             zeropad_start = scanInfoDict['scan_throw_startzero']
@@ -56,7 +57,10 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 if seq_axis_name == 'None':
                     seq_axis = seq_axis_name
                 else:
-                    seq_axis = scan_axes_order.index(seq_axis_name)
+                    try:
+                        seq_axis = scan_axes_order.index(seq_axis_name)
+                    except:
+                        seq_axis = 'None'
                 seq_txt = parameterDict['TTL_sequence'][i]
                 seq = self.__decode_sequence(seq_txt)
                 if seq_axis == 'None':
@@ -162,7 +166,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # pad start zeros
                 signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)
                 # pad scanner phase delay to beginning to sync actual position with TTL
-                signal = np.append(np.zeros(zeropad_phasedelay, dtype='bool'), signal)
+                #signal = np.append(np.zeros(zeropad_phasedelay, dtype='bool'), signal)
 
                 # adjust to same length as analog scanning
                 zeropad_end = samples_total - len(signal)
@@ -171,9 +175,9 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 elif zeropad_end < 0:
                     signal = signal[:zeropad_end]  # TODO: looks strange? not right length? never enters here probably
 
-                signal_dict[target] = signal
+                signal_dict[target] = signal.astype(bool)
 
-            self.__plot_curves(plot=False, signals=signal_dict, targets=targets)  # for debugging
+            self.__plot_curves(plot=True, signals=signal_dict, targets=targets)  # for debugging
 
             # return signal_dict, which contains bool arrays for each target
             return signal_dict

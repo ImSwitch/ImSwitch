@@ -45,7 +45,7 @@ class ScanController(SuperScanController):
 
         self.getParameters()
         self.updatePixels()
-        self.plotSignalGraph()
+        #self.plotSignalGraph()
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
 
@@ -71,12 +71,11 @@ class ScanController(SuperScanController):
         self._widget.sigSaveScanClicked.connect(self.saveScan)
         self._widget.sigLoadScanClicked.connect(self.loadScan)
         self._widget.sigRunScanClicked.connect(self.runScan)
-        self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
-        self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
+        #self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSeqTimeParChanged.connect(self.updateScanTTLAttrs)
         self._widget.sigStageParChanged.connect(self.updatePixels)
         self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
-        self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
+        #self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
 
@@ -114,7 +113,6 @@ class ScanController(SuperScanController):
 
         config['analogParameterDict'] = self._analogParameterDict
         config['digitalParameterDict'] = self._digitalParameterDict
-        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
 
         with open(filePath, 'w') as configfile:
             config.write(configfile)
@@ -180,7 +178,7 @@ class ScanController(SuperScanController):
             self._widget.setSeqTimePar(self._digitalParameterDict['sequence_time'])
         finally:
             self.settingParameters = False
-            self.plotSignalGraph()
+            #self.plotSignalGraph()
 
     def runScanExternal(self, recalculateSignals, isNonFinalPartOfSequence):
         self._widget.setScanMode()
@@ -200,12 +198,12 @@ class ScanController(SuperScanController):
                 self.getParameters()
                 try:
                     self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                        self._analogParameterDict, self._digitalParameterDict,
-                        staticPositioner=self._widget.isContLaserMode()
+                        self._analogParameterDict, self._digitalParameterDict
                     )
                 except TypeError:
                     self.__logger.error(traceback.format_exc())
                     self.isRunning = False
+                    self.abortScan()
                     return
 
             self.doingNonFinalPartOfSequence = isNonFinalPartOfSequence
@@ -223,6 +221,7 @@ class ScanController(SuperScanController):
         except Exception:
             self.__logger.error(traceback.format_exc())
             self.isRunning = False
+            self.abortScan()
 
     def abortScan(self):
         self.doingNonFinalPartOfSequence = False  # So that sigScanEnded is emitted
@@ -232,7 +231,7 @@ class ScanController(SuperScanController):
     def scanDone(self):
         self.isRunning = False
 
-        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
+        if not self._widget.repeatEnabled():
             self.emitScanSignal(self._commChannel.sigScanDone)
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
@@ -303,18 +302,11 @@ class ScanController(SuperScanController):
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
-
-    def setContLaserPulses(self, isContLaserPulses):
-        for i in range(len(self.positioners)):
-            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
-            self._widget.setScanDimEnabled(i, not isContLaserPulses)
-            self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
-            self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
-            self._widget.setScanCenterPosEnabled(positionerName, not isContLaserPulses)
+        #self._analogParameterDict['extra_laser_on'] = self._widget.getExtraLaserOnPar()
 
     def updatePixels(self):
         self.getParameters()
-        for index, positionerName in enumerate(self.positioners):
+        for index, positionerName in enumerate(self._analogParameterDict['target_device']):
             if float(self._analogParameterDict['axis_step_size'][index]) != 0:
                 pixels = round(float(self._analogParameterDict['axis_length'][index]) /
                                float(self._analogParameterDict['axis_step_size'][index]))
@@ -328,42 +320,8 @@ class ScanController(SuperScanController):
                 if scannerSet == scannerAxis:
                     self._widget.setScanCenterPos(scannerSet, centerpos)
 
-    def plotSignalGraph(self):
-        if self.settingParameters:
-            return
-
-        self.getParameters()
-        TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(
-            self._digitalParameterDict
-        )
-
-        steps = []
-        signals = []
-        colors = []
-        for deviceName, signal in TTLCycleSignalsDict.items():
-            isLaser = deviceName in self._setupInfo.lasers
-            steps_temp = np.linspace(1, len(signal), 10000)
-            signals_temp = np.repeat(signal.astype(np.uint8), np.floor(10000/len(signal)))
-            signals_temp = np.append(signals_temp,np.zeros(len(steps_temp)-len(signals_temp)))
-            signals.append(signals_temp)
-            steps.append(steps_temp)
-            colors.append(
-                colorutils.wavelengthToHex(
-                    self._setupInfo.lasers[deviceName].wavelength
-                ) if isLaser else '#ffffff'
-            )
-        #ttl_seq_axis = self._digitalParameterDict['TTL_sequence_axis']
-        #ttl_seq_axis_num = [axis for axis in ttl_seq_axis if isinstance(axis,int)]
-        #units = ['pixel','line','frame','lapse','d5 step']
-        #if ttl_seq_axis_num:
-        #    unit = ttl_seq_axis[np.max(ttl_seq_axis_num)]
-        #else:
-        #    unit = 'no sequence'
-        self._widget.plotSignalGraph(steps, signals, colors)#, unit)
-
     def emitScanSignal(self, signal, *args):
-        if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
-            signal.emit(*args)
+        signal.emit(*args)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 2:

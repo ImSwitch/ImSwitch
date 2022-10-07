@@ -13,7 +13,6 @@ class ScanWidget(Widget):
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
-    sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
     sigSeqTimeParChanged = QtCore.Signal()
     sigStageParChanged = QtCore.Signal()
     sigSignalParChanged = QtCore.Signal()
@@ -37,7 +36,8 @@ class ScanWidget(Widget):
         self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
         self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
-        self.phaseDelayPar = QtWidgets.QLineEdit('40')  # samples
+        self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
+        #self.extraLaserOnPar = QtWidgets.QLineEdit('10')  # samples
         self.nrFramesPar = QtWidgets.QLabel()
         self.scanDuration = 0
         self.scanDurationLabel = QtWidgets.QLabel(str(self.scanDuration))
@@ -51,17 +51,13 @@ class ScanWidget(Widget):
 
         self.ttlParameters = {}
 
-        self.scanRadio = QtWidgets.QRadioButton('Scan')
-        self.scanRadio.setChecked(True)
-        self.contLaserPulsesRadio = QtWidgets.QRadioButton('Cont. Laser Pulses')
-
         self.scanButton = guitools.BetterPushButton('Run Scan')
 
         self.repeatBox = QtWidgets.QCheckBox('Repeat')
 
-        self.graph = GraphFrame()
-        self.graph.setEnabled(False)
-        self.graph.setFixedHeight(128)
+        #self.graph = GraphFrame()
+        #self.graph.setEnabled(False)
+        #self.graph.setFixedHeight(128)
 
         self.scrollContainer = QtWidgets.QGridLayout()
         self.scrollContainer.setContentsMargins(0, 0, 0, 0)
@@ -86,7 +82,7 @@ class ScanWidget(Widget):
         self.scanButton.clicked.connect(self.sigRunScanClicked)
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
         self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
-        self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
+        #self.extraLaserOnPar.textChanged.connect(self.sigStageParChanged)  # for debugging
 
     def initControls(self, positionerNames, TTLDeviceNames):
         currentRow = 0
@@ -98,12 +94,11 @@ class ScanWidget(Widget):
         # Add general buttons
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)
         self.grid.addWidget(self.saveScanBtn, currentRow, 1)
-        self.grid.addWidget(self.scanRadio, currentRow, 2)
-        self.grid.addWidget(self.contLaserPulsesRadio, currentRow, 3)
         self.grid.addItem(
             QtWidgets.QSpacerItem(40, 20,
-                                  QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
-            currentRow, 4
+                                  QtWidgets.QSizePolicy.Expanding,
+                                  QtWidgets.QSizePolicy.Minimum),
+            currentRow, 2, 1, 3
         )
         self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
@@ -112,7 +107,8 @@ class ScanWidget(Widget):
         # Add space item to make the grid look nicer
         self.grid.addItem(
             QtWidgets.QSpacerItem(20, 40,
-                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
+                                  QtWidgets.QSizePolicy.Minimum,
+                                  QtWidgets.QSizePolicy.Expanding),
             currentRow, 0, 1, -1
         )
         currentRow += 1
@@ -187,6 +183,12 @@ class ScanWidget(Widget):
         self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
         self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
+        #currentRow += 1
+        
+        # Add detection phase delay parameter
+        #self.grid.addWidget(QtWidgets.QLabel('Extra laser on (samples):'), currentRow, 5)
+        #self.grid.addWidget(self.extraLaserOnPar, currentRow, 6)
+
         # Add space item to make the grid look nicer
         self.grid.addItem(
             QtWidgets.QSpacerItem(20, 40,
@@ -224,14 +226,8 @@ class ScanWidget(Widget):
             self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
             self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
 
-        # Add pulse graph
-        self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
-
-    def isScanMode(self):
-        return self.scanRadio.isChecked()
-
-    def isContLaserMode(self):
-        return self.contLaserPulsesRadio.isChecked()
+        ## Add pulse graph
+        #self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
 
     def repeatEnabled(self):
         return self.repeatBox.isChecked()
@@ -269,11 +265,8 @@ class ScanWidget(Widget):
     def getPhaseDelayPar(self):
         return float(self.phaseDelayPar.text())
 
-    def setScanMode(self):
-        self.scanRadio.setChecked(True)
-
-    def setContLaserMode(self):
-        self.contLaserPulsesRadio.setChecked(True)
+    #def getExtraLaserOnPar(self):
+    #    return float(self.extraLaserOnPar.text())
 
     def setRepeatEnabled(self, enabled):
         self.repeatBox.setChecked(enabled)
@@ -297,7 +290,8 @@ class ScanWidget(Widget):
         self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
 
     def setScanPixels(self, positionerName, pixels):
-        self.scanPar['pixels' + positionerName].setText(str(pixels))
+        txt = str(pixels) if pixels > 1 else '-'
+        self.scanPar['pixels' + positionerName].setText(txt)
 
     def setTTLSequences(self, deviceName, sequence):
         self.ttlParameters['seq' + deviceName].setText(
@@ -325,17 +319,17 @@ class ScanWidget(Widget):
     def setScanCenterPosEnabled(self, positionerName, enabled):
         self.scanPar['center' + positionerName].setEnabled(enabled)
 
-    def plotSignalGraph(self, x, signals, colors, unit=None):
-        if len(x) != len(signals) or len(signals) != len(colors):
-            raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
-
-        self.graph.plot.clear()
-        for i in range(len(x)):
-            self.graph.plot.plot(x[i], signals[i] * (1 + i / 20), pen=pg.mkPen(colors[i]))
-
-        self.graph.plot.setYRange(-0.1, 1 + len(x) / 20 + 0.05)
-        #self.graph.plot.setLabel('bottom',f'Axis steps ({unit})')
-        self.graph.plot.setLabel('bottom','Selected sequence axis steps')
+    #def plotSignalGraph(self, x, signals, colors, unit=None):
+    #    if len(x) != len(signals) or len(signals) != len(colors):
+    #        raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
+    #
+    #    self.graph.plot.clear()
+    #    for i in range(len(x)):
+    #        self.graph.plot.plot(x[i], signals[i] * (1 + i / 20), pen=pg.mkPen(colors[i]))
+    #
+    #    self.graph.plot.setYRange(-0.1, 1 + len(x) / 20 + 0.05)
+    #    #self.graph.plot.setLabel('bottom',f'Axis steps ({unit})')
+    #    self.graph.plot.setLabel('bottom','Selected sequence axis steps')
 
     def eventFilter(self, source, event):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:

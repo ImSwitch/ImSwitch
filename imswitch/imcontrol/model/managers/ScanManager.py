@@ -83,26 +83,20 @@ class ScanManager(SuperScanManager):
         parameterDict.update(TTLParameters)
         return self._TTLCycleDesigner.make_signal(parameterDict, self._setupInfo, scanInfoDict)
 
-    def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
+    def makeFullScan(self, scanParameters, TTLParameters):
         """ Generates stage and TTL scan signals. """
         self._checkScanDefined()
 
-        if not staticPositioner:
-            scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
-            if not self._scanDesigner.checkSignalComp(
-                    scanParameters, self._setupInfo, scanInfoDict
-            ):
-                self.__logger.error(
-                    'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
-                    ' scan.'
-                )
-                return
-
-            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
-        else:
-            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters)
-            scanSignalsDict = {}
-            scanInfoDict = {}
+        scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
+        if not self._scanDesigner.checkSignalComp(
+                scanParameters, self._setupInfo, scanInfoDict
+        ):
+            self.__logger.error(
+                'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
+                ' scan.'
+            )
+            return
+        TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
 
         return (
             {'scanSignalsDict': scanSignalsDict,

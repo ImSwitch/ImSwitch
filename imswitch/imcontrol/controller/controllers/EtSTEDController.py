@@ -9,9 +9,7 @@ import h5py
 
 from collections import deque
 from datetime import datetime
-from tkinter import Tk
 from inspect import signature
-from tkinter.filedialog import askopenfilename
 from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
@@ -686,7 +684,6 @@ class EtSTEDCoordTransformHelper():
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
-        Tk().withdraw()
         filename = askopenfilename()
         return filename
 

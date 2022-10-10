@@ -3,7 +3,7 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 import os
-
+import webbrowser
 
 class WatcherWidget(Widget):
     """ Widget that watch for new script files (.py) in a specific folder, for running them sequentially."""
@@ -30,18 +30,26 @@ class WatcherWidget(Widget):
         layout.addWidget(self.listWidget, 1, 0, 1, 2)
         layout.addWidget(self.watchCheck, 2, 0)
 
+        self.listWidget.itemDoubleClicked.connect(self.openFile)
         self.watchCheck.toggled.connect(self.sigWatchChanged)
         self.browseFolderButton.clicked.connect(self.browse)
 
     def updateFileList(self):
         self.path = self.folderEdit.text()
-        res = []
+        self.scripts = []
         for file in os.listdir(self.path):
             if file.endswith('.py'):
-                res.append(file)
+                self.scripts.append(file)
 
         self.listWidget.clear()
-        self.listWidget.addItems(res)
+        self.listWidget.addItems(self.scripts)
+
+    def openFile(self, item):
+        """ Open the file in the default editor. """
+        indices = self.listWidget.selectedIndexes()
+        for i in indices:
+            file = self.scripts[i.row()]
+            webbrowser.open(os.path.join(self.path, file))
 
     def browse(self):
         path = guitools.askForFolderPath(self, defaultFolder=self.path)

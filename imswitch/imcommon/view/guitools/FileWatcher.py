@@ -5,6 +5,7 @@ from qtpy import QtCore
 from datetime import datetime
 import os
 import json
+import socket
 
 
 class FileWatcher(QtCore.QThread):
@@ -59,7 +60,7 @@ class FileWatcher(QtCore.QThread):
 
     def startLog(self):
         self._log["Starting time"] = str(datetime.now())
-        self._log["Computer name"] = os.environ['COMPUTERNAME']
+        self._log["Computer name"] = os.environ.get("ComputerName", socket.gethostname())
 
     def addToLog(self, key, value):
         self._log[key] = value

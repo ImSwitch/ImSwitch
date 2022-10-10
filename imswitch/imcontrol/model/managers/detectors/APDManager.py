@@ -49,7 +49,7 @@ class APDManager(DetectorManager):
         parameters = {}
         self._nidaqManager = nidaqManager
         self._nidaqManager.sigScanBuilt.connect(
-            lambda scanInfoDict: self.initiateScan(scanInfoDict)
+            lambda scanInfoDict, signalDict, _: self.initiateScan(scanInfoDict, signalDict)
         )
         self.__logger.debug('sigScanInitiate is connected')
         self._nidaqManager.sigScanStarted.connect(self.startScan)
@@ -64,9 +64,9 @@ class APDManager(DetectorManager):
         if hasattr(super(), '__del__'):
             super().__del__()
 
-    def initiateScan(self, scanInfoDict):
+    def initiateScan(self, scanInfoDict, signalDict):
         if self.acquisition:
-            self._scanWorker = ScanWorker(self, scanInfoDict)
+            self._scanWorker = ScanWorker(self, scanInfoDict, signalDict)
             self._scanThread = Thread()
             self._scanWorker.moveToThread(self._scanThread)
             self._scanThread.started.connect(self._scanWorker.run)
@@ -169,7 +169,7 @@ class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
     acqDoneSignal = Signal()
 
-    def __init__(self, manager, scanInfoDict):
+    def __init__(self, manager, scanInfoDict, signalDict):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -189,6 +189,12 @@ class ScanWorker(Worker):
         # ratio between detection sampling time and pixel dwell time (has nothing to do with
         # sampling of scanning line)
         self._frac_det_dwell = round(self._scan_dwell_time * self._manager._detection_samplerate)
+
+        # extract APD signals from signalDict
+        for idx, target in enumerate(signalDict['TTLCycleSignalsDict'].keys()):
+            if self._name == target:
+                seq_signal = signalDict['TTLCycleSignalsDict'][target]
+                self.__logger.debug(f'Found signal! {np.shape(seq_signal)}')
 
         # number of steps on each axis in image
         self._img_dims = scanInfoDict['img_dims']

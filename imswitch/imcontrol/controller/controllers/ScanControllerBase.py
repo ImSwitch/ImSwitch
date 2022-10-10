@@ -52,7 +52,7 @@ class ScanControllerBase(SuperScanController):
 
         # Connect NidaqManager signals
         self._master.nidaqManager.sigScanBuilt.connect(
-            lambda _, deviceList: self.emitScanSignal(self._commChannel.sigScanBuilt, deviceList)
+            lambda _, __, deviceList: self.emitScanSignal(self._commChannel.sigScanBuilt, deviceList)
         )
         self._master.nidaqManager.sigScanStarted.connect(
             lambda: self.emitScanSignal(self._commChannel.sigScanStarted)

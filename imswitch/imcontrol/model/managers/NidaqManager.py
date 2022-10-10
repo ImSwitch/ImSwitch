@@ -295,7 +295,7 @@ class NidaqManager(SignalInterface):
                 DOlines = []
 
                 for device, line in DOTargetChanPairs:
-                    if device not in ttlDic:
+                    if device not in ttlDic and 'Dev' not in line:
                         continue
                     DOdevices.append(device)
                     DOsignals.append(ttlDic[device])
@@ -371,7 +371,7 @@ class NidaqManager(SignalInterface):
                 self.busy = False
                 self.sigScanBuildFailed.emit()
             else:
-                self.sigScanBuilt.emit(scanInfoDict, AOdevices + DOdevices)
+                self.sigScanBuilt.emit(scanInfoDict, signalDic, AOdevices + DOdevices)
 
                 if self.__timerCounterChannel is not None:
                     self.tasks['timer'].start()

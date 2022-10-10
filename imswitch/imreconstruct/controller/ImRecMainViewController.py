@@ -148,7 +148,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.showScanParamsDialog()
 
     def quickLoadData(self):
-        dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
+        dataPath = guitools.askForFolderPath(self._widget, defaultFolder=self._dataFolder)
         if dataPath:
             self._logger.debug(f'Loading data at: {dataPath}')
 

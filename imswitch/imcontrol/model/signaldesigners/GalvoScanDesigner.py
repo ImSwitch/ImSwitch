@@ -40,9 +40,9 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 500
+        self.__minsettlingtime = 200
         # arbitrary for now  µs
-        self.__paddingtime = 500
+        self.__paddingtime = 200
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -177,6 +177,8 @@ class GalvoScanDesigner(ScanDesigner):
             plt.clf()
             for i, signal in enumerate(signals):
                 plt.plot(signal - 0.01 * i)
+                target = self.axis_devs_order[i]
+                self._logger.debug(f'Signal length {target}: {len(signal)}')
             plt.show()
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):

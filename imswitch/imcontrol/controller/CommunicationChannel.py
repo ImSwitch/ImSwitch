@@ -87,6 +87,8 @@ class CommunicationChannel(SignalInterface):
 
     sigBroadcast = Signal(str, str, object)
 
+    sigSaveFocus = Signal()
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)
@@ -163,7 +165,8 @@ class CommunicationChannel(SignalInterface):
             'acquisitionStopped': self.sigAcquisitionStopped,
             'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
-            'scanEnded': self.sigScanEnded
+            'scanEnded': self.sigScanEnded,
+            'saveFocus': self.sigSaveFocus
         })
 
 

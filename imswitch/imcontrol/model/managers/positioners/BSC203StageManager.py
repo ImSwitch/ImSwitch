@@ -1,73 +1,109 @@
 from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 from thorlabs_apt_device.devices.bsc import BSC
-
+from serial.serialutil import SerialException
+import numpy as np
+import time
 
 STEPS_PER_REV = 409600
 REV_PER_MM = 2
 
-move_step_mm = 1
 
-Xchan = 1
-Ychan = 0
-Zchan = 2
+move_step_mm = 1
 
 
 class BSC203StageManager(PositionerManager):
-
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self.port = positionerInfo.port
         self.__logger = initLogger(self, instanceName=name)
+        home = False
+        port = 'COM9'
+        try:
+            self.dev = BSC(serial_port=port, vid=None, pid=None, manufacturer=None, product=None, serial_number=None,
+                           location=None, home=home, x=3, invert_direction_logic=False, swap_limit_switches=True)
+            #self.initialize()
+        except SerialException:
+            self.__logger.debug('Could not initialize NanoMax motorized stage, might not be switched on.')
+            self.dev = None
+        if home:
+            self.__logger.debug('Is homing')
+            while self.homing():
+                pass
+            self.__logger.debug('Finished homing')
 
-        self.is_enabled = False
-        self.speed = 1000
-        self.backlash_x = 0
-        self.backlash_y = 0
-        self.backlash_z= 0 # TODO: Map that to the JSON!
+    def initialize(self):
+        self.dev.set_velocity_params(acceleration=4506, max_velocity=21987328 * 5, bay=0, channel=0)
+        self.dev.set_velocity_params(acceleration=4506, max_velocity=21987328 * 5, bay=1, channel=0)
+        self.dev.set_velocity_params(acceleration=4506, max_velocity=21987328 * 5, bay=2, channel=0)
 
-    def move(self, value=0, axis="X", is_blocking = False, is_absolute=False):
-        if axis == 'X':
-            self._rs232manager._esp32.move_x(value, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
-            self._position[axis] = self._position[axis] + value
-        elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
-            self._position[axis] = self._position[axis] + value
-        elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
-            self._position[axis] = self._position[axis] + value
-        elif axis == 'XYZ':
-            self._rs232manager._esp32.move_xyz(value, self.speed, is_blocking=is_blocking, is_absolute=is_absolute, is_enabled=self.is_enabled)
-            self._position["X"] = self._position["X"] + value[0]
-            self._position["Y"] = self._position["Y"] + value[1]
-            self._position["Z"] = self._position["Z"] + value[2]
-        else:
-            print('Wrong axis, has to be "X" "Y" or "Z".')
-            return
+    def homeAll(self):
+        self.dev.home(bay=0)
+        self.dev.home(bay=1)
+        self.dev.home(bay=2)
+        while self.homing():
+            pass
 
-    def setEnabled(self, is_enabled):
-        self.is_enabled = is_enabled
+    def homing(self):
+        return not all([self.dev.status_[0][0]['homed'],
+                        self.dev.status_[1][0]['homed'],
+                        self.dev.status_[2][0]['homed']])
 
-    def setSpeed(self, speed):
-        self.speed = speed
+    def to_enc_steps(self, mm):
+        steps = mm * REV_PER_MM * STEPS_PER_REV
+        return int(steps)
+
+    def to_mm(self, steps):
+        mm = steps / (REV_PER_MM * STEPS_PER_REV)
+        return mm
+
+    def move(self, dist, axis):
+        self._position[axis] = self._position[axis] + dist
+        if axis == "X":
+            channel = 0
+        elif axis == "Y":
+            channel = 1
+        elif axis == "Z":
+            channel = 2
+        self.move_relative_mm(dist, channel)
 
     def setPosition(self, value, axis):
-        if value: value+=1 # TODO: Firmware weirdness
-        self._rs232manager._esp32.set_position(axis=axis, position=value)
-        self._position[axis] = value
+        if axis == "X":
+            channel = 0
+        elif axis == "Y":
+            channel = 1
+        elif axis == "Z":
+            channel = 2
+        pos = self.to_enc_steps(value / 1000)
+        self.dev.move_absolute(pos, now=True, bay=channel, channel=0)
+
+    def move_relative_mm(self, value, axis):
+        self.setJogPars(np.abs(value / 1000), axis)
+        self.jog(np.sign(value), axis)
+
+    def setJogPars(self, size_mm, axis):
+        self.dev.set_jog_params(self.to_enc_steps(size_mm),
+                                4506,
+                                21987328 * 5,
+                                continuous=False,
+                                immediate_stop=False,
+                                bay=axis,
+                                channel=0)
+
+    def jog(self, sign, axis):
+        if sign == 1:
+            direction = "forward"
+        else:
+            direction = "reverse"
+        self.dev.move_jog(direction=direction, bay=axis, channel=0)
+
+    def get_abs(self, axis):
+        return self._position[axis]
 
     def closeEvent(self):
         pass
-
-    def get_abs(self, axis=1):
-        abspos = self._rs232manager._esp32.get_position(axis=axis)
-        return abspos
-
-
-
 
 
 # Copyright (C) 2020, 2021 The imswitch developers

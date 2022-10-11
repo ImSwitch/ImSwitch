@@ -40,9 +40,9 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 200
+        self.__minsettlingtime = 1000
         # arbitrary for now  µs
-        self.__paddingtime = 200
+        self.__paddingtime = 1000
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -169,23 +169,11 @@ class GalvoScanDesigner(ScanDesigner):
         #'extra_laser_on': parameterDict['extra_laser_on']
         #self._logger.debug(scanInfoDict)
 
-        self.__plot_curves(plot=True, signals=axis_signals)  # for debugging
+        self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 
         #self._logger.debug(scanInfoDict)
         self._logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
         return sig_dict, axis_positions, scanInfoDict
-
-    def __plot_curves(self, plot, signals):
-        """ Plot all scan curves, for debugging. """
-        if plot:
-            import matplotlib.pyplot as plt
-            plt.figure(1)
-            plt.clf()
-            for i, signal in enumerate(signals):
-                plt.plot(signal - 0.01 * i)
-                target = self.axis_devs_order[i]
-                self._logger.debug(f'Signal length {target}: {len(signal)}')
-            plt.show()
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):
         """ Calculate settling time based on first two axis parameters.
@@ -527,13 +515,24 @@ class GalvoScanDesigner(ScanDesigner):
         for axis, pos_axis in enumerate(pos):
             pos_temp = np.pad(pos_axis, padlens[axis], 'constant', constant_values=0)
             pos_ret.append(pos_temp)
-        # get maximum pad length
-        pad_max = 0
-        for padlen in padlens:
-            if padlen[1] > pad_max:
-                pad_max = padlen[1]
-        return pos_ret, pad_max
+        ## get maximum pad length
+        #pad_max = 0
+        #for padlen in padlens:
+        #    if padlen[1] > pad_max:
+        #        pad_max = padlen[1]
+        return pos_ret, padlens[0][1]
 
+    def __plot_curves(self, plot, signals):
+        """ Plot all scan curves, for debugging. """
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            plt.clf()
+            for i, signal in enumerate(signals):
+                plt.plot(signal - 0.01 * i)
+                target = self.axis_devs_order[i]
+                self._logger.debug(f'Signal length {target}: {len(signal)}')
+            plt.show()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

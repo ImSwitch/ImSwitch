@@ -1,4 +1,3 @@
-import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -8,7 +7,7 @@ from .basewidgets import Widget
 
 class ScanWidget(Widget):
     """ Widget containing scanner interface and beadscan reconstruction.
-            This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
+            This class uses the classes MultipleScanWidget and IllumImageWidget"""
 
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
@@ -54,10 +53,6 @@ class ScanWidget(Widget):
         self.scanButton = guitools.BetterPushButton('Run Scan')
 
         self.repeatBox = QtWidgets.QCheckBox('Repeat')
-
-        #self.graph = GraphFrame()
-        #self.graph.setEnabled(False)
-        #self.graph.setFixedHeight(128)
 
         self.scrollContainer = QtWidgets.QGridLayout()
         self.scrollContainer.setContentsMargins(0, 0, 0, 0)
@@ -136,12 +131,18 @@ class ScanWidget(Widget):
             sizePar = QtWidgets.QLineEdit('5')
             self.scanPar['size' + positionerName] = sizePar
             stepSizePar = QtWidgets.QLineEdit('0.1')
+            if 'mock' in positionerName.lower():
+                stepSizePar.setText('-')
+                stepSizePar.setEnabled(False)
             self.scanPar['stepSize' + positionerName] = stepSizePar
             numPixelsPar = QtWidgets.QLineEdit('50')
             numPixelsPar.setEnabled(False)
             self.scanPar['pixels' + positionerName] = numPixelsPar
             centerPar = QtWidgets.QLineEdit('0')
             self.scanPar['center' + positionerName] = centerPar
+            if 'mock' in positionerName.lower():
+                centerPar.setText('-')
+                centerPar.setEnabled(False)
             self.grid.addWidget(QtWidgets.QLabel(positionerName), currentRow, 0)
             self.grid.addWidget(sizePar, currentRow, 1)
             self.grid.addWidget(stepSizePar, currentRow, 2)
@@ -196,7 +197,6 @@ class ScanWidget(Widget):
             currentRow, 0, 1, -1
         )
         currentRow += 1
-        graphRow = currentRow
 
         # TTL param labels
         sequenceLabel = QtWidgets.QLabel('Sequence (h#,l#,...)')
@@ -226,9 +226,6 @@ class ScanWidget(Widget):
             self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
             self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
 
-        ## Add pulse graph
-        #self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
-
     def repeatEnabled(self):
         return self.repeatBox.isChecked()
 
@@ -239,25 +236,27 @@ class ScanWidget(Widget):
         return float(self.scanPar['size' + positionerName].text())
 
     def getScanStepSize(self, positionerName):
-        return float(self.scanPar['stepSize' + positionerName].text())
+        if self.scanPar['stepSize' + positionerName].isEnabled():
+            return float(self.scanPar['stepSize' + positionerName].text())
+        else:
+            return float(1)
 
     def getScanCenterPos(self, positionerName):
-        return float(self.scanPar['center' + positionerName].text())
+        if self.scanPar['center' + positionerName].isEnabled():
+            return float(self.scanPar['center' + positionerName].text())
+        else:
+            return float(0)
 
     def getTTLIncluded(self, deviceName):
         return (self.ttlParameters['seq' + deviceName].text() != '')
 
     def getTTLSequence(self, deviceName):
-        #return list(map(lambda s: s if s else None, self.ttlParameters['seq' + deviceName].text().split(',')))
         return self.ttlParameters['seq' + deviceName].text()
 
     def getTTLSequenceAxis(self, deviceName):
         if self.ttlParameters['seqAxis' + deviceName].currentText() == 'None':
             return 'None'
         return self.ttlParameters['seqAxis' + deviceName].currentText()
-        #for index, scanDim in enumerate(self.scanDims):
-        #    if self.ttlParameters['seqAxis' + deviceName].currentText() == scanDim:
-        #        return index
 
     def getSeqTimePar(self):
         return float(self.seqTimePar.text()) / 1000
@@ -319,18 +318,6 @@ class ScanWidget(Widget):
     def setScanCenterPosEnabled(self, positionerName, enabled):
         self.scanPar['center' + positionerName].setEnabled(enabled)
 
-    #def plotSignalGraph(self, x, signals, colors, unit=None):
-    #    if len(x) != len(signals) or len(signals) != len(colors):
-    #        raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
-    #
-    #    self.graph.plot.clear()
-    #    for i in range(len(x)):
-    #        self.graph.plot.plot(x[i], signals[i] * (1 + i / 20), pen=pg.mkPen(colors[i]))
-    #
-    #    self.graph.plot.setYRange(-0.1, 1 + len(x) / 20 + 0.05)
-    #    #self.graph.plot.setLabel('bottom',f'Axis steps ({unit})')
-    #    self.graph.plot.setLabel('bottom','Selected sequence axis steps')
-
     def eventFilter(self, source, event):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
             # Set correct minimum width (otherwise things can go outside the widget because of the
@@ -341,14 +328,6 @@ class ScanWidget(Widget):
             self.setMinimumWidth(width)
 
         return False
-
-
-class GraphFrame(pg.GraphicsLayoutWidget):
-    """Creates the plot that plots the preview of the pulses."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.plot = self.addPlot(row=1, col=0)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

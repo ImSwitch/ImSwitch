@@ -115,6 +115,9 @@ class GalvoScanDesigner(ScanDesigner):
         pos_temp, samples_d2_period = self.__generate_smooth_scan(parameterDict, self.axis_vel_max[0], self.axis_acc_max[0], n_steps_dx[1])
         pos.append(pos_temp)
 
+        # initiate pad length list
+        pad_maxes = [0,0]
+
         # d2 axis signal
         if axis_count_scan > 1:
             axis = 1
@@ -127,7 +130,8 @@ class GalvoScanDesigner(ScanDesigner):
         # d>2 axes signals - all generated as pure step signals
         if axis_count_scan > 2:
             for axis in range(2, axis_count_scan):
-                pos = self.__zero_padding(pos, padlen_base=0)
+                pos, pad_max = self.__zero_padding(pos, padlen_base=0)
+                pad_maxes.append(pad_max)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
                 smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
                 pos_temp = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.axis_devs_order[axis], smooth, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
@@ -135,7 +139,8 @@ class GalvoScanDesigner(ScanDesigner):
                 n_scan_samples_dx.append(len(pos[0]))
 
         # pad all signals with zeros, for initial and final settling of galvos and safety start and end
-        axis_signals = self.__zero_padding(pos, padlen_base=int(round(self.__paddingtime / self.__timestep)))
+        axis_signals, pad_max = self.__zero_padding(pos, padlen_base=int(round(self.__paddingtime / self.__timestep)))
+        pad_maxes.append(pad_max)
 
         # add all signals to a signal dictionary
         sig_dict = {parameterDict['target_device'][i]: axis_signals[i] for i in range(axis_count_scan)}
@@ -158,7 +163,8 @@ class GalvoScanDesigner(ScanDesigner):
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
             'phase_delay': parameterDict['phase_delay'],
-            'scan_samples_d2_period': samples_d2_period - 1
+            'scan_samples_d2_period': samples_d2_period - 1,
+            'padlens': pad_maxes
         }
         #'extra_laser_on': parameterDict['extra_laser_on']
         #self._logger.debug(scanInfoDict)
@@ -521,7 +527,12 @@ class GalvoScanDesigner(ScanDesigner):
         for axis, pos_axis in enumerate(pos):
             pos_temp = np.pad(pos_axis, padlens[axis], 'constant', constant_values=0)
             pos_ret.append(pos_temp)
-        return pos_ret
+        # get maximum pad length
+        pad_max = 0
+        for padlen in padlens:
+            if padlen[1] > pad_max:
+                pad_max = padlen[1]
+        return pos_ret, pad_max
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -85,6 +85,8 @@ class CommunicationChannel(SignalInterface):
 
     sigBroadcast = Signal(str, str, object)
 
+    #sigSetAxisLabels = Signal(tuple)
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)

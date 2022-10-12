@@ -73,6 +73,9 @@ class EmbeddedNapari(napari.Viewer):
     def get_widget(self):
         return self.window._qt_window
 
+    def set_axis_labels(self, axis_labels):
+        self.dims.axis_labels = axis_labels
+
 
 class NapariBaseWidget(QtWidgets.QWidget):
     """ Base class for Napari widgets. """
@@ -139,6 +142,52 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
     def _on_update_levels(self):
         for layer in self.viewer.layers.selected:
             layer.contrast_limits = minmaxLevels(layer.data)
+
+
+class NapariResetViewWidget(NapariBaseWidget):
+    """ Napari widget for resetting the dimensional view of the currently
+    selected layer with a single click. """
+
+    @property
+    def name(self):
+        return 'reset view widget'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
+
+        # Reset buttons and line edit
+        self.resetViewButton = QtWidgets.QPushButton('Reset view')
+        self.resetViewButton.clicked.connect(self._on_reset_view)
+        self.resetOrderButton = QtWidgets.QPushButton('Reset axis order')
+        self.resetOrderButton.clicked.connect(self._on_reset_axis_order)
+        self.setOrderButton = QtWidgets.QPushButton('Set axis order')
+        self.setOrderButton.clicked.connect(self._on_set_axis_order)
+        self.setOrderLineEdit = QtWidgets.QLineEdit('0,1')
+
+        # Layout
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(self.resetViewButton)
+        self.layout().addWidget(self.resetOrderButton)
+        self.layout().addWidget(self.setOrderLineEdit)
+        self.layout().addWidget(self.setOrderButton)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+
+    def _on_reset_view(self):
+        self.viewer.reset_view()
+
+    def _on_reset_axis_order(self):
+        order_curr = self.viewer.dims.order
+        self.viewer.dims.order = tuple(sorted(order_curr))
+        step_curr = self.viewer.dims.current_step
+        step_curr = [0 for _ in step_curr]
+        self.viewer.dims.current_step = tuple(step_curr)
+
+    def _on_set_axis_order(self):
+        order_new = [int(c) for c in self.setOrderLineEdit.text().split(',')]
+        self.viewer.dims.order = tuple(order_new)
 
 
 class NapariShiftWidget(NapariBaseWidget):

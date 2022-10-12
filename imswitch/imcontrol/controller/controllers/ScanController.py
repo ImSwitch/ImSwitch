@@ -218,6 +218,7 @@ class ScanController(SuperScanController):
                     self.__logger.debug(f'Set {positionerName} center to {position} before scan')
             # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+            #self._commChannel.sigSetAxisLabels.emit(tuple(self.scanInfoDict['axis_names']))
         except Exception:
             self.__logger.error(traceback.format_exc())
             self.isRunning = False

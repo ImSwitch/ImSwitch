@@ -16,6 +16,7 @@ class APDManager(DetectorManager):
     - ``ctrInputLine`` -- the counter that the physical input terminal is
       connected to
     """
+    #sigSetAxisLabels = Signal(tuple)
 
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
         # TODO: use the same manager for the PMT, with the type of detector as an argument.
@@ -74,7 +75,7 @@ class APDManager(DetectorManager):
             self._scanWorker.d2Step.connect(
                 lambda pixels, pos: self.updateImage(pixels, pos)
             )
-            self._scanWorker.acqDoneSignal.connect(self.stopAcquisition)
+            self._scanWorker.acqDoneSignal.connect(self.stopAcquisitionLocal)
 
     def startScan(self):
         if self.acquisition:
@@ -90,8 +91,18 @@ class APDManager(DetectorManager):
             self._scanThread.quit()
             self._scanThread.wait()
             self._scanWorker.close()
-            self._image = self.remove_nans(self._image)
-            self.setShape(np.shape(self._image))
+            self.__currSlice[-1] += 1
+            self.__newFrameReady = True
+        except Exception:
+            pass
+
+    def stopAcquisitionLocal(self):
+        try:
+            self._scanWorker.scanning = False
+            self._scanThread.quit()
+            self._scanThread.wait()
+            self._scanWorker.close()
+            self._renewImage()
             self.__currSlice[-1] += 1
             self.__newFrameReady = True
         except Exception:
@@ -100,12 +111,21 @@ class APDManager(DetectorManager):
     def getLatestFrame(self):
         return self._image
 
+    def _renewImage(self):
+        im_squeezed, ax_rem = self.remove_nans(self._image)
+        self.setShape(np.shape(im_squeezed))
+        self._image = im_squeezed
+        px_sizes = self.__pixel_sizes.copy()[::-1]
+        for axis in ax_rem:
+            px_sizes.pop(axis)
+        self.setPixelSize(px_sizes[::-1])
+        #self.sigSetAxisLabels.emit(axis_labels)
+
     def updateImage(self, pixels, pos: tuple):
         pass
         # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
         (*pos_rest, pos_d2) = (0,) + pos
         img_slice = tuple(pos_rest)+tuple([pos_d2,])
-        #self.__logger.debug([pixels, pos, img_slice])
         self._image[img_slice] = pixels
         self.__currSlice = pos_rest  # from high dim to low dim (ending at d3)
         if pos_d2 == 0:
@@ -114,9 +134,9 @@ class APDManager(DetectorManager):
             self.__newFrameReady = True
 
     def initiateImage(self, img_dims):
-        img_dims_extra = (*img_dims,1)
-        if np.shape(self._image) != tuple(reversed(img_dims_extra)):
-            self._image = np.zeros(tuple(reversed(img_dims_extra)))
+        img_dims_extra = tuple(reversed((*img_dims,1)))
+        if np.shape(self._image) != img_dims_extra:
+            self._image = np.zeros(img_dims_extra)
             self.setShape(img_dims_extra)  # not sure it will work. Previous order: [1],[0],[2], even if self._image was [2],[1],[0]
 
     def setParameter(self, name, value):
@@ -148,11 +168,13 @@ class APDManager(DetectorManager):
         return self.__shape
 
     def setShape(self, img_dims):
-        self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
+        #self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
+        self.__shape = tuple(img_dims)
 
     @property
     def scale(self):
-        return list(reversed(self.__pixel_sizes))
+        return self.__pixel_sizes[::-1]
+        #return list(reversed(self.__pixel_sizes))
         
     @property
     def pixelSizeUm(self):
@@ -184,7 +206,9 @@ class APDManager(DetectorManager):
             for i in per_axis_combs_tuple:            
                 m0 = m.any(i)            
                 mask.append(acc(m0) & acc(m0[::-1])[::-1])
-            return np.squeeze(im[np.ix_(*mask)]).astype(int)
+            im_ret = im[np.ix_(*mask)]
+            ax_rem = [i for i, val in enumerate(np.shape(im_ret)[1:]) if val == 1]
+            return np.expand_dims(np.squeeze(im_ret), axis=0).astype(int), ax_rem
 
 
 class ScanWorker(Worker):
@@ -219,6 +243,7 @@ class ScanWorker(Worker):
         for target in signalDict['TTLCycleSignalsDict'].keys():
             if self._name == target:
                 self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(), self._frac_scan_det_rate)
+                self._seq_signal = self._seq_signal.astype('float')
                 self._seq_signal[self._seq_signal == 0] = np.nan
                 break
 
@@ -335,19 +360,7 @@ class ScanWorker(Worker):
                     if throwdatalen > 0:
                         self.throwdata(throwdatalen)
                 if dim > 3:
-                    self.__logger.debug(f'End of d{dim} step, throw to compensate: {self._samples_padlens[dim-1]}')
-                    self.throwdata(self._samples_padlens[dim-1])
-                #if dim == 4:
-                #    # end d4 step: realign actual N read samples with supposed N read samples, in case of discrepancy
-                #    throwdatalen_term1_terms = np.copy(self._pos[3:])
-                #    for n in range(len(self._img_dims),4,-1):
-                #        for m in range(n-1,3,-1):
-                #            throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
-                #    throwdatalen_term1_terms[0] += 1
-                #    throwdatalen = self._throw_startzero + self._samples_d4_step * np.sum(throwdatalen_term1_terms) - self._samples_read
-                #    if throwdatalen > 0:
-                #        self.__logger.debug(f'End of d4 step, throw to compensate: {throwdatalen}')
-                #        self.throwdata(throwdatalen)                   
+                    self.throwdata(self._samples_padlens[dim-1])                  
             else:
                 self.run_loop_d2()
             self._pos[dim-1] += 1

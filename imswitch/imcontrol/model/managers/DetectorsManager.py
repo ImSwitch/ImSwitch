@@ -12,6 +12,7 @@ class DetectorsManager(MultiManager, SignalInterface):
 
     sigAcquisitionStarted = Signal()
     sigAcquisitionStopped = Signal()
+    #sigSetAxisLabels = Signal(tuple)
     sigDetectorSwitched = Signal(str, str)  # (newDetectorName, oldDetectorName)
     sigImageUpdated = Signal(
         str, np.ndarray, bool, list, bool
@@ -35,6 +36,11 @@ class DetectorsManager(MultiManager, SignalInterface):
                     detectorName, image, init, scale, detectorName==self._currentDetectorName
                 )
             )
+            #if not 'APD' in detectorName:
+            #    continue
+            #self._subManagers[detectorName].sigSetAxisLabels.connect(
+            #    lambda axis_labels: self.sigSetAxisLabels.emit(axis_labels)
+            #)
 
             # Set as default if first detector
             if self._currentDetectorName is None:
@@ -156,6 +162,9 @@ class DetectorsManager(MultiManager, SignalInterface):
         self._thread.quit()
         self._thread.wait()
         self._thread.start()
+
+    #def setAxisLabels(self, axisLabels):
+    #    self.sigSetAxisLabels.emit(axisLabels)
 
 
 class LVWorker(Worker):

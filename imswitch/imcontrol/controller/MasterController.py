@@ -44,6 +44,7 @@ class MasterController:
 
         self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
         self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
+        #self.detectorsManager.sigSetAxisLabels.connect(cc.sigSetAxisLabels)
         self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
 

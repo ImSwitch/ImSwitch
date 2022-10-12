@@ -19,6 +19,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
             self.napariViewer
         )
+        self.NapariShiftWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer)
         self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
@@ -60,6 +61,9 @@ class ImageWidget(QtWidgets.QWidget):
 
     def getImage(self, name):
         return self.imgLayers[name].data
+
+    #def setAxisLabels(self, axis_labels):
+    #    self.napariViewer.set_axis_labels(axis_labels)
 
     def setImage(self, name, im, scale):
         self.imgLayers[name].data = im

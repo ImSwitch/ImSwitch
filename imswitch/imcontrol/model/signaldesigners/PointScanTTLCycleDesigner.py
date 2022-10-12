@@ -190,7 +190,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
                 signal_dict[target] = signal.astype(bool)
 
-            self.__plot_curves(plot=True, signals=signal_dict, targets=targets)  # for debugging
+            self.__plot_curves(plot=False, signals=signal_dict, targets=targets)  # for debugging
 
             # return signal_dict, which contains bool arrays for each target
             return signal_dict

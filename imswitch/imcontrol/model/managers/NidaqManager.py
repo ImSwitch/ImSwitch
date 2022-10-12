@@ -76,7 +76,8 @@ class NidaqManager(SignalInterface):
     def __createLineDOTask(self, name, lines, acquisitionType, source, rate, sampsInScan=1000,
                            starttrig=False, reference_trigger='ai/StartTrigger'):
         """ Simplified function to create a digital output task """
-        #self.__logger.debug(f'Create DO task: {name}')
+        self.__logger.debug(f'Create DO task: {name}')
+        self.__logger.debug(lines)
         dotask = nidaqmx.Task(name)
 
         lines = np.atleast_1d(lines)
@@ -88,6 +89,7 @@ class NidaqManager(SignalInterface):
                                           samps_per_chan=sampsInScan)
         if starttrig:
             dotask.triggers.start_trigger.cfg_dig_edge_start_trig(reference_trigger)
+        self.__logger.debug(f'Created DO task: {name}')
         return dotask
 
     def __createChanCITask(self, name, channel, acquisitionType, source, rate, sampsInScan=1000,
@@ -176,40 +178,42 @@ class NidaqManager(SignalInterface):
             raise NidaqManagerError('Target has no digital output assigned to it')
         else:
             self.__logger.debug(f'{target} setDigital start: {enable}')
-            if not self.busy:
-                self.__logger.debug(f'{target} setDigital st1')
-                self.busy = True
+            #if not self.busy:
+            self.__logger.debug(f'{target} setDigital st1')
+            #self.busy = True
+            try:
+                self.__logger.debug(f'{target} setDigital st2')
+                acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
+                tasklen = 100
+                dotask = self.__createLineDOTask('setDigitalTask',
+                                                    line,
+                                                    acquisitionTypeFinite,
+                                                    r'100kHzTimebase',
+                                                    100000,
+                                                    tasklen,
+                                                    False)
+                self.__logger.debug(f'{target} setDigital st3')
+                # signal = np.array([enable])
+                signal = enable * np.ones(tasklen, dtype=bool)
                 try:
-                    self.__logger.debug(f'{target} setDigital st2')
-                    acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
-                    tasklen = 100
-                    dotask = self.__createLineDOTask('setDigitalTask',
-                                                     line,
-                                                     acquisitionTypeFinite,
-                                                     r'100kHzTimebase',
-                                                     100000,
-                                                     tasklen,
-                                                     False)
-                    self.__logger.debug(f'{target} setDigital st3')
-                    # signal = np.array([enable])
-                    signal = enable * np.ones(tasklen, dtype=bool)
-                    try:
-                        dotask.write(signal, auto_start=True)
-                    except Exception:
-                        self.__logger.warning(
-                            'Attempted writing analog data that is too large or too small.'
-                        )
-                    self.__logger.debug(f'{target} setDigital st4')
-                    dotask.wait_until_done()
-                    dotask.stop()
-                    dotask.close()
-                    self.__logger.debug(f'{target} setDigital st5')
-                except (nidaqmx._lib.DaqNotFoundError, nidaqmx._lib.DaqFunctionNotSupportedError,
-                        nidaqmx.DaqError) as e:
-                    warnings.warn(str(e), RuntimeWarning)
-                finally:
-                    self.busy = False
-                    self.__logger.debug(f'{target} setDigital finished: {enable}')
+                    dotask.write(signal, auto_start=True)
+                except Exception:
+                    self.__logger.exception(Exception)
+                    self.__logger.warning(
+                        'Attempted writing digital data that is too large or too small, or other'
+                        ' error when writing the task.'
+                    )
+                self.__logger.debug(f'{target} setDigital st4')
+                dotask.wait_until_done()
+                dotask.stop()
+                dotask.close()
+                self.__logger.debug(f'{target} setDigital st5')
+            except (nidaqmx._lib.DaqNotFoundError, nidaqmx._lib.DaqFunctionNotSupportedError,
+                    nidaqmx.DaqError) as e:
+                warnings.warn(str(e), RuntimeWarning)
+            finally:
+                #self.busy = False
+                self.__logger.debug(f'{target} setDigital finished: {enable}')
 
     def setAnalog(self, target, voltage, min_val=-1, max_val=1):
         """ Function to set the analog channel to a specific target

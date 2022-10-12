@@ -90,6 +90,8 @@ class APDManager(DetectorManager):
             self._scanThread.quit()
             self._scanThread.wait()
             self._scanWorker.close()
+            self._image = self.remove_nans(self._image)
+            self.setShape(np.shape(self._image))
             self.__currSlice[-1] += 1
             self.__newFrameReady = True
         except Exception:
@@ -164,6 +166,26 @@ class APDManager(DetectorManager):
     def crop(self, hpos, vpos, hsize, vsize):
         pass
 
+    def remove_nans(self, im):
+        """ Remove slices which only contain np.nan values, called at end of acquisition. 
+        Source: https://stackoverflow.com/a/43724800 """
+        acc = np.maximum.accumulate
+        m = ~np.isnan(im)
+        dims = im.ndim
+
+        if dims==1:
+            return im[acc(m) & acc(m[::-1])[::-1]]    
+        else:
+            r = np.tile(np.arange(dims),dims)
+            per_axis_combs = np.delete(r,range(0,len(r),dims+1)).reshape(-1,dims-1)
+            per_axis_combs_tuple = map(tuple,per_axis_combs)
+
+            mask = []
+            for i in per_axis_combs_tuple:            
+                m0 = m.any(i)            
+                mask.append(acc(m0) & acc(m0[::-1])[::-1])
+            return np.squeeze(im[np.ix_(*mask)]).astype(int)
+
 
 class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
@@ -197,6 +219,7 @@ class ScanWorker(Worker):
         for target in signalDict['TTLCycleSignalsDict'].keys():
             if self._name == target:
                 self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(), self._frac_scan_det_rate)
+                self._seq_signal[self._seq_signal == 0] = np.nan
                 break
 
         # number of steps on each axis in image
@@ -209,16 +232,12 @@ class ScanWorker(Worker):
         self._samples_d2_period = round(scanInfoDict['scan_samples_d2_period'] * self._frac_scan_det_rate)
         # det samples in total signal
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
-        # samples to throw due to the starting zero-padding
-        self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)
-        # samples to throw due to smooth inital positioning time
-        self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)
-        # samples to throw due to settling time
-        self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)
-        # samples to throw due to starting acceleration
-        self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)
-        # samples to throw due to smooth final positioning time
-        self._throw_finalpos = round(scanInfoDict['scan_throw_finalpos'] * self._frac_scan_det_rate)
+        # samples to throw due to: 
+        self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
+        self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)  # smooth inital positioning time
+        self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
+        self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
+        self._throw_finalpos = round(scanInfoDict['scan_throw_finalpos'] * self._frac_scan_det_rate)  # smooth final positioning time
         # scan samples in a d3 step (period)
         self._samples_d3_step = round(scanInfoDict['scan_samples'][2] * self._frac_scan_det_rate)
         # scan samples for zero padding at end of scanning curve dimensions

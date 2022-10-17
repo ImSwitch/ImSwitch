@@ -28,6 +28,7 @@ class APDManager(DetectorManager):
         self.setPixelSize([1, 1])
         fullShape = (100, 100)
         self._image = np.random.rand(fullShape[0], fullShape[1]) * 100
+        self._ttlmultiplying = False
 
         # counter output task generating a 1 MHz frequency digitial pulse train
         self._nidaq_clock_source = r'ctr2InternalOutput'
@@ -102,7 +103,8 @@ class APDManager(DetectorManager):
             self._scanThread.quit()
             self._scanThread.wait()
             self._scanWorker.close()
-            self._renewImage()
+            if self._ttlmultiplying:
+                self._renewImage()
             self.__currSlice[-1] += 1
             self.__newFrameReady = True
         except Exception:
@@ -240,12 +242,13 @@ class ScanWorker(Worker):
         self._frac_scan_det_rate = round(self._manager._detection_samplerate * scanInfoDict['scan_time_step'])
 
         # extract APD signals from signalDict
-        for target in signalDict['TTLCycleSignalsDict'].keys():
-            if self._name == target:
-                self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(), self._frac_scan_det_rate)
-                self._seq_signal = self._seq_signal.astype('float')
-                self._seq_signal[self._seq_signal == 0] = np.nan
-                break
+        if self._manager._ttlmultiplying:
+            for target in signalDict['TTLCycleSignalsDict'].keys():
+                if self._name == target:
+                    self._seq_signal = np.repeat(signalDict['TTLCycleSignalsDict'][target].copy(), self._frac_scan_det_rate)
+                    self._seq_signal = self._seq_signal.astype('float')
+                    self._seq_signal[self._seq_signal == 0] = np.nan
+                    break
 
         # number of steps on each axis in image
         self._img_dims = scanInfoDict['img_dims']
@@ -372,24 +375,29 @@ class ScanWorker(Worker):
         if self.scanning:
             if self._pos[1] == self._img_dims[1] - 1:
                 # read a line
-                seq_signal_xstart = self._samples_read-self._phase_delay
+                if self._manager._ttlmultiplying:
+                    seq_signal_xstart = self._samples_read-self._phase_delay
                 data = self.readdata(self._samples_line)
-                seq_signal_xend = self._samples_read-self._phase_delay
-                ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
+                if self._manager._ttlmultiplying:
+                    seq_signal_xend = self._samples_read-self._phase_delay
+                    ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
             else:
                 # read a whole period, starting with the line and then the data during the flyback
-                seq_signal_xstart = self._samples_read-self._phase_delay
+                if self._manager._ttlmultiplying:
+                    seq_signal_xstart = self._samples_read-self._phase_delay
                 data = self.readdata(self._samples_d2_period)
-                seq_signal_xend = self._samples_read-self._phase_delay
-                ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
+                if self._manager._ttlmultiplying:
+                    seq_signal_xend = self._samples_read-self._phase_delay
+                    ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
             # get photon counts from data array (which is cumsummed)
             data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))
             self._last_value = data[-1]
             # only take the first samples that corresponds to the samples during the line
             line_samples = data_cnts[:self._samples_line]
-            ttl_seq = ttl_seq[:self._samples_line]
-            # mask with TTL sequence from ScanWidget, to say if detector should be on or not
-            line_samples = np.multiply(line_samples, 1*ttl_seq)
+            if self._manager._ttlmultiplying:
+                ttl_seq = ttl_seq[:self._samples_line]
+                # mask with TTL sequence from ScanWidget, to say if detector should be on or not
+                line_samples = np.multiply(line_samples, 1*ttl_seq)
             # resample sample array to pixel counts array
             pixels = self.samples_to_pixels(line_samples)
             # signal new line of pixels, and the insertion position in all dimensions

@@ -30,6 +30,7 @@ class NidaqManager(SignalInterface):
         self.aoTaskWaiter = None
         self.timerTaskWaiter = None
         self.busy = False
+        self.busy_scan = False
         self.__timerCounterChannel = setupInfo.nidaq.getTimerCounterChannel()
         self.__startTrigger = setupInfo.nidaq.startTrigger
 
@@ -191,37 +192,43 @@ class NidaqManager(SignalInterface):
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 tasklen = 100
                 if not self.busy_scan:
-                    dotask = self.__createLineDOTask('setDigitalTask',
-                                                        line,
-                                                        acquisitionTypeFinite,
-                                                        r'100kHzTimebase',
-                                                        100000,
-                                                        tasklen,
-                                                        False)
-                else:
-                    dotask = self.__createLineDOTask('setDigitalTask',
+                    start_condition = True
+                    self.__logger.debug("Do with 100kHz")
+                    self.setDigitalTask = self.__createLineDOTask('setDigitalTask',
                                                         line,
                                                         acquisitionTypeFinite,
                                                         None,
                                                         100000,
                                                         tasklen,
-                                                        False)                    
+                                                        False)
+                else:
+                    # TODO: works one time now, but the task is probably not stopped, closed, and deleted properly, so the second time it's called during a scan it doesn't work
+                    self.setDigitalTaskWaiter = WaitThread()
+                    start_condition = False
+                    self.setDigitalTask = self.__createLineDOTask('setDigitalTask', line,
+                                                          acquisitionTypeFinite, r'ao/SampleClock',
+                                                          100000, tasklen,
+                                                          starttrig=self.__startTrigger,
+                                                          reference_trigger='ao/StartTrigger')
                 self.__logger.debug(f'{target} setDigital st3')
                 # signal = np.array([enable])
                 signal = enable * np.ones(tasklen, dtype=bool)
                 try:
-                    dotask.write(signal, auto_start=True)
+                    self.setDigitalTask.write(signal, auto_start=start_condition)
+                    if self.busy_scan:
+                        self.setDigitalTaskWaiter.sigWaitDone.connect(lambda: self.stopTaskSingle(self.setDigitalTask))
                 except Exception:
                     self.__logger.exception(Exception)
                     self.__logger.warning(
                         'Attempted writing digital data that is too large or too small, or other'
                         ' error when writing the task.'
                     )
-                self.__logger.debug(f'{target} setDigital st4')
-                dotask.wait_until_done()
-                dotask.stop()
-                dotask.close()
-                self.__logger.debug(f'{target} setDigital st5')
+                if self.busy_scan:
+                    self.setDigitalTask.start()
+                else:
+                    self.setDigitalTask.wait_until_done()
+                    self.setDigitalTask.stop()
+                    self.setDigitalTask.close()
             except (nidaqmx._lib.DaqNotFoundError, nidaqmx._lib.DaqFunctionNotSupportedError,
                     nidaqmx.DaqError) as e:
                 warnings.warn(str(e), RuntimeWarning)
@@ -270,6 +277,7 @@ class NidaqManager(SignalInterface):
         running. """
         if not self.busy:
             self.busy = True
+            self.busy_scan = True
             self.signalSent = False
             self.__logger.debug('Create nidaq scan...')
 
@@ -371,6 +379,7 @@ class NidaqManager(SignalInterface):
                     task.close()
                 self.tasks = {}
                 self.busy = False
+                self.busy_scan = False
                 self.sigScanBuildFailed.emit()
             else:
                 self.sigScanBuilt.emit(scanInfoDict, signalDic, AOdevices + DOdevices)
@@ -396,6 +405,11 @@ class NidaqManager(SignalInterface):
         del self.tasks[taskName]
         # self.__logger.debug(f'Task {taskName} deleted')
 
+    def stopTaskSingle(self, taskName):
+        taskName.stop()
+        taskName.close()
+        del taskName
+
     def inputTaskDone(self, taskName):
         if not self.signalSent:
             self.stopTask(taskName)
@@ -411,6 +425,7 @@ class NidaqManager(SignalInterface):
     def scanDone(self):
         self.signalSent = True
         self.busy = False
+        self.busy_scan = False
         self.__logger.info('Nidaq scan finished!')
         self.sigScanDone.emit()
 

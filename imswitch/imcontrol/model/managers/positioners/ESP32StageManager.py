@@ -19,19 +19,22 @@ class ESP32StageManager(PositionerManager):
         self.backlash_x = 0
         self.backlash_y = 0
         self.backlash_z= 0 # TODO: Map that to the JSON!
+        
+        # grab motor object
+        self._motor = self._rs232manager._esp32.motor
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=False):
         if axis == 'X':
-            self._rs232manager._esp32.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            self._motor.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
-            self._rs232manager._esp32.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            self._motor.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
-            self._rs232manager._esp32.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            self._motor.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
-            self._rs232manager._esp32.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            self._motor.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]
@@ -40,13 +43,13 @@ class ESP32StageManager(PositionerManager):
             return
     
     def measure(self, sensorID=0, NAvg=100):
-        return self._rs232manager._esp32.read_sensor(sensorID=sensorID, NAvg=NAvg)
+        return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
     def setupPIDcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
-        return self._rs232manager._esp32.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
+        return self._motor.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
 
     def moveForever(self, speed=(0,0,0), is_stop=False):
-        self._rs232manager._esp32.move_forever(speed=speed, is_stop=is_stop)
+        self._motor.move_forever(speed=speed, is_stop=is_stop)
         
     def setEnabled(self, is_enabled):
         self.is_enabled = is_enabled
@@ -62,14 +65,14 @@ class ESP32StageManager(PositionerManager):
 
     def setPosition(self, value, axis):
         if value: value+=1 # TODO: Firmware weirdness
-        self._rs232manager._esp32.set_position(axis=axis, position=value)
+        self._motor.set_position(axis=axis, position=value)
         self._position[axis] = value
 
     def closeEvent(self):
         pass
 
     def get_abs(self, axis=1):
-        abspos = self._rs232manager._esp32.get_position(axis=axis)
+        abspos = self._motor.get_position(axis=axis)
         return abspos
 
 

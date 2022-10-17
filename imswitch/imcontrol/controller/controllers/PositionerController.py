@@ -69,7 +69,7 @@ class PositionerController(ImConWidgetController):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
     def setSpeedGUI(self, positionerName, axis):
-        speed = self.getSpeed()[positionerName][axis]
+        speed = self._widget.getSpeed(positionerName, axis)
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
 
     def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):

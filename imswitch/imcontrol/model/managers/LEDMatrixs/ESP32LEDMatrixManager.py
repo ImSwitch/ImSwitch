@@ -48,12 +48,14 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
 
     def setPattern(self, pattern):
         self.mLEDmatrix.pattern(pattern)
+    
+    def getPattern(self):
+        return self.mLEDmatrix.getPattern()
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled
         
-
     def setLEDSingle(self, indexled=0, state=(0,0,0)):
         """Handles output power.
         Sends a RS232 command to the LEDMatrix specifying the new intensity.
@@ -63,8 +65,7 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
     def setLEDIntensity(self, intensity=(0,0,0)):
         self.mLEDmatrix.setIntensity(intensity)
 
-    def getPattern(self):
-        return self.mLEDmatrix.pattern
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -20,12 +20,12 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
-            speed = hasattr(pManager, 'speed')
-            self._widget.addPositioner(pName, pManager.axes, speed)
+            hasSpeed = hasattr(pManager, 'speed')
+            self._widget.addPositioner(pName, pManager.axes, hasSpeed)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                if speed:
-                    self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+                if hasSpeed:
+                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -69,7 +69,7 @@ class PositionerController(ImConWidgetController):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
     def setSpeedGUI(self, positionerName, axis):
-        speed = self.getSpeed()[positionerName][axis]
+        speed = self._widget.getSpeed(positionerName, axis)
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
 
     def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
@@ -164,6 +164,7 @@ class PositionerController(ImConWidgetController):
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
+_speedAttr = "Speed"
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

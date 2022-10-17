@@ -31,7 +31,7 @@ class FloatSlider(BetterSlider):
         return super().setMaximum(value * self._multiplier)
 
     def setSingleStep(self, value):
-        return super().setSingleStep(value * self._multiplier)
+        return super().setSingleStep(int(value * self._multiplier))
 
     def singleStep(self):
         return float(super().singleStep()) / self._multiplier

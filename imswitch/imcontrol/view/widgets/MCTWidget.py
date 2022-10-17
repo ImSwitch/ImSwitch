@@ -43,7 +43,7 @@ class MCTWidget(NapariHybridWidget):
         
         # z-stack
         self.mctLabelZStack  = QtWidgets.QLabel('Z-Stack (min,max,steps):')        
-        self.mctValueZmin = QtWidgets.QLineEdit('0')
+        self.mctValueZmin = QtWidgets.QLineEdit('-100')
         self.mctValueZmax = QtWidgets.QLineEdit('100')
         self.mctValueZsteps = QtWidgets.QLineEdit('10')
         
@@ -53,55 +53,23 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLaser = 1
         singleStepLaser = 1
         
-        self.mctLabelLaser1  = QtWidgets.QLabel('Intensity (Laser 1):')        
-        self.mctLabelLaser2  = QtWidgets.QLabel('Intensity (Laser 2):')        
-        
-        valueRangeMinLaser, valueRangeMaxLaser = valueRangeLaser
-        self.sliderLaser1 = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLaser)
-        self.sliderLaser1.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLaser1.setMinimum(valueRangeMinLaser)
-        self.sliderLaser1.setMaximum(valueRangeMaxLaser)
-        self.sliderLaser1.setTickInterval(tickIntervalLaser)
-        self.sliderLaser1.setSingleStep(singleStepLaser)
-        self.sliderLaser1.setValue(0)
-        
+        self.sliderLaser1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderLaser1.valueChanged.connect(
             lambda value: self.sigSliderLaser1ValueChanged.emit(value)
         )
-                        
-        self.sliderLaser2 = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLaser)
-        self.sliderLaser2.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLaser2.setMinimum(valueRangeMinLaser)
-        self.sliderLaser2.setMaximum(valueRangeMaxLaser)
-        self.sliderLaser2.setTickInterval(tickIntervalLaser)
-        self.sliderLaser2.setSingleStep(singleStepLaser)
-        self.sliderLaser2.setValue(0)
+        
+        self.sliderLaser2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderLaser2.valueChanged.connect(
             lambda value: self.sigSliderLaser2ValueChanged.emit(value)
         )
-
-
+                        
         # LED
         valueDecimalsLED = 1
         valueRangeLED = (0,2**8)
         tickIntervalLED = 1
         singleStepLED = 1
         
-        self.mctLabelLED  = QtWidgets.QLabel('Intensity (LED 1):')        
-        self.mctLabelLED2  = QtWidgets.QLabel('Intensity (LED 2):')        
-        
-        valueRangeMinLED, valueRangeMaxLED = valueRangeLED
-        self.sliderLED = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLED)
-        self.sliderLED.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLED.setMinimum(valueRangeMinLED)
-        self.sliderLED.setMaximum(valueRangeMaxLED)
-        self.sliderLED.setTickInterval(tickIntervalLED)
-        self.sliderLED.setSingleStep(singleStepLED)
-        self.sliderLED.setValue(0)
-        
+        self.sliderLED, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
         self.sliderLED.valueChanged.connect(
             lambda value: self.sigSliderLEDValueChanged.emit(value)
         )
@@ -145,8 +113,6 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.sliderLaser1, 2, 1, 1, 3)
         self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
         self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
         self.grid.addWidget(self.mctLabelLED, 4, 0, 1, 1)
         self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
 
@@ -163,6 +129,19 @@ class MCTWidget(NapariHybridWidget):
         
         self.layer = None
         
+        
+    def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
+        mctLabel  = QtWidgets.QLabel(label)     
+        valueRangeMin, valueRangeMax = valueRange
+        slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimals)
+        slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        slider.setMinimum(valueRangeMin)
+        slider.setMaximum(valueRangeMax)
+        slider.setTickInterval(tickInterval)
+        slider.setSingleStep(singleStep)
+        slider.setValue(0)
+        return slider, mctLabel
         
     def getImage(self):
         if self.layer is not None:

@@ -57,7 +57,7 @@ class CheckUpdatesThread(Thread):
     def run(self):
         currentVersion = imswitch.__version__
         try:
-            if True: #'IMSWITCH_IS_BUNDLE' in os.environ and os.environ['IMSWITCH_IS_BUNDLE'] == '1':
+            if 'IMSWITCH_IS_BUNDLE' in os.environ and os.environ['IMSWITCH_IS_BUNDLE'] == '1':
                 # Installed from bundle - check GitHub
                 self.__logger.debug("We are checking for pre-built bundles on Github")
                 releaseResponse = requests.get(

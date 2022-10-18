@@ -42,9 +42,10 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
 
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
-    def setAll(self, state=(0,0,0)):
+    def setAll(self, state=(0,0,0), intensity=None):
         # dealing with on or off,
-        self.mLEDmatrix.setAll(state)
+        # intensity is adjjusting the global value
+        self.mLEDmatrix.setAll(state, intensity)
 
     def setPattern(self, pattern):
         self.mLEDmatrix.pattern(pattern)

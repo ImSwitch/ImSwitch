@@ -156,8 +156,6 @@ class UC2ConfigController(ImConWidgetController):
         #self.applyGeneral(UC2Config_info_dict["general"])
         self.mConfigOffline = UC2Config_info_dict["pinDef"]
         self.applypinDef(self.mConfigOffline)
-        self._master.UC2ConfigManager.saveState(state_general=UC2Config_info_dict["general"],
-                                          state_pinDef=UC2Config_info_dict["pinDef"])
 
     def applyGeneral(self, info_dict):
         self._master.UC2ConfigManager.setGeneral(info_dict)
@@ -170,8 +168,6 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Udated items: "+str(len(shared_items))+"/"+str(len(info_dict)))
         self._logger.debug('Apply changes to pinDef.')
 
-    # def loadPreset(self, preset):
-    #    self._logger.debug('Loaded default UC2Config settings.')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

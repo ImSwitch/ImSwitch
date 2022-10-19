@@ -94,7 +94,7 @@ class MCTController(LiveUpdatedController):
         # setup gui limits
         self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
         self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
-        self._widget.sliderLED.setMaximum(self.leds[2]._LaserManager__valueRangeMax)
+        self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")

@@ -15,25 +15,63 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
-        self.is_enabled = False
-        self.backlash_x = 0
-        self.backlash_y = 0
-        self.backlash_z= 0 # TODO: Map that to the JSON!
+        # calibrated stepsize in steps/µm
+        if positionerInfo.managerProperties.get('stepsizeX') is not None:
+            self.stepsizeX = positionerInfo.managerProperties['stepsizeX']
+        else:
+            self.stepsizeX = 1
+        # calibrated stepsize
+        if positionerInfo.managerProperties.get('stepsizeY') is not None:
+            self.stepsizeY = positionerInfo.managerProperties['stepsizeY']
+        else:
+            self.stepsizeY = 1
+
+        # calibrated stepsize
+        if positionerInfo.managerProperties.get('stepsizeZ') is not None:
+            self.stepsizeZ = positionerInfo.managerProperties['stepsizeZ']
+        else:
+            self.stepsizeZ = 1
+
+
+        # calibrated backlash
+        if positionerInfo.managerProperties.get('backlashX') is not None:
+            self.backlashX = positionerInfo.managerProperties['backlashX']
+        else:
+            self.backlashX = 1
+
+        # calibrated backlash
+        if positionerInfo.managerProperties.get('backlashY') is not None:
+            self.backlashY = positionerInfo.managerProperties['backlashY']
+        else:
+            self.backlashY = 1
+
+        # calibrated backlash
+        if positionerInfo.managerProperties.get ('backlashZ') is not None:
+            self.backlashZ = positionerInfo.managerProperties['backlashZ']
+        else:
+            self.backlashZ = 1
+
         
+        self.is_enabled = False
+
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=False):
         if axis == 'X':
+            value *= self.stepsizeX
             self._motor.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Y':
+            value *= self.stepsizeY
             self._motor.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'Z':
+            value *= self.stepsizeZ
             self._motor.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position[axis] = self._position[axis] + value
         elif axis == 'XYZ':
+            value *= (self.stepsizeX, self.stepsizeY, self.stepsizeZ)
             self._motor.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
             self._position["X"] = self._position["X"] + value[0]
             self._position["Y"] = self._position["Y"] + value[1]
@@ -41,6 +79,15 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return
+
+    def setStepsize(self, stepsize, axis):
+        if axis == "X":
+            self.stepsizeX = stepsize
+        if axis == "Y":
+            self.stepsizeY = stepsize
+        if axis == "Z":
+            self.stepsizeZ = stepsize
+
     
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)

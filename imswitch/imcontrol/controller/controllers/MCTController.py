@@ -234,11 +234,11 @@ class MCTController(LiveUpdatedController):
         self.LastStackLED = []
 
         if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
         if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
         if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
 
         self.nImages += 1
         self._widget.setNImages(self.nImages)
@@ -252,7 +252,7 @@ class MCTController(LiveUpdatedController):
         self._widget.mctShowLastButton.setEnabled(True)
 
 
-    def takeImageIllu(self, illuMode, intensity, zstackParams=None):
+    def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
         if illuMode == "Laser1" and len(self.lasers)>0:
@@ -289,7 +289,7 @@ class MCTController(LiveUpdatedController):
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}', extension=fileExtension)
+                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
                 self._logger.debug(filePath)

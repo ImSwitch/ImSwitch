@@ -72,7 +72,7 @@ class MCTController(LiveUpdatedController):
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self.lasers = []
         for iDevice in allLaserNames:
-            if iDevice.find("Laser")>=0:
+            if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
 
         self.leds = []
@@ -92,9 +92,15 @@ class MCTController(LiveUpdatedController):
         self._widget.mctShowLastButton.setEnabled(False)
         
         # setup gui limits
-        self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
-        self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
-        self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+
+        # setup gui text
+        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+
 
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")
@@ -319,7 +325,7 @@ class MCTController(LiveUpdatedController):
         # switch off all illu sources
         for lasers in self.lasers:
             lasers.setEnabled(False)
-            self.lasers[1].setValue(0)
+            lasers.setValue(0)
             time.sleep(0.1)
         if len(self.leds)>0:
             self.illu.setAll((0,0,0))

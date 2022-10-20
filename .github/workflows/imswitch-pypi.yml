@@ -1,6 +1,7 @@
 name: imswitch-pypi
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'

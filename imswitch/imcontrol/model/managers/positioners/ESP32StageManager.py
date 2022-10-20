@@ -102,6 +102,8 @@ class ESP32StageManager(PositionerManager):
         else:
             self.backlashT = 1
             
+        # grab motor object
+        self._motor = self._rs232manager._esp32.motor
             
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
@@ -111,8 +113,6 @@ class ESP32StageManager(PositionerManager):
         
         self.is_enabled = False
 
-        # grab motor object
-        self._motor = self._rs232manager._esp32.motor
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)

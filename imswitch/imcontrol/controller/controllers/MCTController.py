@@ -317,7 +317,7 @@ class MCTController(LiveUpdatedController):
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
 
         else:
-            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}', extension=fileExtension)
+            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
             lastFrame = self.detector.getLatestFrame()
             self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)

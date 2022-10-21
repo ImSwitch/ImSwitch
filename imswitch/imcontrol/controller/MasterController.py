@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager
 )
 
 
@@ -39,6 +39,7 @@ class MasterController:
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
         self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
         self.ismManager = ISMManager(self.__setupInfo.ism)
 
         # Connect signals

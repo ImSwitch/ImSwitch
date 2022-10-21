@@ -47,6 +47,24 @@ class MCTWidget(NapariHybridWidget):
         self.mctValueZmax = QtWidgets.QLineEdit('100')
         self.mctValueZsteps = QtWidgets.QLineEdit('10')
         
+        # autofocus
+        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')        
+        self.autofocusRange = QtWidgets.QLineEdit('200')
+        self.autofocusSteps = QtWidgets.QLineEdit('20')
+        self.autofocusPeriod = QtWidgets.QLineEdit('10')
+        
+        self.autofocusLaser1Checkbox = QtWidgets.QCheckBox('Laser 1')
+        self.autofocusLaser1Checkbox.setCheckable(True)
+        
+        self.autofocusLaser2Checkbox = QtWidgets.QCheckBox('Laser 2')
+        self.autofocusLaser2Checkbox.setCheckable(True)
+        
+        self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
+        self.autofocusLED1Checkbox.setCheckable(True)
+        
+        self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF:')        
+        
+        
         # Laser 1
         valueDecimalsLaser = 1
         valueRangeLaser = (0,2**15)
@@ -119,17 +137,49 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctLabelFileName, 5, 0, 1, 1)
         self.grid.addWidget(self.mctEditFileName, 5, 1, 1, 1)
         self.grid.addWidget(self.mctNImages, 5, 2, 1, 1)
-        self.grid.addWidget(self.mctStartButton, 6, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 6, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
-        self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
+        self.grid.addWidget(self.mctStartButton, 8, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 8, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton,8, 2, 1, 1)
+        self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
         
         self.grid.addWidget(self.mctDoZStack, 5, 3, 1, 1)
 
+        self.grid.addWidget(self.autofocusLabel, 6, 0, 1, 1)
+        self.grid.addWidget(self.autofocusRange, 6, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSteps, 6, 2, 1, 1)
+        self.grid.addWidget(self.autofocusPeriod, 6, 3, 1, 1)
+        
+        self.grid.addWidget(self.autofocusSelectionLabel, 7, 0, 1, 1)        
+        self.grid.addWidget(self.autofocusLaser1Checkbox, 7, 1, 1, 1)
+        self.grid.addWidget(self.autofocusLaser2Checkbox, 7, 2, 1, 1)
+        self.grid.addWidget(self.autofocusLED1Checkbox, 7, 3, 1, 1)
         
         self.layer = None
         
         
+    def isAutofocus(self):
+        if self.autofocusLED1Checkbox.isChecked() or self.autofocusLaser1Checkbox.isChecked() or self.autofocusLaser2Checkbox.isChecked():
+            return True
+        else:
+            return False
+        
+    def getAutofocusValues(self):
+        autofocusParams = {}
+        autofocusParams["valueRange"] = self.autofocusRange.text()
+        autofocusParams["valueSteps"] = self.autofocusSteps.text()
+        autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
+        if self.autofocusLED1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'LED'
+        elif self.autofocusLaser1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser1'
+        elif self.autofocusLaser2Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser2'
+        else:
+            autofocusParams["illuMethod"] = False
+        
+        return autofocusParams
+ 
+ 
     def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
         mctLabel  = QtWidgets.QLabel(label)     
         valueRangeMin, valueRangeMax = valueRange

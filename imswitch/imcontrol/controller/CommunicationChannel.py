@@ -83,6 +83,8 @@ class CommunicationChannel(SignalInterface):
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
+    
+    sigAutoFocus =  Signal(int, int) # scanrange and stepsize
 
     sigBroadcast = Signal(str, str, object)
 

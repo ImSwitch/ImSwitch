@@ -223,6 +223,9 @@ class MCTController(LiveUpdatedController):
             self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
             self.MCTThread.start()
 
+    def doAutofocus(self, params):
+        self._logger.info("Autofocusing...")
+        self._commChannel.sigAutoFocus.emit(params["valueRange"], params["valueSteps"])
 
     def takeTimelapseThread(self):
         # this wil run i nthe background
@@ -232,6 +235,14 @@ class MCTController(LiveUpdatedController):
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
         self.LastStackLED = []
+        
+        # want to do autofocus?
+        autofocusParams = self._widget.getAutofocusValues()
+        if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+            self._widget.setNImages("Autofocusing...")
+            self.doAutofocus(autofocusParams)
+            
+
 
         if self.Laser1Value>0:
             self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)

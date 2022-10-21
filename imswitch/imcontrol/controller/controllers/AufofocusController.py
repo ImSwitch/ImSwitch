@@ -5,6 +5,8 @@ import scipy.ndimage as ndi
 from scipy.ndimage.filters import laplace
 import threading
 
+from qtpy import QtCore
+
 from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -14,7 +16,7 @@ gAxis = "Z"
 T_DEBOUNCE = .1
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -38,6 +40,9 @@ class AutofocusController(ImConWidgetController):
         # select stages
         self.stages = self._master.positionersManager[self.positioner]
         #self.__processDataThread = ProcessDataThread(self)
+        
+        # register autofocus controller
+        self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
     def __del__(self):
         self.__processDataThread.quit()
@@ -130,7 +135,6 @@ class AutofocusController(ImConWidgetController):
             allfocuspositions[iz] = positionz
             
             
-
             # display the curve
             self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
 

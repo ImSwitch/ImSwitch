@@ -3,7 +3,6 @@ import time
 import numpy as np
 import pyqtgraph.ptime as ptime
 import scipy.ndimage as ndi
-from lantz import Q_
 from skimage.feature import peak_local_max
 
 from imswitch.imcommon.framework import Thread, Timer
@@ -243,7 +242,6 @@ class FocusCalibThread(Thread):
 
         self.z = focusWidget.z
         self.focusWidget = focusWidget  # mainwidget será FocusLockWidget
-        self.um = Q_(1, 'micrometer')
 
     def run(self):
         self.signalData = []
@@ -252,7 +250,7 @@ class FocusCalibThread(Thread):
         self.end = float(self.focusWidget.CalibToEdit.text())
         self.scan_list = np.round(np.linspace(self.start, self.end, 20), 2)
         for x in self.scan_list:
-            self.z.move_absZ(x * self.um)
+            self.z.move_absZ(x)
             time.sleep(0.5)
             self.focusCalibSignal = \
                 self.focusWidget.processDataThread.focusSignal

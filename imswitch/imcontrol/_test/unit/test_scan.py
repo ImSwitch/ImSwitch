@@ -12,7 +12,8 @@ def test_scan_signals():
                        'axis_step_size': [1, 1, 1],
                        'axis_startpos': [[0], [0], [0]],
                        'sequence_time': 0.005,
-                       'return_time': 0.001}
+                       'return_time': 0.001,
+                       'phase_delay': 40}
     TTLParameters = {'target_device': ['405', '488'],
                      'TTL_start': [[0.0001, 0.004], [0, 0]],
                      'TTL_end': [[0.0015, 0.005], [0, 0]],

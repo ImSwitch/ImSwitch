@@ -3,7 +3,7 @@ import ctypes.util
 import time
 
 import numpy as np
-from lantz import Driver
+from lantz.messagebased import MessageBasedDriver as Driver
 from lantz import Q_
 
 from imswitch.imcommon.model import initLogger

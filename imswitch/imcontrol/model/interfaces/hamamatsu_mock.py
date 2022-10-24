@@ -3,6 +3,7 @@ import ctypes.util
 import time
 
 import numpy as np
+from lantz import Q_
 
 from imswitch.imcommon.model import initLogger
 
@@ -72,6 +73,8 @@ class MockHamamatsu:
         self.mock_data_max_value = np.random.randint(65536)
         self.mock_acquisiton_running = False
         self.mock_start_time = time.time_ns()
+
+        self.s = Q_(1, 's')
 
         # Open the camera.
         # self.camera_handle = ctypes.c_void_p(0)

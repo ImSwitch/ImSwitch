@@ -82,8 +82,8 @@ class BetaScanDesigner(ScanDesigner):
         for s in range(fast_axis_positions):
             start = s * sequenceSamples
             end = s * sequenceSamples + sequenceSamples
-            smooth = int(np.ceil(0.005 * sampleRate))
-            settling = int(np.ceil(0.002 * sampleRate))
+            smooth = int(np.ceil(0.001 * sampleRate))
+            settling = int(np.ceil(0.001 * sampleRate))
             rampSignal[start: end] = rampValues[s]
             if s is not fast_axis_positions - 1:
                 self._logger.debug(s)

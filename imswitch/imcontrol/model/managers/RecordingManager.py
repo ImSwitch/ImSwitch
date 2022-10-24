@@ -125,7 +125,6 @@ class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
     ZARR = 3
-    RAM = 4
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
@@ -179,7 +178,7 @@ class RecordingManager(SignalInterface):
         return self.__detectorsManager
 
     def startRecording(self, detectorNames, recMode, savename, saveMode, attrs,
-                       saveFormat=SaveFormat.RAM, singleMultiDetectorFile=False, singleLapseFile=False,
+                       saveFormat=SaveFormat.HDF5, singleMultiDetectorFile=False, singleLapseFile=False,
                        recFrames=None, recTime=None):
         """ Starts a recording with the specified detectors, recording mode,
         file name prefix and attributes to save to the recording per detector.

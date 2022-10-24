@@ -1,4 +1,4 @@
-from imswitch.imcommon.framework import SignalInterface
+from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import VFileCollection
 
 
@@ -7,6 +7,8 @@ class ModuleCommunicationChannel(SignalInterface):
     ModuleCommunicationChannel is a class that handles the communication
     between modules.
     """
+    sigRunScript = Signal(str)
+    sigExecutionFinished = Signal()
 
     @property
     def memoryRecordings(self):

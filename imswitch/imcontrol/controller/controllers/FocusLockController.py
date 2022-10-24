@@ -64,7 +64,7 @@ class FocusLockController(ImConWidgetController):
 
         self.timer = Timer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(self.focusTime)
+        self.timer.start(int(self.focusTime))
         self.startTime = ptime.time()
 
     def __del__(self):

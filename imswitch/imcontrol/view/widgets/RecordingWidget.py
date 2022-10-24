@@ -96,7 +96,7 @@ class RecordingWidget(Widget):
 
         self.saveFormatLabel = QtWidgets.QLabel('<strong>File format:</strong>')
         self.saveFormatList = QtWidgets.QComboBox()
-        self.saveFormatList.addItems(['HDF5', 'TIFF', "TIFF_Single", "MP4"])
+        self.saveFormatList.addItems(['HDF5', 'TIFF', 'ZARR'])
 
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
         self.snapSaveModeList = QtWidgets.QComboBox()

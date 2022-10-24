@@ -31,6 +31,9 @@ class ImScrMainController(MainController):
             ImScrMainViewController, self.__mainView
         )
 
+        # Connect signals from ModuleCommunicationChannel
+        self.__moduleCommChannel.sigRunScript.connect(self.__commChannel.sigRunScript)
+
     def _createScriptScope(self, moduleCommChannel, multiModuleWindowController,
                            moduleMainControllers):
         """ Generates a scope of objects that are intended to be accessible by scripts. """

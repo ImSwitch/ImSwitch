@@ -15,6 +15,7 @@ from scipy.optimize import least_squares
 import scipy.ndimage as ndi
 import pyqtgraph as pg
 import numpy as np
+from tkinter.filedialog import askopenfilename
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools

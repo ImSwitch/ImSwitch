@@ -10,6 +10,7 @@ def test_scan_signals():
     stageParameters = {'target_device': ['X', 'Y', 'Z'],
                        'axis_length': [5, 5, 5],
                        'axis_step_size': [1, 1, 1],
+                       'axis_centerpos': [0, 0, 0],
                        'axis_startpos': [[0], [0], [0]],
                        'sequence_time': 0.005,
                        'return_time': 0.001,

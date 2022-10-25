@@ -7,8 +7,7 @@ import zarr
 import numpy as np
 from ome_zarr.io import parse_url
 from ome_zarr.writer import write_image
-from datetime import datetime, date
-import json
+from time import perf_counter
 import tifffile as tiff
 
 
@@ -67,14 +66,14 @@ class WatcherFrameController(ImRecWidgetController):
                 dataObjs.append(dataObj)
                 self.attrs = dataObj.attrs
             self.execution = True
-            self.t0 = datetime.now()
+            self.t0 = perf_counter()
             self._commChannel.sigReconstruct.emit(dataObjs, True)
 
     def executionFinished(self, image):
         if self.execution:
             self.execution = False
             self.saveImage(image)
-            diff = datetime.now() - self.t0
+            diff = perf_counter() - self.t0
             self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
             self._widget.updateFileList()
             self.runNextFile()

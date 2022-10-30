@@ -17,8 +17,8 @@ from ..basecontrollers import LiveUpdatedController
 
 #import NanoImagingPack as nip
 
-class MCTController(LiveUpdatedController):
-    """Linked to MCTWidget."""
+class HistoScanController(LiveUpdatedController):
+    """Linked to HistoScanWidget."""
 
     sigImageReceived = Signal()
 
@@ -26,7 +26,7 @@ class MCTController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
 
-        # mct parameters
+        # HistoScan parameters
         self.nImages = 0
         self.timePeriod = 60 # seconds
         self.zStackEnabled = False
@@ -42,7 +42,7 @@ class MCTController(LiveUpdatedController):
         self.Laser1Value = 0
         self.Laser2Value = 0
         self.LEDValue = 0
-        self.MCTFilename = ""
+        self.HistoScanFilename = ""
 
         self.updateRate=2
 
@@ -50,32 +50,31 @@ class MCTController(LiveUpdatedController):
 
         self.tUnshake = .1
 
-        if self._setupInfo.mct is None:
-            self._widget.replaceWithError('MCT is not configured in your setup file.')
+        if self._setupInfo.HistoScan is None:
+            self._widget.replaceWithError('HistoScan is not configured in your setup file.')
             return
 
-        # Connect MCTWidget signals
-        self._widget.mctStartButton.clicked.connect(self.startMCT)
-        self._widget.mctStopButton.clicked.connect(self.stopMCT)
-        self._widget.mctShowLastButton.clicked.connect(self.showLast)
-        self._widget.mctInitFilterButton.clicked.connect(self.initFilter)
-
-        self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
-        self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
+        # Connect HistoScanWidget signals
+        self._widget.HistoScanStartButton.clicked.connect(self.startHistoScan)
+        self._widget.HistoScanStopButton.clicked.connect(self.stopHistoScan)
+        self._widget.HistoScanShowLastButton.clicked.connect(self.showLast)
+        
+        self._widget.HistoScanMoveUpButton.clicked.connect(self.moveUp)
+        self._widget.HistoScanMoveDownButton.clicked.connect(self.moveDown)
+        self._widget.HistoScanMoveLeftButton.clicked.connect(self.moveLeft)
+        self._widget.HistoScanMoveRightButton.clicked.connect(self.moveRight)
+        
+        self._widget.HistoCamLEDButton.clicked.connect(self.toggleLED)
+        self._widget.HistoSnapPreviewButton.clicked.connect(self.snapPreview)
+        
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
-
+        
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        # select lasers
-        allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self.lasers = []
-        for iDevice in allLaserNames:
-            if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
-                self.lasers.append(self._master.lasersManager[iDevice])
-
         self.leds = []
+        allLaserNames = self._master.lasersManager.getAllDeviceNames()
         for iDevice in allLaserNames:
             if iDevice.find("LED")>=0:
                 self.leds.append(self._master.lasersManager[iDevice])
@@ -88,31 +87,44 @@ class MCTController(LiveUpdatedController):
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
-        self.isMCTrunning = False
-        self._widget.mctShowLastButton.setEnabled(False)
+        self.isHistoScanrunning = False
+        self._widget.HistoScanShowLastButton.setEnabled(False)
         
         # setup gui limits
-        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
-        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
-        # setup gui text
-        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
-        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
-        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+        # get the camera object
+        self._camera = self._master.detectorsManager["PreviewCamera"]
+        
+    
+    
+        # Steps for the Histoscanner 
+        
+        # 0. initailize pixelsize (low-res and highres) and stage stepsize 
+        
+        # 1. Move to initial position on sample
+        
+        # 2. Take low-res, arge FOv image
+        
+        # 3. Annotate Sample region in Canvas
+        
+        # 4. Compute coordinates for high-res image / tiles 
+        
+        # 5. move to first tile and take image
+        
+        # 6. iterate over all tiles and take images
+        
+        # 7. visualize images/current position in canvas
+        
+        
+        
 
-
-    def initFilter(self):
-        self._widget.setNImages("Initializing filter position...")
-        if len(self.lasers)>0:
-            self.lasers[0].initFilter()
-
-    def startMCT(self):
+    def startHistoScan(self):
         # initilaze setup
         # this is not a thread!
-        self._widget.mctStartButton.setEnabled(False)
+        self._widget.HistoScanStartButton.setEnabled(False)
 
-        if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
+        if not self.isHistoScanrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
             self.switchOffIllumination()
@@ -122,8 +134,8 @@ class MCTController(LiveUpdatedController):
             # get parameters from GUI
             self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
             self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
-            self.MCTFilename = self._widget.getFilename()
-            self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            self.HistoScanFilename = self._widget.getFilename()
+            self.HistoScanDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
             # store old values for later
             if len(self.lasers)>0:
@@ -134,7 +146,7 @@ class MCTController(LiveUpdatedController):
                 self.LEDValueOld = self.leds[0].power
 
             # reserve space for the stack
-            self._widget.mctShowLastButton.setEnabled(False)
+            self._widget.HistoScanShowLastButton.setEnabled(False)
 
             # FIXME: This is a hack to make sure the image is displayed correctly
             # we start it first and then in a loop 
@@ -151,23 +163,23 @@ class MCTController(LiveUpdatedController):
             '''
             
         else:
-            self.isMCTrunning = False
-            self._widget.mctStartButton.setEnabled(True)
+            self.isHistoScanrunning = False
+            self._widget.HistoScanStartButton.setEnabled(True)
 
     
-    def stopMCT(self):
-        self.isMCTrunning = False
+    def stopHistoScan(self):
+        self.isHistoScanrunning = False
 
         self._widget.setNImages("Stopping timelapse...")
 
-        self._widget.mctStartButton.setEnabled(True)
+        self._widget.HistoScanStartButton.setEnabled(True)
         try:
             del self.timer
         except:
             pass
 
         try:
-            del self.MCTThread
+            del self.HistoScanThread
         except:
             pass
 
@@ -204,24 +216,24 @@ class MCTController(LiveUpdatedController):
 
     def takeTimelapse(self):
         # this is called periodically by the timer
-        if not self.isMCTrunning:
+        if not self.isHistoScanrunning:
             try:
                 # make sure there is no exisiting thrad
-                del self.MCTThread
+                del self.HistoScanThread
             except:
                 pass
 
             # stop measurement once done
             if self.nDuration <= self.nImages:
-                self.isMCTrunning = False
-                self._widget.mctStartButton.setEnabled(True)
+                self.isHistoScanrunning = False
+                self._widget.HistoScanStartButton.setEnabled(True)
                 self.timer.stop()
                 return
 
             # this should decouple the hardware-related actions from the GUI
-            self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
-            self.MCTThread.start()
+            self.isHistoScanrunning = True
+            self.HistoScanThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
+            self.HistoScanThread.start()
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
@@ -255,13 +267,13 @@ class MCTController(LiveUpdatedController):
         self.nImages += 1
         self._widget.setNImages(self.nImages)
 
-        self.isMCTrunning = False
+        self.isHistoScanrunning = False
 
         self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-        self._widget.mctShowLastButton.setEnabled(True)
+        self._widget.HistoScanShowLastButton.setEnabled(True)
 
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
@@ -284,7 +296,7 @@ class MCTController(LiveUpdatedController):
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
+                filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
                 
                 # turn on illuminationn
                 if illuMode == "Laser1" and len(self.lasers)>0:
@@ -335,7 +347,7 @@ class MCTController(LiveUpdatedController):
                         self.leds[0].setEnabled(True)
                 except:
                     pass
-            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
+            filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
             lastFrame = self.detector.getLatestFrame()
             self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)
@@ -362,19 +374,19 @@ class MCTController(LiveUpdatedController):
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
-        self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
+        self._widget.HistoScanLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
         if len(self.lasers)>0:
             self.lasers[0].setValue(self.Laser1Value)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
-        self._widget.mctLabelLaser2.setText('Intensity (Laser 2):'+str(value))
+        self._widget.HistoScanLabelLaser2.setText('Intensity (Laser 2):'+str(value))
         if len(self.lasers)>1:
             self.lasers[1].setValue(self.Laser2Value)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
-        self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
+        self._widget.HistoScanLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds):
             self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
@@ -395,6 +407,37 @@ class MCTController(LiveUpdatedController):
         return newPath
 
 
+    def moveUp(self):
+        self._logger.info("Moving up...")
+        
+    def moveDown(self):
+        self._logger.info("Moving down...")
+
+    def moveLeft(self):
+        self._logger.info("Moving left...")
+
+    def moveRight(self):
+        self._logger.info("Moving right...")
+        
+    def snapPreview(self):
+        self._logger.info("Snap preview...")
+        self.previewImage = self._camera.getLatestFrame()
+        self._widget.canvas.setImage(self.previewImage)
+        
+    def toggleLED(self):
+        if self._widget.HistoCamLEDButton.isChecked():
+            self._logger.info("LED on")
+            self._camera.setCameraLED(255)
+        else:
+            self._logger.info("LED off")
+            self._camera.setCameraLED(0)
+            
+    def setLED(self, value):
+        self._logger.info("Setting LED...")
+        self._camera.setLED(value)
+
+    
+    
 class mTimer(object):
     def __init__(self, waittime, mFunc) -> None:
         self.waittime = waittime

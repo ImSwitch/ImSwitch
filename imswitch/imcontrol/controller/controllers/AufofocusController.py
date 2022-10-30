@@ -63,7 +63,7 @@ class AutofocusController(ImConWidgetController):
 
     @APIExport(runOnUIThread=True)
     # Update focus lock
-    def autoFocus(self, rangez=100, resolutionz=10):
+    def autoFocus(self, rangez=100, resolutionz=10, isRunInBackground=True):
 
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
@@ -79,10 +79,12 @@ class AutofocusController(ImConWidgetController):
                 pass
 
             # this should decouple the hardware-related actions from the GUI - but it doesn't 
-            self.isAutofocusRunning = True
-            self.AutofocusThread = threading.Thread(target=self.performAutofocusThread, args=(rangez,resolutionz), daemon=True)
-            self.AutofocusThread.start()
-            
+            if isRunInBackground:
+                self.isAutofocusRunning = True
+                self.AutofocusThread = threading.Thread(target=self.performAutofocusThread, args=(rangez,resolutionz), daemon=True)
+                self.AutofocusThread.start()
+            else:
+                self.performAutofocusThread(rangez,resolutionz)
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         #self.focusPointSignal = self.__processDataThread.update(rangez,resolutionz)
 

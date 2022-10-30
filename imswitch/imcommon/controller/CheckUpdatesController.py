@@ -77,6 +77,7 @@ class CheckUpdatesThread(Thread):
                     def dlImSwitch(downloadURL, fileName):
                         resultDL = urllib.request.urlretrieve(downloadURL, fileName)
 
+                    # download the new version in a separate thread
                     ImSwitchExeFilename = "ImSwitch.exe"
                     mThread =  threading.Thread(target=dlImSwitch, args=(downloadURL, ImSwitchExeFilename+"*"))
                     mThread.start()
@@ -86,7 +87,7 @@ class CheckUpdatesThread(Thread):
                     if os.path.isfile(ImSwitchExeFilename):                    
                         self.__logger.debug("Renaming old ImSwitch.exe file")
                         tz = datetime.timezone.utc
-                        ft = "%Y-%m-%dT%H:%M:%S%z"
+                        ft = "%Y-%m-%dT%H-%M-%S"
                         tt = datetime.datetime.now(tz=tz).strftime(ft)
                         os.rename(ImSwitchExeFilename, ImSwitchExeFilename+"_BAK_"+tt)
 

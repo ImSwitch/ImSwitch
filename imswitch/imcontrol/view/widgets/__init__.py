@@ -11,6 +11,7 @@ from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
+from .RotatorWidget import RotatorWidget
 from .SLMWidget import SLMWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget

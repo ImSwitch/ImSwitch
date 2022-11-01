@@ -2,7 +2,7 @@ from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     #DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, StandaMotorManager
 )
 
 
@@ -38,6 +38,7 @@ class MasterController:
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+        self.standaMotorManager = StandaMotorManager(self.__setupInfo.rotator)
 
         # Connect signals
         cc = self.__commChannel

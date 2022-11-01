@@ -11,6 +11,7 @@ from .ImageController import ImageController
 from .LaserController import LaserController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
+from .RotatorController import RotatorController
 from .SLMController import SLMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController

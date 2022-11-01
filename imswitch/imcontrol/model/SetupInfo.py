@@ -205,6 +205,21 @@ class EtSTEDInfo:
 
 
 @dataclass(frozen=True)
+class RotatorInfo:
+    motorListIndex: int
+    """ Index of the motorized mount to use. """
+
+    ximcLibLocation: str
+    """ Location of the local ximc library, used for communication with device. """
+
+    stepsPerTurn: int
+    """ Number of steps per 360 deg turn. """
+
+    microstepsPerStep: int
+    """ Number of microsteps per step. """
+
+
+@dataclass(frozen=True)
 class NidaqInfo:
     timerCounterChannel: Optional[Union[str, int]] = None
     """ Output for Counter for timing purposes. If an integer is specified, it
@@ -266,7 +281,7 @@ class SetupInfo:
     functionality. """
     
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
-    """ Autofocus  settings. Required to be defined to use autofocus 
+    """ Autofocus settings. Required to be defined to use autofocus 
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
@@ -274,6 +289,9 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
+
+    rotator: Optional[RotatorInfo] = field(default_factory=lambda: None)
+    """ Standa motorized rotator mount settings. Required to be defined to use rotator functionality. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

@@ -1,15 +1,4 @@
-from ctypes import *
-import time
-import os
-import sys
-import platform
-import tempfile
-import re
-
-if sys.version_info >= (3,0):
-    import urllib.parse
-
-from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
 
 

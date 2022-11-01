@@ -52,25 +52,27 @@ class StandaMotor():
             pyximc.lib.close_device(byref(cast(self._device_id, POINTER(c_int))))
 
     def get_pos(self):
-        self.wait_for_stop()
+        self.wait_for_stop(interval=10)
         x_pos = pyximc.get_position_t()
         _ = pyximc.lib.get_position(self._device_id, byref(x_pos))
-        return [x_pos.Position, x_pos.uPosition]
+        pos_deg = self.dist_translate_inv(x_pos.Position, x_pos.uPosition)
+        return pos_deg
 
     def moverel(self, d_move_deg):
-        self.__logger.debug(f'Move relative {d_move_deg}')
         d_move, d_move_u = self.dist_translate(d_move_deg)
-        self.__logger.debug(f'Move relative {d_move}, {d_move_u}')
+        #self.__logger.debug(f'Move relative {d_move_deg} deg / {d_move} st, {d_move_u} ust')
         pyximc.lib.command_movr(self._device_id, d_move, d_move_u)
 
     def moveabs(self, pos_move):
-        self.__logger.debug(f'Position absolute {pos_move}')
         d_move, d_move_u = self.dist_translate(pos_move)
-        self.__logger.debug(f'Position absolute {d_move}, {d_move_u}')
+        #self.__logger.debug(f'Position absolute {pos_move} deg / {d_move} st, {d_move_u} ust')
         pyximc.lib.command_move(self._device_id, d_move, d_move_u)
 
     def wait_for_stop(self, interval=100):
         pyximc.lib.command_wait_for_stop(self._device_id, interval)
+
+    def set_zero_pos(self):
+        pyximc.lib.command_zero(self._device_id)
 
     def dist_translate(self, d_deg):
         d = d_deg/360 * self._steps_per_turn
@@ -83,6 +85,10 @@ class StandaMotor():
         else:
             d_u = 0
         return int(d), int(d_u)
+
+    def dist_translate_inv(self, steps, usteps):
+        d_deg = steps/self._steps_per_turn*360 + usteps/self._microsteps_per_step*360/self._steps_per_turn
+        return d_deg
 
     def test_info(self):
         info = {}
@@ -138,7 +144,7 @@ class MockStandaMotor():
         pass
 
     def get_pos(self):
-        return [0,0]
+        return 0
 
     def moverel(self, d_move_deg):
         pass

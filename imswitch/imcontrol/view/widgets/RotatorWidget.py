@@ -10,6 +10,7 @@ class RotatorWidget(Widget):
     sigMoveForwRelClicked = QtCore.Signal()
     sigMoveBackRelClicked = QtCore.Signal()
     sigMoveAbsClicked = QtCore.Signal()
+    sigSetZeroClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,6 +30,7 @@ class RotatorWidget(Widget):
         self.pars['BackButton'] = guitools.BetterPushButton('-')
         self.pars['RelStepEdit'] = QtWidgets.QLineEdit('10')
         self.pars['RelStepUnit'] = QtWidgets.QLabel(' deg')
+        self.pars['SetZeroButton'] = guitools.BetterPushButton('Set zero')
         self.pars['AbsButton'] = guitools.BetterPushButton('Abs')
         self.pars['AbsPosEdit'] = QtWidgets.QLineEdit('0')
         self.pars['AbsPosUnit'] = QtWidgets.QLabel(' deg')
@@ -40,6 +42,7 @@ class RotatorWidget(Widget):
         self.grid.addWidget(QtWidgets.QLabel('Step'), 0, 4)
         self.grid.addWidget(self.pars['RelStepEdit'], 0, 5)
         self.grid.addWidget(self.pars['RelStepUnit'], 0, 6)
+        self.grid.addWidget(self.pars['SetZeroButton'], 1, 2)
         self.grid.addWidget(self.pars['AbsButton'], 1, 3)
         self.grid.addWidget(QtWidgets.QLabel('Pos'), 1, 4)
         self.grid.addWidget(self.pars['AbsPosEdit'], 1, 5)
@@ -49,6 +52,7 @@ class RotatorWidget(Widget):
         self.pars['ForwButton'].clicked.connect(self.sigMoveForwRelClicked.emit)
         self.pars['BackButton'].clicked.connect(self.sigMoveBackRelClicked.emit)
         self.pars['AbsButton'].clicked.connect(self.sigMoveAbsClicked.emit)
+        self.pars['SetZeroButton'].clicked.connect(self.sigSetZeroClicked.emit)
 
     def getRelStepSize(self):
         """ Returns the step size of the rotation mount, in degrees. """

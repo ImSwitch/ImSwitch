@@ -27,9 +27,9 @@ class StandaMotorManager(SignalInterface):
         self._lib_loc = rotatorInfo.ximcLibLocation
         self._steps_per_turn = rotatorInfo.stepsPerTurn
         self._microsteps_per_step = rotatorInfo.microstepsPerStep
-        self._position = 0
 
         self._motor = self._getMotorObj(self._device_id, self._lib_loc, self._steps_per_turn, self._microsteps_per_step)
+        self._position = self._motor.get_pos()
         #self.get_info()
 
     def get_info(self):
@@ -42,18 +42,16 @@ class StandaMotorManager(SignalInterface):
         return self._position
 
     def move_rel(self, move_dist):
-        self.__logger.debug(f'Move relative {move_dist}')
-        self._position += move_dist
         self._motor.moverel(move_dist)
-        [pos, upos] = self._motor.get_pos()
-        self.__logger.debug(f'Current position {pos}, {upos}')
+        self._position = self._motor.get_pos()
 
     def move_abs(self, move_pos):
-        self.__logger.debug(f'Position absolute {move_pos}')
-        self._position = move_pos
         self._motor.moveabs(move_pos)
-        [pos, upos] = self._motor.get_pos()
-        self.__logger.debug(f'Current position {pos}, {upos}')
+        self._position = self._motor.get_pos()
+
+    def set_zero_pos(self):
+        self._motor.set_zero_pos()
+        self._position = self._motor.get_pos()
 
     def startMovement(self):
         self._motor.startmove()

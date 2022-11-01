@@ -20,6 +20,10 @@ class RotatorController(ImConWidgetController):
         self._widget.sigMoveForwRelClicked.connect(lambda: self.moveRel(dir=1))
         self._widget.sigMoveBackRelClicked.connect(lambda: self.moveRel(dir=-1))
         self._widget.sigMoveAbsClicked.connect(self.moveAbs)
+        self._widget.sigSetZeroClicked.connect(self.setZeroPos)
+
+        # Update current position in GUI
+        self.updatePosition()
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -38,6 +42,10 @@ class RotatorController(ImConWidgetController):
     def moveAbs(self):
         pos = self._widget.getAbsPos()
         self._master.standaMotorManager.move_abs(pos)
+        self.updatePosition()
+
+    def setZeroPos(self):
+        self._master.standaMotorManager.set_zero_pos()
         self.updatePosition()
 
     def updatePosition(self):

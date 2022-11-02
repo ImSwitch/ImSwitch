@@ -72,6 +72,13 @@ class HistoScanWidget(NapariHybridWidget):
         self.HistoCamLEDButton = guitools.BetterPushButton('Camera LED')
         self.HistoCamLEDButton.setCheckable(True)
                
+        # autofocus
+        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')        
+        self.autofocusRange = QtWidgets.QLineEdit('200')
+        self.autofocusSteps = QtWidgets.QLineEdit('20')
+        self.autofocusPeriod = QtWidgets.QLineEdit('10')
+        self.autofocusCheckbox = QtWidgets.QCheckBox('Autofocus')
+        self.autofocusCheckbox.setCheckable(True)
         
         # LED
         valueDecimalsLED = 1
@@ -125,39 +132,54 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
+        #
         self.grid.addWidget(self.HistoScanMoveLeftButton, 0, 0, 1, 1)
         self.grid.addWidget(self.HistoScanMoveRightButton, 0, 1, 1, 1)
         self.grid.addWidget(self.HistoScanMoveUpButton, 0, 2, 1, 1)
         self.grid.addWidget(self.HistoScanMoveDownButton, 0, 3, 1, 1)
         
+        #
         self.grid.addWidget(self.HistoScanLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.HistoScanValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.HistoScanValueZmax, 1, 2, 1, 1)
         self.grid.addWidget(self.HistoScanValueZsteps, 1, 3, 1, 1)
         
+        #
         self.grid.addWidget(self.canvas, 2, 0, 3, 3)
         
+        #
         self.grid.addWidget(self.HistoCamLEDButton, 3, 0, 1, 1)
         self.grid.addWidget(self.HistoSnapPreviewButton, 3, 1, 1, 1)
         self.grid.addWidget(self.HistoUndoButton, 3, 2, 1, 1)
         self.grid.addWidget(self.HistoFillHolesButton, 3, 3, 1, 1)
         
+        #
         self.grid.addWidget(self.HistoScanLabelLED, 4, 0, 1, 1)
         self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
         
+        #
         self.grid.addWidget(self.HistoScanLabelFileName, 5, 0, 1, 1)
         self.grid.addWidget(self.HistoScanEditFileName, 5, 1, 1, 1)
         self.grid.addWidget(self.HistoScanLabelInfo, 5, 2, 1, 1)
-        self.grid.addWidget(self.HistoScanStartButton, 8, 0, 1, 1)
-        self.grid.addWidget(self.HistoScanStopButton, 8, 1, 1, 1)
-        self.grid.addWidget(self.HistoScanShowLastButton,8, 2, 1, 1)
         self.grid.addWidget(self.HistoScanDoZStack, 5, 3, 1, 1)
 
+        #
+        self.grid.addWidget(self.autofocusLabel, 6, 0, 1, 1)
+        self.grid.addWidget(self.autofocusRange, 6, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSteps, 6, 2, 1, 1)
+        self.grid.addWidget(self.autofocusPeriod, 6, 3, 1, 1)
+        
+        # 
+        self.grid.addWidget(self.HistoScanStartButton, 7, 0, 1, 1)
+        self.grid.addWidget(self.HistoScanStopButton, 7, 1, 1, 1)
+        self.grid.addWidget(self.HistoScanShowLastButton, 7, 2, 1, 1)
+        self.grid.addWidget(self.autofocusCheckbox, 7, 3, 1, 1)
+        
         self.layer = None
         
         
     def isAutofocus(self):
-        if self.autofocusLED1Checkbox.isChecked() or self.autofocusLaser1Checkbox.isChecked() or self.autofocusLaser2Checkbox.isChecked():
+        if self.autofocusCheckbox.isChecked():
             return True
         else:
             return False
@@ -167,15 +189,7 @@ class HistoScanWidget(NapariHybridWidget):
         autofocusParams["valueRange"] = self.autofocusRange.text()
         autofocusParams["valueSteps"] = self.autofocusSteps.text()
         autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
-        if self.autofocusLED1Checkbox.isChecked():
-            autofocusParams["illuMethod"] = 'LED'
-        elif self.autofocusLaser1Checkbox.isChecked():
-            autofocusParams["illuMethod"] = 'Laser1'
-        elif self.autofocusLaser2Checkbox.isChecked():
-            autofocusParams["illuMethod"] = 'Laser2'
-        else:
-            autofocusParams["illuMethod"] = False
-        
+        autofocusParams["illuMethod"] = 'LED'
         return autofocusParams
  
  
@@ -298,7 +312,8 @@ class Canvas(QtWidgets.QLabel):
         selectionOverlay = cv2.filter2D(selectionOverlay, -1, kernel)>1
         
         # filling holes in selection
-        kernelClosing =  np.ones((20,20)) 
+        kernelSize = 40
+        kernelClosing =  np.ones((kernelSize,kernelSize)) 
         selectionOverlay = cv2.morphologyEx(np.uint8(selectionOverlay), cv2.MORPH_CLOSE, kernelClosing)
         
         # overlay selection

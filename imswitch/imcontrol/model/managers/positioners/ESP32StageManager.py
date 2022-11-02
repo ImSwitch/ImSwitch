@@ -117,21 +117,37 @@ class ESP32StageManager(PositionerManager):
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
         
-    def move(self, value=0, axis="X", is_absolute=False, is_blocking=False):
+    def move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=False):
+        if speed is None:
+            if axis == "X": speed = self.speed["X"]
+            if axis == "Y": speed = self.speed["Y"]
+            if axis == "Z": speed = self.speed["Z"]
+            if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
+            if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
+            
         if axis == 'X':
-            self._motor.move_x(value, self.speed["X"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
-            self._position[axis] = self._position[axis] + value
+            self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            if is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'Y':
-            self._motor.move_y(value, self.speed["Y"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
-            self._position[axis] = self._position[axis] + value
+            self._motor.move_y(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            if is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'Z':
-            self._motor.move_z(value, self.speed["Z"], is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
-            self._position[axis] = self._position[axis] + value
+            self._motor.move_z(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            if is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
+        elif axis == 'XY':
+            self._motor.move_xy(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            for i, iaxis in enumerate(("X", "Y")):
+                if is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
+                else: self._position[iaxis] = value[i]
         elif axis == 'XYZ':
-            self._motor.move_xyz(value, self.speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
-            self._position["X"] = self._position["X"] + value[0]
-            self._position["Y"] = self._position["Y"] + value[1]
-            self._position["Z"] = self._position["Z"] + value[2]
+            self._motor.move_xyz(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking)
+            for i, iaxis in enumerate(("X", "Y")):
+                if is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
+                else: self._position[iaxis] = value[i]
+
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             return

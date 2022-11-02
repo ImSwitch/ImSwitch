@@ -35,20 +35,20 @@ class HistoScanController(LiveUpdatedController):
         self.zStackStep = 0
 
         # store old values
-        self.Laser1ValueOld = 0
-        self.Laser2ValueOld = 0
         self.LEDValueOld = 0
-
-        self.Laser1Value = 0
-        self.Laser2Value = 0
         self.LEDValue = 0
+        
+        # stage-related variables
+        self.speed = 10000
+        self.positionMoveManual = 1000
+
         self.HistoScanFilename = ""
 
         self.updateRate=2
-
         self.pixelsizeZ=10
-
         self.tUnshake = .1
+        
+        
         
         # physical coordinates (temporarily)
         self.stepsizeX = 1
@@ -95,16 +95,12 @@ class HistoScanController(LiveUpdatedController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
+        # select illumination sources
         self.leds = []
-        allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        for iDevice in allLaserNames:
+        allIlluNames = self._master.lasersManager.getAllDeviceNames()
+        for iDevice in allIlluNames:
             if iDevice.find("LED")>=0:
                 self.leds.append(self._master.lasersManager[iDevice])
-
-        if len(self._master.LEDMatrixsManager.getAllDeviceNames())>0:
-            self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
-        else:
-            self.illu = []
 
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -163,16 +159,6 @@ class HistoScanController(LiveUpdatedController):
 
     def showLast(self):
         try:
-            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsizeZ=self.pixelsizeZ)
-        except  Exception as e:
-            self._logger.error(e)
-
-        try:
-            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red",pixelsizeZ=self.pixelsizeZ)
-        except Exception as e:
-            self._logger.error(e)
-
-        try:
             self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsizeZ=self.pixelsizeZ)
         except  Exception as e:
             self._logger.error(e)
@@ -217,17 +203,19 @@ class HistoScanController(LiveUpdatedController):
         # compute cordinates of the miroscope stage and export list of coordinates
         
         # 4. Compute coordinates for high-res image / tiles 
-        cordinateList = np.array(np.where(scanRegionMicroscsope==1)).T*(self.camPixNumX*self.camPixelsize,self.camPixNumY*self.camPixelsize) # each row is one FOV
+        coordinateList = np.array(np.where(scanRegionMicroscsope==1)).T*(self.camPixNumX*self.camPixelsize,self.camPixNumY*self.camPixelsize) # each row is one FOV
         
+        if len(coordinateList) <= 0:
+            self._logger.debug("No selection was made..")
+            self._widget.HistoScanStartButton.setEnabled(True)
+            self._widget.setInformationLabel("No selection was made..")
+            return
 
+        # 6. TODO: Sort list for faster acquisition
         
-        # 6. iterate over all tiles and take images
-        
-        # 7. visualize images/current position in canvas
-
         # this should decouple the hardware-related actions from the GUI
         self.isHistoScanrunning = True
-        self.HistoScanThread = threading.Thread(target=self.doScanThread, args=(cordinateList), daemon=True)
+        self.HistoScanThread = threading.Thread(target=self.doScanThread, args=(coordinateList,), daemon=True)
         self.HistoScanThread.start()
 
     def doAutofocus(self, params):
@@ -235,60 +223,44 @@ class HistoScanController(LiveUpdatedController):
         isRunInBackground = False
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"], isRunInBackground))
 
-    def doScanThread(self, cordinateList):
-        
-        # 5. move to first tile and take image
-        self._widget.setInformationLabel("Moving to first tile: " + str(cordinateList[0])+ " µm ")
-        self.stages.move(value=cordinateList[0,0], axis="X", is_absolute=True, is_blocking=True)
-        self.stages.move(value=cordinateList[0,1], axis="Y", is_absolute=True, is_blocking=True)
-        
-        for i in range(len(cordinateList)):
+    def doScanThread(self, coordinateList):
+        # store initial stage position
+        initialPosition = (self.stages.get_abs(axis=1),self.stages.get_abs(axis=2))
+
+        # reserve and free space for displayed stacks
+        self.LastStackLED = []
             
-            coordX = cordinateList[i,0]
-            coordY = cordinateList[i,1]
-            self._widget.setInformationLabel("Moving to : " + (coordX,coordY)+ " µm ")
-            
-            self.stages.move(value=coordX, axis="X", is_absolute=True, is_blocking=True)
-            self.stages.move(value=coordY, axis="Y", is_absolute=True, is_blocking=True)
-        
-        
-            # this wil run i nthe background
-            self._logger.debug("Take image")
-            zstackParams = self._widget.getZStackValues()
-            # reserve and free space for displayed stacks
-            self.LastStackLaser1 = []
-            self.LastStackLaser2 = []
-            self.LastStackLED = []
+        for iPos in range(len(coordinateList)):
+            # move to location
+            self._widget.setInformationLabel("Moving to : " + str(coordinateList[iPos,:]) + " µm ")
+            self.stages.move(value=coordinateList[iPos,:], axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True)
+            #self.stages.move(value=coordinateList[iPos,0], axis="X", speed=(self.speed), is_absolute=True, is_blocking=True)
+            #self.stages.move(value=coordinateList[iPos,1], axis="Y", speed=(self.speed), is_absolute=True, is_blocking=True)
             
             # want to do autofocus?
             autofocusParams = self._widget.getAutofocusValues()
             if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
                 self._widget.setInformationLabel("Autofocusing...")
                 self.doAutofocus(autofocusParams)
-                
+            
+            # turn on illumination # TODO: ensure it's the right light source!    
+            zstackParams = self._widget.getZStackValues()
+            self._logger.debug("Take image")
+            self.takeImageIlluStack(xycoords = coordinateList[iPos,:], intensity=self.LEDValue, zstackParams=zstackParams)
+
+        # move stage back to origine
+        self.stages.move(value=initialPosition, axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True)
+        
+        # done with scan
+        self._widget.setInformationLabel("Done")
+        self._widget.HistoScanStartButton.setEnabled(True)
+        self.isHistoScanrunning = False
+        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+        self._widget.HistoScanShowLastButton.setEnabled(True)
 
 
-            if self.Laser1Value>0:
-                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
-            if self.Laser2Value>0:
-                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
-            if self.LEDValue>0:
-                self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
-
-            self.nImages += 1
-            self._widget.setInformationLabel(self.nImages)
-
-            self.isHistoScanrunning = False
-
-            self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-            self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-            self.LastStackLEDArrayLast = np.array(self.LastStackLED)
-
-            self._widget.HistoScanShowLastButton.setEnabled(True)
-
-
-    def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
-        self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
+    def takeImageIlluStack(self, xycoords, intensity, zstackParams=None):
+        self._logger.debug("Take image: " + str(xycoords) + " - " + str(intensity))
         fileExtension = 'tif'
 
         # sync with camera frame
@@ -307,100 +279,45 @@ class HistoScanController(LiveUpdatedController):
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
+                filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_X{xycoords[0]}_Y{xycoords[1]}_Z_{stepsCounter}', extension=fileExtension)
                 
                 # turn on illuminationn
-                if illuMode == "Laser1" and len(self.lasers)>0:
-                    self.lasers[0].setValue(intensity)
-                    self.lasers[0].setEnabled(True)
-                elif illuMode == "Laser2" and len(self.lasers)>1:
-                    self.lasers[1].setValue(intensity)
-                    self.lasers[1].setEnabled(True)
-                elif illuMode == "Brightfield":
-                    try:
-                        if intensity > 255: intensity=255
-                        if intensity < 0: intensity=0
-                        if len(self.leds)>0:
-                            self.leds[0].setValue(intensity)
-                            self.leds[0].setEnabled(True)
-                    except:
-                        pass
+                self.leds[0].setValue(intensity)
+                self.leds[0].setEnabled(True)
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
-                self.switchOffIllumination()
+                self.leds[0].setEnabled(False)
+                
+                # write out filepath
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame, append=True)
 
                 # store frames for displaying
-                if illuMode == "Laser1":
-                    self.LastStackLaser1.append(lastFrame.copy())
-                if illuMode == "Laser2":
-                    self.LastStackLaser2.append(lastFrame.copy())
-                if illuMode == "Brightfield":
-                    self.LastStackLED.append(lastFrame.copy())
+                self.LastStackLED.append(lastFrame.copy())
             self.stages.setEnabled(is_enabled=False)
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
 
         else:
             # turn on illuminationn
-            if illuMode == "Laser1" and len(self.lasers)>0:
-                self.lasers[0].setValue(intensity)
-                self.lasers[0].setEnabled(True)
-            elif illuMode == "Laser2" and len(self.lasers)>1:
-                self.lasers[1].setValue(intensity)
-                self.lasers[1].setEnabled(True)
-            elif illuMode == "Brightfield":
-                try:
-                    if intensity > 255: intensity=255
-                    if intensity < 0: intensity=0
-                    if len(self.leds)>0:
-                        self.leds[0].setValue(intensity)
-                        self.leds[0].setEnabled(True)
-                except:
-                    pass
-            filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
+            self.leds[0].setValue(intensity)
+            self.leds[0].setEnabled(True)
+
+            filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_X{xycoords[0]}_Y{xycoords[1]}', extension=fileExtension)
             lastFrame = self.detector.getLatestFrame()
             self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)
             # store frames for displaying
-            if illuMode == "Laser1":
-                self.LastStackLaser1.append(lastFrame.copy())
-            if illuMode == "Laser2":
-                self.LastStackLaser2.append(lastFrame.copy())
-            if illuMode == "Brightfield":
-                self.LastStackLED.append(lastFrame.copy())
+            self.LastStackLED.append(lastFrame.copy())
+            self.leds[0].setEnabled(False)
 
-        self.switchOffIllumination()
-
-
-    def switchOffIllumination(self):
-        # switch off all illu sources
-        for lasers in self.lasers:
-            lasers.setEnabled(False)
-            lasers.setValue(0)
-            time.sleep(0.1)
-        if len(self.leds)>0:
-            self.illu.setAll((0,0,0))
-
-
-    def valueLaser1Changed(self, value):
-        self.Laser1Value= value
-        self._widget.HistoScanLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
-        if len(self.lasers)>0:
-            self.lasers[0].setValue(self.Laser1Value)
-
-    def valueLaser2Changed(self, value):
-        self.Laser2Value = value
-        self._widget.HistoScanLabelLaser2.setText('Intensity (Laser 2):'+str(value))
-        if len(self.lasers)>1:
-            self.lasers[1].setValue(self.Laser2Value)
 
     def valueLEDChanged(self, value):
-        self.LEDValue= value
+        self.LEDValue = value
         self._widget.HistoScanLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds):
-            self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
-
+            self.leds[0].setEnabled(True)
+            self.leds[0].setValue(self.LEDValue)
+            
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
@@ -417,18 +334,19 @@ class HistoScanController(LiveUpdatedController):
 
         return newPath
 
-
+    
     def moveUp(self):
-        self._logger.info("Moving up...")
+        # move stage in Y direction
+        self.stages.move(value=self.positionMoveManual, axis="Y", is_absolute=False, is_blocking=True)
         
     def moveDown(self):
-        self._logger.info("Moving down...")
-
+        self.stages.move(value=-self.positionMoveManual, axis="Y", is_absolute=False, is_blocking=True)
+        
     def moveLeft(self):
-        self._logger.info("Moving left...")
+        self.stages.move(value=self.positionMoveManual, axis="X", is_absolute=False, is_blocking=True)
 
     def moveRight(self):
-        self._logger.info("Moving right...")
+        self.stages.move(value=-self.positionMoveManual, axis="X", is_absolute=False, is_blocking=True)
         
     def snapPreview(self):
         self._logger.info("Snap preview...")

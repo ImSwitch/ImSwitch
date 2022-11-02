@@ -6,7 +6,7 @@ import time
 import tifffile as tif
 import threading
 from datetime import datetime
-
+import cv2
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -49,6 +49,26 @@ class HistoScanController(LiveUpdatedController):
         self.pixelsizeZ=10
 
         self.tUnshake = .1
+        
+        # physical coordinates (temporarily)
+        self.stepsizeX = 1
+        self.stepsizeY = 1
+        self.offsetX = 100  # distance between center of the brightfield and the ESP32 preview camera (X)
+        self.offsetY = 100  # distance between center of the brightfield and the ESP32 preview camera (Y)
+        self.currentPositionX = 0
+        self.currentPositionY = 0
+        
+        # brightfield camera parameters
+        self.camPixelsize = 1 # µm
+        self.camPixNumX = 1000
+        self.camPixNumY = 1000
+        self.camOverlap = 0.3 # 30% overlap of tiles
+        
+        # preview camera parameters
+        self.camPreviewPixelsize = 100
+        self.camPreviewPixNumX = self._widget.canvas.height()
+        self.camPreviewPixNumY = self._widget.canvas.width()
+        
 
         if self._setupInfo.HistoScan is None:
             self._widget.replaceWithError('HistoScan is not configured in your setup file.')
@@ -66,7 +86,9 @@ class HistoScanController(LiveUpdatedController):
         
         self._widget.HistoCamLEDButton.clicked.connect(self.toggleLED)
         self._widget.HistoSnapPreviewButton.clicked.connect(self.snapPreview)
-        
+        self._widget.HistoFillHolesButton.clicked.connect(self.fillHoles)
+        self._widget.HistoUndoButton.clicked.connect(self.undoSelection)
+                
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
         
         # select detectors
@@ -100,101 +122,46 @@ class HistoScanController(LiveUpdatedController):
     
         # Steps for the Histoscanner 
         
-        # 0. initailize pixelsize (low-res and highres) and stage stepsize 
+
         
-        # 1. Move to initial position on sample
-        
-        # 2. Take low-res, arge FOv image
-        
-        # 3. Annotate Sample region in Canvas
-        
-        # 4. Compute coordinates for high-res image / tiles 
-        
-        # 5. move to first tile and take image
-        
-        # 6. iterate over all tiles and take images
-        
-        # 7. visualize images/current position in canvas
-        
-        
+    def fillHoles(self):
+        # fill holes in the selection
+        self._widget.canvas.fillHoles()
+
+    def undoSelection(self):
+        # recover the previous selection
+        self._widget.canvas.undoSelection()
         
 
     def startHistoScan(self):
         # initilaze setup
         # this is not a thread!
         self._widget.HistoScanStartButton.setEnabled(False)
+        
+        self._widget.setInformationLabel("Starting HistoScan...")
 
-        if not self.isHistoScanrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
-            self.nImages = 0
-            self._widget.setNImages("Starting timelapse...")
-            self.switchOffIllumination()
-            if len(self.lasers)>0:
-                self.lasers[0].initFilter()
+        # get parameters from GUI
+        self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
+        self.HistoScanFilename = self._widget.getFilename()
+        self.HistoScanDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
-            # get parameters from GUI
-            self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
-            self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
-            self.HistoScanFilename = self._widget.getFilename()
-            self.HistoScanDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-
-            # store old values for later
-            if len(self.lasers)>0:
-                self.Laser1ValueOld = self.lasers[0].power
-            if len(self.lasers)>1:
-                self.Laser2ValueOld = self.lasers[1].power
-            if len(self.leds)>1:
-                self.LEDValueOld = self.leds[0].power
-
-            # reserve space for the stack
-            self._widget.HistoScanShowLastButton.setEnabled(False)
-
-            # FIXME: This is a hack to make sure the image is displayed correctly
-            # we start it first and then in a loop 
-            self.takeTimelapse()
+        self.doScan()
             
-            # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
-            self.timer = Timer()
-            self.timer.timeout.connect(lambda: self.takeTimelapse())
-            self.timer.start(self.timePeriod*1000)
-            self.startTime = time.time()
-            '''       
-            self.timer = mTimer(self.timePeriod, self.takeTimelapse)
-            self.timer.start()
-            '''
-            
-        else:
-            self.isHistoScanrunning = False
-            self._widget.HistoScanStartButton.setEnabled(True)
 
     
     def stopHistoScan(self):
         self.isHistoScanrunning = False
 
-        self._widget.setNImages("Stopping timelapse...")
-
+        self._widget.setInformationLabel("Stopping HistoScan...")
         self._widget.HistoScanStartButton.setEnabled(True)
-        try:
-            del self.timer
-        except:
-            pass
-
         try:
             del self.HistoScanThread
         except:
             pass
 
-        self._widget.setNImages("Done wit timelapse...")
-
-        # store old values for later
-        if len(self.lasers)>0:
-            self.lasers[0].setValue(self.Laser1ValueOld)
-        if len(self.lasers)>1:
-            self.lasers[1].setValue(self.Laser2ValueOld)
-        if len(self.leds)>0:
-            self.leds[0].setValue(self.LEDValueOld)
+        self._widget.setInformationLabel("Done wit timelapse...")
 
     def showLast(self):
-
         try:
             self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsizeZ=self.pixelsizeZ)
         except  Exception as e:
@@ -214,66 +181,110 @@ class HistoScanController(LiveUpdatedController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    def takeTimelapse(self):
-        # this is called periodically by the timer
-        if not self.isHistoScanrunning:
-            try:
-                # make sure there is no exisiting thrad
-                del self.HistoScanThread
-            except:
-                pass
+    def doScan(self):
+        # 0. initailize pixelsize (low-res and highres) and stage stepsize 
+        # TODO: RETRIEVE PROPER COORDINATES THROUGH GUI AND SETTINGS
+        
+        # 1. Move to initial position on sample
+        
+        # 2. Take low-res, arge FOv image
+        if len(self._widget.canvas.getCoordinateList()) <= 0:
+            self._logger.debug("No selection was made..")
+            return
+        
+        # 3. Get Annotaitons from sample selection and bring them to real world coordinates
+        allPreviewCoordinatesToScan = np.array(self._widget.canvas.getCoordinateList())
+        
+        # translate coordinates into bitmap coordinates
+        scanRegion = np.zeros((self.camPreviewPixNumX, self.camPreviewPixNumY))
+        scanRegion[allPreviewCoordinatesToScan[:,0], allPreviewCoordinatesToScan[:,1]] = 1
+        
+        # compute FOV ratios between two cameras 
+        scanRatioX = (self.camPreviewPixNumX*self.camPreviewPixelsize)/(self.camPixNumX*self.camPixelsize*(1-self.camOverlap))
+        scanRatioY = (self.camPreviewPixNumY*self.camPreviewPixelsize)/(self.camPixNumY*self.camPixelsize*(1-self.camOverlap))
+        
+        # compute necessary tiles for the large FOV to scan - a bit hacky
+        nKernel = self._widget.canvas.penwidth
+        kernel =  np.ones((nKernel,nKernel)) 
+        # binary coordinates (without physical units ) of the scan region
+        scanRegionMicroscsope = cv2.resize(cv2.filter2D(np.uint8(scanRegion*1), -1, kernel), None, fx = 1/scanRatioX, fy = 1/scanRatioY, interpolation = cv2.INTER_CUBIC)>1
+        
+        # overlay the scan region on the low-res image
+        lowResCoordinatesMap = cv2.resize(1.*scanRegionMicroscsope, None, fx = scanRatioX, fy = scanRatioY, interpolation = cv2.INTER_CUBIC)
+        # TODO: NOT WORKING self._widget.canvas.overlayImage(lowResCoordinatesMap, alpha=0.5)
+        
+        # => each pixel in the scan region is now a square of size scanRatioX*scanRatioY pixels in the large FOV
+        # compute cordinates of the miroscope stage and export list of coordinates
+        
+        # 4. Compute coordinates for high-res image / tiles 
+        cordinateList = np.array(np.where(scanRegionMicroscsope==1)).T*(self.camPixNumX*self.camPixelsize,self.camPixNumY*self.camPixelsize) # each row is one FOV
+        
 
-            # stop measurement once done
-            if self.nDuration <= self.nImages:
-                self.isHistoScanrunning = False
-                self._widget.HistoScanStartButton.setEnabled(True)
-                self.timer.stop()
-                return
+        
+        # 6. iterate over all tiles and take images
+        
+        # 7. visualize images/current position in canvas
 
-            # this should decouple the hardware-related actions from the GUI
-            self.isHistoScanrunning = True
-            self.HistoScanThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
-            self.HistoScanThread.start()
+        # this should decouple the hardware-related actions from the GUI
+        self.isHistoScanrunning = True
+        self.HistoScanThread = threading.Thread(target=self.doScanThread, args=(cordinateList), daemon=True)
+        self.HistoScanThread.start()
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
         isRunInBackground = False
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"], isRunInBackground))
 
-    def takeTimelapseThread(self):
-        # this wil run i nthe background
-        self._logger.debug("Take image")
-        zstackParams = self._widget.getZStackValues()
-        # reserve and free space for displayed stacks
-        self.LastStackLaser1 = []
-        self.LastStackLaser2 = []
-        self.LastStackLED = []
+    def doScanThread(self, cordinateList):
         
-        # want to do autofocus?
-        autofocusParams = self._widget.getAutofocusValues()
-        if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
-            self._widget.setNImages("Autofocusing...")
-            self.doAutofocus(autofocusParams)
+        # 5. move to first tile and take image
+        self._widget.setInformationLabel("Moving to first tile: " + str(cordinateList[0])+ " µm ")
+        self.stages.move(value=cordinateList[0,0], axis="X", is_absolute=True, is_blocking=True)
+        self.stages.move(value=cordinateList[0,1], axis="Y", is_absolute=True, is_blocking=True)
+        
+        for i in range(len(cordinateList)):
             
+            coordX = cordinateList[i,0]
+            coordY = cordinateList[i,1]
+            self._widget.setInformationLabel("Moving to : " + (coordX,coordY)+ " µm ")
+            
+            self.stages.move(value=coordX, axis="X", is_absolute=True, is_blocking=True)
+            self.stages.move(value=coordY, axis="Y", is_absolute=True, is_blocking=True)
+        
+        
+            # this wil run i nthe background
+            self._logger.debug("Take image")
+            zstackParams = self._widget.getZStackValues()
+            # reserve and free space for displayed stacks
+            self.LastStackLaser1 = []
+            self.LastStackLaser2 = []
+            self.LastStackLED = []
+            
+            # want to do autofocus?
+            autofocusParams = self._widget.getAutofocusValues()
+            if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+                self._widget.setInformationLabel("Autofocusing...")
+                self.doAutofocus(autofocusParams)
+                
 
 
-        if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
-        if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
-        if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
+            if self.Laser1Value>0:
+                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
+            if self.Laser2Value>0:
+                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
+            if self.LEDValue>0:
+                self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
 
-        self.nImages += 1
-        self._widget.setNImages(self.nImages)
+            self.nImages += 1
+            self._widget.setInformationLabel(self.nImages)
 
-        self.isHistoScanrunning = False
+            self.isHistoScanrunning = False
 
-        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+            self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
+            self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+            self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-        self._widget.HistoScanShowLastButton.setEnabled(True)
+            self._widget.HistoScanShowLastButton.setEnabled(True)
 
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):

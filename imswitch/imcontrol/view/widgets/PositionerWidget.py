@@ -62,7 +62,7 @@ class PositionerWidget(Widget):
 
 
                 self.pars['ButtonSpeedEnter'+ parNameSuffix].clicked.connect(
-                    lambda *args: self.sigsetSpeedClicked.emit(positionerName, axis)
+                    lambda *args, axis=axis: self.sigsetSpeedClicked.emit(positionerName, axis)
                 )
 
             self.numPositioners += 1

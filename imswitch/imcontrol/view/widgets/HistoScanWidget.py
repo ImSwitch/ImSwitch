@@ -1,5 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
+import cv2 
+import copy
 from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
 
@@ -200,7 +202,12 @@ class HistoScanWidget(NapariHybridWidget):
                                                scale=(1, 1, pixelsizeZ),
                                                name=name, blending='additive')
         self.layer.data = im
+
+    def getCoordinateList(self):
+        return self.canvas.getCoordinateList()
         
+    def resetCoodinateList(self):
+        self.canvas.resetCoordinateList()
         
     def getZStackValues(self):
         valueZmin = -abs(float(self.HistoScanValueZmin.text()))
@@ -210,18 +217,13 @@ class HistoScanWidget(NapariHybridWidget):
         
         return valueZmin, valueZmax, valueZsteps, valueZenabled
  
-    def getTimelapseValues(self):
-        HistoScanValueTimePeriod = float(self.HistoScanValueTimePeriod.text())
-        HistoScanValueTimeDuration = int(self.HistoScanValueTimeDuration.text())
-        return HistoScanValueTimePeriod, HistoScanValueTimeDuration
-    
+
     def getFilename(self):
         HistoScanEditFileName = self.HistoScanEditFileName.text()
         return HistoScanEditFileName
     
-    def setNImages(self, nImages):
-        nImages2Do = self.getTimelapseValues()[-1]
-        self.HistoScanLabelInfo.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
+    def setInformationLabel(self, information):
+        self.HistoScanLabelInfo.setText(information)
     
     def setPreviewImage(self, image):
         self.canvas.setImage(image)
@@ -233,27 +235,78 @@ class Canvas(QtWidgets.QLabel):
         self.dimensions = (200,200)
         self.penwidth = 4
         self.setFixedSize(self.dimensions[0],self.dimensions[1])
-
+        
+        self.coordinateList = []
+        self.imageLast = None
         self.setImage()
         
         self.last_x, self.last_y = None, None
-        self.pen_color = QtGui.QColor('#FF0000')
+        self.pen_color = QtGui.QColor('#FF0000') # RGB=255,0,0
+        
+    def overlayImage(self, npImage, alpha=0.5):
+        """Overlay image on top of canvas image"""
+        if self.imageLast is not None:
+            self.setImage(self.imageLast)
+        else:
+            self.setImage()
+        self.imageLast = self.imageNow.toImage()
+        painter = QtGui.QPainter(self.pixmap())
+        painter.setOpacity(alpha)
+        
+        if len(npImage.shape) == 2:
+            npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
+        height, width, channel = npImage.shape
+        bytesPerLine = 3 * width
+        qImage = QImage(npImage.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        
+        self.setPixmap(self.imageNow.scaled(self.dimensions[0], self.dimensions[1], QtCore.Qt.KeepAspectRatio))
 
+        painter.drawImage(0, 0, qImage)
+        painter.end()
+        self.update()
+        
     def setImage(self, npImage=None, pathImage='/Users/bene/Downloads/histo.png'):
         
-        if npImage is not None:
-            if len(npImage.shape) == 2:
-                npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
-            height, width, channel = npImage.shape
-            bytesPerLine = 3 * width
-            qImage = QImage(npImage.data, width, height, bytesPerLine, QImage.Format_RGB888)
-            pixmap = QPixmap(qImage)
-        else:
-            pixmap = QPixmap(pathImage)
+        if npImage is None:
+            npImage = np.array(cv2.imread(pathImage))
+            npImage = cv2.resize(npImage, self.dimensions)
+        if len(npImage.shape) == 2:
+            npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
+        self.imageLast=copy.deepcopy(npImage) # store for undo
+        height, width, channel = npImage.shape
+        bytesPerLine = 3 * width
+        qImage = QImage(npImage.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        self.imageNow = QPixmap(qImage)
         
-        self.setPixmap(pixmap.scaled(self.dimensions[0], self.dimensions[1], QtCore.Qt.KeepAspectRatio))
+        self.setPixmap(self.imageNow.scaled(self.dimensions[0], self.dimensions[1], QtCore.Qt.KeepAspectRatio))
 
+    def undoSelection(self):
+        if self.imageLast is not None:
+            self.setImage(self.imageLast)
+            self.coordinateList = []
+    
+    def fillHoles(self):
+        # fill gaps in selection 
+        image = np.uint8(self.imageLast)
+        selectionOverlay = image.copy()*0
+        # render selection
+        tmp = np.array(self.coordinateList)
+        selectionOverlay[tmp[:,0],tmp[:,1]] = 255
+        nKernel = self.penwidth
+        kernel =  np.ones((nKernel,nKernel)) 
+        # binary coordinates (without physical units ) of the scan region
+        selectionOverlay = cv2.filter2D(selectionOverlay, -1, kernel)>1
         
+        # filling holes in selection
+        kernelClosing =  np.ones((20,20)) 
+        selectionOverlay = cv2.morphologyEx(np.uint8(selectionOverlay), cv2.MORPH_CLOSE, kernelClosing)
+        
+        # overlay selection
+        image[(selectionOverlay[:,:,0]>0),]=(255,0,0)
+        self.setImage(image)
+        
+        # update coordinate list
+        self.coordinateList = list(np.argwhere(selectionOverlay[:,:,0]>0))
         
     def set_pen_color(self, c):
         self.pen_color = QtGui.QColor(c)
@@ -272,13 +325,17 @@ class Canvas(QtWidgets.QLabel):
         painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
         painter.end()
         self.update()
-        print((self.last_x, self.last_y))
-
-        # Update the origin for next time.
-        self.last_x = e.x()
-        self.last_y = e.y()
+        if self.last_x is not None and self.last_y is not None:
+            self.last_x = e.x()
+            self.last_y = e.y()
+            self.coordinateList.append([e.y(), e.x()])
         
-
+    def getCoordinateList(self):
+        return self.coordinateList
+    
+    def resetCoordinateList(self):
+        self.coordinateList = []
+        
     def mouseReleaseEvent(self, e):
         self.last_x = None
         self.last_y = None

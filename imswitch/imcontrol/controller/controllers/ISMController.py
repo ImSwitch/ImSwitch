@@ -11,7 +11,7 @@ from datetime import datetime
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import pyqtgraph.ptime as ptime
+import time
 
 from ..basecontrollers import LiveUpdatedController
 

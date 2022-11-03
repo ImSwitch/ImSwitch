@@ -38,9 +38,11 @@ class LEDMatrixController(ImConWidgetController):
         self._widget.ButtonAllOff.clicked.connect(self.setAllLEDOff)
         self._widget.slider.valueChanged.connect(self.setIntensity)
 
+    @APIExport()
     def setAllLEDOn(self):
         self.setAllLED(state=(1,1,1))
 
+    @APIExport()
     def setAllLEDOff(self):
         self.setAllLED(state=(0,0,0))
 
@@ -68,7 +70,7 @@ class LEDMatrixController(ImConWidgetController):
         self._ledmatrixMode = "single"
         self.ledMatrix.setLEDSingle(indexled=int(LEDid), state=state)
         pattern = self.ledMatrix.getPattern()
-        self._widget.leds[str(LEDid)].setChecked(np.mean(pattern[int(LEDid)])>0)
+        self._widget.leds[str(LEDid)].setChecked(np.mean(pattern.reshape(np.array(pattern.shape[0:2]).prod(),pattern.shape[-1]))>0)
 
     def connect_leds(self):
         """Connect leds (Buttons) to the Sample Pop-Up Method"""

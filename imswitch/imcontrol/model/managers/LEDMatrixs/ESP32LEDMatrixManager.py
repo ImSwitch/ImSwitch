@@ -2,7 +2,7 @@ from imswitch.imcommon.model import initLogger
 from .LEDMatrixManager import LEDMatrixManager
 import numpy as np
 
-from uc2rest import ledmatrix
+import uc2rest
 
 class ESP32LEDMatrixManager(LEDMatrixManager):
     """ LEDMatrixManager for controlling LEDs and LEDMatrixs connected to an
@@ -35,25 +35,28 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         self._rs232manager = lowLevelManagers['rs232sManager'][
             LEDMatrixInfo.managerProperties['rs232device']
         ]
-        self.esp32 = self._rs232manager._esp32
-
+       
         # initialize the LEDMatrix device that holds all necessary states^
-        self.mLEDmatrix = ledmatrix.ledmatrix(self.esp32, NLeds=self.NLeds)
+        self.mLEDmatrix = self._rs232manager._esp32.led
+        self.mLEDmatrix.setLEDArrayConfig(ledArrPin=None, ledArrNum=self.NLeds)
 
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
-    def setAll(self, state=(0,0,0)):
+    def setAll(self, state=(0,0,0), intensity=None):
         # dealing with on or off,
-        self.mLEDmatrix.setAll(state)
+        # intensity is adjjusting the global value
+        self.mLEDmatrix.setAll(state, intensity)
 
     def setPattern(self, pattern):
         self.mLEDmatrix.pattern(pattern)
+    
+    def getPattern(self):
+        return self.mLEDmatrix.getPattern()
 
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) LEDMatrix emission"""
         self.setEnabled = enabled
-        #self.esp32.setLEDMatrixPattern(self.pattern*self.setEnabled)
-
+        
     def setLEDSingle(self, indexled=0, state=(0,0,0)):
         """Handles output power.
         Sends a RS232 command to the LEDMatrix specifying the new intensity.
@@ -63,8 +66,7 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
     def setLEDIntensity(self, intensity=(0,0,0)):
         self.mLEDmatrix.setIntensity(intensity)
 
-    def getPattern(self):
-        return self.mLEDmatrix.pattern
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

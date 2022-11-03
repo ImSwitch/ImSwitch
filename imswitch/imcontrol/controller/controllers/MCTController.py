@@ -11,7 +11,7 @@ from datetime import datetime
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import pyqtgraph.ptime as ptime
+import time
 
 from ..basecontrollers import LiveUpdatedController
 
@@ -72,7 +72,7 @@ class MCTController(LiveUpdatedController):
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self.lasers = []
         for iDevice in allLaserNames:
-            if iDevice.find("Laser")>=0:
+            if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
 
         self.leds = []
@@ -90,6 +90,17 @@ class MCTController(LiveUpdatedController):
 
         self.isMCTrunning = False
         self._widget.mctShowLastButton.setEnabled(False)
+        
+        # setup gui limits
+        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+
+        # setup gui text
+        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+
 
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")
@@ -125,19 +136,25 @@ class MCTController(LiveUpdatedController):
             # reserve space for the stack
             self._widget.mctShowLastButton.setEnabled(False)
 
-            # initiliazing the update scheme for pulling pressure measurement values
+            # FIXME: This is a hack to make sure the image is displayed correctly
+            # we start it first and then in a loop 
+            self.takeTimelapse()
+            
+            # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
             self.timer = Timer()
-            self.timer.timeout.connect(self.takeTimelapse())
+            self.timer.timeout.connect(lambda: self.takeTimelapse())
             self.timer.start(self.timePeriod*1000)
-            self.startTime = ptime.time()
-
+            self.startTime = time.time()
+            '''       
+            self.timer = mTimer(self.timePeriod, self.takeTimelapse)
+            self.timer.start()
+            '''
+            
         else:
-
             self.isMCTrunning = False
             self._widget.mctStartButton.setEnabled(True)
 
-
-
+    
     def stopMCT(self):
         self.isMCTrunning = False
 
@@ -195,17 +212,21 @@ class MCTController(LiveUpdatedController):
                 pass
 
             # stop measurement once done
-            if self.nDuration < self.nImages:
-                self.timer.stop()
+            if self.nDuration <= self.nImages:
                 self.isMCTrunning = False
                 self._widget.mctStartButton.setEnabled(True)
+                self.timer.stop()
                 return
 
-            # this should decouple the hardware-related actions from the GUI - but it doesn't
+            # this should decouple the hardware-related actions from the GUI
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, daemon=True)
+            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
             self.MCTThread.start()
 
+    def doAutofocus(self, params):
+        self._logger.info("Autofocusing...")
+        isRunInBackground = False
+        self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"], isRunInBackground))
 
     def takeTimelapseThread(self):
         # this wil run i nthe background
@@ -215,13 +236,21 @@ class MCTController(LiveUpdatedController):
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
         self.LastStackLED = []
+        
+        # want to do autofocus?
+        autofocusParams = self._widget.getAutofocusValues()
+        if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+            self._widget.setNImages("Autofocusing...")
+            self.doAutofocus(autofocusParams)
+            
+
 
         if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
         if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
         if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
 
         self.nImages += 1
         self._widget.setNImages(self.nImages)
@@ -235,26 +264,9 @@ class MCTController(LiveUpdatedController):
         self._widget.mctShowLastButton.setEnabled(True)
 
 
-    def takeImageIllu(self, illuMode, intensity, zstackParams=None):
-        self._logger.debug("Take image:" + illuMode + str(intensity))
+    def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
+        self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
-        if illuMode == "Laser1" and len(self.lasers)>0:
-            self.lasers[0].setValue(intensity)
-            self.lasers[0].setEnabled(True)
-
-        if illuMode == "Laser2" and len(self.lasers)>1:
-            self.lasers[1].setValue(intensity)
-            self.lasers[1].setEnabled(True)
-
-        if illuMode == "Brightfield":
-            try:
-                if intensity > 255: intensity=255
-                if intensity < 0: intensity=0
-                if len(self.leds)>0:
-                    self.leds[0].setValue(intensity)
-                    self.leds[0].setEnabled(True)
-            except:
-                pass
 
         # sync with camera frame
         time.sleep(.15)
@@ -272,9 +284,27 @@ class MCTController(LiveUpdatedController):
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}', extension=fileExtension)
+                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
+                
+                # turn on illuminationn
+                if illuMode == "Laser1" and len(self.lasers)>0:
+                    self.lasers[0].setValue(intensity)
+                    self.lasers[0].setEnabled(True)
+                elif illuMode == "Laser2" and len(self.lasers)>1:
+                    self.lasers[1].setValue(intensity)
+                    self.lasers[1].setEnabled(True)
+                elif illuMode == "Brightfield":
+                    try:
+                        if intensity > 255: intensity=255
+                        if intensity < 0: intensity=0
+                        if len(self.leds)>0:
+                            self.leds[0].setValue(intensity)
+                            self.leds[0].setEnabled(True)
+                    except:
+                        pass
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
+                self.switchOffIllumination()
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame, append=True)
 
@@ -289,8 +319,25 @@ class MCTController(LiveUpdatedController):
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
 
         else:
-            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}', extension=fileExtension)
+            # turn on illuminationn
+            if illuMode == "Laser1" and len(self.lasers)>0:
+                self.lasers[0].setValue(intensity)
+                self.lasers[0].setEnabled(True)
+            elif illuMode == "Laser2" and len(self.lasers)>1:
+                self.lasers[1].setValue(intensity)
+                self.lasers[1].setEnabled(True)
+            elif illuMode == "Brightfield":
+                try:
+                    if intensity > 255: intensity=255
+                    if intensity < 0: intensity=0
+                    if len(self.leds)>0:
+                        self.leds[0].setValue(intensity)
+                        self.leds[0].setEnabled(True)
+                except:
+                    pass
+            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
             lastFrame = self.detector.getLatestFrame()
+            self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)
             # store frames for displaying
             if illuMode == "Laser1":
@@ -307,7 +354,7 @@ class MCTController(LiveUpdatedController):
         # switch off all illu sources
         for lasers in self.lasers:
             lasers.setEnabled(False)
-            self.lasers[1].setValue(0)
+            lasers.setValue(0)
             time.sleep(0.1)
         if len(self.leds)>0:
             self.illu.setAll((0,0,0))
@@ -315,18 +362,21 @@ class MCTController(LiveUpdatedController):
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
+        self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
         if len(self.lasers)>0:
             self.lasers[0].setValue(self.Laser1Value)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
+        self._widget.mctLabelLaser2.setText('Intensity (Laser 2):'+str(value))
         if len(self.lasers)>1:
             self.lasers[1].setValue(self.Laser2Value)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
+        self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds):
-            self.illu.setAll((self.LEDValue,self.LEDValue,self.LEDValue))
+            self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
     def __del__(self):
         self.imageComputationThread.quit()
@@ -344,6 +394,29 @@ class MCTController(LiveUpdatedController):
 
         return newPath
 
+
+class mTimer(object):
+    def __init__(self, waittime, mFunc) -> None:
+        self.waittime = waittime
+        self.starttime = time.time()
+        self.running = False
+        self.isStop = False
+        self.mFunc = mFunc
+        
+    def start(self):
+        self.starttime = time.time()
+        self.running = True
+        
+        ticker = threading.Event( daemon=True)
+        self.waittimeLoop=0 # make sure first run runs immediately
+        while not ticker.wait(self.waittimeLoop) and self.isStop==False:
+            self.waittimeLoop = self.waittime
+            self.mFunc()
+        self.running = False
+        
+    def stop(self):
+        self.running = False
+        self.isStop = True
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -165,18 +165,11 @@ class SIMInfo:
 
 @dataclass(frozen=True)
 class MCTInfo:
-    wavelength: int
-    """ Wavelength of the laser line used with the SLM. """
+    pass
 
-    angleMount: float
-    """ The angle of incidence and reflection of the laser line that is shaped
-    by the SLM, in radians. For adding a blazed grating to create off-axis
-    holography. """
-
-    patternsDir: str
-    """ Directory of .bmp images provided by Hamamatsu for flatness correction
-    at various wavelengths. A combination will be chosen based on the
-    wavelength. """
+@dataclass(frozen=True)
+class HistoScanInfo:
+    pass
     
 @dataclass(frozen=True)
 class ISMInfo:
@@ -270,23 +263,6 @@ class EtSTEDInfo:
     """ Name of the widefield laser to use. """
 
 
-@dataclass(frozen=True)
-class NidaqInfo:
-    timerCounterChannel: Optional[Union[str, int]] = None
-    """ Output for Counter for timing purposes. If an integer is specified, it
-    will be translated to "Dev1/ctr{timerCounterChannel}". """
-
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
-
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
-
-
 
 @dataclass(frozen=True)
 class PyroServerInfo:
@@ -332,6 +308,9 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
     
+    HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
+    """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+    
     uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
     
@@ -351,9 +330,6 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
-
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

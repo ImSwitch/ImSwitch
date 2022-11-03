@@ -1,10 +1,11 @@
 import time
 
 import numpy as np
-import pyqtgraph.ptime as ptime
 import scipy.ndimage as ndi
 from scipy.ndimage.filters import laplace
 import threading
+
+from qtpy import QtCore
 
 from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
@@ -15,7 +16,7 @@ gAxis = "Z"
 T_DEBOUNCE = .1
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -39,6 +40,9 @@ class AutofocusController(ImConWidgetController):
         # select stages
         self.stages = self._master.positionersManager[self.positioner]
         #self.__processDataThread = ProcessDataThread(self)
+        
+        # register autofocus controller
+        self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
     def __del__(self):
         self.__processDataThread.quit()
@@ -59,7 +63,7 @@ class AutofocusController(ImConWidgetController):
 
     @APIExport(runOnUIThread=True)
     # Update focus lock
-    def autoFocus(self, rangez=100, resolutionz=10):
+    def autoFocus(self, rangez=100, resolutionz=10, isRunInBackground=True):
 
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
@@ -75,10 +79,12 @@ class AutofocusController(ImConWidgetController):
                 pass
 
             # this should decouple the hardware-related actions from the GUI - but it doesn't 
-            self.isAutofocusRunning = True
-            self.AutofocusThread = threading.Thread(target=self.performAutofocusThread, args=(rangez,resolutionz), daemon=True)
-            self.AutofocusThread.start()
-            
+            if isRunInBackground:
+                self.isAutofocusRunning = True
+                self.AutofocusThread = threading.Thread(target=self.performAutofocusThread, args=(rangez,resolutionz), daemon=True)
+                self.AutofocusThread.start()
+            else:
+                self.performAutofocusThread(rangez,resolutionz)
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         #self.focusPointSignal = self.__processDataThread.update(rangez,resolutionz)
 
@@ -131,7 +137,6 @@ class AutofocusController(ImConWidgetController):
             allfocuspositions[iz] = positionz
             
             
-
             # display the curve
             self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
 

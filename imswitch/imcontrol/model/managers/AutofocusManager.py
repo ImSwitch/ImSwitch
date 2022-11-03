@@ -1,5 +1,21 @@
-__version__ = '1.2.9'
+import enum
+import glob
+import cv2
+import os
 
+import numpy as np
+from PIL import Image
+from scipy import signal as sg
+
+from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.model import initLogger
+
+
+class AutofocusManager(SignalInterface):
+    
+    def __init__(self, mctInfo, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

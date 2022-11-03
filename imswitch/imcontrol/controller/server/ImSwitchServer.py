@@ -46,7 +46,7 @@ class ImSwitchServer(Worker):
     @Pyro5.server.expose
     def exec(self, module, func, params):
         self._channel.sigBroadcast.emit(module, func, params)
-
+    
     @Pyro5.server.expose
     def get_image(self, detectorName=None) -> np.ndarray:
         return self._channel.get_image(detectorName)

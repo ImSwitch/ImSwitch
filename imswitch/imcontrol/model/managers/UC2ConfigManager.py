@@ -63,8 +63,7 @@ class UC2ConfigManager(SignalInterface):
         return self.ESP32.closeSerial()
     
     def initSerial(self):
-        serialport = self.ESP32.serialport
-        self.ESP32.initSerial(serialport)
+        self.ESP32.serial.open()
         
     def downloadFirmware(self, firmwarePath=None):
         return self.firmwareUpdater.downloadFirmware()

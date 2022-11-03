@@ -20,6 +20,7 @@ from .SLMController import SLMController
 from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .MCTController import MCTController
+from .HistoScanController import HistoScanController
 from .ISMController import ISMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController

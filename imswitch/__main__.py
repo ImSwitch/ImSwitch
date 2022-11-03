@@ -20,7 +20,7 @@ def main():
         
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-    # use only if available 
+    # use only if available
     #if "imblockly" in enabledModuleIds:
     #    try:
     #        from imswitch import imblockly

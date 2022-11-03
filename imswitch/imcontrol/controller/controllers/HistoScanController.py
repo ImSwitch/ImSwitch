@@ -233,7 +233,7 @@ class HistoScanController(LiveUpdatedController):
         for iPos in range(len(coordinateList)):
             # move to location
             self._widget.setInformationLabel("Moving to : " + str(coordinateList[iPos,:]) + " µm ")
-            self.stages.move(value=coordinateList[iPos,:], axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True)
+            self.stages.move(value=coordinateList[iPos,:], axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True, timeout=5)
             #self.stages.move(value=coordinateList[iPos,0], axis="X", speed=(self.speed), is_absolute=True, is_blocking=True)
             #self.stages.move(value=coordinateList[iPos,1], axis="Y", speed=(self.speed), is_absolute=True, is_blocking=True)
             
@@ -246,10 +246,11 @@ class HistoScanController(LiveUpdatedController):
             # turn on illumination # TODO: ensure it's the right light source!    
             zstackParams = self._widget.getZStackValues()
             self._logger.debug("Take image")
+            time.sleep(0.2) # antishake
             self.takeImageIlluStack(xycoords = coordinateList[iPos,:], intensity=self.LEDValue, zstackParams=zstackParams)
 
         # move stage back to origine
-        self.stages.move(value=initialPosition, axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True)
+        self.stages.move(value=initialPosition, axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True, timeout=5)
         
         # done with scan
         self._widget.setInformationLabel("Done")

@@ -279,7 +279,7 @@ class Canvas(QtWidgets.QLabel):
         painter.end()
         self.update()
         
-    def setImage(self, npImage=None, pathImage='/Users/bene/Downloads/histo.png'):
+    def setImage(self, npImage=None, pathImage='histo.jpg'):
         
         if npImage is None:
             npImage = np.array(cv2.imread(pathImage))
@@ -305,6 +305,7 @@ class Canvas(QtWidgets.QLabel):
         selectionOverlay = image.copy()*0
         # render selection
         tmp = np.array(self.coordinateList)
+        tmp = np.clip(tmp, 0, np.min(selectionOverlay.shape[0:2])-1)
         selectionOverlay[tmp[:,0],tmp[:,1]] = 255
         nKernel = self.penwidth
         kernel =  np.ones((nKernel,nKernel)) 

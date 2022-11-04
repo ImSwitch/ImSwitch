@@ -46,7 +46,7 @@ class MCTController(LiveUpdatedController):
 
         self.updateRate=2
 
-        self.pixelsizeZ=10
+        self.pixelsize=(10,1,1) # zxy
 
         self.tUnshake = .1
 
@@ -184,17 +184,17 @@ class MCTController(LiveUpdatedController):
     def showLast(self):
 
         try:
-            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsizeZ=self.pixelsizeZ)
+            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
 
         try:
-            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red",pixelsizeZ=self.pixelsizeZ)
+            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
         except Exception as e:
             self._logger.error(e)
 
         try:
-            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsizeZ=self.pixelsizeZ)
+            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
 
@@ -268,8 +268,6 @@ class MCTController(LiveUpdatedController):
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
 
-        # sync with camera frame
-        time.sleep(.15)
 
         if zstackParams[-1]:
             # perform a z-stack
@@ -304,7 +302,7 @@ class MCTController(LiveUpdatedController):
                         pass
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
-                self.switchOffIllumination()
+                # self.switchOffIllumination()
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame, append=True)
 
@@ -354,7 +352,7 @@ class MCTController(LiveUpdatedController):
         # switch off all illu sources
         for lasers in self.lasers:
             lasers.setEnabled(False)
-            lasers.setValue(0)
+            #lasers.setValue(0)
             time.sleep(0.1)
         if len(self.leds)>0:
             self.illu.setAll((0,0,0))
@@ -363,20 +361,22 @@ class MCTController(LiveUpdatedController):
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
         self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
-        if len(self.lasers)>0:
-            self.lasers[0].setValue(self.Laser1Value)
+        if not self.lasers[0].power: self.lasers[0].setEnabled(1)
+        if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
+        if self.lasers[1].power: self.lasers[1].setValue(0)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
         self._widget.mctLabelLaser2.setText('Intensity (Laser 2):'+str(value))
-        if len(self.lasers)>1:
-            self.lasers[1].setValue(self.Laser2Value)
+        if not self.lasers[1].power: self.lasers[1].setEnabled(1)
+        if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
+        if self.lasers[0].power: self.lasers[0].setValue(0)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
-        if len(self.leds):
-            self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
+        #if not self.lasers[1].power: self.lasers[1].setEnabled(1)
+        if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
     def __del__(self):
         self.imageComputationThread.quit()

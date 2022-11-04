@@ -80,7 +80,7 @@ class ESP32LEDLaserManager(LaserManager):
             self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
             self._laser.set_laser(self.channel_index, 
-                                                self.power*self.enabled, self.filter_change, 
+                                                int(self.power*self.enabled), self.filter_change, 
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
                                                 filter_axis = self.filter_axis, 
@@ -94,10 +94,10 @@ class ESP32LEDLaserManager(LaserManager):
         self.power = power
         if self.enabled:
             if self.channel_index == "LED":
-                self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+                self._led.setAll((int(self.power*self.enabled),self.power*self.enabled,self.power*self.enabled))
             else:
                 self._laser.set_laser(self.channel_index, 
-                                    self.power, 0*self.filter_change, 
+                                    int(self.power), 0*self.filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
                                     filter_axis = self.filter_axis, 

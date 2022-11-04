@@ -208,10 +208,10 @@ class MCTController(LiveUpdatedController):
     def cleanStack(self, input):
         import NanoImagingPack as nip 
         mBackground = nip.gaussf(np.mean(input,0),10)
-        output = input/mBackground 
-        mFluctuations = np.mean(output, (1,2))
-        output /= np.expand_dims(np.expand_dims(mFluctuations,-1),-1)
-        return np.uint8(output*255)
+        moutput = input/mBackground 
+        mFluctuations = np.mean(moutput, (1,2))
+        moutput /= np.expand_dims(np.expand_dims(mFluctuations,-1),-1)
+        return np.uint8(moutput)
 
     def displayStack(self, im):
         """ Displays the image in the view. """

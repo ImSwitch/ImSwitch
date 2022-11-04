@@ -181,22 +181,34 @@ class MCTController(LiveUpdatedController):
         if len(self.leds)>0:
             self.leds[0].setValue(self.LEDValueOld)
 
-    def showLast(self):
+    def showLast(self, isCleanStack=True):
 
         try:
+            #subtract background and normalize stack
+            if isCleanStack: self.LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
             self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
 
         try:
+            if isCleanStack: self.LastStackLaser2ArrayLast = self.cleanStack(self.LastStackLaser2ArrayLast)
             self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
         except Exception as e:
             self._logger.error(e)
 
         try:
+            if isCleanStack: self.LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
             self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
+
+    def cleanStack(self, input):
+        import NanoImagingPack as nip 
+        mBackground = nip.gaussf(np.mean(input,0),10)
+        output = input/mBackground 
+        mFluctuations = np.mean(output, (1,2))
+        output /= np.expand_dims(np.expand_dims(mFluctuations,-1),-1)
+        return output
 
     def displayStack(self, im):
         """ Displays the image in the view. """
@@ -242,8 +254,6 @@ class MCTController(LiveUpdatedController):
         if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
             self._widget.setNImages("Autofocusing...")
             self.doAutofocus(autofocusParams)
-            
-
 
         if self.Laser1Value>0:
             self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
@@ -269,8 +279,27 @@ class MCTController(LiveUpdatedController):
         fileExtension = 'tif'
 
 
+        # turn on illuminationn
+        if illuMode == "Laser1" and len(self.lasers)>0:
+            self.lasers[0].setValue(intensity)
+            self.lasers[0].setEnabled(True)
+        elif illuMode == "Laser2" and len(self.lasers)>1:
+            self.lasers[1].setValue(intensity)
+            self.lasers[1].setEnabled(True)
+        elif illuMode == "Brightfield":
+            try:
+                if intensity > 255: intensity=255
+                if intensity < 0: intensity=0
+                if len(self.leds)>0:
+                    self.leds[0].setValue(intensity)
+                    self.leds[0].setEnabled(True)
+            except:
+                pass
+        
         if zstackParams[-1]:
             # perform a z-stack
+            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
+
             stepsCounter = 0
             backlash=0
             try: # only relevant for UC2 stuff
@@ -278,28 +307,12 @@ class MCTController(LiveUpdatedController):
             except:
                 pass
 
-            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
             for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
+                # move to each position
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
                 filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
                 
-                # turn on illuminationn
-                if illuMode == "Laser1" and len(self.lasers)>0:
-                    self.lasers[0].setValue(intensity)
-                    self.lasers[0].setEnabled(True)
-                elif illuMode == "Laser2" and len(self.lasers)>1:
-                    self.lasers[1].setValue(intensity)
-                    self.lasers[1].setEnabled(True)
-                elif illuMode == "Brightfield":
-                    try:
-                        if intensity > 255: intensity=255
-                        if intensity < 0: intensity=0
-                        if len(self.leds)>0:
-                            self.leds[0].setValue(intensity)
-                            self.leds[0].setEnabled(True)
-                    except:
-                        pass
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
                 # self.switchOffIllumination()
@@ -307,43 +320,25 @@ class MCTController(LiveUpdatedController):
                 tif.imwrite(filePath, lastFrame, append=True)
 
                 # store frames for displaying
-                if illuMode == "Laser1":
-                    self.LastStackLaser1.append(lastFrame.copy())
-                if illuMode == "Laser2":
-                    self.LastStackLaser2.append(lastFrame.copy())
-                if illuMode == "Brightfield":
-                    self.LastStackLED.append(lastFrame.copy())
+                if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
+                if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
+                if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
+
             self.stages.setEnabled(is_enabled=False)
             self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
 
+
         else:
-            # turn on illuminationn
-            if illuMode == "Laser1" and len(self.lasers)>0:
-                self.lasers[0].setValue(intensity)
-                self.lasers[0].setEnabled(True)
-            elif illuMode == "Laser2" and len(self.lasers)>1:
-                self.lasers[1].setValue(intensity)
-                self.lasers[1].setEnabled(True)
-            elif illuMode == "Brightfield":
-                try:
-                    if intensity > 255: intensity=255
-                    if intensity < 0: intensity=0
-                    if len(self.leds)>0:
-                        self.leds[0].setValue(intensity)
-                        self.leds[0].setEnabled(True)
-                except:
-                    pass
+            # single file timelapse
             filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
             lastFrame = self.detector.getLatestFrame()
             self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)
+            
             # store frames for displaying
-            if illuMode == "Laser1":
-                self.LastStackLaser1.append(lastFrame.copy())
-            if illuMode == "Laser2":
-                self.LastStackLaser2.append(lastFrame.copy())
-            if illuMode == "Brightfield":
-                self.LastStackLED.append(lastFrame.copy())
+            if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
+            if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
+            if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
         self.switchOffIllumination()
 
@@ -361,14 +356,14 @@ class MCTController(LiveUpdatedController):
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
         self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
-        if not self.lasers[0].power: self.lasers[0].setEnabled(1)
+        if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
         self._widget.mctLabelLaser2.setText('Intensity (Laser 2):'+str(value))
-        if not self.lasers[1].power: self.lasers[1].setEnabled(1)
+        if not self.lasers[1].enabled: self.lasers[1].setEnabled(1)
         if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
         if self.lasers[0].power: self.lasers[0].setValue(0)
 

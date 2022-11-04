@@ -29,7 +29,7 @@ class UC2ConfigManager(SignalInterface):
         self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
 
         # initialize the firmwareupdater
-        self.firmwareUpdater = uc2.updater(ESP32=self.ESP32, firmwarePath="./")
+        self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
         
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):

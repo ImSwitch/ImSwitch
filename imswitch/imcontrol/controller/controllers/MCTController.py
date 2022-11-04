@@ -181,24 +181,27 @@ class MCTController(LiveUpdatedController):
         if len(self.leds)>0:
             self.leds[0].setValue(self.LEDValueOld)
 
-    def showLast(self, isCleanStack=True):
-
+    def showLast(self):
+        isCleanStack=True
         try:
             #subtract background and normalize stack
-            if isCleanStack: self.LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
-            self._widget.setImage(self.LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
+            if isCleanStack: LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
+            else: LastStackLaser1ArrayLast = self.LastStackLaser1ArrayLast
+            self._widget.setImage(LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
 
         try:
-            if isCleanStack: self.LastStackLaser2ArrayLast = self.cleanStack(self.LastStackLaser2ArrayLast)
-            self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
+            if isCleanStack: LastStackLaser2ArrayLast = self.cleanStack(self.LastStackLaser2ArrayLast)
+            else: LastStackLaser2ArrayLast = self.LastStackLaser2ArrayLast
+            self._widget.setImage(LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
         except Exception as e:
             self._logger.error(e)
 
         try:
-            if isCleanStack: self.LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
-            self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
+            if isCleanStack: LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
+            LastStackLEDArrayLast = self.LastStackLaser1ArrayLast
+            self._widget.setImage(LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
 
@@ -208,7 +211,7 @@ class MCTController(LiveUpdatedController):
         output = input/mBackground 
         mFluctuations = np.mean(output, (1,2))
         output /= np.expand_dims(np.expand_dims(mFluctuations,-1),-1)
-        return output
+        return np.uint8(output*255)
 
     def displayStack(self, im):
         """ Displays the image in the view. """

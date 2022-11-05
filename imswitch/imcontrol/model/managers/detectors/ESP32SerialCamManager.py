@@ -97,7 +97,7 @@ class ESP32SerialCamManager(DetectorManager):
     def finalize(self) -> None:
         super().finalize()
         self.__logger.debug('Safely disconnecting the camera...')
-        self._camera.close()
+        #TODO: IMPLEMENT self._camera.close()
 
     @property
     def pixelSizeUm(self):

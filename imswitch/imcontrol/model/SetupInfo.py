@@ -172,6 +172,10 @@ class HistoScanInfo:
     pass
     
 @dataclass(frozen=True)
+class PixelCalibrationInfo:
+    pass
+    
+@dataclass(frozen=True)
 class ISMInfo:
     wavelength: int
     """ Wavelength of the laser line used with the SLM. """
@@ -310,6 +314,9 @@ class SetupInfo:
     
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+    
+    PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
+    """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
     
     uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """

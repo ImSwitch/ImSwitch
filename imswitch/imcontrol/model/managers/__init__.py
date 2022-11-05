@@ -12,5 +12,6 @@ from .UC2ConfigManager import UC2ConfigManager
 from .SIMManager import SIMManager
 from .MCTManager import MCTManager
 from .HistoScanManager import HistoScanManager
+from .PixelCalibrationManager import PixelCalibrationManager
 from .ISMManager import ISMManager
 from .ScanManager import ScanManager

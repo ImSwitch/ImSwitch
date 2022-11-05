@@ -20,6 +20,7 @@ from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .MCTWidget import MCTWidget
 from .HistoScanWidget import HistoScanWidget
+from .PixelCalibrationWidget import PixelCalibrationWidget
 from .SquidStageScanWidget import SquidStageScanWidget
 from .ISMWidget import ISMWidget
 from .ScanWidget import ScanWidget

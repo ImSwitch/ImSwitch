@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager
 )
 
 
@@ -40,6 +40,7 @@ class MasterController:
         self.simManager = SIMManager(self.__setupInfo.sim)
         self.mctManager = MCTManager(self.__setupInfo.mct)
         self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
         self.ismManager = ISMManager(self.__setupInfo.ism)
 

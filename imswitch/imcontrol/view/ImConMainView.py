@@ -68,6 +68,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'SIM': _DockInfo(name='SIM', yPosition=0),
             'MCT': _DockInfo(name='MCT', yPosition=0),
             'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
+            'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
             'ISM': _DockInfo(name='ISM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),

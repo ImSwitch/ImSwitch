@@ -11,16 +11,16 @@ from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
 
-class HistoScanManager(SignalInterface):
-    sigHistoScanMaskUpdated = Signal(object)  # (maskCombined)
+class PixelCalibrationManager(SignalInterface):
+    sigPixelCalibrationMaskUpdated = Signal(object)  # (maskCombined)
 
-    def __init__(self, HistoScanInfo, *args, **kwargs):
+    def __init__(self, PixelCalibrationInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if HistoScanInfo is None:
+        if PixelCalibrationInfo is None:
             return
-
+        
         self.update()
 
     def update(self):

@@ -374,7 +374,7 @@ class NidaqManager(SignalInterface):
                                                           starttrig=self.__startTrigger,
                                                           reference_trigger='ao/StartTrigger')
                     self.tasks['do'] = self.doTask
-
+                    
                     # Important to squeeze the array, otherwise we might get an "invalid number of
                     # channels" error
                     self.doTask.write(np.array(DOsignals).squeeze(), auto_start=False)

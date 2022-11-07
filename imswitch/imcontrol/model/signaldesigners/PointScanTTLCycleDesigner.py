@@ -199,10 +199,10 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             # Generate frame and line clocks
             # line clock
             line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=False, line=True)
-            signal_dict['line_clock'] = line_clock
+            signal_dict['line_clock'] = line_clock.astype(bool)
             # frame clock
             frame_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=True, line=False)
-            signal_dict['frame_clock'] = frame_clock
+            signal_dict['frame_clock'] = frame_clock.astype(bool)
 
             self.__plot_curves(plot=False, signals=signal_dict, targets=targets+['frame_clock','line_clock'])  # for debugging
 

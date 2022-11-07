@@ -32,6 +32,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             return self.__make_signal_stationary(parameterDict, setupInfo.scan.sampleRate)
         else:
             signal_dict = {}
+            frame_line_clocks = {}
 
             targets = parameterDict['target_device']
             n_steps_dx = scanInfoDict['img_dims']
@@ -41,6 +42,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             scan_axes_order = scanInfoDict['axis_names']
             # extra ON at the end of d2 step, to not turn off before line is finished
             onepad_extraon = 10 #int(np.round(scanInfoDict['extra_laser_on']))
+
+            clock_len = 10  # length of line/frame clock pulses at the start of line/frame, in samples
   
             #zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay']))
             zeropad_d2flyback = np.max([0,(scanInfoDict['scan_samples_d2_period'] -
@@ -190,10 +193,53 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
                 signal_dict[target] = signal.astype(bool)
 
-            self.__plot_curves(plot=False, signals=signal_dict, targets=targets)  # for debugging
+            # Generate frame and line clocks
+            # line clock
+            line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=False, line=True)
+            signal_dict['line_clock'] = line_clock
+            # frame clock
+            frame_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=True, line=False)
+            signal_dict['frame_clock'] = frame_clock
+
+            self.__plot_curves(plot=False, signals=signal_dict, targets=targets+['frame_clock','line_clock'])  # for debugging
 
             # return signal_dict, which contains bool arrays for each target
             return signal_dict
+
+    def __generate_frame_line_clock(self, n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=True, line=False, clock_len=10):
+        """ Generate frame and line clock signals, to be returned in signal_dict and used if user wants frame/line clock at a digital output. """
+        # zeros to d1 axis length
+        signal_d2_step = np.zeros(n_scan_samples_dx[1] + onepad_extraon, dtype='bool')
+        if line:
+            # replace first part with a line clock pulse
+            signal_d2_step[:clock_len] = 1
+        signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))
+        # all d2 steps except last
+        signal_d2 = np.tile(signal_d2_period, n_steps_dx[1] - 1)
+        # add last d2 step (without flyback)
+        signal_d2 = np.append(signal_d2, signal_d2_step)
+        if frame:
+            # replace first part with a frame clock pulse
+            signal_d2[:clock_len] = 1
+        # pad extra bits of smooth d2 curve: first step acc, start settling, and initial positioning
+        signal_d2 = np.append(np.zeros(zeropad_startacc+zeropad_settling+zeropad_initpos, dtype='bool'), signal_d2)
+        # adjust to frame len 
+        zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d2)
+        if zeropad_toframelen > 0:
+            signal_d2 = np.append(signal_d2, np.zeros(zeropad_toframelen, dtype='bool'))
+        elif zeropad_toframelen < 0:
+            signal_d2 = signal_d2[-zeropad_toframelen:]  # TODO: looks strange? not right length? never enters here probably
+        # repeat signal for all additional scan axes, if applicable
+        signal = self.__repeat_remaining_axes(signal=signal_d2, n_steps_dx=n_steps_dx, axis_start=2, axis_end=axis_count)
+        # pad start zeros
+        signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)
+        # adjust to same length as analog scanning
+        zeropad_end = samples_total - len(signal)
+        if zeropad_end > 0:
+            signal = np.append(signal, np.zeros(zeropad_end, dtype='bool'))
+        elif zeropad_end < 0:
+            signal = signal[:zeropad_end]  # TODO: looks strange? not right length? never enters here probably
+        return signal
 
     def __create_d2_period(self, state, n_samples_d1, samples_extra, samples_flyback):
         """ Create a full d2 step period of boolean state (on or off during d2 step, without flyback). """

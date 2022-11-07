@@ -191,6 +191,15 @@ class ScanInfo:
     sampleRate: int
     """ Scan sample rate. """
 
+    lineClockLine: Optional[Union[str, int]]
+    """ Line for line clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{lineClockLine}".
+    """
+
+    frameClockLine: Optional[Union[str, int]]
+    """ Line for frame clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{frameClockLine}".
+    """
 
 @dataclass(frozen=True)
 class EtSTEDInfo:

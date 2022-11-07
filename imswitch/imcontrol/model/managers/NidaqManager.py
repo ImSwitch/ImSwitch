@@ -310,6 +310,16 @@ class NidaqManager(SignalInterface):
                     DOdevices.append(device)
                     DOsignals.append(ttlDic[device])
                     DOlines.append(line)
+                
+                # check if line and frame clock should be outputted, if so add to DO lists
+                if self.__setupInfo.scan.lineClockLine:
+                    DOdevices.append('LineClock')
+                    DOsignals.append(ttlDic['line_clock'])
+                    DOlines.append(self.__setupInfo.scan.lineClockLine)
+                if self.__setupInfo.scan.frameClockLine:
+                    DOdevices.append('FrameClock')
+                    DOsignals.append(ttlDic['frame_clock'])
+                    DOlines.append(self.__setupInfo.scan.frameClockLine)
 
                 if len(AOsignals) < 1 and len(DOsignals) < 1:
                     raise NidaqManagerError('No signals to send')

@@ -87,7 +87,10 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     # ttl sequence along first (pixel) axis
                     # repeat sequence to d1 axis length
                     signal_d2_step = np.resize(seq, n_steps_dx[0])
-                    signal_d2_step = np.repeat(signal_d2_step, (n_scan_samples_dx[1])/n_steps_dx[0]).astype(bool)
+                    if n_scan_samples_dx[1] > n_steps_dx[0]:
+                        signal_d2_step = np.repeat(signal_d2_step, (n_scan_samples_dx[1])/n_steps_dx[0]).astype(bool)
+                    elif n_scan_samples_dx[1] < n_steps_dx[0]:
+                        signal_d2_step = signal_d2_step[::int(n_steps_dx[0]/n_scan_samples_dx[1])].astype(bool)
                     append_start = np.ones(onepad_extraon, dtype='bool') if signal_d2_step[0] == 1 else np.zeros(onepad_extraon, dtype='bool')
                     signal_d2_step = np.append(append_start, signal_d2_step)
                     signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))

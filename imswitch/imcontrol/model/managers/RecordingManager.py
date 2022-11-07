@@ -136,7 +136,13 @@ class RecordingManager(SignalInterface):
                         dataset.attrs['element_size_um'] =\
                             self.__detectorsManager[detectorName].pixelSizeUm
                         
-                        dataset[:,...] = np.moveaxis(image,0,-1)  # TODO: double this line for d>3 compatibility. Works still?
+                        #dataset[:,...] = np.moveaxis(image,0,-1)  # TODO: double this line for d>3 compatibility. Works still?
+                        if image.ndim==3:
+                            dataset[:,...] = np.moveaxis(image,[0,1,2], [2,1,0])
+                        elif image.ndim==4:
+                            dataset[:,...] = np.moveaxis(image,[0,1,2,3],[3,2,1,0])
+                        else:
+                            dataset[:,...] = np.moveaxis(image,0,-1)
                         file.close()
                     elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
                         tiff.imwrite(filePath, image)

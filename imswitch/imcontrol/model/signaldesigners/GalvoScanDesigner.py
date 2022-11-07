@@ -167,7 +167,7 @@ class GalvoScanDesigner(ScanDesigner):
             'padlens': pad_maxes
         }
         #'extra_laser_on': parameterDict['extra_laser_on']
-        #self._logger.debug(scanInfoDict)
+        self._logger.debug(scanInfoDict)
 
         self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 

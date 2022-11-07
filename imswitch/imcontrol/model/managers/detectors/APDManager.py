@@ -110,7 +110,7 @@ class APDManager(DetectorManager):
         except Exception:
             pass
 
-    def getLatestFrame(self):
+    def getLatestFrame(self, is_save=True):
         return self._image
 
     def _renewImage(self):
@@ -386,6 +386,8 @@ class ScanWorker(Worker):
                 if self._manager._ttlmultiplying:
                     seq_signal_xstart = self._samples_read-self._phase_delay
                 data = self.readdata(self._samples_d2_period)
+                #self.__logger.debug('read period')
+                #self.__logger.debug(self._samples_d2_period)
                 if self._manager._ttlmultiplying:
                     seq_signal_xend = self._samples_read-self._phase_delay
                     ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]

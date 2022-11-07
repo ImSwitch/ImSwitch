@@ -51,6 +51,10 @@ class TISManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=self._camera.model, parameters=parameters, actions=actions, croppable=True)
 
+    @property
+    def scale(self):
+        return [1,1]
+
     def getLatestFrame(self):
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()

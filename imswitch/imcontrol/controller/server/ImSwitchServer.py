@@ -62,8 +62,7 @@ class ImSwitchServer(Worker):
         def includePyro(func):
             @Pyro5.server.expose
             def wrapper(*args, **kwargs):
-                func.apply_defaults()
-                return func
+                return func(*args, **kwargs)
 
             return wrapper
 

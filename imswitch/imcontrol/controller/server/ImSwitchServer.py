@@ -5,7 +5,6 @@ from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
 from fastapi import FastAPI
 import uvicorn
-import inspect
 from functools import wraps
 
 app = FastAPI()

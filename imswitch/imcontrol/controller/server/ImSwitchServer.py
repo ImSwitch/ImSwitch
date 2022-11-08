@@ -3,18 +3,19 @@ import Pyro5.server
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from useq import MDASequence
-import time
+from fastapi import FastAPI
+import uvicorn
 import numpy as np
+app = FastAPI()
 
 
 class ImSwitchServer(Worker):
 
-    def __init__(self, channel, setupInfo):
+    def __init__(self, api, setupInfo):
         super().__init__()
 
         self.__logger = initLogger(self, tryInheritParent=True)
-        self._channel = channel
+        self._api = api
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
         self._port = setupInfo.pyroServerInfo.port
@@ -23,6 +24,8 @@ class ImSwitchServer(Worker):
         self._canceled = False
 
     def run(self):
+        self.createAPI()
+        uvicorn.run(app)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -43,13 +46,32 @@ class ImSwitchServer(Worker):
     def stop(self):
         self._daemon.shutdown()
 
-    @Pyro5.server.expose
-    def exec(self, module, func, params):
-        self._channel.sigBroadcast.emit(module, func, params)
+    @app.get("/")
+    def createAPI(self):
+        api_dict = self._api._asdict()
+        functions = api_dict.keys()
 
-    @Pyro5.server.expose
-    def get_image(self, detectorName=None) -> np.ndarray:
-        return self._channel.get_image(detectorName)
+        def includeAPI(str, func):
+            @app.get(str)
+            def wrapper(self, *args, **kwargs):
+                return func(self, *args, **kwargs)
+
+            return wrapper
+
+        def includePyro(func):
+            @Pyro5.server.expose
+            def wrapper(self, *args, **kwargs):
+                return func(self, *args, **kwargs)
+
+            return wrapper
+
+        for f in functions:
+            func = api_dict[f]
+            if hasattr(func, 'module'):
+                module = func.module
+            else:
+                module = func.__module__.split('.')[-1]
+            self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 
 # Copyright (C) 2021, Talley Lambert

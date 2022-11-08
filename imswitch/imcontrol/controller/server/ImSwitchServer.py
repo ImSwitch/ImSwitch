@@ -74,9 +74,6 @@ class ImSwitchServer(Worker):
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 
-# Copyright (C) 2021, Talley Lambert
-# All rights reserved.
-
 # Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.
 #

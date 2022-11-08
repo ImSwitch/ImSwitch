@@ -86,9 +86,6 @@ class CommunicationChannel(SignalInterface):
 
     sigSaveFocus = Signal()
 
-    # useq-schema related signals
-    sigSetXYPosition = Signal(float, float)
-    sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
 

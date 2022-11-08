@@ -5,7 +5,7 @@ from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
 from fastapi import FastAPI
 import uvicorn
-import numpy as np
+
 app = FastAPI()
 
 

@@ -5,6 +5,7 @@ from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
 from fastapi import FastAPI
 import uvicorn
+import inspect
 
 app = FastAPI()
 
@@ -53,24 +54,23 @@ class ImSwitchServer(Worker):
 
         def includeAPI(str, func):
             @app.get(str)
-            def wrapper(self, *args, **kwargs):
-                return func(self, *args, **kwargs)
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
 
             return wrapper
 
         def includePyro(func):
             @Pyro5.server.expose
-            def wrapper(self, *args, **kwargs):
-                return func(self, *args, **kwargs)
+            def wrapper(*args, **kwargs):
+                func.apply_defaults()
+                return func
 
             return wrapper
 
         for f in functions:
             func = api_dict[f]
-            if hasattr(func, 'module'):
-                module = func.module
-            else:
-                module = func.__module__.split('.')[-1]
+            self.__logger.debug(inspect.signature(inspect.unwrap(func)))
+            module = inspect.unwrap(func).__module__.split('.')[-1]
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

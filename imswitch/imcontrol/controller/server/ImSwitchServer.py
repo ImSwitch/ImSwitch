@@ -6,6 +6,7 @@ from ._serialize import register_serializers
 from fastapi import FastAPI
 import uvicorn
 import inspect
+from functools import wraps
 
 app = FastAPI()
 
@@ -54,7 +55,8 @@ class ImSwitchServer(Worker):
 
         def includeAPI(str, func):
             @app.get(str)
-            def wrapper(*args, **kwargs):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
 
             return wrapper

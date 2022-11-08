@@ -84,8 +84,6 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
-    sigBroadcast = Signal(str, str, object)
-
     sigSaveFocus = Signal()
 
     # useq-schema related signals

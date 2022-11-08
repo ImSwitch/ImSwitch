@@ -58,20 +58,20 @@ class ImSwitchServer(Worker):
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
-
             return wrapper
 
         def includePyro(func):
             @Pyro5.server.expose
             def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
-
             return wrapper
 
         for f in functions:
             func = api_dict[f]
-            self.__logger.debug(inspect.signature(inspect.unwrap(func)))
-            module = inspect.unwrap(func).__module__.split('.')[-1]
+            if hasattr(func, 'module'):
+                module = func.module
+            else:
+                module = func.__module__.split('.')[-1]
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

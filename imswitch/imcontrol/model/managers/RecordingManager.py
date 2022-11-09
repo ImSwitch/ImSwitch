@@ -233,26 +233,24 @@ class RecordingManager(SignalInterface):
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
 
+            if saveFormat:
+                storer = self.__storerMap[saveFormat]
 
-            storer = self.__storerMap[saveFormat]
-
-
-            if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
-
-                # Save images to disk
-                store = storer(savename, self.__detectorsManager)
-                store.snap(images, attrs)
+                if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
+                    # Save images to disk
+                    store = storer(savename, self.__detectorsManager)
+                    store.snap(images, attrs)
 
 
-            if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
-                for channel, image in images.items():
-                    name = os.path.basename(f'{savename}_{channel}')
-                    self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
+                if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
+                    for channel, image in images.items():
+                        name = os.path.basename(f'{savename}_{channel}')
+                        self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
 
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
-                return image
+                return images
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,

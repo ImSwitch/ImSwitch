@@ -24,7 +24,7 @@ Download the latest Artifact: https://github.com/openUC2/ImSwitch/actions/workfl
 ```
 set SETUPTOOLS_USE_DISTUTILS=stdlib
 ImSwitch.exe
-``` 
+```
 
 ### Option B: Install using pip
 
@@ -139,7 +139,7 @@ bash ./Miniforge3-Linux-aarch64.sh
 conda create -n imswitch  python=3.8
 ```
 
-Now lets add pyqt5 via conda 
+Now lets add pyqt5 via conda
 
 ```
 conda install pyqt=5.12.3 -y

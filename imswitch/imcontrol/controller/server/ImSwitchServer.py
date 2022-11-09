@@ -46,11 +46,12 @@ class ImSwitchServer(Worker):
     @Pyro5.server.expose
     def exec(self, module, func, params):
         self._channel.sigBroadcast.emit(module, func, params)
-    
+
     @Pyro5.server.expose
     def get_image(self, detectorName=None) -> np.ndarray:
         return self._channel.get_image(detectorName)
 
+'''
     @Pyro5.server.expose
     def move(self, positionerName=None, axis="X", dist=0) -> np.ndarray:
         return self._channel.move(positionerName, axis=axis, dist=dist)
@@ -115,6 +116,8 @@ class ImSwitchServer(Worker):
 
         self.__logger.info("MDA Finished: ")
         pass
+
+'''
 
 
 # Copyright (C) 2021, Talley Lambert

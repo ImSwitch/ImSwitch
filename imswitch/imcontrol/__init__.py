@@ -48,11 +48,12 @@ def getMainViewAndController(moduleCommChannel, *_args,
         setupInfo = overrideSetupInfo
 
     logger.debug(f'Setup used: {options.setupFileName}')
-
+    
     view = ImConMainView(options, setupInfo)
     try:
         controller = ImConMainController(options, setupInfo, view, moduleCommChannel)
     except Exception as e:
+        # TODO: To broad exception
         view.close()
         raise e
 

@@ -12,13 +12,19 @@ class RecordingOptions:
     includeDateInOutputFolder: bool = True
 
 
+@dataclass(frozen=True)
+class WatcherOptions:
+    outputFolder: str = os.path.join(dirtools.UserFileDirs.Root, 'scripts')
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass(frozen=True)
 class Options:
     setupFileName: str  # JSON file that contains setup info
     recording: RecordingOptions = field(default_factory=RecordingOptions)
-
+    watcher: WatcherOptions = field(default_factory=WatcherOptions)
     _catchAll: CatchAll = None
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

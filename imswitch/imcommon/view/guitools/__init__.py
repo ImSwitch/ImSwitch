@@ -6,3 +6,4 @@ from .dialogtools import askYesNoQuestion, askForFilePath, askForFolderPath, ask
 from .imagetools import bestLevels, minmaxLevels
 from .stylesheet import getBaseStyleSheet
 from .texttools import ordinalSuffix
+from .FileWatcher import FileWatcher

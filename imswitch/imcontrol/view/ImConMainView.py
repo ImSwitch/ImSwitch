@@ -86,6 +86,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
+            'Watcher': _DockInfo(name='File Watcher', yPosition=3),
+            'Tiling': _DockInfo(name='Tiling', yPosition=3)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

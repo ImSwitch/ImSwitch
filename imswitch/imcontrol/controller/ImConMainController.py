@@ -24,7 +24,7 @@ class ImConMainController(MainController):
         self.__options = options
         self.__setupInfo = setupInfo
         self.__mainView = mainView
-        self.__moduleCommChannel = moduleCommChannel
+        self._moduleCommChannel = moduleCommChannel
 
         # Connect view signals
         self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
@@ -35,11 +35,11 @@ class ImConMainController(MainController):
         # Init communication channel and master controller
         self.__commChannel = CommunicationChannel(self, self.__setupInfo)
         self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
-                                                   self.__moduleCommChannel)
+                                                   self._moduleCommChannel)
 
         # List of Controllers for the GUI Widgets
         self.__factory = ImConWidgetControllerFactory(
-            self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
+            self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
         self.pickSetupController = self.__factory.createController(
             PickSetupController, self.__mainView.pickSetupDialog

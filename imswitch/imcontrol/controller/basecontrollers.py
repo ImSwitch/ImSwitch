@@ -30,8 +30,8 @@ class ImConWidgetController(WidgetController):
     def _receive(self, module, func, params):
         if module == type(self).__name__:
             func = eval("self."+func)
-            if hasattr(func, "_APIExport"):
-                if len(params)==0:
+            if hasattr(func, '_APIExport'):
+                if len(params) == 0:
                     # in case we have no parameters to be transfered
                     return func()
                 else:
@@ -40,7 +40,6 @@ class ImConWidgetController(WidgetController):
                     except:
                         # not iterable?
                         return  func(params)
-                
 
     def broadcast(self, module, func, params):
         self._commChannel.sigBroadcast.emit(module, func, params)
@@ -56,7 +55,7 @@ class LiveUpdatedController(ImConWidgetController):
         self.active = False
 
     def update(self, detectorName, im, init, isCurrentDetector):
-        pass #self.__ raise NotImplementedError
+        raise NotImplementedError
 
 
 class SuperScanController(ImConWidgetController):

@@ -75,16 +75,18 @@ class MCTController(LiveUpdatedController):
             if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
                 self.lasers.append(self._master.lasersManager[iDevice])
 
+        # TODO: misleading we have LEDs and LED Matrices here...
         self.leds = []
         for iDevice in allLaserNames:
             if iDevice.find("LED")>=0:
                 self.leds.append(self._master.lasersManager[iDevice])
 
+        '''
         if len(self._master.LEDMatrixsManager.getAllDeviceNames())>0:
             self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         else:
             self.illu = []
-
+        '''
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -353,7 +355,8 @@ class MCTController(LiveUpdatedController):
             #lasers.setValue(0)
             time.sleep(0.1)
         if len(self.leds)>0:
-            self.illu.setAll((0,0,0))
+            self.leds[0].setValue(0)
+            #self.illu.setAll((0,0,0))
 
 
     def valueLaser1Changed(self, value):
@@ -374,7 +377,8 @@ class MCTController(LiveUpdatedController):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         #if not self.lasers[1].power: self.lasers[1].setEnabled(1)
-        if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
+        if len(self.leds): self.leds[0].setValue(self.LEDValue)
+        #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
     def __del__(self):
         self.imageComputationThread.quit()

@@ -373,12 +373,12 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
-    @APIExport(runOnUIThread=True)
+    
     '''
     def snapImage(self, name=None) -> None:
         self.snap(name)
     '''
-
+    @APIExport(runOnUIThread=True)
     def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:

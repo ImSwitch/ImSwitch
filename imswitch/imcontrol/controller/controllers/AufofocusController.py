@@ -15,6 +15,7 @@ T_DEBOUNCE = .2
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
 
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
@@ -31,6 +32,7 @@ class AutofocusController(ImConWidgetController):
 
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
+        self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
     def __del__(self):
         self.__processDataThread.quit()

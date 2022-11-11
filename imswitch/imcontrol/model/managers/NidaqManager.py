@@ -78,7 +78,7 @@ class NidaqManager(SignalInterface):
                            starttrig=False, reference_trigger='ai/StartTrigger'):
         """ Simplified function to create a digital output task """
         self.__logger.debug(f'Create DO task: {name}')
-        self.__logger.debug(lines)
+        #self.__logger.debug(lines)
         dotask = nidaqmx.Task(name)
 
         lines = np.atleast_1d(lines)
@@ -374,7 +374,7 @@ class NidaqManager(SignalInterface):
                                                           starttrig=self.__startTrigger,
                                                           reference_trigger='ao/StartTrigger')
                     self.tasks['do'] = self.doTask
-                    
+
                     # Important to squeeze the array, otherwise we might get an "invalid number of
                     # channels" error
                     self.doTask.write(np.array(DOsignals).squeeze(), auto_start=False)

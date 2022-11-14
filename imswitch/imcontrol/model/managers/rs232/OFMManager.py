@@ -1,7 +1,6 @@
 import openflexure_microscope_client as ofm_client # pip install UC2-REST
-
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.model import APIExport
+
 
 class OFMManager:
     """ A low-level wrapper for TCP-IP communication (OFM REST API)

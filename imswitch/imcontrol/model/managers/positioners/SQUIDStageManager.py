@@ -2,7 +2,6 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-
 class SQUIDStageManager(PositionerManager):
     SPEED=1000
 
@@ -49,7 +48,6 @@ class SQUIDStageManager(PositionerManager):
 
     def closeEvent(self):
         self._rs232manager._squid.close()
-
 
 
 # Copyright (C) 2020, 2021 The imswitch developers

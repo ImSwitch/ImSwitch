@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
 
+
 class SQUIDLaserManager(LaserManager):
     """ LaserManager for controlling LEDs and LAsers connected to an 
     ESP32 exposing a REST API
@@ -37,7 +38,6 @@ class SQUIDLaserManager(LaserManager):
         self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
                                                               intensity=self.__power)
 
-
     def setValue(self, power):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
@@ -46,8 +46,6 @@ class SQUIDLaserManager(LaserManager):
         if self.__enabled:
             self._rs232manager._squid.set_illumination(illumination_source=self.illumination_source,
                                                               intensity=self.__power)
-
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

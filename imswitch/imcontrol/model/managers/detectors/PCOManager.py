@@ -64,7 +64,6 @@ class PCOManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-        
 
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()

@@ -1,6 +1,6 @@
 import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
-from imswitch.imcommon.model import APIExport
+
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)

@@ -273,7 +273,7 @@ class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
     host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
-    active: Optional[bool] = True
+    active: Optional[bool] = False
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)

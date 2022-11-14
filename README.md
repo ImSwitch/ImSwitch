@@ -17,7 +17,14 @@ that it is possible to integrate current state-of-the-art solutions into one uni
 
 ### Option A: Standalone bundles for Windows
 
-Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/kasasxav/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
+Windows users can download ImSwitch in standalone format from the [releases page on GitHub](https://github.com/openUC2/ImSwitch/releases). Further information is available there. An existing Python installation is *not* required.
+
+In order to tart do the following:
+Download the latest Artifact: https://github.com/openUC2/ImSwitch/actions/workflows/imswitch-bundle.yml
+```
+set SETUPTOOLS_USE_DISTUTILS=stdlib
+ImSwitch.exe
+```
 
 ### Option B: Install using pip
 
@@ -42,12 +49,14 @@ imswitch
 **Installation**
 ```
 cd ~/Documents
-git clone https://github.com/beniroquai/ImSwitch/
+git clone https://github.com/openUC2/ImSwitch/
+cd ImSwitch
 # alternatively download this repo, unzip the .zip-file and open the command prompt in this directory
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
 pip install -r requirements.txt --user
-pip install -e ./
+#pip install -e ./
+pip install -e . --use-deprecated=legacy-resolver
 pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack
 
 cd ~/Documents/
@@ -104,19 +113,36 @@ Go [here](https://github.com/beniroquai/ImSwitchConfig) and clone/download the r
 
 ## On Jetson Nano
 
+Free some space (dirty - but ok for now):
+
+```
+sudo apt autoremove -y
+sudo apt clean
+sudo apt remove thunderbird libreoffice-* -y
+sudo rm -rf /usr/local/cuda/samples \
+/usr/src/cudnn_samples_* \
+/usr/src/tensorrt/data \
+/usr/src/tensorrt/samples \
+/usr/share/visionworks* ~/VisionWorks-SFM*Samples \
+/opt/nvidia/deepstream/deepstream*/samples
+sudo apt purge cuda-repo-l4t-local libvisionworks-repo -y
+sudo rm /etc/apt/sources.list.d/cuda*local /etc/apt/sources.list.d/visionworks*repo*
+sudo rm -rf /usr/src/linux-headers-*
+```
+
 Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
 ./anaconda3/bin/conda init
-conda create -n imswitch  python=3.7
+conda create -n imswitch  python=3.8
 ```
 
 Now lets add pyqt5 via conda
 
 ```
-conda install pyqt
+conda install pyqt=5.12.3 -y
 ```
 
 Make sure you install this repo without `pyqt` in `setup.cfg`

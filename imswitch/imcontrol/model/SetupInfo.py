@@ -128,7 +128,9 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
-
+@dataclass(frozen=True)
+class UC2ConfigInfo:
+    pass
 
 @dataclass(frozen=True)
 class SIMInfo:
@@ -163,6 +165,18 @@ class SIMInfo:
 
 @dataclass(frozen=True)
 class MCTInfo:
+    pass
+
+@dataclass(frozen=True)
+class HistoScanInfo:
+    pass
+    
+@dataclass(frozen=True)
+class PixelCalibrationInfo:
+    pass
+    
+@dataclass(frozen=True)
+class ISMInfo:
     wavelength: int
     """ Wavelength of the laser line used with the SLM. """
 
@@ -253,34 +267,13 @@ class EtSTEDInfo:
     """ Name of the widefield laser to use. """
 
 
-@dataclass(frozen=True)
-class NidaqInfo:
-    timerCounterChannel: Optional[Union[str, int]] = None
-    """ Output for Counter for timing purposes. If an integer is specified, it
-    will be translated to "Dev1/ctr{timerCounterChannel}". """
-
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
-
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
-
-
-@dataclass(frozen=True)
-class PulseStreamerInfo:
-    ipAddress: Optional[str] = None
-    """ IP address of Pulse Streamer hardware. """
-
 
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
     host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
+    active: Optional[bool] = True
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
@@ -319,6 +312,18 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
+    """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+    
+    PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
+    """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
+    
+    uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    ism: Optional[ISMInfo] = field(default_factory=lambda: None)
+    """ ISM settings. Required to be defined to use ISM functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
@@ -333,12 +338,6 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
-
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
-
-    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
-    """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

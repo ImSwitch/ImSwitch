@@ -1,4 +1,4 @@
-__version__ = '1.2.1'
+__version__ = "__version__develop" # used to be, but actions will replace this with the current release TAG ->1.2.9
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

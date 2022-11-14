@@ -3,6 +3,7 @@ import os
 import h5py
 import numpy as np
 import tifffile as tiff
+import zarr
 
 from imswitch.imcommon.model import initLogger
 
@@ -19,6 +20,7 @@ class DataObj:
         self._data = None
         self._datasetName = datasetName
         self._attrs = None
+        self.__logger = initLogger(self, tryInheritParent=False)
 
     @property
     def data(self):
@@ -29,7 +31,8 @@ class DataObj:
             self._data = np.array(self._file.get(self._datasetName)[:])
         elif isinstance(self._file, tiff.TiffFile):
             self._data = self._file.asarray()
-
+        elif isinstance(self._file, zarr.hierarchy.Group):
+            self._data = np.array(self._file[self._datasetName])
         return self._data
 
     @property
@@ -41,7 +44,10 @@ class DataObj:
             attrs = dict(self._file.attrs)
             attrs.update(dict(self._file[self.datasetName].attrs))
             self._attrs = attrs
-
+        if isinstance(self._file, zarr.hierarchy.Group):
+            attrs = dict(self._file.attrs)
+            attrs.update(dict(self._file[self.datasetName].attrs))
+            self._attrs = attrs
         return self._attrs
 
     @property
@@ -90,14 +96,15 @@ class DataObj:
     def getDatasetNames(path):
         file, _ = DataObj._open(path, allowMultipleDatasets=True)
         try:
-            if isinstance(file, h5py.File):
+            if isinstance(file, h5py.File) or isinstance(file, zarr.hierarchy.Group):
                 return list(file.keys())
             elif isinstance(file, tiff.TiffFile):
                 return ['default']
             else:
                 raise ValueError(f'Unsupported file type "{type(file).__name__}"')
         finally:
-            file.close()
+            if isinstance(file, h5py.File):
+                file.close()
 
     @staticmethod
     def _open(path, datasetName=None, allowMultipleDatasets=False):
@@ -115,6 +122,17 @@ class DataObj:
             return file, datasetName
         elif ext in ['.tiff', '.tif']:
             return tiff.TiffFile(path), None
+        elif ext in ['.zarr']:
+            file = zarr.open(path, mode='r')
+            if len(file) < 1:
+                raise RuntimeError('File does not contain any datasets')
+            elif len(file) > 1 and datasetName is None and not allowMultipleDatasets:
+                raise RuntimeError('File contains multiple datasets')
+
+            if datasetName is None and not allowMultipleDatasets:
+                datasetName = list(file.keys())[0]
+
+            return file, datasetName
         else:
             raise ValueError(f'Unsupported file extension "{ext}"')
 
@@ -128,6 +146,10 @@ class DataObj:
                 self.dataPath == other.dataPath and
                 sameFile and
                 self.datasetName == other.datasetName)
+
+    def checkLock(self):
+        if self.attrs['writing']:
+            raise OSError(f'Writing in progress')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

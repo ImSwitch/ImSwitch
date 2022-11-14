@@ -25,8 +25,6 @@ class MCTWidget(NapariHybridWidget):
     sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
     sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
-
-
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
@@ -38,12 +36,34 @@ class MCTWidget(NapariHybridWidget):
         # period
         self.mctLabelTimePeriod  = QtWidgets.QLabel('Period T (s):')
         self.mctValueTimePeriod = QtWidgets.QLineEdit('5')
-
+        
+        # duration
+        self.mctLabelTimeDuration  = QtWidgets.QLabel('N Measurements:')
+        self.mctValueTimeDuration = QtWidgets.QLineEdit('1')
+        
         # z-stack
         self.mctLabelZStack  = QtWidgets.QLabel('Z-Stack (min,max,steps):')        
-        self.mctValueZmin = QtWidgets.QLineEdit('0')
+        self.mctValueZmin = QtWidgets.QLineEdit('-100')
         self.mctValueZmax = QtWidgets.QLineEdit('100')
         self.mctValueZsteps = QtWidgets.QLineEdit('10')
+        
+        # autofocus
+        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')        
+        self.autofocusRange = QtWidgets.QLineEdit('200')
+        self.autofocusSteps = QtWidgets.QLineEdit('20')
+        self.autofocusPeriod = QtWidgets.QLineEdit('10')
+        
+        self.autofocusLaser1Checkbox = QtWidgets.QCheckBox('Laser 1')
+        self.autofocusLaser1Checkbox.setCheckable(True)
+        
+        self.autofocusLaser2Checkbox = QtWidgets.QCheckBox('Laser 2')
+        self.autofocusLaser2Checkbox.setCheckable(True)
+        
+        self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
+        self.autofocusLED1Checkbox.setCheckable(True)
+        
+        self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF:')        
+        
         
         # Laser 1
         valueDecimalsLaser = 1
@@ -51,61 +71,29 @@ class MCTWidget(NapariHybridWidget):
         tickIntervalLaser = 1
         singleStepLaser = 1
         
-        self.mctLabelLaser1  = QtWidgets.QLabel('Intensity (Laser 1):')        
-        self.mctLabelLaser2  = QtWidgets.QLabel('Intensity (Laser 2):')        
-        
-        valueRangeMinLaser, valueRangeMaxLaser = valueRangeLaser
-        self.sliderLaser1 = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLaser)
-        self.sliderLaser1.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLaser1.setMinimum(valueRangeMinLaser)
-        self.sliderLaser1.setMaximum(valueRangeMaxLaser)
-        self.sliderLaser1.setTickInterval(tickIntervalLaser)
-        self.sliderLaser1.setSingleStep(singleStepLaser)
-        self.sliderLaser1.setValue(0)
-        
+        self.sliderLaser1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderLaser1.valueChanged.connect(
             lambda value: self.sigSliderLaser1ValueChanged.emit(value)
         )
-                        
-        self.sliderLaser2 = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLaser)
-        self.sliderLaser2.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLaser2.setMinimum(valueRangeMinLaser)
-        self.sliderLaser2.setMaximum(valueRangeMaxLaser)
-        self.sliderLaser2.setTickInterval(tickIntervalLaser)
-        self.sliderLaser2.setSingleStep(singleStepLaser)
-        self.sliderLaser2.setValue(0)
+        
+        self.sliderLaser2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser, valueRangeLaser, tickIntervalLaser, singleStepLaser)
         self.sliderLaser2.valueChanged.connect(
             lambda value: self.sigSliderLaser2ValueChanged.emit(value)
         )
-
-
+                        
         # LED
         valueDecimalsLED = 1
         valueRangeLED = (0,2**8)
         tickIntervalLED = 1
         singleStepLED = 1
         
-        self.mctLabelLED  = QtWidgets.QLabel('Intensity (LED 1):')        
-        self.mctLabelLED2  = QtWidgets.QLabel('Intensity (LED 2):')        
-        
-        valueRangeMinLED, valueRangeMaxLED = valueRangeLED
-        self.sliderLED = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
-                                        decimals=valueDecimalsLED)
-        self.sliderLED.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.sliderLED.setMinimum(valueRangeMinLED)
-        self.sliderLED.setMaximum(valueRangeMaxLED)
-        self.sliderLED.setTickInterval(tickIntervalLED)
-        self.sliderLED.setSingleStep(singleStepLED)
-        self.sliderLED.setValue(0)
-        
+        self.sliderLED, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
         self.sliderLED.valueChanged.connect(
             lambda value: self.sigSliderLEDValueChanged.emit(value)
         )
         
         self.mctLabelFileName  = QtWidgets.QLabel('FileName:')
-        self.mctEditFileName  = QtWidgets.QLabel('Test')
+        self.mctEditFileName  = QtWidgets.QLineEdit('MCT')
         self.mctNImages  = QtWidgets.QLabel('Number of images: ')
 
         self.mctStartButton = guitools.BetterPushButton('Start')
@@ -133,7 +121,8 @@ class MCTWidget(NapariHybridWidget):
 
         self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
-        self.grid.addWidget(self.mctDoZStack, 0, 2, 1, 1)
+        self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
+        self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
         self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
@@ -142,34 +131,82 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.sliderLaser1, 2, 1, 1, 3)
         self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
         self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
         self.grid.addWidget(self.mctLabelLED, 4, 0, 1, 1)
         self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
 
         self.grid.addWidget(self.mctLabelFileName, 5, 0, 1, 1)
         self.grid.addWidget(self.mctEditFileName, 5, 1, 1, 1)
         self.grid.addWidget(self.mctNImages, 5, 2, 1, 1)
-        self.grid.addWidget(self.mctStartButton, 6, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 6, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton,6, 2, 1, 1)
-        self.grid.addWidget(self.mctInitFilterButton,6, 3, 1, 1)
+        self.grid.addWidget(self.mctStartButton, 8, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 8, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton,8, 2, 1, 1)
+        self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
+        
+        self.grid.addWidget(self.mctDoZStack, 5, 3, 1, 1)
+
+        self.grid.addWidget(self.autofocusLabel, 6, 0, 1, 1)
+        self.grid.addWidget(self.autofocusRange, 6, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSteps, 6, 2, 1, 1)
+        self.grid.addWidget(self.autofocusPeriod, 6, 3, 1, 1)
+        
+        self.grid.addWidget(self.autofocusSelectionLabel, 7, 0, 1, 1)        
+        self.grid.addWidget(self.autofocusLaser1Checkbox, 7, 1, 1, 1)
+        self.grid.addWidget(self.autofocusLaser2Checkbox, 7, 2, 1, 1)
+        self.grid.addWidget(self.autofocusLED1Checkbox, 7, 3, 1, 1)
         
         self.layer = None
         
+        
+    def isAutofocus(self):
+        if self.autofocusLED1Checkbox.isChecked() or self.autofocusLaser1Checkbox.isChecked() or self.autofocusLaser2Checkbox.isChecked():
+            return True
+        else:
+            return False
+        
+    def getAutofocusValues(self):
+        autofocusParams = {}
+        autofocusParams["valueRange"] = self.autofocusRange.text()
+        autofocusParams["valueSteps"] = self.autofocusSteps.text()
+        autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
+        if self.autofocusLED1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'LED'
+        elif self.autofocusLaser1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser1'
+        elif self.autofocusLaser2Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser2'
+        else:
+            autofocusParams["illuMethod"] = False
+        
+        return autofocusParams
+ 
+ 
+    def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
+        mctLabel  = QtWidgets.QLabel(label)     
+        valueRangeMin, valueRangeMax = valueRange
+        slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                        decimals=valueDecimals)
+        slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        slider.setMinimum(valueRangeMin)
+        slider.setMaximum(valueRangeMax)
+        slider.setTickInterval(tickInterval)
+        slider.setSingleStep(singleStep)
+        slider.setValue(0)
+        return slider, mctLabel
         
     def getImage(self):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im, colormap="gray", name=""):
+    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, name=name, blending='additive')
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+                                               scale=pixelsize,
+                                               name=name, blending='additive')
         self.layer.data = im
         
         
     def getZStackValues(self):
-        valueZmin = float(self.mctValueZmin.text())
+        valueZmin = -abs(float(self.mctValueZmin.text()))
         valueZmax = float(self.mctValueZmax.text())
         valueZsteps = float(self.mctValueZsteps.text())
         valueZenabled = bool(self.mctDoZStack.isChecked())
@@ -178,18 +215,16 @@ class MCTWidget(NapariHybridWidget):
  
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
-        return mctValueTimePeriod
-    
+        mctValueTimeDuration = int(self.mctValueTimeDuration.text())
+        return mctValueTimePeriod, mctValueTimeDuration
     
     def getFilename(self):
         mctEditFileName = self.mctEditFileName.text()
-        from datetime import datetime
-        date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-        
-        return f"{date}_{mctEditFileName}"
+        return mctEditFileName
     
     def setNImages(self, nImages):
-        self.mctNImages.setText('Number of images: '+str(nImages))
+        nImages2Do = self.getTimelapseValues()[-1]
+        self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     
     
     

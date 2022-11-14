@@ -20,15 +20,15 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
-            self._widget.addPositioner(pName, pManager.axes)
+            hasSpeed = hasattr(pManager, 'speed')
+            self._widget.addPositioner(pName, pManager.axes, hasSpeed)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
-                self.setSharedAttr(pName, axis, _positionAttr, pManager.speed[axis])
+                if hasSpeed:
+                    self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigSetXYPosition.connect(lambda x, y: self.setXYPosition(x, y))
-        self._commChannel.sigSetZPosition.connect(lambda z: self.setZPosition(z))
         self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
 
         # Connect PositionerWidget signals
@@ -49,6 +49,9 @@ class PositionerController(ImConWidgetController):
 
     def move(self, positionerName, axis, dist):
         """ Moves positioner by dist micrometers in the specified axis. """
+        if positionerName is None:
+            positionerName = self._master.positionersManager.getAllDeviceNames()[0]
+        
         self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 
@@ -64,12 +67,12 @@ class PositionerController(ImConWidgetController):
         self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
 
     def setSpeedGUI(self, positionerName, axis):
-        speed = self._widget.getSpeed(axis)
+        speed = self._widget.getSpeed(positionerName, axis)
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
 
     def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
-        
+
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)
@@ -159,6 +162,7 @@ class PositionerController(ImConWidgetController):
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
+_speedAttr = "Speed"
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

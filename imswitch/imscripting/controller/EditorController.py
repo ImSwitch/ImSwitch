@@ -2,6 +2,7 @@ import os
 
 from imswitch.imcommon.model import dirtools
 from imswitch.imscripting.model import ScriptExecutor, ScriptStore, ScriptEntry
+from imswitch.imcommon.model import initLogger
 from imswitch.imscripting.view import guitools
 from .basecontrollers import ImScrWidgetController
 
@@ -12,12 +13,15 @@ class EditorController(ImScrWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.__logger = initLogger(self, tryInheritParent=True)
+
         self.scriptExecutor = ScriptExecutor(self._scriptScope)
         self.scriptStore = ScriptStore()
         self.loadingFile = False
 
         # Connect ScriptExecutor signals
         self.scriptExecutor.sigOutputAppended.connect(self._commChannel.sigOutputAppended)
+        self.scriptExecutor.sigExecutionFinished.connect(self._moduleCommChannel.sigExecutionFinished)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigNewFile.connect(self.newFile)
@@ -25,6 +29,7 @@ class EditorController(ImScrWidgetController):
         self._commChannel.sigOpenFileFromPath.connect(self.openFile)
         self._commChannel.sigSaveFile.connect(self.saveFile)
         self._commChannel.sigSaveAsFile.connect(self.saveAsFile)
+        self._commChannel.sigRunScript.connect(self.runScript)
 
         # Connect EditorView signals
         self._widget.sigRunAllClicked.connect(self.runCurrentCode)
@@ -155,6 +160,8 @@ class EditorController(ImScrWidgetController):
         else:
             return _untitledFileName
 
+    def runScript(self, code):
+        self.scriptExecutor.execute(r'C:\Users\xavie\OneDrive\Documents\ImSwitchConfig\scripts', code)
 
 _untitledFileName = '(untitled)'
 _scriptsFolderPath = os.path.join(dirtools.UserFileDirs.Root, 'scripts')

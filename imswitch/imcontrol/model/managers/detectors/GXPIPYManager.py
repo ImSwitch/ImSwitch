@@ -18,6 +18,7 @@ class GXPIPYManager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.detectorInfo = detectorInfo
 
         binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
@@ -127,6 +128,10 @@ class GXPIPYManager(DetectorManager):
         self._camera.flushBuffer()
 
     def startAcquisition(self):
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True

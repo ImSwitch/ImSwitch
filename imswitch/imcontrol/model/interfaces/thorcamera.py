@@ -128,7 +128,10 @@ class ThorCamera:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        return self.camera.grab_image()
+        try:
+            return self.camera.grab_image(wait=1)
+        except:
+            pass
 
     def getLastChunk(self):
         chunk = np.expand_dims(self.camera.grab_image(),0)

@@ -126,6 +126,8 @@ class ReconstructionViewController(ImRecWidgetController):
             reconObj.updateScanParams(scanParDict)
             self.updateRecon()
 
+    def getImage(self):
+        return self._widget.getImage()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

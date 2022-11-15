@@ -13,11 +13,11 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 
-from ..basecontrollers import LiveUpdatedController
+from ..basecontrollers import ImConWidgetController
 
 #import NanoImagingPack as nip
 
-class MCTController(LiveUpdatedController):
+class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
 
     sigImageReceived = Signal()
@@ -43,8 +43,6 @@ class MCTController(LiveUpdatedController):
         self.Laser2Value = 0
         self.LEDValue = 0
         self.MCTFilename = ""
-
-        self.updateRate=2
 
         self.pixelsize=(10,1,1) # zxy
 

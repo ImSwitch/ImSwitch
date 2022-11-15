@@ -105,6 +105,7 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.output = []
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -136,6 +137,7 @@ class CommunicationChannel(SignalInterface):
     def acquireImage(self) -> None:
         image = self.get_image()
         self.output.append(image)
+        return image
 
     def runScript(self, text):
         self.output = []

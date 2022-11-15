@@ -32,10 +32,6 @@ class UC2ConfigController(ImConWidgetController):
         # save parameters on the disk
         self.defaultPinDefFile = "pinDef.json"
         
-        if self._setupInfo.uc2Config is None:
-            self._widget.replaceWithError('UC2Config is not configured in your setup file.')
-            return
-        
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
         self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)

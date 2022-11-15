@@ -20,11 +20,6 @@ class UC2ConfigManager(SignalInterface):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if UC2ConfigInfo is None:
-            return
-        
-        self.UC2ConfigInfo = UC2ConfigInfo
-
         #TODO: HARDCODED!!
         self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
 

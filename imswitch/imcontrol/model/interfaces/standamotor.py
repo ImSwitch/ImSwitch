@@ -46,10 +46,25 @@ class StandaMotor():
 
             self.__logger.info(f"Open device {repr(open_name)}")
             self._device_id = pyximc.lib.open_device(open_name)
+            self.set_def_sync_in_settings()
+            self.set_def_sync_out_settings()
 
     def close(self):
         if self._imported:
             pyximc.lib.close_device(byref(cast(self._device_id, POINTER(c_int))))
+
+    def set_def_sync_in_settings(self):
+        x_sync_in_settings = pyximc.sync_in_settings_t()
+        x_sync_in_settings.Position = int(20*self._steps_per_turn/360)
+        x_sync_in_settings.Speed = 1000
+        x_sync_in_settings.SyncInFlags = 1
+        _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
+
+    def set_def_sync_out_settings(self):
+        x_sync_out_settings = pyximc.sync_out_settings_t()
+        x_sync_out_settings.SyncOutFlags = 49  #(0x01 (enabled) + 0x10 (on motion start) + 0x20 (on motion stop))
+        x_sync_out_settings.SyncOutPulseSteps = 1000  #(0x01 (enabled))
+        _ = pyximc.lib.set_sync_out_settings(self._device_id, x_sync_out_settings)
 
     def get_pos(self):
         self.wait_for_stop(interval=10)

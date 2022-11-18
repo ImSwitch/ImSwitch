@@ -570,7 +570,9 @@ class RecordingWorker(Worker):
                             file.close()
                         else:
                             self.store.close()
-
+            emitSignal = True
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                emitSignal = False
             self.__recordingManager.endRecording(wait=False)
 
     def _getFiles(self):

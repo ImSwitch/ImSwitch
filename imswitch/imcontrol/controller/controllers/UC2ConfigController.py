@@ -18,6 +18,8 @@ class UC2ConfigController(ImConWidgetController):
         self.UC2ConfigDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_UC2Config')
         if not os.path.exists(self.UC2ConfigDir):
             os.makedirs(self.UC2ConfigDir)
+        # get Updatemanager
+        self.updater = self._master.UC2ConfigManager
             
         # load config from device
         self.mConfigDevice = self.loadConfigFromDevice()

@@ -25,8 +25,20 @@ class UC2ConfigManager(SignalInterface):
 
         # initialize the firmwareupdater
         self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
-        
+        self.firmwareConfigurator = self.ESP32.config
 
+    '''
+    json2dict:
+    <bound method config.json2dict of <uc2rest.config.config object at 0x1a38b0c10>>
+    loadConfigDevice:
+    <bound method config.loadConfigDevice of <uc2rest.config.config object at 0x1a38b0c10>>
+    loadDefaultConfig:
+    <bound method config.loadDefaultConfig of <uc2rest.config.config object at 0x1a38b0c10>>
+    setConfigDevice:
+    <bound method config.setConfigDevice of <uc2rest.config.config object at 0x1a38b0c10>>
+    setDefaultConfig:
+    <bound method config.setDefaultConfig of <uc2rest.config.config object at 0x1a38b0c10>>
+    '''        
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
             self.state_general = state_general

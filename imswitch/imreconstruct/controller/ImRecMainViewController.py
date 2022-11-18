@@ -60,6 +60,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
+        self._commChannel.extension = self._widget.extension
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
@@ -149,9 +150,9 @@ class ImRecMainViewController(ImRecWidgetController):
 
     def quickLoadData(self):
         extension = self._widget.extension.value()
-        if extension == 'ZARR':
+        if extension == 'zarr':
             dataPath = guitools.askForFolderPath(self._widget, defaultFolder=self._dataFolder)
-        elif extension == 'HDF5':
+        elif extension == 'hdf5':
             dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
 
         if dataPath:

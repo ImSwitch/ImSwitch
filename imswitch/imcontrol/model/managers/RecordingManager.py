@@ -372,6 +372,7 @@ class RecordingWorker(Worker):
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
 
             elif self.saveFormat == SaveFormat.TIFF:
                 fileExtension = str(self.saveFormat.name).lower()
@@ -564,10 +565,10 @@ class RecordingWorker(Worker):
                                 name, file, filePath, True
                             )
                     else:
+                        datasets[detectorName].attrs['writing'] = False
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
                         else:
-                            datasets[detectorName].attrs['writing'] = False
                             self.store.close()
 
             self.__recordingManager.endRecording(wait=False)

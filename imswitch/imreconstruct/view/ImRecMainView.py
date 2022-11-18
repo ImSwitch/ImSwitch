@@ -253,7 +253,7 @@ class ReconParTree(ParameterTree):
             {'name': 'Scanning parameters', 'type': 'action'},
             {'name': 'Show pattern', 'type': 'bool'},
             {'name': 'Bleaching correction', 'type': 'bool'},
-            {'name': 'File extension', 'type': 'list', 'values': ['HDF5', 'ZARR']}]
+            {'name': 'File extension', 'type': 'list', 'values': ['hdf5', 'zarr']}]
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)

@@ -32,11 +32,11 @@ class WatcherFrame(QtWidgets.QFrame):
         self.watchCheck.toggled.connect(self.sigWatchChanged)
         self.browseFolderButton.clicked.connect(self.browse)
 
-    def updateFileList(self):
+    def updateFileList(self, extension):
         self.path = self.folderEdit.text()
         res = []
         for file in os.listdir(self.path):
-            if file.endswith('.zarr'):
+            if file.endswith('.'+extension):
                 res.append(file)
 
         self.listWidget.clear()

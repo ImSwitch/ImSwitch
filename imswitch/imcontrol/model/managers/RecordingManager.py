@@ -573,7 +573,7 @@ class RecordingWorker(Worker):
             emitSignal = True
             if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
                 emitSignal = False
-            self.__recordingManager.endRecording(wait=False)
+            self.__recordingManager.endRecording(emitSignal=emitSignal, wait=False)
 
     def _getFiles(self):
         singleMultiDetectorFile = self.singleMultiDetectorFile

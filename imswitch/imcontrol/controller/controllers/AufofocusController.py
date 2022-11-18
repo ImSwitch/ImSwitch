@@ -3,11 +3,13 @@ import time
 import numpy as np
 from time import perf_counter
 import scipy.ndimage as ndi
-from scipy.ndimage.filters import laplace
+import threading
 
 from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
+
+
 
 # global axis for Z-positioning - should be Z
 gAxis = "Z" 
@@ -22,6 +24,8 @@ class AutofocusController(ImConWidgetController):
 
         if self._setupInfo.autofocus is None:
             return
+        
+        self.isAutofusRunning = False
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
@@ -29,14 +33,11 @@ class AutofocusController(ImConWidgetController):
 
         # Connect AutofocusWidget buttons
         self._widget.focusButton.clicked.connect(self.focusButton)
-
-        self._master.detectorsManager[self.camera].startAcquisition()
-        self.__processDataThread = ProcessDataThread(self)
         self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
     def __del__(self):
-        self.__processDataThread.quit()
-        self.__processDataThread.wait()
+        self._AutofocusThead.quit()
+        self._AutofocusThead.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -57,26 +58,22 @@ class AutofocusController(ImConWidgetController):
 
         '''
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
-        self.focusPointSignal = self.__processDataThread.update(rangez,resolutionz)
-
-class ProcessDataThread(Thread):
-    def __init__(self, controller, *args, **kwargs):
-        self._controller = controller
-        super().__init__(*args, **kwargs)
+        self.isAutofusRunning = True
+        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz), daemon=True)
+        self._AutofocusThead.start()
 
     def grabCameraFrame(self):
-        detectorManager = self._controller._master.detectorsManager[self._controller.camera]
-        self.latestimg = detectorManager.getLatestFrame()
-        return self.latestimg
-
-    def update(self, rangez, resolutionz):
+        detectorManager = self._master.detectorsManager[self.camera]
+        return detectorManager.getLatestFrame()
+        
+    def doAutofocusBackground(self, rangez=100, resolutionz=10):
+        self._commChannel.sigAutoFocusRunning.emit(True) # inidicate that we are running the autofocus
 
         allfocusvals = []
         allfocuspositions = []
-
         
         # 0 move focus to initial position
-        self._controller._master.positionersManager[self._controller.positioner].move(-rangez, axis=gAxis)
+        self._master.positionersManager[self.positioner].move(-rangez, axis=gAxis)
         img = self.grabCameraFrame()     # grab dummy frame?
         # store data
         Nz = int(2*rangez//resolutionz)
@@ -88,18 +85,18 @@ class ProcessDataThread(Thread):
         for iz in range(Nz):
 
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
-            self._controller._master.positionersManager[self._controller.positioner].move(resolutionz, axis=gAxis)
+            self._master.positionersManager[self.positioner].move(resolutionz, axis=gAxis)
             time.sleep(T_DEBOUNCE)
             positionz = iz*resolutionz
-            self._controller._logger.debug(f'Moving focus to {positionz}')
+            self._logger.debug(f'Moving focus to {positionz}')
 
             # 1 Grab camera frame
-            self._controller._logger.debug("Grabbing Frame")
+            self._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
             allfocusimages.append(img)
 
             # 2 Gaussian filter the image, to remove noise
-            self._controller._logger.debug("Processing Frame")
+            self._logger.debug("Processing Frame")
             #img_norm = img-np.min(img)
             #img_norm = img_norm/np.mean(img_norm)
             imagearraygf = ndi.filters.gaussian_filter(img, 3)
@@ -110,7 +107,7 @@ class ProcessDataThread(Thread):
             allfocuspositions[iz] = positionz
 
         # display the curve
-        self._controller._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
+        self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
 
         # 4 find maximum focus value and move stage to this position
         allfocusvals=np.array(allfocusvals)
@@ -118,11 +115,11 @@ class ProcessDataThread(Thread):
         bestzpos = allfocuspositions[np.squeeze(zindex)]
 
          # 5 move focus back to initial position (reduce backlash)
-        self._controller._master.positionersManager[self._controller.positioner].move(-Nz*resolutionz, axis=gAxis)
+        self._master.positionersManager[self.positioner].move(-Nz*resolutionz, axis=gAxis)
 
         # 6 Move stage to the position with max focus value
-        self._controller._logger.debug(f'Moving focus to {zindex*resolutionz}')
-        self._controller._master.positionersManager[self._controller.positioner].move(zindex*resolutionz, axis=gAxis)
+        self._logger.debug(f'Moving focus to {zindex*resolutionz}')
+        self._master.positionersManager[self.positioner].move(zindex*resolutionz, axis=gAxis)
 
 
         # DEBUG
@@ -132,7 +129,10 @@ class ProcessDataThread(Thread):
         tif.imsave("llfocusimages.tif", allfocusimages)
         np.save('allfocuspositions.npy', allfocuspositions)
         np.save('allfocusvals.npy', allfocusvals)
-
+        
+        # We are done!
+        self._commChannel.sigAutoFocusRunning.emit(False) # inidicate that we are running the autofocus
+        self.isAutofusRunning = False
         return bestzpos
 
 # Copyright (C) 2020-2021 ImSwitch developers

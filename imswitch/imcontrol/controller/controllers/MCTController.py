@@ -61,6 +61,10 @@ class MCTController(ImConWidgetController):
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
+        
+        # autofocus related 
+        self.isAutofocusRunning = False
+        self._commChannel.sigAutoFocusRunning.connect(self.setAutoFocusIsRunning)
 
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -240,8 +244,16 @@ class MCTController(ImConWidgetController):
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
-        isRunInBackground = False
+        self._widget.setNImages("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
+        self.isAutofocusRunning = True
+        
+        while self.isAutofocusRunning:
+            time.sleep(0.1)
+            if not self.isAutofocusRunning:
+                self._logger.info("Autofocusing done.")
+                return
+        
 
     def takeTimelapseThread(self):
         # this wil run i nthe background
@@ -314,8 +326,10 @@ class MCTController(ImConWidgetController):
                 # move to each position
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
-                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
-                
+                filePath = self.getSaveFilePath(date=self.MCTDate, 
+                                                timestamp=timestamp,
+                                                filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}', 
+                                                extension=fileExtension)
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
                 # self.switchOffIllumination()
@@ -333,7 +347,10 @@ class MCTController(ImConWidgetController):
 
         else:
             # single file timelapse
-            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
+            filePath = self.getSaveFilePath(date=self.MCTDate, 
+                                            timestamp=timestamp,
+                                            filename=f'{self.MCTFilename}_{illuMode}', 
+                                            extension=fileExtension)            
             lastFrame = self.detector.getLatestFrame()
             self._logger.debug(filePath)
             tif.imwrite(filePath, lastFrame)
@@ -382,9 +399,9 @@ class MCTController(ImConWidgetController):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
 
-    def getSaveFilePath(self, date, filename, extension):
+    def getSaveFilePath(self, date, timestamp, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date, "t"+str(timestamp))
 
         newPath = os.path.join(dirPath,mFilename)
 
@@ -393,7 +410,10 @@ class MCTController(ImConWidgetController):
 
 
         return newPath
-
+    
+    def setAutoFocusIsRunning(self, isRunning):
+        # this is set by the AutofocusController once the AF is finished/initiated
+        self.isAutofocusRunning = isRunning
 
 class mTimer(object):
     def __init__(self, waittime, mFunc) -> None:

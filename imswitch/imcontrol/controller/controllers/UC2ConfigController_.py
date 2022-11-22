@@ -141,100 +141,19 @@ class UC2ConfigController(ImConWidgetController):
         if pinDefParams is not None:
             # create dict for pinDefration params
             pinDefparamnames = pinDefParams.childs[0].names
-            # assign values to the MCU pin definition
-            esp32pindef = self.espToPinDefParanames(state_pinDef)
-
-            # assign values to GUI
             for key in pinDefparamnames:
                 try:
-                    pinDefParams.childs[0].param(key).setValue(esp32pindef[key])
+                    pinDefParams.childs[0].param(key).setValue(state_pinDef[key])
                 except KeyError:
                     pass
 
-            # assign values to
-            
-    def espToPinDefParanames(self, espPinDef):
-        # this comes from the former description of the pinDef
-        pinDefparamnames = {}
-        pinDefparamnames['motXstp'] = espPinDef['motorconfig'][1]['step']
-        pinDefparamnames['motXdir'] = espPinDef['motorconfig'][1]['dir']
-        pinDefparamnames['motYstp'] = espPinDef['motorconfig'][2]['step']
-        pinDefparamnames['motYdir'] = espPinDef['motorconfig'][2]['dir']
-        pinDefparamnames['motZstp'] = espPinDef['motorconfig'][3]['step']
-        pinDefparamnames['motZdir'] = espPinDef['motorconfig'][3]['dir']
-        pinDefparamnames['motAstp'] = espPinDef['motorconfig'][0]['step']
-        pinDefparamnames['motAdir'] = espPinDef['motorconfig'][3]['dir']
-        pinDefparamnames['motEnable'] = espPinDef['motorconfig'][0]['enable']
-        pinDefparamnames['ledArrPin'] = espPinDef['ledconfig']['ledArrPin']
-        pinDefparamnames['ledArrNum'] = espPinDef['ledconfig']['ledArrNum']
-        pinDefparamnames['digitalPin1'] = 0
-        pinDefparamnames['digitalPin2'] = 0
-        pinDefparamnames['digitalPin3'] = 0
-        pinDefparamnames['analogPin1'] = 0
-        pinDefparamnames['analogPin2'] = 0
-        pinDefparamnames['analogPin3'] = 0
-        pinDefparamnames['laserPin1'] = espPinDef["laserconfig"]["LASER1pin"]
-        pinDefparamnames['laserPin2'] = espPinDef["laserconfig"]["LASER2pin"]
-        pinDefparamnames['laserPin3'] = espPinDef["laserconfig"]["LASER3pin"]
-        pinDefparamnames['dacFake1'] = 0
-        pinDefparamnames['dacFake2'] = 0
-        return pinDefparamnames
-    
-    
-    def pinDefParanamesToEsp(self, pinDefparamnames):
-        # this comes from the former description of the pinDef
-        espPinDef = {
-                "motorconfig":[
-                    {
-                        "stepperid":0,
-                        "dir":pinDefparamnames['motAdir'],
-                        "step":pinDefparamnames['motAstp'],
-                        "enable":pinDefparamnames['motEnable'],
-                    },
-                    {
-                        "stepperid":1,
-                        "dir":pinDefparamnames['motXdir'],
-                        "step":pinDefparamnames['motXstp'],
-                        "enable":pinDefparamnames['motEnable'],
-                    },
-                    {
-                        "stepperid":2,
-                        "dir":pinDefparamnames['motYdir'],
-                        "step":pinDefparamnames['motYstp'],
-                        "enable":pinDefparamnames['motEnable'],
-                    },
-                    {
-                        "dir":pinDefparamnames['motZdir'],
-                        "step":pinDefparamnames['motZstp'],
-                        "enable":pinDefparamnames['motEnable'],
-                    }
-                ],
-                "ledconfig":{
-                    "ledArrNum":pinDefparamnames['ledArrNum'],
-                    "ledArrPin":pinDefparamnames['ledArrPin'],
-                },
-                "laserconfig":{
-                    "LASER1pin":pinDefparamnames['laserPin1'],
-                    "LASER2pin":pinDefparamnames['laserPin2'],
-                    "LASER3pin":pinDefparamnames['laserPin3']
-                },
-                "stateconfig":{
-                    "identifier_name":"UC2_Feather",
-                    "identifier_id":"V1.2",
-                    "identifier_date":"Nov  7 202212:52:14",
-                    "identifier_author":"BD",
-                    "IDENTIFIER_NAME":""
-                }
-                }
-        return espPinDef
-        
 
     def applyParams(self):
         UC2Config_info_dict = self.getInfoDict(generalParams=self._widget.UC2ConfigParameterTree.p,
                                          pinDefParams=self._widget.pinDefParameterTree.p)
         #self.applyGeneral(UC2Config_info_dict["general"])
         self.mConfigOffline = UC2Config_info_dict["pinDef"]
-        self.applypinDef(self.pinDefParanamesToEsp(self.mConfigOffline))
+        self.applypinDef(self.mConfigOffline)
 
     def applyGeneral(self, info_dict):
         self._master.UC2ConfigManager.setGeneral(info_dict)

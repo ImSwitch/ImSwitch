@@ -61,6 +61,7 @@ class ESP32LEDLaserManager(LaserManager):
         self.setEnabled(self.enabled)
         
     def initFilter(self, nSteps=None, speed=None):
+        '''
         if self.filter_change:
             if nSteps is None:
                 if self.laser_position_init is None:
@@ -70,7 +71,9 @@ class ESP32LEDLaserManager(LaserManager):
             if speed is None:
                 speed = self._motor.filter_speed
             self._motor.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
-
+        '''
+        self.__logger.debug("Filter initialization not implemented yet")
+        
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled

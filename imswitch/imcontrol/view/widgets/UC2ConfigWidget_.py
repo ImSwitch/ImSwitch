@@ -41,7 +41,6 @@ class UC2ConfigWidget(Widget):
 
         self.pinDefParameterTree = pg.parametertree.ParameterTree()
         pinDeflim = 39
-        
         self.pinDefparams = [{
             'name': 'left', 'type': 'group', 'children': [
             {'name': 'motXstp', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
@@ -66,13 +65,11 @@ class UC2ConfigWidget(Widget):
             {'name': 'laserPin3', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
             {'name': 'dacFake1', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
             {'name': 'dacFake2', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1}]}]
-        
-            #{'name': 'identifier', 'type': 'str', 'value': "TEST"},
-            #{'name': 'ssid', 'type': 'str', 'value': "UC2"},
-            #{'name': 'PW', 'type': 'str', 'value': "PASSWORD"}
-
-
-        
+        '''
+            {'name': 'identifier', 'type': 'str', 'value': "TEST"},
+            {'name': 'ssid', 'type': 'str', 'value': "UC2"},
+            {'name': 'PW', 'type': 'str', 'value': "PASSWORD"}
+        '''                   
         self.pinDefParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;

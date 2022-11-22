@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 PHYS_FACTOR = 1
+gTIMEOUT = 10
 class ESP32StageManager(PositionerManager):
 
 
@@ -117,7 +118,7 @@ class ESP32StageManager(PositionerManager):
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
         
-    def move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=True, timeout=np.inf):
+    def move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=True, timeout=gTIMEOUT):
         if speed is None:
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]

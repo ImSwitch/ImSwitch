@@ -47,12 +47,15 @@ class PositionerController(ImConWidgetController):
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    def move(self, positionerName, axis, dist):
+    def move(self, positionerName, axis, dist, isAbsolute=None):
         """ Moves positioner by dist micrometers in the specified axis. """
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         
-        self._master.positionersManager[positionerName].move(dist, axis)
+        try:
+            self._master.positionersManager[positionerName].move(dist, axis, isAbsolute)
+        except:
+            self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
@@ -129,7 +132,7 @@ class PositionerController(ImConWidgetController):
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         try: # uc2 only
-            self.move(positionerName, axis, dist, is_absolute=isAbsolute)
+            self.move(positionerName, axis, dist, isAbsolute=isAbsolute)
         except:
             self.move(positionerName, axis, dist)
 

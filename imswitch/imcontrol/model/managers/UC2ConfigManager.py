@@ -8,37 +8,37 @@ import numpy as np
 from PIL import Image
 from scipy import signal as sg
 import uc2rest as uc2
+import json 
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
 
 class UC2ConfigManager(SignalInterface):
-    sigUC2ConfigMaskUpdated = Signal(object)  # (maskCombined)
 
-    def __init__(self, UC2ConfigInfo, lowLevelManagers, *args, **kwargs):
+    def __init__(self, Info, lowLevelManagers, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
         #TODO: HARDCODED!!
         self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
+        
+        # get default configs
+        try:
+            self.defaultConfigPath = "imswitch/config/"+Info.defaultConfig
+        except:
+            self.defaultConfigPath = "imswitch/config/pindefWemos.json"
+        with open(self.defaultConfigPath) as jf:
+            self.defaultConfig = json.load(jf)
 
         # initialize the firmwareupdater
         self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
         self.firmwareConfigurator = self.ESP32.config
 
-    '''
-    json2dict:
-    <bound method config.json2dict of <uc2rest.config.config object at 0x1a38b0c10>>
-    loadConfigDevice:
-    <bound method config.loadConfigDevice of <uc2rest.config.config object at 0x1a38b0c10>>
-    loadDefaultConfig:
-    <bound method config.loadDefaultConfig of <uc2rest.config.config object at 0x1a38b0c10>>
-    setConfigDevice:
-    <bound method config.setConfigDevice of <uc2rest.config.config object at 0x1a38b0c10>>
-    setDefaultConfig:
-    <bound method config.setDefaultConfig of <uc2rest.config.config object at 0x1a38b0c10>>
-    '''        
+    def getDefaultConfig(self):
+        # this gets the default config from the ESP32 from the disk
+        return self.defaultConfig
+        
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
             self.state_general = state_general

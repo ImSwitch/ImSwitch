@@ -130,7 +130,7 @@ class SLMInfo:
 
 @dataclass(frozen=True)
 class UC2ConfigInfo:
-    pass
+    defaultConfig: str
 
 @dataclass(frozen=True)
 class SIMInfo:

@@ -40,7 +40,7 @@ class UC2ConfigWidget(Widget):
         self.UC2ConfigParameterTree._writable = True
 
         self.pinDefParameterTree = pg.parametertree.ParameterTree()
-        pinDeflim = 39
+        pinDeflim = 64
         
         self.pinDefparams = [{
             'name': 'left', 'type': 'group', 'children': [

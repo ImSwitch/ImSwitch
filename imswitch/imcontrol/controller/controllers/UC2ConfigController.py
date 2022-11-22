@@ -21,21 +21,33 @@ class UC2ConfigController(ImConWidgetController):
         # get Updatemanager
         self.updater = self._master.UC2ConfigManager
             
-        # load config from device
+        # 1. load config from device
         self.mConfigDevice = self.loadConfigFromDevice()
-        # switch-back to old configuration
-        if len(self.mConfigDevice)<4:
-            self.mConfigDevice = self.loadDefaultConfig()
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
         
-        # display device configs
-        self.loadParams(config=self.mConfigDevice)
+        # 1a. switch-back to old configuration if device not valid
+        if len(self.mConfigDevice)<4:
+            self.mConfigDevice = self.loadDefaultConfigFromFile()
+            self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
+
+        # 1b. load default config if device not valid -> E.G. after flashing
+        if self.mConfigDevice['motorconfig'][1]["enable"]==0: # the defaultconfig has not been written
+            try:
+                self.__logger.debug("Trying to load default config from file")
+                self.mConfigDevice = self.loadDefaultConfigFromFile()
+                self._master.UC2ConfigManager.setpinDef(self.mConfigDevice)
+            except Exception as e:
+                self.__logger.error(e)
+
+        # 2. display device configs in the GUI  
+        self.displayConfig(config=self.mConfigDevice)
+        
+        #here we should write the default pindef for uc2 standalone or esp32 standalone
         
         # save parameters on the disk
         self.defaultPinDefFile = "pinDef.json"
         
         self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
-        self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
+        self._widget.controlPanel.loadButton.clicked.connect(self.displayConfig)
         self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
         
@@ -44,8 +56,8 @@ class UC2ConfigController(ImConWidgetController):
     def loadConfigFromDevice(self):
         return self._master.UC2ConfigManager.loadPinDefDevice() 
 
-    def loadDefaultConfig(self):
-        return self._master.UC2ConfigManager.loadDefaultConfig()
+    def loadDefaultConfigFromFile(self):
+        return self._master.UC2ConfigManager.getDefaultConfig() 
 
     def loadConfigToDevice(self, config):
         pass
@@ -80,7 +92,7 @@ class UC2ConfigController(ImConWidgetController):
         }
         return info_dict
 
-    def loadParams(self, config=None):
+    def displayConfig(self, config=None):
         if config is not None and config:
             state_general = None # TODO: Implement
             state_pinDef = config
@@ -232,19 +244,9 @@ class UC2ConfigController(ImConWidgetController):
     def applyParams(self):
         UC2Config_info_dict = self.getInfoDict(generalParams=self._widget.UC2ConfigParameterTree.p,
                                          pinDefParams=self._widget.pinDefParameterTree.p)
-        #self.applyGeneral(UC2Config_info_dict["general"])
         self.mConfigOffline = UC2Config_info_dict["pinDef"]
-        self.applypinDef(self.pinDefParanamesToEsp(self.mConfigOffline))
-
-    def applyGeneral(self, info_dict):
-        self._master.UC2ConfigManager.setGeneral(info_dict)
-        image = self._master.UC2ConfigManager.update(maskChange=True)
-        self.updateDisplayImage(image)
-        # self._logger.debug('Apply changes to general UC2Config mask parameters.')
-
-    def applypinDef(self, info_dict):
-        shared_items = self._master.UC2ConfigManager.setpinDef(info_dict)
-        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Udated items: "+str(len(shared_items))+"/"+str(len(info_dict)))
+        shared_items = self._master.UC2ConfigManager.setpinDef(self.pinDefParanamesToEsp(self.mConfigOffline))
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Updated items: "+str(len(shared_items))+"/"+str(len(self.pinDefParanamesToEsp(self.mConfigOffline))))
         self._logger.debug('Apply changes to pinDef.')
 
 

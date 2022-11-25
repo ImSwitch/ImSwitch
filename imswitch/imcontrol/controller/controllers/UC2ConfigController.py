@@ -141,6 +141,11 @@ class UC2ConfigController(ImConWidgetController):
         # 4. reestablish serial connection
         self._master.UC2ConfigManager.initSerial()
         self.isFirmwareUpdating = False
+        
+        # 5. re-write config to device
+        self.mConfigDevice = self.loadDefaultConfigFromFile()
+        self._master.UC2ConfigManager.setpinDef(self.mConfigDevice)
+        
         self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(True)
         
     def removeFirmware(self, firmwarePath):

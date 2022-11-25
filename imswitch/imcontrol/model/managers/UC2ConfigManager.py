@@ -10,6 +10,7 @@ from scipy import signal as sg
 import uc2rest as uc2
 import json 
 
+from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
@@ -25,15 +26,20 @@ class UC2ConfigManager(SignalInterface):
         
         # get default configs
         try:
-            self.defaultConfigPath = "imswitch/config/"+Info.defaultConfig
+            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", Info.defaultConfig)
         except:
-            self.defaultConfigPath = "imswitch/config/pindefWemos.json"
-        with open(self.defaultConfigPath) as jf:
-            self.defaultConfig = json.load(jf)
-
+            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", "pindefWemos.json")
+                    
         # initialize the firmwareupdater
         self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
         self.firmwareConfigurator = self.ESP32.config
+        
+        try:
+            with open(self.defaultConfigPath) as jf:
+                self.defaultConfig = json.load(jf)
+        except Exception as e:
+            self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
+            self.defaultConfig = self.config.loadDefaultConfig()
 
     def getDefaultConfig(self):
         # this gets the default config from the ESP32 from the disk

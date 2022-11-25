@@ -33,7 +33,16 @@ class MCTController(ImConWidgetController):
         self.zStackMin = 0
         self.zStackMax = 0
         self.zStackStep = 0
-
+        
+        # xy
+        self.xyScanEnabled = False
+        self.xScanMin = 0
+        self.xScanMax = 0
+        self.xScanStep = 0
+        self.yScanMin = 0
+        self.yScanMax = 0
+        self.yScanStep = 0
+                
         # store old values
         self.Laser1ValueOld = 0
         self.Laser2ValueOld = 0
@@ -125,6 +134,8 @@ class MCTController(ImConWidgetController):
 
             # get parameters from GUI
             self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
+            self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep, self.xyScanEnabled = self._widget.getXYScanValues()
+            
             self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
             self.MCTFilename = self._widget.getFilename()
             self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
@@ -258,7 +269,6 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self):
         # this wil run i nthe background
         self._logger.debug("Take image")
-        zstackParams = self._widget.getZStackValues()
         # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
@@ -271,11 +281,11 @@ class MCTController(ImConWidgetController):
             self.doAutofocus(autofocusParams)
 
         if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
         if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
         if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
+            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
 
         self.nImages += 1
         self._widget.setNImages(self.nImages)
@@ -289,7 +299,7 @@ class MCTController(ImConWidgetController):
         self._widget.mctShowLastButton.setEnabled(True)
 
 
-    def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
+    def takeImageIllu(self, illuMode, intensity, timestamp=0):
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
 
@@ -310,55 +320,88 @@ class MCTController(ImConWidgetController):
                     self.leds[0].setEnabled(True)
             except:
                 pass
+        # precompute steps for xy scan
+        indexX=0
+        if self.xyScanEnabled:
+            xyScanSteps = []
+            xyScanStepsAbsolute = []
+            for ix in np.arange(self.xScanMin, self.xScanMax, self.xScanStep): 
+                xyScanSteps.append([self.xScanStep*(indexX>0), 0])
+                for iy in np.arange(self.yScanMin, self.yScanMax, self.yScanStep): 
+                    if indexX%2 == 0:
+                        xyScanSteps.append([0, self.yScanStep])
+                        xyScanStepsAbsolute.append([ix, iy])
+                    else:
+                        xyScanSteps.append([0, -self.yScanStep])
+                        xyScanStepsAbsolute.append([ix, -iy])
+                indexX+=1
+        else:
+            xyScanSteps = [[0,0]]
+            self.xScanMin = 0
+            self.xScanMax = 0
+            self.yScanMin = 0
+            self.yScanMax = 0
+            
+            
+        # initialize xy coordinates
+        self.stages.move(value=self.xScanMin, axis="X", is_absolute=False, is_blocking=True)
+        self.stages.move(value=self.yScanMin, axis="Y", is_absolute=False, is_blocking=True)
         
-        if zstackParams[-1]:
-            # perform a z-stack
-            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
+        # iterate over all xy coordinates iteratively
+        for ipos, iXYPos in enumerate(xyScanSteps):
+            
+            # move to xy position is necessary
+            self.stages.move(value=iXYPos[0], axis="X", is_absolute=False, is_blocking=True)
+            self.stages.move(value=iXYPos[1], axis="Y", is_absolute=False, is_blocking=True)
+            
+            if self.zStackEnabled:
+                # perform a z-stack
+                self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
 
-            stepsCounter = 0
-            backlash=0
-            try: # only relevant for UC2 stuff
-                self.stages.setEnabled(is_enabled=True)
-            except:
-                pass
+                stepsCounter = 0
+                backlash=0
+                try: # only relevant for UC2 stuff
+                    self.stages.setEnabled(is_enabled=True)
+                except:
+                    pass
 
-            for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
-                # move to each position
-                stepsCounter += zstackParams[2]
-                self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
+                for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
+                    # move to each position
+                    stepsCounter += self.zStackStep
+                    self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
+                    filePath = self.getSaveFilePath(date=self.MCTDate, 
+                                                    timestamp=timestamp,
+                                                    filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
+                                                    extension=fileExtension)
+                    time.sleep(self.tUnshake) # unshake
+                    lastFrame = self.detector.getLatestFrame()
+                    # self.switchOffIllumination()
+                    self._logger.debug(filePath)
+                    tif.imwrite(filePath, lastFrame, append=True)
+
+                    # store frames for displaying
+                    if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
+                    if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
+                    if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
+
+                self.stages.setEnabled(is_enabled=False)
+                self.stages.move(value=-(self.zStackMax+backlash), axis="Z", is_absolute=False, is_blocking=True)
+
+
+            else:
+                # single file timelapse
                 filePath = self.getSaveFilePath(date=self.MCTDate, 
                                                 timestamp=timestamp,
-                                                filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}', 
-                                                extension=fileExtension)
-                time.sleep(self.tUnshake) # unshake
+                                                filename=f'{self.MCTFilename}_{illuMode}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
+                                                extension=fileExtension)            
                 lastFrame = self.detector.getLatestFrame()
-                # self.switchOffIllumination()
                 self._logger.debug(filePath)
-                tif.imwrite(filePath, lastFrame, append=True)
-
+                tif.imwrite(filePath, lastFrame)
+                
                 # store frames for displaying
-                if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
-                if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
-                if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
-
-            self.stages.setEnabled(is_enabled=False)
-            self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
-
-
-        else:
-            # single file timelapse
-            filePath = self.getSaveFilePath(date=self.MCTDate, 
-                                            timestamp=timestamp,
-                                            filename=f'{self.MCTFilename}_{illuMode}', 
-                                            extension=fileExtension)            
-            lastFrame = self.detector.getLatestFrame()
-            self._logger.debug(filePath)
-            tif.imwrite(filePath, lastFrame)
-            
-            # store frames for displaying
-            if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
-            if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
-            if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
+                if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
+                if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
+                if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
         self.switchOffIllumination()
 

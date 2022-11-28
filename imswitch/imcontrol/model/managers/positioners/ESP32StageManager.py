@@ -118,7 +118,7 @@ class ESP32StageManager(PositionerManager):
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
         
-    def move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=False, timeout=gTIMEOUT):
+    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, speed=None, timeout=gTIMEOUT):
         if speed is None:
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]

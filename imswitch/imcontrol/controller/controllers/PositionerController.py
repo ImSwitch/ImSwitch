@@ -47,13 +47,13 @@ class PositionerController(ImConWidgetController):
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    def move(self, positionerName, axis, dist, isAbsolute=None):
+    def move(self, positionerName, axis, dist, isAbsolute=None, isBlocking=False):
         """ Moves positioner by dist micrometers in the specified axis. """
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         
         try:
-            self._master.positionersManager[positionerName].move(dist, axis, isAbsolute)
+            self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
         except:
             self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
@@ -64,10 +64,10 @@ class PositionerController(ImConWidgetController):
         self.updatePosition(positionerName, axis)
 
     def stepUp(self, positionerName, axis):
-        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis))
+        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis), False, True) # name, axi, stepsiye
 
     def stepDown(self, positionerName, axis):
-        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis))
+        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis), False, True)
 
     def setSpeedGUI(self, positionerName, axis):
         speed = self._widget.getSpeed(positionerName, axis)

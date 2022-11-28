@@ -322,11 +322,13 @@ class MCTController(ImConWidgetController):
                 pass
         # precompute steps for xy scan
         indexX=0
+        iy=0
         if self.xyScanEnabled:
             xyScanSteps = []
             xyScanStepsAbsolute = []
             for ix in np.arange(self.xScanMin, self.xScanMax, self.xScanStep): 
                 xyScanSteps.append([self.xScanStep*(indexX>0), 0])
+                xyScanStepsAbsolute.append([ix, iy])
                 for iy in np.arange(self.yScanMin, self.yScanMax, self.yScanStep): 
                     if indexX%2 == 0:
                         xyScanSteps.append([0, self.yScanStep])
@@ -402,6 +404,11 @@ class MCTController(ImConWidgetController):
                 if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
                 if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
                 if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
+
+        # initialize xy coordinates
+        self.stages.move(value=-self.xScanMin, axis="X", is_absolute=False, is_blocking=True)
+        self.stages.move(value=-self.yScanMin, axis="Y", is_absolute=False, is_blocking=True)
+        
 
         self.switchOffIllumination()
 

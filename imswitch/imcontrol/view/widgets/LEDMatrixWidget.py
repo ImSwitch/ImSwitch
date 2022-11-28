@@ -54,13 +54,6 @@ class LEDMatrixWidget(Widget):
         self.ButtonAllOff = guitools.BetterPushButton("All Off")
         gridLayout.addWidget(self.ButtonAllOff, 1, 8, 1, 1)
                 
-        self.ButtonSubmit = guitools.BetterPushButton("Submit")
-        gridLayout.addWidget(self.ButtonSubmit, 2, 8, 1, 1)
-        
-        self.ButtonToggle = guitools.BetterPushButton("Toggle")
-        gridLayout.addWidget(self.ButtonToggle, 3, 8, 1, 1)
-        
-        
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=1)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)

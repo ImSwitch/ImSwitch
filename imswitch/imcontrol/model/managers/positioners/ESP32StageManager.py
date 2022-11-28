@@ -182,9 +182,14 @@ class ESP32StageManager(PositionerManager):
     def closeEvent(self):
         pass
 
-    def get_abs(self, axis=1):
-        abspos = self._motor.get_position(axis=axis)
-        return abspos
+    
+    def getPosition(self):
+        try:
+            allPositions = self._motor.get_position()
+        except:
+            allPositions = [0,0,0,0]
+        
+        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
     
     def home_x(self):
         self._motor.home_x()

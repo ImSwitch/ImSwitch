@@ -323,22 +323,24 @@ class MCTController(ImConWidgetController):
         # precompute steps for xy scan
         indexX=0
         iy=0
+        
+        # get current position
+        currentPositions = self.stages.getPosition()
+        initialPosition = (currentPositions["X"], currentPositions["Y"])
+        
         if self.xyScanEnabled:
-            xyScanSteps = []
+            xyScanStepsRelative = []
             xyScanStepsAbsolute = []
-            for ix in np.arange(self.xScanMin, self.xScanMax, self.xScanStep): 
-                xyScanSteps.append([self.xScanStep*(indexX>0), 0])
-                xyScanStepsAbsolute.append([ix, iy])
+            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)): 
                 for iy in np.arange(self.yScanMin, self.yScanMax, self.yScanStep): 
                     if indexX%2 == 0:
-                        xyScanSteps.append([0, self.yScanStep])
+                        xyScanStepsRelative.append([0, self.yScanStep])
                         xyScanStepsAbsolute.append([ix, iy])
                     else:
-                        xyScanSteps.append([0, -self.yScanStep])
-                        xyScanStepsAbsolute.append([ix, -iy])
-                indexX+=1
+                        xyScanStepsRelative.append([0, -self.yScanStep])
+                        xyScanStepsAbsolute.append([ix, -iy-self.yScanStep])
         else:
-            xyScanSteps = [[0,0]]
+            xyScanStepsRelative = [[0,0]]
             xyScanStepsAbsolute = [[0,0]]
             self.xScanMin = 0
             self.xScanMax = 0
@@ -346,15 +348,18 @@ class MCTController(ImConWidgetController):
             self.yScanMax = 0
             
         # initialize xy coordinates
-        self.stages.move(value=self.xScanMin, axis="X", is_absolute=False, is_blocking=True)
-        self.stages.move(value=self.yScanMin, axis="Y", is_absolute=False, is_blocking=True)
+        self.stages.move(value=self.xScanMin+initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
+        self.stages.move(value=self.yScanMin+initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
+        
+        # initialize iterator
+        imageIndex = 0
         
         # iterate over all xy coordinates iteratively
-        for ipos, iXYPos in enumerate(xyScanSteps):
+        for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             
             # move to xy position is necessary
-            self.stages.move(value=iXYPos[0], axis="X", is_absolute=False, is_blocking=True)
-            self.stages.move(value=iXYPos[1], axis="Y", is_absolute=False, is_blocking=True)
+            self.stages.move(value=iXYPos[0]+initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
+            self.stages.move(value=iXYPos[1]+initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
             
             if self.zStackEnabled:
                 # perform a z-stack
@@ -373,13 +378,14 @@ class MCTController(ImConWidgetController):
                     self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
                     filePath = self.getSaveFilePath(date=self.MCTDate, 
                                                     timestamp=timestamp,
-                                                    filename=f'{self.MCTFilename}_{illuMode}_Z_{stepsCounter}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
+                                                    filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{stepsCounter}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
                                                     extension=fileExtension)
                     time.sleep(self.tUnshake) # unshake
                     lastFrame = self.detector.getLatestFrame()
                     # self.switchOffIllumination()
                     self._logger.debug(filePath)
                     tif.imwrite(filePath, lastFrame, append=True)
+                    imageIndex += 1
 
                     # store frames for displaying
                     if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
@@ -394,11 +400,12 @@ class MCTController(ImConWidgetController):
                 # single file timelapse
                 filePath = self.getSaveFilePath(date=self.MCTDate, 
                                                 timestamp=timestamp,
-                                                filename=f'{self.MCTFilename}_{illuMode}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
+                                                filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
                                                 extension=fileExtension)            
                 lastFrame = self.detector.getLatestFrame()
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)
+                imageIndex += 1
                 
                 # store frames for displaying
                 if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
@@ -406,10 +413,9 @@ class MCTController(ImConWidgetController):
                 if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
         # initialize xy coordinates
-        self.stages.move(value=-self.xScanMin, axis="X", is_absolute=False, is_blocking=True)
-        self.stages.move(value=-self.yScanMin, axis="Y", is_absolute=False, is_blocking=True)
+        self.stages.move(value=initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
+        self.stages.move(value=initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
         
-
         self.switchOffIllumination()
 
 

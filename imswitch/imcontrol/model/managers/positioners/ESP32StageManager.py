@@ -125,7 +125,6 @@ class ESP32StageManager(PositionerManager):
             if axis == "Z": speed = self.speed["Z"]
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
-            
         if axis == 'X':
             self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
@@ -148,10 +147,10 @@ class ESP32StageManager(PositionerManager):
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
-
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
-            return
+
+
 
     
     def measure(self, sensorID=0, NAvg=100):

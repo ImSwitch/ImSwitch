@@ -258,8 +258,9 @@ class UC2ConfigController(ImConWidgetController):
         self._logger.debug('Apply changes to pinDef.')
 
     def reconnect(self):
-        self._master.UC2ConfigManager.initSerial()
         self._logger.debug('Reconnect to device.')
+        self._master.UC2ConfigManager.initSerial()
+        
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

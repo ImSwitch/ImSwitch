@@ -337,11 +337,11 @@ class MCTController(ImConWidgetController):
                 indexX+=1
         else:
             xyScanSteps = [[0,0]]
+            xyScanStepsAbsolute = [[0,0]]
             self.xScanMin = 0
             self.xScanMax = 0
             self.yScanMin = 0
             self.yScanMax = 0
-            
             
         # initialize xy coordinates
         self.stages.move(value=self.xScanMin, axis="X", is_absolute=False, is_blocking=True)

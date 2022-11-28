@@ -98,6 +98,7 @@ class UC2ConfigWidget(Widget):
 
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
+        self.reconnectButton = guitools.BetterPushButton('Reconnect ESP32')
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -144,6 +145,7 @@ class UC2ConfigWidget(Widget):
 
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
         self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        self.grid.addWidget(self.reconnectButton, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
 
     

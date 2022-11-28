@@ -30,13 +30,15 @@ class UC2ConfigController(ImConWidgetController):
             self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
 
         # 1b. load default config if device not valid -> E.G. after flashing
-        if self.mConfigDevice['motorconfig'][1]["enable"]==0: # the defaultconfig has not been written
+        if "motorconfig" in self.mConfigDevice and self.mConfigDevice['motorconfig'][1]["enable"]==0: # the defaultconfig has not been written
             try:
                 self.__logger.debug("Trying to load default config from file")
                 self.mConfigDevice = self.loadDefaultConfigFromFile()
                 self._master.UC2ConfigManager.setpinDef(self.mConfigDevice)
             except Exception as e:
                 self.__logger.error(e)
+        else:
+            self.__logger.error("Device not connected?!")
 
         # 2. display device configs in the GUI  
         self.displayConfig(config=self.mConfigDevice)
@@ -50,6 +52,7 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.controlPanel.loadButton.clicked.connect(self.displayConfig)
         self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
+        self._widget.reconnectButton.clicked.connect(self.reconnect)
         
         self.isFirmwareUpdating = False
         
@@ -254,6 +257,9 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Updated items: "+str(len(shared_items))+"/"+str(len(self.pinDefParanamesToEsp(self.mConfigOffline))))
         self._logger.debug('Apply changes to pinDef.')
 
+    def reconnect(self):
+        self._master.UC2ConfigManager.initSerial()
+        self._logger.debug('Reconnect to device.')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

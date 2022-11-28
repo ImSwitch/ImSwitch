@@ -119,11 +119,19 @@ class StandaMotor():
                 info['Release'] = repr(x_device_information.Release)
         return info
 
-    def startmove(self):
-        pass
+    def set_rot_speed(self, speed):
+        """ Speed currently input in milli rpm, change this to be deg/s later with a transformation below. """
+        #speed_mrpm = transf * speed_deg
+        x_move_settings = pyximc.move_settings_t()
+        _ = pyximc.lib.get_move_settings(self._device_id, byref(x_move_settings))
+        x_move_settings.Speed = int(speed)
+        pyximc.lib.set_move_settings(self._device_id, x_move_settings)
+    
+    def start_cont_rot(self):
+        pyximc.lib.command_right(self._device_id)
 
-    def stopmove(self):
-        pass
+    def stop_cont_rot(self):
+        pyximc.lib.command_sstp(self._device_id)
 
     def __initiate_library(self, lib_loc):
         """ Initiate ximc library, necessary for communicating with motor controller. 

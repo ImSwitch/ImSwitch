@@ -11,6 +11,9 @@ class RotatorWidget(Widget):
     sigMoveBackRelClicked = QtCore.Signal()
     sigMoveAbsClicked = QtCore.Signal()
     sigSetZeroClicked = QtCore.Signal()
+    sigSetSpeedClicked = QtCore.Signal()
+    sigStartContMovClicked = QtCore.Signal()
+    sigStopContMovClicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,8 +33,13 @@ class RotatorWidget(Widget):
         self.pars['BackButton'] = guitools.BetterPushButton('-')
         self.pars['RelStepEdit'] = QtWidgets.QLineEdit('10')
         self.pars['RelStepUnit'] = QtWidgets.QLabel(' deg')
+        self.pars['SpeedEdit'] = QtWidgets.QLineEdit('100')
+        self.pars['SpeedUnit'] = QtWidgets.QLabel(' mrpm')
         self.pars['SetZeroButton'] = guitools.BetterPushButton('Set zero')
         self.pars['AbsButton'] = guitools.BetterPushButton('Abs')
+        self.pars['SetSpeedButton'] = guitools.BetterPushButton('Set speed')
+        self.pars['StartMoveButton'] = guitools.BetterPushButton('Start move')
+        self.pars['StopMoveButton'] = guitools.BetterPushButton('Stop move')
         self.pars['AbsPosEdit'] = QtWidgets.QLineEdit('0')
         self.pars['AbsPosUnit'] = QtWidgets.QLabel(' deg')
 
@@ -47,12 +55,20 @@ class RotatorWidget(Widget):
         self.grid.addWidget(QtWidgets.QLabel('Pos'), 1, 4)
         self.grid.addWidget(self.pars['AbsPosEdit'], 1, 5)
         self.grid.addWidget(self.pars['AbsPosUnit'], 1, 6)
+        self.grid.addWidget(self.pars['SpeedEdit'], 2, 0)
+        self.grid.addWidget(self.pars['SpeedUnit'], 2, 1)
+        self.grid.addWidget(self.pars['SetSpeedButton'], 2, 2)
+        self.grid.addWidget(self.pars['StartMoveButton'], 2, 3)
+        self.grid.addWidget(self.pars['StopMoveButton'], 2, 4)
 
         # Connect signals
         self.pars['ForwButton'].clicked.connect(self.sigMoveForwRelClicked.emit)
         self.pars['BackButton'].clicked.connect(self.sigMoveBackRelClicked.emit)
         self.pars['AbsButton'].clicked.connect(self.sigMoveAbsClicked.emit)
         self.pars['SetZeroButton'].clicked.connect(self.sigSetZeroClicked.emit)
+        self.pars['SetSpeedButton'].clicked.connect(self.sigSetSpeedClicked.emit)
+        self.pars['StartMoveButton'].clicked.connect(self.sigStartContMovClicked.emit)
+        self.pars['StopMoveButton'].clicked.connect(self.sigStopContMovClicked.emit)
 
     def getRelStepSize(self):
         """ Returns the step size of the rotation mount, in degrees. """
@@ -65,6 +81,10 @@ class RotatorWidget(Widget):
     def getAbsPos(self):
         """ Returns the absolute position of the rotation mount, in degrees. """
         return float(self.pars['AbsPosEdit'].text())
+    
+    def getSpeed(self):
+        """ Returns the user-input speed, in mrpm. """
+        return int(self.pars['SpeedEdit'].text())
 
     def setAbsPos(self, absPos):
         """ Sets the absolute position to the specified number of degrees. """

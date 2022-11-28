@@ -42,18 +42,24 @@ class StandaMotorManager(SignalInterface):
         self._motor.set_zero_pos()
         self._position = self._motor.get_pos()
 
-    def startMovement(self):
-        self._motor.startmove()
+    def set_rot_speed(self, speed):
+        self._motor.set_rot_speed(speed)
 
-    def stopMovement(self):
-        self._motor.stopmove()
+    def start_cont_rot(self):
+        self._motor.start_cont_rot()
+
+    def stop_cont_rot(self):
+        self._motor.stop_cont_rot()
+
+    def startMovement(self):
+        pass
 
     def _performSafeMotorAction(self, function):
         """ Used to change motor properties that need idle state to be adjusted. """
         try:
             function()
         except Exception:
-            self.stopMovement()
+            self.stop_cont_rot()
             function()
             self.startMovement()
 

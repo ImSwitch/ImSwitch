@@ -31,6 +31,18 @@ jobs:
         python3 -m pip install .
         python3 -m pip install pyinstaller==5.4.1
       shell: bash
+    - name: Find latest tag of dependency
+      id: remote_chart
+      uses: oprypin/find-latest-tag@v1
+      with:
+        repository: openUC2/UC2-REST
+        releases-only: true
+    - name: bump version
+      uses: jacobtomlinson/gha-find-replace@v2
+      with:
+        find: '__version__ = "__version__develop"'
+        replace: '__version__ = "${{ steps.remote_chart.outputs.tag }}"'
+        regex: false
     - name: Build bundle
       run: |
         pyinstaller imswitch.spec

@@ -80,7 +80,8 @@ class ESP32LEDLaserManager(LaserManager):
         if self.channel_index == "LED":
             if self.filter_change and (self.power*self.enabled)>0:
                 self._motor.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
-            self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+            self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+            # self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
             self._laser.set_laser(self.channel_index, 
                                                 int(self.power*self.enabled), self.filter_change, 
@@ -97,7 +98,7 @@ class ESP32LEDLaserManager(LaserManager):
         self.power = power
         if self.enabled:
             if self.channel_index == "LED":
-                self._led.setAll((int(self.power*self.enabled),self.power*self.enabled,self.power*self.enabled))
+                self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
             else:
                 self._laser.set_laser(self.channel_index, 
                                     int(self.power), 0*self.filter_change, 

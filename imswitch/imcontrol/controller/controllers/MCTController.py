@@ -321,8 +321,8 @@ class MCTController(ImConWidgetController):
             except:
                 pass
         # precompute steps for xy scan
-        indexX=0
-        iy=0
+
+
         
         # get current position
         currentPositions = self.stages.getPosition()
@@ -356,6 +356,8 @@ class MCTController(ImConWidgetController):
         
         # iterate over all xy coordinates iteratively
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
+            if not self.isMCTrunning:
+                break
             
             # move to xy position is necessary
             self.stages.move(value=iXYPos[0]+initialPosition[0], axis="X", is_absolute=True, is_blocking=True)

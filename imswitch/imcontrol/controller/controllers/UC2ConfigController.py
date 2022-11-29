@@ -260,6 +260,8 @@ class UC2ConfigController(ImConWidgetController):
     def reconnect(self):
         self._logger.debug('Reconnect to device.')
         self._master.UC2ConfigManager.initSerial()
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
+        
         
 
 

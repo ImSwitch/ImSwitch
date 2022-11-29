@@ -31,9 +31,9 @@ class UC2ConfigManager(SignalInterface):
             self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", "pindefWemos.json")
                     
         # initialize the firmwareupdater
-        self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
+        self.firmwareUpdater = uc2.updater(parent=self.ESP32)
         self.firmwareConfigurator = self.ESP32.config
-        
+        # alternatively: self.firmwareUpdater = self.ESP32.updater
         try:
             with open(self.defaultConfigPath) as jf:
                 self.defaultConfig = json.load(jf)
@@ -75,6 +75,9 @@ class UC2ConfigManager(SignalInterface):
     def closeSerial(self):
         return self.ESP32.closeSerial()
     
+    def isConnected(self):
+        self.ESP32.serial.is_connected
+
     def initSerial(self):
         self.ESP32.serial.open()
         

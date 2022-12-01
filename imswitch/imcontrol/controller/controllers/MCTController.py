@@ -55,7 +55,7 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
-        self.tUnshake = .1
+        self.tUnshake = .2
 
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
@@ -329,17 +329,19 @@ class MCTController(ImConWidgetController):
         currentPositions = self.stages.getPosition()
         initialPosition = (currentPositions["X"], currentPositions["Y"])
         
+        # snake scan
         if self.xyScanEnabled:
-            xyScanStepsRelative = []
             xyScanStepsAbsolute = []
+            fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
+            bwdpath = np.flip(fwdpath)
             for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)): 
-                for iy in np.arange(self.yScanMin, self.yScanMax, self.yScanStep): 
-                    if indexX%2 == 0:
-                        xyScanStepsRelative.append([0, self.yScanStep])
+                if indexX%2==0:
+                    for indexY, iy in enumerate(fwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
-                    else:
-                        xyScanStepsRelative.append([0, -self.yScanStep])
-                        xyScanStepsAbsolute.append([ix, -iy-self.yScanStep])
+                else:
+                    for indexY, iy in enumerate(bwdpath):
+                        xyScanStepsAbsolute.append([ix, iy])
+
         else:
             xyScanStepsRelative = [[0,0]]
             xyScanStepsAbsolute = [[0,0]]
@@ -406,6 +408,8 @@ class MCTController(ImConWidgetController):
                                                 filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
                                                 extension=fileExtension)            
                 lastFrame = self.detector.getLatestFrame()
+                time.sleep(self.tUnshake) # unshake
+                   
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)
                 imageIndex += 1

@@ -66,13 +66,13 @@ class PositionerController(ImConWidgetController):
         self.updatePosition(positionerName, axis)
 
     def moveAbsolute(self, positionerName, axis):
-        self.move(positionerName, axis, self._widget.getAbsPosition(positionerName, axis), isAbsolute=True, isBlocking=True)
+        self.move(positionerName, axis, self._widget.getAbsPosition(positionerName, axis), isAbsolute=True, isBlocking=False)
         
     def stepUp(self, positionerName, axis):
-        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=True) # name, axi, stepsize
+        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=False)
 
     def stepDown(self, positionerName, axis):
-        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=True)
+        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=False)
 
     def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)

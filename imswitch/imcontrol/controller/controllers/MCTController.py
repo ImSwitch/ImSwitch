@@ -134,7 +134,7 @@ class MCTController(ImConWidgetController):
                 self.lasers[0].initFilter()
 
             # get parameters from GUI
-            self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
+            self.zStackMin, self.zStackMax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
             self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep, self.xyScanEnabled = self._widget.getXYScanValues()
             
             self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
@@ -328,6 +328,7 @@ class MCTController(ImConWidgetController):
         # get current position
         currentPositions = self.stages.getPosition()
         initialPosition = (currentPositions["X"], currentPositions["Y"])
+        initialPosiionZ = currentPositions["Z"]
         
         # snake scan
         if self.xyScanEnabled:
@@ -398,7 +399,8 @@ class MCTController(ImConWidgetController):
                     if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
 
                 self.stages.setEnabled(is_enabled=False)
-                self.stages.move(value=-(self.zStackMax+backlash), axis="Z", is_absolute=False, is_blocking=True)
+                #self.stages.move(value=-(self.zStackMax+backlash), axis="Z", is_absolute=False, is_blocking=True)
+                self.stages.move(value=initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
 
 
             else:

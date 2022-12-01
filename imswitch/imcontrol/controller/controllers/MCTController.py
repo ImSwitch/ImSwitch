@@ -78,6 +78,7 @@ class MCTController(ImConWidgetController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
+        self.detector.startAcquisition()
 
         # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()

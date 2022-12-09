@@ -258,8 +258,11 @@ class UC2ConfigController(ImConWidgetController):
         self._logger.debug('Apply changes to pinDef.')
 
     def reconnect(self):
-        self._logger.debug('Reconnect to device.')
-        self._master.UC2ConfigManager.initSerial()
+        self._logger.debug('Reconnecting to ESP32 device.')
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Reconnecting to ESP32 device.")
+        mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
+        mThread.start()
+        mThread.join()
         self._widget.controlPanel.updateFirmwareDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
         
         

@@ -126,6 +126,10 @@ class MCTController(ImConWidgetController):
         # this is not a thread!
         self._widget.mctStartButton.setEnabled(False)
 
+        # don't show any message 
+        self._master.UC2ConfigManager.setDebug(False)
+        
+        # start the timelapse
         if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
@@ -177,11 +181,20 @@ class MCTController(ImConWidgetController):
         self._widget.setNImages("Stopping timelapse...")
 
         self._widget.mctStartButton.setEnabled(True)
+        
+        # go back to initial position       
+        try:
+            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        except:
+            pass
+
+        # delete any existing timer
         try:
             del self.timer
         except:
             pass
 
+        # delete any existing thread
         try:
             del self.MCTThread
         except:
@@ -275,29 +288,39 @@ class MCTController(ImConWidgetController):
         self.LastStackLaser2 = []
         self.LastStackLED = []
         
-        # want to do autofocus?
-        autofocusParams = self._widget.getAutofocusValues()
-        if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
-            self._widget.setNImages("Autofocusing...")
-            self.doAutofocus(autofocusParams)
+        # get current position
+        currentPositions = self.stages.getPosition()
+        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
+        self.initialPosiionZ = currentPositions["Z"]
+        
+        try:    
+            # want to do autofocus?
+            autofocusParams = self._widget.getAutofocusValues()
+            if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+                self._widget.setNImages("Autofocusing...")
+                self.doAutofocus(autofocusParams)
 
-        if self.Laser1Value>0:
-            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
-        if self.Laser2Value>0:
-            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
-        if self.LEDValue>0:
-            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
+            if self.Laser1Value>0:
+                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
+            if self.Laser2Value>0:
+                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
+            if self.LEDValue>0:
+                self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
 
-        self.nImages += 1
-        self._widget.setNImages(self.nImages)
+            self.nImages += 1
+            self._widget.setNImages(self.nImages)
 
-        self.isMCTrunning = False
+            self.isMCTrunning = False
 
-        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+            self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
+            self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+            self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-        self._widget.mctShowLastButton.setEnabled(True)
+            self._widget.mctShowLastButton.setEnabled(True)
+        except:
+            # close the controller ina nice way
+            d
+            
 
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0):
@@ -325,10 +348,7 @@ class MCTController(ImConWidgetController):
 
 
         
-        # get current position
-        currentPositions = self.stages.getPosition()
-        initialPosition = (currentPositions["X"], currentPositions["Y"])
-        initialPosiionZ = currentPositions["Z"]
+
         
         # snake scan
         if self.xyScanEnabled:
@@ -352,8 +372,7 @@ class MCTController(ImConWidgetController):
             self.yScanMax = 0
             
         # initialize xy coordinates
-        self.stages.move(value=self.xScanMin+initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
-        self.stages.move(value=self.yScanMin+initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
+        self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
         
         # initialize iterator
         imageIndex = 0
@@ -364,8 +383,7 @@ class MCTController(ImConWidgetController):
                 break
             
             # move to xy position is necessary
-            self.stages.move(value=iXYPos[0]+initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
-            self.stages.move(value=iXYPos[1]+initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
+            self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
             
             if self.zStackEnabled:
                 # perform a z-stack
@@ -422,9 +440,8 @@ class MCTController(ImConWidgetController):
                 if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
         # initialize xy coordinates
-        self.stages.move(value=initialPosition[0], axis="X", is_absolute=True, is_blocking=True)
-        self.stages.move(value=initialPosition[1], axis="Y", is_absolute=True, is_blocking=True)
-        
+        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+       
         self.switchOffIllumination()
 
 
@@ -456,7 +473,7 @@ class MCTController(ImConWidgetController):
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
-        #if not self.lasers[1].power: self.lasers[1].setEnabled(1)
+        if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue)
         #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 

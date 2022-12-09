@@ -89,6 +89,9 @@ class UC2ConfigManager(SignalInterface):
             
     def removeFirmware(self):
         return self.firmwareUpdater.removeFirmware()
+    
+    def setDebug(self, debug):
+        self.ESP32.serial.DEBUG = debug
 
 
 

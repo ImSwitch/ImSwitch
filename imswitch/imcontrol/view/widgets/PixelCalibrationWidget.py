@@ -127,7 +127,7 @@ class Canvas(QtWidgets.QLabel):
         self.update()
 
     def paintEvent(self, event):
-        if self.pos and self.isTracking:
+        if self.pos and self.pressPos and self.isTracking:
             painter = QPainter(self)         
             pen = QtGui.QPen()
             pen.setWidth(4)

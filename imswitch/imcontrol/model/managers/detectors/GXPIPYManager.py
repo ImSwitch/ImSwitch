@@ -58,7 +58,9 @@ class GXPIPYManager(DetectorManager):
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True)
+                            editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -155,7 +157,11 @@ class GXPIPYManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
 

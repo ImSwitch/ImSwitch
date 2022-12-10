@@ -345,17 +345,12 @@ class MCTController(ImConWidgetController):
             except:
                 pass
         # precompute steps for xy scan
-
-
-        
-
-        
         # snake scan
         if self.xyScanEnabled:
             xyScanStepsAbsolute = []
             fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
             bwdpath = np.flip(fwdpath)
-            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)): 
+            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.yScanStep)): 
                 if indexX%2==0:
                     for indexY, iy in enumerate(fwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
@@ -395,7 +390,7 @@ class MCTController(ImConWidgetController):
                     self.stages.setEnabled(is_enabled=True)
                 except:
                     pass
-
+                time.sleep(self.tUnshake) # unshake
                 for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
                     # move to each position
                     stepsCounter += self.zStackStep
@@ -418,7 +413,7 @@ class MCTController(ImConWidgetController):
 
                 self.stages.setEnabled(is_enabled=False)
                 #self.stages.move(value=-(self.zStackMax+backlash), axis="Z", is_absolute=False, is_blocking=True)
-                self.stages.move(value=initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
+                self.stages.move(value=self.initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
 
 
             else:
@@ -427,8 +422,10 @@ class MCTController(ImConWidgetController):
                                                 timestamp=timestamp,
                                                 filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
                                                 extension=fileExtension)            
+                
+                
                 lastFrame = self.detector.getLatestFrame()
-                time.sleep(self.tUnshake) # unshake
+                
                    
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)

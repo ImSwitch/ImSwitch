@@ -34,7 +34,7 @@ class PixelCalibrationController(LiveUpdatedController):
         self._widget.PixelCalibrationStageCalibrationButton.clicked.connect(self.stageCalibration)
         
         self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
-        self.pixelSize=0
+        self.pixelSize=500 # defaul FIXME: Load from json?
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
@@ -86,13 +86,13 @@ class PixelCalibrationController(LiveUpdatedController):
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
         self.initialPosiionZ = currentPositions["Z"]
         
-        # 
-        self.xScanMin = -30
-        self.xScanMax = 30
-        self.yScanMin = -30
-        self.yScanMax = 30
-        self.xScanStep = 20
-        self.yScanStep = 20
+        # define scan parameters
+        self.xScanMin = -40
+        self.xScanMax = 40
+        self.yScanMin = -40
+        self.yScanMax = 40
+        self.xScanStep = 15
+        self.yScanStep = 15
         
         # snake scan
         xyScanStepsAbsolute = []
@@ -128,16 +128,54 @@ class PixelCalibrationController(LiveUpdatedController):
         from skimage.registration import phase_cross_correlation
         
         
-        # compute shift between neighbouring images
+        # compute shift between images relative to zeroth image
         allShifts = []
-        for iImage in range(len(allPosImages)-1):
-            image1 = allPosImages[iImage]
-            image2 = allPosImages[iImage+1]
+        for iImage in range(len(allPosImages)):
+            image1 = allPosImages[0]
+            image2 = allPosImages[iImage]
             shift, error, diffphase = phase_cross_correlation(image1, image2)
             
             allShifts.append(shift)
             
         # compute averrage shifts according to scan grid 
+        shiftReal = np.array(xyScanStepsAbsolute)
+        shiftReal -= np.min(shiftReal,0)
+        shiftMeasured = np.array(allShifts)
+
+        # whiten the data
+
+        # compute differencs
+        nShiftX = (self.xScanMax-self.xScanMin)//self.xScanStep
+        nShiftY = (self.yScanMax-self.yScanMin)//self.yScanStep
+
+        dReal = np.abs(shiftReal-np.roll(shiftReal,-1,0))
+        dMeasured = np.abs(shiftMeasured-np.roll(shiftMeasured,-1,0))
+
+        # determine the axis
+        xAxisReal = np.argmin(np.mean(dReal,0))
+        xAxisMeasured = np.argmin(np.mean(dMeasured,0))
+
+        # swap axis (y,x)
+        if xAxisReal != xAxisMeasured:
+            xAxisMeasured = np.transposes(xAxisMeasured, (1,0))
+        
+        # stepsize => real motion / stepsize 
+        stepSizeStage = (dMeasured*self.pixelSize)/dReal
+        stepSizeStage[stepSizeStage == np.inf] = 0
+        stepSizeStage = np.nan_to_num(stepSizeStage, nan=0.)
+        stepSizeStage = stepSizeStage[np.where(stepSizeStage>0)]
+        stepSizeStageDim = np.mean(stepSizeStage)
+        stepSizeStageVar = np.var(stepSizeStage)
+
+        self._logger.debug("Stage pixel size: "+str(stepSizeStageDim)+"nm/step")
+        self._widget.setInformationLabel("Stage pixel size: "+str(stepSizeStageDim)+" nm/step")
+
+        from imswitch.imcontrol.model import configfiletools
+        # Set in setup info
+        name="test"
+        self._setupInfo.setPositionerPreset(name, self.makePreset())
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
+
         
             
 

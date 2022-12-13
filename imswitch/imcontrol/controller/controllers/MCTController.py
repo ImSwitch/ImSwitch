@@ -514,11 +514,13 @@ class MCTController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "tilescanning"
-        lastFrameScaled = cv2.resize(self.lastFrame, None, fx = .25, fy = .25, interpolation = cv2.INTER_NEAREST)
+        downScaleFactor = 4
+        lastFrameScaled = cv2.resize(self.lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
         imDimScaled = lastFrameScaled.shape
-        relativeTranslation = self.iXYPos[0]+self.initialPosition[0],self.iXYPos[1]+self.initialPosition[1]
-        translation = (*imDimScaled,0)
-        self._widget.setImage(lastFrameScaled, colormap="gray", name="", pixelsize=(1,1), translation=(0,0))
+        relativeTranslation = 1/downScaleFactor*(self.iXYPos[0]+self.initialPosition[0]),1/downScaleFactor*(self.iXYPos[1]+self.initialPosition[1])
+        translation = (*relativeTranslation,0)
+        translation = (150,50)
+        self._widget.setImage(lastFrameScaled, colormap="gray", name=name, pixelsize=(1,1), translation=translation)
             
             
 

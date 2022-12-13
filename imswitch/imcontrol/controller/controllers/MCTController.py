@@ -371,7 +371,7 @@ class MCTController(ImConWidgetController):
         
         # initialize iterator
         imageIndex = 0
-        
+        self._widget.gridLayer = None
         # iterate over all xy coordinates iteratively
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
@@ -436,6 +436,19 @@ class MCTController(ImConWidgetController):
                 if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
                 if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
+            # lets try to visualize each slice in napari 
+            # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
+            if True:
+                import cv2
+                name="tilescanning"
+                lastFrameScaled = cv2.resize(lastFrame,None, fx = .25, fy = .25, interpolation = cv2.INTER_NEAREST)
+                imDimScaled = lastFrameScaled.shape
+                relativeTranslation = iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]
+                translation = (*imDimScaled,0)
+            
+                self._widget.setImage(lastFrameScaled, colormap="gray", name="", pixelsize=(1,1), translation=(0,0))
+            
+            
         # initialize xy coordinates
         self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
        

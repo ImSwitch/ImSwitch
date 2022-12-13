@@ -6,6 +6,7 @@ import time
 import tifffile as tif
 import threading
 from datetime import datetime
+import cv2
 
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -70,6 +71,9 @@ class MCTController(ImConWidgetController):
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
+
+        # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
+        self.sigImageReceived.connect(self.displayImage)
         
         # autofocus related 
         self.isAutofocusRunning = False
@@ -156,15 +160,9 @@ class MCTController(ImConWidgetController):
             # reserve space for the stack
             self._widget.mctShowLastButton.setEnabled(False)
 
-            # FIXME: This is a hack to make sure the image is displayed correctly
-            # we start it first and then in a loop 
-            self.takeTimelapse()
-            
             # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
-            self.timer = Timer()
-            self.timer.timeout.connect(lambda: self.takeTimelapse())
-            self.timer.start(self.timePeriod*1000)
-            self.startTime = time.time()
+            self.takeTimelapse(self.timePeriod)
+
             '''       
             self.timer = mTimer(self.timePeriod, self.takeTimelapse)
             self.timer.start()
@@ -246,7 +244,7 @@ class MCTController(ImConWidgetController):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
-    def takeTimelapse(self):
+    def takeTimelapse(self, tperiod):
         # this is called periodically by the timer
         if not self.isMCTrunning:
             try:
@@ -264,7 +262,7 @@ class MCTController(ImConWidgetController):
 
             # this should decouple the hardware-related actions from the GUI
             self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(), daemon=True)
+            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
             self.MCTThread.start()
 
     def doAutofocus(self, params):
@@ -280,47 +278,60 @@ class MCTController(ImConWidgetController):
                 return
         
 
-    def takeTimelapseThread(self):
+    def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
-        self._logger.debug("Take image")
-        # reserve and free space for displayed stacks
-        self.LastStackLaser1 = []
-        self.LastStackLaser2 = []
-        self.LastStackLED = []
-        
-        # get current position
-        currentPositions = self.stages.getPosition()
-        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
-        self.initialPosiionZ = currentPositions["Z"]
-        
-        try:    
-            # want to do autofocus?
-            autofocusParams = self._widget.getAutofocusValues()
-            if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
-                self._widget.setNImages("Autofocusing...")
-                self.doAutofocus(autofocusParams)
+        self.timeLast = 0
 
-            if self.Laser1Value>0:
-                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
-            if self.Laser2Value>0:
-                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
-            if self.LEDValue>0:
-                self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
+        # run as long as the MCT is active
+        while(self.isMCTrunning):
 
-            self.nImages += 1
-            self._widget.setNImages(self.nImages)
+            # initialize a run
+            if time.time() - self.timeLast >= (tperiod):
+                
+                # run an event
+                self.timeLast = time.time() # makes sure that the period is measured from launch to launch
+                self._logger.debug("Take image")
+                # reserve and free space for displayed stacks
+                self.LastStackLaser1 = []
+                self.LastStackLaser2 = []
+                self.LastStackLED = []
+                
+                # get current position
+                currentPositions = self.stages.getPosition()
+                self.initialPosition = (currentPositions["X"], currentPositions["Y"])
+                self.initialPosiionZ = currentPositions["Z"]
+                
+                try:    
+                    # want to do autofocus?
+                    autofocusParams = self._widget.getAutofocusValues()
+                    if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+                        self._widget.setNImages("Autofocusing...")
+                        self.doAutofocus(autofocusParams)
 
-            self.isMCTrunning = False
+                    if self.Laser1Value>0:
+                        self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
+                    if self.Laser2Value>0:
+                        self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
+                    if self.LEDValue>0:
+                        self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
 
-            self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-            self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-            self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+                    self.nImages += 1
+                    self._widget.setNImages(self.nImages)
 
-            self._widget.mctShowLastButton.setEnabled(True)
-        except:
-            # close the controller ina nice way
-            d
+                    self.isMCTrunning = False
+
+                    self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
+                    self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+                    self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+
+                    self._widget.mctShowLastButton.setEnabled(True)
+                except:
+                    # close the controller ina nice way
+                    pass
             
+            # pause to not overwhelm the CPU
+            time.sleep(0.5)
+                    
 
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0):
@@ -438,17 +449,11 @@ class MCTController(ImConWidgetController):
 
             # lets try to visualize each slice in napari 
             # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
-            if True:
-                import cv2
-                name="tilescanning"
-                lastFrameScaled = cv2.resize(lastFrame,None, fx = .25, fy = .25, interpolation = cv2.INTER_NEAREST)
-                imDimScaled = lastFrameScaled.shape
-                relativeTranslation = iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]
-                translation = (*imDimScaled,0)
-            
-                self._widget.setImage(lastFrameScaled, colormap="gray", name="", pixelsize=(1,1), translation=(0,0))
-            
-            
+            self.lastFrame = lastFrame
+            self.iXYPos = iXYPos
+            self.sigImageReceived.emit() # => displays image
+
+
         # initialize xy coordinates
         self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
        
@@ -464,7 +469,6 @@ class MCTController(ImConWidgetController):
         if len(self.leds)>0:
             self.leds[0].setValue(0)
             #self.illu.setAll((0,0,0))
-
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
@@ -506,6 +510,18 @@ class MCTController(ImConWidgetController):
     def setAutoFocusIsRunning(self, isRunning):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
+    
+    def displayImage(self):
+        # a bit weird, but we cannot update outside the main thread
+        name = "tilescanning"
+        lastFrameScaled = cv2.resize(self.lastFrame, None, fx = .25, fy = .25, interpolation = cv2.INTER_NEAREST)
+        imDimScaled = lastFrameScaled.shape
+        relativeTranslation = self.iXYPos[0]+self.initialPosition[0],self.iXYPos[1]+self.initialPosition[1]
+        translation = (*imDimScaled,0)
+        self._widget.setImage(lastFrameScaled, colormap="gray", name="", pixelsize=(1,1), translation=(0,0))
+            
+            
+
 
 class mTimer(object):
     def __init__(self, waittime, mFunc) -> None:

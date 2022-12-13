@@ -338,7 +338,6 @@ class MCTController(ImConWidgetController):
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
 
-
         # turn on illuminationn
         if illuMode == "Laser1" and len(self.lasers)>0:
             self.lasers[0].setValue(intensity)
@@ -370,13 +369,22 @@ class MCTController(ImConWidgetController):
                         xyScanStepsAbsolute.append([ix, iy])
 
         else:
-            xyScanStepsRelative = [[0,0]]
             xyScanStepsAbsolute = [[0,0]]
             self.xScanMin = 0
             self.xScanMax = 0
             self.yScanMin = 0
             self.yScanMax = 0
             
+        
+        # reserve space for tiled image 
+        downScaleFactor = 4
+        nTilesX = int((self.xScanMax-self.xScanMin)/self.xScanStep/downScaleFactor)
+        nTilesY = int((self.yScanMax-self.yScanMin)/self.yScanStep/downScaleFactor)
+        imageDimensions = self.detector.getLatestFrame().shape
+        imageDimensionsDownscaled = (imageDimensions[0]//downScaleFactor, imageDimensions[1]//downScaleFactor)
+        tiledImageDimensions = (nTilesX*imageDimensions[0]//downScaleFactor, nTilesY*imageDimensions[1]//downScaleFactor)
+        self.tiledImage = np.zeros(tiledImageDimensions)
+        
         # initialize xy coordinates
         self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
         
@@ -449,8 +457,14 @@ class MCTController(ImConWidgetController):
 
             # lets try to visualize each slice in napari 
             # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
-            self.lastFrame = lastFrame
-            self.iXYPos = iXYPos
+            # construct the tiled image
+            iX = int((iXYPos[0]-self.xScanMin) // self.xScanStep)
+            iY = int((iXYPos[1]-self.yScanMin) // self.yScanStep)
+            
+            lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
+            self.tiledImage[int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0]), 
+                            int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1])] = lastFrameScaled
+                            
             self.sigImageReceived.emit() # => displays image
 
 
@@ -514,13 +528,7 @@ class MCTController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "tilescanning"
-        downScaleFactor = 4
-        lastFrameScaled = cv2.resize(self.lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
-        imDimScaled = lastFrameScaled.shape
-        relativeTranslation = 1/downScaleFactor*(self.iXYPos[0]+self.initialPosition[0]),1/downScaleFactor*(self.iXYPos[1]+self.initialPosition[1])
-        translation = (*relativeTranslation,0)
-        translation = (150,50)
-        self._widget.setImage(lastFrameScaled, colormap="gray", name=name, pixelsize=(1,1), translation=translation)
+        self._widget.setImage(self.tiledImage, colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
             
             
 

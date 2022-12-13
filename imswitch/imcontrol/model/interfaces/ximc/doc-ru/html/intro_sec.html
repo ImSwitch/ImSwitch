@@ -1,0 +1,109 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Введение</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li class="current"><a href="pages.html"><span>Описания</span></a></li>
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="headertitle">
+<div class="title">Введение </div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><h1><a class="anchor" id="about_sec"></a>
+О библиотеке</h1>
+<p>Этот документ содержит всю необходимую информацию о библиотеке libximc. Библиотека libximc использует распространенный и проверенный интерфейс виртуального последовательного порта, поэтому вы можете работать с модулями управления моторами через эту библиотеку практически под всеми ОС, в том числе Windows 7, Windows Vista, Windows XP, Windows Server 2003, Windows 2000, Linux, Mac OS X. Библиотека поддерживает подключение и отключение устройств "на лету". C одним устройством в каждый момент может работать не более одного экземпляра управляющей программы - множественный доступ управляющих программ к одному и тому же устройству не допускается.</p>
+<h1><a class="anchor" id="sysreq_sec"></a>
+Требования к установленному программному обеспечению</h1>
+<h2><a class="anchor" id="sysreq_build"></a>
+Для сборки библиотеки</h2>
+<p>Для Windows:</p>
+<ul>
+<li>Windows 2000 или старше, 64-битная система (если планируется собирать обе архитектуры) или 32-битная система</li>
+<li>Microsoft Visual C++ 2013 или старше</li>
+<li>cygwin с tar, bison, flex, curl</li>
+<li>7z</li>
+</ul>
+<p>Для Linux:</p>
+<ul>
+<li>64-битная и/или 32-битная система</li>
+<li>gcc 4 или новее</li>
+<li>стандартные autotools: autoconf, autoheader, aclocal, automake, autoreconf, libtool</li>
+<li>gmake</li>
+<li>doxygen - для сборки документации</li>
+<li>LaTeX distribution (teTeX or texlive) - для сборки документации</li>
+<li>flex 2.5.30+</li>
+<li>bison 2.3+</li>
+<li>mercurial (для сборки версии для разработки из hg)</li>
+</ul>
+<p>Для Mac OS X:</p>
+<ul>
+<li>XCode 4</li>
+<li>doxygen</li>
+<li>mactex</li>
+<li>autotools</li>
+<li>mercurial (для сборки версии для разработки из hg)</li>
+</ul>
+<p>Для зависимость от mercurial. При использовании mercurial включите расширение 'purge' путем добавления в ~/.hgrc следующих строк: </p>
+<pre class="fragment">[extensions]
+  hgext.purge=
+</pre><h2><a class="anchor" id="sysreq_usage"></a>
+Для использования библиотеки</h2>
+<p>Поддерживаемые операционные системы (32 и 64 бита) и требования к окружению:</p>
+<ul>
+<li>Mac OS X 10.6</li>
+<li>Windows 2000 или старше</li>
+<li>Autotools-совместимый unix. Библиотека устанавливается из бинарного вида.</li>
+<li>Linux на основе debian 32 и 64 бита. DEB собирается на Debian Squeeze 7</li>
+<li>Linux на основе debian ARM. DEB собирается кросс-компилятором на Ubuntu 14.04</li>
+<li>Linux на основе rpm. RPM собирается на OpenSUSE 12</li>
+<li>Java 7 64 бит или 32 бит</li>
+<li>.NET 2.0 (только 32 бит)</li>
+<li>Delphi (только 32 бит)</li>
+</ul>
+<p>Требования сборки:</p>
+<ul>
+<li>Windows: Microsoft Visual C++ 2013 или mingw (в данный момент не поддерживается)</li>
+<li>UNIX: gcc 4, gmake</li>
+<li>Mac OS X: XCode 4</li>
+<li>JDK 7 </li>
+</ul>
+</div></div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

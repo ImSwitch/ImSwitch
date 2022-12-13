@@ -4,7 +4,6 @@ import time
 import numpy as np
 
 PHYS_FACTOR = 1
-gTIMEOUT = 10
 class ESP32StageManager(PositionerManager):
 
 
@@ -118,13 +117,14 @@ class ESP32StageManager(PositionerManager):
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
         
-    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, speed=None, timeout=gTIMEOUT):
+    def move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=False, timeout=np.inf):
         if speed is None:
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]
             if axis == "Z": speed = self.speed["Z"]
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
+            
         if axis == 'X':
             self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
@@ -147,10 +147,10 @@ class ESP32StageManager(PositionerManager):
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
+
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
-
-
+            return
 
     
     def measure(self, sensorID=0, NAvg=100):
@@ -182,14 +182,9 @@ class ESP32StageManager(PositionerManager):
     def closeEvent(self):
         pass
 
-    
-    def getPosition(self):
-        try:
-            allPositions = self._motor.get_position()
-        except:
-            allPositions = [0,0,0,0]
-        
-        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
+    def get_abs(self, axis=1):
+        abspos = self._motor.get_position(axis=axis)
+        return abspos
     
     def home_x(self):
         self._motor.home_x()

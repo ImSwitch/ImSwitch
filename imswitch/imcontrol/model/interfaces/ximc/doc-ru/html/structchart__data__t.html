@@ -1,0 +1,219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура chart_data_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура chart_data_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Дополнительное состояние устройства.  
+ <a href="structchart__data__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:ade78bd23c6922cfa6c9b560b8d856a22"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#ade78bd23c6922cfa6c9b560b8d856a22">WindingVoltageA</a></td></tr>
+<tr class="memdesc:ade78bd23c6922cfa6c9b560b8d856a22"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае ШД, напряжение на обмотке A (в десятках мВ); в случае бесщеточного, напряжение на первой обмотке; в случае DC на единственной.  <a href="#ade78bd23c6922cfa6c9b560b8d856a22"></a><br/></td></tr>
+<tr class="memitem:ace68b8143ddb6f37f3770af230c201da"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#ace68b8143ddb6f37f3770af230c201da">WindingVoltageB</a></td></tr>
+<tr class="memdesc:ace68b8143ddb6f37f3770af230c201da"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае ШД, напряжение на обмотке B (в десятках мВ); в случае бесщеточного, напряжение на второй обмотке; в случае DC не используется.  <a href="#ace68b8143ddb6f37f3770af230c201da"></a><br/></td></tr>
+<tr class="memitem:ac2d057b72a1e054ada4ad8f426cb3253"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#ac2d057b72a1e054ada4ad8f426cb3253">WindingVoltageC</a></td></tr>
+<tr class="memdesc:ac2d057b72a1e054ada4ad8f426cb3253"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае бесщеточного, напряжение на третьей обмотке (в десятках мВ); в случае ШД и DC не используется.  <a href="#ac2d057b72a1e054ada4ad8f426cb3253"></a><br/></td></tr>
+<tr class="memitem:a26a389d3d9ab1c76897dd943dfbb7866"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#a26a389d3d9ab1c76897dd943dfbb7866">WindingCurrentA</a></td></tr>
+<tr class="memdesc:a26a389d3d9ab1c76897dd943dfbb7866"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае ШД, ток в обмотке A (в мA); в случае бесщеточного, ток в первой обмотке; в случае DC в единственной.  <a href="#a26a389d3d9ab1c76897dd943dfbb7866"></a><br/></td></tr>
+<tr class="memitem:a6a37df2e8322dc7ddf39c79389716e2c"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#a6a37df2e8322dc7ddf39c79389716e2c">WindingCurrentB</a></td></tr>
+<tr class="memdesc:a6a37df2e8322dc7ddf39c79389716e2c"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае ШД, ток в обмотке B (в мА); в случае бесщеточного, ток в второй обмотке; в случае DC не используется.  <a href="#a6a37df2e8322dc7ddf39c79389716e2c"></a><br/></td></tr>
+<tr class="memitem:ac39aae39cf4ff96f6acb0478ba8b6e80"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#ac39aae39cf4ff96f6acb0478ba8b6e80">WindingCurrentC</a></td></tr>
+<tr class="memdesc:ac39aae39cf4ff96f6acb0478ba8b6e80"><td class="mdescLeft">&#160;</td><td class="mdescRight">В случае бесщеточного, ток в третьей обмотке (в мА); в случае ШД и DC не используется.  <a href="#ac39aae39cf4ff96f6acb0478ba8b6e80"></a><br/></td></tr>
+<tr class="memitem:a7b6cede91e329cbbbd3ec4880301448a"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#a7b6cede91e329cbbbd3ec4880301448a">Pot</a></td></tr>
+<tr class="memdesc:a7b6cede91e329cbbbd3ec4880301448a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Значение на аналоговом входе.  <a href="#a7b6cede91e329cbbbd3ec4880301448a"></a><br/></td></tr>
+<tr class="memitem:a83f192c555144604a9dffcba676b8df3"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#a83f192c555144604a9dffcba676b8df3">Joy</a></td></tr>
+<tr class="memdesc:a83f192c555144604a9dffcba676b8df3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Положение джойстика в десятитысячных долях.  <a href="#a83f192c555144604a9dffcba676b8df3"></a><br/></td></tr>
+<tr class="memitem:a573693789017221c89766db5605b7f37"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structchart__data__t.html#a573693789017221c89766db5605b7f37">DutyCycle</a></td></tr>
+<tr class="memdesc:a573693789017221c89766db5605b7f37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Коэффициент заполнения ШИМ.  <a href="#a573693789017221c89766db5605b7f37"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Дополнительное состояние устройства. </p>
+<p>Эта структура содержит основные дополнительные параметры текущего состоянии контроллера, такие напряжения и токи обмоток и температуру. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#a4c4a10531ea9503f0fe744580d6b4102" title="Команда чтения состояния обмоток и других не часто используемых данных.">get_chart_data</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#a4c4a10531ea9503f0fe744580d6b4102" title="Команда чтения состояния обмоток и других не часто используемых данных.">get_chart_data</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a573693789017221c89766db5605b7f37"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int DutyCycle</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Коэффициент заполнения ШИМ. </p>
+
+</div>
+</div>
+<a class="anchor" id="a83f192c555144604a9dffcba676b8df3"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Joy</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Положение джойстика в десятитысячных долях. </p>
+<p>Диапазон: 0..10000 </p>
+
+</div>
+</div>
+<a class="anchor" id="a7b6cede91e329cbbbd3ec4880301448a"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Pot</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Значение на аналоговом входе. </p>
+<p>Диапазон: 0..10000 </p>
+
+</div>
+</div>
+<a class="anchor" id="a26a389d3d9ab1c76897dd943dfbb7866"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingCurrentA</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае ШД, ток в обмотке A (в мA); в случае бесщеточного, ток в первой обмотке; в случае DC в единственной. </p>
+
+</div>
+</div>
+<a class="anchor" id="a6a37df2e8322dc7ddf39c79389716e2c"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingCurrentB</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае ШД, ток в обмотке B (в мА); в случае бесщеточного, ток в второй обмотке; в случае DC не используется. </p>
+
+</div>
+</div>
+<a class="anchor" id="ac39aae39cf4ff96f6acb0478ba8b6e80"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingCurrentC</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае бесщеточного, ток в третьей обмотке (в мА); в случае ШД и DC не используется. </p>
+
+</div>
+</div>
+<a class="anchor" id="ade78bd23c6922cfa6c9b560b8d856a22"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingVoltageA</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае ШД, напряжение на обмотке A (в десятках мВ); в случае бесщеточного, напряжение на первой обмотке; в случае DC на единственной. </p>
+
+</div>
+</div>
+<a class="anchor" id="ace68b8143ddb6f37f3770af230c201da"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingVoltageB</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае ШД, напряжение на обмотке B (в десятках мВ); в случае бесщеточного, напряжение на второй обмотке; в случае DC не используется. </p>
+
+</div>
+</div>
+<a class="anchor" id="ac2d057b72a1e054ada4ad8f426cb3253"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int WindingVoltageC</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>В случае бесщеточного, напряжение на третьей обмотке (в десятках мВ); в случае ШД и DC не используется. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

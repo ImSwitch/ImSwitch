@@ -44,19 +44,10 @@ class PixelCalibrationWidget(NapariHybridWidget):
         # editable for entering pixelvalues         
         self.PixelCalibrationLabelKnownDistance  = QtWidgets.QLabel('Known Distance: (µm)')
         self.PixelCalibrationEditFileName  = QtWidgets.QLineEdit('100')
-        
-        self.PixelCalibrationPixelSizeLabel = QtWidgets.QLabel('Pixel Size: (nm)')
-        self.PixelCalibrationPixelSizeEdit = QtWidgets.QLineEdit('500') 
-        self.PixelCalibrationPixelSizeButton = guitools.BetterPushButton('Set Pixel Size')
-        
-        
         self.PixelCalibrationCalibrateButton = guitools.BetterPushButton('Start')
         self.PixelCalibrationCalibrateButton.setCheckable(False)
         self.PixelCalibrationLabelInfo = QtWidgets.QLabel("")
-      
-        self.PixelCalibrationStageCalibrationInfo = QtWidgets.QLabel("Stage Calibration Info")
-        self.PixelCalibrationStageCalibrationButton = guitools.BetterPushButton('Start Stage Calibration')
-        
+
         # Defining layout
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
@@ -68,18 +59,11 @@ class PixelCalibrationWidget(NapariHybridWidget):
         self.grid.addWidget(self.PixelCalibrationSnapPreviewButton, 1, 0, 1, 1)
         self.grid.addWidget(self.PixelCalibrationUndoButton, 1, 1, 1, 1)
         self.grid.addWidget(self.PixelCalibrationCalibrateButton, 1, 2, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationLabelInfo, 1, 3, 1, 1)
+        
         #
         self.grid.addWidget(self.PixelCalibrationLabelKnownDistance, 2, 0, 1, 1)
         self.grid.addWidget(self.PixelCalibrationEditFileName, 2, 1, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeLabel, 2, 2, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeEdit, 2, 3, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeButton, 2, 4, 1, 1)
-        
-        # 
-        self.grid.addWidget(self.PixelCalibrationStageCalibrationInfo, 3, 0, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationStageCalibrationButton, 3, 1, 1, 1)
-        
+        self.grid.addWidget(self.PixelCalibrationLabelInfo, 2, 2, 1, 1)
 
         self.layer = None
         
@@ -89,15 +73,8 @@ class PixelCalibrationWidget(NapariHybridWidget):
         lineLength = self.canvas.getLineLength()
         pixelSize = knownDistance/lineLength
         return pixelSize   
-    
-    def getPixelSizeTextEdit(self):
-        pixelsize = 1000
-        try:
-            pixelsize = int(self.PixelCalibrationPixelSizeEdit.text())
-        except:
-            self.PixelCalibrationLabelInfo.setText("Pixel Size must be an integer")
-        return pixelsize
-       
+
+
     def getCoordinateList(self):
         return self.canvas.getCoordinateList()
     
@@ -150,7 +127,7 @@ class Canvas(QtWidgets.QLabel):
         self.update()
 
     def paintEvent(self, event):
-        if self.pos and self.pressPos and self.isTracking:
+        if self.pos and self.isTracking:
             painter = QPainter(self)         
             pen = QtGui.QPen()
             pen.setWidth(4)

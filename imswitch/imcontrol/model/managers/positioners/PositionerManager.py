@@ -8,7 +8,7 @@ class PositionerManager(ABC):
     positioner corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float]):
+    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float], initialSpeed: Dict[str, float]):
         """
         Args:
             positionerInfo: See setup file documentation.
@@ -21,9 +21,9 @@ class PositionerManager(ABC):
         self._positionerInfo = positionerInfo
         self._position = initialPosition
 
-        initialSpeed={
-            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
-        }   
+        # initialSpeed={
+        #     axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        # }
         self._speed = initialSpeed
 
         self.__name = name

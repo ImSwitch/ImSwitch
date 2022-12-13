@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура controller_name_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура controller_name_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Пользовательское имя контроллера и флаги настройки.  
+ <a href="structcontroller__name__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:a4dc5d03b3a1a9c68a122fce3dd258524"><td class="memItemLeft" align="right" valign="top">char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structcontroller__name__t.html#a4dc5d03b3a1a9c68a122fce3dd258524">ControllerName</a> [17]</td></tr>
+<tr class="memdesc:a4dc5d03b3a1a9c68a122fce3dd258524"><td class="mdescLeft">&#160;</td><td class="mdescRight">Пользовательское имя контроллера.  <a href="#a4dc5d03b3a1a9c68a122fce3dd258524"></a><br/></td></tr>
+<tr class="memitem:a4aae38ca3fe37a520476326c95a01d29"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structcontroller__name__t.html#a4aae38ca3fe37a520476326c95a01d29">CtrlFlags</a></td></tr>
+<tr class="memdesc:a4aae38ca3fe37a520476326c95a01d29"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="ximc_8h.html#flagset_controllerflags">Флаги настроек контроллера</a>.  <a href="#a4aae38ca3fe37a520476326c95a01d29"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Пользовательское имя контроллера и флаги настройки. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#aaffaa2fe2a026dcd0db9da1e6da54051" title="Чтение пользовательского имени контроллера и настроек из FRAM.">get_controller_name</a>, <a class="el" href="ximc_8h.html#ab2847d38ca9798c04e171ab47f663bef" title="Запись пользовательского имени контроллера и настроек в FRAM.">set_controller_name</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a4dc5d03b3a1a9c68a122fce3dd258524"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">char ControllerName[17]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Пользовательское имя контроллера. </p>
+<p>Может быть установлено пользователем для его удобства. Максимальная длина строки: 16 символов. </p>
+
+</div>
+</div>
+<a class="anchor" id="a4aae38ca3fe37a520476326c95a01d29"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int CtrlFlags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="ximc_8h.html#flagset_controllerflags">Флаги настроек контроллера</a>. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

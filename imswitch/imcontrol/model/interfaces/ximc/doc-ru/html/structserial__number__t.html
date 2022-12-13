@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура serial_number_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура serial_number_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Структура с серийным номером и версией железа.  
+ <a href="structserial__number__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:a7535355106498135502cd68cddbe2439"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structserial__number__t.html#a7535355106498135502cd68cddbe2439">SN</a></td></tr>
+<tr class="memdesc:a7535355106498135502cd68cddbe2439"><td class="mdescLeft">&#160;</td><td class="mdescRight">Новый серийный номер платы.  <a href="#a7535355106498135502cd68cddbe2439"></a><br/></td></tr>
+<tr class="memitem:a1f659f7b7e41d537a6c6e256f764ccf4"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structserial__number__t.html#a1f659f7b7e41d537a6c6e256f764ccf4">Key</a> [32]</td></tr>
+<tr class="memdesc:a1f659f7b7e41d537a6c6e256f764ccf4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ключ защиты для установки серийного номера (256 бит).  <a href="#a1f659f7b7e41d537a6c6e256f764ccf4"></a><br/></td></tr>
+<tr class="memitem:acf081adb32c0fdfb033396622949d102"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structserial__number__t.html#acf081adb32c0fdfb033396622949d102">Major</a></td></tr>
+<tr class="memdesc:acf081adb32c0fdfb033396622949d102"><td class="mdescLeft">&#160;</td><td class="mdescRight">Основной номер версии железа.  <a href="#acf081adb32c0fdfb033396622949d102"></a><br/></td></tr>
+<tr class="memitem:ad40493b41a22367f38790a9197b33d8d"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structserial__number__t.html#ad40493b41a22367f38790a9197b33d8d">Minor</a></td></tr>
+<tr class="memdesc:ad40493b41a22367f38790a9197b33d8d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Второстепенный номер версии железа.  <a href="#ad40493b41a22367f38790a9197b33d8d"></a><br/></td></tr>
+<tr class="memitem:a0981be39a89baff4780a026b4a010e7c"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structserial__number__t.html#a0981be39a89baff4780a026b4a010e7c">Release</a></td></tr>
+<tr class="memdesc:a0981be39a89baff4780a026b4a010e7c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Номер правок этой версии железа.  <a href="#a0981be39a89baff4780a026b4a010e7c"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Структура с серийным номером и версией железа. </p>
+<p>Вместе с новым серийным номером и версией железа передаётся "Ключ", только при совпадении которого происходит изменение и сохранение. Функция используется только производителем. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#ad08c3729e9d7d7b57704ce1d08aa5210" title="Запись серийного номера и версии железа во flash память контроллера.">set_serial_number</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a1f659f7b7e41d537a6c6e256f764ccf4"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint8_t Key[32]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Ключ защиты для установки серийного номера (256 бит). </p>
+
+</div>
+</div>
+<a class="anchor" id="acf081adb32c0fdfb033396622949d102"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Major</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Основной номер версии железа. </p>
+
+</div>
+</div>
+<a class="anchor" id="ad40493b41a22367f38790a9197b33d8d"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Minor</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Второстепенный номер версии железа. </p>
+
+</div>
+</div>
+<a class="anchor" id="a0981be39a89baff4780a026b4a010e7c"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Release</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Номер правок этой версии железа. </p>
+
+</div>
+</div>
+<a class="anchor" id="a7535355106498135502cd68cddbe2439"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int SN</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Новый серийный номер платы. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

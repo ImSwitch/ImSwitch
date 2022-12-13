@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Как пересобрать библиотеку</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li class="current"><a href="pages.html"><span>Описания</span></a></li>
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="headertitle">
+<div class="title">Как пересобрать библиотеку </div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><h1><a class="anchor" id="building_unix"></a>
+Сборка для UNIX</h1>
+<p>Обобщенная версия собирается обычными autotools. </p>
+<div class="fragment"><div class="line">./build.sh lib</div>
+</div><!-- fragment --><p> Собранные файлы (библиотека, заголовочные файлы, документация) устанавливаются в локальную директорию ./dist/local. Это билд для разработчика. Иногда необходимо указать дополнительные параметры командной строки для вашей системы. Проконсультируйтесь с последующими параграфами.</p>
+<h1><a class="anchor" id="building_unix_deb"></a>
+Сборка для Linux на основе Debian</h1>
+<p>Требования: 64-битная или 32-битная система на основе debian, ubuntu Примерный набор пакетов: gcc, autotools, autoconf, libtool, dpkg-dev, flex, libfl-dev, bison, doxygen, texlive, mercurial Полный набор пакетов: apt-get install ruby1.9.1 debhelper vim sudo g++ mercurial git curl make cmake autotools-dev automake autoconf libtool default-jre-headless default-jdk openjdk-6-jdk dpkg-dev lintian texlive texlive-latex-extra texlive-lang-cyrillic dh-autoreconf hardening-wrapper bison flex libfl-dev doxygen lsb-release pkg-config check Для кросс-компиляции ARM установите gcc-arm-linux-gnueabihf из вашего инструментария ARM.</p>
+<p>Необходимо соблюдать парность архитектуры библиотеки и системы: 64-битная библиотека может быть собрана только на 64-битной системе, а 32-битная - только на 32-битной. Библиотека под ARM собирается кросс-компилятором gcc-arm-linux-gnueabihf.</p>
+<p>Для сборки библиотеки и пакета запустите скрипт: </p>
+<div class="fragment"><div class="line">$ ./build.sh libdeb</div>
+</div><!-- fragment --><p>Для библиотеки ARM замените 'libdeb' на 'libdebarm'.</p>
+<p>Пакеты располагаются в ./ximc/deb, локально инсталированные файлы в ./dist/local.</p>
+<h1><a class="anchor" id="building_unix_rpm"></a>
+Сборка для Linux на основе RedHat</h1>
+<p>Требования: 64-битная система на основе redhat (Fedora, Red Hat, SUSE)</p>
+<p>Примерный набор пакетов: gcc, autotools, autoconf, libtool, flex, libfl-dev, bison, doxygen, texlive, mercurial Полный набор пакетов: autoconf automake bison doxygen flex libfl-dev gcc gcc-32bit gcc-c++ gcc-c++-32bit java-1_7_0-openjdk java-1_7_0-openjdk-devel libtool lsb-release make mercurial rpm-build rpm-devel rpmlint texlive texlive-fonts-extra texlive-latex</p>
+<p>Возможно собрать 32-битную и 64-битную библиотеки на 64-битной системе, однако 64-битная библиотека не может быть собрана на 32-битной системе.</p>
+<p>Для сборки библиотеки и пакета запустите скрипт: </p>
+<div class="fragment"><div class="line">$ ./build.sh librpm</div>
+</div><!-- fragment --><p>Пакеты располагаются в ./ximc/rpm, локально инсталированные файлы в ./dist/local.</p>
+<h1><a class="anchor" id="building_osx_framework"></a>
+Сборка для Mac OS X</h1>
+<p>Для сборки библиотеки и пакета запустите скрипт: </p>
+<div class="fragment"><div class="line">$ ./build.sh libosx</div>
+</div><!-- fragment --><p>Собранная библиотека (классическая и фреймворк), приложения (классическая и фреймворк) и документация располашаются в ./ximc/macosx, локально инсталированные файлы в ./dist/local.</p>
+<h1><a class="anchor" id="building_win"></a>
+Сборка в ОС Windows</h1>
+<p>Требования: 64-битный windows (сборочный скрипт собирает обе архитектуры), cygwin (должен быть установлен в пути по умолчанию), mercurial.</p>
+<p>Запустите скрипт: </p>
+<div class="fragment"><div class="line">$ ./build.bat</div>
+</div><!-- fragment --><p>Собранные файлы располагаются в ./ximc/win32 и ./ximc/win64</p>
+<p>Если вы хотите собрать дебаг-версию библиотеки, то перед запуском скрипта сборки установите переменную окружения "DEBUG" в значение "true".</p>
+<h1><a class="anchor" id="building_src"></a>
+Доступ к исходным кодам</h1>
+<p>Исходные коды XIMC могут быть выданы по отдельному запросу. </p>
+</div></div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

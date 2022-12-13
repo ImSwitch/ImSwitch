@@ -61,7 +61,6 @@ class ESP32LEDLaserManager(LaserManager):
         self.setEnabled(self.enabled)
         
     def initFilter(self, nSteps=None, speed=None):
-        '''
         if self.filter_change:
             if nSteps is None:
                 if self.laser_position_init is None:
@@ -71,17 +70,14 @@ class ESP32LEDLaserManager(LaserManager):
             if speed is None:
                 speed = self._motor.filter_speed
             self._motor.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
-        '''
-        self.__logger.debug("Filter initialization not implemented yet")
-        
+
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
             if self.filter_change and (self.power*self.enabled)>0:
                 self._motor.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
-            self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
-            # self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+            self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
             self._laser.set_laser(self.channel_index, 
                                                 int(self.power*self.enabled), self.filter_change, 
@@ -98,7 +94,7 @@ class ESP32LEDLaserManager(LaserManager):
         self.power = power
         if self.enabled:
             if self.channel_index == "LED":
-                self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
+                self._led.setAll((int(self.power*self.enabled),self.power*self.enabled,self.power*self.enabled))
             else:
                 self._laser.set_laser(self.channel_index, 
                                     int(self.power), 0*self.filter_change, 

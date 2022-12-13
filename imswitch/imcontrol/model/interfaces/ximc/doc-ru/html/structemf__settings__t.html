@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура emf_settings_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура emf_settings_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Настройки EMF.  
+ <a href="structemf__settings__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:ab6100b60862fd12824ea97ac2e1f3d20"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structemf__settings__t.html#ab6100b60862fd12824ea97ac2e1f3d20">L</a></td></tr>
+<tr class="memdesc:ab6100b60862fd12824ea97ac2e1f3d20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Индуктивность обмоток двигателя.  <a href="#ab6100b60862fd12824ea97ac2e1f3d20"></a><br/></td></tr>
+<tr class="memitem:a4c4b08e61e92b3da1ed512f4e006f34a"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structemf__settings__t.html#a4c4b08e61e92b3da1ed512f4e006f34a">R</a></td></tr>
+<tr class="memdesc:a4c4b08e61e92b3da1ed512f4e006f34a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Сопротивление обмоток двигателя.  <a href="#a4c4b08e61e92b3da1ed512f4e006f34a"></a><br/></td></tr>
+<tr class="memitem:a8248f55ab1be13506c7b510d67c24ede"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structemf__settings__t.html#a8248f55ab1be13506c7b510d67c24ede">Km</a></td></tr>
+<tr class="memdesc:a8248f55ab1be13506c7b510d67c24ede"><td class="mdescLeft">&#160;</td><td class="mdescRight">Электромеханический коэффициент двигателя.  <a href="#a8248f55ab1be13506c7b510d67c24ede"></a><br/></td></tr>
+<tr class="memitem:a04652f974084061ed8b65f15b0cad7ab"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structemf__settings__t.html#a04652f974084061ed8b65f15b0cad7ab">BackEMFFlags</a></td></tr>
+<tr class="memdesc:a04652f974084061ed8b65f15b0cad7ab"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="ximc_8h.html#flagset_backemfflags">Флаги автоопределения характеристик обмоток двигателя</a>.  <a href="#a04652f974084061ed8b65f15b0cad7ab"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Настройки EMF. </p>
+<p>Эта структура содержит данные электромеханических характеристик(EMF) двигателя. Они определяют индуктивность, сопротивление и электромеханический коэффициент двигателя. Эти данные хранятся во flash памяти памяти контроллера. Пожалуйста, загружайте новые настройки, когда вы меняете мотор. Помните, что неправильные настройки EMF могут повредить оборудование. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#a3f0ca165764a40e73f5cf62a77bfbbb3" title="Запись электромеханических настроек шагового двигателя.">set_emf_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#ac382e3d437dfa696da6f634c6e077bc1" title="Чтение электромеханических настроек шагового двигателя.">get_emf_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#ac382e3d437dfa696da6f634c6e077bc1" title="Чтение электромеханических настроек шагового двигателя.">get_emf_settings</a>, <a class="el" href="ximc_8h.html#a3f0ca165764a40e73f5cf62a77bfbbb3" title="Запись электромеханических настроек шагового двигателя.">set_emf_settings</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a04652f974084061ed8b65f15b0cad7ab"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int BackEMFFlags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="ximc_8h.html#flagset_backemfflags">Флаги автоопределения характеристик обмоток двигателя</a>. </p>
+
+</div>
+</div>
+<a class="anchor" id="a8248f55ab1be13506c7b510d67c24ede"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float Km</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Электромеханический коэффициент двигателя. </p>
+
+</div>
+</div>
+<a class="anchor" id="ab6100b60862fd12824ea97ac2e1f3d20"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float L</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Индуктивность обмоток двигателя. </p>
+
+</div>
+</div>
+<a class="anchor" id="a4c4b08e61e92b3da1ed512f4e006f34a"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float R</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Сопротивление обмоток двигателя. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

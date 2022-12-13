@@ -4,24 +4,11 @@ from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-
 import uvicorn
 from functools import wraps
 
-
 app = FastAPI()
 
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class ImSwitchServer(Worker):
 

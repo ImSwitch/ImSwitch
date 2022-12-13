@@ -13,11 +13,11 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
 
-from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import LiveUpdatedController
 
 #import NanoImagingPack as nip
 
-class MCTController(ImConWidgetController):
+class MCTController(LiveUpdatedController):
     """Linked to MCTWidget."""
 
     sigImageReceived = Signal()
@@ -33,16 +33,7 @@ class MCTController(ImConWidgetController):
         self.zStackMin = 0
         self.zStackMax = 0
         self.zStackStep = 0
-        
-        # xy
-        self.xyScanEnabled = False
-        self.xScanMin = 0
-        self.xScanMax = 0
-        self.xScanStep = 0
-        self.yScanMin = 0
-        self.yScanMax = 0
-        self.yScanStep = 0
-                
+
         # store old values
         self.Laser1ValueOld = 0
         self.Laser2ValueOld = 0
@@ -53,9 +44,11 @@ class MCTController(ImConWidgetController):
         self.LEDValue = 0
         self.MCTFilename = ""
 
+        self.updateRate=2
+
         self.pixelsize=(10,1,1) # zxy
 
-        self.tUnshake = .2
+        self.tUnshake = .1
 
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
@@ -70,15 +63,10 @@ class MCTController(ImConWidgetController):
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
-        
-        # autofocus related 
-        self.isAutofocusRunning = False
-        self._commChannel.sigAutoFocusRunning.connect(self.setAutoFocusIsRunning)
 
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        self.detector.startAcquisition()
 
         # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -126,10 +114,6 @@ class MCTController(ImConWidgetController):
         # this is not a thread!
         self._widget.mctStartButton.setEnabled(False)
 
-        # don't show any message 
-        self._master.UC2ConfigManager.setDebug(False)
-        
-        # start the timelapse
         if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
@@ -138,9 +122,7 @@ class MCTController(ImConWidgetController):
                 self.lasers[0].initFilter()
 
             # get parameters from GUI
-            self.zStackMin, self.zStackMax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
-            self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep, self.xyScanEnabled = self._widget.getXYScanValues()
-            
+            self.zStackMin, self.zStackax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
             self.timePeriod, self.nDuration = self._widget.getTimelapseValues()
             self.MCTFilename = self._widget.getFilename()
             self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
@@ -181,20 +163,11 @@ class MCTController(ImConWidgetController):
         self._widget.setNImages("Stopping timelapse...")
 
         self._widget.mctStartButton.setEnabled(True)
-        
-        # go back to initial position       
-        try:
-            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        except:
-            pass
-
-        # delete any existing timer
         try:
             del self.timer
         except:
             pass
 
-        # delete any existing thread
         try:
             del self.MCTThread
         except:
@@ -269,61 +242,44 @@ class MCTController(ImConWidgetController):
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
-        self._widget.setNImages("Autofocusing...")
+        isRunInBackground = False
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
-        self.isAutofocusRunning = True
-        
-        while self.isAutofocusRunning:
-            time.sleep(0.1)
-            if not self.isAutofocusRunning:
-                self._logger.info("Autofocusing done.")
-                return
-        
 
     def takeTimelapseThread(self):
         # this wil run i nthe background
         self._logger.debug("Take image")
+        zstackParams = self._widget.getZStackValues()
         # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
         self.LastStackLaser2 = []
         self.LastStackLED = []
         
-        # get current position
-        currentPositions = self.stages.getPosition()
-        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
-        self.initialPosiionZ = currentPositions["Z"]
-        
-        try:    
-            # want to do autofocus?
-            autofocusParams = self._widget.getAutofocusValues()
-            if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
-                self._widget.setNImages("Autofocusing...")
-                self.doAutofocus(autofocusParams)
+        # want to do autofocus?
+        autofocusParams = self._widget.getAutofocusValues()
+        if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
+            self._widget.setNImages("Autofocusing...")
+            self.doAutofocus(autofocusParams)
 
-            if self.Laser1Value>0:
-                self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages)
-            if self.Laser2Value>0:
-                self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages)
-            if self.LEDValue>0:
-                self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages)
+        if self.Laser1Value>0:
+            self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImages, zstackParams=zstackParams)
+        if self.Laser2Value>0:
+            self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImages, zstackParams=zstackParams)
+        if self.LEDValue>0:
+            self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImages, zstackParams=zstackParams)
 
-            self.nImages += 1
-            self._widget.setNImages(self.nImages)
+        self.nImages += 1
+        self._widget.setNImages(self.nImages)
 
-            self.isMCTrunning = False
+        self.isMCTrunning = False
 
-            self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
-            self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
-            self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
+        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+        self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-            self._widget.mctShowLastButton.setEnabled(True)
-        except:
-            # close the controller ina nice way
-            d
-            
+        self._widget.mctShowLastButton.setEnabled(True)
 
 
-    def takeImageIllu(self, illuMode, intensity, timestamp=0):
+    def takeImageIllu(self, illuMode, intensity, timestamp=0, zstackParams=None):
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
         fileExtension = 'tif'
 
@@ -344,101 +300,51 @@ class MCTController(ImConWidgetController):
                     self.leds[0].setEnabled(True)
             except:
                 pass
-        # precompute steps for xy scan
-        # snake scan
-        if self.xyScanEnabled:
-            xyScanStepsAbsolute = []
-            fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
-            bwdpath = np.flip(fwdpath)
-            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.yScanStep)): 
-                if indexX%2==0:
-                    for indexY, iy in enumerate(fwdpath):
-                        xyScanStepsAbsolute.append([ix, iy])
-                else:
-                    for indexY, iy in enumerate(bwdpath):
-                        xyScanStepsAbsolute.append([ix, iy])
+        
+        if zstackParams[-1]:
+            # perform a z-stack
+            self.stages.move(value=zstackParams[0], axis="Z", is_absolute=False, is_blocking=True)
+
+            stepsCounter = 0
+            backlash=0
+            try: # only relevant for UC2 stuff
+                self.stages.setEnabled(is_enabled=True)
+            except:
+                pass
+
+            for iZ in np.arange(zstackParams[0], zstackParams[1], zstackParams[2]):
+                # move to each position
+                stepsCounter += zstackParams[2]
+                self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
+                filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}_Z_{stepsCounter}', extension=fileExtension)
+                
+                time.sleep(self.tUnshake) # unshake
+                lastFrame = self.detector.getLatestFrame()
+                # self.switchOffIllumination()
+                self._logger.debug(filePath)
+                tif.imwrite(filePath, lastFrame, append=True)
+
+                # store frames for displaying
+                if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
+                if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
+                if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
+
+            self.stages.setEnabled(is_enabled=False)
+            self.stages.move(value=-(zstackParams[1]+backlash), axis="Z", is_absolute=False, is_blocking=True)
+
 
         else:
-            xyScanStepsRelative = [[0,0]]
-            xyScanStepsAbsolute = [[0,0]]
-            self.xScanMin = 0
-            self.xScanMax = 0
-            self.yScanMin = 0
-            self.yScanMax = 0
+            # single file timelapse
+            filePath = self.getSaveFilePath(date=self.MCTDate, filename=f'{self.MCTFilename}_{illuMode}_t_{timestamp}', extension=fileExtension)
+            lastFrame = self.detector.getLatestFrame()
+            self._logger.debug(filePath)
+            tif.imwrite(filePath, lastFrame)
             
-        # initialize xy coordinates
-        self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        
-        # initialize iterator
-        imageIndex = 0
-        
-        # iterate over all xy coordinates iteratively
-        for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
-            if not self.isMCTrunning:
-                break
-            
-            # move to xy position is necessary
-            self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-            
-            if self.zStackEnabled:
-                # perform a z-stack
-                self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
+            # store frames for displaying
+            if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
+            if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
+            if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
 
-                stepsCounter = 0
-                backlash=0
-                try: # only relevant for UC2 stuff
-                    self.stages.setEnabled(is_enabled=True)
-                except:
-                    pass
-                time.sleep(self.tUnshake) # unshake
-                for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
-                    # move to each position
-                    stepsCounter += self.zStackStep
-                    self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
-                    filePath = self.getSaveFilePath(date=self.MCTDate, 
-                                                    timestamp=timestamp,
-                                                    filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{stepsCounter}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
-                                                    extension=fileExtension)
-                    time.sleep(self.tUnshake) # unshake
-                    lastFrame = self.detector.getLatestFrame()
-                    # self.switchOffIllumination()
-                    self._logger.debug(filePath)
-                    tif.imwrite(filePath, lastFrame, append=True)
-                    imageIndex += 1
-
-                    # store frames for displaying
-                    if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
-                    if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
-                    if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
-
-                self.stages.setEnabled(is_enabled=False)
-                #self.stages.move(value=-(self.zStackMax+backlash), axis="Z", is_absolute=False, is_blocking=True)
-                self.stages.move(value=self.initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
-
-
-            else:
-                # single file timelapse
-                filePath = self.getSaveFilePath(date=self.MCTDate, 
-                                                timestamp=timestamp,
-                                                filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
-                                                extension=fileExtension)            
-                
-                
-                lastFrame = self.detector.getLatestFrame()
-                
-                   
-                self._logger.debug(filePath)
-                tif.imwrite(filePath, lastFrame)
-                imageIndex += 1
-                
-                # store frames for displaying
-                if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
-                if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
-                if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
-
-        # initialize xy coordinates
-        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-       
         self.switchOffIllumination()
 
 
@@ -470,7 +376,7 @@ class MCTController(ImConWidgetController):
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
-        if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
+        #if not self.lasers[1].power: self.lasers[1].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue)
         #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
@@ -478,9 +384,9 @@ class MCTController(ImConWidgetController):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
 
-    def getSaveFilePath(self, date, timestamp, filename, extension):
+    def getSaveFilePath(self, date, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"
-        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date, "t"+str(timestamp))
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
 
         newPath = os.path.join(dirPath,mFilename)
 
@@ -489,10 +395,7 @@ class MCTController(ImConWidgetController):
 
 
         return newPath
-    
-    def setAutoFocusIsRunning(self, isRunning):
-        # this is set by the AutofocusController once the AF is finished/initiated
-        self.isAutofocusRunning = isRunning
+
 
 class mTimer(object):
     def __init__(self, waittime, mFunc) -> None:

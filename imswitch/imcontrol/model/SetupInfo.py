@@ -71,6 +71,19 @@ class LaserInfo(DeviceInfo):
     valueRangeStep: float = 1.0
     """ The default step size of the value range that the laser can be set to.
     """
+@dataclass(frozen=True)
+class LEDInfo(DeviceInfo):
+    valueRangeMin: Optional[Union[int, float]]
+    """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    valueRangeMax: Optional[Union[int, float]]
+    """ maximum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    valueRangeStep: float = 1.0
+    """ The default step size of the value range that the laser can be set to.
+    """
 
 @dataclass(frozen=True)
 class LEDMatrixInfo(DeviceInfo):
@@ -130,7 +143,7 @@ class SLMInfo:
 
 @dataclass(frozen=True)
 class UC2ConfigInfo:
-    defaultConfig: str
+    pass
 
 @dataclass(frozen=True)
 class SIMInfo:
@@ -266,6 +279,17 @@ class EtSTEDInfo:
     laserFast: str
     """ Name of the widefield laser to use. """
 
+@dataclass(frozen=True)
+class OpentronsDeckInfo:
+    deck_name: str
+    """ Name of the deck file to use. """
+
+    deck_path: Optional[str]
+    """ Name of the deck definition file to use. Needed when using non-standard decks. """
+
+    labwares: Optional[Dict[str, Any]]
+    """ Params to be read by the labware loader. Corresponds to standard and custom 
+    labware definition dictionaries, containing the slot number and labware name."""
 
 
 @dataclass(frozen=True)
@@ -281,6 +305,10 @@ class PyroServerInfo:
 class SetupInfo:
     # default_factory seems to be required for the field to show up in autodocs for deriving classes
 
+    deck: Dict[str, OpentronsDeckInfo] = field(default_factory=dict)
+    """ Deck in this setup. This is a map from unique deck names to
+    DeckInfo objects. """
+
     detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
     """ Detectors in this setup. This is a map from unique detector names to
     DetectorInfo objects. """
@@ -288,6 +316,10 @@ class SetupInfo:
     lasers: Dict[str, LaserInfo] = field(default_factory=dict)
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
+
+    LEDs: Dict[str, LEDInfo] = field(default_factory=dict)
+    """ LEDs in this setup. This is a map from unique laser names to
+    LEDInfo objects. """
 
     LEDMatrixs: Dict[str, LEDMatrixInfo] = field(default_factory=dict)
     """ LEDMatrixs in this setup. This is a map from unique LEDMatrix names to

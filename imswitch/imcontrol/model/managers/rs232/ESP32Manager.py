@@ -27,7 +27,7 @@ class ESP32Manager:
             
         # initialize the ESP32 device adapter
         self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200)
-        #self._esp32.serial.DEBUG = True
+           
 
     def finalize(self):
         pass

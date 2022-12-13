@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Как использовать с...</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li class="current"><a href="pages.html"><span>Описания</span></a></li>
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="headertitle">
+<div class="title">Как использовать с... </div>  </div>
+</div><!--header-->
+<div class="contents">
+<div class="textblock"><p>Для приобретения первых навыков использования библиотеки создано простое тестовое приложение testapp. Языки, отличные от C-подобных, поддерживаются с помощью вызовов с преобразованием аргументов типа stdcall. Простое тестовое приложение на языке C расположено в директории 'examples/testapp', проект на C# - в 'examples/test_CSharp', на VB.NET - в 'examples/test_VBNET', для delphi 6 - в 'example/test_Delphi', для matlab - 'examples/test_MATLAB', для Java - 'examples/test_Java', для Python - 'examples/test_Python'. Библиотеки, заголовочные файлы и другие необходимые файлы расположены в директориях 'win32'/'win64','macosx' и подобных. В комплект разработчика также входят уже скомпилированные примеры: testapp и testappeasy в варианте 32 и 64 бита под windows и только 64 бита под osx, test_CSharp, test_VBNET, test_Delphi - только 32 бита, test_Java - кроссплатформенный, test_MATLAB и test_Python не требуют компиляции.</p>
+<p>ЗАМЕЧАНИЕ: Для работы с SDK требуется Microsoft Visual C++ Redistributable Package (поставляется с SDK, файлы vcredist_x86 или vcredist_x64).</p>
+<p>ЗАМЕЧАНИЕ: Для работы на Linux требуется установить оба пакета libximc7_x.x.x и libximc7-dev_x.x.x целевой архитектуры в указанном порядке. Для установки пакетов можно воспользоваться .deb командой: dpkg -i имя_пакета.deb, где имя_пакета.deb — это имя файла пакета (пакеты в Debian имеют расширение .deb). Запускать dpkg необходимо с правами суперпользователя (root).</p>
+<h1><a class="anchor" id="howtouse_c_sec"></a>
+Использование на C</h1>
+<h2><a class="anchor" id="howtouse_c_vcpp_sec"></a>
+Visual C++</h2>
+<p>Тестовое приложение может быть собрано с помощью testapp.sln. Для компиляции необходимо использовать также MS Visual C++, mingw-library не поддерживается. Убедитесь, что Microsoft Visual C++ Redistributable Package установлен.</p>
+<p>Откройте проект examples/testapp/testapp.sln, выполните сборку и запустите приложение из среды разработки.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.c перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints).</p>
+<h2><a class="anchor" id="howtouse_c_codeblocks"></a>
+CodeBlocks</h2>
+<p>Тестовое приложение может быть собрано с помощью test_CodeBlocks.cbp Для компиляции необходимо использовать также MS Visual C++, mingw-library не поддерживается. Убедитесь, что Microsoft Visual C++ Redistributable Package установлен.</p>
+<p>Откройте проект examples/test_CodeBlocks/test_CodeBlocks.cbp, выполните сборку и запустите приложение из среды разработки.</p>
+<h2><a class="anchor" id="howtouse_c_mingw_sec"></a>
+MinGW</h2>
+<p>MinGW это вариант GCC для платформы win32. Требует установки пакета MinGW. В данный момент не поддерживается.</p>
+<p>testapp, скомпилированный с помощью MinGW, может быть собран с MS Visual C++ или библиотеками mingw: </p>
+<div class="fragment"><div class="line">$ mingw32-make -f Makefile.mingw all</div>
+</div><!-- fragment --><p>Далее скопируйте libximc.dll в текущую директорию и запустите testapp.exe.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.c перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints).</p>
+<h2><a class="anchor" id="howtouse_c_bcb_sec"></a>
+C++ Builder</h2>
+<p>В первую очередь вы должны создать подходящую для C++ Builder библиотеку. Библиотеки Visual C++ и Builder не совместимы. Выполните: </p>
+<div class="fragment"><div class="line">$ implib libximc.lib libximc.def</div>
+</div><!-- fragment --><p>Затем скомпилируйте тестовое приложение: </p>
+<div class="fragment"><div class="line">$ bcc32 -I..\..\ximc\win32 -L..\..\ximc\win32 -DWIN32 -DNDEBUG -D_WINDOWS testapp.c libximc.lib</div>
+</div><!-- fragment --><p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.c перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints).</p>
+<h2><a class="anchor" id="howtouse_c_xcode_sec"></a>
+XCode</h2>
+<p>Test app должен быть собран проектом XCode testapp.xcodeproj. Используйте конфигурацию Release. Библиотека поставляется в формате Mac OS X framework, в той же директории находится собранное тестовое приложение testapp.app.</p>
+<p>Запустите приложение testapp.app проверьте его работу в Console.app.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.c перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints).</p>
+<h2><a class="anchor" id="howtouse_c_gcc_sec"></a>
+GCC</h2>
+<p>Убедитесь, что libximc (с помощью rpm, deb или тарболла) установлена на вашей системе. Пакеты должны устанавливаться с помощью package manager'а вашей ОС. Для OS X предоставляется фреймворк.</p>
+<p>Убедитесь, что пользователь принадлежит к группе, позволяющей доступ к COM-порту (например, dip или serial).</p>
+<p>Скопируйте файл /usr/share/libximc/keyfile.sqlite в директорию с проектом командой </p>
+<div class="fragment"><div class="line">$ cp /usr/share/libximc/keyfile.sqlite .</div>
+</div><!-- fragment --><p>testapp может быть собран следующим образом с установленной библиотекой: </p>
+<div class="fragment"><div class="line">$ make</div>
+</div><!-- fragment --><p>Для кросс-компиляции (архитектура целевой системы отличается от архитектуры хоста) следует передать флаг -m64 или -m32 компилятору. Для сборки universal binary на Mac OS X необходимо использовать вместо этого флаг -arch. Обратитесь к документации компилятора.</p>
+<p>Затем запустите приложение с помощью: </p>
+<div class="fragment"><div class="line">$ make run</div>
+</div><!-- fragment --><p>Примечание: make run на OS X копирует библиотеку в текущую директорию. Если вы хотите использовать библиотеку из другой директории, пожалуйста укажите в LD_LIBRARY_PATH или DYLD_LIBRARY_PATH путь к директории с библиотекой.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.c перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints).</p>
+<h1><a class="anchor" id="howtouse_dotnet_sec"></a>
+.NET</h1>
+<p>Для использования в .NET предлагается обертка wrappers/csharp/ximcnet.dll. Она распространяется в двух различных архитектурах. Поддерживает платформу .NET от 2.0. до 4.0.</p>
+<p>Тестовые приложения на языке C# для Visual Studio 2013 расположены в директориях test_CSharp (для C#) и test_VBNET (для VB.NET). Откройте проекты и соберите.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testapp.cs или testapp.vb (в зависимости от языка) перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enumerate_hints для C#, переменная enum_hints для VB).</p>
+<h1><a class="anchor" id="howtouse_delphi_sec"></a>
+Delphi</h1>
+<p>Обертка для использования в Delphi libximc.dll предлагается как модуль wrappers/pascal/ximc.pas</p>
+<p>Консольное тестовое приложение размещено в директории 'test_Delphi'. Проверено с Delphi 6 на 32-битной системе.</p>
+<p>Просто скомпилируйте, разместите DLL в директории с исполняемым модулем и запустите его.</p>
+<p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле test_Delphi.dpr перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная enum_hints).</p>
+<h1><a class="anchor" id="howtouse_java_sec"></a>
+Java</h1>
+<p>Как запустить пример на Linux. Перейдите в ximc-2.x.x/examples/test_Java/compiled/ и выполните </p>
+<div class="fragment"><div class="line">$ cp /usr/share/libximc/keyfile.sqlite .</div>
+<div class="line">$ java -cp /usr/share/java/libjximc.jar:test_Java.jar ru.ximc.TestJava</div>
+</div><!-- fragment --><p>Как запустить пример на Windows или Mac. Перейдите в ximc-2.x.x./examples/test_Java/compiled/. Скопируйте содержимое ximc-2.x.x/ximc/win64/ или ximc-2.x.x/ximc/macosx/ соответственно в текущую директорию. Затем запустите: </p>
+<div class="fragment"><div class="line">$ java -classpath libjximc.jar -classpath test_Java.jar ru.ximc.TestJava</div>
+</div><!-- fragment --><p>Как модифицировать и пересобрать пример. Исходный текст расположен внутри test_Java.jar. Перейдите в examples/test_Java/compiled. Распакуйте jar: </p>
+<div class="fragment"><div class="line">$ jar xvf test_Java.jar ru META-INF</div>
+</div><!-- fragment --><p> Затем пересоберите исходные тексты: </p>
+<div class="fragment"><div class="line">$ javac -classpath /usr/share/java/libjximc.jar -Xlint ru/ximc/TestJava.java</div>
+</div><!-- fragment --><p> или для Windows или Mac: </p>
+<div class="fragment"><div class="line">$ javac -classpath libjximc.jar -Xlint ru/ximc/TestJava.java</div>
+</div><!-- fragment --><p> Затем соберите jar: </p>
+<div class="fragment"><div class="line">$ jar cmf MANIFEST.MF test_Java.jar ru</div>
+</div><!-- fragment --><p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле TestJava.java перед сборкой нужно прописать IP адрес Ethernet-адаптера (переменная ENUM_HINTS).</p>
+<h1><a class="anchor" id="howtouse_python_sec"></a>
+Python</h1>
+<p>Измените текущую директорию на examples/test_Python. Для корректного использования библиотеки libximc, в примере используется файл обертка, crossplatform\wrappers\python\pyximc.py с описанием структур библиотеки.</p>
+<p>Перед запуском:</p>
+<p>На OS X: скопируйте библиотеку ximc/macosx/libximc.framework в текущую директорию.</p>
+<p>На Linux: может понадобиться установить LD_LIBRARY_PATH, чтобы Python мог найти библиотеки с RPATH. Например, запустите: </p>
+<div class="fragment"><div class="line">export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`</div>
+</div><!-- fragment --><p>На Windows: перед запуском ничего делать не нужно. Все необходимые связи и зависимости прописаны в коде примера. Используются библиотеки: bindy.dll, libximc.dll, xiwrapper.dll. Расположенные в папке для соответствующих версий Windows.</p>
+<p>Запустите Python 2 или Python 3: </p>
+<div class="fragment"><div class="line">python test_Python.py</div>
+</div><!-- fragment --><p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле test_Python.py перед запуском нужно прописать IP адрес Ethernet-адаптера (переменная enum_hints).</p>
+<h1><a class="anchor" id="howtouse_matlab_sec"></a>
+MATLAB</h1>
+<p>Тестовая программа на MATLAB testximc.m располагается в директории examples/test_MATLAB.</p>
+<p>Перед запуском:</p>
+<p>На OS X: скопируйте ximc/macosx/libximc.framework, ximc/macosx/wrappers/ximcm.h, ximc/ximc.h в директорию examples/matlab. Установите XCode, совместимый с Matlab</p>
+<p>На Linux: установите libximc*deb и libximc-dev*deb нужной архитектуры. Далее скопируйте ximc/macosx/wrappers/ximcm.h в директорию examples/matlab. Установите gcc, совместимый с Matlab.</p>
+<p>Для проверки совместимых XCode и gcc проверьте документы <a href="https://www.mathworks.com/content/dam/mathworks/mathworks-dot-com/support/sysreq/files/SystemRequirements-Release2014a_SupportedCompilers.pdf">https://www.mathworks.com/content/dam/mathworks/mathworks-dot-com/support/sysreq/files/SystemRequirements-Release2014a_SupportedCompilers.pdf</a> или похожие.</p>
+<p>На Windows: перед запуском ничего делать не нужно</p>
+<p>Измените текущую директорию в MATLAB на examples/matlab. Затем запустите в MATLAB: </p>
+<div class="fragment"><div class="line">testximc</div>
+</div><!-- fragment --><p>В случае, если планируется использовать Ethernet-адаптер 8SMC4-USB-Eth1, в файле testximc.m перед запуском нужно прописать IP адрес Ethernet-адаптера (переменная enum_hints).</p>
+<h1><a class="anchor" id="howtouse_log"></a>
+Логирование в файл</h1>
+<p>Если программа, использующая libximc, запущена с установленной переменной окружения XILOG, то это включит логирование в файл. Значение переменной XILOG будет использовано как имя файла. Файл будет открыт на запись при первом событии лога и закрыт при завершении программы, использующей libximc. В лог записываются события отправки данных в контроллер и приема данных из контроллера, а также открытия и закрытия порта.</p>
+<h1><a class="anchor" id="howtouse_perm"></a>
+Требуемые права доступа</h1>
+<p>Библиотеке не требуются особые права для выполнения, а нужен только доступ на чтение-запись в USB-COM устройства в системе. Исключением из этого правила является функция только для ОС Windows "fix_usbser_sys()" - если процесс использующий библиотеку не имеет повышенных прав, то при вызове этой функции программная переустановка устройства не будет работать.</p>
+<h1><a class="anchor" id="howtouse_cprofiles"></a>
+Си-профили</h1>
+<p>Си-профили это набор заголовочных файлов, распространяемых вместе с библиотекой libximc. Они позволяют в программе на языке C/C++ загрузить в контроллер настройки одной из поддерживаемых подвижек вызовом всего одной функции. Пример использования си-профилей вы можете посмотреть в директории примеров "testcprofile". </p>
+</div></div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура ctp_settings_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура ctp_settings_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Настройки контроля позиции(для шагового двигателя).  
+ <a href="structctp__settings__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:a24094d5762a719e34470d30f19bc1fb3"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structctp__settings__t.html#a24094d5762a719e34470d30f19bc1fb3">CTPMinError</a></td></tr>
+<tr class="memdesc:a24094d5762a719e34470d30f19bc1fb3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Минимальное отличие шагов ШД от положения энкодера, устанавливающее флаг STATE_RT_ERROR.  <a href="#a24094d5762a719e34470d30f19bc1fb3"></a><br/></td></tr>
+<tr class="memitem:af26d46d9aef133a7ec21e8d2bb1e80bb"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structctp__settings__t.html#af26d46d9aef133a7ec21e8d2bb1e80bb">CTPFlags</a></td></tr>
+<tr class="memdesc:af26d46d9aef133a7ec21e8d2bb1e80bb"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="ximc_8h.html#flagset_ctpflags">Флаги контроля позиции</a>.  <a href="#af26d46d9aef133a7ec21e8d2bb1e80bb"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Настройки контроля позиции(для шагового двигателя). </p>
+<p>При управлении ШД с энкодером (CTP_BASE 0) появляется возможность обнаруживать потерю шагов. Контроллер знает кол-во шагов на оборот (GENG::StepsPerRev) и разрешение энкодера (GFBS::IPT). При включении контроля (флаг CTP_ENABLED), контроллер запоминает текущую позицию в шагах ШД и текущую позицию энкодера. Далее, на каждом шаге позиция энкодера преобразовывается в шаги и если разница оказывается больше CTPMinError, устанавливается флаг STATE_CTP_ERROR и устанавливается состояние ALARM. При управлении ШД с датчиком оборотов (CTP_BASE 1), позиция контролируется по нему. По активному фронту на входе синхронизации контроллер запоминает текущее значение шагов. Далее, при каждом обороте проверяет, на сколько шагов сместились. При рассогласовании более CTPMinError устанавливается флаг STATE_CTP_ERROR и устанавливается состояние ALARM. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#a920983186a78fee229c367f92e1f7f4c" title="Запись настроек контроля позиции(для шагового двигателя).">set_ctp_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#af0b17462d9c663ba323f1c1d0c43e235" title="Чтение настроек контроля позиции(для шагового двигателя).">get_ctp_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#af0b17462d9c663ba323f1c1d0c43e235" title="Чтение настроек контроля позиции(для шагового двигателя).">get_ctp_settings</a>, <a class="el" href="ximc_8h.html#a920983186a78fee229c367f92e1f7f4c" title="Запись настроек контроля позиции(для шагового двигателя).">set_ctp_settings</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="af26d46d9aef133a7ec21e8d2bb1e80bb"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int CTPFlags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="ximc_8h.html#flagset_ctpflags">Флаги контроля позиции</a>. </p>
+
+</div>
+</div>
+<a class="anchor" id="a24094d5762a719e34470d30f19bc1fb3"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int CTPMinError</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Минимальное отличие шагов ШД от положения энкодера, устанавливающее флаг STATE_RT_ERROR. </p>
+<p>Измеряется в шагах ШД. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура sync_out_settings_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура sync_out_settings_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Настройки выходной синхронизации.  
+ <a href="structsync__out__settings__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:ae1ed365fedd3d0acf0ef40250a4b53eb"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsync__out__settings__t.html#ae1ed365fedd3d0acf0ef40250a4b53eb">SyncOutFlags</a></td></tr>
+<tr class="memdesc:ae1ed365fedd3d0acf0ef40250a4b53eb"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="ximc_8h.html#flagset_syncoutflags">Флаги настроек синхронизации выхода</a>.  <a href="#ae1ed365fedd3d0acf0ef40250a4b53eb"></a><br/></td></tr>
+<tr class="memitem:adaf34d267c7e51cc11b468b000723116"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsync__out__settings__t.html#adaf34d267c7e51cc11b468b000723116">SyncOutPulseSteps</a></td></tr>
+<tr class="memdesc:adaf34d267c7e51cc11b468b000723116"><td class="mdescLeft">&#160;</td><td class="mdescRight">Определяет длительность выходных импульсов в шагах/импульсах энкодера, когда установлен флаг SYNCOUT_IN_STEPS, или в микросекундах если флаг сброшен.  <a href="#adaf34d267c7e51cc11b468b000723116"></a><br/></td></tr>
+<tr class="memitem:aa9981dd7cc250253ddb85842ab2980ba"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsync__out__settings__t.html#aa9981dd7cc250253ddb85842ab2980ba">SyncOutPeriod</a></td></tr>
+<tr class="memdesc:aa9981dd7cc250253ddb85842ab2980ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Период генерации импульсов (в шагах/отсчетах энкодера), используется при установленном флаге SYNCOUT_ONPERIOD.  <a href="#aa9981dd7cc250253ddb85842ab2980ba"></a><br/></td></tr>
+<tr class="memitem:a9e6c7b1fdd0fd4b3de6a4426471d171f"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsync__out__settings__t.html#a9e6c7b1fdd0fd4b3de6a4426471d171f">Accuracy</a></td></tr>
+<tr class="memdesc:a9e6c7b1fdd0fd4b3de6a4426471d171f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Это окрестность вокруг целевой координаты, попадание в которую считается попаданием в целевую позицию и генерируется импульс по остановке.  <a href="#a9e6c7b1fdd0fd4b3de6a4426471d171f"></a><br/></td></tr>
+<tr class="memitem:a8ef89cd424c869010e6a5ed0c217eff3"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structsync__out__settings__t.html#a8ef89cd424c869010e6a5ed0c217eff3">uAccuracy</a></td></tr>
+<tr class="memdesc:a8ef89cd424c869010e6a5ed0c217eff3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Это окрестность вокруг целевой координаты в микрошагах (используется только с шаговым двигателем).  <a href="#a8ef89cd424c869010e6a5ed0c217eff3"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Настройки выходной синхронизации. </p>
+<p>Эта структура содержит все настройки, определяющие поведение выхода синхронизации. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#a4484514b027918314c65e316a3f71160" title="Чтение настроек для выходного импульса синхронизации.">get_sync_out_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#a5aa885b7327eff75eaf642c31d296452" title="Запись настроек для выходного импульса синхронизации.">set_sync_out_settings</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#a4484514b027918314c65e316a3f71160" title="Чтение настроек для выходного импульса синхронизации.">get_sync_out_settings</a>, <a class="el" href="ximc_8h.html#a5aa885b7327eff75eaf642c31d296452" title="Запись настроек для выходного импульса синхронизации.">set_sync_out_settings</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a9e6c7b1fdd0fd4b3de6a4426471d171f"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int Accuracy</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Это окрестность вокруг целевой координаты, попадание в которую считается попаданием в целевую позицию и генерируется импульс по остановке. </p>
+
+</div>
+</div>
+<a class="anchor" id="ae1ed365fedd3d0acf0ef40250a4b53eb"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int SyncOutFlags</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p><a class="el" href="ximc_8h.html#flagset_syncoutflags">Флаги настроек синхронизации выхода</a>. </p>
+
+</div>
+</div>
+<a class="anchor" id="aa9981dd7cc250253ddb85842ab2980ba"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int SyncOutPeriod</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Период генерации импульсов (в шагах/отсчетах энкодера), используется при установленном флаге SYNCOUT_ONPERIOD. </p>
+
+</div>
+</div>
+<a class="anchor" id="adaf34d267c7e51cc11b468b000723116"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int SyncOutPulseSteps</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Определяет длительность выходных импульсов в шагах/импульсах энкодера, когда установлен флаг SYNCOUT_IN_STEPS, или в микросекундах если флаг сброшен. </p>
+
+</div>
+</div>
+<a class="anchor" id="a8ef89cd424c869010e6a5ed0c217eff3"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int uAccuracy</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Это окрестность вокруг целевой координаты в микрошагах (используется только с шаговым двигателем). </p>
+<p>Величина микрошага и диапазон допустимых значений для данного поля зависят от выбранного режима деления шага (см. поле MicrostepMode в engine_settings). </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

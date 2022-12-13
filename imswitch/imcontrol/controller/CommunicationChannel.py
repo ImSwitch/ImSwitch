@@ -86,7 +86,6 @@ class CommunicationChannel(SignalInterface):
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
     sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
-    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
 
     sigBroadcast = Signal(str, str, object)
 
@@ -106,7 +105,6 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
-        self.output = []
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -138,7 +136,6 @@ class CommunicationChannel(SignalInterface):
     def acquireImage(self) -> None:
         image = self.get_image()
         self.output.append(image)
-        return image
 
     def runScript(self, text):
         self.output = []

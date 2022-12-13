@@ -1,0 +1,123 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=9"/>
+<title>libximc: Структура engine_advansed_setup_t</title>
+<link href="tabs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="dynsections.js"></script>
+<link href="doxygen.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+<div id="titlearea">
+<table cellspacing="0" cellpadding="0">
+ <tbody>
+ <tr style="height: 56px;">
+  <td style="padding-left: 0.5em;">
+   <div id="projectname">libximc
+   &#160;<span id="projectnumber">2.13.5</span>
+   </div>
+  </td>
+ </tr>
+ </tbody>
+</table>
+</div>
+<!-- end header part -->
+<!-- Создано системой Doxygen 1.8.1.2 -->
+  <div id="navrow1" class="tabs">
+    <ul class="tablist">
+      <li><a href="index.html"><span>Титульная&#160;страница</span></a></li>
+      <li><a href="pages.html"><span>Описания</span></a></li>
+      <li class="current"><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="files.html"><span>Файлы</span></a></li>
+    </ul>
+  </div>
+  <div id="navrow2" class="tabs2">
+    <ul class="tablist">
+      <li><a href="annotated.html"><span>Структуры&#160;данных</span></a></li>
+      <li><a href="functions.html"><span>Поля&#160;структур</span></a></li>
+    </ul>
+  </div>
+</div><!-- top -->
+<div class="header">
+  <div class="summary">
+<a href="#pub-attribs">Поля данных</a>  </div>
+  <div class="headertitle">
+<div class="title">Структура engine_advansed_setup_t</div>  </div>
+</div><!--header-->
+<div class="contents">
+
+<p>Настройки EAS.  
+ <a href="structengine__advansed__setup__t.html#details">Подробнее...</a></p>
+<table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2><a name="pub-attribs"></a>
+Поля данных</h2></td></tr>
+<tr class="memitem:a049de9dcef33584782231c63076f92e0"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structengine__advansed__setup__t.html#a049de9dcef33584782231c63076f92e0">stepcloseloop_Kw</a></td></tr>
+<tr class="memdesc:a049de9dcef33584782231c63076f92e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Коэффициент смешения реальной и заданной скорости, диапазон [0, 100], значение по умолчанию 50.  <a href="#a049de9dcef33584782231c63076f92e0"></a><br/></td></tr>
+<tr class="memitem:ac32964b4df7e48c811d9c3bb3fb005a9"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structengine__advansed__setup__t.html#ac32964b4df7e48c811d9c3bb3fb005a9">stepcloseloop_Kp_low</a></td></tr>
+<tr class="memdesc:ac32964b4df7e48c811d9c3bb3fb005a9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Обратная связь по позиции в зоне малых скоростей, диапазон [0, 65535], значение по умолчанию 1000.  <a href="#ac32964b4df7e48c811d9c3bb3fb005a9"></a><br/></td></tr>
+<tr class="memitem:a0cb058193ab1ad91ec052b9106d6d87e"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structengine__advansed__setup__t.html#a0cb058193ab1ad91ec052b9106d6d87e">stepcloseloop_Kp_high</a></td></tr>
+<tr class="memdesc:a0cb058193ab1ad91ec052b9106d6d87e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Обратная связь по позиции в зоне больших скоростей, диапазон [0, 65535], значение по умолчанию 33.  <a href="#a0cb058193ab1ad91ec052b9106d6d87e"></a><br/></td></tr>
+</table>
+<a name="details" id="details"></a><h2>Подробное описание</h2>
+<div class="textblock"><p>Настройки EAS. </p>
+<p>Эта структура предназначена для настройки параметров алгоритмов, которые невозможно отнести к стандартным Kp, Ki, Kd и L, R, Km. Эти данные хранятся во flash памяти памяти контроллера. </p>
+<dl class="section see"><dt>См. также</dt><dd><a class="el" href="ximc_8h.html#a5eafed9c8a644614a9af5ca4b0c52cf0" title="Запись расширенных настроек.">set_engine_advansed_setup</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#af6f19694e0d89f2174dabe61981671e8" title="Чтение расширенных настроек.">get_engine_advansed_setup</a> </dd>
+<dd>
+<a class="el" href="ximc_8h.html#af6f19694e0d89f2174dabe61981671e8" title="Чтение расширенных настроек.">get_engine_advansed_setup</a>, <a class="el" href="ximc_8h.html#a5eafed9c8a644614a9af5ca4b0c52cf0" title="Запись расширенных настроек.">set_engine_advansed_setup</a> </dd></dl>
+</div><h2>Поля</h2>
+<a class="anchor" id="a0cb058193ab1ad91ec052b9106d6d87e"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int stepcloseloop_Kp_high</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Обратная связь по позиции в зоне больших скоростей, диапазон [0, 65535], значение по умолчанию 33. </p>
+
+</div>
+</div>
+<a class="anchor" id="ac32964b4df7e48c811d9c3bb3fb005a9"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int stepcloseloop_Kp_low</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Обратная связь по позиции в зоне малых скоростей, диапазон [0, 65535], значение по умолчанию 1000. </p>
+
+</div>
+</div>
+<a class="anchor" id="a049de9dcef33584782231c63076f92e0"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">unsigned int stepcloseloop_Kw</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Коэффициент смешения реальной и заданной скорости, диапазон [0, 100], значение по умолчанию 50. </p>
+
+</div>
+</div>
+</div><!-- contents -->
+<!-- start footer part -->
+<hr class="footer"/><address class="footer"><small>
+Документация по libximc. Последние изменения: Пн 18 Апр 2022 20:06:52. Создано системой &#160;<a href="http://www.doxygen.org/index.html">
+<img class="footer" src="doxygen.png" alt="doxygen"/>
+</a> 1.8.1.2
+</small></address>
+</body>
+</html>

@@ -12,9 +12,13 @@ from .FocusLockController import FocusLockController
 from .AufofocusController import AutofocusController
 from .ImageController import ImageController
 from .LaserController import LaserController
+from .LEDController import LEDController
 from .PositionerController import PositionerController
+from .StandaPositionerController import StandaPositionerController
 from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
+from .DeckController import DeckController
+from .OpentronsDeckController import OpentronsDeckController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
 from .UC2ConfigController import UC2ConfigController

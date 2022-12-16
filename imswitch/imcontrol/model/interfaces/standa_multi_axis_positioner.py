@@ -87,7 +87,7 @@ class MultiAxisPositioner():
         position = self.check_position(position)
         for dev, p in zip(self.devices, position):
             dev.move_to(p)
-        self.wait_for_stop(self.devices)
+        # self.wait_for_stop(self.devices)
 
     def wait_for_stop(self, devices: [LinearPositioner] = None):
         if devices is None:
@@ -99,7 +99,7 @@ class MultiAxisPositioner():
         shift = self.check_position(shift)
         for dev, p in zip(self.devices, shift):
             dev.shift_on(p)
-        self.wait_for_stop(self.devices)
+        # self.wait_for_stop(self.devices)
 
 
     def get_speed(self):

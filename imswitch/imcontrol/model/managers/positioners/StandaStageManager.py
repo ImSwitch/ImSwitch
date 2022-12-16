@@ -19,7 +19,7 @@ class StandaStageManager(PositionerManager):
                                                positionerInfo.managerProperties["initialSpeed"])
 
         })
-        self.__logger.debug(f'Initializing {positionerInfo.axes[0]} ')
+        self.__logger.debug(f'Initializing {positionerInfo.axes} ')
         self.setSpeed(self._speed)
 
     def setSpeed(self, speed, axis = "XYZ"):
@@ -49,39 +49,40 @@ class StandaStageManager(PositionerManager):
     def get_position(self):
         return self._positioner.get_position()
 
-    def move(self, dist, axis, is_blocking=True):
+    def move(self, dist, axis, is_blocking=False):
+        current_position = self._positioner.get_position()
         if axis == "XYZ":
             self._positioner.shift_on(dist)
             if is_blocking:
                 self._positioner.wait_for_stop()
-            new_pos = self._positioner.get_position()
-            [self.setPosition(d, a) for a,d in zip(axis, new_pos)]
-            return
-        if axis == "XY":
+            self.setPosition(current_position[0]+dist[0], "X")
+            self.setPosition(current_position[1]+dist[1], "Y")
+            self.setPosition(current_position[2]+dist[2], "Z")
+        elif axis == "XY":
             self._positioner.x_axis.shift_on(dist[0])
             self._positioner.y_axis.shift_on(dist[1])
             if is_blocking:
                 self._positioner.wait_for_stop()
-            x_new, y_new, _ = self._positioner.get_position()
-            [self.setPosition(d, a) for a,d in zip(axis, [x_new, y_new])]
-            return
+            self.setPosition(current_position[0]+dist[0], "X")
+            self.setPosition(current_position[1]+dist[1], "Y")
         # With the widget it uses just one axis at a time:
         elif "Z" == axis:
             self._positioner.z_axis.shift_on(dist)
             if is_blocking:
                 self._positioner.wait_for_stop()
+            self.setPosition(current_position[2]+dist, "Z")
         elif "X" == axis:
             self._positioner.x_axis.shift_on(dist)
             if is_blocking:
                 self._positioner.wait_for_stop()
+            self.setPosition(current_position[0]+dist, "X")
         elif "Y" == axis:
             self._positioner.y_axis.shift_on(dist)
             if is_blocking:
                 self._positioner.wait_for_stop()
+            self.setPosition(current_position[1]+dist, "X")
         else:
             raise ValueError("Invalid axis.")
-        new_pos = self._positioner.get_position()
-        [self.setPosition(d, a) for a, d in zip("XYZ", new_pos)]
         return
 
     def setPosition(self, position, axis):

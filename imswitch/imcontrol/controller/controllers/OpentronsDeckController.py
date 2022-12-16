@@ -20,7 +20,7 @@ from imswitch.imcontrol.controller.controllers.PositionerController import Posit
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
 _speedAttr = "Speed"
-_objectiveRadius = 21.55/2
+_objectiveRadius = 21.8/2
 
 class OpentronsDeckController(LiveUpdatedController):
     """ Linked to PositionerWidget."""
@@ -100,7 +100,14 @@ class OpentronsDeckController(LiveUpdatedController):
         self.updatePosition(positionerName, axis)
 
     def valid_position(self, positionerName, axis, shift):
-        slot = self.ordered_slots[self.selected_slot]
+        if self.selected_slot is None:
+            current_slot = self.scanner.get_slot()
+            if current_slot is None:
+                return False
+            else:
+                slot = self.ordered_slots[current_slot]
+        else:
+            slot = self.ordered_slots[self.selected_slot]
 
         slot_origin = [a + b for a, b in zip(slot["position"], self.corner_offset)]
         slot_size = [v for v in slot["boundingBox"].values()]
@@ -108,7 +115,7 @@ class OpentronsDeckController(LiveUpdatedController):
         x1, y1, _ = slot_origin
         x2, y2, _ = [a + b for a, b in zip(slot_origin, slot_size)]
 
-        xo, yo, _ = [v for v in self.getPos()[positionerName].values()]
+        xo, yo, _ = self.positioner.get_position() # Avoided using positionerName
         if axis == "X":
             xo = xo + shift
         elif axis == "Y":
@@ -360,7 +367,7 @@ class LabwareScanner():
     def moveToXY(self, pos_X, pos_Y):
         self.__logger.debug(f"Moving to absolute position: {pos_X, pos_Y}.")
         x, y, z = self.positioner.get_position()
-        self.positioner.move(axis="XYZ", dist=(pos_X - x, pos_Y - y, 0),
+        self.positioner.move(axis="XY", dist=(pos_X - x, pos_Y - y),
                              is_blocking=False)  # , speed=5, is_blocking=True, is_absolute=True)
         # self.positioner.move(axis="XY", dist=(pos_X - x, pos_Y - y),
         #                      is_blocking=False)

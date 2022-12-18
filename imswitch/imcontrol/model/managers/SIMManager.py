@@ -29,6 +29,8 @@ class SIMManager(SignalInterface):
         self.__patternsDir = self.__simInfo.patternsDir
         self.isSimulation = self.__simInfo.isSimulation
         
+        self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
+        
         # Load all patterns
         self.allPatterns = self.loadPatterns(self.__patternsDir)
 

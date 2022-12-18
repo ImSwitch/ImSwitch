@@ -87,8 +87,25 @@ class SIMController(LiveUpdatedController):
         # show placeholder pattern
         initPattern = self._master.simManager.allPatterns[self.patternID]
         self._widget.updateSIMDisplay(initPattern)
+        
+        # activate hamamatsu slm if necessary
+        if self._master.simManager.isHamamatsuSLM:
+            self.IS_HAMAMATSU = True
+            self.initHamamatsuSLM()
+        else:
+            self.IS_HAMAMATSU = False
 
 
+
+    def initHamamatsuSLM(self):
+        self.hamamatsuslm = nip.HAMAMATSU_SLM() # FIXME: Add parameters
+        #def __init__(self, dll_path = None, OVERDRIVE = None, use_corr_pattern = None, wavelength = None, corr_pattern_path = None):
+        allPatterns = self._master.simManager.allPatterns[self.patternID]
+        for im_number, im in enumerate(allPatterns):
+            self.hamamatsuslm.send_dat(im, im_number)
+        
+        
+        
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
@@ -119,7 +136,12 @@ class SIMController(LiveUpdatedController):
             if(self._master.simManager.isSimulation):
                 iPhi = self.patternID%self.nPhases
                 iRot = self.patternID//self.nRotations
-                self.setIlluPatternByID(iRot, iPhi)
+                
+                if self.IS_HAMAMATSU:
+                    # send trigger to SLM
+                    pass
+                else:
+                    self.setIlluPatternByID(iRot, iPhi)
             else:
                 pass
             

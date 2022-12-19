@@ -19,7 +19,7 @@ class RotationScanWidget(Widget):
         self.pars = {}
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
-        self.enabled = False
+        self.enabled = True
 
     def initControls(self):
         # Treat parameters as polarization rotation parameters.
@@ -35,6 +35,8 @@ class RotationScanWidget(Widget):
 
         self.pars['ActivateButton'] = guitools.BetterPushButton('Activate during scan')
         self.pars['CalibrateButton'] = guitools.BetterPushButton('Calibrate polarization')
+        self.pars['SaveCalibrationButton'] = guitools.BetterPushButton('Save calibration')
+        self.pars['LoadCalibrationButton'] = guitools.BetterPushButton('Load calibration')
 
         # Parameters for calibration routine
         self.pars['CalibrationPrompt'] = QtWidgets.QLineEdit('Calibration not active.')
@@ -55,7 +57,9 @@ class RotationScanWidget(Widget):
         self.grid.addWidget(self.pars['RotStopUnit'], 2, 2)
         self.grid.addWidget(self.pars['ActivateButton'], 3, 0)
         self.grid.addWidget(self.pars['CalibrateButton'], 3, 1)
-        self.grid.addWidget(self.pars['CalibrationPrompt'], 3, 2)
+        self.grid.addWidget(self.pars['SaveCalibrationButton'], 3, 2)
+        self.grid.addWidget(self.pars['LoadCalibrationButton'], 3, 3)
+        self.grid.addWidget(self.pars['CalibrationPrompt'], 4, 0, 1, 4)
 
         # Connect signals
         self.pars['ActivateButton'].clicked.connect(lambda: self.sigActivate.emit(not self.enabled))

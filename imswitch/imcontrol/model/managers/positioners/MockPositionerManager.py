@@ -20,7 +20,7 @@ class MockPositionerManager(PositionerManager):
                                
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
-        })
+        }, initialSpeed={axis: 0 for axis in positionerInfo.axes})
 
     def move(self, dist, axis):
         self.setPosition(self._position[self.axes[0]] + dist, axis)

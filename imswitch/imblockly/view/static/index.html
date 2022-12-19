@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
+    <link rel="stylesheet" href="css/material.pink-light_blue.min.css">
+    <link rel = "stylesheet" href = "scripts/intro.js-5.0.0/package/introjs.css">
+ 
+    <link rel="shortcut icon" href="images/favicon.ico" />
+    <link rel="icon" type="image/png" href="images/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="images/favicon-16x16.png" sizes="16x16" />
+
+    <title>openUC2 Blockly</title>
+
+
+
+</head>
+
+<body>
+    <noscript>OpenFlexure Blockly requires JavaScript.</noscript>
+    <script>
+    var isExtension = false;
+    window.addEventListener('beforeunload', (event) => {
+        event.returnValue = `Are you sure you want to leave?`;
+    });
+
+    </script>
+    <div class="mdl-layout mdl-js-layout mdl-layout__header--scroll mdl-layout--fixed-header">
+        <header class="mdl-layout__header">
+            <div class="mdl-layout__header-row">
+                <span class="mdl-layout-title" style="margin-right: 50px">openUC2 Blockly</span>
+                <div class="mdl-layout-spacer"></div>
+                <nav class="mdl-navigation mdl-layout--large-screen-only">
+                    <button class="mdl-button mdl-js-button" onclick="runCode()" id="runButton"  href="" >Run</button>
+                    <button class="mdl-button mdl-js-button" onclick="stepCode()" id="stepButton"  href="">Step</button>
+                    <button class="mdl-button mdl-js-button" onclick="exportBlocks()" id="saveButton" href="">Save</button>
+                    <label class="mdl-button mdl-js-button" id = "loadButton">
+                        Load <input type="file" onchange="importBlocksFile(this);" accept=".txt,.xml" style="display: none;">
+                    </label>
+                    <button class="mdl-button mdl-js-button" onclick="clearWorkspace()" id="clearButton" href="">Clear</button>
+                    <button class="mdl-button mdl-js-button" onclick="handleTour()" id="tourButton" href="">Help</button>
+                </nav>
+            </div>
+        </header>
+        <main class="mdl-layout mdl-layout__content">
+            <div class="page-content">
+                <div class="mdl-grid">
+                    <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--4-col" >
+                        <div class="mdl-card__title">
+                            <h2 class="mdl-card__title-text">Live preview</h2>
+                        </div>
+                        <figure class="mdl-card__media">
+                            <img id="livePreviewImg" src="images/preview-placeholder.svg" style="max-width: 100%; height : auto; margin:0" />
+                        </figure>
+                    </div>
+                    <div class="mdl-cell mdl-cell--8-col">
+                        <div id="blocklyArea" style="height:500px" ></div>
+                    </div>
+                </div>
+                <div class="mdl-grid">
+                    <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--6-col">
+                        <div class="mdl-textfield mdl-js-textfield" style="width:95%; margin-left: 20px;" >
+                            <textarea class=" mdl-textfield__input" type="text" rows="10" id="output" disabled></textarea>
+                            <label class="mdl-textfield__label" for="output">Program output...</label>
+                        </div>
+                    </div>
+                    <div class="mdl-card mdl-shadow--2dp mdl-cell mdl-cell--6-col">
+                        <div class="mdl-textfield mdl-js-textfield" style=" width:95%; margin-left: 20px;" >
+                            <textarea class="mdl-textfield__input" type="text" rows="10" id="javascriptCode" disabled></textarea>
+                            <label class="mdl-textfield__label" for="javascriptCode">Javascript code...</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src = "scripts/intro.js-5.0.0/package/intro.js"></script>
+    <script defer src="scripts/material.min.js"></script>
+    <script src="scripts/axios.min.js"></script>
+    <script src="scripts/blockly.min.js"></script>
+    <script src="scripts/toolbox.js"></script>
+    <script src="scripts/interpreter.js"></script>
+    <script src="scripts/acorn.js"></script>
+    <script src="scripts/main.js"></script>
+    <script src="scripts/openflexure_blocks.js"></script>
+    <script>
+        function handleTour(){
+            introJs().setOptions({
+            steps:[{
+                title: "openUC2 Blockly tour",
+                intro: "openUC2 Blockly allows you to create scripts for your openUC2 Microscope using drag-and-drop blocks."
+            },
+            {   intro: "Enter the IP address of the microscope, or use 'microscope.local'. <br/> If you are using openUC2 Blockly on your microscope, it should connect automatically.",
+                element: document.querySelector('#ip_address')
+            },
+            {
+                intro: "Click to connect to the microscope.",
+                element: document.querySelector('#connect_btn')
+            },
+            {
+                intro: "View a live preview from the microscope.",
+                element: document.querySelector('#livePreviewImg')
+            },
+            {
+                intro: "Drag and drop blocks to create your openUC2 Blockly script. </br> <img style = 'max-width: 100%' src = 'images/drag_and_drop.gif'/>",
+                element: document.querySelector('#blocklyArea')
+            },
+            {
+                intro: "Run your openUC2 Blockly script.",
+                element: document.querySelector('#runButton')
+            },
+            {
+                intro: "Step through your openUC2 Blockly script.",
+                element: document.querySelector('#stepButton')
+            },
+            {
+                intro: "The program output is shown here.",
+                element: document.querySelector('#output')
+            },
+            {
+                intro: "The Javascript code produced by your openUC2 Blockly script is shown here.",
+                element: document.querySelector('#javascriptCode')
+            },
+            {
+                intro: "Save your openUC2 Blockly script.",
+                element: document.querySelector('#saveButton')
+            },
+            {
+                intro: "Load an openUC2 Blockly script.",
+                element: document.querySelector('#loadButton')
+            },
+            {
+                intro: "Remove all the blocks from the workspace.",
+                element: document.querySelector('#clearButton')
+            },
+            {
+                intro: "Open the openUC2 Microscope's web app (openUC2 Connect).",
+                element: document.querySelector('#ofmConnectButton')
+            },
+            ]}).start()
+        }
+    </script>
+
+</body>
+
+</html>

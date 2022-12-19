@@ -2,7 +2,7 @@ import json
 import os
 
 import numpy as np
-import time 
+import time
 import tifffile as tif
 import threading
 from datetime import datetime

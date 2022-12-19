@@ -20,18 +20,19 @@ from imswitch.imcontrol.controller.controllers.PositionerController import Posit
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
 _speedAttr = "Speed"
-_objectiveRadius = 21.8 / 2
+_objectiveRadius = 21.8/2
 
-
-class OpentronsDeckController(LiveUpdatedController):
-    """ Linked to OpentronsDeckWidget."""
+class OpentronsDeckScanController(LiveUpdatedController):
+    """ Linked to OpentronsDeckScanWidget."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self, instanceName="OpentronsController")
+        self.__logger = initLogger(self, instanceName="OpentronsScanController")
         # Has control over positioner
         self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positioner_name]
+
+
         self.objective_radius = _objectiveRadius
         # Deck and Labwares definitions:
         self.selected_slot = None
@@ -66,6 +67,7 @@ class OpentronsDeckController(LiveUpdatedController):
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -116,14 +118,14 @@ class OpentronsDeckController(LiveUpdatedController):
         x1, y1, _ = slot_origin
         x2, y2, _ = [a + b for a, b in zip(slot_origin, slot_size)]
 
-        xo, yo, _ = self.positioner.get_position()  # Avoided using positionerName
+        xo, yo, _ = self.positioner.get_position() # Avoided using positionerName
         if axis == "X":
             xo = xo + shift
         elif axis == "Y":
             yo = yo + shift
 
         if not x1 + self.objective_radius < xo < x2 - self.objective_radius \
-                or not y1 + self.objective_radius < yo < y2 - self.objective_radius:
+            or not y1 + self.objective_radius < yo < y2 - self.objective_radius:
             return False
         else:
             return True
@@ -222,6 +224,7 @@ class OpentronsDeckController(LiveUpdatedController):
         set step size. """
         self.stepDown(positionerName, axis)
 
+
     def load_labwares(self, labwares):
         labwares_dict = {}
         if "custom" in labwares.keys():
@@ -245,10 +248,10 @@ class OpentronsDeckController(LiveUpdatedController):
         if deck.deck_name is None:
             deck_dict = load(name="ot2_standard", version=3)
         else:
-            path = os.sep.join([deck.deck_path, deck.deck_name + ".json"])
+            path = os.sep.join([deck.deck_path,deck.deck_name+".json"])
             deck_dict = json.load(open(path))
         self.deck = deck_dict
-        self.ordered_slots = {slot["id"]: slot for i, slot in enumerate(self.deck["locations"]["orderedSlots"])}
+        self.ordered_slots = {slot["id"]: slot for i,slot in enumerate(self.deck["locations"]["orderedSlots"])}
         self.corner_offset = [abs(i) for i in self.deck["cornerOffsetFromOrigin"]]
         return
 
@@ -269,23 +272,23 @@ class OpentronsDeckController(LiveUpdatedController):
         self.connect_wells()
 
     @APIExport(runOnUIThread=True)
-    def moveToWell(self, well, slot=None):
+    def moveToWell(self, well, slot = None):
         if isinstance(well, Well):
             slot = well.parent.parent
             well = well.well_name
         self.__logger.debug(f"Move to {well}")
-        self.scanner.moveToWell(well=well, slot=slot if slot is not None else self.selected_slot)
+        self.scanner.moveToWell(well=well, slot= slot if slot is not None else self.selected_slot)
         [self.updatePosition(self.positioner_name, axis) for axis in self.positioner.axes]
         # TODO: change color of selected well button.
         self._widget.select_well(well)
 
     @APIExport(runOnUIThread=True)
-    def moveToPositionInWell(self, well, position, slot=None):
+    def moveToPositionInWell(self, well, position, slot = None):
         if isinstance(well, Well):
             slot = well.parent.parent
             well = well.well_name
         self.__logger.debug(f"Move to {well}")
-        self.scanner.moveToWell(well=well, slot=slot if slot is not None else self.selected_slot)
+        self.scanner.moveToWell(well=well, slot= slot if slot is not None else self.selected_slot)
         [self.updatePosition(self.positioner_name, axis) for axis in self.positioner.axes]
         # TODO: change color of selected well button.
         self._widget.select_well(well)
@@ -295,22 +298,16 @@ class OpentronsDeckController(LiveUpdatedController):
         # Connect signals for all buttons
         for slot, btn in self._widget.deck_slots.items():
             # Connect signals
-            # self.pars['UpButton' + parNameSuffix].clicked.connect(
+            #self.pars['UpButton' + parNameSuffix].clicked.connect(
             #    lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
-            # )
+            #)
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.select_labware, slot))
-
-    def connect_go_to(self):
-        """Connect Wells (Buttons) to the Sample Pop-Up Method"""
-        if isinstance(self._widget.home, guitools.BetterPushButton):
-            self._widget.home.clicked.connect(partial(self.home, self.positioner_name))
 
     def connect_home(self):
         """Connect Wells (Buttons) to the Sample Pop-Up Method"""
         if isinstance(self._widget.home, guitools.BetterPushButton):
             self._widget.home.clicked.connect(partial(self.home, self.positioner_name))
-
     def connect_zero(self):
         """Connect Wells (Buttons) to the Sample Pop-Up Method"""
         if isinstance(self._widget.zero, guitools.BetterPushButton):
@@ -321,12 +318,11 @@ class OpentronsDeckController(LiveUpdatedController):
         # Connect signals for all buttons
         for well, btn in self._widget.wells.items():
             # Connect signals
-            # self.pars['UpButton' + parNameSuffix].clicked.connect(
+            #self.pars['UpButton' + parNameSuffix].clicked.connect(
             #    lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
-            # )
+            #)
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.moveToWell, well, self.selected_slot))
-
 
 class LabwareScanner():
     def __init__(self, positioner, deck, labwares):
@@ -337,16 +333,16 @@ class LabwareScanner():
         self.slots_list = self.deck["locations"]["orderedSlots"]
         self.corner_offset = [abs(i) for i in self.deck["cornerOffsetFromOrigin"]]
         self.labwares = labwares
-        self.default_positions_in_well = {"center": (0, 0), "left": (-0.01, 0),
-                                          "right": (0.01, 0), "up": (0, 0.01), "down": (0, -0.01)}
+        self.default_positions_in_well = {"center": (0,0), "left": (-0.01,0),
+                                          "right": (0.01,0), "up":(0,0.01), "down":(0,-0.01)}
         self.is_moving = False
 
-    def get_slot(self, loc=None):
+    def get_slot(self, loc = None):
         """
         :param loc: Absolute position
         :return: Slot number
         """
-        if loc is None:
+        if loc == None:
             xo, yo, _ = self.positioner.get_position()
         elif isinstance(loc, Point):
             xo, yo, _ = loc
@@ -354,25 +350,26 @@ class LabwareScanner():
             raise TypeError
 
         for slot in self.slots_list:
-            slot_origin = [a + b for a, b in zip(slot["position"], self.corner_offset)]
+            slot_origin = [a+b for a,b in zip(slot["position"],self.corner_offset)]
             slot_size = [v for v in slot["boundingBox"].values()]
             x1, y1, _ = slot_origin
-            x2, y2, _ = [a + b for a, b in zip(slot_origin, slot_size)]
-            if x1 < xo < x2 and y1 < yo < y2:
+            x2, y2, _ = [a+b for a,b in zip(slot_origin,slot_size)]
+            if x1<xo<x2 and y1<yo<y2:
                 self.__logger.debug(f"Currently in slot {slot['id']}.")
                 return slot['id']
         return None
 
-    def moveToWell(self, well, slot):
+    def moveToWell(self, well, slot = None):
         if not isinstance(well, Well):
             well = self.labwares[slot].wells_by_name()[well]
         self.__logger.debug(f"Moving to well: {well} in slot: {slot}.")
-        x, y, _ = well.geometry.position
-        x_offset, y_offset, _ = self.corner_offset
-        self.objective_collision_avoidance(slot)
+        x,y,_ = well.geometry.position
+        x_offset, y_offset, _ =  self.corner_offset
+        if slot != self.get_slot():
+            self.objective_collision_avoidance()
         self.moveToXY(x + abs(x_offset), y + abs(y_offset))
 
-    def moveToPositionInWell(self, well, slot, position="center"):
+    def moveToPositionInWell(self, well, position = "center", slot = None):
         if isinstance(position, tuple) or isinstance(position, list):
             x_pos_shift, y_pos_shift = position
         elif isinstance(position, str):
@@ -382,29 +379,28 @@ class LabwareScanner():
         if not isinstance(well, Well):
             well = self.labwares[slot].wells_by_name()[well]
         self.__logger.debug(f"Moving to well: {well} in slot: {slot}.")
-        x, y, _ = well.geometry.position
-        if not self.check_position_in_well(well, (x_pos_shift, y_pos_shift)):
+        x,y,_ = well.geometry.position
+        if not self.check_position_in_well(well,(x_pos_shift, y_pos_shift)):
             raise ValueError("Position outside well.")
-        x_offset, y_offset, _ = self.corner_offset
+        x_offset, y_offset, _ =  self.corner_offset
         if slot != self.get_slot():
             self.objective_collision_avoidance()
         self.moveToXY(x + abs(x_offset) + x_pos_shift, y + abs(y_offset) + y_pos_shift)
 
     def check_position_in_well(self, well, pos):
-        if (abs(pos[0]) < well.diameter / 2) and (abs(pos[1]) < well.diameter / 2):
+        if (abs(pos[0]) < well.diameter/2) and (abs(pos[1]) < well.diameter/2):
             return True
         else:
             return False
 
-    def objective_collision_avoidance(self, slot):
-        if slot == self.get_slot():
-            return
+    def objective_collision_avoidance(self):
         x, y, z = self.positioner.get_position()
         if z > 1:
             self.__logger.debug("Avoiding objective collision.")
             self.is_moving = True
             self.positioner.move(axis="XYZ", dist=(0, 0, -z), is_blocking=True)
             self.is_moving = False
+        return
 
     def moveToXY(self, pos_X, pos_Y):
         self.__logger.debug(f"Moving to absolute position: {pos_X, pos_Y}.")

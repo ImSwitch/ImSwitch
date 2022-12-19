@@ -12,6 +12,13 @@ class OpentronsDeckWidget(Widget):
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigsetSpeedClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
+    sigHomeClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigZeroClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+
+    sigGoToClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigAddCurrentClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigAddClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -22,10 +29,18 @@ class OpentronsDeckWidget(Widget):
 
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
 
+    def select_well(self, well):
+        for well_id, btn in self.wells.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                if well_id == well:
+                    btn.setStyleSheet("background-color: green; font-size: 14px")
+                else:
+                    btn.setStyleSheet("background-color: grey; font-size: 14px")
+
     def select_labware(self, slot):
-        if hasattr(self,"_grid_group_box"):
-            self.main_grid_layout.removeWidget(self._grid_group_box)
-        self._grid_group_box = QtWidgets.QGroupBox(f"Labware layout: {slot}: {self._labware_dict[slot]}")
+        if hasattr(self,"_wells_group_box"):
+            self.main_grid_layout.removeWidget(self._wells_group_box)
+        self._wells_group_box = QtWidgets.QGroupBox(f"Labware layout: {slot}: {self._labware_dict[slot]}")
         layout = QtWidgets.QGridLayout()
 
         labware = self._labware_dict[slot]
@@ -37,19 +52,36 @@ class OpentronsDeckWidget(Widget):
         columns = len(self._labware_dict[slot].columns())
         for r in list(range(rows)):
             for c in list(range(columns)):
+                well_buttons[c+1] = (0, c+1)
                 well = labware.rows()[r][c]
-                well_buttons[well.well_name] = (r,c)
+                well_buttons[well.well_name] = (r+1,c+1)
+            well_buttons[well.well_name[0]] = (r+1, 0)
+        well_buttons[""] = (0,0)
         # Create wells (buttons) and add them to the grid layout
         for corrds, pos in well_buttons.items():
-            self.wells[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
-            self.wells[corrds].setFixedSize(40, 30)
-            self.wells[corrds].setStyleSheet("background-color: grey; font-size: 14px")
+            if 0 in pos:
+                self.wells[corrds] = QtWidgets.QLabel(text=str(corrds))  # QtWidgets.QPushButton(corrds)
+                self.wells[corrds].setFixedSize(35, 25)
+                self.wells[corrds].setStyleSheet("background-color: None; font-size: 12px")
+            else:
+                self.wells[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
+                self.wells[corrds].setFixedSize(35, 25)
+                self.wells[corrds].setStyleSheet("background-color: grey; font-size: 14px")
             # Set style for empty cell
             # self.wells[corrds].setStyleSheet("background-color: none")
             # Add button/label to layout
             layout.addWidget(self.wells[corrds], pos[0], pos[1])
-        self._grid_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._grid_group_box)
+
+        # Change color of selected labware
+        for slot_id, btn in self.deck_slots.items():
+            if isinstance(btn, guitools.BetterPushButton):
+                if slot_id == slot:
+                    btn.setStyleSheet("background-color: blue; font-size: 14px")
+                else:
+                    btn.setStyleSheet("background-color: grey; font-size: 14px")
+
+        self._wells_group_box.setLayout(layout)
+        self.main_grid_layout.addWidget(self._wells_group_box)
         self.setLayout(self.main_grid_layout)
 
     def add_home(self, layout):
@@ -71,7 +103,7 @@ class OpentronsDeckWidget(Widget):
         self._deck_dict = deck_dict
         self._labware_dict = labwares_dict
 
-        self._horizontal_group_box = QtWidgets.QGroupBox("Deck layout")
+        self._deck_group_box = QtWidgets.QGroupBox("Deck layout")
         layout = QtWidgets.QHBoxLayout()
 
         # Add home and zero buttons
@@ -90,16 +122,50 @@ class OpentronsDeckWidget(Widget):
                 # Do button if slot contains labware
                 self.deck_slots[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
                 self.deck_slots[corrds].setFixedSize(30, 30)
-                self.deck_slots[corrds].setStyleSheet("background-color: grey; font-size: 14px")
+                self.deck_slots[corrds].setStyleSheet("QPushButton"
+                                     "{"
+                                     "background-color : grey; font-size: 14px"
+                                     "}"
+                                     "QPushButton::pressed"
+                                     "{"
+                                     "background-color : red; font-size: 14px"
+                                     "}"
+                                     )
             else:
                 self.deck_slots[corrds] = QtWidgets.QLabel(corrds)  # QtWidgets.QPushButton(corrds)
                 self.deck_slots[corrds].setFixedSize(30, 30)
                 self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
             layout.addWidget(self.deck_slots[corrds])
 
-        self._horizontal_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._horizontal_group_box)
+        self._deck_group_box.setLayout(layout)
+        self.main_grid_layout.addWidget(self._deck_group_box)
         self.setLayout(self.main_grid_layout)
+
+    def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
+        self._scanner_widget = QtWidgets.QGroupBox("Scan list")
+        main_layout = QtWidgets.QGridLayout()
+
+        self.scan_list = QtWidgets.QTableWidget()
+        self.scan_list.setColumnCount(3)
+        self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Position", "Abs. Pos."])
+
+        self._actions_widget = QtWidgets.QGroupBox("Actions")
+
+        actions_layout = QtWidgets.QGridLayout()
+        actions_layout.addWidget(guitools.BetterPushButton('GO TO'), 0, 0, 2, 2)
+        actions_layout.addWidget(guitools.BetterPushButton('ADD CURRENT'), 0, 2, 2, 2)
+        actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
+        actions_layout.addWidget(QtWidgets.QLineEdit("1"), 0, 5, 1, 1)
+        actions_layout.addWidget(guitools.BetterPushButton('ADD'), 0, 6, 1, 1)
+
+        self._actions_widget.setLayout(actions_layout)
+
+
+        main_layout.addWidget(self.scan_list)
+        main_layout.addWidget(self._actions_widget)
+        self._scanner_widget.setLayout(main_layout)
+        self.main_grid_layout.addWidget(self._scanner_widget)
+
 
     def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
         self._positioner_widget = QtWidgets.QGroupBox("Positioners")

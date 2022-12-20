@@ -70,6 +70,13 @@ class STORMReconController(LiveUpdatedController):
 
         self.changeRate(self._widget.getUpdateRate())
         self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
+        
+        # setup reconstructor
+        self.peakDetector = CV_BlobDetector()
+        self.preFilter = BandpassFilter()
+        
+        self.imageComputationWorker.set_peakDetector(self.peakDetector)
+        self.imageComputationWorker.set_preFilter(self.preFilter)
 
     def valueChanged(self, magnitude):
         """ Change magnitude. """
@@ -130,10 +137,9 @@ class STORMReconController(LiveUpdatedController):
             # tune parameters
             
             index = 1
-            filtered = nip.gaussf(frame, 1.5)
+            filtered = None # nip.gaussf(frame, 1.5)
             varim = None
-            detector = CV_BlobDetector()
-            filter = BandpassFilter()
+
 
             # localize  frame 
             # params = > x,y,background, max(0, intensity), magnitudeX / magnitudeY
@@ -142,19 +148,22 @@ class STORMReconController(LiveUpdatedController):
                         frame,
                         filtered,
                         varim,
-                        filter,
-                        detector,
+                        self.preFilter,
+                        self.peakDetector,
                         rel_threshold=0.4,
                         PSFparam=np.array([1.5]),
                         roiSize=13,
                         method=FittingMethod._2D_Phasor_CPU)
 
             # create a simple render
-            allX = np.int(params[0])
-            allY = np.int(params[1])
-            
             frameLocalized = np.zeros(frame.shape)
-            frameLocalized[allY, allX] = 1
+            try:
+                allX = np.int(params[0])
+                allY = np.int(params[1])
+                frameLocalized[allY, allX] = 1
+            except:
+                pass
+
 
             return frameLocalized
 
@@ -186,6 +195,12 @@ class STORMReconController(LiveUpdatedController):
 
         def set_pixelsize(self, pixelsize):
             self.pixelsize = pixelsize
+            
+        def set_preFilter(self, preFilter):
+            self.preFilter = preFilter
+            
+        def set_peakDetector(self, peakDetector):
+            self.peakDetector = peakDetector
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

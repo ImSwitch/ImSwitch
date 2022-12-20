@@ -14,6 +14,7 @@ class GalvoScanDesigner(ScanDesigner):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
 
         self._expectedParameters = ['target_device',
                                     'axis_length',
@@ -33,6 +34,32 @@ class GalvoScanDesigner(ScanDesigner):
                     maxv = positioner.managerProperties['maxVolt']
                     if (scanInfo['minmaxes'][i][0] < minv or scanInfo['minmaxes'][i][1] > maxv):
                         return False
+        return True
+
+    def checkSignalLength(self, scanParameters, setupInfo):
+        """ Check that the signal would not be too large (to be stored in
+        the RAM and to be generated and run inside a reasonable time). """
+        #TODO: change limits below later, to be more representative of what we want. Also think about changing the
+        # way >d3 steps are generated and sent to the nidaq - probably should run those scans as simple d2 scans and
+        # repeat them, with steps on the axes that needs steps between. Keep track of that in ScanController for
+        # example, alternatively directly in NidaqController.runScan?
+        device_count = len([positioner for positioner in setupInfo.positioners.values() if positioner.forScanning])
+        # retrieve axis lengths in um of active axes
+        axis_length = [scanParameters['axis_length'][i] for i in range(device_count)
+                            if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1]
+        axis_count_scan = len(axis_length)
+        # retrieve axis step sizes in um of active axes
+        axis_step_size = [scanParameters['axis_step_size'][i] for i in range(device_count)
+                            if np.ceil(scanParameters['axis_length'][i]/scanParameters['axis_step_size'][i]) > 1]
+        # get list of number of axis steps
+        n_steps_dx = [int(axis_length[i] / axis_step_size[i]) for i in range(axis_count_scan)]
+        # get list of number of axis scan samples, for first two axes initially
+        scan_steps = np.prod(n_steps_dx)
+        scan_time = scan_steps * scanParameters['sequence_time']
+        if scan_time > 60*10:  # 10 minutes
+            return False
+        elif scan_steps > 1e7:
+            return False
         return True
 
     def make_signal(self, parameterDict, setupInfo):

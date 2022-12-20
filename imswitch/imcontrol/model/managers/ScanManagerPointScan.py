@@ -4,28 +4,10 @@ from abc import ABC, abstractmethod
 from imswitch.imcommon.model import initLogger
 from ..errors import IncompatibilityError
 from ..signaldesigners import SignalDesignerFactory
+from imswitch.imcontrol.model.managers.ScanManagerBase import ScanManagerFactory, SuperScanManager
 
 
-class ScanManagerFactory:
-    """Factory class for creating a ScanManager object. Factory checks
-    that the new object is a valid ScanManager."""
-
-    def __new__(cls, className, setupInfo, *args):
-        scanManager = globals()[className](setupInfo, *args)
-        if scanManager.isValidChild():
-            return scanManager
-
-
-class SuperScanManager(ABC):
-    def isValidChild(self):  # For future possible implementation
-        return True
-
-    @abstractmethod
-    def _parameterCompatibility(self, parameterDict):
-        pass
-
-
-class ScanManager(SuperScanManager):
+class ScanManagerPointScan(SuperScanManager):
     """ ScanManager helps with generating signals for scanning. """
 
     def __init__(self, setupInfo):
@@ -86,7 +68,14 @@ class ScanManager(SuperScanManager):
     def makeFullScan(self, scanParameters, TTLParameters):
         """ Generates stage and TTL scan signals. """
         self._checkScanDefined()
-
+        if not self._scanDesigner.checkSignalLength(
+                scanParameters, self._setupInfo
+        ):
+            self.__logger.error(
+                'Signal too long: try scanning a smaller ROI, faster, or with a larger pixel'
+                ' size.'
+            )
+            return
         scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
         if not self._scanDesigner.checkSignalComp(
                 scanParameters, self._setupInfo, scanInfoDict

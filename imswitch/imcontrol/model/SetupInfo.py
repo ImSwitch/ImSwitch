@@ -176,6 +176,9 @@ class AutofocusInfo:
 
 @dataclass(frozen=True)
 class ScanInfo:
+    scanWidgetType: str
+    """ Type of scan widget to generate: PointScan/MoNaLISA/Base/etc."""
+
     scanDesigner: str
     """ Name of the scan designer class to use. """
 

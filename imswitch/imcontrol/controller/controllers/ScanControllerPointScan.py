@@ -13,7 +13,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import SuperScanController
 
 
-class ScanController(SuperScanController):
+class ScanControllerPointScan(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)

@@ -12,7 +12,8 @@ from .LaserController import LaserController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
-from .ScanController import ScanController
+from .ScanControllerBase import ScanControllerBase
+from .ScanControllerPointScan import ScanControllerPointScan
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController

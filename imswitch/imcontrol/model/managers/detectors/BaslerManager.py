@@ -28,6 +28,11 @@ class BaslerManager(DetectorManager):
         for propertyName, propertyValue in detectorInfo.managerProperties['basler'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
+        try: # FIXME: get that form the real camera
+            isRGB = detectorInfo.managerProperties['basler']['isRGB']  
+        except:
+            isRGB = False
+
         fullShape = (self._camera.SensorHeight, 
                      self._camera.SensorWidth)
 
@@ -45,7 +50,9 @@ class BaslerManager(DetectorManager):
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False)
+                        editable=False), 
+            'isRGB': DetectorNumberParameter(group='Misc', value=isRGB, valueUnits='arb.u.',
+                        editable=False),
             }            
 
         # Prepare actions

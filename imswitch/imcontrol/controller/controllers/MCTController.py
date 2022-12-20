@@ -253,13 +253,6 @@ class MCTController(ImConWidgetController):
             except:
                 pass
 
-            # stop measurement once done
-            if self.nDuration <= self.nImages:
-                self.isMCTrunning = False
-                self._widget.mctStartButton.setEnabled(True)
-                self.timer.stop()
-                return
-
             # this should decouple the hardware-related actions from the GUI
             self.isMCTrunning = True
             self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
@@ -318,11 +311,15 @@ class MCTController(ImConWidgetController):
                     self.nImages += 1
                     self._widget.setNImages(self.nImages)
 
-                    self.isMCTrunning = False
-
-                    self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
                     self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                     self.LastStackLEDArrayLast = np.array(self.LastStackLED)
+
+                    # stop measurement once done
+                    if self.nDuration <= self.nImages:
+                        self.isMCTrunning = False
+                        self._widget.mctStartButton.setEnabled(True)
+                        break
+
 
                     self._widget.mctShowLastButton.setEnabled(True)
                 except:
@@ -378,8 +375,8 @@ class MCTController(ImConWidgetController):
         
         # reserve space for tiled image 
         downScaleFactor = 4
-        nTilesX = int((self.xScanMax-self.xScanMin)/self.xScanStep/downScaleFactor)
-        nTilesY = int((self.yScanMax-self.yScanMin)/self.yScanStep/downScaleFactor)
+        nTilesX = int((self.xScanMax-self.xScanMin)/self.xScanStep)
+        nTilesY = int((self.yScanMax-self.yScanMin)/self.yScanStep)
         imageDimensions = self.detector.getLatestFrame().shape
         imageDimensionsDownscaled = (imageDimensions[0]//downScaleFactor, imageDimensions[1]//downScaleFactor)
         tiledImageDimensions = (nTilesX*imageDimensions[0]//downScaleFactor, nTilesY*imageDimensions[1]//downScaleFactor)

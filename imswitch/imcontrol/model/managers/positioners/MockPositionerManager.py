@@ -28,6 +28,8 @@ class MockPositionerManager(PositionerManager):
     def setPosition(self, position, axis):
         self._position[self.axes[0]] = position
 
+    def get_position(self):
+        return [p for p in self._position.values()]*3
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

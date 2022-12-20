@@ -148,23 +148,38 @@ class OpentronsDeckWidget(Widget):
         self.scan_list = QtWidgets.QTableWidget()
         self.scan_list.setColumnCount(3)
         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Position", "Abs. Pos."])
+        self.scan_list_items = 0
+        self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
         self._actions_widget = QtWidgets.QGroupBox("Actions")
 
         actions_layout = QtWidgets.QGridLayout()
-        actions_layout.addWidget(guitools.BetterPushButton('GO TO'), 0, 0, 2, 2)
-        actions_layout.addWidget(guitools.BetterPushButton('ADD CURRENT'), 0, 2, 2, 2)
+        self.goto_btn = guitools.BetterPushButton('GO TO')
+        self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
+        self.pos_in_well_lined = QtWidgets.QLineEdit("1")
+        self.add_btn = guitools.BetterPushButton('ADD')
+
+        actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
+        actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
         actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
-        actions_layout.addWidget(QtWidgets.QLineEdit("1"), 0, 5, 1, 1)
-        actions_layout.addWidget(guitools.BetterPushButton('ADD'), 0, 6, 1, 1)
+        actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
+        actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
 
         self._actions_widget.setLayout(actions_layout)
 
 
-        main_layout.addWidget(self.scan_list)
+        main_layout.addWidget(self.scan_list,)
         main_layout.addWidget(self._actions_widget)
         self._scanner_widget.setLayout(main_layout)
         self.main_grid_layout.addWidget(self._scanner_widget)
+
+    def add_position_to_scan(self, slot, well, offset):
+
+        self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
+        self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
+        self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
+
+        self.scan_list_items += 1
 
 
     def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
@@ -220,6 +235,9 @@ class OpentronsDeckWidget(Widget):
         self._positioner_widget.setLayout(layout)
         self.main_grid_layout.addWidget(self._positioner_widget)
 
+    @property
+    def positions_in_well(self):
+        return int(self.pos_in_well_lined.text())
 
     def getStepSize(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in

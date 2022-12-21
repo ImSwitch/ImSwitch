@@ -109,8 +109,13 @@ class DetectorManager(SignalInterface):
         if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
             raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
                              ' DetectorInfo.')
-
-        self.setRGB(parameters['isRGB'].value)
+    
+        # set RGB if information is available 
+        try:
+            isRGB = parameters['isRGB'].value
+        except:
+            isRGB = False
+        self.setRGB(isRGB)
 
         self.setBinning(supportedBinnings[0])
 

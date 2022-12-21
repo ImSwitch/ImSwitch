@@ -13,10 +13,17 @@ from ..basecontrollers import LiveUpdatedController
 
 
 import numpy as np
-from microEye.Filters import BandpassFilter
-from microEye.fitting.fit import CV_BlobDetector
-from microEye.fitting.results import FittingMethod
-from microEye.fitting.fit import localize_frame
+try:
+    import microEye
+    isMicroEye = True
+except:
+    isMicroEye = False
+
+if isMicroEye:
+    from microEye.Filters import BandpassFilter
+    from microEye.fitting.fit import CV_BlobDetector
+    from microEye.fitting.results import FittingMethod
+    from microEye.fitting.fit import localize_frame
 
 
 class STORMReconController(LiveUpdatedController):
@@ -54,29 +61,29 @@ class STORMReconController(LiveUpdatedController):
         self.imageComputationWorker.set_dz(self.dz)
         self.imageComputationWorker.set_PSFpara(self.PSFpara)
         self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
-   
-        self.imageComputationThread = Thread()
-        self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
-        self.imageComputationThread.start()
+        if isMicroEye:
+            self.imageComputationThread = Thread()
+            self.imageComputationWorker.moveToThread(self.imageComputationThread)
+            self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
+            self.imageComputationThread.start()
 
-        # Connect CommunicationChannel signals
-        self._commChannel.sigUpdateImage.connect(self.update)
+            # Connect CommunicationChannel signals
+            self._commChannel.sigUpdateImage.connect(self.update)
 
-        # Connect STORMReconWidget signals
-        self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
-        self._widget.sigUpdateRateChanged.connect(self.changeRate)
-        self._widget.sigSliderValueChanged.connect(self.valueChanged)
+            # Connect STORMReconWidget signals
+            self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
+            self._widget.sigUpdateRateChanged.connect(self.changeRate)
+            self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
-        self.changeRate(self._widget.getUpdateRate())
-        self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
-        
-        # setup reconstructor
-        self.peakDetector = CV_BlobDetector()
-        self.preFilter = BandpassFilter()
-        
-        self.imageComputationWorker.set_peakDetector(self.peakDetector)
-        self.imageComputationWorker.set_preFilter(self.preFilter)
+            self.changeRate(self._widget.getUpdateRate())
+            self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
+            
+            # setup reconstructor
+            self.peakDetector = CV_BlobDetector()
+            self.preFilter = BandpassFilter()
+            
+            self.imageComputationWorker.set_peakDetector(self.peakDetector)
+            self.imageComputationWorker.set_preFilter(self.preFilter)
 
     def valueChanged(self, magnitude):
         """ Change magnitude. """

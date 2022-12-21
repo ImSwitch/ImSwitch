@@ -6,6 +6,7 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
+from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget

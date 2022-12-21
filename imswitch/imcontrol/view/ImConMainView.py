@@ -82,6 +82,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+            'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),

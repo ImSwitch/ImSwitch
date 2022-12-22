@@ -278,6 +278,13 @@ class MCTController(ImConWidgetController):
         # run as long as the MCT is active
         while(self.isMCTrunning):
 
+            # stop measurement once done
+            if self.nDuration <= self.nImages:
+                self.isMCTrunning = False
+                self._logger.debug("Done with timelapse")
+                self._widget.mctStartButton.setEnabled(True)
+                break
+
             # initialize a run
             if time.time() - self.timeLast >= (tperiod):
                 
@@ -314,20 +321,13 @@ class MCTController(ImConWidgetController):
                     self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                     self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-                    # stop measurement once done
-                    if self.nDuration <= self.nImages:
-                        self.isMCTrunning = False
-                        self._widget.mctStartButton.setEnabled(True)
-                        break
-
-
                     self._widget.mctShowLastButton.setEnabled(True)
                 except:
                     # close the controller ina nice way
                     pass
             
             # pause to not overwhelm the CPU
-            time.sleep(0.5)
+            time.sleep(0.1)
                     
 
 

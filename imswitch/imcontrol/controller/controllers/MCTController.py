@@ -322,7 +322,8 @@ class MCTController(ImConWidgetController):
                     self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
                     self._widget.mctShowLastButton.setEnabled(True)
-                except:
+                except Exception as e:
+                    self._logger.error("Thread closes with Error: "+e)
                     # close the controller ina nice way
                     pass
             
@@ -458,6 +459,9 @@ class MCTController(ImConWidgetController):
             iX = int((iXYPos[0]-self.xScanMin) // self.xScanStep)
             iY = int((iXYPos[1]-self.yScanMin) // self.yScanStep)
             
+            if len(lastFrame.shape)>2:
+                lastFrame = cv2.cvtColor(lastFrame, cv2.COLOR_BGR2GRAY)
+  
             lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
             self.tiledImage[int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0]), 
                             int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1])] = lastFrameScaled

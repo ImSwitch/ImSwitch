@@ -35,6 +35,10 @@ class AutofocusController(ImConWidgetController):
         self._widget.focusButton.clicked.connect(self.focusButton)
         self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
+        # select stage
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+
+
     def __del__(self):
         self._AutofocusThead.quit()
         self._AutofocusThead.wait()
@@ -71,24 +75,32 @@ class AutofocusController(ImConWidgetController):
 
         allfocusvals = []
         allfocuspositions = []
+
+                        
+        # get current position
+        initialPosition = self.stages.getPosition()["Z"]
         
-        # 0 move focus to initial position
-        self._master.positionersManager[self.positioner].move(-rangez, axis=gAxis)
-        img = self.grabCameraFrame()     # grab dummy frame?
-        # store data
+        
+        # precompute values for Z-scan
         Nz = int(2*rangez//resolutionz)
         allfocusvals = np.zeros(Nz)
-        allfocuspositions  = np.zeros(Nz)
+        allfocuspositions  = np.linspace(-abs(rangez),abs(rangez),Nz)+initialPosition
         allfocusimages = []
 
+        # 0 move focus to initial position
+        self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
+
+        # grab dummy frame? 
+        self.grabCameraFrame()     
+        
         # 1 compute focus for every z position
         for iz in range(Nz):
 
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
-            self._master.positionersManager[self.positioner].move(resolutionz, axis=gAxis)
+            self.stages.move(value=allfocuspositions[iz], axis="Z", is_absolute=True, is_blocking=True)
+
             time.sleep(T_DEBOUNCE)
-            positionz = iz*resolutionz
-            self._logger.debug(f'Moving focus to {positionz}')
+            self._logger.debug(f'Moving focus to {allfocuspositions[iz]}')
 
             # 1 Grab camera frame
             self._logger.debug("Grabbing Frame")
@@ -104,7 +116,6 @@ class AutofocusController(ImConWidgetController):
             # 3 compute focus metric
             focusquality = np.mean(ndi.filters.laplace(imagearraygf))
             allfocusvals[iz]=focusquality
-            allfocuspositions[iz] = positionz
 
         # display the curve
         self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
@@ -115,20 +126,20 @@ class AutofocusController(ImConWidgetController):
         bestzpos = allfocuspositions[np.squeeze(zindex)]
 
          # 5 move focus back to initial position (reduce backlash)
-        self._master.positionersManager[self.positioner].move(-Nz*resolutionz, axis=gAxis)
+        self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
         # 6 Move stage to the position with max focus value
         self._logger.debug(f'Moving focus to {zindex*resolutionz}')
-        self._master.positionersManager[self.positioner].move(zindex*resolutionz, axis=gAxis)
+        self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
 
 
         # DEBUG
         allfocusimages=np.array(allfocusimages)
-        np.save('allfocusimages.npy', allfocusimages)
-        import tifffile as tif
-        tif.imsave("llfocusimages.tif", allfocusimages)
-        np.save('allfocuspositions.npy', allfocuspositions)
-        np.save('allfocusvals.npy', allfocusvals)
+        #np.save('allfocusimages.npy', allfocusimages)
+        #import tifffile as tif
+        #tif.imsave("llfocusimages.tif", allfocusimages)
+        #np.save('allfocuspositions.npy', allfocuspositions)
+        #np.save('allfocusvals.npy', allfocusvals)
         
         # We are done!
         self._commChannel.sigAutoFocusRunning.emit(False) # inidicate that we are running the autofocus

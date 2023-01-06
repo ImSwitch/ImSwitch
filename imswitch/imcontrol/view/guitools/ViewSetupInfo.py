@@ -97,7 +97,7 @@ class ViewSetupInfo(SetupInfo):
 
     def setPositionerPreset(self, name, positionerPresetInfos):
         """ :meta private: """
-        self.laserPresets[name] = laserPresetInfo
+        self.laserPresets[name] = positionerPresetInfos
 
 
     def removeLaserPreset(self, name):

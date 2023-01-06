@@ -48,42 +48,43 @@ class STORMReconController(LiveUpdatedController):
         self.NA=.3
         self.k0 = 2*np.pi/(self.mWavelength)
 
-        self.PSFpara = nip.PSF_PARAMS()
-        self.PSFpara.wavelength = self.mWavelength
-        self.PSFpara.NA=self.NA
-        self.PSFpara.pixelsize = self.pixelsize
+        if isNIP:
+            self.PSFpara = nip.PSF_PARAMS()
+            self.PSFpara.wavelength = self.mWavelength
+            self.PSFpara.NA=self.NA
+            self.PSFpara.pixelsize = self.pixelsize
 
-        self.dz = 40*1e-3
+            self.dz = 40*1e-3
 
-        # Prepare image computation worker
-        self.imageComputationWorker = self.STORMReconImageComputationWorker()
-        self.imageComputationWorker.set_pixelsize(self.pixelsize)
-        self.imageComputationWorker.set_dz(self.dz)
-        self.imageComputationWorker.set_PSFpara(self.PSFpara)
-        self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
-        if isMicroEye:
-            self.imageComputationThread = Thread()
-            self.imageComputationWorker.moveToThread(self.imageComputationThread)
-            self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
-            self.imageComputationThread.start()
+            # Prepare image computation worker
+            self.imageComputationWorker = self.STORMReconImageComputationWorker()
+            self.imageComputationWorker.set_pixelsize(self.pixelsize)
+            self.imageComputationWorker.set_dz(self.dz)
+            self.imageComputationWorker.set_PSFpara(self.PSFpara)
+            self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
+            if isMicroEye:
+                self.imageComputationThread = Thread()
+                self.imageComputationWorker.moveToThread(self.imageComputationThread)
+                self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
+                self.imageComputationThread.start()
 
-            # Connect CommunicationChannel signals
-            self._commChannel.sigUpdateImage.connect(self.update)
+                # Connect CommunicationChannel signals
+                self._commChannel.sigUpdateImage.connect(self.update)
 
-            # Connect STORMReconWidget signals
-            self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
-            self._widget.sigUpdateRateChanged.connect(self.changeRate)
-            self._widget.sigSliderValueChanged.connect(self.valueChanged)
+                # Connect STORMReconWidget signals
+                self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
+                self._widget.sigUpdateRateChanged.connect(self.changeRate)
+                self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
-            self.changeRate(self._widget.getUpdateRate())
-            self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
-            
-            # setup reconstructor
-            self.peakDetector = CV_BlobDetector()
-            self.preFilter = BandpassFilter()
-            
-            self.imageComputationWorker.set_peakDetector(self.peakDetector)
-            self.imageComputationWorker.set_preFilter(self.preFilter)
+                self.changeRate(self._widget.getUpdateRate())
+                self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
+                
+                # setup reconstructor
+                self.peakDetector = CV_BlobDetector()
+                self.preFilter = BandpassFilter()
+                
+                self.imageComputationWorker.set_peakDetector(self.peakDetector)
+                self.imageComputationWorker.set_preFilter(self.preFilter)
 
     def valueChanged(self, magnitude):
         """ Change magnitude. """

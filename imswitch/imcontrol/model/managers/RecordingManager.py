@@ -8,6 +8,7 @@ import h5py
 import zarr
 import numpy as np
 import tifffile as tiff
+import cv2
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger

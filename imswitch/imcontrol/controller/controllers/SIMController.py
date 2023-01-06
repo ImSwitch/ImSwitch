@@ -344,9 +344,10 @@ class SIMProcessor(object):
             self.h.ky = self.ky_input
         
     def get_current_stack_for_calibration(self,data):
+        self.__logger.error("get_current_stack_for_calibration not implemented yet")
         '''
         Returns the 4D raw image (angles,phases,y,x) stack at the z value selected in the viewer  
-        '''
+        
         if(0):
             data = np.expand_dims(np.expand_dims(data, 0), 0)
             dshape = data.shape # TODO: Hardcoded ...data.shape
@@ -360,6 +361,7 @@ class SIMProcessor(object):
             phases_angles = phases_number*angles_number
             rdata = data.reshape(phases_angles, new_delta, dshape[-2],dshape[-1])            
             cal_stack = np.swapaxes(rdata, 0, 1).reshape((phases_angles * new_delta, dshape[-2],dshape[-1]))
+        '''
         return data
 
 

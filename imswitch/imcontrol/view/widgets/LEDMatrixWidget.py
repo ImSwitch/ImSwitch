@@ -28,7 +28,7 @@ class LEDMatrixWidget(Widget):
         # Create dictionary to hold buttons
         self.leds = {}
         # Create grid layout for leds (buttons)
-        wellLayout = self.grid
+        gridLayout = self.grid
 
         # Create dictionary to store well names (button texts)
         buttons = {}
@@ -46,21 +46,14 @@ class LEDMatrixWidget(Widget):
                                             font-size: 15px""")
 
             # Add button/label to layout
-            wellLayout.addWidget(self.leds[corrds], pos[0], pos[1])
+            gridLayout.addWidget(self.leds[corrds], pos[0], pos[1])
         
         self.ButtonAllOn = guitools.BetterPushButton("All On")
-        wellLayout.addWidget(self.ButtonAllOn, 0, 8, 1, 1)
+        gridLayout.addWidget(self.ButtonAllOn, 0, 8, 1, 1)
         
         self.ButtonAllOff = guitools.BetterPushButton("All Off")
-        wellLayout.addWidget(self.ButtonAllOff, 1, 8, 1, 1)
+        gridLayout.addWidget(self.ButtonAllOff, 1, 8, 1, 1)
                 
-        self.ButtonSubmit = guitools.BetterPushButton("Submit")
-        wellLayout.addWidget(self.ButtonSubmit, 2, 8, 1, 1)
-        
-        self.ButtonToggle = guitools.BetterPushButton("Toggle")
-        wellLayout.addWidget(self.ButtonToggle, 3, 8, 1, 1)
-        
-        
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=1)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -70,10 +63,10 @@ class LEDMatrixWidget(Widget):
         self.slider.setTickInterval(5)
         self.slider.setSingleStep(5)
         self.slider.setValue(0)
-        wellLayout.addWidget(self.slider, 9, 0, 1, 8)
+        gridLayout.addWidget(self.slider, 9, 0, 1, 8)
          
         # Add button layout to base well layout
-        self.setLayout(wellLayout)
+        self.setLayout(gridLayout)
   
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

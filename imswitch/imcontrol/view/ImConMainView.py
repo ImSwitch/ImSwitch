@@ -3,20 +3,27 @@ from dataclasses import dataclass
 from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
+from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
+from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
 
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
     sigPickSetup = QtCore.Signal()
+    sigPickConfig = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
+        self.__logger = initLogger(self)
+        self.__logger.debug('Initializing')
+
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
+        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
         # Widget factory
@@ -40,6 +47,10 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.pickSetupAction.triggered.connect(self.sigPickSetup)
         tools.addAction(self.pickSetupAction)
 
+        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+        self.pickConfigAction.triggered.connect(self.sigPickConfig)
+        tools.addAction(self.pickConfigAction)
+
         # Window
         self.setWindowTitle('ImSwitch')
 
@@ -53,9 +64,16 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'SLM': _DockInfo(name='SLM', yPosition=0),
+            'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),
+            'MCT': _DockInfo(name='MCT', yPosition=0),
+            'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
+            'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
+            'ISM': _DockInfo(name='ISM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
@@ -64,10 +82,13 @@ class ImConMainView(QtWidgets.QMainWindow):
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+            'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
+            'Watcher': _DockInfo(name='File Watcher', yPosition=3),
+            'Tiling': _DockInfo(name='Tiling', yPosition=3)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
@@ -133,6 +154,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickDatasetsDialogBlocking(self):
         result = self.pickDatasetsDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showConfigSetupDialogBlocking(self):
+        result = self.PickUC2BoardConfigDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):

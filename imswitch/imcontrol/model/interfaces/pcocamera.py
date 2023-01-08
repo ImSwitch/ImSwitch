@@ -8,7 +8,7 @@ from imswitch.imcommon.model import initLogger
 
 try:
     import pco
-from pco import sdk
+    from pco import sdk
 except:
     raise("PCO not installed")
 
@@ -40,7 +40,7 @@ class CameraPCO:
         self.preview_height = 600
 
         # reserve some space for the framebuffer
-        self.NBuffer = 60
+        self.NBuffer = 10
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
 
@@ -101,8 +101,9 @@ class CameraPCO:
         self.camera.close()
         
     def set_exposure_time(self,exposure_time):
+        self.exposure_time = exposure_time
         try:
-            self.camera.set_exposure_time(self.exposure_time*1e-6)
+            self.camera.set_exposure_time(self.exposure_time*1e-3)
         except:
             self.__logger.error("Not possible to set exposure time now...(PCO)")
 

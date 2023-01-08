@@ -151,6 +151,12 @@ class DetectorsManager(MultiManager, SignalInterface):
             self.execOnAll(lambda c: c.stopAcquisition(), condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStopped.emit()
 
+    def setUpdatePeriod(self, updatePeriod):
+        self._lvWorker.setUpdatePeriod(updatePeriod)
+        self._thread.quit()
+        self._thread.wait()
+        self._thread.start()
+
 
 class LVWorker(Worker):
     def __init__(self, detectorsManager, updatePeriod):
@@ -172,6 +178,9 @@ class LVWorker(Worker):
     def stop(self):
         if self._vtimer is not None:
             self._vtimer.stop()
+
+    def setUpdatePeriod(self, updatePeriod):
+        self._updatePeriod = updatePeriod
 
 
 class NoDetectorsError(RuntimeError):

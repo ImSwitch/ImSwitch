@@ -7,6 +7,7 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.view import PickDatasetsDialog
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
+from .WatcherFrame import WatcherFrame
 from .ReconstructionView import ReconstructionView
 from .ScanParamsDialog import ScanParamsDialog
 from .guitools import BetterPushButton
@@ -85,6 +86,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         self.dataFrame = DataFrame()
         self.multiDataFrame = MultiDataFrame()
+        self.watcherFrame = WatcherFrame()
 
         btnFrame = BtnFrame()
         btnFrame.sigReconstuctCurrent.connect(self.sigReconstuctCurrent)
@@ -119,9 +121,13 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         DataDock = DockArea()
 
+        self.watcherDock = Dock('File watcher')
+        self.watcherDock.addWidget(self.watcherFrame)
+        DataDock.addDock(self.watcherDock)
+
         self.multiDataDock = Dock('Multidata management')
         self.multiDataDock.addWidget(self.multiDataFrame)
-        DataDock.addDock(self.multiDataDock)
+        DataDock.addDock(self.multiDataDock, 'above', self.watcherDock)
 
         self.currentDataDock = Dock('Current data')
         self.currentDataDock.addWidget(self.dataFrame)

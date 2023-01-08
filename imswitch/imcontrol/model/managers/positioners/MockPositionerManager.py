@@ -1,25 +1,23 @@
+from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
-class NidaqPositionerManager(PositionerManager):
-    """ PositionerManager for analog-value NI-DAQ-controlled positioners.
+class MockPositionerManager(PositionerManager):
+    """ PositionerManager for mock positioner used for repeating measurements and/or timelapses.
 
     Manager properties:
 
-    - ``conversionFactor`` -- float value
-    - ``minVolt`` -- minimum voltage
-    - ``maxVolt`` -- maximum voltage
+    None
     """
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
+        self.__logger.debug('Initializing')
+
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'
                                f' {len(positionerInfo.axes)} provided.')
-
-        self._nidaqManager = lowLevelManagers['nidaqManager']
-        self._conversionFactor = positionerInfo.managerProperties['conversionFactor']
-        self._minVolt = positionerInfo.managerProperties['minVolt']
-        self._maxVolt = positionerInfo.managerProperties['maxVolt']
+                               
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
@@ -29,10 +27,6 @@ class NidaqPositionerManager(PositionerManager):
 
     def setPosition(self, position, axis):
         self._position[self.axes[0]] = position
-        self._nidaqManager.setAnalog(target=self.name,
-                                     voltage=position / self._conversionFactor,
-                                     min_val=self._minVolt,
-                                     max_val=self._maxVolt)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -18,6 +18,7 @@ class GXPIPYManager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.detectorInfo = detectorInfo
 
         binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
@@ -57,7 +58,9 @@ class GXPIPYManager(DetectorManager):
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True)
+                            editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -127,6 +130,10 @@ class GXPIPYManager(DetectorManager):
         self._camera.flushBuffer()
 
     def startAcquisition(self):
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -150,7 +157,11 @@ class GXPIPYManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
 

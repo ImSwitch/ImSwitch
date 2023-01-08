@@ -1,7 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
+venv
 # mypy
 .mypy_cache/
 
@@ -65,6 +65,9 @@ target/
 # Visual Studio Code
 .vscode/
 
+# Specific files
+imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
+
 # Mac Files
 .DS_Store
 **/.DS_Store
@@ -76,7 +79,6 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
-imswitch/imcontrol/controller/controllers/HoliSheetController.py
 ImSwitch/ImSwitch/recordings/2022-04-21/18h12m23s_rec_Holography.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-21/18h21m21s_rec_Holography.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-21/18h25m45s_rec_Holography.hdf5
@@ -94,3 +96,10 @@ ImSwitch/ImSwitch/recordings/2022-04-21/18h57m32s_rec_Holography.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-21/18h57m32s_rec_LightSheet.hdf5
 ImSwitch/ImSwitch/recordings/2022-04-23/Filename_rec_Holography.tiff
 ImSwitch/ImSwitch/recordings/2022-04-23/Filename_rec_LightSheet.tiff
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
+*.tif
+
+*.hdf5

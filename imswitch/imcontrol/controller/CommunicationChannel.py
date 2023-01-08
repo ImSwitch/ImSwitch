@@ -1,9 +1,9 @@
 from typing import Mapping
 
 import numpy as np
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
-from .server import ImSwitchServer
+from imswitch.imcommon.model import initLogger
 
 
 class CommunicationChannel(SignalInterface):
@@ -19,6 +19,8 @@ class CommunicationChannel(SignalInterface):
     sigAcquisitionStarted = Signal()
 
     sigAcquisitionStopped = Signal()
+
+    sigScriptExecutionFinished = Signal()
 
     sigAdjustFrame = Signal(object)  # (shape)
 
@@ -61,11 +63,35 @@ class CommunicationChannel(SignalInterface):
     sigSLMMaskUpdated = Signal(object)  # (mask)
     sigSIMMaskUpdated = Signal(object) # (mask)
 
+    sigToggleBlockScanWidget = Signal(bool)
+
+    sigSnapImg = Signal()
+
+    sigSnapImgPrev = Signal(str, np.ndarray, str)  # (detector, image, nameSuffix)
+
+    sigRequestScanParameters = Signal()
+
+    sigSendScanParameters = Signal(dict, dict, object)  # (analogParams, digitalParams, scannerList)
+
+    sigSetAxisCenters = Signal(object, object)  # (axisDeviceList, axisCenterList)
+
+    sigStartRecordingExternal = Signal()
+
+    sigRequestScanFreq = Signal()
+
+    sigSendScanFreq = Signal(float)  # (scanPeriod)
+
+    #sigRequestScannersInScan = Signal()
+
+    #sigSendScannersInScan = Signal(object)  # (scannerList)
+
+    sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
+    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
+
     sigBroadcast = Signal(str, str, object)
 
-    # useq-schema related signals
-    sigSetXYPosition = Signal(float, float)
-    sigSetZPosition = Signal(float)
+    sigSaveFocus = Signal()
+
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
 
@@ -77,12 +103,10 @@ class CommunicationChannel(SignalInterface):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
-        self._serverWorker = ImSwitchServer(self, setupInfo)
-        self._thread = Thread()
-        self._serverWorker.moveToThread(self._thread)
-        self._thread.started.connect(self._serverWorker.run)
-        self._thread.finished.connect(self._serverWorker.stop)
-        self._thread.start()
+        self.__logger = initLogger(self)
+        self._scriptExecution = False
+        self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.output = []
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -106,6 +130,28 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
+
+    def move(self, positionerName, axis="X", dist=0):
+        return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
+
+    @APIExport(runOnUIThread=True)
+    def acquireImage(self) -> None:
+        image = self.get_image()
+        self.output.append(image)
+        return image
+
+    def runScript(self, text):
+        self.output = []
+        self._scriptExecution = True
+        self.__main._moduleCommChannel.sigRunScript.emit(text)
+
+    def executionFinished(self):
+        self.sigScriptExecutionFinished.emit()
+        self._scriptExecution = False
+
+    def isExecuting(self):
+        return self._scriptExecution
+
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
@@ -125,7 +171,8 @@ class CommunicationChannel(SignalInterface):
             'acquisitionStopped': self.sigAcquisitionStopped,
             'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
-            'scanEnded': self.sigScanEnded
+            'scanEnded': self.sigScanEnded,
+            'saveFocus': self.sigSaveFocus
         })
 
 

@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-import pyqtgraph.ptime as ptime
+from time import perf_counter
 import scipy.ndimage as ndi
 from lantz import Q_
 from skimage.feature import peak_local_max
@@ -64,8 +64,8 @@ class FocusLockController(ImConWidgetController):
 
         self.timer = Timer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(self.focusTime)
-        self.startTime = ptime.time()
+        self.timer.start(int(self.focusTime))
+        self.startTime = perf_counter()
 
     def __del__(self):
         self.__processDataThread.quit()
@@ -144,12 +144,12 @@ class FocusLockController(ImConWidgetController):
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint] = self.setPointSignal
-            self.timeData[self.currPoint] = ptime.time() - self.startTime
+            self.timeData[self.currPoint] = perf_counter() - self.startTime
         else:
             self.setPointData[:-1] = self.setPointData[1:]
             self.setPointData[-1] = self.setPointSignal
             self.timeData[:-1] = self.timeData[1:]
-            self.timeData[-1] = ptime.time() - self.startTime
+            self.timeData[-1] = perf_counter() - self.startTime
         self.currPoint += 1
 
     def updatePI(self):
@@ -184,6 +184,8 @@ class ProcessDataThread(Thread):
     def grabCameraFrame(self):
         detectorManager = self._controller._master.detectorsManager[self._controller.camera]
         self.latestimg = detectorManager.getLatestFrame()
+        # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
+        self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
 
     def update(self, twoFociVar):

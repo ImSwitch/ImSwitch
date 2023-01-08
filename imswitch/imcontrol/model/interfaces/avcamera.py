@@ -31,6 +31,7 @@ class CameraAV:
         self.hsize = 0
         self.hpos = 0 
         self.vpos = 0 
+
         
         # reserve some space for the framebuffer
         self.buffersize = 60
@@ -39,6 +40,9 @@ class CameraAV:
         #%% starting the camera thread
         self.vimba = self.startVimba()
         self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
+
+        # creating dummy frame
+        self.frame = np.zeros(self.shape)
 
     def start_live(self):
         # check if camera is open
@@ -257,8 +261,8 @@ class CameraAV:
             self.is_camera_open = True
             self.camera.arm('Continuous',callback_fct)
             self.__logger.debug("camera connected")
-            self.SensorHeight = self.camera.feature("SensorHeight").value
             self.SensorWidth = self.camera.feature("SensorWidth").value
+            self.SensorHeight = self.camera.feature("SensorHeight").value
             #self.shape = (np.min((self.SensorHeight,self.SensorWidth)),np.min((self.SensorHeight,self.SensorWidth)))
             self.shape = (self.SensorWidth,self.SensorHeight)
 

@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager
+    DetectorsManager, LasersManager, MultiManager, PositionersManager,
+    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager
 )
 
 
@@ -17,13 +17,9 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
-            'nidaqManager': self.nidaqManager,
-            'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
@@ -40,7 +36,13 @@ class MasterController:
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+        self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
+        self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
+        self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
+        self.ismManager = ISMManager(self.__setupInfo.ism)
 
         # Connect signals
         cc = self.__commChannel

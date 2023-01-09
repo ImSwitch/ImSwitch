@@ -37,6 +37,8 @@ class OpentronsDeckWidget(Widget):
                 else:
                     btn.setStyleSheet("background-color: grey; font-size: 14px")
 
+
+
     def select_labware(self, slot):
         if hasattr(self,"_wells_group_box"):
             self.main_grid_layout.removeWidget(self._wells_group_box)
@@ -147,7 +149,7 @@ class OpentronsDeckWidget(Widget):
 
         self.scan_list = QtWidgets.QTableWidget()
         self.scan_list.setColumnCount(3)
-        self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Position", "Abs. Pos."])
+        self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
         self.scan_list_items = 0
         self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
@@ -168,18 +170,20 @@ class OpentronsDeckWidget(Widget):
         self._actions_widget.setLayout(actions_layout)
 
 
-        main_layout.addWidget(self.scan_list,)
+        main_layout.addWidget(self.scan_list)
         main_layout.addWidget(self._actions_widget)
         self._scanner_widget.setLayout(main_layout)
         self.main_grid_layout.addWidget(self._scanner_widget)
 
     def add_position_to_scan(self, slot, well, offset):
 
+        self.scan_list.insertRow(self.scan_list_items)
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
 
         self.scan_list_items += 1
+
 
 
     def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):

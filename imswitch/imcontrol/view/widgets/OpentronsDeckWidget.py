@@ -26,6 +26,10 @@ class OpentronsDeckWidget(Widget):
         self.pars = {}
         self.main_grid_layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.main_grid_layout)
+        self.current_slot = None
+        self.current_well = None
+        self.current_offset = (None,None)
+
 
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
 
@@ -184,7 +188,12 @@ class OpentronsDeckWidget(Widget):
 
         self.scan_list_items += 1
 
-
+    def add_current_position_to_scan(self):
+        self.scan_list.insertRow(self.scan_list_items)
+        self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
+        self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
+        self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
+        self.scan_list_items += 1
 
     def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
         self._positioner_widget = QtWidgets.QGroupBox("Positioners")
@@ -238,6 +247,25 @@ class OpentronsDeckWidget(Widget):
             self.numPositioners += 1
         self._positioner_widget.setLayout(layout)
         self.main_grid_layout.addWidget(self._positioner_widget)
+
+    @property
+    def current_slot(self):
+        return self._current_slot
+    @current_slot.setter
+    def current_slot(self, current_slot):
+        self._current_slot = current_slot
+    @property
+    def current_well(self):
+        return self._current_well
+    @current_well.setter
+    def current_well(self, current_well):
+        self._current_well = current_well
+    @property
+    def current_offset(self):
+        return self._current_offset
+    @current_offset.setter
+    def current_offset(self, current_offset):
+        self._current_offset = current_offset
 
     @property
     def positions_in_well(self):

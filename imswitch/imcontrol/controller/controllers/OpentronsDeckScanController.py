@@ -267,7 +267,6 @@ class OpentronsDeckScanController(LiveUpdatedController):
     def select_labware(self, slot):
         self.__logger.debug(f"Slot {slot}")
         self._widget.select_labware(slot)
-        # TODO: change color of selected slot button.
         self.selected_slot = slot
         self.connect_wells()
 

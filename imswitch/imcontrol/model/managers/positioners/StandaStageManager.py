@@ -80,7 +80,7 @@ class StandaStageManager(PositionerManager):
             self._positioner.y_axis.shift_on(dist)
             if is_blocking:
                 self._positioner.wait_for_stop()
-            self.setPosition(current_position[1]+dist, "X")
+            self.setPosition(current_position[1]+dist, "Y")
         else:
             raise ValueError("Invalid axis.")
         return

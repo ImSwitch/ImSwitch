@@ -8,6 +8,7 @@ class WatcherFrame(QtWidgets.QFrame):
     """Frame for reconstructing files from a folder automatically."""
 
     sigWatchChanged = QtCore.Signal(bool)  # (enabled)
+    sigChangeFolder = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,8 +48,7 @@ class WatcherFrame(QtWidgets.QFrame):
         if path:
             self.path = path
             self.folderEdit.setText(self.path)
-            self.updateFileList()
-
+            self.sigChangeFolder.emit()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

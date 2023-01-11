@@ -18,7 +18,8 @@ from .basecontrollers import ImRecWidgetController
 class ImRecMainViewController(ImRecWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self._commChannel.extension = self._widget.extension
+        
         self.dataFrameController = self._factory.createController(
             DataFrameController, self._widget.dataFrame
         )
@@ -60,7 +61,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
         self._commChannel.sigReconstruct.connect(self.reconstruct)
-        self._commChannel.extension = self._widget.extension
+
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))

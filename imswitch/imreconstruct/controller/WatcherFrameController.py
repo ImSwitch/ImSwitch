@@ -9,6 +9,7 @@ from ome_zarr.io import parse_url
 from ome_zarr.writer import write_image
 from time import perf_counter
 import tifffile as tiff
+import h5py
 
 
 class WatcherFrameController(ImRecWidgetController):
@@ -19,14 +20,15 @@ class WatcherFrameController(ImRecWidgetController):
         self.attrs = None
         self.recPath = None
         self._widget.sigWatchChanged.connect(self.toggleWatch)
+        self._widget.sigChangeFolder.connect(lambda: self._widget.updateFileList(self._commChannel.extension.value()))
         self._commChannel.sigExecutionFinished.connect(self.executionFinished)
+        self._commChannel.extension.sigValueChanged.connect(self.extensionChanged)
         self.execution = False
         self.toExecute = []
         self.current = None
         self.t0 = None
         self.extension = None
         self.__logger = initLogger(self, tryInheritParent=False)
-
 
     def toggleWatch(self, checked):
         if checked:
@@ -47,6 +49,10 @@ class WatcherFrameController(ImRecWidgetController):
             self.watcher.stop()
             self.watcher.quit()
             self.toExecute = []
+
+    def extensionChanged(self):
+        self._widget.updateFileList(self._commChannel.extension.value())
+        self._widget.watchCheck.setChecked(False)
 
     def newFiles(self, files):
         self._widget.updateFileList(self.extension)
@@ -86,14 +92,26 @@ class WatcherFrameController(ImRecWidgetController):
     def saveImage(self, image):
         image = np.squeeze(image[:, 0, :, :, :, :])
         image = np.reshape(image, (1, *image.shape))
-        if self._commChannel.extension.value() == 'zarr':
-            store = parse_url(self.recPath + '.tmp', mode="w").store
-            root = zarr.group(store=store)
-            root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"]
-            write_image(image=image, group=root, axes="zyx")
-            store.close()
-            os.rename(self.recPath + '.tmp', self.recPath)
-        tiff.imwrite(self.recPath + ".tiff", image)
+        extension = self._commChannel.extension.value()
+        if not os.path.exists(self.recPath):
+            if extension == 'zarr':
+                store = parse_url(self.recPath + '.tmp', mode="w").store
+                root = zarr.group(store=store)
+                root.attrs["ImSwitchData"] = self.attrs["ImSwitchData"]
+                write_image(image=image, group=root, axes="zyx")
+                store.close()
+                os.rename(self.recPath + '.tmp', self.recPath)
+                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image)
+            if extension == 'hdf5':
+                h = h5py.File(self.recPath + '.tmp', 'w')
+                dset = h.create_dataset('data', data=image)
+                self.__logger.debug(type(self.attrs))
+                for k in self.attrs.keys():
+                    dset.attrs[k] = self.attrs[k]
+                h.close()
+                os.rename(self.recPath + '.tmp', self.recPath)
+                tiff.imwrite(self.recPath.split('.')[0] + ".tiff", image)
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

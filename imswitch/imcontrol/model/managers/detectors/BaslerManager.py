@@ -20,6 +20,11 @@ class BaslerManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getBaslerObj(detectorInfo.managerProperties['cameraListIndex'])
+        try:        
+            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
+        except Exception as e:
+            self.__logger.error("No value is given for the effective pixelsize in the config json!")
+            pixelSize = 1
 
         model = self._camera.model
         self._running = False
@@ -53,6 +58,8 @@ class BaslerManager(DetectorManager):
                         editable=False), 
             'isRGB': DetectorNumberParameter(group='Misc', value=isRGB, valueUnits='arb.u.',
                         editable=False),
+            'Camera pixel size': DetectorNumberParameter(group='Misc', value=pixelSize,
+                                    valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -133,7 +140,8 @@ class BaslerManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():

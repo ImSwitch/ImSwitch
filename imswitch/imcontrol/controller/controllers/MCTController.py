@@ -519,7 +519,6 @@ class MCTController(ImConWidgetController):
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
 
-
         return newPath
     
     def setAutoFocusIsRunning(self, isRunning):

@@ -1,14 +1,11 @@
 import numpy as np
+import tifffile as tif
+import os
+from datetime import datetime
 
-try:
-    import NanoImagingPack as nip
-    isNIP = True
-except:
-    isNIP = False
-    
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import LiveUpdatedController
 
 
@@ -33,57 +30,39 @@ class STORMReconController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.updateRate = 10
+        self.updateRate = 0
         self.it = 0
-        self.init = False
         self.showPos = False
 
         # reconstruction related settings
         #TODO: Make parameters adaptable from Plugin
-        self.valueRangeMin=0
-        self.valueRangeMax=0
-        self.pixelsize = 3.45*1e-6   
-        self.mWavelength = 488*1e-9
-        self.NA=.3
-        self.k0 = 2*np.pi/(self.mWavelength)
+        # Prepare image computation worker
+        self.imageComputationWorker = self.STORMReconImageComputationWorker()
+        self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
+            
+        if isMicroEye:
+            self.imageComputationThread = Thread()
+            self.imageComputationWorker.moveToThread(self.imageComputationThread)
+            self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
+            self.imageComputationThread.start()
 
-        if isNIP:
-            self.PSFpara = nip.PSF_PARAMS()
-            self.PSFpara.wavelength = self.mWavelength
-            self.PSFpara.NA=self.NA
-            self.PSFpara.pixelsize = self.pixelsize
+            # Connect CommunicationChannel signals
+            self._commChannel.sigUpdateImage.connect(self.update)
 
-            self.dz = 40*1e-3
+            # Connect STORMReconWidget signals
+            self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
+            self._widget.sigUpdateRateChanged.connect(self.changeRate)
+            self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
-            # Prepare image computation worker
-            self.imageComputationWorker = self.STORMReconImageComputationWorker()
-            self.imageComputationWorker.set_pixelsize(self.pixelsize)
-            self.imageComputationWorker.set_dz(self.dz)
-            self.imageComputationWorker.set_PSFpara(self.PSFpara)
-            self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
-            if isMicroEye:
-                self.imageComputationThread = Thread()
-                self.imageComputationWorker.moveToThread(self.imageComputationThread)
-                self.sigImageReceived.connect(self.imageComputationWorker.computeSTORMReconImage)
-                self.imageComputationThread.start()
+            self.changeRate(self.updateRate)
+            self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
+            
+            # setup reconstructor
+            self.peakDetector = CV_BlobDetector()
+            self.preFilter = BandpassFilter()
 
-                # Connect CommunicationChannel signals
-                self._commChannel.sigUpdateImage.connect(self.update)
-
-                # Connect STORMReconWidget signals
-                self._widget.sigShowToggled.connect(self.setShowSTORMRecon)
-                self._widget.sigUpdateRateChanged.connect(self.changeRate)
-                self._widget.sigSliderValueChanged.connect(self.valueChanged)
-
-                self.changeRate(self.updateRate)
-                self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
-                
-                # setup reconstructor
-                self.peakDetector = CV_BlobDetector()
-                self.preFilter = BandpassFilter()
-                
-                self.imageComputationWorker.set_peakDetector(self.peakDetector)
-                self.imageComputationWorker.set_preFilter(self.preFilter)
+            self.imageComputationWorker.setDetector(self.peakDetector)
+            self.imageComputationWorker.setFilter(self.preFilter)
 
     def valueChanged(self, magnitude):
         """ Change magnitude. """
@@ -98,12 +77,23 @@ class STORMReconController(LiveUpdatedController):
 
     def setShowSTORMRecon(self, enabled):
         """ Show or hide STORMRecon. """
-        #self.pixelsize = self._widget.getPixelSize()
-        #self.mWavelength = self._widget.getWvl()
-        #self.NA = self._widget.getNA()
-        #self.k0 = 2 * np.pi / (self.mWavelength)
+        
+        # read parameters from GUI for reconstruction the data on the fly
+        filter = self._widget.image_filter.currentData().filter
+        tempEnabled = self._widget.tempMedianFilter.enabled.isChecked()
+        detector = self._widget.detection_method.currentData().detector
+
+        # write parameters to worker
+        self.imageComputationWorker.setFilter(filter)
+        self.imageComputationWorker.setTempEnabled(tempEnabled)
+        self.imageComputationWorker.setDetector(detector)
+        
+        # this will activate/deactivate the live reconstruction
         self.active = enabled
-        self.init = False
+        
+        # if it will be deactivated, trigger an image-save operation
+        if not self.active:
+            self.imageComputationWorker.saveImage()
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -142,13 +132,17 @@ class STORMReconController(LiveUpdatedController):
             self.sumReconstruction = None
 
 
-        def reconSTORMFrame(self, frame):
+        def reconSTORMFrame(self, frame, preFilter, peakDetector,
+                            rel_threshold=0.4, PSFparam=np.array([1.5]), 
+                            roiSize=13, method=FittingMethod._2D_Phasor_CPU):
             # tune parameters
+            
+            # parameters are read only once the SMLM reconstruction is initiated
+            # cannot be altered during recroding
             
             index = 1
             filtered = filtered = frame.copy() # nip.gaussf(frame, 1.5)
             varim = None
-
 
             # localize  frame 
             # params = > x,y,background, max(0, intensity), magnitudeX / magnitudeY
@@ -157,12 +151,12 @@ class STORMReconController(LiveUpdatedController):
                         frame,
                         filtered,
                         varim,
-                        self.preFilter,
-                        self.peakDetector,
-                        rel_threshold=0.4,
-                        PSFparam=np.array([1.5]),
-                        roiSize=13,
-                        method=FittingMethod._2D_Phasor_CPU)
+                        preFilter,
+                        peakDetector,
+                        rel_threshold,
+                        PSFparam,
+                        roiSize,
+                        method)
 
             # create a simple render
             frameLocalized = np.zeros(frame.shape)
@@ -173,7 +167,6 @@ class STORMReconController(LiveUpdatedController):
             except Exception as e:
                 pass
 
-
             return frameLocalized
 
         def computeSTORMReconImage(self):
@@ -181,7 +174,7 @@ class STORMReconController(LiveUpdatedController):
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
-                STORMReconrecon = self.reconSTORMFrame(self._image)
+                STORMReconrecon = self.reconSTORMFrame(self._image, self.preFilter, self.peakDetector)
                 if self.sumReconstruction is None:
                     self.sumReconstruction = STORMReconrecon
                 else:
@@ -196,26 +189,43 @@ class STORMReconController(LiveUpdatedController):
         def prepareForNewImage(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
-            #self.STORMReconrecon = self.reconSTORMFrame(self._image)
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()
 
-        def set_dz(self, dz):
-            self.dz = dz
+        def setFilter(self, filter):
+            self.preFilter = filter
         
-        def set_PSFpara(self, PSFpara):
-            self.PSFpara = PSFpara
-
-        def set_pixelsize(self, pixelsize):
-            self.pixelsize = pixelsize
+        def setTempEnabled(self, tempEnabled):
+            self.tempEnabled = tempEnabled
             
-        def set_preFilter(self, preFilter):
-            self.preFilter = preFilter
+        def setDetector(self, detector):
+            self.peakDetector = detector
             
-        def set_peakDetector(self, peakDetector):
-            self.peakDetector = peakDetector
+        def saveImage(self, filename="STORMRecon", fileExtension="tif"):
+            if self.sumReconstruction is None:
+                return
+            time = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")            
+            filePath = self.getSaveFilePath(date=time, 
+                                timestamp=0,
+                                filename=filename, 
+                                extension=fileExtension)
+            
+            # self.switchOffIllumination()
+            self._logger.debug(filePath)
+            tif.imwrite(filePath, self.sumReconstruction, append=False)
+            self.sumReconstruction = None
+            
+        def getSaveFilePath(self, date, timestamp, filename, extension):
+            mFilename =  f"{date}_{filename}.{extension}"
+            dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date, "t"+str(timestamp))
 
+            newPath = os.path.join(dirPath,mFilename)
+
+            if not os.path.exists(dirPath):
+                os.makedirs(dirPath)
+
+            return newPath
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

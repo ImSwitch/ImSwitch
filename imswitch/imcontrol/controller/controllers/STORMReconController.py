@@ -15,15 +15,14 @@ from ..basecontrollers import LiveUpdatedController
 import numpy as np
 try:
     import microEye
-    isMicroEye = True
-except:
-    isMicroEye = False
-
-if isMicroEye:
+    isMicroEye = True         
     from microEye.Filters import BandpassFilter
     from microEye.fitting.fit import CV_BlobDetector
     from microEye.fitting.results import FittingMethod
     from microEye.fitting.fit import localize_frame
+  
+except:
+    isMicroEye = False
 
 
 class STORMReconController(LiveUpdatedController):
@@ -76,7 +75,7 @@ class STORMReconController(LiveUpdatedController):
                 self._widget.sigUpdateRateChanged.connect(self.changeRate)
                 self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
-                self.changeRate(self._widget.getUpdateRate())
+                self.changeRate(self.updateRate)
                 self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
                 
                 # setup reconstructor
@@ -99,10 +98,10 @@ class STORMReconController(LiveUpdatedController):
 
     def setShowSTORMRecon(self, enabled):
         """ Show or hide STORMRecon. """
-        self.pixelsize = self._widget.getPixelSize()
-        self.mWavelength = self._widget.getWvl()
-        self.NA = self._widget.getNA()
-        self.k0 = 2 * np.pi / (self.mWavelength)
+        #self.pixelsize = self._widget.getPixelSize()
+        #self.mWavelength = self._widget.getWvl()
+        #self.NA = self._widget.getNA()
+        #self.k0 = 2 * np.pi / (self.mWavelength)
         self.active = enabled
         self.init = False
 
@@ -139,13 +138,15 @@ class STORMReconController(LiveUpdatedController):
             self.PSFpara = None
             self.pixelsize = 1
             self.dz = 1
+            
+            self.sumReconstruction = None
 
 
         def reconSTORMFrame(self, frame):
             # tune parameters
             
             index = 1
-            filtered = None # nip.gaussf(frame, 1.5)
+            filtered = filtered = frame.copy() # nip.gaussf(frame, 1.5)
             varim = None
 
 
@@ -166,10 +167,10 @@ class STORMReconController(LiveUpdatedController):
             # create a simple render
             frameLocalized = np.zeros(frame.shape)
             try:
-                allX = np.int(params[0])
-                allY = np.int(params[1])
-                frameLocalized[allY, allX] = 1
-            except:
+                allX = np.int32(params[:,0])
+                allY = np.int32(params[:,1])
+                frameLocalized[(allY, allX)] = 1
+            except Exception as e:
                 pass
 
 
@@ -180,8 +181,13 @@ class STORMReconController(LiveUpdatedController):
             try:
                 if self._numQueuedImages > 1:
                     return  # Skip this frame in order to catch up
-                #STORMReconrecon = self.reconSTORMFrame(self._image)
+                STORMReconrecon = self.reconSTORMFrame(self._image)
+                if self.sumReconstruction is None:
+                    self.sumReconstruction = STORMReconrecon
+                else:
+                    self.sumReconstruction += STORMReconrecon
                 #self.sigSTORMReconImageComputed.emit(np.array(STORMReconrecon))
+                self.sigSTORMReconImageComputed.emit(np.array(self.sumReconstruction))
             finally:
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages -= 1
@@ -190,7 +196,7 @@ class STORMReconController(LiveUpdatedController):
         def prepareForNewImage(self, image):
             """ Must always be called before the worker receives a new image. """
             self._image = image
-            self.STORMReconrecon = self.reconSTORMFrame(self._image)
+            #self.STORMReconrecon = self.reconSTORMFrame(self._image)
             self._numQueuedImagesMutex.lock()
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()

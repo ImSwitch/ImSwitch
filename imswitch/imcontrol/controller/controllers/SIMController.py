@@ -22,9 +22,9 @@ try:
     from mcsim.analysis import sim_reconstruction as sim
     isGPU = True
 except:
-    print("GPU not available"")
+    print("GPU not available")
     import numpy as cp 
-    from mcsim.analysis import sim_reconstruction_cpu as sim
+    from mcsim.analysis import sim_reconstruction as sim
     isGPU = False
 
 try:

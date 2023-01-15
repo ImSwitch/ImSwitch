@@ -129,7 +129,7 @@ class MCTController(ImConWidgetController):
             self._widget.mctValueYsteps.setText(str(self.optDy))
             
         except Exception as e:
-            self.logger.error(e)
+            self._logger.error(e)
 
 
     def initFilter(self):

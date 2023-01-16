@@ -34,6 +34,9 @@ class SLMWidget(Widget):
              'suffix': 'px'},
             {'name': 'rotationAngle', 'type': 'float', 'value': 0, 'limits': (-6.2832, 6.2832),
              'step': 0.1,
+             'suffix': 'rad'},
+            {'name': 'tiltAngle', 'type': 'float', 'value': 0.15, 'limits': (-200, 200),
+             'step': 0.01,
              'suffix': 'rad'}
         ]}]
         self.slmParameterTree.setStyleSheet("""

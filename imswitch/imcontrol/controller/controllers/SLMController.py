@@ -27,7 +27,7 @@ class SLMController(ImConWidgetController):
         # self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
-        self._commChannel.sigSLMMaskUpdated.connect(self.displayMask)
+        self._commChannel.sigSLMMaskUpdated.connect(lambda mask: self.displayMask(mask))
 
         # Connect SLMWidget signals
         self._widget.controlPanel.upButton.clicked.connect(
@@ -128,7 +128,7 @@ class SLMController(ImConWidgetController):
 
         if generalParams is not None:
             # create dict for general params
-            generalparamnames = ["radius", "sigma", "rotationAngle"]
+            generalparamnames = ["radius", "sigma", "rotationAngle", "tiltAngle"]
             state_general = {generalparamname: float(
                 generalParams.param("general").param(generalparamname).value()) for generalparamname
                              in generalparamnames}
@@ -191,7 +191,7 @@ class SLMController(ImConWidgetController):
         generalParams = self._widget.slmParameterTree.p
         aberParams = self._widget.aberParameterTree.p
 
-        generalparamnames = ["radius", "sigma", "rotationAngle"]
+        generalparamnames = ["radius", "sigma", "rotationAngle", "tiltAngle"]
         for generalparamname in generalparamnames:
             generalParams.param("general").param(generalparamname).setValue(
                 float(state_general[generalparamname])
@@ -219,20 +219,18 @@ class SLMController(ImConWidgetController):
                                          aberParams=self._widget.aberParameterTree.p)
         self.applyGeneral(slm_info_dict["general"])
         self.applyAberrations(slm_info_dict["aber"])
+        image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True)
+        self.updateDisplayImage(image)
         self._master.slmManager.saveState(state_general=slm_info_dict["general"],
                                           state_aber=slm_info_dict["aber"])
 
     def applyGeneral(self, info_dict):
         self._master.slmManager.setGeneral(info_dict)
-        image = self._master.slmManager.update(maskChange=True)
-        self.updateDisplayImage(image)
         # self._logger.debug('Apply changes to general slm mask parameters.')
 
     def applyAberrations(self, info_dict):
         self._master.slmManager.setAberrations(info_dict)
-        image = self._master.slmManager.update(aberChange=True)
-        self.updateDisplayImage(image)
-        # self._logger.debug('Apply changes to aberration correction masks.')
+        # self._logger.debug('Apply changes to aberration correction mask parameters.')
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())

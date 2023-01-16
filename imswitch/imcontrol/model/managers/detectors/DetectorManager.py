@@ -64,6 +64,7 @@ class DetectorManager(SignalInterface):
     detector corresponds to a manager derived from this class. """
 
     sigImageUpdated = Signal(np.ndarray, bool)
+    sigNewFrame = Signal()
 
     @abstractmethod
     def __init__(self, detectorInfo, name: str, fullShape: Tuple[int, int],

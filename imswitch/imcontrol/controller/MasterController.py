@@ -2,7 +2,7 @@ from imswitch.imcommon.model import VFileItem
 from imswitch.imcontrol.model import (
     #DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager, StandaMotorManager
+    RecordingManager, RS232sManager, ScanManager, SLMManager, RotatorsManager
 )
 
 
@@ -38,7 +38,7 @@ class MasterController:
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
-        self.standaMotorManager = StandaMotorManager(self.__setupInfo.rotator)
+        self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators)
 
         # Connect signals
         cc = self.__commChannel
@@ -47,6 +47,7 @@ class MasterController:
         self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
         self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
+        self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
 
         self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
         self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)

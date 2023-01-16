@@ -11,11 +11,13 @@ import cv2
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
+from imswitch.imcontrol.model import configfiletools
 import time
 
 from ..basecontrollers import LiveUpdatedController
 
 #import NanoImagingPack as nip
+
 
 class PixelCalibrationController(LiveUpdatedController):
     """Linked to PixelCalibrationWidget."""
@@ -35,10 +37,6 @@ class PixelCalibrationController(LiveUpdatedController):
         
         self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
         self.pixelSize=500 # defaul FIXME: Load from json?
-        # select detectors
-        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        self.detector = self._master.detectorsManager[allDetectorNames[0]]
-
 
     def undoSelection(self):
         # recover the previous selection
@@ -46,7 +44,7 @@ class PixelCalibrationController(LiveUpdatedController):
         
     def snapPreview(self):
         self._logger.info("Snap preview...")
-        self.previewImage = self.detector.getLatestFrame()
+        self.previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
         self._widget.canvas.setImage(self.previewImage)
         
     def startPixelCalibration(self):
@@ -77,12 +75,10 @@ class PixelCalibrationController(LiveUpdatedController):
         # we assume we have a structured sample in focus
         # the sample is moved around and the deltas are measured
         # everything has to be inside a thread
-        
-        # select stage
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
         # get current position
-        currentPositions = self.stages.getPosition()
+        stage_name = self._master.positionersManager.getAllDeviceNames()[0]
+        currentPositions = self._master.positionersManager.execOn(stage_name, lambda c: c.getPosition())
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
         self.initialPosiionZ = currentPositions["Z"]
         
@@ -107,14 +103,16 @@ class PixelCalibrationController(LiveUpdatedController):
                     xyScanStepsAbsolute.append([ix, iy])
 
         # initialize xy coordinates
-        self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        
+        value = self.xScanMin + self.initialPosition[0], self.yScanMin + self.initialPosition[1]
+        self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
+
         # store images
         allPosImages = []
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             
             # move to xy position is necessary
-            self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+            value = iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]
+            self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
 
             # antishake
             time.sleep(0.3)
@@ -122,7 +120,8 @@ class PixelCalibrationController(LiveUpdatedController):
             allPosImages.append(lastFrame)
         
         # reinitialize xy coordinates
-        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        value = self.initialPosition[0], self.initialPosition[1]
+        self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
         
         # process the slices and compute their relative distances in pixels
         from skimage.registration import phase_cross_correlation
@@ -170,21 +169,10 @@ class PixelCalibrationController(LiveUpdatedController):
         self._logger.debug("Stage pixel size: "+str(stepSizeStageDim)+"nm/step")
         self._widget.setInformationLabel("Stage pixel size: "+str(stepSizeStageDim)+" nm/step")
 
-        from imswitch.imcontrol.model import configfiletools
         # Set in setup info
         name="test"
         self._setupInfo.setPositionerPreset(name, self.makePreset())
         configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
-
-        
-            
-
-       
-        
-
-        
-        
-        
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -1,8 +1,7 @@
-from re import S
 from typing import Mapping
 
 import numpy as np
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
 
@@ -85,13 +84,8 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
-    sigBroadcast = Signal(str, str, object)
-
     sigSaveFocus = Signal()
 
-    # useq-schema related signals
-    sigSetXYPosition = Signal(float, float)
-    sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
 

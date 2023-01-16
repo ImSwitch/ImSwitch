@@ -1,51 +1,6 @@
-[tool.poetry]
-name = "imswitch"
-version = "0.1.0"
-description = ""
-authors = ["Xavier Casas <xavier.casas@scilifelab.se>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.8,<3.11"
-coloredlogs = "^15.0.1"
-colour-science = "^0.4.1"
-dataclasses-json = "^0.5.7"
-h5py = "^3.7.0"
-luddite = "^1.0.2"
-nidaqmx = "^0.6.4"
-QtPy = "^2.2.1"
-requests = "^2.28.1"
-scikit-image = "^0.19.3"
-PyQt5 = "^5.15.7"
-QDarkStyle = "^3.1"
-psutil = "^5.9.2"
-zarr = "^2.13.2"
-pyqtgraph = "0.12.1"
-napari = "^0.4.16"
-QScintilla = "^2.13.3"
-Send2Trash = "^1.8.0"
-imageio = "^2.22.1"
-imageio-ffmpeg = "^0.4.7"
-lantzdev = {version = "0.5.2", extras = ["qt"]}
-PyVISA-py = "^0.5.3"
-microscope = "^0.6.0"
-PyVISA = "^1.12.0"
-
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.1.3"
-pytest-qt = "^4.1.0"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-qt_api="pyqt5"
-markers = [
-    "integration: marks tests that require a running server",
-    "qt: marks tests that require a running qt application",
+requires = [
+    "setuptools>=42",
+    "wheel"
 ]
-testpaths = [
-    "tests"
-]
+build-backend = "setuptools.build_meta"

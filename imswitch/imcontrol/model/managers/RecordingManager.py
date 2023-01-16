@@ -233,26 +233,24 @@ class RecordingManager(SignalInterface):
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
 
+            if saveFormat:
+                storer = self.__storerMap[saveFormat]
 
-            storer = self.__storerMap[saveFormat]
-
-
-            if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
-
-                # Save images to disk
-                store = storer(savename, self.__detectorsManager)
-                store.snap(images, attrs)
+                if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
+                    # Save images to disk
+                    store = storer(savename, self.__detectorsManager)
+                    store.snap(images, attrs)
 
 
-            if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
-                for channel, image in images.items():
-                    name = os.path.basename(f'{savename}_{channel}')
-                    self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
+                if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
+                    for channel, image in images.items():
+                        name = os.path.basename(f'{savename}_{channel}')
+                        self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
 
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
-                return image
+                return images
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -374,6 +372,7 @@ class RecordingWorker(Worker):
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
 
             elif self.saveFormat == SaveFormat.TIFF:
                 fileExtension = str(self.saveFormat.name).lower()
@@ -566,13 +565,15 @@ class RecordingWorker(Worker):
                                 name, file, filePath, True
                             )
                     else:
+                        datasets[detectorName].attrs['writing'] = False
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
                         else:
-                            datasets[detectorName].attrs['writing'] = False
                             self.store.close()
-
-            self.__recordingManager.endRecording(wait=False)
+            emitSignal = True
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                emitSignal = False
+            self.__recordingManager.endRecording(emitSignal=emitSignal, wait=False)
 
     def _getFiles(self):
         singleMultiDetectorFile = self.singleMultiDetectorFile

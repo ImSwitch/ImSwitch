@@ -2,6 +2,7 @@ import numpy as np
 import skimage
 import skimage.transform
 from qtpy import QtCore, QtGui, QtWidgets
+from imswitch.imcommon.model import initLogger
 
 
 class SLMDisplay(QtWidgets.QLabel):
@@ -11,6 +12,7 @@ class SLMDisplay(QtWidgets.QLabel):
 
     def __init__(self, parent, preferredMonitor):
         super().__init__()
+        self.__logger = initLogger(self)
 
         self._parent = parent
 

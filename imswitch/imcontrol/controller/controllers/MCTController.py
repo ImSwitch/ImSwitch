@@ -119,6 +119,18 @@ class MCTController(ImConWidgetController):
         if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
+        # suggest limits for tiled scan with 20% overlay
+        try:
+            self.pixelSize = self.detector.pixelSizeUm
+            self.Nx, self.Ny = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
+            self.optDx = self.Nx* self.pixelSize[0]*0.8
+            self.optDy = self.Ny* self.pixelSize[1]*0.8
+            self._widget.mctValueXsteps.setText(str(self.optDx))
+            self._widget.mctValueYsteps.setText(str(self.optDy))
+            
+        except Exception as e:
+            self._logger.error(e)
+
 
     def initFilter(self):
         self._widget.setNImages("Initializing filter position...")

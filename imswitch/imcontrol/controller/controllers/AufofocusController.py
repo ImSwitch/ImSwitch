@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-import pyqtgraph.ptime as ptime
+from time import perf_counter
 import scipy.ndimage as ndi
 from scipy.ndimage.filters import laplace
 

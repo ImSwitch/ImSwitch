@@ -75,6 +75,7 @@ class APDManager(DetectorManager):
                 lambda line_pixels, line_count, frame: self.updateImage(line_pixels, line_count, frame)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisition)
+            self._scanWorker.newFrame.connect(lambda: self.sigNewFrame.emit())
 
     def startScan(self):
         if self.acquisition:
@@ -153,6 +154,7 @@ class APDManager(DetectorManager):
 
 class ScanWorker(Worker):
     newLine = Signal(np.ndarray, int, int)
+    newFrame = Signal()
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict):
@@ -327,6 +329,7 @@ class ScanWorker(Worker):
                 )
                 self._alldata += len(throwdata)
             self._line_counter = 0
+            self.newFrame.emit()
             #self.__logger.debug(f'length of all data after frame {i+1}: {self._alldata}')
 
         throwdatalen = self._throw_startzero + self._throw_finalpos

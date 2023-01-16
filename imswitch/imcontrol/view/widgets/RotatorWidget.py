@@ -7,13 +7,12 @@ from .basewidgets import Widget
 class RotatorWidget(Widget):
     """ Widget in control of a rotation mount movement. """
 
-    sigMoveForwRelClicked = QtCore.Signal()
-    sigMoveBackRelClicked = QtCore.Signal()
-    sigMoveAbsClicked = QtCore.Signal()
-    sigSetZeroClicked = QtCore.Signal()
-    sigSetSpeedClicked = QtCore.Signal()
-    sigStartContMovClicked = QtCore.Signal()
-    sigStopContMovClicked = QtCore.Signal()
+    sigMoveRelClicked = QtCore.Signal(str, int)
+    sigMoveAbsClicked = QtCore.Signal(str)
+    sigSetZeroClicked = QtCore.Signal(str)
+    sigSetSpeedClicked = QtCore.Signal(str)
+    sigStartContMovClicked = QtCore.Signal(str)
+    sigStopContMovClicked = QtCore.Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,76 +21,84 @@ class RotatorWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addRotator(self):
-        label = 'Standa mot. rot.'
+    def addRotator(self, name):
+        self.pars['Label'+name] = QtWidgets.QLabel(f'<strong>{name}</strong>')
+        self.pars['Label'+name].setTextFormat(QtCore.Qt.RichText)
+        self.pars['Position'+name] = QtWidgets.QLabel(f'<strong>{0:.2f} deg</strong>')
+        self.pars['Position'+name].setTextFormat(QtCore.Qt.RichText)
+        self.pars['ForwButton'+name] = guitools.BetterPushButton('+')
+        self.pars['BackButton'+name] = guitools.BetterPushButton('-')
+        self.pars['RelStepEdit'+name] = QtWidgets.QLineEdit('10')
+        self.pars['RelStepUnit'+name] = QtWidgets.QLabel(' deg')
+        self.pars['SpeedEdit'+name] = QtWidgets.QLineEdit('100')
+        self.pars['SpeedUnit'+name] = QtWidgets.QLabel(' mrpm')
+        self.pars['SetZeroButton'+name] = guitools.BetterPushButton('Set zero')
+        self.pars['AbsButton'+name] = guitools.BetterPushButton('Abs')
+        self.pars['SetSpeedButton'+name] = guitools.BetterPushButton('Set speed')
+        self.pars['StartMoveButton'+name] = guitools.BetterPushButton('Start move')
+        self.pars['StopMoveButton'+name] = guitools.BetterPushButton('Stop move')
+        self.pars['AbsPosEdit'+name] = QtWidgets.QLineEdit('0')
+        self.pars['AbsPosUnit'+name] = QtWidgets.QLabel(' deg')
 
-        self.pars['Label'] = QtWidgets.QLabel(f'<strong>{label}</strong>')
-        self.pars['Label'].setTextFormat(QtCore.Qt.RichText)
-        self.pars['Position'] = QtWidgets.QLabel(f'<strong>{0:.2f} deg</strong>')
-        self.pars['Position'].setTextFormat(QtCore.Qt.RichText)
-        self.pars['ForwButton'] = guitools.BetterPushButton('+')
-        self.pars['BackButton'] = guitools.BetterPushButton('-')
-        self.pars['RelStepEdit'] = QtWidgets.QLineEdit('10')
-        self.pars['RelStepUnit'] = QtWidgets.QLabel(' deg')
-        self.pars['SpeedEdit'] = QtWidgets.QLineEdit('100')
-        self.pars['SpeedUnit'] = QtWidgets.QLabel(' mrpm')
-        self.pars['SetZeroButton'] = guitools.BetterPushButton('Set zero')
-        self.pars['AbsButton'] = guitools.BetterPushButton('Abs')
-        self.pars['SetSpeedButton'] = guitools.BetterPushButton('Set speed')
-        self.pars['StartMoveButton'] = guitools.BetterPushButton('Start move')
-        self.pars['StopMoveButton'] = guitools.BetterPushButton('Stop move')
-        self.pars['AbsPosEdit'] = QtWidgets.QLineEdit('0')
-        self.pars['AbsPosUnit'] = QtWidgets.QLabel(' deg')
-
-        self.grid.addWidget(self.pars['Label'], 0, 0)
-        self.grid.addWidget(self.pars['Position'], 0, 1)
-        self.grid.addWidget(self.pars['ForwButton'], 0, 2)
-        self.grid.addWidget(self.pars['BackButton'], 0, 3)
-        self.grid.addWidget(QtWidgets.QLabel('Step'), 0, 4)
-        self.grid.addWidget(self.pars['RelStepEdit'], 0, 5)
-        self.grid.addWidget(self.pars['RelStepUnit'], 0, 6)
-        self.grid.addWidget(self.pars['SetZeroButton'], 1, 2)
-        self.grid.addWidget(self.pars['AbsButton'], 1, 3)
-        self.grid.addWidget(QtWidgets.QLabel('Pos'), 1, 4)
-        self.grid.addWidget(self.pars['AbsPosEdit'], 1, 5)
-        self.grid.addWidget(self.pars['AbsPosUnit'], 1, 6)
-        self.grid.addWidget(self.pars['SpeedEdit'], 2, 0)
-        self.grid.addWidget(self.pars['SpeedUnit'], 2, 1)
-        self.grid.addWidget(self.pars['SetSpeedButton'], 2, 2)
-        self.grid.addWidget(self.pars['StartMoveButton'], 2, 3)
-        self.grid.addWidget(self.pars['StopMoveButton'], 2, 4)
+        self.grid.addWidget(self.pars['Label'+name], self.numPositioners*4, 0)
+        self.grid.addWidget(self.pars['Position'+name], self.numPositioners*4, 1)
+        self.grid.addWidget(self.pars['ForwButton'+name], self.numPositioners*4, 2)
+        self.grid.addWidget(self.pars['BackButton'+name], self.numPositioners*4, 3)
+        self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners*4, 4)
+        self.grid.addWidget(self.pars['RelStepEdit'+name], self.numPositioners*4, 5)
+        self.grid.addWidget(self.pars['RelStepUnit'+name], self.numPositioners*4, 6)
+        self.grid.addWidget(self.pars['SetZeroButton'+name], self.numPositioners*4+1, 2)
+        self.grid.addWidget(self.pars['AbsButton'+name], self.numPositioners*4+1, 3)
+        self.grid.addWidget(QtWidgets.QLabel('Position'), self.numPositioners*4+1, 4)
+        self.grid.addWidget(self.pars['AbsPosEdit'+name], self.numPositioners*4+1, 5)
+        self.grid.addWidget(self.pars['AbsPosUnit'+name], self.numPositioners*4+1, 6)
+        self.grid.addWidget(self.pars['SpeedEdit'+name], self.numPositioners*4+2, 0)
+        self.grid.addWidget(self.pars['SpeedUnit'+name], self.numPositioners*4+2, 1)
+        self.grid.addWidget(self.pars['SetSpeedButton'+name], self.numPositioners*4+2, 2)
+        self.grid.addWidget(self.pars['StartMoveButton'+name], self.numPositioners*4+2, 3)
+        self.grid.addWidget(self.pars['StopMoveButton'+name], self.numPositioners*4+2, 4)
 
         # Connect signals
-        self.pars['ForwButton'].clicked.connect(self.sigMoveForwRelClicked.emit)
-        self.pars['BackButton'].clicked.connect(self.sigMoveBackRelClicked.emit)
-        self.pars['AbsButton'].clicked.connect(self.sigMoveAbsClicked.emit)
-        self.pars['SetZeroButton'].clicked.connect(self.sigSetZeroClicked.emit)
-        self.pars['SetSpeedButton'].clicked.connect(self.sigSetSpeedClicked.emit)
-        self.pars['StartMoveButton'].clicked.connect(self.sigStartContMovClicked.emit)
-        self.pars['StopMoveButton'].clicked.connect(self.sigStopContMovClicked.emit)
+        self.pars['ForwButton'+name].clicked.connect(lambda: self.sigMoveRelClicked.emit(name, 1))
+        self.pars['BackButton'+name].clicked.connect(lambda: self.sigMoveRelClicked.emit(name, -1))
+        self.pars['AbsButton'+name].clicked.connect(lambda: self.sigMoveAbsClicked.emit(name))
+        self.pars['SetZeroButton'+name].clicked.connect(lambda: self.sigSetZeroClicked.emit(name))
+        self.pars['SetSpeedButton'+name].clicked.connect(lambda: self.sigSetSpeedClicked.emit(name))
+        self.pars['StartMoveButton'+name].clicked.connect(lambda: self.sigStartContMovClicked.emit(name))
+        self.pars['StopMoveButton'+name].clicked.connect(lambda: self.sigStopContMovClicked.emit(name))
+        
+        if self.numPositioners == 0:
+            # Add space item to make the grid look nicer
+            self.grid.addItem(
+                QtWidgets.QSpacerItem(10, 10,
+                                    QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
+                self.numPositioners*4+3, 0, 1, -1
+            )
 
-    def getRelStepSize(self):
+        self.numPositioners += 1
+
+    def getRelStepSize(self, name):
         """ Returns the step size of the rotation mount, in degrees. """
-        return float(self.pars['RelStepEdit'].text())
+        return float(self.pars['RelStepEdit'+name].text())
 
-    def setRelStepSize(self, stepSize):
+    def setRelStepSize(self, name, stepSize):
         """ Sets the step size to the specified number of degrees. """
-        self.pars['RelStepEdit'].setText(stepSize)
+        self.pars['RelStepEdit'+name].setText(stepSize)
 
-    def getAbsPos(self):
+    def getAbsPos(self, name):
         """ Returns the absolute position of the rotation mount, in degrees. """
-        return float(self.pars['AbsPosEdit'].text())
+        return float(self.pars['AbsPosEdit'+name].text())
     
-    def getSpeed(self):
+    def getSpeed(self, name):
         """ Returns the user-input speed, in mrpm. """
-        return int(self.pars['SpeedEdit'].text())
+        return int(self.pars['SpeedEdit'+name].text())
 
-    def setAbsPos(self, absPos):
+    def setAbsPos(self, name, absPos):
         """ Sets the absolute position to the specified number of degrees. """
-        self.pars['AbsPosEdit'].setText(absPos)
+        self.pars['AbsPosEdit'+name].setText(absPos)
 
-    def updatePosition(self, position):
-        self.pars['Position'].setText(f'<strong>{position:.2f} deg</strong>')
+    def updatePosition(self, name, position):
+        self.pars['Position'+name].setText(f'<strong>{position:.2f} deg</strong>')
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

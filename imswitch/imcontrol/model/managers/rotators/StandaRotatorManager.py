@@ -1,21 +1,22 @@
-from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
+from .RotatorManager import RotatorManager
 
 
-class StandaMotorManager(SignalInterface):
+
+class StandaRotatorManager(RotatorManager):
     """ StandaMotorManager that deals with a Standa-branded motor controller,
     for example 8SMC5 for a motorized rotation mount. 
     """
-    def __init__(self, rotatorInfo, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, rotatorInfo, name, *args, **kwargs):
+        super().__init__(rotatorInfo, name, *args, **kwargs)
         self.__logger = initLogger(self)
 
         if rotatorInfo is None:
             return
-        self._device_id = rotatorInfo.motorListIndex
-        self._lib_loc = rotatorInfo.ximcLibLocation
-        self._steps_per_turn = rotatorInfo.stepsPerTurn
-        self._microsteps_per_step = rotatorInfo.microstepsPerStep
+        self._device_id = rotatorInfo.managerProperties['motorListIndex']
+        self._lib_loc = rotatorInfo.managerProperties['ximcLibLocation']
+        self._steps_per_turn = rotatorInfo.managerProperties['stepsPerTurn']
+        self._microsteps_per_step = rotatorInfo.managerProperties['microstepsPerStep']
 
         self._motor = self._getMotorObj(self._device_id, self._lib_loc, self._steps_per_turn, self._microsteps_per_step)
         self._position = self._motor.get_pos()
@@ -51,17 +52,20 @@ class StandaMotorManager(SignalInterface):
     def stop_cont_rot(self):
         self._motor.stop_cont_rot()
 
-    def startMovement(self):
-        pass
+    def set_sync_in_pos(self, abs_pos_deg):
+        self._motor.set_sync_in_settings(abs_pos_deg)
 
-    def _performSafeMotorAction(self, function):
-        """ Used to change motor properties that need idle state to be adjusted. """
-        try:
-            function()
-        except Exception:
-            self.stop_cont_rot()
-            function()
-            self.startMovement()
+    #def startMovement(self):
+    #    pass
+
+    #def _performSafeMotorAction(self, function):
+    #    """ Used to change motor properties that need idle state to be adjusted. """
+    #    try:
+    #        function()
+    #    except Exception:
+    #        self.stop_cont_rot()
+    #        function()
+    #        self.startMovement()
 
     def _getMotorObj(self, device_id, lib_loc, steps_per_turn, microsteps_per_step):
         try:

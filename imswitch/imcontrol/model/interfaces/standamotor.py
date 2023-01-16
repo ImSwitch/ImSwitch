@@ -57,14 +57,30 @@ class StandaMotor():
         x_sync_in_settings = pyximc.sync_in_settings_t()
         x_sync_in_settings.Position = int(20*self._steps_per_turn/360)
         x_sync_in_settings.Speed = 1000
-        x_sync_in_settings.SyncInFlags = 1
+        x_sync_in_settings.SyncInFlags = 1  # (0x01 (enabled) + 0x02 (trigger on falling edge) + 0x04 (go to position, not relative shift))
+        _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
+
+    def set_sync_in_settings(self, abs_pos_deg):
+        pos_steps, pos_usteps = self.dist_translate(abs_pos_deg)
+        x_sync_in_settings = pyximc.sync_in_settings_t()
+        x_sync_in_settings.Position = pos_steps
+        x_sync_in_settings.uPosition = pos_usteps
+        x_sync_in_settings.Speed = 1000
+        x_sync_in_settings.ClutterTime = 1
+        x_sync_in_settings.SyncInFlags = 5  # (0x01 (enabled) + 0x04 (go to position, not relative shift))
         _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
 
     def set_def_sync_out_settings(self):
         x_sync_out_settings = pyximc.sync_out_settings_t()
-        x_sync_out_settings.SyncOutFlags = 49  #(0x01 (enabled) + 0x10 (on motion start) + 0x20 (on motion stop))
-        x_sync_out_settings.SyncOutPulseSteps = 1000  #(0x01 (enabled))
+        x_sync_out_settings.SyncOutPulseSteps = 100  # (0x01 (enabled))
+        x_sync_out_settings.SyncOutFlags = 17  # (0x01 (enabled) + 0x10 (on motion start) (+ 0x20 (on motion stop)))
         _ = pyximc.lib.set_sync_out_settings(self._device_id, x_sync_out_settings)
+
+    #def set_sync_out_settings(self):
+    #    x_sync_out_settings = pyximc.sync_out_settings_t()
+    #    x_sync_out_settings.SyncOutPulseSteps = 1000  # (0x01 (enabled))
+    #    x_sync_out_settings.SyncOutFlags = 17  # (0x01 (enabled) + 0x10 (on motion start))
+    #    _ = pyximc.lib.set_sync_out_settings(self._device_id, x_sync_out_settings)
 
     def get_pos(self):
         self.wait_for_stop(interval=10)

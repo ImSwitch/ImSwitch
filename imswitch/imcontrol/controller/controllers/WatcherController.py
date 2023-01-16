@@ -1,8 +1,8 @@
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.view.guitools.FileWatcher import FileWatcher
 import os
-from datetime import datetime
-import webbrowser
+from time import perf_counter
+
 
 class WatcherController(ImConWidgetController):
     """ Linked to WatcherWidget. """
@@ -41,13 +41,13 @@ class WatcherController(ImConWidgetController):
             file = open(self.current, "r")
             text = file.read()
             file.close()
-            self.t0 = datetime.now()
+            self.t0 = perf_counter()
             self._commChannel.runScript(text)
             self.execution = True
 
     def executionFinished(self):
         self.execution = False
-        diff = datetime.now() - self.t0
+        diff = perf_counter() - self.t0
         self.watcher.addToLog(self.current, [str(self.t0), str(diff)])
         os.remove(self.current)
         self._widget.updateFileList()

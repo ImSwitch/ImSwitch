@@ -59,10 +59,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
-            'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
-            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
@@ -70,7 +68,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
-            'Tiling': _DockInfo(name='Tiling', yPosition=3)
+            'Tiling': _DockInfo(name='Tiling', yPosition=3),
+            'Rotator': _DockInfo(name='Rotator', yPosition=1)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

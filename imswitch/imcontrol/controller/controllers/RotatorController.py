@@ -1,8 +1,8 @@
 from typing import Dict, List
 
-from imswitch.imcommon.model import APIExport, initLogger
-
+from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import initLogger
 
 
 class RotatorController(ImConWidgetController):
@@ -14,57 +14,56 @@ class RotatorController(ImConWidgetController):
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # Set up rotator in widget
-        for name, _ in self._master.rotatorsManager:
-            self._widget.addRotator(name)
+        self._widget.addRotator()
 
         # Connect PositionerWidget signals
-        self._widget.sigMoveRelClicked.connect(lambda name, dir: self.moveRel(name, dir))
-        self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name))
-        self._widget.sigSetZeroClicked.connect(lambda name: self.setZeroPos(name))
-        self._widget.sigSetSpeedClicked.connect(lambda name: self.setSpeed(name))
-        self._widget.sigStartContMovClicked.connect(lambda name: self.startContMov(name))
-        self._widget.sigStopContMovClicked.connect(lambda name: self.stopContMov(name))
-
-        # Connect commChannel signals
-        self._commChannel.sigUpdateRotatorPosition.connect(lambda name: self.updatePosition(name))
-        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
+        self._widget.sigMoveForwRelClicked.connect(lambda: self.moveRel(dir=1))
+        self._widget.sigMoveBackRelClicked.connect(lambda: self.moveRel(dir=-1))
+        self._widget.sigMoveAbsClicked.connect(self.moveAbs)
+        self._widget.sigSetZeroClicked.connect(self.setZeroPos)
+        self._widget.sigSetSpeedClicked.connect(self.setSpeed)
+        self._widget.sigStartContMovClicked.connect(self.startContMov)
+        self._widget.sigStopContMovClicked.connect(self.stopContMov)
 
         # Update current position in GUI
-        self.updatePosition(name)
+        self.updatePosition()
 
     def closeEvent(self):
-        pass
+        self._master.positionersManager.execOnAll(
+            lambda p: [p.setPosition(0, axis) for axis in p.axes]
+        )
 
-    def moveRel(self, name, dir=1):
-        dist = dir * self._widget.getRelStepSize(name)
-        self._master.rotatorsManager[name].move_rel(dist)
-        self.updatePosition(name)
+    def move(self, positionerName, axis, dist):
+        self._master.positionersManager[positionerName].move(dist, axis)
+        self.updatePosition(positionerName, axis)
 
-    def moveAbs(self, name):
-        pos = self._widget.getAbsPos(name)
-        self._master.rotatorsManager[name].move_abs(pos)
-        self.updatePosition(name)
+    def moveRel(self, dir=1):
+        dist = dir * self._widget.getRelStepSize()
+        self._master.standaMotorManager.move_rel(dist)
+        self.updatePosition()
 
-    def setZeroPos(self, name):
-        self._master.rotatorsManager[name].set_zero_pos()
-        self.updatePosition(name)
+    def moveAbs(self):
+        pos = self._widget.getAbsPos()
+        self._master.standaMotorManager.move_abs(pos)
+        self.updatePosition()
 
-    def setSpeed(self, name):
-        speed = self._widget.getSpeed(name)
-        self._master.rotatorsManager[name].set_rot_speed(speed)
+    def setZeroPos(self):
+        self._master.standaMotorManager.set_zero_pos()
+        self.updatePosition()
 
-    def startContMov(self, name):
-        self._master.rotatorsManager[name].start_cont_rot()
+    def setSpeed(self):
+        speed = self._widget.getSpeed()
+        self._master.standaMotorManager.set_rot_speed(speed)
 
-    def stopContMov(self, name):
-        self._master.rotatorsManager[name].stop_cont_rot()
+    def startContMov(self):
+        self._master.standaMotorManager.start_cont_rot()
 
-    def updatePosition(self, name):
-        pos = self._master.rotatorsManager[name].position()
-        self._widget.updatePosition(name, pos)
+    def stopContMov(self):
+        self._master.standaMotorManager.stop_cont_rot()
 
-    def setSyncInMovement(self, name, pos):
-        self._master.rotatorsManager[name].set_sync_in_pos(pos)
+    def updatePosition(self):
+        pos = self._master.standaMotorManager.position()
+        self._widget.updatePosition(pos)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

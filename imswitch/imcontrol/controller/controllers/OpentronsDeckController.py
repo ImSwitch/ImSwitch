@@ -270,7 +270,7 @@ class OpentronsDeckController(LiveUpdatedController):
                                 self.positioner.get_position())][:2])
             self._widget.current_offset = offset
 
-    def connect_add_current_position(self): # TODO: needs to update after it stops moving.
+    def connect_add_current_position(self):
         if isinstance(self._widget.add_current_btn, guitools.BetterPushButton):
             try:
                 self._widget.add_current_btn.disconnect()

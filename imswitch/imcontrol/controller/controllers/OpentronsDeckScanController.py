@@ -1,4 +1,5 @@
 import os
+import time
 
 from opentrons.types import Point
 from opentrons.protocol_api.labware import Labware, Well
@@ -14,7 +15,7 @@ import json
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController, LiveUpdatedController
 from imswitch.imcontrol.view import guitools as guitools
-from imswitch.imcommon.model import initLogger, APIExport
+from imswitch.imcommon.model import initLogger, APIExport, ostools
 from imswitch.imcontrol.controller.controllers.PositionerController import PositionerController
 
 _attrCategory = 'Positioner'
@@ -45,6 +46,16 @@ class OpentronsDeckScanController(LiveUpdatedController):
         self.connect_deck_slots()
         self.scanner = LabwareScanner(self.positioner, self.deck, self.labwares)
         self._widget.addScanner()
+
+
+    def openFolder(self):
+        """ Opens current folder in File Explorer. """
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        ostools.openFolderInOS(folder)
+
+
 
     def initialize_positioners(self):
         # Set up positioners

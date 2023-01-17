@@ -1,4 +1,7 @@
-from qtpy import QtCore, QtWidgets, QtGui
+import os
+import time
+
+from qtpy import QtCore, QtWidgets
 from PyQt5.QtCore import Qt, QLine
 
 from imswitch.imcontrol.view import guitools as guitools
@@ -6,9 +9,7 @@ from .basewidgets import Widget
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view.widgets.StandaPositionerWidget import StandaPositionerWidget
 
-import json
-
-class OpentronsDeckWidget(Widget):
+class OpentronsDeckScanWidget(Widget):
     """ Widget in control of the piezo movement. """
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
@@ -21,6 +22,13 @@ class OpentronsDeckWidget(Widget):
     sigAddCurrentClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigAddClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
+    sigPresetSelected = QtCore.Signal(str)  # (presetName)
+    sigLoadPresetClicked = QtCore.Signal()
+    sigSavePresetClicked = QtCore.Signal()
+    sigSavePresetAsClicked = QtCore.Signal()
+    sigDeletePresetClicked = QtCore.Signal()
+    sigPresetScanDefaultToggled = QtCore.Signal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -32,8 +40,108 @@ class OpentronsDeckWidget(Widget):
         self.current_well = None
         self.current_offset = (None,None)
 
+        # Presets box
+        self.presetsBox = QtWidgets.QHBoxLayout()
+        self.presetsLabel = QtWidgets.QLabel('Presets: ')
+        self.presetsList = QtWidgets.QComboBox()
+        self.presetsList.currentIndexChanged.connect(
+            lambda i: self.sigPresetSelected.emit(self.presetsList.itemData(i))
+        )
+        self.loadPresetButton = guitools.BetterPushButton('Load selected')
+        self.loadPresetButton.clicked.connect(self.sigLoadPresetClicked)
+        self.savePresetButton = guitools.BetterPushButton('Save to selected')
+        self.savePresetButton.clicked.connect(self.sigSavePresetClicked)
+        self.savePresetAsButton = guitools.BetterPushButton('Save as…')
+        self.savePresetAsButton.clicked.connect(self.sigSavePresetAsClicked)
+        self.moreButton = QtWidgets.QToolButton()
+        self.moreButton.setText('More…')
+        self.moreButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.deletePresetAction = QtWidgets.QAction('Delete selected')
+        self.deletePresetAction.triggered.connect(self.sigDeletePresetClicked)
+        self.moreButton.addAction(self.deletePresetAction)
+        self.presetScanDefaultAction = QtWidgets.QAction('Make selected default for scanning')
+        self.presetScanDefaultAction.triggered.connect(self.sigPresetScanDefaultToggled)
+        self.moreButton.addAction(self.presetScanDefaultAction)
 
-        self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
+        self.setCurrentPreset(None)
+        self.setScanDefaultPresetActive(False)
+
+        self.presetsBox.addWidget(self.presetsLabel)
+        self.presetsBox.addWidget(self.presetsList, 1)
+        self.presetsBox.addWidget(self.loadPresetButton)
+        self.presetsBox.addWidget(self.savePresetButton)
+        self.presetsBox.addWidget(self.savePresetAsButton)
+        self.presetsBox.addWidget(self.moreButton)
+
+        self.main_grid_layout.addLayout(self.presetsBox)
+
+
+        # Folder and filename fields -> from RecordingWidget
+        baseOutputFolder = self._options.recording.outputFolder
+        if self._options.recording.includeDateInOutputFolder:
+            self.initialDir = os.path.join(baseOutputFolder, time.strftime('%Y-%m-%d'))
+        else:
+            self.initialDir = baseOutputFolder
+
+        self.folderEdit = QtWidgets.QLineEdit(self.initialDir)
+        self.openFolderButton = guitools.BetterPushButton('Open')
+        self.specifyfile = QtWidgets.QCheckBox('Specify file name')
+        self.filenameEdit = QtWidgets.QLineEdit('Current time')
+        self.filenameEdit.setEnabled(False)
+
+
+        self.__logger = initLogger(self, instanceName="OpentronsDeckScanWidget")
+
+
+    def getCurrentPreset(self):
+        """ Returns the name of the currently selected preset. """
+        return self.presetsList.currentData()
+
+    def setCurrentPreset(self, name):
+        """ Sets the selected preset in the preset list. Pass None to unselect
+        all presets. """
+        anyPresetSelected = True if name else False
+
+        if anyPresetSelected:
+            nameIndex = self.presetsList.findData(name)
+            if nameIndex > -1:
+                self.presetsList.setCurrentIndex(nameIndex)
+        else:
+            self.presetsList.setCurrentIndex(-1)
+
+        self.loadPresetButton.setEnabled(anyPresetSelected)
+        self.savePresetButton.setEnabled(anyPresetSelected)
+        self.deletePresetAction.setEnabled(anyPresetSelected)
+        self.presetScanDefaultAction.setEnabled(anyPresetSelected)
+        if not anyPresetSelected:
+            self.presetScanDefaultAction.setChecked(False)
+
+    def setScanDefaultPreset(self, name):
+        """ Sets which preset that is default for scanning. Pass None if there
+        is no default. """
+        for i in range(self.presetsList.count()):
+            self.presetsList.setItemText(i, self.presetsList.itemData(i))
+
+        nameIndex = self.presetsList.findData(name)
+        if nameIndex > -1:
+            self.presetsList.setItemText(nameIndex, f'{name} [scan default]')
+
+    def setScanDefaultPresetActive(self, active):
+        """ Sets whether the preset that is default for scanning is active. """
+        self.presetScanDefaultAction.setText(
+            'Make selected default for scanning' if not active else 'Unset default for scanning'
+        )
+
+    def addPreset(self, name):
+        """ Adds a preset to the preset list. """
+        self.presetsList.addItem(name, name)
+        self.presetsList.model().sort(0)
+
+    def removePreset(self, name):
+        """ Removes a preset from the preset list. """
+        nameIndex = self.presetsList.findData(name)
+        if nameIndex > -1:
+            self.presetsList.removeItem(nameIndex)
 
     def select_well(self, well):
         for well_id, btn in self.wells.items():
@@ -153,12 +261,11 @@ class OpentronsDeckWidget(Widget):
         self._scanner_widget = QtWidgets.QGroupBox("Scan list")
         main_layout = QtWidgets.QGridLayout()
 
-        self.scan_list = TableWidgetDragRows()
-
+        self.scan_list = QtWidgets.QTableWidget()
         self.scan_list.setColumnCount(3)
         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
         self.scan_list_items = 0
-        # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
+        self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
         self._actions_widget = QtWidgets.QGroupBox("Actions")
 
@@ -309,142 +416,8 @@ class OpentronsDeckWidget(Widget):
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
 
-#
-# class ScannerWidget(QtWidgets.QGroupBox):
-#     def __init__(self, title = "Scan list"):
-#         main_layout = QtWidgets.QGridLayout()
-#         self.scan_list = TableWidgetDragRows()
-#
-#     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
-#         self._scanner_widget = QtWidgets.QGroupBox("Scan list")
-#         main_layout = QtWidgets.QGridLayout()
-#
-#         self.scan_list = TableWidgetDragRows()
-#
-#         self.scan_list.setColumnCount(3)
-#         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
-#         self.scan_list_items = 0
-#         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
-#
-#         self._actions_widget = QtWidgets.QGroupBox("Actions")
-#
-#         actions_layout = QtWidgets.QGridLayout()
-#         self.goto_btn = guitools.BetterPushButton('GO TO')
-#         self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
-#         self.pos_in_well_lined = QtWidgets.QLineEdit("1")
-#         self.add_btn = guitools.BetterPushButton('ADD')
-#
-#         actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
-#         actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
-#         actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
-#         actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
-#         actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
-#
-#         self._actions_widget.setLayout(actions_layout)
-#
-#
-#         main_layout.addWidget(self.scan_list)
-#         main_layout.addWidget(self._actions_widget)
-#         self._scanner_widget.setLayout(main_layout)
-#         self.main_grid_layout.addWidget(self._scanner_widget)
-#
-#     def add_position_to_scan(self, slot, well, offset):
-#
-#         self.scan_list.insertRow(self.scan_list_items)
-#         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
-#         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
-#         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-#
-#         self.scan_list_items += 1
-#
-#     def add_current_position_to_scan(self):
-#         self.scan_list.insertRow(self.scan_list_items)
-#         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
-#         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
-#         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
-# From https://stackoverflow.com/questions/26227885/drag-and-drop-rows-within-qtablewidget
-class TableWidgetDragRows(QtWidgets.QTableWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.viewport().setAcceptDrops(True)
-        self.setDragDropOverwriteMode(False)
-        self.setDropIndicatorShown(True)
-
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-
-    def dropEvent(self, event):
-        if not event.isAccepted() and event.source() == self:
-            drop_row = self.drop_on(event)
-
-            rows = sorted(set(item.row() for item in self.selectedItems()))
-
-            rows_to_move = []
-            for row_index in rows:
-                items = dict()
-                for column_index in range(self.columnCount()):
-                    # get the widget or item of current cell
-                    widget = self.cellWidget(row_index, column_index)
-                    if isinstance(widget, type(None)):
-                        # if widget is NoneType, it is a QTableWidgetItem
-                        items[column_index] = {"kind": "QTableWidgetItem",
-                                               "item": QtWidgets.QTableWidgetItem(self.item(row_index, column_index))}
-                    else:
-                        # otherwise it is any other kind of widget. So we catch the widgets unique (hopefully) objectname
-                        items[column_index] = {"kind": "QWidget",
-                                               "item": widget.objectName()}
-
-                rows_to_move.append(items)
-
-            for row_index in reversed(rows):
-                self.removeRow(row_index)
-                if row_index < drop_row:
-                    drop_row -= 1
-
-            for row_index, data in enumerate(rows_to_move):
-                row_index += drop_row
-                self.insertRow(row_index)
-
-                for column_index, column_data in data.items():
-                    if column_data["kind"] == "QTableWidgetItem":
-                        # for QTableWidgetItem we can re-create the item directly
-                        self.setItem(row_index, column_index, column_data["item"])
-                    else:
-                        # for others we call the parents callback function to get the widget
-                        _widget = self._parent.get_table_widget(column_data["item"])
-                        if _widget is not None:
-                            self.setCellWidget(row_index, column_index, _widget)
-
-            event.accept()
-
-        super().dropEvent(event)
-
-    def drop_on(self, event):
-        index = self.indexAt(event.pos())
-        if not index.isValid():
-            return self.rowCount()
-
-        return index.row() + 1 if self.is_below(event.pos(), index) else index.row()
-
-    def is_below(self, pos, index):
-        rect = self.visualRect(index)
-        margin = 2
-        if pos.y() - rect.top() < margin:
-            return False
-        elif rect.bottom() - pos.y() < margin:
-            return True
-        # noinspection PyTypeChecker
-        return rect.contains(pos, True) and not (
-                    int(self.model().flags(index)) & Qt.ItemIsDropEnabled) and pos.y() >= rect.center().y()
-
-    def load_json(self, file):
-        data = json.load(file)
-
-        pass
+  
 
     # Copyright (C) 2020-2021 ImSwitch developers
     # This file is part of ImSwitch.

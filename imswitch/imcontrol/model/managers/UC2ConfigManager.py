@@ -22,8 +22,11 @@ class UC2ConfigManager(SignalInterface):
         self.__logger = initLogger(self)
 
         #TODO: HARDCODED!!
-        self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
-        
+        try:
+            self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
+        except:
+            return
+            
         # get default configs
         try:
             self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", Info.defaultConfig)

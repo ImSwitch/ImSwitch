@@ -134,9 +134,10 @@ class STORMReconController(LiveUpdatedController):
 
         def reconSTORMFrame(self, frame, preFilter, peakDetector,
                             rel_threshold=0.4, PSFparam=np.array([1.5]), 
-                            roiSize=13, method=FittingMethod._2D_Phasor_CPU):
+                            roiSize=13, method=None):
             # tune parameters
-            
+            if method is None:
+                method = FittingMethod._2D_Phasor_CPU  
             # parameters are read only once the SMLM reconstruction is initiated
             # cannot be altered during recroding
             

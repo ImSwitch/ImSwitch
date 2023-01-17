@@ -4,10 +4,14 @@ from qtpy import QtCore, QtWidgets
 # microeye gui
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-from microEye.fitting.fit import BlobDetectionWidget, DoG_FilterWidget, BandpassFilterWidget, TemporalMedianFilterWidget
-from microEye.fitting.results import FittingMethod, FittingResults
-from microEye.checklist_dialog import ChecklistDialog, Checklist
-
+try:
+    from microEye.fitting.fit import BlobDetectionWidget, DoG_FilterWidget, BandpassFilterWidget, TemporalMedianFilterWidget
+    from microEye.fitting.results import FittingMethod, FittingResults
+    from microEye.checklist_dialog import ChecklistDialog, Checklist
+    isMicroEye = True
+except:
+    isMicroEye = False 
+    
 from imswitch.imcommon.view.guitools import pyqtgraphtools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
@@ -25,7 +29,9 @@ class STORMReconWidget(NapariHybridWidget):
         # Napari image layer for results
         self.layer = None
         
-
+        if not isMicroEye:
+            return 
+            
         # Main GUI 
         self.layout = QtWidgets.QHBoxLayout()
         self.setLayout(self.layout)

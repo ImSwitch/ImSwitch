@@ -17,15 +17,23 @@ import time
 import numpy as np
 from pathlib import Path
 import tifffile
+
 try:
-    import cupy as cp
-    from mcsim.analysis import sim_reconstruction as sim
-    isGPU = True
+    import mcsim
+    ismcSIM=True
 except:
-    print("GPU not available")
-    import numpy as cp 
-    from mcsim.analysis import sim_reconstruction as sim
-    isGPU = False
+    imscSIM=False
+
+if ismcSIM:
+    try:
+        import cupy as cp
+        from mcsim.analysis import sim_reconstruction as sim
+        isGPU = True
+    except:
+        print("GPU not available")
+        import numpy as cp 
+        from mcsim.analysis import sim_reconstruction as sim
+        isGPU = False
 
 try:
     import NanoImagingPack as nip

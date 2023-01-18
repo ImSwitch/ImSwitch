@@ -75,6 +75,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
+            'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
@@ -89,6 +90,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'Deck': _DockInfo(name="Deck Tool", yPosition=1),
             'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
+            'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3)

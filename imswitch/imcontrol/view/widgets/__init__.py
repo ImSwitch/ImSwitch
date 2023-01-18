@@ -11,6 +11,7 @@ from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget
 from .DeckWidget import DeckWidget
 from .OpentronsDeckWidget import OpentronsDeckWidget
+from .OpentronsDeckScanWidget import OpentronsDeckScanWidget
 from .FocusLockWidget import FocusLockWidget
 from .AutofocusWidget import AutofocusWidget
 from .ImageWidget import ImageWidget
@@ -18,6 +19,7 @@ from .LaserWidget import LaserWidget
 from .LEDWidget import LEDWidget
 from .PositionerWidget import PositionerWidget
 from .StandaPositionerWidget import StandaPositionerWidget
+from .StandaStageWidget import StandaStageWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
 from .UC2ConfigWidget import UC2ConfigWidget

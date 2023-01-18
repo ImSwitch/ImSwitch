@@ -15,10 +15,12 @@ from .LaserController import LaserController
 from .LEDController import LEDController
 from .PositionerController import PositionerController
 from .StandaPositionerController import StandaPositionerController
+from .StandaStageController import StandaStageController
 from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
 from .DeckController import DeckController
 from .OpentronsDeckController import OpentronsDeckController
+from .OpentronsDeckScanController import OpentronsDeckScanController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
 from .UC2ConfigController import UC2ConfigController

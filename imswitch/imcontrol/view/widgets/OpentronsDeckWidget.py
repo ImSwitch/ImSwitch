@@ -7,6 +7,7 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view.widgets.StandaPositionerWidget import StandaPositionerWidget
 
 import json
+import sys, csv, unicodedata
 
 class OpentronsDeckWidget(Widget):
     """ Widget in control of the piezo movement. """
@@ -26,14 +27,48 @@ class OpentronsDeckWidget(Widget):
 
         self.numPositioners = 0
         self.pars = {}
-        self.main_grid_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self.main_grid_layout)
+        self.main_grid_layout = QtWidgets.QGridLayout()
         self.current_slot = None
         self.current_well = None
         self.current_offset = (None,None)
 
-
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
+
+    # https://stackoverflow.com/questions/12608835/writing-a-qtablewidget-to-a-csv-or-xls
+    # Extra blank row issue: https://stackoverflow.com/questions/3348460/csv-file-written-with-python-has-blank-lines-between-each-row
+    def handleSave(self):
+        path = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Save File', '', 'CSV(*.csv)')
+        # if not path[0] != "":
+        with open(path[0], 'w', newline='') as stream:
+            writer = csv.writer(stream)
+            for row in range(self.scan_list.rowCount()):
+                rowdata = []
+                for column in range(self.scan_list.columnCount()):
+                    item = self.scan_list.item(row, column)
+                    if item is not None:
+                        rowdata.append(
+                            item.text())
+                    else:
+                        rowdata.append('')
+                writer.writerow(rowdata)
+        # else:
+        #     self.__logger.debug("Empty path: handleSave")
+
+    def handleOpen(self):
+        path = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Open File', '', 'CSV(*.csv)')
+        # if not path.isEmpty():
+        with open(path[0], 'r') as stream:
+            self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+            self.scan_list.setRowCount(0)
+            self.scan_list_items = 0
+            for rowdata in csv.reader(stream):
+                self.scan_list.insertRow(self.scan_list_items)
+                for column, data in enumerate(rowdata):
+                    item = QtWidgets.QTableWidgetItem(data)
+                    self.scan_list.setItem(self.scan_list_items, column, item)
+                self.scan_list_items += 1
 
     def select_well(self, well):
         for well_id, btn in self.wells.items():
@@ -89,7 +124,7 @@ class OpentronsDeckWidget(Widget):
                     btn.setStyleSheet("background-color: grey; font-size: 14px")
 
         self._wells_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._wells_group_box)
+        self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1,2)
         self.setLayout(self.main_grid_layout)
 
     def add_home(self, layout):
@@ -144,17 +179,13 @@ class OpentronsDeckWidget(Widget):
                 self.deck_slots[corrds].setFixedSize(30, 30)
                 self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
             layout.addWidget(self.deck_slots[corrds])
-
+        self._deck_group_box.setFixedHeight(70)
         self._deck_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._deck_group_box)
+        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1,2)
         self.setLayout(self.main_grid_layout)
 
     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
-        self._scanner_widget = QtWidgets.QGroupBox("Scan list")
-        main_layout = QtWidgets.QGridLayout()
-
         self.scan_list = TableWidgetDragRows()
-
         self.scan_list.setColumnCount(3)
         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
         self.scan_list_items = 0
@@ -162,25 +193,40 @@ class OpentronsDeckWidget(Widget):
 
         self._actions_widget = QtWidgets.QGroupBox("Actions")
 
-        actions_layout = QtWidgets.QGridLayout()
+        actions_layout = QtWidgets.QVBoxLayout()
         self.goto_btn = guitools.BetterPushButton('GO TO')
         self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
         self.pos_in_well_lined = QtWidgets.QLineEdit("1")
         self.add_btn = guitools.BetterPushButton('ADD')
+        self.buttonOpen = guitools.BetterPushButton('Open')
+        self.buttonSave = guitools.BetterPushButton('Save')
 
-        actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
-        actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
-        actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
-        actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
-        actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
+        self.buttonOpen.clicked.connect(self.handleOpen)
+        self.buttonSave.clicked.connect(self.handleSave)
 
+        actions_layout.addWidget(self.goto_btn, 0)
+        actions_layout.addWidget(self.add_current_btn, 1)
+        actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 2)
+        actions_layout.addWidget(self.pos_in_well_lined, 3)
+        actions_layout.addWidget(self.add_btn, 4)
+        actions_layout.addWidget(self.buttonOpen, 5)
+        actions_layout.addWidget(self.buttonSave, 6)
+        #
+        # actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
+        # actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
+        # actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
+        # actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
+        # actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
+        # actions_layout.addWidget(self.buttonOpen, 0, 7, 1, 1)
+        # actions_layout.addWidget(self.buttonSave, 0, 8, 1, 1)
+
+        self._actions_widget.setFixedHeight(200)
         self._actions_widget.setLayout(actions_layout)
+        self.scan_list.setFixedHeight(200)
 
+        self.main_grid_layout.addWidget(self.scan_list, 1, 0, 1, 1)
+        self.main_grid_layout.addWidget(self._actions_widget, 1, 1, 1, 1)
 
-        main_layout.addWidget(self.scan_list)
-        main_layout.addWidget(self._actions_widget)
-        self._scanner_widget.setLayout(main_layout)
-        self.main_grid_layout.addWidget(self._scanner_widget)
 
     def add_position_to_scan(self, slot, well, offset):
 
@@ -188,7 +234,6 @@ class OpentronsDeckWidget(Widget):
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-
         self.scan_list_items += 1
 
     def add_current_position_to_scan(self):
@@ -248,8 +293,9 @@ class OpentronsDeckWidget(Widget):
                 )
 
             self.numPositioners += 1
+        self._positioner_widget.setFixedHeight(90)
         self._positioner_widget.setLayout(layout)
-        self.main_grid_layout.addWidget(self._positioner_widget)
+        self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1,2)
 
     @property
     def current_slot(self):
@@ -272,7 +318,13 @@ class OpentronsDeckWidget(Widget):
 
     @property
     def positions_in_well(self):
-        return int(self.pos_in_well_lined.text())
+        try:
+            if int(self.pos_in_well_lined.text()) > 4:
+                return 4
+            else:
+                return int(self.pos_in_well_lined.text())
+        except ValueError:
+            return 1
 
     def getStepSize(self, positionerName, axis):
         """ Returns the step size of the specified positioner axis in
@@ -349,12 +401,10 @@ class OpentronsDeckWidget(Widget):
 #         self.main_grid_layout.addWidget(self._scanner_widget)
 #
 #     def add_position_to_scan(self, slot, well, offset):
-#
 #         self.scan_list.insertRow(self.scan_list_items)
 #         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
 #         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
 #         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-#
 #         self.scan_list_items += 1
 #
 #     def add_current_position_to_scan(self):
@@ -362,6 +412,10 @@ class OpentronsDeckWidget(Widget):
 #         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
 #         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
 #         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
+#         self.scan_list_items += 1
+
+
+
 # From https://stackoverflow.com/questions/26227885/drag-and-drop-rows-within-qtablewidget
 class TableWidgetDragRows(QtWidgets.QTableWidget):
     def __init__(self, *args, **kwargs):
@@ -376,6 +430,32 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+
+    def contextMenuEvent(self, event):
+        if self.selectionModel().selection().indexes():
+            for i in self.selectionModel().selection().indexes():
+                row, column = i.row(), i.column()
+            menu = QtWidgets.QMenu()
+            open_action = menu.addAction("Open")
+            delete_action = menu.addAction("Delete")
+
+            action = menu.exec_(self.mapToGlobal(event.pos()))
+            if action == open_action:
+                self.gotoAction(row)
+                print(f"{row}, {column}")
+            elif action == delete_action:
+                self.deleteSelected(row)
+
+    def gotoAction(self, row):
+        print(f"Go to position in row {row}")
+        # if self._slideShowWin:
+        #     self._slideShowWin.showImageByPath(self._twoDLst[row][column])
+        #     self._animateUpOpen()
+
+    def deleteSelected(self, row):
+        print("deleteSelected")
+        self.removeRow(row)
+
 
     def dropEvent(self, event):
         if not event.isAccepted() and event.source() == self:

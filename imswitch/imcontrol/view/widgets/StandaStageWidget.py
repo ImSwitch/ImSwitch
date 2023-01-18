@@ -4,8 +4,8 @@ from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 from imswitch.imcontrol.view.widgets.PositionerWidget import PositionerWidget
 
-class StandaPositionerWidget(PositionerWidget):
-    """ Customized Widget in control of the piezo movement of a Standa Positioner. """
+class StandaStageWidget(Widget):
+    """ Customized Widget in control of the piezo movement of a Standa Stage. """
 
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
@@ -18,28 +18,31 @@ class StandaPositionerWidget(PositionerWidget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addPositioner(self, positionerName, axes, hasSpeed):
+    def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed):
+        self.posistioners_group_box = QtWidgets.QGroupBox("Positioners")
+        layout = QtWidgets.QGridLayout()
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
-            label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
+            label = f'{axis}' if positionerName != axis else positionerName
 
             self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
             self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
+            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(
+                f'<strong>{initial_position[axis]:.3f} mm</strong>')
             self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
-            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
-            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel(' µm')
+            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
+            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel('mm')
 
-            self.grid.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
-            self.grid.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
-            self.grid.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
-            self.grid.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
-            self.grid.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
-            self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
-            self.grid.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
+            layout.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
+            layout.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
+            layout.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
+            layout.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
+            layout.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
+            layout.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
+            layout.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
 
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
@@ -50,22 +53,25 @@ class StandaPositionerWidget(PositionerWidget):
             )
 
             if hasSpeed:
-                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
+                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel(
+                    f'<strong>{initial_speed[axis]:.2f} mm/s</strong>')
                 self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['ButtonSpeedEnter' + parNameSuffix] = guitools.BetterPushButton('Enter')
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
-                self.pars['SpeedUnit' + parNameSuffix] = QtWidgets.QLabel(' µm/s')
-                self.grid.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
-                self.grid.addWidget(self.pars['SpeedUnit' + parNameSuffix], self.numPositioners, 11)
-                self.grid.addWidget(self.pars['ButtonSpeedEnter' + parNameSuffix], self.numPositioners, 12)
-                self.grid.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 7)
+                self.pars['ButtonSpeedEnter' + parNameSuffix] = guitools.BetterPushButton('Set')
+                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit(f'{initial_speed[axis]}')
+                self.pars['SpeedUnit' + parNameSuffix] = QtWidgets.QLabel('mm/s')
+                layout.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
+                layout.addWidget(self.pars['SpeedUnit' + parNameSuffix], self.numPositioners, 11)
+                layout.addWidget(self.pars['ButtonSpeedEnter' + parNameSuffix], self.numPositioners, 12)
+                layout.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 7)
 
-
-                self.pars['ButtonSpeedEnter'+ parNameSuffix].clicked.connect(
+                self.pars['ButtonSpeedEnter' + parNameSuffix].clicked.connect(
                     lambda *args, axis=axis: self.sigsetSpeedClicked.emit(positionerName, axis)
                 )
 
             self.numPositioners += 1
+
+        self.posistioners_group_box.setLayout(layout)
+        self.grid.addWidget(self.posistioners_group_box)
 
 
     def getStepSize(self, positionerName, axis):
@@ -94,7 +100,7 @@ class StandaPositionerWidget(PositionerWidget):
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
+        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} mm</strong>')
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

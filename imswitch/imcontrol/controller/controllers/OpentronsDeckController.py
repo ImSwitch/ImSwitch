@@ -24,24 +24,22 @@ _objectiveRadius = 21.8 / 2
 
 
 class OpentronsDeckController(LiveUpdatedController):
-    """ Linked to OpentronsDeckWidget."""
+    """ Linked to OpentronsDeckWidget.
+    Safely moves around the OTDeck and saves positions to be scanned with OpentronsDeckScanner."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self, instanceName="OpentronsController")
+
         # Has control over positioner
-        self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
-        self.positioner = self._master.positionersManager[self.positioner_name]
-        self.objective_radius = _objectiveRadius
-        # TODO: get LED
-        # self.led_name = self._master.LEDsManager.getAllDeviceNames()
-        # self.led = self._master.LEDsManager[0]
+        self.initialize_positioners()
+
         # Deck and Labwares definitions:
+        self.objective_radius = _objectiveRadius
         self.selected_slot = None
         self.selected_well = None
         self.load_deck(self._setupInfo.deck["OpentronsDeck"])
         self.labwares = self.load_labwares(self._setupInfo.deck["OpentronsDeck"].labwares)
-        self.initialize_positioners()
         self.scanner = LabwareScanner(self.positioner, self.deck, self.labwares, _objectiveRadius)
         self._widget.initialize_opentrons_deck(self.deck, self.labwares)
         self._widget.addScanner()
@@ -69,6 +67,9 @@ class OpentronsDeckController(LiveUpdatedController):
         self.connect_line_edit()
 
     def initialize_positioners(self):
+        # Has control over positioner
+        self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
+        self.positioner = self._master.positionersManager[self.positioner_name]
         # Set up positioners
         for pName, pManager in self._master.positionersManager:
             if not pManager.forPositioning:
@@ -100,7 +101,7 @@ class OpentronsDeckController(LiveUpdatedController):
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    @APIExport(runOnUIThread=True)
+    # @APIExport(runOnUIThread=True)
     def home(self, positionerName: str) -> None:
         self.positioner.home()
         [self.updatePosition(positionerName, axis) for axis in self.positioner.axes]
@@ -159,6 +160,10 @@ class OpentronsDeckController(LiveUpdatedController):
         axis = key[2]
         if key[3] == _positionAttr:
             self.setPositioner(positionerName, axis, value)
+
+    def setPositioner(self, positionerName: str, axis: str, position: float) -> None:
+        """ Moves the specified positioner axis to the specified position. """
+        self.setPos(positionerName, axis, position)
 
     def setSharedAttr(self, positionerName, axis, attr, value):
         self.settingAttr = True
@@ -263,7 +268,7 @@ class OpentronsDeckController(LiveUpdatedController):
     def update_values(self):
         self._widget.current_slot = self.scanner.get_slot()
         well = self.scanner.get_closest_well()
-        self._widget.current_well = well.well_name
+        self._widget.current_well = well.well_name if well is not None else None
         if self._widget.current_slot is not None and self._widget.current_well is not None:
             offset = tuple([a - b if np.abs(a - b) > 10e-4 else 0.00 for (a, b) in
                             zip(well.geometry.position + Point(*self.corner_offset),
@@ -403,6 +408,10 @@ class LabwareScanner():
             return None
         dist_to_well = 10**5
         closest_well = None
+
+        if slot not in self.labwares.keys():
+            self.__logger.debug("No defined labware in current slot.")
+            return None
         for well in self.labwares[slot].wells():
             radius = well.diameter/2
             x1,y1,_ = well.geometry.position + Point(*self.corner_offset)

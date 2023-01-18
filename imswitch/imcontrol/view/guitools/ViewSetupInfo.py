@@ -84,6 +84,7 @@ class ViewSetupInfo(SetupInfo):
     - ``OpentronsDeck`` (OpentronsDeck control widget)
     - ``Positioner`` (positioners widget)
     - ``StandaPositioner`` (Standa positioners widget)
+    - ``StandaStage`` (Standa Stage widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)
     - ``BeadRec`` (bead reconstruction widget)
     - ``AlignAverage`` (axial alignment tool widget)

@@ -20,20 +20,17 @@ class MCTManager(SignalInterface):
 
         if mctInfo is None:
             return
-       
-        
+
         self.update()
 
-
-
     def update(self):
-        #self.allPatternsPaths
-        #self.maskDouble = self.__masks[0].concat(self.__masks[1])
-        #self.maskCombined = self.maskDouble 
-        #self.sigMCTMaskUpdated.emit(self.maskCombined)
+        # self.allPatternsPaths
+        # self.maskDouble = self.__masks[0].concat(self.__masks[1])
+        # self.maskCombined = self.maskDouble
+        # self.sigMCTMaskUpdated.emit(self.maskCombined)
 
-        #returnmask = self.maskDouble 
-        return None #returnmask.image()
+        # returnmask = self.maskDouble
+        return None  # returnmask.image()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

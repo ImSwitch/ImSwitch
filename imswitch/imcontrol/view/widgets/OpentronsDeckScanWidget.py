@@ -1,5 +1,6 @@
 import os
 import time
+import pyqtgraph as pg
 
 from qtpy import QtCore, QtWidgets
 from PyQt5.QtCore import Qt, QLine
@@ -8,6 +9,9 @@ from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view.widgets.StandaPositionerWidget import StandaPositionerWidget
+import json
+import sys, csv, unicodedata
+from imswitch.imcontrol.view.widgets.OpentronsDeckWidget import TableWidgetDragRows
 
 class OpentronsDeckScanWidget(Widget):
     """ Widget in control of the piezo movement. """
@@ -29,395 +33,330 @@ class OpentronsDeckScanWidget(Widget):
     sigDeletePresetClicked = QtCore.Signal()
     sigPresetScanDefaultToggled = QtCore.Signal()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-        self.numPositioners = 0
-        self.pars = {}
-        self.main_grid_layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self.main_grid_layout)
-        self.current_slot = None
-        self.current_well = None
-        self.current_offset = (None,None)
+    sigMCTInitFilterPos = QtCore.Signal(bool)  # (enabled)
+    sigMCTShowLast = QtCore.Signal(bool)  # (enabled)
+    sigMCTStop = QtCore.Signal(bool)  # (enabled)
+    sigMCTStart = QtCore.Signal(bool)  # (enabled)
 
-        # Presets box
-        self.presetsBox = QtWidgets.QHBoxLayout()
-        self.presetsLabel = QtWidgets.QLabel('Presets: ')
-        self.presetsList = QtWidgets.QComboBox()
-        self.presetsList.currentIndexChanged.connect(
-            lambda i: self.sigPresetSelected.emit(self.presetsList.itemData(i))
-        )
-        self.loadPresetButton = guitools.BetterPushButton('Load selected')
-        self.loadPresetButton.clicked.connect(self.sigLoadPresetClicked)
-        self.savePresetButton = guitools.BetterPushButton('Save to selected')
-        self.savePresetButton.clicked.connect(self.sigSavePresetClicked)
-        self.savePresetAsButton = guitools.BetterPushButton('Save as…')
-        self.savePresetAsButton.clicked.connect(self.sigSavePresetAsClicked)
-        self.moreButton = QtWidgets.QToolButton()
-        self.moreButton.setText('More…')
-        self.moreButton.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.deletePresetAction = QtWidgets.QAction('Delete selected')
-        self.deletePresetAction.triggered.connect(self.sigDeletePresetClicked)
-        self.moreButton.addAction(self.deletePresetAction)
-        self.presetScanDefaultAction = QtWidgets.QAction('Make selected default for scanning')
-        self.presetScanDefaultAction.triggered.connect(self.sigPresetScanDefaultToggled)
-        self.moreButton.addAction(self.presetScanDefaultAction)
+    sigShowToggled = QtCore.Signal(bool)  # (enabled)
+    sigPIDToggled = QtCore.Signal(bool)  # (enabled)
+    sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
 
-        self.setCurrentPreset(None)
-        self.setScanDefaultPresetActive(False)
+    sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
-        self.presetsBox.addWidget(self.presetsLabel)
-        self.presetsBox.addWidget(self.presetsList, 1)
-        self.presetsBox.addWidget(self.loadPresetButton)
-        self.presetsBox.addWidget(self.savePresetButton)
-        self.presetsBox.addWidget(self.savePresetAsButton)
-        self.presetsBox.addWidget(self.moreButton)
-
-        self.main_grid_layout.addLayout(self.presetsBox)
-
-
-        # Folder and filename fields -> from RecordingWidget
-        baseOutputFolder = self._options.recording.outputFolder
-        if self._options.recording.includeDateInOutputFolder:
-            self.initialDir = os.path.join(baseOutputFolder, time.strftime('%Y-%m-%d'))
-        else:
-            self.initialDir = baseOutputFolder
-
-        self.folderEdit = QtWidgets.QLineEdit(self.initialDir)
-        self.openFolderButton = guitools.BetterPushButton('Open')
-        self.specifyfile = QtWidgets.QCheckBox('Specify file name')
-        self.filenameEdit = QtWidgets.QLineEdit('Current time')
-        self.filenameEdit.setEnabled(False)
-
-
-        self.__logger = initLogger(self, instanceName="OpentronsDeckScanWidget")
-
-
-    def getCurrentPreset(self):
-        """ Returns the name of the currently selected preset. """
-        return self.presetsList.currentData()
-
-    def setCurrentPreset(self, name):
-        """ Sets the selected preset in the preset list. Pass None to unselect
-        all presets. """
-        anyPresetSelected = True if name else False
-
-        if anyPresetSelected:
-            nameIndex = self.presetsList.findData(name)
-            if nameIndex > -1:
-                self.presetsList.setCurrentIndex(nameIndex)
-        else:
-            self.presetsList.setCurrentIndex(-1)
-
-        self.loadPresetButton.setEnabled(anyPresetSelected)
-        self.savePresetButton.setEnabled(anyPresetSelected)
-        self.deletePresetAction.setEnabled(anyPresetSelected)
-        self.presetScanDefaultAction.setEnabled(anyPresetSelected)
-        if not anyPresetSelected:
-            self.presetScanDefaultAction.setChecked(False)
-
-    def setScanDefaultPreset(self, name):
-        """ Sets which preset that is default for scanning. Pass None if there
-        is no default. """
-        for i in range(self.presetsList.count()):
-            self.presetsList.setItemText(i, self.presetsList.itemData(i))
-
-        nameIndex = self.presetsList.findData(name)
-        if nameIndex > -1:
-            self.presetsList.setItemText(nameIndex, f'{name} [scan default]')
-
-    def setScanDefaultPresetActive(self, active):
-        """ Sets whether the preset that is default for scanning is active. """
-        self.presetScanDefaultAction.setText(
-            'Make selected default for scanning' if not active else 'Unset default for scanning'
-        )
-
-    def addPreset(self, name):
-        """ Adds a preset to the preset list. """
-        self.presetsList.addItem(name, name)
-        self.presetsList.model().sort(0)
-
-    def removePreset(self, name):
-        """ Removes a preset from the preset list. """
-        nameIndex = self.presetsList.findData(name)
-        if nameIndex > -1:
-            self.presetsList.removeItem(nameIndex)
-
-    def select_well(self, well):
-        for well_id, btn in self.wells.items():
-            if isinstance(btn, guitools.BetterPushButton):
-                if well_id == well:
-                    btn.setStyleSheet("background-color: green; font-size: 14px")
-                else:
-                    btn.setStyleSheet("background-color: grey; font-size: 14px")
-
-
-
-    def select_labware(self, slot):
-        if hasattr(self,"_wells_group_box"):
-            self.main_grid_layout.removeWidget(self._wells_group_box)
-        self._wells_group_box = QtWidgets.QGroupBox(f"Labware layout: {slot}: {self._labware_dict[slot]}")
-        layout = QtWidgets.QGridLayout()
-
-        labware = self._labware_dict[slot]
-        # Create dictionary to hold buttons
-        self.wells = {}
-        # Create grid layout for wells (buttons)
-        well_buttons = {}
-        rows = len(self._labware_dict[slot].rows())
-        columns = len(self._labware_dict[slot].columns())
-        for r in list(range(rows)):
-            for c in list(range(columns)):
-                well_buttons[c+1] = (0, c+1)
-                well = labware.rows()[r][c]
-                well_buttons[well.well_name] = (r+1,c+1)
-            well_buttons[well.well_name[0]] = (r+1, 0)
-        well_buttons[""] = (0,0)
-        # Create wells (buttons) and add them to the grid layout
-        for corrds, pos in well_buttons.items():
-            if 0 in pos:
-                self.wells[corrds] = QtWidgets.QLabel(text=str(corrds))  # QtWidgets.QPushButton(corrds)
-                self.wells[corrds].setFixedSize(35, 25)
-                self.wells[corrds].setStyleSheet("background-color: None; font-size: 12px")
-            else:
-                self.wells[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
-                self.wells[corrds].setFixedSize(35, 25)
-                self.wells[corrds].setStyleSheet("background-color: grey; font-size: 14px")
-            # Set style for empty cell
-            # self.wells[corrds].setStyleSheet("background-color: none")
-            # Add button/label to layout
-            layout.addWidget(self.wells[corrds], pos[0], pos[1])
-
-        # Change color of selected labware
-        for slot_id, btn in self.deck_slots.items():
-            if isinstance(btn, guitools.BetterPushButton):
-                if slot_id == slot:
-                    btn.setStyleSheet("background-color: blue; font-size: 14px")
-                else:
-                    btn.setStyleSheet("background-color: grey; font-size: 14px")
-
-        self._wells_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._wells_group_box)
-        self.setLayout(self.main_grid_layout)
-
-    def add_home(self, layout):
-        self.home = guitools.BetterPushButton(text="HOME")  # QtWidgets.QPushButton(corrds)
-        self.home.setFixedSize(50, 30)
-        self.home.setStyleSheet("background-color: black; font-size: 14px")
-        layout.addWidget(self.home)
-
-    def add_zero(self, layout):
-        # self.zero = guitools.BetterPushButton(text="ZERO")  # QtWidgets.QPushButton(corrds)
-        # TODO: implement ZERO
-        self.zero = QtWidgets.QLabel(text="ZERO")  # QtWidgets.QPushButton(corrds)
-        self.zero.setFixedSize(50, 30)
-        # self.zero.setStyleSheet("background-color: black; font-size: 14px")
-        self.zero.setStyleSheet("background-color: None; font-size: 14px")
-        layout.addWidget(self.zero)
-
-    def initialize_opentrons_deck(self, deck_dict, labwares_dict):
-        self._deck_dict = deck_dict
-        self._labware_dict = labwares_dict
-
-        self._deck_group_box = QtWidgets.QGroupBox("Deck layout")
-        layout = QtWidgets.QHBoxLayout()
-
-        # Add home and zero buttons
-        self.add_home(layout)
-        self.add_zero(layout)
-
-        # Create dictionary to hold buttons
-        slots = [slot["id"] for slot in deck_dict["locations"]["orderedSlots"]]
-        used_slots = list(labwares_dict.keys())
-        self.deck_slots = {}
-
-        # Create dictionary to store deck slots names (button texts)
-        slots_buttons = {s: (0,i+2) for i,s in enumerate(slots)}
-        for corrds, pos in slots_buttons.items():
-            if corrds in used_slots:
-                # Do button if slot contains labware
-                self.deck_slots[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
-                self.deck_slots[corrds].setFixedSize(30, 30)
-                self.deck_slots[corrds].setStyleSheet("QPushButton"
-                                     "{"
-                                     "background-color : grey; font-size: 14px"
-                                     "}"
-                                     "QPushButton::pressed"
-                                     "{"
-                                     "background-color : red; font-size: 14px"
-                                     "}"
-                                     )
-            else:
-                self.deck_slots[corrds] = QtWidgets.QLabel(corrds)  # QtWidgets.QPushButton(corrds)
-                self.deck_slots[corrds].setFixedSize(30, 30)
-                self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
-            layout.addWidget(self.deck_slots[corrds])
-
-        self._deck_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._deck_group_box)
-        self.setLayout(self.main_grid_layout)
 
     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
-        self._scanner_widget = QtWidgets.QGroupBox("Scan list")
-        main_layout = QtWidgets.QGridLayout()
-
-        self.scan_list = QtWidgets.QTableWidget()
+        self.scan_list = TableWidgetDragRows()
         self.scan_list.setColumnCount(3)
         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
         self.scan_list_items = 0
-        self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
+        # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
-        self._actions_widget = QtWidgets.QGroupBox("Actions")
+        self._actions_widget = QtWidgets.QGroupBox("")
 
         actions_layout = QtWidgets.QGridLayout()
-        self.goto_btn = guitools.BetterPushButton('GO TO')
-        self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
-        self.pos_in_well_lined = QtWidgets.QLineEdit("1")
-        self.add_btn = guitools.BetterPushButton('ADD')
+        self.buttonOpen = guitools.BetterPushButton('Open')
+        self.buttonSave = guitools.BetterPushButton('Save')
 
-        actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
-        actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
-        actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
-        actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
-        actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
+        self.buttonOpen.clicked.connect(self.handleOpen)
+        self.buttonSave.clicked.connect(self.handleSave)
+
+        actions_layout.addWidget(self.buttonOpen, 0, 0, 1, 1)
+        actions_layout.addWidget(self.buttonSave, 1, 0, 1, 1)
 
         self._actions_widget.setLayout(actions_layout)
 
-
-        main_layout.addWidget(self.scan_list)
-        main_layout.addWidget(self._actions_widget)
-        self._scanner_widget.setLayout(main_layout)
-        self.main_grid_layout.addWidget(self._scanner_widget)
-
-    def add_position_to_scan(self, slot, well, offset):
-
-        self.scan_list.insertRow(self.scan_list_items)
-        self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
-        self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
-        self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-
-        self.scan_list_items += 1
-
-    def add_current_position_to_scan(self):
-        self.scan_list.insertRow(self.scan_list_items)
-        self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
-        self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
-        self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
-        self.scan_list_items += 1
-
-    def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
-        self._positioner_widget = QtWidgets.QGroupBox("Positioners")
-        layout = QtWidgets.QGridLayout()
-        for i in range(len(axes)):
-            axis = axes[i]
-            parNameSuffix = self._getParNameSuffix(positionerName, axis)
-            label = f'{axis}' if positionerName != axis else positionerName
-
-            self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
-            self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{initial_position[axis]:.3f} mm</strong>')
-            self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-            self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
-            self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
-            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
-            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel('mm')
-
-            layout.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
-            layout.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
-            layout.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
-            layout.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
-            layout.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
-            layout.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
-            layout.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
-
-            # Connect signals
-            self.pars['UpButton' + parNameSuffix].clicked.connect(
-                lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
-            )
-            self.pars['DownButton' + parNameSuffix].clicked.connect(
-                lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
-            )
-
-            if hasSpeed:
-                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{initial_speed[axis]:.2f} mm/s</strong>')
-                self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['ButtonSpeedEnter' + parNameSuffix] = guitools.BetterPushButton('Set')
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit(f'{initial_speed[axis]}')
-                self.pars['SpeedUnit' + parNameSuffix] = QtWidgets.QLabel('mm/s')
-                layout.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
-                layout.addWidget(self.pars['SpeedUnit' + parNameSuffix], self.numPositioners, 11)
-                layout.addWidget(self.pars['ButtonSpeedEnter' + parNameSuffix], self.numPositioners, 12)
-                layout.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 7)
+        self.grid.addWidget(self.scan_list)
+        self.grid.addWidget(self._actions_widget)
 
 
-                self.pars['ButtonSpeedEnter'+ parNameSuffix].clicked.connect(
-                    lambda *args, axis=axis: self.sigsetSpeedClicked.emit(positionerName, axis)
-                )
+    # https://stackoverflow.com/questions/12608835/writing-a-qtablewidget-to-a-csv-or-xls
+    # Extra blank row issue: https://stackoverflow.com/questions/3348460/csv-file-written-with-python-has-blank-lines-between-each-row
+    def handleSave(self):
+        path = QtWidgets.QFileDialog.getSaveFileName(
+            self, 'Save File', '', 'CSV(*.csv)')
+        # if not path[0] != "":
+        with open(path[0], 'w', newline='') as stream:
+            writer = csv.writer(stream)
+            for row in range(self.scan_list.rowCount()):
+                rowdata = []
+                for column in range(self.scan_list.columnCount()):
+                    item = self.scan_list.item(row, column)
+                    if item is not None:
+                        rowdata.append(
+                            item.text())
+                    else:
+                        rowdata.append('')
+                writer.writerow(rowdata)
+        # else:
+        #     self.__logger.debug("Empty path: handleSave")
 
-            self.numPositioners += 1
-        self._positioner_widget.setLayout(layout)
-        self.main_grid_layout.addWidget(self._positioner_widget)
+    def handleOpen(self):
+        path = QtWidgets.QFileDialog.getOpenFileName(
+            self, 'Open File', '', 'CSV(*.csv)')
+        # if not path.isEmpty():
+        with open(path[0], 'r') as stream:
+            self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+            self.scan_list.setRowCount(0)
+            self.scan_list_items = 0
+            for rowdata in csv.reader(stream):
+                self.scan_list.insertRow(self.scan_list_items)
+                for column, data in enumerate(rowdata):
+                    item = QtWidgets.QTableWidgetItem(data)
+                    self.scan_list.setItem(self.scan_list_items, column, item)
+                self.scan_list_items += 1
 
-    @property
-    def current_slot(self):
-        return self._current_slot
-    @current_slot.setter
-    def current_slot(self, current_slot):
-        self._current_slot = current_slot
-    @property
-    def current_well(self):
-        return self._current_well
-    @current_well.setter
-    def current_well(self, current_well):
-        self._current_well = current_well
-    @property
-    def current_offset(self):
-        return self._current_offset
-    @current_offset.setter
-    def current_offset(self, current_offset):
-        self._current_offset = current_offset
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    @property
-    def positions_in_well(self):
-        return int(self.pos_in_well_lined.text())
+        self.mctFrame = pg.GraphicsLayoutWidget()
 
-    def getStepSize(self, positionerName, axis):
-        """ Returns the step size of the specified positioner axis in
-        milimeters. """
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        return float(self.pars['StepEdit' + parNameSuffix].text())
+        # initialize all GUI elements
+        # period
+        self.mctLabelTimePeriod = QtWidgets.QLabel('Period T (s):')
+        self.mctValueTimePeriod = QtWidgets.QLineEdit('5')
 
-    def setStepSize(self, positionerName, axis, stepSize):
-        """ Sets the step size of the specified positioner axis to the
-        specified number of milimeters. """
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['StepEdit' + parNameSuffix].setText(stepSize)
+        # duration
+        self.mctLabelTimeDuration = QtWidgets.QLabel('N Measurements:')
+        self.mctValueTimeDuration = QtWidgets.QLineEdit('1')
 
-    def getSpeed(self, positionerName, axis):
-        """ Returns the step size of the specified positioner axis in
-        milimeters. """
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        return float(self.pars['SpeedEdit' + parNameSuffix].text())
+        # z-stack
+        self.mctLabelZStack = QtWidgets.QLabel('Z-Stack (min,max,steps):')
+        self.mctValueZmin = QtWidgets.QLineEdit('-100')
+        self.mctValueZmax = QtWidgets.QLineEdit('100')
+        self.mctValueZsteps = QtWidgets.QLineEdit('10')
 
-    def setSpeedSize(self, positionerName, axis, speedSize):
-        """ Sets the step size of the specified positioner axis to the
-        specified number of micrometers. """
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['SpeedEdit' + parNameSuffix].setText(speedSize)
+        # xy-scanning
+        self.mctLabelXScan = QtWidgets.QLabel('X Scan (min,max,steps):')
+        self.mctValueXmin = QtWidgets.QLineEdit('-1000')
+        self.mctValueXmax = QtWidgets.QLineEdit('1000')
+        self.mctValueXsteps = QtWidgets.QLineEdit('100')
 
-    def updatePosition(self, positionerName, axis, position):
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} mm</strong>')
+        self.mctLabelYScan = QtWidgets.QLabel('Y Scan (min,max,steps):')
+        self.mctValueYmin = QtWidgets.QLineEdit('-1000')
+        self.mctValueYmax = QtWidgets.QLineEdit('1000')
+        self.mctValueYsteps = QtWidgets.QLineEdit('100')
 
-    def updateSpeed(self, positionerName, axis, speed):
-        parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed:.2f} mm/s</strong>')
+        # autofocus
+        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')
+        self.autofocusRange = QtWidgets.QLineEdit('200')
+        self.autofocusSteps = QtWidgets.QLineEdit('20')
+        self.autofocusPeriod = QtWidgets.QLineEdit('10')
 
-    def _getParNameSuffix(self, positionerName, axis):
-        return f'{positionerName}--{axis}'
+        self.autofocusLaser1Checkbox = QtWidgets.QCheckBox('Laser 1')
+        self.autofocusLaser1Checkbox.setCheckable(True)
+
+        self.autofocusLaser2Checkbox = QtWidgets.QCheckBox('Laser 2')
+        self.autofocusLaser2Checkbox.setCheckable(True)
+
+        self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
+        self.autofocusLED1Checkbox.setCheckable(True)
+
+        self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF:')
+
+        # Laser 1
+        valueDecimalsLaser = 1
+        valueRangeLaser = (0, 2 ** 15)
+        tickIntervalLaser = 1
+        singleStepLaser = 1
+
+        self.sliderLaser1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser,
+                                                                     valueRangeLaser, tickIntervalLaser,
+                                                                     singleStepLaser)
+        self.sliderLaser1.valueChanged.connect(
+            lambda value: self.sigSliderLaser1ValueChanged.emit(value)
+        )
+
+        self.sliderLaser2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser,
+                                                                     valueRangeLaser, tickIntervalLaser,
+                                                                     singleStepLaser)
+        self.sliderLaser2.valueChanged.connect(
+            lambda value: self.sigSliderLaser2ValueChanged.emit(value)
+        )
+
+        # LED
+        valueDecimalsLED = 1
+        valueRangeLED = (0, 2 ** 8)
+        tickIntervalLED = 1
+        singleStepLED = 1
+
+        self.sliderLED, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED,
+                                                               tickIntervalLED, singleStepLED)
+        self.sliderLED.valueChanged.connect(
+            lambda value: self.sigSliderLEDValueChanged.emit(value)
+        )
+
+        self.mctLabelFileName = QtWidgets.QLabel('FileName:')
+        self.mctEditFileName = QtWidgets.QLineEdit('MCT')
+        self.mctNImages = QtWidgets.QLabel('Number of images: ')
+
+        self.mctStartButton = guitools.BetterPushButton('Start')
+        self.mctStartButton.setCheckable(False)
+        self.mctStartButton.toggled.connect(self.sigMCTStart)
+
+        self.mctStopButton = guitools.BetterPushButton('Stop')
+        self.mctStopButton.setCheckable(False)
+        self.mctStopButton.toggled.connect(self.sigMCTStop)
+
+        self.mctShowLastButton = guitools.BetterPushButton('Show Last')
+        self.mctShowLastButton.setCheckable(False)
+        self.mctShowLastButton.toggled.connect(self.sigMCTShowLast)
+
+        self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
+        self.mctInitFilterButton.setCheckable(False)
+        self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
+
+        self.mctDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
+        self.mctDoZStack.setCheckable(True)
+
+        self.mctDoXYScan = QtWidgets.QCheckBox('Perform XY Scan')
+        self.mctDoXYScan.setCheckable(True)
+
+        # Defining layout
+        self.grid = QtWidgets.QGridLayout()
+        self.setLayout(self.grid)
+
+        self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
+        self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
+        self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
+        self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
+        # z-stack
+        self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
+        self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
+        self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
+        self.grid.addWidget(self.mctValueZsteps, 1, 3, 1, 1)
+
+        # xy-scanning
+        self.grid.addWidget(self.mctLabelXScan, 2, 0, 1, 1)
+        self.grid.addWidget(self.mctValueXmin, 2, 1, 1, 1)
+        self.grid.addWidget(self.mctValueXmax, 2, 2, 1, 1)
+        self.grid.addWidget(self.mctValueXsteps, 2, 3, 1, 1)
+
+        self.grid.addWidget(self.mctLabelYScan, 3, 0, 1, 1)
+        self.grid.addWidget(self.mctValueYmin, 3, 1, 1, 1)
+        self.grid.addWidget(self.mctValueYmax, 3, 2, 1, 1)
+        self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
+
+        self.grid.addWidget(self.mctLabelLaser1, 4, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser1, 4, 1, 1, 3)
+        self.grid.addWidget(self.mctLabelLaser2, 5, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser2, 5, 1, 1, 3)
+        self.grid.addWidget(self.mctLabelLED, 6, 0, 1, 1)
+        self.grid.addWidget(self.sliderLED, 6, 1, 1, 3)
+
+        # filesettings
+        self.grid.addWidget(self.mctLabelFileName, 7, 0, 1, 1)
+        self.grid.addWidget(self.mctEditFileName, 7, 1, 1, 1)
+        self.grid.addWidget(self.mctNImages, 7, 2, 1, 1)
+        self.grid.addWidget(self.mctDoZStack, 7, 3, 1, 1)
+
+        # autofocus
+        self.grid.addWidget(self.autofocusLabel, 8, 0, 1, 1)
+        self.grid.addWidget(self.autofocusRange, 8, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSteps, 8, 2, 1, 1)
+        self.grid.addWidget(self.autofocusPeriod, 8, 3, 1, 1)
+
+        self.grid.addWidget(self.autofocusSelectionLabel, 9, 0, 1, 1)
+        self.grid.addWidget(self.autofocusLaser1Checkbox, 9, 1, 1, 1)
+        self.grid.addWidget(self.autofocusLaser2Checkbox, 9, 2, 1, 1)
+        self.grid.addWidget(self.autofocusLED1Checkbox, 9, 3, 1, 1)
+
+        # start stop
+        self.grid.addWidget(self.mctStartButton, 10, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 10, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton, 10, 2, 1, 1)
+        self.grid.addWidget(self.mctDoXYScan, 10, 3, 1, 1)
+        # self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
+
+        self.layer = None
+
+        self.addScanner()
 
 
-  
+    def isAutofocus(self):
+        if self.autofocusLED1Checkbox.isChecked() or self.autofocusLaser1Checkbox.isChecked() or self.autofocusLaser2Checkbox.isChecked():
+            return True
+        else:
+            return False
+
+    def getAutofocusValues(self):
+        autofocusParams = {}
+        autofocusParams["valueRange"] = self.autofocusRange.text()
+        autofocusParams["valueSteps"] = self.autofocusSteps.text()
+        autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
+        if self.autofocusLED1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'LED'
+        elif self.autofocusLaser1Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser1'
+        elif self.autofocusLaser2Checkbox.isChecked():
+            autofocusParams["illuMethod"] = 'Laser2'
+        else:
+            autofocusParams["illuMethod"] = False
+
+        return autofocusParams
+
+    def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
+        mctLabel = QtWidgets.QLabel(label)
+        valueRangeMin, valueRangeMax = valueRange
+        slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                      decimals=valueDecimals)
+        slider.setFocusPolicy(QtCore.Qt.NoFocus)
+        slider.setMinimum(valueRangeMin)
+        slider.setMaximum(valueRangeMax)
+        slider.setTickInterval(tickInterval)
+        slider.setSingleStep(singleStep)
+        slider.setValue(0)
+        return slider, mctLabel
+
+    def getImage(self):
+        if self.layer is not None:
+            return self.img.image
+
+    def setImage(self, im, colormap="gray", name="", pixelsize=(1, 1, 1), translation=(0, 0, 0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap,
+                                               scale=pixelsize, translate=translation,
+                                               name=name, blending='additive')
+        self.layer.data = im
+
+    def getZStackValues(self):
+        valueZmin = -abs(float(self.mctValueZmin.text()))
+        valueZmax = float(self.mctValueZmax.text())
+        valueZsteps = float(self.mctValueZsteps.text())
+        valueZenabled = bool(self.mctDoZStack.isChecked())
+
+        return valueZmin, valueZmax, valueZsteps, valueZenabled
+
+    def getXYScanValues(self):
+        valueXmin = -abs(float(self.mctValueXmin.text()))
+        valueXmax = float(self.mctValueXmax.text())
+        valueXsteps = float(self.mctValueXsteps.text())
+
+        valueYmin = -abs(float(self.mctValueYmin.text()))
+        valueYmax = float(self.mctValueYmax.text())
+        valueYsteps = float(self.mctValueYsteps.text())
+
+        valueXYenabled = bool(self.mctDoXYScan.isChecked())
+
+        return valueXmin, valueXmax, valueXsteps, valueYmin, valueYmax, valueYsteps, valueXYenabled
+
+    def getTimelapseValues(self):
+        mctValueTimePeriod = float(self.mctValueTimePeriod.text())
+        mctValueTimeDuration = int(self.mctValueTimeDuration.text())
+        return mctValueTimePeriod, mctValueTimeDuration
+
+    def getFilename(self):
+        mctEditFileName = self.mctEditFileName.text()
+        return mctEditFileName
+
+    def setNImages(self, nImages):
+        nImages2Do = self.getTimelapseValues()[-1]
+        self.mctNImages.setText('Number of images: ' + str(nImages) + " / " + str(nImages2Do))
 
     # Copyright (C) 2020-2021 ImSwitch developers
     # This file is part of ImSwitch.

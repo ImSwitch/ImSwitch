@@ -51,7 +51,7 @@ class CameraHIK:
 
         self.SensorHeight = 0
         self.SensorWidth = 0
-        self.frame = np.zeros(self.SensorHeight, self.SensorWidth)
+        self.frame = np.zeros((self.SensorHeight, self.SensorWidth))
         
         # thread switch
         self.g_bExit = False

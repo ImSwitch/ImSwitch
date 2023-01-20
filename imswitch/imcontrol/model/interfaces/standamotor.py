@@ -28,8 +28,10 @@ class StandaMotor():
             enum_hints = b"addr="
             devenum = pyximc.lib.enumerate_devices(probe_flags, enum_hints)
             dev_count = pyximc.lib.get_device_count(devenum)
+            self.__logger.info(f"Number of devices: {repr(dev_count)}")
             if dev_count > 0:
-                open_name = pyximc.lib.get_device_name(devenum, self._device_id)
+                #open_name = pyximc.lib.get_device_name(devenum, self._device_id)
+                open_name = pyximc.lib.get_device_name(devenum, 0)
             elif sys.version_info >= (3,0):
                 # use URI for virtual device when there is new urllib python3 API
                 tempdir = tempfile.gettempdir() + "/testdevice.bin"

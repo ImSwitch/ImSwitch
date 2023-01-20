@@ -193,7 +193,7 @@ class SLMWidget(Widget):
         self.controlPanel.donutButton = guitools.BetterPushButton("Donut")
         self.controlPanel.tophatButton = guitools.BetterPushButton("Tophat")
 
-        self.controlPanel.blackButton = guitools.BetterPushButton("Black frame")
+        self.controlPanel.blackButton = guitools.BetterPushButton("No mask")
         self.controlPanel.gaussianButton = guitools.BetterPushButton("Gaussian")
 
         self.controlPanel.halfButton = guitools.BetterPushButton("Half pattern")

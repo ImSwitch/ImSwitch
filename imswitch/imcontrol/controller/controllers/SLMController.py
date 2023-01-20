@@ -24,7 +24,6 @@ class SLMController(ImConWidgetController):
             return
 
         self._widget.initSLMDisplay(self._setupInfo.slm.monitorIdx)
-        # self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigSLMMaskUpdated.connect(lambda mask: self.displayMask(mask))
@@ -100,7 +99,6 @@ class SLMController(ImConWidgetController):
         self._master.slmManager.moveMask(mask, direction, amount)
         image = self._master.slmManager.update(maskChange=True, aberChange=True, tiltChange=True)
         self.updateDisplayImage(image)
-        # self._logger.debug(f'Move {mask} phase mask {amount} pixels {direction}.')
 
     def saveParams(self):
         obj = self._widget.controlPanel.objlensComboBox.currentText()
@@ -181,11 +179,10 @@ class SLMController(ImConWidgetController):
         self.setParamTree(state_general=state_general, state_aber=state_aber)
         self._master.slmManager.setGeneral(state_general)
         self._master.slmManager.setCenters(state_pos)
-        self._master.slmManager.setAberrations(state_aber)
+        self._master.slmManager.setAberrationFactors(state_aber)
         self._master.slmManager.saveState(state_general, state_pos, state_aber)
         image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True)
         self.updateDisplayImage(image)
-        # self._logger.debug(f'Loaded SLM parameters for {obj} objective.')
 
     def setParamTree(self, state_general, state_aber):
         generalParams = self._widget.slmParameterTree.p
@@ -209,10 +206,13 @@ class SLMController(ImConWidgetController):
     def setMask(self, maskMode):
         # 0 = donut (left), 1 = tophat (right)
         mask = self._widget.controlPanel.maskComboBox.currentIndex()
+        if maskMode != MaskMode.Black:
+            slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
+                                            aberParams=self._widget.aberParameterTree.p)
+            self.applyAberrations(slm_info_dict["aber"], mask)
         self._master.slmManager.setMask(mask, maskMode)
-        image = self._master.slmManager.update(maskChange=True)
+        image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True)
         self.updateDisplayImage(image)
-        # self._logger.debug("Updated image on SLM")
 
     def applyParams(self):
         slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
@@ -226,19 +226,13 @@ class SLMController(ImConWidgetController):
 
     def applyGeneral(self, info_dict):
         self._master.slmManager.setGeneral(info_dict)
-        # self._logger.debug('Apply changes to general slm mask parameters.')
 
-    def applyAberrations(self, info_dict):
-        self._master.slmManager.setAberrations(info_dict)
-        # self._logger.debug('Apply changes to aberration correction mask parameters.')
+    def applyAberrations(self, info_dict, mask=None):
+        self._master.slmManager.setAberrations(info_dict, mask)
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
-        # self._logger.debug("Updated displayed image")
-
-    # def loadPreset(self, preset):
-    #    self._logger.debug('Loaded default SLM settings.')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

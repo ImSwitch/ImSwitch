@@ -25,6 +25,7 @@ class CameraBasler:
         self.gain = gain
         self.preview_width = 600
         self.preview_height = 600
+        self.frameNumber = 0
 
         #%% starting the camera thread
         self.camera = None
@@ -84,6 +85,7 @@ class CameraBasler:
                     # Access the image data.
                     img = grabResult.Array
                     self.last_frame = img
+                    self.frameNumber = grabResult.ImageNumber
 
                 else:
                     self.__logger.error("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
@@ -272,6 +274,9 @@ class CameraBasler:
     def openPropertiesGUI(self):
         pass
 
+
+    def getFrameNumber(self):
+        return self.frameNumber 
 
     class ImageEventPrinter(pylon.ImageEventHandler):
         img  = None

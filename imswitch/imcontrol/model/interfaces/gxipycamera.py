@@ -332,10 +332,9 @@ class CameraGXIPY:
         self.trigger_mode = TriggerMode.HARDWARE
         
         self.flushBuffer()
-        
-        
 
-
+    def getFrameNumber(self):
+        return self.frameNumber 
 
     def send_trigger(self):
         if self.is_streaming:
@@ -357,14 +356,14 @@ class CameraGXIPY:
         if numpy_image is None:
             return
         self.frame = numpy_image
-        self.frame_id = frame.get_frame_id()
+        self.frameNumber = frame.get_frameNumber()
         self.timestamp = time.time()
         
         if self.binning > 1:
             numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
     
         self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frame_id)
+        self.frameid_buffer.append(self.frameNumber)
     
 
 # Copyright (C) ImSwitch developers 2021

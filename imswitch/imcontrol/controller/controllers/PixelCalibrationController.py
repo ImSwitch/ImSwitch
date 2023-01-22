@@ -6,8 +6,9 @@ import time
 import tifffile as tif
 import threading
 from datetime import datetime
+import threading
 import cv2
-
+from skimage.registration import phase_cross_correlation
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
@@ -38,6 +39,11 @@ class PixelCalibrationController(LiveUpdatedController):
         self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
         self.pixelSize=500 # defaul FIXME: Load from json?
 
+        # select detectors # TODO: Bad practice, but how can we access the pixelsize then?
+        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        self.detector = self._master.detectorsManager[allDetectorNames[0]]
+
+
     def undoSelection(self):
         # recover the previous selection
         self._widget.canvas.undoSelection()
@@ -67,7 +73,6 @@ class PixelCalibrationController(LiveUpdatedController):
             self._widget.setInformationLabel("Could not set pixel size in camera parameters")
         
     def stageCalibration(self):
-        import threading
         stageCalibrationT = threading.Thread(target=self.stageCalibrationThread, args=())
         stageCalibrationT.start()
         
@@ -91,19 +96,23 @@ class PixelCalibrationController(LiveUpdatedController):
         self.yScanStep = 15
         
         # snake scan
-        xyScanStepsAbsolute = []
-        fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
-        bwdpath = np.flip(fwdpath)
-        for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.yScanStep)): 
-            if indexX%2==0:
-                for indexY, iy in enumerate(fwdpath):
-                    xyScanStepsAbsolute.append([ix, iy])
-            else:
-                for indexY, iy in enumerate(bwdpath):
-                    xyScanStepsAbsolute.append([ix, iy])
+        if 0:
+            xyScanStepsAbsolute = []
+            fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
+            bwdpath = np.flip(fwdpath)
+            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.yScanStep)): 
+                if indexX%2==0:
+                    for indexY, iy in enumerate(fwdpath):
+                        xyScanStepsAbsolute.append([ix, iy])
+                else:
+                    for indexY, iy in enumerate(bwdpath):
+                        xyScanStepsAbsolute.append([ix, iy])
+        else:
+            # avoid grid pattern to be detected as same locations => random positions
+            xyScanStepsAbsolute = np.random.randint(self.xScanMin, self.xScanMax, (10,2))
 
         # initialize xy coordinates
-        value = self.xScanMin + self.initialPosition[0], self.yScanMin + self.initialPosition[1]
+        value = xyScanStepsAbsolute[0,0] + self.initialPosition[0], xyScanStepsAbsolute[0,1] + self.initialPosition[1]
         self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
 
         # store images
@@ -113,9 +122,9 @@ class PixelCalibrationController(LiveUpdatedController):
             # move to xy position is necessary
             value = iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]
             self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
-
+            #TODO: do we move to the correct positions?
             # antishake
-            time.sleep(0.3)
+            time.sleep(0.5)
             lastFrame = self.detector.getLatestFrame()
             allPosImages.append(lastFrame)
         
@@ -124,19 +133,26 @@ class PixelCalibrationController(LiveUpdatedController):
         self._master.positionersManager.execOn(stage_name, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
         
         # process the slices and compute their relative distances in pixels
-        from skimage.registration import phase_cross_correlation
-        
-        
         # compute shift between images relative to zeroth image
+        self._logger.info("Starting to compute relative displacements from the first image")
         allShifts = []
         for iImage in range(len(allPosImages)):
-            image1 = allPosImages[0]
-            image2 = allPosImages[iImage]
+            image1 = np.mean(allPosImages[0], -1)
+            image2 = np.mean(allPosImages[iImage], -1)
+            rescalingFac=10.
+            # downscaling will reduce accuracy, but will speed up computation
+            image1 = cv2.resize(image1, dsize=None, dst=None, fx=1/rescalingFac, fy=1/rescalingFac)
+            image2 = cv2.resize(image2, dsize=None, dst=None, fx=1/rescalingFac, fy=1/rescalingFac)
+
             shift, error, diffphase = phase_cross_correlation(image1, image2)
-            
-            allShifts.append(shift)
+            shift *=rescalingFac
+            self._logger.info("Shift w.r.t. 0 is:"+str(shift))
+            allShifts.append((shift[0],shift[1]))
             
         # compute averrage shifts according to scan grid 
+        # compare measured shift with shift given by the array of random coordinats
+        xyScanStepsAbsolute
+        allShifts
         shiftReal = np.array(xyScanStepsAbsolute)
         shiftReal -= np.min(shiftReal,0)
         shiftMeasured = np.array(allShifts)

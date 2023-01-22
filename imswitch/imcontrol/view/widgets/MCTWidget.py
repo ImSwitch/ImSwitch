@@ -271,7 +271,7 @@ class MCTWidget(NapariHybridWidget):
         mctEditFileName = self.mctEditFileName.text()
         return mctEditFileName
     
-    def setNImages(self, nImages):
+    def setnImagesTaken(self, nImages):
         nImages2Do = self.getTimelapseValues()[-1]
         self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     

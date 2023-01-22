@@ -71,6 +71,9 @@ class BaslerManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
+
     def getLatestFrame(self, is_save=False):
         if is_save:
             return self._camera.getLastChunk()
@@ -189,6 +192,9 @@ class BaslerManager(DetectorManager):
 
     def closeEvent(self):
         self._camera.close()
+
+    def getFrameNumber(self):
+        return self._camera.getFrameNumber()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

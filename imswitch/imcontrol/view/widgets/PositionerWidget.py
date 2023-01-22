@@ -10,6 +10,7 @@ class PositionerWidget(Widget):
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis) 
     sigStepAbsoluteClicked = QtCore.Signal(str,str)
+    sigHomeAxisClicked = QtCore.Signal(str,str)
     
 
     def __init__(self, *args, **kwargs):
@@ -19,7 +20,7 @@ class PositionerWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addPositioner(self, positionerName, axes, hasSpeed):
+    def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True):
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -47,6 +48,23 @@ class PositionerWidget(Widget):
             self.grid.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], self.numPositioners, 7)
             self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], self.numPositioners, 8)
             
+           
+            if hasSpeed:
+                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
+                self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
+                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+
+                self.grid.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 9)
+                self.grid.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
+
+            if hasHome:
+                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home '+parNameSuffix)
+                self.grid.addWidget(self.pars['Home' + parNameSuffix], self.numPositioners, 11)
+
+                self.pars['Home' + parNameSuffix].clicked.connect(
+                    lambda *args, axis=axis: self.sigHomeAxisClicked.emit(positionerName, axis)
+                )
+
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
@@ -57,14 +75,6 @@ class PositionerWidget(Widget):
             self.pars['AbsolutePosButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(positionerName, axis)
             )
-
-            if hasSpeed:
-                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
-                self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
-
-                self.grid.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 9)
-                self.grid.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
 
             self.numPositioners += 1
 

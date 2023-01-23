@@ -402,8 +402,8 @@ class MCTController(ImConWidgetController):
         
         # reserve space for tiled image 
         downScaleFactor = 4
-        nTilesX = int((self.xScanMax-self.xScanMin)/self.xScanStep)
-        nTilesY = int((self.yScanMax-self.yScanMin)/self.yScanStep)
+        nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
+        nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
         imageDimensions = self.detector.getLatestFrame().shape
         imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
         tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)

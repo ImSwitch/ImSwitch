@@ -22,13 +22,16 @@ class PositionerController(ImConWidgetController):
 
             hasSpeed = hasattr(pManager, 'speed')
             hasHome = hasattr(pManager, 'home')
-            self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome)
+            hasStop = hasattr(pManager, 'stop')
+            self._widget.addPositioner(pName, pManager.axes, hasSpeed, hasHome, hasStop)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if hasSpeed:
                     self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
                 if hasHome:
                     self.setSharedAttr(pName, axis, _homeAttr, pManager.home[axis])
+                if hasStop:
+                    self.setSharedAttr(pName, axis, _stopAttr, pManager.stop[axis])
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -38,6 +41,7 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
         self._widget.sigHomeAxisClicked.connect(self.homeAxis)
+        self._widget.sigStopAxisClicked.connect(self.stopAxis)
         
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -87,8 +91,12 @@ class PositionerController(ImConWidgetController):
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     def homeAxis(self, positionerName, axis):
-        self.__logger.debug(f"Homing axi {axis}")
+        self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis)
+
+    def stopAxis(self, positionerName, axis):
+        self.__logger.debug(f"Stopping axis {axis}")
+        self._master.positionersManager[positionerName].forceStop(axis)
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:
@@ -179,6 +187,7 @@ _attrCategory = 'Positioner'
 _positionAttr = 'Position'
 _speedAttr = "Speed"
 _homeAttr = "Home"
+_stopAttr = "Stop"
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

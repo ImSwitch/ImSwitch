@@ -56,7 +56,7 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
-        self.tUnshake = .2
+        self.tUnshake = .15
 
         if self._setupInfo.mct is None:
             self._widget.replaceWithError('MCT is not configured in your setup file.')
@@ -122,9 +122,10 @@ class MCTController(ImConWidgetController):
         # suggest limits for tiled scan with 20% overlay
         try:
             self.pixelSize = self.detector.pixelSizeUm
+            overlap = 0.8 # %20 overlap between ROIs
             self.Nx, self.Ny = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
-            self.optDx = int(self.Nx* self.pixelSize[1]*0.8) # dx
-            self.optDy = int(self.Ny* self.pixelSize[2]*0.8) # dy
+            self.optDx = int(self.Nx* self.pixelSize[1]*overlap) # dx
+            self.optDy = int(self.Ny* self.pixelSize[2]*overlap) # dy
             self._widget.mctValueXsteps.setText(str(self.optDx))
             self._widget.mctValueYsteps.setText(str(self.optDy))
             
@@ -309,11 +310,15 @@ class MCTController(ImConWidgetController):
                 self.LastStackLED = []
                 
                 # get current position
-                # This is not the physical position yet
                 currentPositions = self.stages.getPosition()
                 self.initialPosition = (currentPositions["X"], currentPositions["Y"])
                 self.initialPosiionZ = currentPositions["Z"]
                 
+                # set  speed
+                self.stages.setSpeed(speed=10000, axis="X")
+                self.stages.setSpeed(speed=10000, axis="Y")
+                self.stages.setSpeed(speed=1000, axis="Z")
+
                 try:    
                     # want to do autofocus?
                     autofocusParams = self._widget.getAutofocusValues()
@@ -374,12 +379,15 @@ class MCTController(ImConWidgetController):
         # snake scan
         if self.xyScanEnabled:
             xyScanStepsAbsolute = []
-            fwdpath = np.arange(self.xScanMin, self.xScanMax, self.xScanStep)
+            xyScanIndices = []
+            # we snake over y
+            fwdpath = np.arange(self.yScanMin, self.yScanMax, self.yScanStep)
             bwdpath = np.flip(fwdpath)
-            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.yScanStep)): 
+            # we increase linearly over x
+            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)): 
                 if indexX%2==0:
                     for indexY, iy in enumerate(fwdpath):
-                        xyScanStepsAbsolute.append([ix, iy])
+                        xyScanStepsAbsolute.append([ix, iy])   
                 else:
                     for indexY, iy in enumerate(bwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
@@ -397,8 +405,8 @@ class MCTController(ImConWidgetController):
         nTilesX = int((self.xScanMax-self.xScanMin)/self.xScanStep)
         nTilesY = int((self.yScanMax-self.yScanMin)/self.yScanStep)
         imageDimensions = self.detector.getLatestFrame().shape
-        imageDimensionsDownscaled = (imageDimensions[0]//downScaleFactor, imageDimensions[1]//downScaleFactor)
-        tiledImageDimensions = (nTilesX*imageDimensions[0]//downScaleFactor, nTilesY*imageDimensions[1]//downScaleFactor)
+        imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
+        tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
         self.tiledImage = np.zeros(tiledImageDimensions)
         
         # initialize xy coordinates
@@ -423,7 +431,8 @@ class MCTController(ImConWidgetController):
 
             if self.zStackEnabled:
                 # perform a z-stack
-                self.stages.move(value=self.initialPosiionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
+                # overshoot first step slightly to compensate backlash
+                self.stages.move(value=self.initialPosiionZ+self.zStackMin-15, axis="Z", is_absolute=True, is_blocking=True)
 
                 backlash=0
                 try: # only relevant for UC2 stuff
@@ -465,7 +474,7 @@ class MCTController(ImConWidgetController):
                                                 extension=fileExtension)            
                 
                 # wait for frame after next frame to appear. Avoid motion blurring
-                while self.detector.getFrameNumber()<(frameNumber+2):
+                while self.detector.getFrameNumber()<(frameNumber+5):
                     time.sleep(0.05)
                     print(self.detector.getFrameNumber()-frameNumber)
                 
@@ -495,8 +504,8 @@ class MCTController(ImConWidgetController):
                 # add tile to large canvas
                 lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
                 try:
-                    self.tiledImage[int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0]), 
-                                int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1])] = lastFrameScaled
+                    self.tiledImage[int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1]),
+                        int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0])] = lastFrameScaled
                 except:
                     self._logger.error("Failed to parse a frame into the tiledImage array")
                 self.sigImageReceived.emit() # => displays image

@@ -146,6 +146,15 @@ class ESP32StageManager(PositionerManager):
         
         self.is_enabled = False
 
+        # get bootup position and write to GUI
+        self._position  = self.getPosition()
+        # force setting the position
+        self.setPosition(self._position['X'],"X")
+        self.setPosition(self._position['Y'],"X")
+        self.setPosition(self._position['Z'],"Z")
+
+
+
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
@@ -223,6 +232,29 @@ class ESP32StageManager(PositionerManager):
         
         return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
     
+    def forceStop(self, axis):
+        if axis=="X":
+            self.stop_x()
+        elif axis=="Y":
+            self.stop_y()
+        elif axis=="Z":
+            self.stop_z()
+        else: 
+            self.stopAll()
+        
+    def stop_x(self):
+        self._motor.stop(axis = "X")
+
+    def stop_y(self):
+        self._motor.stop(axis = "Y")
+
+    def stop_z(self):
+        self._motor.stop(axis = "Z")
+
+    def stopAll(self):
+        self._motor.stop()
+
+        
     def doHome(self, axis):
         if axis=="X":
             self.home_x()

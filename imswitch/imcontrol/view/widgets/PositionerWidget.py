@@ -11,6 +11,7 @@ class PositionerWidget(Widget):
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis) 
     sigStepAbsoluteClicked = QtCore.Signal(str,str)
     sigHomeAxisClicked = QtCore.Signal(str,str)
+    sigStopAxisClicked = QtCore.Signal(str,str)
     
 
     def __init__(self, *args, **kwargs):
@@ -20,7 +21,7 @@ class PositionerWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True):
+    def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -63,6 +64,14 @@ class PositionerWidget(Widget):
 
                 self.pars['Home' + parNameSuffix].clicked.connect(
                     lambda *args, axis=axis: self.sigHomeAxisClicked.emit(positionerName, axis)
+                )
+
+            if hasStop:
+                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop '+parNameSuffix)
+                self.grid.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners, 12)
+
+                self.pars['Stop' + parNameSuffix].clicked.connect(
+                    lambda *args, axis=axis: self.sigStopAxisClicked.emit(positionerName, axis)
                 )
 
             # Connect signals

@@ -356,7 +356,7 @@ class CameraGXIPY:
         if numpy_image is None:
             return
         self.frame = numpy_image
-        self.frameNumber = frame.get_frameNumber()
+        self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
         
         if self.binning > 1:

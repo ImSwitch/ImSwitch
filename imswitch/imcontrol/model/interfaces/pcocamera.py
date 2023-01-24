@@ -70,13 +70,11 @@ class CameraPCO:
 
         # get dummy frame
         self.camera.record()
-        frame, meta = self.camera.image()
+        frame = self.camera.image()[0]
         # get framesize 
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
         self.SensorWidth = frame.shape[0] #self.camera._Camera__roi['y1']//self.binning
         
-        # register the frame callback
-        user_param = None
         
     def start_live(self):
         if not self.is_streaming:
@@ -120,7 +118,7 @@ class CameraPCO:
         #TODO: Napari only displays 8Bit?
         #images, metadatas = self.camera.images()
         #self.frame = images[-1]
-        self.frame = self.camera.image(image_number=0)
+        self.frame = self.camera.image(image_number=0)[0]
         
         return self.frame
 
@@ -130,7 +128,7 @@ class CameraPCO:
         
     def getLastChunk(self):
         # save on disk
-        images, metadatas = self.camera.images()
+        images, metadatas = self.camera.images()[0]
         chunk = np.array(images).mean()
         self.__logger.debug("Buffer: "+str(chunk.shape))
         return chunk

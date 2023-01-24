@@ -178,8 +178,8 @@ class SIMController(LiveUpdatedController):
             self.allFrames.append(frame)
 
             # display
-            self._widget.viewer.add_image(frame, name="SIM RAW Frame")
-            self._widget.setImage(frame, name="SIM RAW Frame")
+            #self._widget.viewer.add_image(frame, name="SIM RAW Frame")
+            # self._widget.setImage(frame, name="SIM RAW Frame")
 
             self.patternID+=1
 

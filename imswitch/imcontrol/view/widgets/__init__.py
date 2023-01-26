@@ -16,5 +16,7 @@ from .ScanWidgetPointScan import ScanWidgetPointScan
 from .ScanWidgetBase import ScanWidgetBase
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
+from .WatcherWidget import WatcherWidget
 from .ViewWidget import ViewWidget
+from .TilingWidget import TilingWidget
 from .basewidgets import WidgetFactory

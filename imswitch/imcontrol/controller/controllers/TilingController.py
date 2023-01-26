@@ -1,26 +1,28 @@
-from imswitch.imcommon.framework import Signal, SignalInterface
+from ..basecontrollers import ImConWidgetController
+from imswitch.imcommon.model import APIExport
+import numpy as np
 
 
-class CommunicationChannel(SignalInterface):
-    """
-    CommunicationChannel is a class that handles the communication between controllers.
-    """
+class TilingController(ImConWidgetController):
+    """ Linked to WatcherWidget. """
 
-    sigExecutionStarted = Signal()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._widget.sigSaveFocus.connect(self.saveFocus)
+        self._image = []
+        self._skipOrNot = None
 
-    sigOutputAppended = Signal(str)  # (outputText)
+    def saveFocus(self, bool):
+        self._skipOrNot = bool
+        self._commChannel.sigSaveFocus.emit()
 
-    sigNewFile = Signal()
+    @APIExport()
+    def setTileLabel(self, label) -> None:
+        self._widget.setLabel(label)
 
-    sigOpenFile = Signal()
-
-    sigOpenFileFromPath = Signal(str)  # (path)
-
-    sigSaveFile = Signal()
-
-    sigSaveAsFile = Signal()
-
-    sigRunScript = Signal(str)
+    @APIExport()
+    def getSkipOrNot(self) -> bool:
+        return self._skipOrNot
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

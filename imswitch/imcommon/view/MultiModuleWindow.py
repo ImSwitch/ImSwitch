@@ -89,7 +89,7 @@ class MultiModuleWindow(QtWidgets.QMainWindow):
                 return
 
     def updateLoadingProgress(self, progressFraction):
-        self.loadingProgressBar.setValue(int(progressFraction * 100))
+      self.loadingProgressBar.setValue(int(progressFraction * 100))
 
     def updateRAMUsage(self, usageFraction):
         self.memBar.setValue(round(usageFraction * 100))

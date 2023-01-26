@@ -17,4 +17,5 @@ from .ScanControllerPointScan import ScanControllerPointScan
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
-
+from .TilingController import TilingController
+from .WatcherController import WatcherController

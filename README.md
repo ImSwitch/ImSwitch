@@ -224,7 +224,7 @@ cd microEye
 pip install -e .
 pip install -r requirements.txt
 pip install scikit-learn
-pip install napari[pyqt5] --force-reinstall
+pip install pydantic --force-reinstall
 ```
 ## Documentation
 

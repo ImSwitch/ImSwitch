@@ -216,7 +216,16 @@ Please go to the Review [here]()
   - `conda activate imswitch`
   - `install.bat`
 
+## STORM
 
+```
+git clone https://github.com/beniroquai/microEye
+cd microEye
+pip install -e .
+pip install -r requirements.txt
+pip install scikit-learn
+pip install napari[pyqt5] --force-reinstall
+```
 ## Documentation
 
 Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).

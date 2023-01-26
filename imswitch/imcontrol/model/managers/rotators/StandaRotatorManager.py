@@ -2,7 +2,6 @@ from imswitch.imcommon.model import initLogger
 from .RotatorManager import RotatorManager
 
 
-
 class StandaRotatorManager(RotatorManager):
     """ StandaMotorManager that deals with a Standa-branded motor controller,
     for example 8SMC5 for a motorized rotation mount. 
@@ -55,18 +54,6 @@ class StandaRotatorManager(RotatorManager):
     def set_sync_in_pos(self, abs_pos_deg):
         self._motor.set_sync_in_settings(abs_pos_deg)
 
-    #def startMovement(self):
-    #    pass
-
-    #def _performSafeMotorAction(self, function):
-    #    """ Used to change motor properties that need idle state to be adjusted. """
-    #    try:
-    #        function()
-    #    except Exception:
-    #        self.stop_cont_rot()
-    #        function()
-    #        self.startMovement()
-
     def _getMotorObj(self, device_id, lib_loc, steps_per_turn, microsteps_per_step):
         try:
             from imswitch.imcontrol.model.interfaces.standamotor import StandaMotor
@@ -82,7 +69,7 @@ class StandaRotatorManager(RotatorManager):
         self._motor.close()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

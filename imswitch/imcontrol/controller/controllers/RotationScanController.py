@@ -1,4 +1,3 @@
-from typing import Dict, List
 import json
 import os
 
@@ -6,8 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.interpolate as interp
 
-from imswitch.imcommon.model import dirtools, APIExport, initLogger
-
+from imswitch.imcommon.model import dirtools, initLogger
 from ..basecontrollers import ImConWidgetController
 
 
@@ -38,7 +36,7 @@ class RotationScanController(ImConWidgetController):
         self.__currentStep = 0
 
         # Initiate parameters used during calibration
-        self.__calibrationPolSteps = np.arange(0,181,30).tolist()
+        self.__calibrationPolSteps = np.arange(0,181,15).tolist()
         self.__calibration_filename = 'polarization_calibration.json'
         self.__calibration_dir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_rotscan')
         if not os.path.exists(self.__calibration_dir):
@@ -98,9 +96,6 @@ class RotationScanController(ImConWidgetController):
     def prepRotationStep(self):
         """ Called when a polarization rotation step needs to be prepped, i.e. just after one step has been taken. """
         for idx, rotator in enumerate(self.__rotators):
-            #if self.__currentStep == 0:
-            #self.__logger.debug(self.__rot_step_pos)
-            #self.__logger.debug(self.__rot_step_pos[idx])
             self.__logger.debug([self.__currentStep, rotator, self.__rot_step_pos[idx][self.__currentStep]])
             self.moveAbsRotator(rotator, self.__rot_step_pos[idx][self.__currentStep])
             #self._commChannel.sigSetSyncInMovementSettings.emit(rotator, self.__rot_step_pos[idx][self.__currentStep+1])

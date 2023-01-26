@@ -7,8 +7,8 @@ from .basewidgets import Widget
 
 class RotationScanWidget(Widget):
     """ Widget in control of experiments where rotation mounts should be
-    triggered to rotate during scans, between axis 2 steps (frames in XYT).
-    TODO: If possible with a break in the scanning, but it is easier without. """
+    triggered to rotate during scans, between axis 2 steps (frames in XYT for example).
+    TODO: Possible create a break in the scanning when rotators are moving. """
 
     sigActivate = QtCore.Signal(bool)
     sigCalibration = QtCore.Signal()
@@ -42,8 +42,8 @@ class RotationScanWidget(Widget):
         self.pars['CalibrationPrompt'] = QtWidgets.QLineEdit('Calibration not active.')
         self.pars['CalibrationPrompt'].setReadOnly(True)
         calibrationPromptPalette = QtGui.QPalette()
-        calibrationPromptPalette.setColor(QtGui.QPalette.Text, QtGui.QColor(200, 200, 200))
-        calibrationPromptPalette.setColor(QtGui.QPalette.Base, QtGui.QColor(40, 40, 40))
+        calibrationPromptPalette.setColor(QtGui.QPalette.Text, QtGui.QColor(150, 150, 150))
+        calibrationPromptPalette.setColor(QtGui.QPalette.Base, QtGui.QColor(60, 60, 60))
         self.pars['CalibrationPrompt'].setPalette(calibrationPromptPalette)
 
         self.grid.addWidget(self.pars['RotStepLabel'], 0, 0)
@@ -55,11 +55,15 @@ class RotationScanWidget(Widget):
         self.grid.addWidget(self.pars['RotStopLabel'], 2, 0)
         self.grid.addWidget(self.pars['RotStopEdit'], 2, 1)
         self.grid.addWidget(self.pars['RotStopUnit'], 2, 2)
-        self.grid.addWidget(self.pars['ActivateButton'], 3, 0)
-        self.grid.addWidget(self.pars['CalibrateButton'], 3, 1)
-        self.grid.addWidget(self.pars['SaveCalibrationButton'], 3, 2)
-        self.grid.addWidget(self.pars['LoadCalibrationButton'], 3, 3)
-        self.grid.addWidget(self.pars['CalibrationPrompt'], 4, 0, 1, 4)
+        self.grid.addWidget(self.pars['CalibrateButton'], 0, 3)
+        self.grid.addWidget(self.pars['LoadCalibrationButton'], 1, 3)
+        self.grid.addWidget(self.pars['SaveCalibrationButton'], 2, 3)
+        self.grid.addWidget(self.pars['ActivateButton'], 3, 3)
+        self.grid.addItem(QtWidgets.QSpacerItem(10, 10,
+                            QtWidgets.QSizePolicy.Minimum,
+                            QtWidgets.QSizePolicy.Expanding),
+                            4, 0, 1, -1)
+        self.grid.addWidget(self.pars['CalibrationPrompt'], 5, 0, 1, 4)
 
         # Connect signals
         self.pars['ActivateButton'].clicked.connect(lambda: self.sigActivate.emit(not self.enabled))

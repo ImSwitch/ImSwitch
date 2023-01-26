@@ -28,7 +28,7 @@ class RotatorWidget(Widget):
         self.pars['Position'+name].setTextFormat(QtCore.Qt.RichText)
         self.pars['ForwButton'+name] = guitools.BetterPushButton('+')
         self.pars['BackButton'+name] = guitools.BetterPushButton('-')
-        self.pars['RelStepEdit'+name] = QtWidgets.QLineEdit('10')
+        self.pars['RelStepEdit'+name] = QtWidgets.QLineEdit('0')
         self.pars['RelStepUnit'+name] = QtWidgets.QLabel(' deg')
         self.pars['SpeedEdit'+name] = QtWidgets.QLineEdit('100')
         self.pars['SpeedUnit'+name] = QtWidgets.QLabel(' mrpm')

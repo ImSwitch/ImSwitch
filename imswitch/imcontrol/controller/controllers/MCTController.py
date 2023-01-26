@@ -66,7 +66,6 @@ class MCTController(ImConWidgetController):
         self._widget.mctStartButton.clicked.connect(self.startMCT)
         self._widget.mctStopButton.clicked.connect(self.stopMCT)
         self._widget.mctShowLastButton.clicked.connect(self.showLast)
-        self._widget.mctInitFilterButton.clicked.connect(self.initFilter)
 
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
@@ -120,11 +119,6 @@ class MCTController(ImConWidgetController):
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
 
-    def initFilter(self):
-        self._widget.setNImages("Initializing filter position...")
-        if len(self.lasers)>0:
-            self.lasers[0].initFilter()
-
     def startMCT(self):
         # initilaze setup
         # this is not a thread!
@@ -138,8 +132,6 @@ class MCTController(ImConWidgetController):
             self.nImages = 0
             self._widget.setNImages("Starting timelapse...")
             self.switchOffIllumination()
-            if len(self.lasers)>0:
-                self.lasers[0].initFilter()
 
             # get parameters from GUI
             self.zStackMin, self.zStackMax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()

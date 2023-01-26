@@ -29,9 +29,6 @@ class STORMReconWidget(NapariHybridWidget):
         # Napari image layer for results
         self.layer = None
         
-        if not isMicroEye:
-            return 
-            
         # Main GUI 
         self.layout = QtWidgets.QHBoxLayout()
         self.setLayout(self.layout)
@@ -39,6 +36,15 @@ class STORMReconWidget(NapariHybridWidget):
         # Side TabView
         self.tabView = QTabWidget()
         self.layout.addWidget(self.tabView, 0)
+        
+        if not isMicroEye:
+            self.image_control_layout = QFormLayout()
+            self.image_control_layout.addRow(
+                QLabel('MicroEye not installed. Please install MicroEye to use this feature.'),
+                None)
+            self.tabView.addTab(self.controls_group, 'Prefit Options')
+            return 
+            
 
         # Localization / Render tab layout
         self.loc_group = QWidget()
@@ -248,6 +254,7 @@ class STORMReconWidget(NapariHybridWidget):
         self.refresh_btn = QPushButton(
             'Refresh SuperRes Image',
             clicked=lambda: self.renderLoc())
+        
         self.frc_res_btn = QPushButton(
             'FRC Resolution',
             clicked=lambda: self.FRC_estimate())
@@ -307,20 +314,12 @@ class STORMReconWidget(NapariHybridWidget):
         )
         
         # activate live localization 
-        self.showCheck = QtWidgets.QCheckBox('Show STORMRecon')
-        self.showCheck.setCheckable(True)
-        self.showCheck.toggled.connect(self.sigShowToggled)
-        
-        self.show_liveloc = QHBoxLayout()
-        self.show_liveloc.addWidget(self.showCheck)
-        self.loc_form.addRow(self.show_liveloc)
-        
         self.loc_ref_lay = QHBoxLayout()
         self.loc_ref_lay.addWidget(self.loc_btn)
         self.loc_ref_lay.addWidget(self.refresh_btn)
         self.loc_form.addRow(self.loc_ref_lay)
 
-        self.loc_form.addRow(self.frc_res_btn)
+        #self.loc_form.addRow(self.frc_res_btn) # don't need this button for now
 
         self.loc_form.addRow(
             QLabel('Drift X-Corr. (bins, pixelSize, upsampling):'))
@@ -348,22 +347,11 @@ class STORMReconWidget(NapariHybridWidget):
             self.layer = self.viewer.add_image(im, rgb=False, name="STORMRecon", blending='additive')
         self.layer.data = im
         
-    def getShowSTORMReconChecked(self):
-        return self.showCheck.isChecked()
-
-
-# Copyright (C) 2020-2021 ImSwitch developers
-# This file is part of ImSwitch.
-#
-# ImSwitch is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# ImSwitch is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    def localize(self):
+        if self.loc_btn.text() == "Localize":
+            self.sigShowToggled.emit(True)
+            self.loc_btn.setText("Stop Localizing")
+        else:
+            self.sigShowToggled.emit(False)
+            self.loc_btn.setText("Localize")
+        

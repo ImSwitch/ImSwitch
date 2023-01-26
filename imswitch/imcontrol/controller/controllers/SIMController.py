@@ -4,7 +4,8 @@ import os
 import numpy as np
 import time
 import threading
-
+from datetime import datetime
+import tifffile as tif
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -49,6 +50,7 @@ try:
 except:
     isSIM = False
 
+isDEBUG = True
 
 class SIMController(LiveUpdatedController):
     """Linked to SIMWidget."""
@@ -57,21 +59,24 @@ class SIMController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self)
-        self.it=0
-        self.updateRate=5
+        self._logger = initLogger(self)
+        self.nSyncCameraSLM = 3  # 5 frames will be captured before a frame is retrieved from buffer for prcoessing 
+        self.iSyncCameraSLM = 0 # counter for syncCameraSLM
         
+        # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
 
-
+        # save directory of the reconstructed frames
         self.simDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_sim')
         if not os.path.exists(self.simDir):
             os.makedirs(self.simDir)
 
+        # load config file
         if self._setupInfo.sim is None:
             self._widget.replaceWithError('SIM is not configured in your setup file.')
             return
 
+        # initialize external dispaly (if available => id = 2?)
         self._widget.initSIMDisplay(self._setupInfo.sim.monitorIdx)
         # self.loadPreset(self._defaultPreset)
 
@@ -93,7 +98,6 @@ class SIMController(LiveUpdatedController):
         self.patternID = 0
         self.nRotations = 3
         self.nPhases = 3
-        self.allFrames = []
 
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -109,8 +113,7 @@ class SIMController(LiveUpdatedController):
         self.imageComputationThread.start()
 
         # Initial SIM display
-        #self._commChannel.sigUpdateImage.connect(self.update)
-
+        self._commChannel.sigUpdateImage.connect(self.update)
 
         # show placeholder pattern
         initPattern = self._master.simManager.allPatterns[self.patternID]
@@ -123,6 +126,41 @@ class SIMController(LiveUpdatedController):
         else:
             self.IS_HAMAMATSU = False
 
+    def update(self, detectorName, im, init, isCurrentDetector):
+        """ Update with new detector frame. """     
+        
+        if not isCurrentDetector or not self.active:
+            return
+        
+        # this is getting funky:
+        # we will display a new pattern and retrieve every N-th frame in order to sync camera with SLM
+        # this picture gets send to the SIM processor'S list
+        # once the list is full, the SIM processor will process the list and display the result
+        # dispaly sim pattern
+ 
+        # 1. precomputed patterns will be displayed
+        #self._logger.debug("Pattern ID:"+str(self.patternID))
+        self.simPatternByID(self.patternID)
+     
+        if self.iSyncCameraSLM==self.nSyncCameraSLM:
+            self.iSyncCameraSLM=0
+            self.patternID+=1
+    
+            if self.patternID>=(self.nRotations*self.nPhases):
+                # We will collect N*M images and process them with the SIM processor
+                # process the frames and display
+                self.allFrames = [] 
+                self.patternID = 0
+                
+                self.imageComputationWorker.prepareForNewSIMStack(im)
+                self.sigImageReceived.emit()
+        else:
+            # 2. we need to wait for camera-slm sync
+            self.iSyncCameraSLM+=1
+            
+        #self._widget.viewer.add_image(frame, name="SIM RAW Frame")
+        # self._widget.setImage(frame, name="SIM RAW Frame")
+            
 
 
     def initHamamatsuSLM(self):
@@ -148,59 +186,6 @@ class SIMController(LiveUpdatedController):
     def displayMask(self, image):
         self._widget.updateSIMDisplay(image)
 
-    def SIMAcquisition(self):
-        """ Update with new detector frame. """
-        while self.active:
-
-            # dispaly sim pattern
-            if(self._master.simManager.isSimulation):
-                iPhi = self.patternID%self.nPhases
-                iRot = self.patternID//self.nRotations
-
-                if self.IS_HAMAMATSU:
-                    # send trigger to SLM
-                    pass
-                else:
-                    self.setIlluPatternByID(iRot, iPhi)
-            else:
-                pass
-
-
-            # this does not correlate with simulated patterns!
-            self.__logger.debug(self.patternID)
-            self.simPatternByID(self.patternID)
-
-            # wait for frame to be displayed?
-            time.sleep(.1)
-
-            # capture frame
-            frame = np.array(self.detector.getLatestFrame())
-            self.allFrames.append(frame)
-
-            # display
-            #self._widget.viewer.add_image(frame, name="SIM RAW Frame")
-            # self._widget.setImage(frame, name="SIM RAW Frame")
-
-            self.patternID+=1
-
-            # if all patterns are acquired => reconstruct
-            if self.patternID>=(self.nRotations*self.nPhases):
-                # process the frames and display
-                allFramesNP = np.array(self.allFrames)
-                self.imageComputationWorker.prepareForNewSIMStack(allFramesNP)
-                self.sigImageReceived.emit()
-
-                from datetime import datetime
-                date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-                import tifffile as tif
-                tif.imsave(f"filename_{date}.tif", allFramesNP)
-
-                self.patternID=0
-                self.allFrames = []
-
-        else:
-            self.it += 1
-
     def setIlluPatternByID(self, iRot, iPhi):
         self.detector.setIlluPatternByID(iRot, iPhi)
 
@@ -219,26 +204,21 @@ class SIMController(LiveUpdatedController):
         self.updateDisplayImage(currentPattern)
 
     def startSIM(self):
+        # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
         self.active = True
         self.patternID = 0
         self.iReconstructed = 0
-
+        #  Start acquisition if not started already
         self._master.detectorsManager.startAcquisition(liveView=False)
-
+        
+        # reset the pattern iterator
         self.imageComputationWorker.setNumReconstructed(numReconstructed=self.iReconstructed)
 
-        self.SIMAcquisitionThread = threading.Thread(target=self.SIMAcquisition, args=(), daemon=True)
-        self.SIMAcquisitionThread.start()
-
-
     def stopSIM(self):
+        # stop live processing 
         self.active = False
-        self.SIMAcquisitionThread.join()
         self._master.detectorsManager.startAcquisition(liveView=True)
         self._master.detectorsManager.stopAcquisition()
-
-        #self.imageComputationWorker.stopSIMacquisition()
-
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -248,9 +228,15 @@ class SIMController(LiveUpdatedController):
 
     @APIExport(runOnUIThread=True)
     def simPatternByID(self, patternID):
-        currentPattern = self._master.simManager.allPatterns[patternID]
-        self.updateDisplayImage(currentPattern)
-        return currentPattern
+        try:
+            currentPattern = self._master.simManager.allPatterns[patternID]
+            self.updateDisplayImage(currentPattern)
+            return currentPattern
+        except Exception as e:
+            self._logger.error(e)
+    '''#####################################
+    # SIM WORKER
+    #####################################'''
 
     class SIMProcessorWorker(Worker):
         sigSIMProcessorImageComputed = Signal(np.ndarray)
@@ -265,11 +251,16 @@ class SIMController(LiveUpdatedController):
             self.detector = detector
             self.nPhases=nPhases
             self.nRotations=nRotations
+            
+            self.isCalibrated = False
 
             self.iReconstructed = 0
 
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
+            
+            self.allFrames = []
+            self.allFramesNP = None
 
             # initilaize the reconstructor
             self.processor = SIMProcessor()
@@ -287,10 +278,10 @@ class SIMController(LiveUpdatedController):
                 #self._image = self.processor.simSimulator(Nx=512, Ny=512, Nrot=3, Nphi=3)
 
                 # initialize the model
-                if self.iReconstructed == 0:
+                if not self.processor.getIsCalibrated():
                     self.processor.setReconstructor()
-                    self.processor.calibrate(self._image)
-                SIMframe = self.processor.reconstruct(self._image)
+                    self.processor.calibrate(self.allFramesNP)
+                SIMframe = self.processor.reconstruct(self.allFramesNP)
                 self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
 
                 self.iReconstructed += 1
@@ -302,10 +293,19 @@ class SIMController(LiveUpdatedController):
 
         def prepareForNewSIMStack(self, image):
             """ Must always be called before the worker receives a new image. """
-            self._image = image
-            self._numQueuedImagesMutex.lock()
-            self._numQueuedImages += 1
-            self._numQueuedImagesMutex.unlock()
+            
+            self.allFrames.append(image)
+            if len(self.allFrames)>8:
+                self.allFramesNP = np.array(self.allFrames)
+                self.allFrames = []
+                
+                if isDEBUG:
+                    date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+                    tif.imsave(f"filename_{date}.tif", self.allFramesNP)
+                
+                self._numQueuedImagesMutex.lock()
+                self._numQueuedImages += 1
+                self._numQueuedImagesMutex.unlock()
 
 
 
@@ -340,6 +340,8 @@ class SIMProcessor(object):
         self.use_phases =  True
         self.use_torch = False
         
+        # initialize logger
+        self._logger = initLogger(self, tryInheritParent=False)
         
         # switch for the different reconstruction algorithms
         self.reconstructionMethod = "napari"
@@ -355,8 +357,11 @@ class SIMProcessor(object):
 
         # set model
         #h = HexSimProcessor(); #
-        self.h = ConvSimProcessor()
-        self.k_shape = (3,1)
+        if isSIM:
+            self.h = ConvSimProcessor()
+            self.k_shape = (3,1)
+        else:
+            self._logger.error("Please install napari sim! pip install napari-sim-processor")
 
         # setup
         self.h.debug = False
@@ -398,7 +403,7 @@ class SIMProcessor(object):
             self.h.ky = self.ky_input
 
     def get_current_stack_for_calibration(self,data):
-        self.__logger.error("get_current_stack_for_calibration not implemented yet")
+        self._logger.error("get_current_stack_for_calibration not implemented yet")
         '''
         Returns the 4D raw image (angles,phases,y,x) stack at the z value selected in the viewer
 
@@ -423,9 +428,13 @@ class SIMProcessor(object):
         '''
         calibration
         '''
-
+        
+        
+        self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
+            if type(imRaw) is not list:
+                imRaw = list(imRaw)
             if self.use_torch:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:
@@ -481,6 +490,9 @@ class SIMProcessor(object):
 
             # clear GPU memory
             imgset.delete()
+            
+    def getIsCalibrated(self):
+        return self.isCalibrated
 
                                 
 
@@ -490,7 +502,8 @@ class SIMProcessor(object):
         reconstruction
         '''
         if self.reconstructionMethod == "napari":
-            # we use the napari reconstruction method    
+            # we use the napari reconstruction method   
+            self._logger.debug("reconstructing the stack with napari") 
             assert self.isCalibrated, 'SIM processor not calibrated, unable to perform SIM reconstruction'
             dshape= currentImage.shape
             phases_angles = self.phases_number*self.angles_number
@@ -513,7 +526,7 @@ class SIMProcessor(object):
             fname_data = os.path.join(root_dir, "synthetic_microtubules_512.tif")
             imgs = tifffile.imread(fname_data)
             '''
-
+            self._logger.debug("reconstructing the stack with mcsim") 
 
             imgset_next = sim.SimImageSet({"pixel_size": self.dxy,
                                         "na": self.na,

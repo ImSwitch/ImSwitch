@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import tifffile as tif
 import os
 from datetime import datetime
@@ -33,6 +34,7 @@ class STORMReconController(LiveUpdatedController):
         self.updateRate = 0
         self.it = 0
         self.showPos = False
+        self.threshold = 0.2
 
         # reconstruction related settings
         #TODO: Make parameters adaptable from Plugin
@@ -55,7 +57,7 @@ class STORMReconController(LiveUpdatedController):
             self._widget.sigSliderValueChanged.connect(self.valueChanged)
 
             self.changeRate(self.updateRate)
-            self.setShowSTORMRecon(self._widget.getShowSTORMReconChecked())
+            self.setShowSTORMRecon(False)
             
             # setup reconstructor
             self.peakDetector = CV_BlobDetector()
@@ -79,21 +81,31 @@ class STORMReconController(LiveUpdatedController):
         """ Show or hide STORMRecon. """
         
         # read parameters from GUI for reconstruction the data on the fly
+        # Filters + Blob detector params
         filter = self._widget.image_filter.currentData().filter
         tempEnabled = self._widget.tempMedianFilter.enabled.isChecked()
         detector = self._widget.detection_method.currentData().detector
-
+        threshold = self._widget.th_min_slider.value()
+        fit_roi_size = self._widget.fit_roi_size.value()
+        fitting_method = self._widget.fitting_cbox.currentData()
+        
         # write parameters to worker
         self.imageComputationWorker.setFilter(filter)
         self.imageComputationWorker.setTempEnabled(tempEnabled)
         self.imageComputationWorker.setDetector(detector)
+        self.imageComputationWorker.setThreshold(threshold)
+        self.imageComputationWorker.setFitRoiSize(fit_roi_size)
+        self.imageComputationWorker.setFittingMethod(fitting_method)
         
-        # this will activate/deactivate the live reconstruction
         self.active = enabled
         
         # if it will be deactivated, trigger an image-save operation
         if not self.active:
             self.imageComputationWorker.saveImage()
+        else:
+            # this will activate/deactivate the live reconstruction
+            self.imageComputationWorker.setActive(enabled)
+            
 
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
@@ -122,27 +134,29 @@ class STORMReconController(LiveUpdatedController):
         def __init__(self):
             super().__init__()
             
+            self.threshold = 0.2 # default threshold
+            self.fit_roi_size = 13 # default roi size
+            
             self._logger = initLogger(self, tryInheritParent=False)
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
-            self.PSFpara = None
-            self.pixelsize = 1
-            self.dz = 1
             
+            # store the sum of all reconstructed frames
             self.sumReconstruction = None
+            self.allParameters = []
+            
+            self.active = False
 
 
         def reconSTORMFrame(self, frame, preFilter, peakDetector,
                             rel_threshold=0.4, PSFparam=np.array([1.5]), 
-                            roiSize=13, method=None):
+                            roiSize=13, method=FittingMethod._2D_Phasor_CPU):
             # tune parameters
-            if method is None:
-                method = FittingMethod._2D_Phasor_CPU  
+            
             # parameters are read only once the SMLM reconstruction is initiated
             # cannot be altered during recroding
-            
             index = 1
-            filtered = filtered = frame.copy() # nip.gaussf(frame, 1.5)
+            filtered = frame.copy() # nip.gaussf(frame, 1.5)
             varim = None
 
             # localize  frame 
@@ -168,19 +182,30 @@ class STORMReconController(LiveUpdatedController):
             except Exception as e:
                 pass
 
-            return frameLocalized
+            return frameLocalized, params
 
+        def setThreshold(self, threshold):
+            self.threshold = threshold
+            
+        def setFitRoiSize(self, roiSize):
+            self.fit_roi_size = roiSize
+            
         def computeSTORMReconImage(self):
             """ Compute STORMRecon of an image. """
             try:
-                if self._numQueuedImages > 1:
+                if self._numQueuedImages > 1 or not self.active:
                     return  # Skip this frame in order to catch up
-                STORMReconrecon = self.reconSTORMFrame(self._image, self.preFilter, self.peakDetector)
+                STORMReconrecon, params = self.reconSTORMFrame(frame=self._image, 
+                                                               preFilter=self.preFilter, 
+                                                               peakDetector=self.peakDetector, 
+                                                               rel_threshold=self.threshold, 
+                                                               roiSize=self.fit_roi_size)
+                self.allParameters.append(params)
+                
                 if self.sumReconstruction is None:
                     self.sumReconstruction = STORMReconrecon
                 else:
                     self.sumReconstruction += STORMReconrecon
-                #self.sigSTORMReconImageComputed.emit(np.array(STORMReconrecon))
                 self.sigSTORMReconImageComputed.emit(np.array(self.sumReconstruction))
             finally:
                 self._numQueuedImagesMutex.lock()
@@ -194,6 +219,8 @@ class STORMReconController(LiveUpdatedController):
             self._numQueuedImages += 1
             self._numQueuedImagesMutex.unlock()
 
+        def setFittingMethod(self, method):
+            self.fittingMethod = method
         def setFilter(self, filter):
             self.preFilter = filter
         
@@ -206,20 +233,27 @@ class STORMReconController(LiveUpdatedController):
         def saveImage(self, filename="STORMRecon", fileExtension="tif"):
             if self.sumReconstruction is None:
                 return
-            time = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")            
-            filePath = self.getSaveFilePath(date=time, 
-                                timestamp=0,
+            
+            # wait to finish all queued images
+            while self._numQueuedImages > 0:
+                time.sleep(0.1)
+                
+            Ntime = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")            
+            filePath = self.getSaveFilePath(date=Ntime, 
                                 filename=filename, 
                                 extension=fileExtension)
             
             # self.switchOffIllumination()
             self._logger.debug(filePath)
             tif.imwrite(filePath, self.sumReconstruction, append=False)
-            self.sumReconstruction = None
             
-        def getSaveFilePath(self, date, timestamp, filename, extension):
+            # Reset sumReconstruction
+            self.sumReconstruction *= 0
+            self.allParameters = []
+            
+        def getSaveFilePath(self, date, filename, extension):
             mFilename =  f"{date}_{filename}.{extension}"
-            dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date, "t"+str(timestamp))
+            dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
 
             newPath = os.path.join(dirPath,mFilename)
 
@@ -227,6 +261,9 @@ class STORMReconController(LiveUpdatedController):
                 os.makedirs(dirPath)
 
             return newPath
+        
+        def setActive(self, enabled):
+            self.active = enabled
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
@@ -235,11 +272,3 @@ class STORMReconController(LiveUpdatedController):
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
-# ImSwitch is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.

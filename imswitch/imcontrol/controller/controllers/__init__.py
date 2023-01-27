@@ -13,6 +13,7 @@ from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
 from .ScanControllerBase import ScanControllerBase
+from .ScanControllerMoNaLISA import ScanControllerMoNaLISA
 from .ScanControllerPointScan import ScanControllerPointScan
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController

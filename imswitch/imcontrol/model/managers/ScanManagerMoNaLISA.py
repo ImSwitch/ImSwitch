@@ -1,33 +1,37 @@
 from .ScanManagerBase import SuperScanManager
 
 
-class ScanManagerPointScan(SuperScanManager):
+class ScanManagerMoNaLISA(SuperScanManager):
     """ ScanManager helps with generating signals for scanning. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def makeFullScan(self, scanParameters, TTLParameters):
+    @property
+    def TTLTimeUnits(self):
+        self._checkScanDefined()
+        return self._TTLCycleDesigner.timeUnits
+
+    def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
         """ Generates stage and TTL scan signals. """
         self._checkScanDefined()
-        if not self._scanDesigner.checkSignalLength(
-                scanParameters, self._setupInfo
-        ):
-            self._logger.error(
-                'Signal too long: try scanning a smaller ROI, faster, or with a larger pixel'
-                ' size.'
-            )
-            return
-        scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
-        if not self._scanDesigner.checkSignalComp(
-                scanParameters, self._setupInfo, scanInfoDict
-        ):
-            self._logger.error(
-                'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
-                ' scan.'
-            )
-            return
-        TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
+
+        if not staticPositioner:
+            scanSignalsDict, positions, scanInfoDict = self.getScanSignalsDict(scanParameters)
+            if not self._scanDesigner.checkSignalComp(
+                    scanParameters, self._setupInfo, scanInfoDict
+            ):
+                self._logger.error(
+                    'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
+                    ' scan.'
+                )
+                return
+
+            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
+        else:
+            TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters)
+            scanSignalsDict = {}
+            scanInfoDict = {}
 
         return (
             {'scanSignalsDict': scanSignalsDict,

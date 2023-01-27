@@ -1,31 +1,43 @@
+import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .ScanWidgetBase import SuperScanWidget
 
 
-class ScanWidgetPointScan(SuperScanWidget):
+class ScanWidgetMoNaLISA(SuperScanWidget):
+
+    sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
-        self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
-        #self.extraLaserOnPar = QtWidgets.QLineEdit('10')  # samples
+        self.digModWarning = QtWidgets.QMessageBox()
+        self.digModWarning.setInformativeText(
+            "You need to be in digital laser modulation and external "
+            "frame-trigger acquisition mode")
+
+        self.seqTimePar = QtWidgets.QLineEdit('1')  # ms
 
         self.scanPar = {
-                        'seqTime': self.seqTimePar,
-                        'phaseDelay': self.phaseDelayPar
+                        'seqTime': self.seqTimePar
                         }
 
-        self.ttlParameters = {}
+        self.pxParameters = {}
+
+        self.scanRadio = QtWidgets.QRadioButton('Scan')
+        self.scanRadio.setChecked(True)
+        self.contLaserPulsesRadio = QtWidgets.QRadioButton('Cont. Laser Pulses')
+
+        self.graph = GraphFrame()
+        self.graph.setEnabled(False)
+        self.graph.setFixedHeight(128)
 
         # Connect signals
+        self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
-        self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
-        #self.extraLaserOnPar.textChanged.connect(self.sigStageParChanged)  # for debugging
 
-    def initControls(self, positionerNames, TTLDeviceNames):
+    def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
         currentRow = 0
         self.scanDims = list(positionerNames)
         self._logger.debug(positionerNames)
@@ -35,11 +47,12 @@ class ScanWidgetPointScan(SuperScanWidget):
         # Add general buttons
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)
         self.grid.addWidget(self.saveScanBtn, currentRow, 1)
+        self.grid.addWidget(self.scanRadio, currentRow, 2)
+        self.grid.addWidget(self.contLaserPulsesRadio, currentRow, 3)
         self.grid.addItem(
             QtWidgets.QSpacerItem(40, 20,
-                                  QtWidgets.QSizePolicy.Expanding,
-                                  QtWidgets.QSizePolicy.Minimum),
-            currentRow, 2, 1, 3
+                                  QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum),
+            currentRow, 4
         )
         self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
@@ -48,8 +61,7 @@ class ScanWidgetPointScan(SuperScanWidget):
         # Add space item to make the grid look nicer
         self.grid.addItem(
             QtWidgets.QSpacerItem(20, 40,
-                                  QtWidgets.QSizePolicy.Minimum,
-                                  QtWidgets.QSizePolicy.Expanding),
+                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
             currentRow, 0, 1, -1
         )
         currentRow += 1
@@ -77,18 +89,12 @@ class ScanWidgetPointScan(SuperScanWidget):
             sizePar = QtWidgets.QLineEdit('5')
             self.scanPar['size' + positionerName] = sizePar
             stepSizePar = QtWidgets.QLineEdit('0.1')
-            if 'mock' in positionerName.lower():
-                stepSizePar.setText('-')
-                stepSizePar.setEnabled(False)
             self.scanPar['stepSize' + positionerName] = stepSizePar
             numPixelsPar = QtWidgets.QLineEdit('50')
             numPixelsPar.setEnabled(False)
             self.scanPar['pixels' + positionerName] = numPixelsPar
             centerPar = QtWidgets.QLineEdit('0')
             self.scanPar['center' + positionerName] = centerPar
-            if 'mock' in positionerName.lower():
-                centerPar.setText('-')
-                centerPar.setEnabled(False)
             self.grid.addWidget(QtWidgets.QLabel(positionerName), currentRow, 0)
             self.grid.addWidget(sizePar, currentRow, 1)
             self.grid.addWidget(stepSizePar, currentRow, 2)
@@ -103,7 +109,7 @@ class ScanWidgetPointScan(SuperScanWidget):
             self.grid.addWidget(dimlabel, currentRow, 5)
             scanDimPar = QtWidgets.QComboBox()
             scanDimPar.addItems(self.scanDims)
-            scanDimPar.setCurrentIndex(index if index < 2 else self.scanDims.index('None'))
+            scanDimPar.setCurrentIndex(index)
             self.scanPar['scanDim' + str(index)] = scanDimPar
             self.grid.addWidget(scanDimPar, currentRow, 6)
 
@@ -121,20 +127,10 @@ class ScanWidgetPointScan(SuperScanWidget):
         currentRow += 1
 
         # Add dwell time parameter
-        self.grid.addWidget(QtWidgets.QLabel('Dwell time (ms):'), currentRow, 5)
+        self.grid.addWidget(QtWidgets.QLabel('Dwell (ms):'), currentRow, 5)
         self.grid.addWidget(self.seqTimePar, currentRow, 6)
 
         currentRow += 1
-        
-        # Add detection phase delay parameter
-        self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
-        self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
-
-        #currentRow += 1
-        
-        # Add detection phase delay parameter
-        #self.grid.addWidget(QtWidgets.QLabel('Extra laser on (samples):'), currentRow, 5)
-        #self.grid.addWidget(self.extraLaserOnPar, currentRow, 6)
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
@@ -143,87 +139,95 @@ class ScanWidgetPointScan(SuperScanWidget):
             currentRow, 0, 1, -1
         )
         currentRow += 1
+        graphRow = currentRow
 
-        # TTL param labels
-        sequenceLabel = QtWidgets.QLabel('Sequence (h#,l#,...)')
-        sequenceLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(sequenceLabel, currentRow, 1)
-        sequenceAxisLabel = QtWidgets.QLabel('Axis')
-        sequenceAxisLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(sequenceAxisLabel, currentRow, 2)
+        # TTL pulse param labels
+        startLabel = QtWidgets.QLabel(f'Start ({TTLTimeUnits})')
+        endLabel = QtWidgets.QLabel(f'End ({TTLTimeUnits})')
+        startLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        endLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.grid.addWidget(startLabel, currentRow, 1)
+        self.grid.addWidget(endLabel, currentRow, 2)
         currentRow += 1
 
         for deviceName in TTLDeviceNames:
-            # TTL sequence param
+            # TTL pulse params
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
-            self.ttlParameters['seq' + deviceName] = QtWidgets.QLineEdit('l1')
-            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1)
-
-            # TTL sequence axis param
-            ttlAxisPar = QtWidgets.QComboBox()
-            ttlAxisPar.addItems(self.scanDims)
-            ttlAxisPar.setCurrentIndex(self.scanDims.index('None'))
-            self.ttlParameters['seqAxis' + deviceName] = ttlAxisPar
-            self.grid.addWidget(ttlAxisPar, currentRow, 2)
-
+            self.pxParameters['sta' + deviceName] = QtWidgets.QLineEdit('')
+            self.pxParameters['end' + deviceName] = QtWidgets.QLineEdit('')
+            self.grid.addWidget(self.pxParameters['sta' + deviceName], currentRow, 1)
+            self.grid.addWidget(self.pxParameters['end' + deviceName], currentRow, 2)
             currentRow += 1
 
             # Connect signals
-            self.ttlParameters['seq' + deviceName].textChanged.connect(self.sigSignalParChanged)
-            self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
-        
-        # Set grid layout options
-        self.grid.setColumnMinimumWidth(6, 90)
+            self.pxParameters['sta' + deviceName].textChanged.connect(self.sigSignalParChanged)
+            self.pxParameters['end' + deviceName].textChanged.connect(self.sigSignalParChanged)
 
-    def getScanStepSize(self, positionerName):
-        if self.scanPar['stepSize' + positionerName].isEnabled():
-            return float(self.scanPar['stepSize' + positionerName].text())
-        else:
-            return float(1)
+        # Add pulse graph
+        self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
 
-    def getScanCenterPos(self, positionerName):
-        if self.scanPar['center' + positionerName].isEnabled():
-            return float(self.scanPar['center' + positionerName].text())
-        else:
-            return float(0)
+    def isScanMode(self):
+        return self.scanRadio.isChecked()
+
+    def isContLaserMode(self):
+        return self.contLaserPulsesRadio.isChecked()
 
     def getTTLIncluded(self, deviceName):
-        return (self.ttlParameters['seq' + deviceName].text() != '')
+        return (self.pxParameters['sta' + deviceName].text() != '' and
+                self.pxParameters['end' + deviceName].text() != '')
 
-    def getTTLSequence(self, deviceName):
-        return self.ttlParameters['seq' + deviceName].text()
+    def getTTLStarts(self, deviceName):
+        return list(map(lambda s: float(s) / 1000 if s else None,
+                        self.pxParameters['sta' + deviceName].text().split(',')))
 
-    def getTTLSequenceAxis(self, deviceName):
-        if self.ttlParameters['seqAxis' + deviceName].currentText() == 'None':
-            return 'None'
-        return self.ttlParameters['seqAxis' + deviceName].currentText()
+    def getTTLEnds(self, deviceName):
+        return list(map(lambda e: float(e) / 1000 if e else None,
+                        self.pxParameters['end' + deviceName].text().split(',')))
 
     def getSeqTimePar(self):
         return float(self.seqTimePar.text()) / 1000
 
-    def getPhaseDelayPar(self):
-        return float(self.phaseDelayPar.text())
+    def setScanMode(self):
+        self.scanRadio.setChecked(True)
 
-    #def getExtraLaserOnPar(self):
-    #    return float(self.extraLaserOnPar.text())
+    def setContLaserMode(self):
+        self.contLaserPulsesRadio.setChecked(True)
 
-    def setScanPixels(self, positionerName, pixels):
-        txt = str(pixels) if pixels > 1 else '-'
-        self.scanPar['pixels' + positionerName].setText(txt)
+    def setTTLStarts(self, deviceName, starts):
+        self.pxParameters['sta' + deviceName].setText(
+            ','.join(map(lambda s: str(round(1000 * s, 3)), starts))
+        )
 
-    def setTTLSequences(self, deviceName, sequence):
-        self.ttlParameters['seq' + deviceName].setText(
-            ','.join(map(lambda s: str(s), sequence))
+    def setTTLEnds(self, deviceName, ends):
+        self.pxParameters['end' + deviceName].setText(
+            ','.join(map(lambda e: str(round(1000 * e, 3)), ends))
         )
 
     def unsetTTL(self, deviceName):
-        self.ttlParameters['seq' + deviceName].setText('')
+        self.pxParameters['sta' + deviceName].setText('')
+        self.pxParameters['end' + deviceName].setText('')
 
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
 
-    def setPhaseDelayPar(self, phaseDelayPar):
-        self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
+    def plotSignalGraph(self, areas, signals, colors, sampleRate):
+        if len(areas) != len(signals) or len(signals) != len(colors):
+            raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
+
+        self.graph.plot.clear()
+        for i in range(len(areas)):
+            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
+
+        self.graph.plot.setYRange(-0.1, 1.1)
+        self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
+
+
+class GraphFrame(pg.GraphicsLayoutWidget):
+    """Creates the plot that plots the preview of the pulses."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.plot = self.addPlot(row=1, col=0)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

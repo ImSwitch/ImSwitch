@@ -12,8 +12,9 @@ from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
-from .ScanWidgetPointScan import ScanWidgetPointScan
 from .ScanWidgetBase import ScanWidgetBase
+from .ScanWidgetMoNaLISA import ScanWidgetMoNaLISA
+from .ScanWidgetPointScan import ScanWidgetPointScan
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
 from .WatcherWidget import WatcherWidget

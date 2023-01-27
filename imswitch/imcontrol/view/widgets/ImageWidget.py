@@ -4,22 +4,19 @@ from qtpy import QtWidgets
 from imswitch.imcommon.model import shortcut
 from imswitch.imcommon.view.guitools import naparitools
 
-from imswitch.imcommon.model import initLogger
-
 
 class ImageWidget(QtWidgets.QWidget):
     """ Widget containing viewbox that displays the new detector frames. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self)
 
         naparitools.addNapariGrayclipColormap()
         self.napariViewer = naparitools.EmbeddedNapari()
         self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
             self.napariViewer
         )
-        self.NapariShiftWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer)
+        self.NapariResetViewWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, 'right')
         self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
@@ -61,9 +58,6 @@ class ImageWidget(QtWidgets.QWidget):
 
     def getImage(self, name):
         return self.imgLayers[name].data
-
-    #def setAxisLabels(self, axis_labels):
-    #    self.napariViewer.set_axis_labels(axis_labels)
 
     def setImage(self, name, im, scale):
         self.imgLayers[name].data = im

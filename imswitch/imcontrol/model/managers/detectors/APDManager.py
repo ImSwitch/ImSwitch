@@ -16,7 +16,6 @@ class APDManager(DetectorManager):
     - ``ctrInputLine`` -- the counter that the physical input terminal is
       connected to
     """
-    #sigSetAxisLabels = Signal(tuple)
 
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
         # TODO: use the same manager for the PMT, with the type of detector as an argument.
@@ -121,7 +120,6 @@ class APDManager(DetectorManager):
         for axis in ax_rem:
             px_sizes.pop(axis)
         self.setPixelSize(px_sizes[::-1])
-        #self.sigSetAxisLabels.emit(axis_labels)
 
     def updateImage(self, pixels, pos: tuple):
         pass
@@ -226,10 +224,6 @@ class ScanWorker(Worker):
         self._manager = manager
         self._name = self._manager._name
         self._channel = self._manager._channel
-
-        # TODO: calculate somehow, the phase delay from scanning signal to when the scanner is
-        #       actually in the correct place. How do we find this out? Depends on the response of
-        #       the galvos, can we measure this somehow?
 
         # time step of scanning, in s
         self._scan_dwell_time = scanInfoDict['dwell_time']

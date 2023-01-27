@@ -30,7 +30,6 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
-        #self._commChannel.sigSetAxisLabels.connect(self.setAxisLabels)
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -105,10 +104,6 @@ class ImageController(LiveUpdatedController):
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
-    def setAxisLabels(self, axis_labels):
-        axis_labels = tuple([re.sub('[^A-Z]', '', label) for label in axis_labels])
-        axis_labels = axis_labels[::-1]
-        self._widget.setAxisLabels(axis_labels)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -86,8 +86,6 @@ class CommunicationChannel(SignalInterface):
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
     sigBroadcast = Signal(str, str, object)
-
-    #sigSetAxisLabels = Signal(tuple)
     
     sigSaveFocus = Signal()
 

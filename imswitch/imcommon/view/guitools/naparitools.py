@@ -73,9 +73,6 @@ class EmbeddedNapari(napari.Viewer):
     def get_widget(self):
         return self.window._qt_window
 
-    def set_axis_labels(self, axis_labels):
-        self.dims.axis_labels = axis_labels
-
 
 class NapariBaseWidget(QtWidgets.QWidget):
     """ Base class for Napari widgets. """
@@ -90,12 +87,12 @@ class NapariBaseWidget(QtWidgets.QWidget):
         self.viewer = napariViewer
 
     @classmethod
-    def addToViewer(cls, napariViewer):
+    def addToViewer(cls, napariViewer, position='left'):
         """ Adds this widget to the specified Napari viewer. """
 
         # Add dock for this widget
         widget = cls(napariViewer)
-        napariViewer.window.add_dock_widget(widget, name=widget.name, area='left')
+        napariViewer.window.add_dock_widget(widget, name=widget.name, area=position)
 
         # Move layer list to bottom
         napariViewer.window._qt_window.removeDockWidget(

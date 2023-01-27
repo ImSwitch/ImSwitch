@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from imswitch.imcontrol._test import setupInfoBasic
-from imswitch.imcontrol.model import ScanManager
+from imswitch.imcontrol.model import ScanManagerBase
 
 
 def test_scan_signals():
@@ -20,7 +20,7 @@ def test_scan_signals():
                      'TTL_end': [[0.0015, 0.005], [0, 0]],
                      'sequence_time': 0.005}
 
-    sh = ScanManager(setupInfo=setupInfoBasic)
+    sh = ScanManagerBase(setupInfo=setupInfoBasic)
     fullsig, _ = sh.makeFullScan(stageParameters, TTLParameters)
 
     # All required dicts exist

@@ -1,0 +1,19 @@
+{
+    "detectors": {
+        "Green": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "PhotometricsManager",
+            "managerProperties": {
+                "cameraListIndex": 0
+            },
+            "forAcquisition": true
+        }
+    },
+    "availableWidgets": [
+        "Settings",
+        "View",
+        "Recording",
+        "Image"
+    ]
+}

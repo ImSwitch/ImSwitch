@@ -65,7 +65,8 @@ class PhotometricsManager(DetectorManager):
             if status == "READOUT_NOT_ACTIVE":
                 return self.image
             else:
-                return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
+                 return np.array(self._camera.get_frame().reshape(self._camera.sensor_size[::-1])) #NN161122
+                # return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
         except RuntimeError:
             return self.image
 
@@ -219,8 +220,8 @@ class PhotometricsManager(DetectorManager):
         except Exception:
             self.__logger.warning(f'Failed to initialize Photometrics camera {cameraId},'
                                   f' loading mocker')
-            from imswitch.imcontrol.model.interfaces import MockHamamatsu
-            camera = MockHamamatsu()
+            from imswitch.imcontrol.model.interfaces import MockPhotometrics
+            camera = MockPhotometrics()
 
         self.__logger.info(f'Initialized camera, model: {camera.name}')
         return camera

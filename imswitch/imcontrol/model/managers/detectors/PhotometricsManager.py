@@ -65,8 +65,9 @@ class PhotometricsManager(DetectorManager):
             if status == "READOUT_NOT_ACTIVE":
                 return self.image
             else:
-                 return np.array(self._camera.get_frame().reshape(self._camera.sensor_size[::-1])) #NN161122
-                # return np.array(self._camera.poll_latest_frame()[0]['pixel_data'])
+                frame, fps, frame_count  = self._camera.poll_frame()
+                return frame["pixel_data"]
+
         except RuntimeError:
             return self.image
 

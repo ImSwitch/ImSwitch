@@ -1,6 +1,5 @@
 import configparser
 import functools
-from logging import exception
 import os
 import traceback
 from ast import literal_eval

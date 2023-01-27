@@ -75,7 +75,6 @@ class GalvoScanDesigner(ScanDesigner):
                        if positioner.forScanning]
         positionerNames = [positioner for positioner in setupInfo.positioners
                            if setupInfo.positioners[positioner].forScanning]
-        #self._logger.debug(positionerNames)
         positionersProps = [positioner.managerProperties for positioner in positioners]
 
         device_count = len(positioners)
@@ -100,7 +99,6 @@ class GalvoScanDesigner(ScanDesigner):
         self.axis_length = [(parameterDict['axis_length'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                             for i in range(device_count)
                             if np.ceil(parameterDict['axis_length'][i]/parameterDict['axis_step_size'][i]) > 1]
-        #self._logger.debug(self.axis_length)
         # retrieve axis step sizes in V of active axes
         self.axis_step_size = [(parameterDict['axis_step_size'][i] / convFactors[positionerNames.index(self.axis_devs_order[i])])
                                for i in range(device_count)
@@ -198,8 +196,7 @@ class GalvoScanDesigner(ScanDesigner):
 
         self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 
-        #self._logger.debug(scanInfoDict)
-        self._logger.debug(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
+        self._logger.info(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):

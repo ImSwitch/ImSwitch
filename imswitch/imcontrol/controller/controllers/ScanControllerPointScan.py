@@ -215,7 +215,7 @@ class ScanControllerPointScan(SuperScanController):
                 if positionerName not in self._positionersScan:
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self.__logger.debug(f'Set {positionerName} center to {position} before scan')
+                    #self.__logger.debug(f'Set {positionerName} center to {position} before scan')
             # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
             #self._commChannel.sigSetAxisLabels.emit(tuple(self.scanInfoDict['axis_names']))
@@ -244,7 +244,7 @@ class ScanControllerPointScan(SuperScanController):
                 if positionerName == 'ND-PiezoZ':
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self.__logger.debug(f'set {positionerName} center to {position} after scan')
+                    #self.__logger.debug(f'set {positionerName} center to {position} after scan')
         else:
             self.runScanAdvanced(sigScanStartingEmitted=True)
 

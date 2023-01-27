@@ -77,8 +77,6 @@ class NidaqManager(SignalInterface):
     def __createLineDOTask(self, name, lines, acquisitionType, source, rate, sampsInScan=1000,
                            starttrig=False, reference_trigger='ai/StartTrigger'):
         """ Simplified function to create a digital output task """
-        self.__logger.debug(f'Create DO task: {name}')
-        #self.__logger.debug(lines)
         dotask = nidaqmx.Task(name)
 
         lines = np.atleast_1d(lines)
@@ -95,13 +93,12 @@ class NidaqManager(SignalInterface):
                                             samps_per_chan=sampsInScan)
         if starttrig:
             dotask.triggers.start_trigger.cfg_dig_edge_start_trig(reference_trigger)
-        self.__logger.debug(f'Created DO task: {name}')
+        #self.__logger.debug(f'Created DO task: {name}')
         return dotask
 
     def __createChanCITask(self, name, channel, acquisitionType, source, rate, sampsInScan=1000,
                            starttrig=False, reference_trigger='ai/StartTrigger', terminal='PFI0'):
         """ Simplified function to create a counter input task """
-        #self.__logger.debug(f'Create CI task: {name}')
         citask = nidaqmx.Task(name)
         citaskchannel = citask.ci_channels.add_ci_count_edges_chan(
             channel,
@@ -126,11 +123,11 @@ class NidaqManager(SignalInterface):
             citask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
             citask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
 
+        #self.__logger.debug(f'Created CI task: {name}')
         return citask
 
     def __createChanCOTask(self, name, channel, rate, sampsInScan=1000, starttrig=False,
                            reference_trigger='ai/StartTrigger'):
-        #self.__logger.debug(f'Create CO task: {name}')
         cotask = nidaqmx.Task(name)
         self.cotaskchannel = cotask.co_channels.add_co_pulse_chan_freq(
             channel, freq=rate, units=nidaqmx.constants.FrequencyUnits.HZ
@@ -143,13 +140,13 @@ class NidaqManager(SignalInterface):
             cotask.triggers.arm_start_trigger.dig_edge_src = reference_trigger
             cotask.triggers.arm_start_trigger.trig_type = nidaqmx.constants.TriggerType.DIGITAL_EDGE
 
+        #self.__logger.debug(f'Created CO task: {name}')
         return cotask
 
     def __createChanAITask(self, name, channels, acquisitionType, source, rate,
                            min_val=-0.5, max_val=10.0, sampsInScan=1000, starttrig=False,
                            reference_trigger='ai/StartTrigger'):
         """ Simplified function to create an analog input task """
-        #self.__logger.debug(f'Create AI task: {name}')
         aitask = nidaqmx.Task(name)
         for channel in channels:
             aitask.ai_channels.add_ai_voltage_chan(channel)
@@ -159,6 +156,8 @@ class NidaqManager(SignalInterface):
                                           samps_per_chan=sampsInScan)
         if starttrig:
             aitask.triggers.start_trigger.cfg_dig_edge_start_trig(reference_trigger)
+        
+        #self.__logger.debug(f'Created AI task: {name}')
         return aitask
 
     def startInputTask(self, taskName, taskType, *args):
@@ -171,7 +170,6 @@ class NidaqManager(SignalInterface):
 
     def readInputTask(self, taskName, samples=0, timeout=False):
         if not timeout:
-            #self.__logger.debug(f'Read {samples} samples from {taskName}')
             return self.tasks[taskName].read(samples)
         else:
             return self.tasks[taskName].read(samples, timeout)
@@ -183,17 +181,13 @@ class NidaqManager(SignalInterface):
         if line is None:
             raise NidaqManagerError('Target has no digital output assigned to it')
         else:
-            self.__logger.debug(f'{target} setDigital start: {enable}')
             #if not self.busy:
-            self.__logger.debug(f'{target} setDigital st1')
             #self.busy = True
             try:
-                self.__logger.debug(f'{target} setDigital st2')
                 acquisitionTypeFinite = nidaqmx.constants.AcquisitionType.FINITE
                 tasklen = 100
                 if not self.busy_scan:
                     start_condition = True
-                    self.__logger.debug("Do with 100kHz")
                     self.setDigitalTask = self.__createLineDOTask('setDigitalTask',
                                                         line,
                                                         acquisitionTypeFinite,
@@ -210,7 +204,6 @@ class NidaqManager(SignalInterface):
                                                           100000, tasklen,
                                                           starttrig=self.__startTrigger,
                                                           reference_trigger='ao/StartTrigger')
-                self.__logger.debug(f'{target} setDigital st3')
                 # signal = np.array([enable])
                 signal = enable * np.ones(tasklen, dtype=bool)
                 try:
@@ -399,12 +392,10 @@ class NidaqManager(SignalInterface):
                     self.timerTaskWaiter.start()
                 if len(DOsignals) > 0:
                     self.tasks['do'].start()
-                    # self.__logger.debug('DO task started')
                     self.doTaskWaiter.start()
 
                 if len(AOsignals) > 0:
                     self.tasks['ao'].start()
-                    # self.__logger.debug('AO task started')
                     self.aoTaskWaiter.start()
                 self.sigScanStarted.emit()
                 self.__logger.info('Nidaq scan started!')
@@ -413,7 +404,6 @@ class NidaqManager(SignalInterface):
         self.tasks[taskName].stop()
         self.tasks[taskName].close()
         del self.tasks[taskName]
-        # self.__logger.debug(f'Task {taskName} deleted')
 
     def stopTaskSingle(self, taskName):
         taskName.stop()

@@ -225,13 +225,13 @@ class RecordingManager(SignalInterface):
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
 
-
         try:
             images = {}
 
             # Acquire data
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
+                image = images[detectorName]
 
                 if saveMode == SaveMode.Numpy:
                     return
@@ -248,8 +248,6 @@ class RecordingManager(SignalInterface):
                         dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
 
                         for key, value in attrs[detectorName].items():
-                            #self.__logger.debug(key)
-                            #self.__logger.debug(value)
                             try:
                                 dataset.attrs[key] = value
                             except:
@@ -260,8 +258,7 @@ class RecordingManager(SignalInterface):
                         # For ImageJ compatibility
                         dataset.attrs['element_size_um'] =\
                             self.__detectorsManager[detectorName].pixelSizeUm
-                        
-                        #dataset[:,...] = np.moveaxis(image,0,-1)  # TODO: double this line for d>3 compatibility. Works still?
+
                         if image.ndim==3:
                             dataset[:,...] = np.moveaxis(image,[0,1,2], [2,1,0])
                         elif image.ndim==4:
@@ -269,8 +266,8 @@ class RecordingManager(SignalInterface):
                         else:
                             dataset[:,...] = np.moveaxis(image,0,-1)
                         file.close()
-                    elif saveFormat == SaveFormat.TIFF or self.saveFormat == SaveFormat.TIFF_Single:
-                        tiff.imwrite(filePath, image)
+                    elif saveFormat == SaveFormat.TIFF:
+                        tiff.imwrite(filePath, images)
                     else:
                         raise ValueError(f'Unsupported save format "{saveFormat}"')
 
@@ -282,13 +279,10 @@ class RecordingManager(SignalInterface):
 
             storer = self.__storerMap[saveFormat]
 
-
             if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
-
                 # Save images to disk
                 store = storer(savename, self.__detectorsManager)
                 store.snap(images, attrs)
-
 
             if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
                 for channel, image in images.items():
@@ -329,7 +323,7 @@ class RecordingManager(SignalInterface):
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
-        if saveFormat == SaveFormat.ZARR:
+        elif saveFormat == SaveFormat.ZARR:
             path = self.getSaveFilePath(f'{savename}.{fileExtension}')
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)

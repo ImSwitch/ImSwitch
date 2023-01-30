@@ -213,8 +213,8 @@ class MCTController(ImConWidgetController):
         if len(self.leds)>0:
             self.leds[0].setValue(self.LEDValueOld)
 
-    def showLast(self):
-        isCleanStack=True
+    def showLast(self, isCleanStack=False):
+        #  isCleanStack=False => subtract backgroudn or not
         try:
             #subtract background and normalize stack
             if isCleanStack: LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
@@ -304,12 +304,12 @@ class MCTController(ImConWidgetController):
                 # get current position
                 currentPositions = self.stages.getPosition()
                 self.initialPosition = (currentPositions["X"], currentPositions["Y"])
-                self.initialPosiionZ = currentPositions["Z"]
+                self.initialPositionZ = currentPositions["Z"]
 
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
-                self.stages.setSpeed(speed=1000, axis="Z")
+                self.stages.setSpeed(speed=10000, axis="Z")
 
                 try:
                     # want to do autofocus?
@@ -402,8 +402,9 @@ class MCTController(ImConWidgetController):
 
 
 
-        # initialize xy coordinates
+        # initialize xyz coordinates
         self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        self.stages.move(value=self.initialPositionZ+self.zStackMin-15, axis="Z", is_absolute=True, is_blocking=True)
 
         # initialize iterator
         imageIndex = 0
@@ -412,7 +413,6 @@ class MCTController(ImConWidgetController):
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break
-
             # move to xy position is necessary
             self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
 
@@ -425,7 +425,7 @@ class MCTController(ImConWidgetController):
             if self.zStackEnabled:
                 # perform a z-stack
                 # overshoot first step slightly to compensate backlash
-                self.stages.move(value=self.initialPosiionZ+self.zStackMin-15, axis="Z", is_absolute=True, is_blocking=True)
+                self.stages.move(value=self.initialPositionZ+self.zStackMin-15, axis="Z", is_absolute=True, is_blocking=True)
 
                 backlash=0
                 try: # only relevant for UC2 stuff
@@ -436,7 +436,7 @@ class MCTController(ImConWidgetController):
                 for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
                     # move to each position
 
-                    self.stages.move(value=self.initialPosiionZ+iZ, axis="Z", is_absolute=True, is_blocking=True)
+                    self.stages.move(value=self.initialPositionZ+iZ, axis="Z", is_absolute=True, is_blocking=True)
                     filePath = self.getSaveFilePath(date=self.MCTDate,
                                                     timestamp=timestamp,
                                                     filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
@@ -455,8 +455,8 @@ class MCTController(ImConWidgetController):
 
                 self.stages.setEnabled(is_enabled=False)
                 # reduce backlash => increase chance to endup at the same position
-                self.stages.move(value=self.initialPosiionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
-                self.stages.move(value=self.initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
+                self.stages.move(value=self.initialPositionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
+                self.stages.move(value=self.initialPositionZ, axis="Z", is_absolute=True, is_blocking=True)
 
             else:
                 # single file timelapse

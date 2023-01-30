@@ -48,7 +48,7 @@ try:
 except:
     isSIM = False
 
-isDEBUG = True
+isDEBUG = False
 
 class SIMController(LiveUpdatedController):
     """Linked to SIMWidget."""
@@ -107,7 +107,7 @@ class SIMController(LiveUpdatedController):
 
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        self.sigImageReceived.connect(self.imageComputationWorker.computeSIMImage)
+        #self.sigImageReceived.connect(self.imageComputationWorker.computeSIMImage)
         self.imageComputationThread.start()
 
         # Initial SIM display
@@ -147,11 +147,10 @@ class SIMController(LiveUpdatedController):
             if self.patternID>=(self.nRotations*self.nPhases):
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
-                self.allFrames = [] 
                 self.patternID = 0
-                
-                self.imageComputationWorker.prepareForNewSIMStack(im)
-                self.sigImageReceived.emit()
+            
+            self.imageComputationWorker.prepareForNewSIMStack(im)
+            self.sigImageReceived.emit()
         else:
             # 2. we need to wait for camera-slm sync
             self.iSyncCameraSLM+=1
@@ -291,12 +290,12 @@ class SIMController(LiveUpdatedController):
 
         def prepareForNewSIMStack(self, image):
             """ Must always be called before the worker receives a new image. """
-            
             self.allFrames.append(image)
+            self._logger.debug(len(self.allFrames))
             if len(self.allFrames)>8:
                 self.allFramesNP = np.array(self.allFrames)
+                self.allFramesList = self.allFrames
                 self.allFrames = []
-                
                 if isDEBUG:
                     date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
                     tif.imsave(f"filename_{date}.tif", self.allFramesNP)
@@ -304,6 +303,9 @@ class SIMController(LiveUpdatedController):
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages += 1
                 self._numQueuedImagesMutex.unlock()
+
+                # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
+                self.computeSIMImage()
 
 
 
@@ -431,8 +433,6 @@ class SIMProcessor(object):
         self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
-            if type(imRaw) is not list:
-                imRaw = list(imRaw)
             if self.use_torch:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:

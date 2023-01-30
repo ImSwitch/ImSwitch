@@ -500,13 +500,14 @@ class MCTController(ImConWidgetController):
                 iY = int(np.floor((iXYPos[1]-self.yScanMin) // self.yScanStep))
                 # handle rgb => turn to mono for now
                 if len(lastFrame.shape)>2:
-                    lastFrame = cv2.cvtColor(lastFrame, cv2.COLOR_BGR2GRAY)
+                    lastFrame = np.uint16(np.mean(lastFrame, 0))
                 # add tile to large canvas
                 lastFrameScaled = cv2.resize(lastFrame, None, fx = 1/downScaleFactor, fy = 1/downScaleFactor, interpolation = cv2.INTER_NEAREST)
                 try:
                     self.tiledImage[int(iY*imageDimensionsDownscaled[1]):int(iY*imageDimensionsDownscaled[1]+imageDimensionsDownscaled[1]),
                         int(iX*imageDimensionsDownscaled[0]):int(iX*imageDimensionsDownscaled[0]+imageDimensionsDownscaled[0])] = lastFrameScaled
-                except:
+                except Exception as e:
+                    self._logger.error(e)
                     self._logger.error("Failed to parse a frame into the tiledImage array")
                 self.sigImageReceived.emit() # => displays image
 

@@ -48,7 +48,7 @@ class MasterController:
             self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
         else:
             self.__logger.error(
-                'ScanWidgetType in SetupInfo not recognized, choose one of the following:'
+                'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'
                 ' ["Base", "PointScan", "MoNaLISA"].'
             )
             return

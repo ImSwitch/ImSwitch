@@ -5,6 +5,7 @@
 
 from ctypes import *
 import sys
+import os
 
 if sys.platform == 'linux2' or sys.platform == 'linux':
     try:
@@ -13,10 +14,17 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         print('Cannot find libgxiapi.so.')
 elif sys.platform == 'win32':
     try:
+        mPWD = os.getcwd()
+        dll = WinDLL(mPWD+'\\imswitch\\imcontrol\\model\\interfaces\\gxipy\\dll\\DxImageProc.dll', winmode=0) 
+    except OSError:
+        print('Cannot find DxImageProc.dll.')
+        
+    '''
+    try:
         dll = WinDLL('DxImageProc.dll')
     except OSError:
         print('Cannot find DxImageProc.dll.')
-
+    '''
 else:
     dll = -1
 

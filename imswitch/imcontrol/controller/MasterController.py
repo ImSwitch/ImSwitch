@@ -34,9 +34,8 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
-        if setupInfo.rotators:
-            self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                                   **lowLevelManagers)
+        self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
+                                               **lowLevelManagers)
 
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)

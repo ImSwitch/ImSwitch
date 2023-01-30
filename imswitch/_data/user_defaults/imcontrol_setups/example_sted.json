@@ -209,6 +209,26 @@
       "h": 2048
     }
   },
+  "rotators": {
+    "HWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 0,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    },
+    "QWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 1,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    }
+  },
   "availableWidgets": [
     "Settings",
     "View",
@@ -219,7 +239,8 @@
     "Scan",
     "FocusLock",
     "SLM",
-    "Watcher"
+    "Rotation",
+    "RotationScan"
   ],
   "scan": {
     "scanDesigner": "GalvoScanDesigner",

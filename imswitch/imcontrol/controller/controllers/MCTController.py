@@ -232,7 +232,7 @@ class MCTController(ImConWidgetController):
 
         try:
             if isCleanStack: LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
-            LastStackLEDArrayLast = self.LastStackLaser1ArrayLast
+            else: LastStackLEDArrayLast = self.LastStackLEDArrayLast
             self._widget.setImage(LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
         except  Exception as e:
             self._logger.error(e)
@@ -383,6 +383,15 @@ class MCTController(ImConWidgetController):
                 else:
                     for indexY, iy in enumerate(bwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
+            
+            # reserve space for tiled image
+            downScaleFactor = 4
+            nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
+            nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
+            imageDimensions = self.detector.getLatestFrame().shape
+            imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
+            tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
+            self.tiledImage = np.zeros(tiledImageDimensions)
 
         else:
             xyScanStepsAbsolute = [[0,0]]
@@ -392,14 +401,6 @@ class MCTController(ImConWidgetController):
             self.yScanMax = 0
 
 
-        # reserve space for tiled image
-        downScaleFactor = 4
-        nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
-        nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
-        imageDimensions = self.detector.getLatestFrame().shape
-        imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
-        tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
-        self.tiledImage = np.zeros(tiledImageDimensions)
 
         # initialize xy coordinates
         self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)

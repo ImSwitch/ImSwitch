@@ -34,7 +34,7 @@ class MCTController(ImConWidgetController):
         self.zStackMin = 0
         self.zStackMax = 0
         self.zStackStep = 0
-        
+
         # xy
         self.xyScanEnabled = False
         self.xScanMin = 0
@@ -43,7 +43,7 @@ class MCTController(ImConWidgetController):
         self.yScanMin = 0
         self.yScanMax = 0
         self.yScanStep = 0
-                
+
         # store old values
         self.Laser1ValueOld = 0
         self.Laser2ValueOld = 0
@@ -66,7 +66,6 @@ class MCTController(ImConWidgetController):
         self._widget.mctStartButton.clicked.connect(self.startMCT)
         self._widget.mctStopButton.clicked.connect(self.stopMCT)
         self._widget.mctShowLastButton.clicked.connect(self.showLast)
-        self._widget.mctInitFilterButton.clicked.connect(self.initFilter)
 
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
@@ -74,8 +73,8 @@ class MCTController(ImConWidgetController):
 
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)
-        
-        # autofocus related 
+
+        # autofocus related
         self.isAutofocusRunning = False
         self._commChannel.sigAutoFocusRunning.connect(self.setAutoFocusIsRunning)
 
@@ -108,7 +107,7 @@ class MCTController(ImConWidgetController):
 
         self.isMCTrunning = False
         self._widget.mctShowLastButton.setEnabled(False)
-        
+
         # setup gui limits
         if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
         if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
@@ -128,36 +127,29 @@ class MCTController(ImConWidgetController):
             self.optDy = int(self.Ny* self.pixelSize[2]*overlap) # dy
             self._widget.mctValueXsteps.setText(str(self.optDx))
             self._widget.mctValueYsteps.setText(str(self.optDy))
-            
+
         except Exception as e:
             self._logger.error(e)
 
-
-    def initFilter(self):
-        self._widget.setnImagesTaken("Initializing filter position...")
-        if len(self.lasers)>0:
-            self.lasers[0].initFilter()
 
     def startMCT(self):
         # initilaze setup
         # this is not a thread!
         self._widget.mctStartButton.setEnabled(False)
 
-        # don't show any message 
+        # don't show any message
         self._master.UC2ConfigManager.setDebug(False)
-        
+
         # start the timelapse
         if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImagesTaken = 0
             self._widget.setnImagesTaken("Starting timelapse...")
             self.switchOffIllumination()
-            if len(self.lasers)>0:
-                self.lasers[0].initFilter()
 
             # get parameters from GUI
             self.zStackMin, self.zStackMax, self.zStackStep, self.zStackEnabled = self._widget.getZStackValues()
             self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep, self.xyScanEnabled = self._widget.getXYScanValues()
-            
+
             self.timePeriod, self.nImagesToCapture = self._widget.getTimelapseValues()
             self.MCTFilename = self._widget.getFilename()
             self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
@@ -176,24 +168,24 @@ class MCTController(ImConWidgetController):
             # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
             self.takeTimelapse(self.timePeriod)
 
-            '''       
+            '''
             self.timer = mTimer(self.timePeriod, self.takeTimelapse)
             self.timer.start()
             '''
-            
+
         else:
             self.isMCTrunning = False
             self._widget.mctStartButton.setEnabled(True)
 
-    
+
     def stopMCT(self):
         self.isMCTrunning = False
 
         self._widget.setnImagesTaken("Stopping timelapse...")
 
         self._widget.mctStartButton.setEnabled(True)
-        
-        # go back to initial position       
+
+        # go back to initial position
         try:
             self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
         except:
@@ -246,9 +238,9 @@ class MCTController(ImConWidgetController):
             self._logger.error(e)
 
     def cleanStack(self, input):
-        import NanoImagingPack as nip 
+        import NanoImagingPack as nip
         mBackground = nip.gaussf(np.mean(input,0),10)
-        moutput = input/mBackground 
+        moutput = input/mBackground
         mFluctuations = np.mean(moutput, (1,2))
         moutput /= np.expand_dims(np.expand_dims(mFluctuations,-1),-1)
         return np.uint8(moutput)
@@ -276,13 +268,13 @@ class MCTController(ImConWidgetController):
         self._widget.setnImagesTaken("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
         self.isAutofocusRunning = True
-        
+
         while self.isAutofocusRunning:
             time.sleep(0.1)
             if not self.isAutofocusRunning:
                 self._logger.info("Autofocusing done.")
                 return
-        
+
 
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
@@ -300,7 +292,7 @@ class MCTController(ImConWidgetController):
 
             # initialize a run
             if time.time() - self.timeLast >= (tperiod):
-                
+
                 # run an event
                 self.timeLast = time.time() # makes sure that the period is measured from launch to launch
                 self._logger.debug("Take image")
@@ -308,18 +300,18 @@ class MCTController(ImConWidgetController):
                 self.LastStackLaser1 = []
                 self.LastStackLaser2 = []
                 self.LastStackLED = []
-                
+
                 # get current position
                 currentPositions = self.stages.getPosition()
                 self.initialPosition = (currentPositions["X"], currentPositions["Y"])
                 self.initialPosiionZ = currentPositions["Z"]
-                
+
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
                 self.stages.setSpeed(speed=1000, axis="Z")
 
-                try:    
+                try:
                     # want to do autofocus?
                     autofocusParams = self._widget.getAutofocusValues()
                     if self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
@@ -342,17 +334,17 @@ class MCTController(ImConWidgetController):
                         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
-                        
+
                         self._widget.mctShowLastButton.setEnabled(True)
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
                     # close the controller ina nice way
                     pass
-            
+
             # pause to not overwhelm the CPU
             time.sleep(0.1)
-                    
+
 
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0):
@@ -384,10 +376,10 @@ class MCTController(ImConWidgetController):
             fwdpath = np.arange(self.yScanMin, self.yScanMax, self.yScanStep)
             bwdpath = np.flip(fwdpath)
             # we increase linearly over x
-            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)): 
+            for indexX, ix in enumerate(np.arange(self.xScanMin, self.xScanMax, self.xScanStep)):
                 if indexX%2==0:
                     for indexY, iy in enumerate(fwdpath):
-                        xyScanStepsAbsolute.append([ix, iy])   
+                        xyScanStepsAbsolute.append([ix, iy])
                 else:
                     for indexY, iy in enumerate(bwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
@@ -398,9 +390,9 @@ class MCTController(ImConWidgetController):
             self.xScanMax = 0
             self.yScanMin = 0
             self.yScanMax = 0
-            
-        
-        # reserve space for tiled image 
+
+
+        # reserve space for tiled image
         downScaleFactor = 4
         nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
         nTilesY = int(np.ceil((self.yScanMax-self.yScanMin)/self.yScanStep))
@@ -408,10 +400,10 @@ class MCTController(ImConWidgetController):
         imageDimensionsDownscaled = (imageDimensions[1]//downScaleFactor, imageDimensions[0]//downScaleFactor) # Y/X
         tiledImageDimensions = (nTilesX*imageDimensions[1]//downScaleFactor, nTilesY*imageDimensions[0]//downScaleFactor)
         self.tiledImage = np.zeros(tiledImageDimensions)
-        
+
         # initialize xy coordinates
         self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        
+
         # initialize iterator
         imageIndex = 0
         self._widget.gridLayer = None
@@ -419,10 +411,10 @@ class MCTController(ImConWidgetController):
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break
-            
+
             # move to xy position is necessary
             self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-            
+
             # measure framenumber and check if it has been renewed after stage has stopped => avoid motion blur!
             if hasattr(self.detector, "getFrameNumber"):
                 frameNumber = self.detector.getFrameNumber()
@@ -439,14 +431,14 @@ class MCTController(ImConWidgetController):
                     self.stages.setEnabled(is_enabled=True)
                 except:
                     pass
-                
+
                 for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
                     # move to each position
-                    
+
                     self.stages.move(value=self.initialPosiionZ+iZ, axis="Z", is_absolute=True, is_blocking=True)
-                    filePath = self.getSaveFilePath(date=self.MCTDate, 
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
                                                     timestamp=timestamp,
-                                                    filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
+                                                    filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                                     extension=fileExtension)
                     time.sleep(self.tUnshake) # unshake
                     lastFrame = self.detector.getLatestFrame()
@@ -464,28 +456,28 @@ class MCTController(ImConWidgetController):
                 # reduce backlash => increase chance to endup at the same position
                 self.stages.move(value=self.initialPosiionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
                 self.stages.move(value=self.initialPosiionZ, axis="Z", is_absolute=True, is_blocking=True)
-                
+
             else:
                 # single file timelapse
                 time.sleep(self.tUnshake) # unshake
-                filePath = self.getSaveFilePath(date=self.MCTDate, 
+                filePath = self.getSaveFilePath(date=self.MCTDate,
                                                 timestamp=timestamp,
-                                                filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}', 
-                                                extension=fileExtension)            
-                
+                                                filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                                extension=fileExtension)
+
                 # wait for frame after next frame to appear. Avoid motion blurring
                 while self.detector.getFrameNumber()<(frameNumber+5):
                     time.sleep(0.05)
                     print(self.detector.getFrameNumber()-frameNumber)
-                
+
                 # snap image
                 lastFrame = self.detector.getLatestFrame()
-                
+
                 # save image tile to tif # TODO: Should we use record manager here?
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)
                 imageIndex += 1
-                
+
                 # store frames for displaying
                 if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
                 if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
@@ -493,7 +485,7 @@ class MCTController(ImConWidgetController):
 
 
             if self.xyScanEnabled:
-                # lets try to visualize each slice in napari 
+                # lets try to visualize each slice in napari
                 # def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
                 # construct the tiled image
                 iX = int(np.floor((iXYPos[0]-self.xScanMin) // self.xScanStep))
@@ -514,7 +506,7 @@ class MCTController(ImConWidgetController):
 
         # initialize xy coordinates
         self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-       
+
         self.switchOffIllumination()
 
 
@@ -530,7 +522,7 @@ class MCTController(ImConWidgetController):
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
-        self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value)) 
+        self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value))
         if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
@@ -562,19 +554,18 @@ class MCTController(ImConWidgetController):
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
 
-
         return newPath
-    
+
     def setAutoFocusIsRunning(self, isRunning):
         # this is set by the AutofocusController once the AF is finished/initiated
         self.isAutofocusRunning = isRunning
-    
+
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "tilescanning"
         self._widget.setImage(np.uint16(self.tiledImage), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
-            
-            
+
+
 
 
 class mTimer(object):
@@ -584,18 +575,18 @@ class mTimer(object):
         self.running = False
         self.isStop = False
         self.mFunc = mFunc
-        
+
     def start(self):
         self.starttime = time.time()
         self.running = True
-        
+
         ticker = threading.Event( daemon=True)
         self.waittimeLoop=0 # make sure first run runs immediately
         while not ticker.wait(self.waittimeLoop) and self.isStop==False:
             self.waittimeLoop = self.waittime
             self.mFunc()
         self.running = False
-        
+
     def stop(self):
         self.running = False
         self.isStop = True

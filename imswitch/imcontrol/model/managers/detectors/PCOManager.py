@@ -42,9 +42,9 @@ class PCOManager(DetectorManager):
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
                                             editable=True),
-            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
+            'Width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
-            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
+            'Height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
@@ -156,7 +156,7 @@ class PCOManager(DetectorManager):
             )
             self._camera.setROI(hpos, vpos, hsize, vsize)
             # TOdO: weird hackaround
-            self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
+            self._shape = (self._camera.SensorWidth//self._camera.binning, self._camera.SensorHeight//self._camera.binning)
             self._frameStart = (hpos, vpos)
             pass
         try:

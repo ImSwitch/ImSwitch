@@ -34,11 +34,13 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        if setupInfo.rotators:
+            self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
+                                                   **lowLevelManagers)
 
         self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
-        self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators)
 
         # Connect signals
         cc = self.__commChannel

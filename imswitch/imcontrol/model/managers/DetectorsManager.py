@@ -16,6 +16,7 @@ class DetectorsManager(MultiManager, SignalInterface):
     sigImageUpdated = Signal(
         str, np.ndarray, bool, bool
     )  # (detectorName, image, init, isCurrentDetector)
+    sigNewFrame = Signal()
 
     def __init__(self, detectorInfos, updatePeriod, **lowLevelManagers):
         MultiManager.__init__(self, detectorInfos, 'detectors', **lowLevelManagers)
@@ -35,6 +36,7 @@ class DetectorsManager(MultiManager, SignalInterface):
                     detectorName, image, init, detectorName == self._currentDetectorName
                 )
             )
+            self._subManagers[detectorName].sigNewFrame.connect(lambda: self.sigNewFrame.emit())
 
             # Set as default if first detector
             if self._currentDetectorName is None:

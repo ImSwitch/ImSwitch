@@ -267,7 +267,7 @@ class SetupInfo:
     functionality. """
     
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
-    """ Autofocus  settings. Required to be defined to use autofocus 
+    """ Autofocus settings. Required to be defined to use autofocus 
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
@@ -275,6 +275,9 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
+
+    rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
+    """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

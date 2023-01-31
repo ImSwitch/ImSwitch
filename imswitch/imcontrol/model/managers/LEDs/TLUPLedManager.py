@@ -38,6 +38,9 @@ class TLUPLedManager(LEDManager):
         """
         self._led.current_setpoint = value
 
+    def getValue(self):
+        return self._led.current_setpoint
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -123,6 +123,7 @@ class OpentronsDeckWidget(Widget):
                 else:
                     btn.setStyleSheet("background-color: grey; font-size: 14px")
 
+        self._wells_group_box.setMaximumHeight(300)
         self._wells_group_box.setLayout(layout)
         self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1,2)
         self.setLayout(self.main_grid_layout)
@@ -293,7 +294,7 @@ class OpentronsDeckWidget(Widget):
                 )
 
             self.numPositioners += 1
-        self._positioner_widget.setFixedHeight(90)
+        self._positioner_widget.setFixedHeight(120)
         self._positioner_widget.setLayout(layout)
         self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1,2)
 
@@ -521,10 +522,13 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         return rect.contains(pos, True) and not (
                     int(self.model().flags(index)) & Qt.ItemIsDropEnabled) and pos.y() >= rect.center().y()
 
-    def load_json(self, file):
-        data = json.load(file)
-
-        pass
+    def addColumn(self, name):
+        newColumn = self.columnCount()
+        self.beginInsertColumns(Qt.QModelIndex(), newColumn, newColumn)
+        self.headerdata.append(name)
+        for row in self.arraydata:
+            row.append('')
+        self.endInsertColumns()
 
     # Copyright (C) 2020-2021 ImSwitch developers
     # This file is part of ImSwitch.

@@ -45,10 +45,14 @@ class StandaStageManager(PositionerManager):
         self._positioner.zero()
         [self.setPosition(d, a) for a,d in zip(self.axes, self.get_position())]
         return
-
+    # TODO: duplicated, refactor with ImSwitch camel style?
+    def getPosition(self):
+        return self._position
     def get_position(self):
         return self._positioner.get_position()
 
+    # TODO: adapt to new Positioner signature (from ESP32StageManager):
+    #  move(self, value=0, axis="X", speed=None, is_absolute=False, is_blocking=False, timeout=np.inf):
     def move(self, dist, axis, is_blocking=False):
         current_position = self._positioner.get_position()
         if axis == "XYZ":

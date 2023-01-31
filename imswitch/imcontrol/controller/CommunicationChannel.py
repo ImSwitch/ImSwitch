@@ -85,7 +85,8 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
-    sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
+    sigAutoFocus =  Signal(float, float, float) # scanrange and stepsize and initialz
+    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
 
     sigBroadcast = Signal(str, str, object)
 

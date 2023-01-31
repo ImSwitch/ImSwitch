@@ -222,8 +222,8 @@ class OpentronsDeckController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def select_well(self, well):
         self.__logger.debug(f"Well {well}")
-        if well == self.selected_well:
-            self.moveToWell(well)
+        # if well == self.selected_well:
+        #     self.moveToWell(well)
         self.selected_well = well
         self._widget.select_well(well)
         self.connect_go_to()
@@ -270,7 +270,8 @@ class OpentronsDeckController(LiveUpdatedController):
         well = self.scanner.get_closest_well()
         self._widget.current_well = well.well_name if well is not None else None
         if self._widget.current_slot is not None and self._widget.current_well is not None:
-            offset = tuple([a - b if np.abs(a - b) > 10e-4 else 0.00 for (a, b) in
+            # Offset gets defined positively: when shifting an offset it should be shift = offset - current_position
+            offset = tuple([b - a if np.abs(a - b) > 10e-4 else 0.00 for (a, b) in
                             zip(well.geometry.position + Point(*self.corner_offset),
                                 self.positioner.get_position())][:2])
             self._widget.current_offset = offset
@@ -570,13 +571,20 @@ class LabwareScanner():
             else:
                 raise ValueError
 
-
+    def shiftXYoffset(self, xy_offset, x_offset=None, y_offset=None):
+        if xy_offset is not None and x_offset is None and y_offset is None:
+            x_offset = xy_offset[0]
+            y_offset = xy_offset[1]
+        else:
+            raise ValueError
+        x, y, z = self.positioner.get_position()
+        self.positioner.move(axis="XY", dist=(x_offset + x, y_offset + y))
+        # is_blocking=False)  # , speed=5, is_blocking=True, is_absolute=True)
+        self.is_moving = False
     def moveToXY(self, pos_X, pos_Y):
         x, y, z = self.positioner.get_position()
         self.positioner.move(axis="XY", dist=(pos_X - x, pos_Y - y))
                              # is_blocking=False)  # , speed=5, is_blocking=True, is_absolute=True)
-        # self.positioner.move(axis="XY", dist=(pos_X - x, pos_Y - y),
-        #                      is_blocking=False)
         self.is_moving = False
 
     def setDirections(self, directions=(1, 1, 1)):

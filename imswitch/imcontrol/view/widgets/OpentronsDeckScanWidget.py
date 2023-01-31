@@ -12,8 +12,9 @@ from imswitch.imcontrol.view.widgets.StandaPositionerWidget import StandaPositio
 import json
 import sys, csv, unicodedata
 from imswitch.imcontrol.view.widgets.OpentronsDeckWidget import TableWidgetDragRows
+from .basewidgets import NapariHybridWidget
 
-class OpentronsDeckScanWidget(Widget):
+class OpentronsDeckScanWidget(NapariHybridWidget):
     """ Widget in control of the piezo movement. """
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
@@ -34,19 +35,16 @@ class OpentronsDeckScanWidget(Widget):
     sigPresetScanDefaultToggled = QtCore.Signal()
 
 
-    sigMCTInitFilterPos = QtCore.Signal(bool)  # (enabled)
-    sigMCTShowLast = QtCore.Signal(bool)  # (enabled)
-    sigMCTStop = QtCore.Signal(bool)  # (enabled)
-    sigMCTStart = QtCore.Signal(bool)  # (enabled)
+    sigScanInitFilterPos = QtCore.Signal(bool)  # (enabled)
+    sigScanShowLast = QtCore.Signal(bool)  # (enabled)
+    sigScanStop = QtCore.Signal(bool)  # (enabled)
+    sigScanStart = QtCore.Signal(bool)  # (enabled)
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
     sigPIDToggled = QtCore.Signal(bool)  # (enabled)
     sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
 
-    sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
-    sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
     sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
-
 
     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
@@ -54,23 +52,15 @@ class OpentronsDeckScanWidget(Widget):
         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
         self.scan_list_items = 0
         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
-
-        self._actions_widget = QtWidgets.QGroupBox("")
-
-        actions_layout = QtWidgets.QGridLayout()
         self.buttonOpen = guitools.BetterPushButton('Open')
         self.buttonSave = guitools.BetterPushButton('Save')
 
         self.buttonOpen.clicked.connect(self.handleOpen)
         self.buttonSave.clicked.connect(self.handleSave)
 
-        actions_layout.addWidget(self.buttonOpen, 0, 0, 1, 1)
-        actions_layout.addWidget(self.buttonSave, 1, 0, 1, 1)
-
-        self._actions_widget.setLayout(actions_layout)
-
-        self.grid.addWidget(self.scan_list)
-        self.grid.addWidget(self._actions_widget)
+        self.grid.addWidget(self.scan_list,12, 0, 1, 4)
+        self.grid.addWidget(self.buttonOpen,11, 0, 1, 1)
+        self.grid.addWidget(self.buttonSave,11, 1, 1, 1)
 
 
     # https://stackoverflow.com/questions/12608835/writing-a-qtablewidget-to-a-csv-or-xls
@@ -79,18 +69,22 @@ class OpentronsDeckScanWidget(Widget):
         path = QtWidgets.QFileDialog.getSaveFileName(
             self, 'Save File', '', 'CSV(*.csv)')
         # if not path[0] != "":
-        with open(path[0], 'w', newline='') as stream:
-            writer = csv.writer(stream)
-            for row in range(self.scan_list.rowCount()):
-                rowdata = []
-                for column in range(self.scan_list.columnCount()):
-                    item = self.scan_list.item(row, column)
-                    if item is not None:
-                        rowdata.append(
-                            item.text())
-                    else:
-                        rowdata.append('')
-                writer.writerow(rowdata)
+        try:
+            with open(path[0], 'w', newline='') as stream:
+                writer = csv.writer(stream)
+                for row in range(self.scan_list.rowCount()):
+                    rowdata = []
+                    for column in range(self.scan_list.columnCount()):
+                        item = self.scan_list.item(row, column)
+                        if item is not None:
+                            rowdata.append(
+                                item.text())
+                        else:
+                            rowdata.append('')
+                    writer.writerow(rowdata)
+        except:
+            print("Action Save cancelled.")
+
         # else:
         #     self.__logger.debug("Empty path: handleSave")
 
@@ -98,186 +92,117 @@ class OpentronsDeckScanWidget(Widget):
         path = QtWidgets.QFileDialog.getOpenFileName(
             self, 'Open File', '', 'CSV(*.csv)')
         # if not path.isEmpty():
-        with open(path[0], 'r') as stream:
-            self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
-            self.scan_list.setRowCount(0)
-            self.scan_list_items = 0
-            for rowdata in csv.reader(stream):
-                self.scan_list.insertRow(self.scan_list_items)
-                for column, data in enumerate(rowdata):
-                    item = QtWidgets.QTableWidgetItem(data)
-                    self.scan_list.setItem(self.scan_list_items, column, item)
-                self.scan_list_items += 1
+        try:
+            with open(path[0], 'r') as stream:
+                self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+                self.scan_list.setRowCount(0)
+                self.scan_list_items = 0
+                for rowdata in csv.reader(stream):
+                    if len(rowdata)>0:
+                        self.scan_list.insertRow(self.scan_list_items)
+                        for column, data in enumerate(rowdata):
+                            item = QtWidgets.QTableWidgetItem(data)
+                            self.scan_list.setItem(self.scan_list_items, column, item)
+                        self.scan_list_items += 1
+        except:
+            print("Action Open cancelled.")
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    def __post_init__(self):
 
-        self.mctFrame = pg.GraphicsLayoutWidget()
+        # super().__init__(*args, **kwargs)
+
+        self.ScanFrame = pg.GraphicsLayoutWidget()
 
         # initialize all GUI elements
         # period
-        self.mctLabelTimePeriod = QtWidgets.QLabel('Period T (s):')
-        self.mctValueTimePeriod = QtWidgets.QLineEdit('5')
-
+        self.ScanLabelTimePeriod = QtWidgets.QLabel('Period T (s):') # TODO: change for a h:m:s Widget
+        self.ScanValueTimePeriod = QtWidgets.QLineEdit('180')
         # duration
-        self.mctLabelTimeDuration = QtWidgets.QLabel('N Measurements:')
-        self.mctValueTimeDuration = QtWidgets.QLineEdit('1')
-
+        self.ScanLabelTimeDuration = QtWidgets.QLabel('N Rounds:')
+        self.ScanValueTimeDuration = QtWidgets.QLineEdit('2')
         # z-stack
-        self.mctLabelZStack = QtWidgets.QLabel('Z-Stack (min,max,steps):')
-        self.mctValueZmin = QtWidgets.QLineEdit('-100')
-        self.mctValueZmax = QtWidgets.QLineEdit('100')
-        self.mctValueZsteps = QtWidgets.QLineEdit('10')
-
-        # xy-scanning
-        self.mctLabelXScan = QtWidgets.QLabel('X Scan (min,max,steps):')
-        self.mctValueXmin = QtWidgets.QLineEdit('-1000')
-        self.mctValueXmax = QtWidgets.QLineEdit('1000')
-        self.mctValueXsteps = QtWidgets.QLineEdit('100')
-
-        self.mctLabelYScan = QtWidgets.QLabel('Y Scan (min,max,steps):')
-        self.mctValueYmin = QtWidgets.QLineEdit('-1000')
-        self.mctValueYmax = QtWidgets.QLineEdit('1000')
-        self.mctValueYsteps = QtWidgets.QLineEdit('100')
-
+        self.ScanLabelZStack = QtWidgets.QLabel('Z-Stack (min,max,n_slices):')
+        self.ScanValueZmin = QtWidgets.QLineEdit('0')
+        self.ScanValueZmax = QtWidgets.QLineEdit('0.5')
+        self.ScanValueZsteps = QtWidgets.QLineEdit('5')
+        self.ScanDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
+        self.ScanDoZStack.setCheckable(True)
         # autofocus
-        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')
-        self.autofocusRange = QtWidgets.QLineEdit('200')
-        self.autofocusSteps = QtWidgets.QLineEdit('20')
-        self.autofocusPeriod = QtWidgets.QLineEdit('10')
-
-        self.autofocusLaser1Checkbox = QtWidgets.QCheckBox('Laser 1')
-        self.autofocusLaser1Checkbox.setCheckable(True)
-
-        self.autofocusLaser2Checkbox = QtWidgets.QCheckBox('Laser 2')
-        self.autofocusLaser2Checkbox.setCheckable(True)
+        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th round): ')
+        self.autofocusRange = QtWidgets.QLineEdit('0.5')
+        self.autofocusSteps = QtWidgets.QLineEdit('0.05')
+        self.autofocusPeriod = QtWidgets.QLineEdit('1')
+        self.autofocusInitial = QtWidgets.QLineEdit('0')
 
         self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
         self.autofocusLED1Checkbox.setCheckable(True)
-
-        self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF:')
-
-        # Laser 1
-        valueDecimalsLaser = 1
-        valueRangeLaser = (0, 2 ** 15)
-        tickIntervalLaser = 1
-        singleStepLaser = 1
-
-        self.sliderLaser1, self.mctLabelLaser1 = self.setupSliderGui('Intensity (Laser 1):', valueDecimalsLaser,
-                                                                     valueRangeLaser, tickIntervalLaser,
-                                                                     singleStepLaser)
-        self.sliderLaser1.valueChanged.connect(
-            lambda value: self.sigSliderLaser1ValueChanged.emit(value)
-        )
-
-        self.sliderLaser2, self.mctLabelLaser2 = self.setupSliderGui('Intensity (Laser 2):', valueDecimalsLaser,
-                                                                     valueRangeLaser, tickIntervalLaser,
-                                                                     singleStepLaser)
-        self.sliderLaser2.valueChanged.connect(
-            lambda value: self.sigSliderLaser2ValueChanged.emit(value)
-        )
-
+        self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF: ')
+        self.autofocusInitialZLabel = QtWidgets.QLabel('Autofocus (Initial Z): ')
         # LED
         valueDecimalsLED = 1
         valueRangeLED = (0, 2 ** 8)
-        tickIntervalLED = 1
+        tickIntervalLED = 0.01
         singleStepLED = 1
 
-        self.sliderLED, self.mctLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED,
-                                                               tickIntervalLED, singleStepLED)
+        self.sliderLED, self.LabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED,
+                                                          tickIntervalLED, singleStepLED)
         self.sliderLED.valueChanged.connect(
             lambda value: self.sigSliderLEDValueChanged.emit(value)
         )
-
-        self.mctLabelFileName = QtWidgets.QLabel('FileName:')
-        self.mctEditFileName = QtWidgets.QLineEdit('MCT')
-        self.mctNImages = QtWidgets.QLabel('Number of images: ')
-
-        self.mctStartButton = guitools.BetterPushButton('Start')
-        self.mctStartButton.setCheckable(False)
-        self.mctStartButton.toggled.connect(self.sigMCTStart)
-
-        self.mctStopButton = guitools.BetterPushButton('Stop')
-        self.mctStopButton.setCheckable(False)
-        self.mctStopButton.toggled.connect(self.sigMCTStop)
-
-        self.mctShowLastButton = guitools.BetterPushButton('Show Last')
-        self.mctShowLastButton.setCheckable(False)
-        self.mctShowLastButton.toggled.connect(self.sigMCTShowLast)
-
-        self.mctInitFilterButton = guitools.BetterPushButton('Init Filter Pos.')
-        self.mctInitFilterButton.setCheckable(False)
-        self.mctInitFilterButton.toggled.connect(self.sigMCTInitFilterPos)
-
-        self.mctDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
-        self.mctDoZStack.setCheckable(True)
-
-        self.mctDoXYScan = QtWidgets.QCheckBox('Perform XY Scan')
-        self.mctDoXYScan.setCheckable(True)
-
+        # Scan buttons
+        self.ScanLabelFileName = QtWidgets.QLabel('FileName:')
+        self.ScanEditFileName = QtWidgets.QLineEdit('Scan')
+        self.ScanNRounds = QtWidgets.QLabel('Number of rounds: ')
+        self.ScanStartButton = guitools.BetterPushButton('Start')
+        self.ScanStartButton.setCheckable(False)
+        self.ScanStartButton.toggled.connect(self.sigScanStart)
+        self.ScanStopButton = guitools.BetterPushButton('Stop')
+        self.ScanStopButton.setCheckable(False)
+        self.ScanStopButton.toggled.connect(self.sigScanStop)
+        self.ScanShowLastButton = guitools.BetterPushButton('Show Last')
+        self.ScanShowLastButton.setCheckable(False)
+        self.ScanShowLastButton.toggled.connect(self.sigScanShowLast)
         # Defining layout
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-        self.grid.addWidget(self.mctLabelTimePeriod, 0, 0, 1, 1)
-        self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
-        self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
-        self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
+        self.grid.addWidget(self.ScanLabelTimePeriod, 0, 0, 1, 1)
+        self.grid.addWidget(self.ScanValueTimePeriod, 0, 1, 1, 1)
+        self.grid.addWidget(self.ScanLabelTimeDuration, 0, 2, 1, 1)
+        self.grid.addWidget(self.ScanValueTimeDuration, 0, 3, 1, 1)
         # z-stack
-        self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
-        self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
-        self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
-        self.grid.addWidget(self.mctValueZsteps, 1, 3, 1, 1)
-
-        # xy-scanning
-        self.grid.addWidget(self.mctLabelXScan, 2, 0, 1, 1)
-        self.grid.addWidget(self.mctValueXmin, 2, 1, 1, 1)
-        self.grid.addWidget(self.mctValueXmax, 2, 2, 1, 1)
-        self.grid.addWidget(self.mctValueXsteps, 2, 3, 1, 1)
-
-        self.grid.addWidget(self.mctLabelYScan, 3, 0, 1, 1)
-        self.grid.addWidget(self.mctValueYmin, 3, 1, 1, 1)
-        self.grid.addWidget(self.mctValueYmax, 3, 2, 1, 1)
-        self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
-
-        self.grid.addWidget(self.mctLabelLaser1, 4, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser1, 4, 1, 1, 3)
-        self.grid.addWidget(self.mctLabelLaser2, 5, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser2, 5, 1, 1, 3)
-        self.grid.addWidget(self.mctLabelLED, 6, 0, 1, 1)
+        self.grid.addWidget(self.ScanLabelZStack, 1, 0, 1, 1)
+        self.grid.addWidget(self.ScanValueZmin, 1, 1, 1, 1)
+        self.grid.addWidget(self.ScanValueZmax, 1, 2, 1, 1)
+        self.grid.addWidget(self.ScanValueZsteps, 1, 3, 1, 1)
+        self.grid.addWidget(self.LabelLED, 6, 0, 1, 1)
         self.grid.addWidget(self.sliderLED, 6, 1, 1, 3)
-
         # filesettings
-        self.grid.addWidget(self.mctLabelFileName, 7, 0, 1, 1)
-        self.grid.addWidget(self.mctEditFileName, 7, 1, 1, 1)
-        self.grid.addWidget(self.mctNImages, 7, 2, 1, 1)
-        self.grid.addWidget(self.mctDoZStack, 7, 3, 1, 1)
-
+        self.grid.addWidget(self.ScanLabelFileName, 7, 0, 1, 1)
+        self.grid.addWidget(self.ScanEditFileName, 7, 1, 1, 1)
+        self.grid.addWidget(self.ScanNRounds, 7, 2, 1, 1)
+        self.grid.addWidget(self.ScanDoZStack, 7, 3, 1, 1)
         # autofocus
         self.grid.addWidget(self.autofocusLabel, 8, 0, 1, 1)
         self.grid.addWidget(self.autofocusRange, 8, 1, 1, 1)
         self.grid.addWidget(self.autofocusSteps, 8, 2, 1, 1)
         self.grid.addWidget(self.autofocusPeriod, 8, 3, 1, 1)
-
-        self.grid.addWidget(self.autofocusSelectionLabel, 9, 0, 1, 1)
-        self.grid.addWidget(self.autofocusLaser1Checkbox, 9, 1, 1, 1)
-        self.grid.addWidget(self.autofocusLaser2Checkbox, 9, 2, 1, 1)
+        self.grid.addWidget(self.autofocusInitial, 9, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSelectionLabel, 9, 2, 1, 1)
+        self.grid.addWidget(self.autofocusInitialZLabel, 9, 0, 1, 1)
         self.grid.addWidget(self.autofocusLED1Checkbox, 9, 3, 1, 1)
-
         # start stop
-        self.grid.addWidget(self.mctStartButton, 10, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 10, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton, 10, 2, 1, 1)
-        self.grid.addWidget(self.mctDoXYScan, 10, 3, 1, 1)
-        # self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
-
+        self.grid.addWidget(self.ScanStartButton, 10, 0, 1, 1)
+        self.grid.addWidget(self.ScanStopButton, 10, 1, 1, 1)
+        self.grid.addWidget(self.ScanShowLastButton, 10, 2, 1, 1)
         self.layer = None
 
         self.addScanner()
 
 
     def isAutofocus(self):
-        if self.autofocusLED1Checkbox.isChecked() or self.autofocusLaser1Checkbox.isChecked() or self.autofocusLaser2Checkbox.isChecked():
+        if self.autofocusLED1Checkbox.isChecked():
             return True
         else:
             return False
@@ -287,19 +212,16 @@ class OpentronsDeckScanWidget(Widget):
         autofocusParams["valueRange"] = self.autofocusRange.text()
         autofocusParams["valueSteps"] = self.autofocusSteps.text()
         autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
+        autofocusParams["valueInitial"] = self.autofocusInitial.text()
         if self.autofocusLED1Checkbox.isChecked():
             autofocusParams["illuMethod"] = 'LED'
-        elif self.autofocusLaser1Checkbox.isChecked():
-            autofocusParams["illuMethod"] = 'Laser1'
-        elif self.autofocusLaser2Checkbox.isChecked():
-            autofocusParams["illuMethod"] = 'Laser2'
         else:
             autofocusParams["illuMethod"] = False
 
         return autofocusParams
 
     def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
-        mctLabel = QtWidgets.QLabel(label)
+        ScanLabel = QtWidgets.QLabel(label)
         valueRangeMin, valueRangeMax = valueRange
         slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                       decimals=valueDecimals)
@@ -309,7 +231,7 @@ class OpentronsDeckScanWidget(Widget):
         slider.setTickInterval(tickInterval)
         slider.setSingleStep(singleStep)
         slider.setValue(0)
-        return slider, mctLabel
+        return slider, ScanLabel
 
     def getImage(self):
         if self.layer is not None:
@@ -325,38 +247,25 @@ class OpentronsDeckScanWidget(Widget):
         self.layer.data = im
 
     def getZStackValues(self):
-        valueZmin = -abs(float(self.mctValueZmin.text()))
-        valueZmax = float(self.mctValueZmax.text())
-        valueZsteps = float(self.mctValueZsteps.text())
-        valueZenabled = bool(self.mctDoZStack.isChecked())
+        valueZmin = -abs(float(self.ScanValueZmin.text()))
+        valueZmax = float(self.ScanValueZmax.text())
+        valueZsteps = float(self.ScanValueZsteps.text())
+        valueZenabled = bool(self.ScanDoZStack.isChecked())
 
         return valueZmin, valueZmax, valueZsteps, valueZenabled
 
-    def getXYScanValues(self):
-        valueXmin = -abs(float(self.mctValueXmin.text()))
-        valueXmax = float(self.mctValueXmax.text())
-        valueXsteps = float(self.mctValueXsteps.text())
-
-        valueYmin = -abs(float(self.mctValueYmin.text()))
-        valueYmax = float(self.mctValueYmax.text())
-        valueYsteps = float(self.mctValueYsteps.text())
-
-        valueXYenabled = bool(self.mctDoXYScan.isChecked())
-
-        return valueXmin, valueXmax, valueXsteps, valueYmin, valueYmax, valueYsteps, valueXYenabled
-
     def getTimelapseValues(self):
-        mctValueTimePeriod = float(self.mctValueTimePeriod.text())
-        mctValueTimeDuration = int(self.mctValueTimeDuration.text())
-        return mctValueTimePeriod, mctValueTimeDuration
+        ScanValueTimePeriod = float(self.ScanValueTimePeriod.text())
+        ScanValueTimeDuration = int(self.ScanValueTimeDuration.text())
+        return ScanValueTimePeriod, ScanValueTimeDuration
 
     def getFilename(self):
-        mctEditFileName = self.mctEditFileName.text()
-        return mctEditFileName
+        ScanEditFileName = self.ScanEditFileName.text()
+        return ScanEditFileName
 
-    def setNImages(self, nImages):
-        nImages2Do = self.getTimelapseValues()[-1]
-        self.mctNImages.setText('Number of images: ' + str(nImages) + " / " + str(nImages2Do))
+    def setNImages(self, nRounds):
+        nRounds2Do = self.getTimelapseValues()[-1]
+        self.ScanNRounds.setText('Timelapse progress: ' + str(nRounds) + " / " + str(nRounds2Do))
 
     # Copyright (C) 2020-2021 ImSwitch developers
     # This file is part of ImSwitch.

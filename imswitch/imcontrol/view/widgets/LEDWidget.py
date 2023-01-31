@@ -22,7 +22,7 @@ class LEDWidget(Widget):
         super().__init__(*args, **kwargs)
         self.ledModules = {}
 
-        self.setMinimumHeight(70)
+        # self.setMinimumHeight(50)
 
         self.layout = QtWidgets.QGridLayout()
         self.setLayout(self.layout)
@@ -33,6 +33,7 @@ class LEDWidget(Widget):
 
         self.ledGridContainer = QtWidgets.QWidget()
         self.ledGridContainer.setLayout(self.ledGrid)
+        self.ledGridContainer.setMaximumHeight(60)
 
         self.scrollArea = QtWidgets.QScrollArea()
         self.scrollArea.setFrameShape(QtWidgets.QFrame.NoFrame)
@@ -251,20 +252,20 @@ class LEDModule(QtWidgets.QWidget):
         powerFrame = QtWidgets.QFrame(self)
         self.powerGrid = QtWidgets.QGridLayout()
         powerFrame.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Plain)
+        powerFrame.setMaximumHeight(50)
         powerFrame.setLayout(self.powerGrid)
 
-        self.powerGrid.addWidget(self.setPointLabel, 0, 0, 2, 1)
-        self.powerGrid.addWidget(self.setPointEdit, 0, 1, 2, 1)
-        self.powerGrid.addWidget(self.minpower, 1, 0, 2, 1)
-        self.powerGrid.addWidget(self.slider, 1, 1, 2, 1)
-        self.powerGrid.addWidget(self.maxpower, 1, 2, 2, 1)
-        
+        self.powerGrid.addWidget(self.setPointLabel, 0, 0, 1, 1)
+        self.powerGrid.addWidget(self.setPointEdit, 0, 1, 1, 1)
+        self.powerGrid.addWidget(self.minpower, 0, 2, 1, 1)
+        self.powerGrid.addWidget(self.slider, 0, 3, 1, 1)
+        self.powerGrid.addWidget(self.maxpower, 0, 4, 1, 1)
 
         self.enableButton = guitools.BetterPushButton('ON')
-        self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                        QtWidgets.QSizePolicy.Expanding)
+        # self.enableButton.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+        #                                 QtWidgets.QSizePolicy.Expanding)
         self.enableButton.setCheckable(True)
-
+        self.enableButton.setMaximumHeight(50)
         # Add elements to QHBoxLayout
         self.layout = QtWidgets.QHBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)

@@ -99,7 +99,12 @@ class HDF5Storer(Storer):
                 dataset.attrs['element_size_um'] = \
                     self.detectorManager[channel].pixelSizeUm
 
-                dataset[:, ...] = np.moveaxis(image, 0, -1)
+                if image.ndim == 3:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])
+                elif image.ndim == 4:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
+                else:
+                    dataset[:, ...] = np.moveaxis(image, 0, -1)
             
                 file.close()
         
@@ -233,66 +238,23 @@ class RecordingManager(SignalInterface):
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
                 image = images[detectorName]
 
-                if saveMode == SaveMode.Numpy:
-                    return
+            if saveFormat:
+                storer = self.__storerMap[saveFormat]
 
-                fileExtension = str(saveFormat.name).lower()
-                filePath = self.getSaveFilePath(f'{savename}_{detectorName}.{fileExtension}')
+                if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
+                    # Save images to disk
+                    store = storer(savename, self.__detectorsManager)
+                    store.snap(images, attrs)
 
-                if saveMode != SaveMode.RAM:
-                    # Write file
-                    if saveFormat == SaveFormat.HDF5:
-                        file = h5py.File(filePath, 'w')
-
-                        shape = self.__detectorsManager[detectorName].shape
-                        dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
-
-                        for key, value in attrs[detectorName].items():
-                            try:
-                                dataset.attrs[key] = value
-                            except:
-                                self.__logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
-
-                        dataset.attrs['detector_name'] = detectorName
-
-                        # For ImageJ compatibility
-                        dataset.attrs['element_size_um'] =\
-                            self.__detectorsManager[detectorName].pixelSizeUm
-
-                        if image.ndim==3:
-                            dataset[:,...] = np.moveaxis(image,[0,1,2], [2,1,0])
-                        elif image.ndim==4:
-                            dataset[:,...] = np.moveaxis(image,[0,1,2,3],[3,2,1,0])
-                        else:
-                            dataset[:,...] = np.moveaxis(image,0,-1)
-                        file.close()
-                    elif saveFormat == SaveFormat.TIFF:
-                        tiff.imwrite(filePath, images)
-                    else:
-                        raise ValueError(f'Unsupported save format "{saveFormat}"')
-
-                # Handle memory snaps
                 if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
-                    name = os.path.basename(f'{savename}_{detectorName}')
-                    self.sigMemorySnapAvailable.emit(name, image, filePath,
-                                                     saveMode == SaveMode.DiskAndRAM)
-
-            storer = self.__storerMap[saveFormat]
-
-            if saveMode == SaveMode.Disk or saveMode == SaveMode.DiskAndRAM:
-                # Save images to disk
-                store = storer(savename, self.__detectorsManager)
-                store.snap(images, attrs)
-
-            if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
-                for channel, image in images.items():
-                    name = os.path.basename(f'{savename}_{channel}')
-                    self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
+                    for channel, image in images.items():
+                        name = os.path.basename(f'{savename}_{channel}')
+                        self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
 
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
-                return image
+                return images
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -414,6 +376,7 @@ class RecordingWorker(Worker):
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
 
             elif self.saveFormat == SaveFormat.TIFF:
                 fileExtension = str(self.saveFormat.name).lower()
@@ -606,13 +569,15 @@ class RecordingWorker(Worker):
                                 name, file, filePath, True
                             )
                     else:
+                        datasets[detectorName].attrs['writing'] = False
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
                         else:
-                            datasets[detectorName].attrs['writing'] = False
                             self.store.close()
-
-            self.__recordingManager.endRecording(wait=False)
+            emitSignal = True
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                emitSignal = False
+            self.__recordingManager.endRecording(emitSignal=emitSignal, wait=False)
 
     def _getFiles(self):
         singleMultiDetectorFile = self.singleMultiDetectorFile

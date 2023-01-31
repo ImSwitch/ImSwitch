@@ -52,6 +52,7 @@ class BeadRecController(ImConWidgetController):
     def run(self):
         if not self.running:
             self.dims = np.array(self._commChannel.getDimsScan()).astype(int)
+            self.dims = self.dims[self.dims != 0]
             self.running = True
             self._master.detectorsManager.execOnAll(lambda c: c.flushBuffers())
             self.thread.start()

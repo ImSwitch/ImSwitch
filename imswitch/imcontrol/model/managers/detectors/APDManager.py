@@ -76,6 +76,7 @@ class APDManager(DetectorManager):
                 lambda pixels, pos: self.updateImage(pixels, pos)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisitionLocal)
+            self._scanWorker.newFrame.connect(lambda: self.sigNewFrame.emit())
 
     def startScan(self):
         if self.acquisition:
@@ -213,6 +214,8 @@ class APDManager(DetectorManager):
 
 class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
+    newLine = Signal(np.ndarray, int, int)
+    newFrame = Signal()
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict, signalDict):

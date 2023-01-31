@@ -6,6 +6,8 @@ from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
 )
+from imswitch.imcommon.framework import Thread
+from .server import ImSwitchServer
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
 from . import controllers
@@ -65,12 +67,20 @@ class ImConMainController(MainController):
                                                   f' is not included in your currently active'
                                                   f' hardware setup file.'
         )
-
         # Generate Shorcuts
         self.__shortcuts = None
         shorcutObjs = list(self.__mainView.widgets.values())
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
+
+        if setupInfo.pyroServerInfo.active:
+            self._serverWorker = ImSwitchServer(self.__api, setupInfo)
+            self.__logger.debug(self.__api)
+            self._thread = Thread()
+            self._serverWorker.moveToThread(self._thread)
+            self._thread.started.connect(self._serverWorker.run)
+            self._thread.finished.connect(self._serverWorker.stop)
+            self._thread.start()
 
     @property
     def api(self):

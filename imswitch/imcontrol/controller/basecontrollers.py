@@ -30,27 +30,8 @@ class ImConWidgetController(WidgetController):
         self._commChannel = commChannel
         self._master = master
 
-        # Connect to broadcasting signal
-        self._commChannel.sigBroadcast.connect(lambda module, func, params: self._receive(module, func, params))
-
         # Init superclass
         super().__init__(*args, **kwargs)
-
-    def _receive(self, module, func, params):
-        if module == type(self).__name__:
-            func = eval("self."+func)
-            if len(params)==0:
-                # in case we have no parameters to be transfered
-                return func()
-            else:
-                try:
-                    return func(*params)
-                except:
-                    # not iterable?
-                    return  func(params)
-
-    def broadcast(self, module, func, params):
-        self._commChannel.sigBroadcast.emit(module, func, params)
 
 
 class LiveUpdatedController(ImConWidgetController):

@@ -1,8 +1,7 @@
-from re import S
 from typing import Mapping
 
 import numpy as np
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread
+from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
 
@@ -85,9 +84,15 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
-    sigBroadcast = Signal(str, str, object)
-    
     sigSaveFocus = Signal()
+
+    sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
+    
+    sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
+
+    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+
+    sigNewFrame = Signal()
 
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)

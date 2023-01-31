@@ -1,4 +1,12 @@
-__version__ = '2.0.0'
+from .MultiManager import MultiManager
+
+
+class RotatorsManager(MultiManager):
+    """ RotatorsManager interface for dealing with RotatorManagers. It is
+    a MultiManager for rotators. """
+
+    def __init__(self, positionerInfos, **lowLevelManagers):
+        super().__init__(positionerInfos, 'rotators', **lowLevelManagers)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

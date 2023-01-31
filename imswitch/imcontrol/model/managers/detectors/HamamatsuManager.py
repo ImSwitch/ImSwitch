@@ -62,7 +62,8 @@ class HamamatsuManager(DetectorManager):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 
-    def getLatestFrame(self, is_save=False):
+    def getLatestFrame(self, is_save=True):
+        #CHECK: is_save=False was default in old etsted-improvements, was there a reason?
         return self._camera.getLast()
 
     def getChunk(self):

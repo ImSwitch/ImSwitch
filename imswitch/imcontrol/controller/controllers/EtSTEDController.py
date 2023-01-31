@@ -9,14 +9,13 @@ import h5py
 
 from collections import deque
 from datetime import datetime
-from tkinter import Tk
 from inspect import signature
-from tkinter.filedialog import askopenfilename
 from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
 import pyqtgraph as pg
 import numpy as np
+from tkinter.filedialog import askopenfilename
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
@@ -285,7 +284,7 @@ class EtSTEDController(ImConWidgetController):
         self._commChannel.sigUpdateImage.connect(self.addImgBinStack)
         self._widget.recordBinaryMaskButton.setText('Recording...')
 
-    def addImgBinStack(self, detectorName, img, init, isCurrentDetector):
+    def addImgBinStack(self, detectorName, img, init, scale, isCurrentDetector):
         """ Add image to the stack of images used to calculate a binary mask of the region of interest. """
         if detectorName == self.detectorFast:
             if self.__binary_stack is None:
@@ -390,7 +389,7 @@ class EtSTEDController(ImConWidgetController):
         self.__frame = 0
         self.__maxAnaImgVal = 0
 
-    def runPipeline(self, detectorName, img, init, isCurrentDetector):
+    def runPipeline(self, detectorName, img, init, scale, isCurrentDetector):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
         if detectorName == self.detectorFast:
             if not self.__busy:
@@ -697,7 +696,6 @@ class EtSTEDCoordTransformHelper():
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
-        Tk().withdraw()
         filename = askopenfilename()
         return filename
 

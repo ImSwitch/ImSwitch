@@ -7,6 +7,7 @@ from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.view import PickDatasetsDialog
 from .DataFrame import DataFrame
 from .MultiDataFrame import MultiDataFrame
+from .WatcherFrame import WatcherFrame
 from .ReconstructionView import ReconstructionView
 from .ScanParamsDialog import ScanParamsDialog
 from .guitools import BetterPushButton
@@ -85,6 +86,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         self.dataFrame = DataFrame()
         self.multiDataFrame = MultiDataFrame()
+        self.watcherFrame = WatcherFrame()
 
         btnFrame = BtnFrame()
         btnFrame.sigReconstuctCurrent.connect(self.sigReconstuctCurrent)
@@ -99,6 +101,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
         self.showPatBool = self.parTree.p.param('Show pattern')
         self.showPatBool.sigValueChanged.connect(lambda _, v: self.sigShowPatternChanged.emit(v))
         self.bleachBool = self.parTree.p.param('Bleaching correction')
+        self.extension = self.parTree.p.param('File extension')
         self.findPatBtn = self.parTree.p.param('Pattern').param('Find pattern')
         self.findPatBtn.sigActivated.connect(self.sigFindPattern)
         self.scanParWinBtn = self.parTree.p.param('Scanning parameters')
@@ -119,9 +122,13 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         DataDock = DockArea()
 
+        self.watcherDock = Dock('File watcher')
+        self.watcherDock.addWidget(self.watcherFrame)
+        DataDock.addDock(self.watcherDock)
+
         self.multiDataDock = Dock('Multidata management')
         self.multiDataDock.addWidget(self.multiDataFrame)
-        DataDock.addDock(self.multiDataDock)
+        DataDock.addDock(self.multiDataDock, 'above', self.watcherDock)
 
         self.currentDataDock = Dock('Current data')
         self.currentDataDock.addWidget(self.dataFrame)
@@ -245,7 +252,8 @@ class ReconParTree(ParameterTree):
                     {'name': 'BG Gaussian size', 'type': 'float', 'value': 500, 'suffix': 'nm'}]}]},
             {'name': 'Scanning parameters', 'type': 'action'},
             {'name': 'Show pattern', 'type': 'bool'},
-            {'name': 'Bleaching correction', 'type': 'bool'}]
+            {'name': 'Bleaching correction', 'type': 'bool'},
+            {'name': 'File extension', 'type': 'list', 'values': ['hdf5', 'zarr']}]
 
         self.p = Parameter.create(name='params', type='group', children=params)
         self.setParameters(self.p, showTop=False)

@@ -1,8 +1,8 @@
-from imswitch.imcommon.model import VFileItem
+from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     #DetectorsManager, LasersManager, MultiManager, NidaqManager, PulseStreamerManager, PositionersManager,
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager
+    RecordingManager, RS232sManager, ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, RotatorsManager
 )
 
 
@@ -13,6 +13,7 @@ class MasterController:
     """
 
     def __init__(self, setupInfo, commChannel, moduleCommChannel):
+        self.__logger = initLogger(self)
         self.__setupInfo = setupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
@@ -28,16 +29,32 @@ class MasterController:
             'rs232sManager': self.rs232sManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
+                                               **lowLevelManagers)
 
-        self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+
+        # Generate scanManager type according to setupInfo
+        if self.__setupInfo.scan:
+            if self.__setupInfo.scan.scanWidgetType == "PointScan":
+                self.scanManager = ScanManagerPointScan(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "Base":
+                self.scanManager = ScanManagerBase(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "MoNaLISA":
+                self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
+            else:
+                self.__logger.error(
+                    'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'
+                    ' ["Base", "PointScan", "MoNaLISA"].'
+                )
+                return
 
         # Connect signals
         cc = self.__commChannel
@@ -46,6 +63,7 @@ class MasterController:
         self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
         self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
+        self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
 
         self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
         self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)

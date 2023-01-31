@@ -20,8 +20,7 @@ class TISManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
-
-        model = self._camera.model
+        
         self._running = False
         self._adjustingParameters = False
 
@@ -50,7 +49,11 @@ class TISManager(DetectorManager):
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=True)
+                         model=self._camera.model, parameters=parameters, actions=actions, croppable=True)
+
+    @property
+    def scale(self):
+        return [1,1]
 
     def getLatestFrame(self, is_save=False):
         if not self._adjustingParameters:
@@ -96,18 +99,15 @@ class TISManager(DetectorManager):
         if not self._running:
             self._camera.start_live()
             self._running = True
-            #self.__logger.debug('startlive')
 
     def stopAcquisition(self):
         if self._running:
             self._running = False
             self._camera.suspend_live()
-            #self.__logger.debug('suspendlive')
 
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
-        #self.__logger.debug('stoplive')
 
     @property
     def pixelSizeUm(self):
@@ -115,9 +115,6 @@ class TISManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
-            # self.__logger.debug(
-            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            # )
             self._camera.setROI(hpos, vpos, hsize, vsize)
 
         self._performSafeCameraAction(cropAction)
@@ -145,7 +142,6 @@ class TISManager(DetectorManager):
     def _getTISObj(self, cameraId):
         try:
             from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
-            self.__logger.debug(f'Trying to initialize TIS camera {cameraId}')
             camera = CameraTIS(cameraId)
         except Exception:
             self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
@@ -154,6 +150,10 @@ class TISManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
+    
+    def close(self):
+        self.__logger.info(f'Shutting down camera, model: {self._camera.model}')
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

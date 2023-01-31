@@ -9,6 +9,7 @@ from imswitch.imcommon.controller import PickDatasetsController
 from imswitch.imreconstruct.model import DataObj, ReconObj, PatternFinder, SignalExtractor
 from .DataFrameController import DataFrameController
 from .MultiDataFrameController import MultiDataFrameController
+from .WatcherFrameController import WatcherFrameController
 from .ReconstructionViewController import ReconstructionViewController
 from .ScanParamsController import ScanParamsController
 from .basecontrollers import ImRecWidgetController
@@ -17,12 +18,16 @@ from .basecontrollers import ImRecWidgetController
 class ImRecMainViewController(ImRecWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self._commChannel.extension = self._widget.extension
+        
         self.dataFrameController = self._factory.createController(
             DataFrameController, self._widget.dataFrame
         )
         self.multiDataFrameController = self._factory.createController(
             MultiDataFrameController, self._widget.multiDataFrame
+        )
+        self.watcherFrameController = self._factory.createController(
+            WatcherFrameController, self._widget.watcherFrame
         )
         self.reconstructionController = self._factory.createController(
             ReconstructionViewController, self._widget.reconstructionWidget
@@ -55,6 +60,8 @@ class ImRecMainViewController(ImRecWidgetController):
         self._commChannel.sigSaveFolderChanged.connect(self.saveFolderChanged)
         self._commChannel.sigCurrentDataChanged.connect(self.currentDataChanged)
         self._commChannel.sigScanParamsUpdated.connect(self.scanParamsUpdated)
+        self._commChannel.sigReconstruct.connect(self.reconstruct)
+
 
         self._widget.sigSaveReconstruction.connect(lambda: self.saveCurrent('reconstruction'))
         self._widget.sigSaveReconstructionAll.connect(lambda: self.saveAll('reconstruction'))
@@ -143,7 +150,12 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.showScanParamsDialog()
 
     def quickLoadData(self):
-        dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
+        extension = self._widget.extension.value()
+        if extension == 'zarr':
+            dataPath = guitools.askForFolderPath(self._widget, defaultFolder=self._dataFolder)
+        elif extension == 'hdf5':
+            dataPath = guitools.askForFilePath(self._widget, defaultFolder=self._dataFolder)
+
         if dataPath:
             self._logger.debug(f'Loading data at: {dataPath}')
 
@@ -296,6 +308,7 @@ class ImRecMainViewController(ImRecWidgetController):
         if consolidate and reconObj is not None:
             reconObj.updateImages()
             self._widget.addNewData(reconObj, f'{reconObj.name}_multi')
+            self._commChannel.sigExecutionFinished.emit(self.reconstructionController.getImage())
 
     def bleachingCorrection(self, data):
         correctedData = data.copy()

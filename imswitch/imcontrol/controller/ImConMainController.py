@@ -6,6 +6,8 @@ from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
 )
+from imswitch.imcommon.framework import Thread
+from .server import ImSwitchServer
 from imswitch.imcontrol.model import configfiletools
 from imswitch.imcontrol.view import guitools
 from . import controllers
@@ -23,7 +25,7 @@ class ImConMainController(MainController):
         self.__options = options
         self.__setupInfo = setupInfo
         self.__mainView = mainView
-        self.__moduleCommChannel = moduleCommChannel
+        self._moduleCommChannel = moduleCommChannel
 
         # Connect view signals
         self.__mainView.sigLoadParamsFromHDF5.connect(self.loadParamsFromHDF5)
@@ -31,13 +33,13 @@ class ImConMainController(MainController):
         self.__mainView.sigClosing.connect(self.closeEvent)
 
         # Init communication channel and master controller
-        self.__commChannel = CommunicationChannel(self)
+        self.__commChannel = CommunicationChannel(self, self.__setupInfo)
         self.__masterController = MasterController(self.__setupInfo, self.__commChannel,
-                                                   self.__moduleCommChannel)
+                                                   self._moduleCommChannel)
 
         # List of Controllers for the GUI Widgets
         self.__factory = ImConWidgetControllerFactory(
-            self.__setupInfo, self.__masterController, self.__commChannel, self.__moduleCommChannel
+            self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
         self.pickSetupController = self.__factory.createController(
             PickSetupController, self.__mainView.pickSetupDialog
@@ -50,7 +52,9 @@ class ImConMainController(MainController):
 
         for widgetKey, widget in self.__mainView.widgets.items():
             self.controllers[widgetKey] = self.__factory.createController(
-                getattr(controllers, f'{widgetKey}Controller'), widget
+                (getattr(controllers, f'{widgetKey}Controller')
+                if widgetKey != 'Scan' else
+                getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
             )
 
         # Generate API
@@ -63,12 +67,20 @@ class ImConMainController(MainController):
                                                   f' is not included in your currently active'
                                                   f' hardware setup file.'
         )
-
         # Generate Shorcuts
         self.__shortcuts = None
         shorcutObjs = list(self.__mainView.widgets.values())
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
+
+        if setupInfo.pyroServerInfo.active:
+            self._serverWorker = ImSwitchServer(self.__api, setupInfo)
+            self.__logger.debug(self.__api)
+            self._thread = Thread()
+            self._serverWorker.moveToThread(self._thread)
+            self._thread.started.connect(self._serverWorker.run)
+            self._thread.finished.connect(self._serverWorker.stop)
+            self._thread.start()
 
     @property
     def api(self):

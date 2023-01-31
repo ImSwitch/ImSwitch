@@ -23,6 +23,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.pickSetupDialog = PickSetupDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
+        self.viewSetupInfo = viewSetupInfo
+
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
         self.docks = {}
@@ -54,19 +56,23 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Dock area
         rightDockInfos = {
+            'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
+            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
-            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
+            'Watcher': _DockInfo(name='File Watcher', yPosition=3),
+            'Tiling': _DockInfo(name='Tiling', yPosition=3)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
@@ -78,7 +84,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 
         dockArea = DockArea()
-        enabledDockKeys = viewSetupInfo.availableWidgets
+        enabledDockKeys = self.viewSetupInfo.availableWidgets
         if enabledDockKeys is False:
             enabledDockKeys = []
         elif enabledDockKeys is True:
@@ -107,15 +113,15 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        self.showMaximized()
+        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
         if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 10)
+            self.docks['Settings'].setStretch(1, 5)
             self.docks['Settings'].container().setStretch(3, 1)
         if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 10)
+            rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
 
@@ -146,6 +152,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         for widgetKey, dockInfo in dockInfoDict.items():
             self.widgets[widgetKey] = self.factory.createWidget(
                 getattr(widgets, f'{widgetKey}Widget')
+                if widgetKey != 'Scan' else
+                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
             )
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])

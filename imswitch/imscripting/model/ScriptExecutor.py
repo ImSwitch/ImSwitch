@@ -12,6 +12,7 @@ class ScriptExecutor(SignalInterface):
 
     sigOutputAppended = Signal(str)  # (outputText)
     _sigExecute = Signal(str, str)  # (scriptPath, code)
+    sigExecutionFinished = Signal()
 
     def __init__(self, scriptScope):
         super().__init__()
@@ -21,6 +22,7 @@ class ScriptExecutor(SignalInterface):
         self._executionWorker.sigOutputAppended.connect(self.sigOutputAppended)
         self._executionThread = Thread()
         self._executionWorker.moveToThread(self._executionThread)
+        self._executionWorker.sigExecutionFinished.connect(self.sigExecutionFinished)
         self._sigExecute.connect(self._executionWorker.execute)
 
     def __del__(self):
@@ -52,6 +54,7 @@ class ScriptExecutor(SignalInterface):
 
 class ExecutionThread(Worker):
     sigOutputAppended = Signal(str)  # (outputText)
+    sigExecutionFinished = Signal()
 
     def __init__(self, scriptScope):
         super().__init__()
@@ -83,6 +86,7 @@ class ExecutionThread(Worker):
         finally:
             sys.stdout = oldStdout
             sys.stderr = oldStderr
+            self.sigExecutionFinished.emit()
             self._isWorking = False
 
     def isWorking(self):

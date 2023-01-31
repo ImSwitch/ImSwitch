@@ -18,7 +18,7 @@ class AlignXYController(LiveUpdatedController):
         self._widget.sigShowROIToggled.connect(self.toggleROI)
         self._widget.sigAxisChanged.connect(self.setAxis)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update with new detector frame. """
         if isCurrentDetector and self.active:
             value = np.mean(

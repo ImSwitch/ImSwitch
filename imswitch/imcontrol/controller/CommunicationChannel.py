@@ -1,10 +1,9 @@
-from re import S
 from typing import Mapping
 
 import numpy as np
-
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
+from imswitch.imcommon.model import initLogger
 
 
 class CommunicationChannel(SignalInterface):
@@ -14,12 +13,14 @@ class CommunicationChannel(SignalInterface):
     """
 
     sigUpdateImage = Signal(
-        str, np.ndarray, bool, bool
-    )  # (detectorName, image, init, isCurrentDetector)
+        str, np.ndarray, bool, list, bool
+    )  # (detectorName, image, init, scale, isCurrentDetector)
 
     sigAcquisitionStarted = Signal()
 
     sigAcquisitionStopped = Signal()
+
+    sigScriptExecutionFinished = Signal()
 
     sigAdjustFrame = Signal(object)  # (shape)
 
@@ -83,14 +84,33 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
+    sigSaveFocus = Signal()
+
+    sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
+    
+    sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
+
+    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+
+    sigNewFrame = Signal()
+
+    # useq-schema related signals
+    sigSetXYPosition = Signal(float, float)
+    sigSetZPosition = Signal(float)
+    sigSetExposure = Signal(float)
+    sigSetSpeed = Signal(float)
+
     @property
     def sharedAttrs(self):
         return self.__sharedAttrs
 
-    def __init__(self, main):
+    def __init__(self, main, setupInfo):
         super().__init__()
         self.__main = main
         self.__sharedAttrs = SharedAttributes()
+        self.__logger = initLogger(self)
+        self._scriptExecution = False
+        self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -111,6 +131,26 @@ class CommunicationChannel(SignalInterface):
         else:
             raise RuntimeError('Required scan widget not available')
 
+    def get_image(self, detectorName=None):
+        return self.__main.controllers['View'].get_image(detectorName)
+
+    @APIExport(runOnUIThread=True)
+    def acquireImage(self) -> None:
+        image = self.get_image()
+        self.output.append(image)
+
+    def runScript(self, text):
+        self.output = []
+        self._scriptExecution = True
+        self.__main._moduleCommChannel.sigRunScript.emit(text)
+
+    def executionFinished(self):
+        self.sigScriptExecutionFinished.emit()
+        self._scriptExecution = False
+
+    def isExecuting(self):
+        return self._scriptExecution
+
     @APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
@@ -130,11 +170,12 @@ class CommunicationChannel(SignalInterface):
             'acquisitionStopped': self.sigAcquisitionStopped,
             'recordingStarted': self.sigRecordingStarted,
             'recordingEnded': self.sigRecordingEnded,
-            'scanEnded': self.sigScanEnded
+            'scanEnded': self.sigScanEnded,
+            'saveFocus': self.sigSaveFocus
         })
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2022 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

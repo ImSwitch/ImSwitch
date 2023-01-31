@@ -52,7 +52,9 @@ class ImConMainController(MainController):
 
         for widgetKey, widget in self.__mainView.widgets.items():
             self.controllers[widgetKey] = self.__factory.createController(
-                getattr(controllers, f'{widgetKey}Controller'), widget
+                (getattr(controllers, f'{widgetKey}Controller')
+                if widgetKey != 'Scan' else
+                getattr(controllers, f'{widgetKey}Controller{self.__setupInfo.scan.scanWidgetType}')), widget
             )
 
         # Generate API

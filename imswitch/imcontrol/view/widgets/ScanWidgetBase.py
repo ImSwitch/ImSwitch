@@ -1,26 +1,26 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
+from abc import abstractmethod
 
 from imswitch.imcontrol.view import guitools as guitools
 from imswitch.imcommon.model import initLogger
 from .basewidgets import Widget
 
 
-class ScanWidget(Widget):
+class SuperScanWidget(Widget):
     """ Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
 
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
-    sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
     sigSeqTimeParChanged = QtCore.Signal()
     sigStageParChanged = QtCore.Signal()
     sigSignalParChanged = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        self.__logger = initLogger(self, instanceName='ScanWidget')
         super().__init__(*args, **kwargs)
+        self._logger = initLogger(self, instanceName='ScanWidget')
 
         self.setMinimumHeight(200)
 
@@ -28,41 +28,14 @@ class ScanWidget(Widget):
         self.scanInLiveviewWar.setInformativeText(
             "You need to be in liveview to scan")
 
-        self.digModWarning = QtWidgets.QMessageBox()
-        self.digModWarning.setInformativeText(
-            "You need to be in digital laser modulation and external "
-            "frame-trigger acquisition mode")
-
         self.saveScanBtn = guitools.BetterPushButton('Save Scan')
         self.loadScanBtn = guitools.BetterPushButton('Load Scan')
 
-        self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
-        self.phaseDelayPar = QtWidgets.QLineEdit('40')  # samples
-        self.nrFramesPar = QtWidgets.QLabel()
-        self.scanDuration = 0
-        self.scanDurationLabel = QtWidgets.QLabel(str(self.scanDuration))
-
         self.scanDims = []
-
-        self.scanPar = {
-                        'seqTime': self.seqTimePar,
-                        'phaseDelay': self.phaseDelayPar
-                        }
-
-        self.pxParameters = {}
-        self.pxParValues = {}
-
-        self.scanRadio = QtWidgets.QRadioButton('Scan')
-        self.scanRadio.setChecked(True)
-        self.contLaserPulsesRadio = QtWidgets.QRadioButton('Cont. Laser Pulses')
 
         self.scanButton = guitools.BetterPushButton('Run Scan')
 
         self.repeatBox = QtWidgets.QCheckBox('Repeat')
-
-        self.graph = GraphFrame()
-        self.graph.setEnabled(False)
-        self.graph.setFixedHeight(128)
 
         self.scrollContainer = QtWidgets.QGridLayout()
         self.scrollContainer.setContentsMargins(0, 0, 0, 0)
@@ -85,15 +58,114 @@ class ScanWidget(Widget):
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)
         self.scanButton.clicked.connect(self.sigRunScanClicked)
+
+    @abstractmethod
+    def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
+        pass
+
+    @abstractmethod
+    def getTTLIncluded(self, deviceName):
+        pass
+
+    def repeatEnabled(self):
+        return self.repeatBox.isChecked()
+
+    def getScanDim(self, index):
+        return self.scanPar['scanDim' + str(index)].currentText()
+
+    def getScanSize(self, positionerName):
+        return float(self.scanPar['size' + positionerName].text())
+
+    def getScanStepSize(self, positionerName):
+        return float(self.scanPar['stepSize' + positionerName].text())
+
+    def getScanCenterPos(self, positionerName):
+        return float(self.scanPar['center' + positionerName].text())
+
+    @abstractmethod
+    def getSeqTimePar(self):
+        pass
+
+    def setRepeatEnabled(self, enabled):
+        self.repeatBox.setChecked(enabled)
+
+    def setScanButtonChecked(self, checked):
+        self.scanButton.setEnabled(not checked)
+        self.scanButton.setCheckable(checked)
+        self.scanButton.setChecked(checked)
+
+    def setScanDim(self, index, positionerName):
+        scanDimPar = self.scanPar['scanDim' + str(index)]
+        scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
+
+    def setScanSize(self, positionerName, size):
+        self.scanPar['size' + positionerName].setText(str(round(size, 3)))
+
+    def setScanStepSize(self, positionerName, stepSize):
+        self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
+
+    def setScanCenterPos(self, positionerName, centerPos):
+        self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
+
+    def setScanPixels(self, positionerName, pixels):
+        self.scanPar['pixels' + positionerName].setText(str(pixels))
+
+    @abstractmethod
+    def unsetTTL(self, deviceName):
+        pass
+
+    def setScanDimEnabled(self, index, enabled):
+        self.scanPar['scanDim' + str(index)].setEnabled(enabled)
+
+    def setScanSizeEnabled(self, positionerName, enabled):
+        self.scanPar['size' + positionerName].setEnabled(enabled)
+
+    def setScanStepSizeEnabled(self, positionerName, enabled):
+        self.scanPar['stepSize' + positionerName].setEnabled(enabled)
+
+    def setScanCenterPosEnabled(self, positionerName, enabled):
+        self.scanPar['center' + positionerName].setEnabled(enabled)
+
+    def eventFilter(self, source, event):
+        if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
+            # Set correct minimum width (otherwise things can go outside the widget because of the
+            # scroll area)
+            width = self.gridContainer.minimumSizeHint().width() \
+                    + self.scrollArea.verticalScrollBar().width()
+            self.scrollArea.setMinimumWidth(width)
+            self.setMinimumWidth(width)
+
+        return False
+
+
+class ScanWidgetBase(SuperScanWidget):
+
+    sigContLaserPulsesToggled = QtCore.Signal(bool)  # (enabled)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.seqTimePar = QtWidgets.QLineEdit('1')  # ms
+
+        self.scanPar = {
+                        'seqTime': self.seqTimePar
+                        }
+
+        self.pxParameters = {}
+
+        self.scanRadio = QtWidgets.QRadioButton('Scan')
+        self.scanRadio.setChecked(True)
+        self.contLaserPulsesRadio = QtWidgets.QRadioButton('Cont. Laser Pulses')
+
+        # Connect signals
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
-        self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
         self.contLaserPulsesRadio.toggled.connect(self.sigContLaserPulsesToggled)
 
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
         currentRow = 0
         self.scanDims = list(positionerNames)
-        self.__logger.debug(positionerNames)
-        self.__logger.debug(type(positionerNames))
+        self._logger.debug(positionerNames)
+        self._logger.debug(type(positionerNames))
         self.scanDims.append('None')
 
         # Add general buttons
@@ -183,10 +255,6 @@ class ScanWidget(Widget):
         self.grid.addWidget(self.seqTimePar, currentRow, 6)
 
         currentRow += 1
-        
-        # Add detection phase delay parameter
-        self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
-        self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
         # Add space item to make the grid look nicer
         self.grid.addItem(
@@ -219,29 +287,11 @@ class ScanWidget(Widget):
             self.pxParameters['sta' + deviceName].textChanged.connect(self.sigSignalParChanged)
             self.pxParameters['end' + deviceName].textChanged.connect(self.sigSignalParChanged)
 
-        # Add pulse graph
-        self.grid.addWidget(self.graph, graphRow, 3, currentRow - graphRow, 5)
-
     def isScanMode(self):
         return self.scanRadio.isChecked()
 
     def isContLaserMode(self):
         return self.contLaserPulsesRadio.isChecked()
-
-    def repeatEnabled(self):
-        return self.repeatBox.isChecked()
-
-    def getScanDim(self, index):
-        return self.scanPar['scanDim' + str(index)].currentText()
-
-    def getScanSize(self, positionerName):
-        return float(self.scanPar['size' + positionerName].text())
-
-    def getScanStepSize(self, positionerName):
-        return float(self.scanPar['stepSize' + positionerName].text())
-
-    def getScanCenterPos(self, positionerName):
-        return float(self.scanPar['center' + positionerName].text())
 
     def getTTLIncluded(self, deviceName):
         return (self.pxParameters['sta' + deviceName].text() != '' and
@@ -258,38 +308,11 @@ class ScanWidget(Widget):
     def getSeqTimePar(self):
         return float(self.seqTimePar.text()) / 1000
 
-    def getPhaseDelayPar(self):
-        return float(self.phaseDelayPar.text())
-
     def setScanMode(self):
         self.scanRadio.setChecked(True)
 
     def setContLaserMode(self):
         self.contLaserPulsesRadio.setChecked(True)
-
-    def setRepeatEnabled(self, enabled):
-        self.repeatBox.setChecked(enabled)
-
-    def setScanButtonChecked(self, checked):
-        self.scanButton.setEnabled(not checked)
-        self.scanButton.setCheckable(checked)
-        self.scanButton.setChecked(checked)
-
-    def setScanDim(self, index, positionerName):
-        scanDimPar = self.scanPar['scanDim' + str(index)]
-        scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
-
-    def setScanSize(self, positionerName, size):
-        self.scanPar['size' + positionerName].setText(str(round(size, 3)))
-
-    def setScanStepSize(self, positionerName, stepSize):
-        self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
-
-    def setScanCenterPos(self, positionerName, centerPos):
-        self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
-
-    def setScanPixels(self, positionerName, pixels):
-        self.scanPar['pixels' + positionerName].setText(str(pixels))
 
     def setTTLStarts(self, deviceName, starts):
         self.pxParameters['sta' + deviceName].setText(
@@ -308,50 +331,6 @@ class ScanWidget(Widget):
     def setSeqTimePar(self, seqTimePar):
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
 
-    def setPhaseDelayPar(self, phaseDelayPar):
-        self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
-
-    def setScanDimEnabled(self, index, enabled):
-        self.scanPar['scanDim' + str(index)].setEnabled(enabled)
-
-    def setScanSizeEnabled(self, positionerName, enabled):
-        self.scanPar['size' + positionerName].setEnabled(enabled)
-
-    def setScanStepSizeEnabled(self, positionerName, enabled):
-        self.scanPar['stepSize' + positionerName].setEnabled(enabled)
-
-    def setScanCenterPosEnabled(self, positionerName, enabled):
-        self.scanPar['center' + positionerName].setEnabled(enabled)
-
-    def plotSignalGraph(self, areas, signals, colors, sampleRate):
-        if len(areas) != len(signals) or len(signals) != len(colors):
-            raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
-
-        self.graph.plot.clear()
-        for i in range(len(areas)):
-            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
-
-        self.graph.plot.setYRange(-0.1, 1.1)
-        self.graph.plot.getAxis('bottom').setScale(1000 / sampleRate)
-
-    def eventFilter(self, source, event):
-        if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
-            # Set correct minimum width (otherwise things can go outside the widget because of the
-            # scroll area)
-            width = self.gridContainer.minimumSizeHint().width() \
-                    + self.scrollArea.verticalScrollBar().width()
-            self.scrollArea.setMinimumWidth(width)
-            self.setMinimumWidth(width)
-
-        return False
-
-
-class GraphFrame(pg.GraphicsLayoutWidget):
-    """Creates the plot that plots the preview of the pulses."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.plot = self.addPlot(row=1, col=0)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

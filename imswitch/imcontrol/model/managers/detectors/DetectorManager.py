@@ -63,7 +63,7 @@ class DetectorManager(SignalInterface):
     """ Abstract base class for managers that control detectors. Each type of
     detector corresponds to a manager derived from this class. """
 
-    sigImageUpdated = Signal(np.ndarray, bool)
+    sigImageUpdated = Signal(np.ndarray, bool, list)
     sigNewFrame = Signal()
 
     @abstractmethod
@@ -118,7 +118,7 @@ class DetectorManager(SignalInterface):
         except Exception:
             self.__logger.error(traceback.format_exc())
         else:
-            self.sigImageUpdated.emit(self.__image, init)
+            self.sigImageUpdated.emit(self.__image, init, self.scale)
 
     def setParameter(self, name: str, value: Any) -> Dict[str, DetectorParameter]:
         """ Sets a parameter value and returns the updated list of parameters.
@@ -207,10 +207,17 @@ class DetectorManager(SignalInterface):
         return self.__forFocusLock
 
     @property
+    def scale(self) -> List[int]:
+        """ The pixel sizes in micrometers, all axes, in the format high dim
+        to low dim (ex. [..., 'Z', 'Y', 'X']). Override in managers handling
+        >3 dim images (e.g. APDManager). """
+        return self.pixelSizeUm[1:]
+
+    @property
     @abstractmethod
     def pixelSizeUm(self) -> List[int]:
-        """ The pixel size in micrometers, in the format ``[z, y, x]``. ``z``
-        is typically set to 1. """
+        """ The pixel size in micrometers, in 3D, in the format
+        ``[Z, Y, X]``. Non-scanned ``Z`` set to 1. """
         pass
 
     @abstractmethod

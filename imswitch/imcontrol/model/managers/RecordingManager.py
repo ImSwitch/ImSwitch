@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """
-
     def __init__(self, filepath, tmp_extension='.tmp'):
         if os.path.exists(filepath):
             raise FileExistsError(f'File {filepath} already exists.')
@@ -33,13 +32,10 @@ class AsTemporayFile(object):
 
     def __exit__(self, *args, **kwargs):
         os.rename(self.tmp_path, self.path)
-        logger.info("Renamed file from %s to %s", self.tmp_path, self.path)
-
 
 
 class Storer(abc.ABC):
     """ Base class for storing data"""
-
     def __init__(self, filepath, detectorManager):
         self.filepath = filepath
         self.detectorManager: DetectorsManager = detectorManager
@@ -53,40 +49,29 @@ class Storer(abc.ABC):
         raise NotImplementedError
 
 
-
-
 class ZarrStorer(Storer):
     """ A storer that stores the images in a zarr file store """
-    
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
-
         with AsTemporayFile(f'{self.filepath}.zarr') as path:
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)
 
             for channel, image in images.items():
                 shape = self.detectorManager[channel].shape
-
                 d = root.create_dataset(channel, data=image, shape=tuple(reversed(shape)),
                                         chunks=(512, 512), dtype='i2') #TODO: why not dynamic chunking?
                 d.attrs["ImSwitchData"] = attrs[channel]
-                logger.info(f"Saved image to zarr file {path}")
+            logger.info(f"Saved image to zarr file {path}")
 
 
 class HDF5Storer(Storer):
     """ A storer that stores the images in a series of hd5 files """
-
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
-
         for channel, image in images.items():
-            
             with AsTemporayFile(f'{self.filepath}_{channel}.h5') as path:
                 file = h5py.File(path, 'w')
-
                 shape = self.detectorManager[channel].shape
-
                 dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
-
                 for key, value in attrs[channel].items():
                     try:
                         dataset.attrs[key] = value
@@ -99,19 +84,24 @@ class HDF5Storer(Storer):
                 dataset.attrs['element_size_um'] = \
                     self.detectorManager[channel].pixelSizeUm
 
-                dataset[:, ...] = np.moveaxis(image, 0, -1)
+                if image.ndim == 3:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])
+                elif image.ndim == 4:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
+                else:
+                    dataset[:, ...] = np.moveaxis(image, 0, -1)
             
                 file.close()
+                logger.info(f"Saved image to hdf5 file {path}")
         
 
 class TiffStorer(Storer):
     """ A storer that stores the images in a series of tiff files """
-
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
-
+                logger.info(f"Saved image to tiff file {path}")
 
 
 class SaveMode(enum.Enum):
@@ -134,12 +124,9 @@ DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
 }
 
 
-
-
 class RecordingManager(SignalInterface):
     """ RecordingManager handles single frame captures as well as continuous
     recordings of detector data. """
-
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
@@ -225,13 +212,13 @@ class RecordingManager(SignalInterface):
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
 
-
         try:
             images = {}
 
             # Acquire data
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
+                image = images[detectorName]
 
             if saveFormat:
                 storer = self.__storerMap[saveFormat]
@@ -240,7 +227,6 @@ class RecordingManager(SignalInterface):
                     # Save images to disk
                     store = storer(savename, self.__detectorsManager)
                     store.snap(images, attrs)
-
 
                 if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
                     for channel, image in images.items():
@@ -281,7 +267,7 @@ class RecordingManager(SignalInterface):
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
-        if saveFormat == SaveFormat.ZARR:
+        elif saveFormat == SaveFormat.ZARR:
             path = self.getSaveFilePath(f'{savename}.{fileExtension}')
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)
@@ -630,8 +616,6 @@ class RecMode(enum.Enum):
     ScanOnce = 3
     ScanLapse = 4
     UntilStop = 5
-
-
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

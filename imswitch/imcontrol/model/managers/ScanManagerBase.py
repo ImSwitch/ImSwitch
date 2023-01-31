@@ -17,20 +17,9 @@ class ScanManagerFactory:
 
 
 class SuperScanManager(ABC):
-    def isValidChild(self):  # For future possible implementation
-        return True
-
-    @abstractmethod
-    def _parameterCompatibility(self, parameterDict):
-        pass
-
-
-class ScanManager(SuperScanManager):
-    """ ScanManager helps with generating signals for scanning. """
-
     def __init__(self, setupInfo):
         super().__init__()
-        self.__logger = initLogger(self)
+        self._logger = initLogger(self)
 
         self._setupInfo = setupInfo
 
@@ -42,17 +31,22 @@ class ScanManager(SuperScanManager):
             self._TTLCycleDesigner = None
 
         self._expectedSyncParameters = []
+   
+    def isValidChild(self):  # For future possible implementation
+        return True
+
+    @abstractmethod
+    def _parameterCompatibility(self, parameterDict):
+        pass
+
+    @abstractmethod
+    def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
+        pass
 
     @property
     def sampleRate(self):
         self._checkScanDefined()
         return self._setupInfo.scan.sampleRate
-
-    @property
-    def TTLTimeUnits(self):
-        self._checkScanDefined()
-        return self._TTLCycleDesigner.timeUnits
-
     def _parameterCompatibility(self, parameterDict):
         self._checkScanDefined()
 
@@ -68,12 +62,6 @@ class ScanManager(SuperScanManager):
         if not TTLExpected.issubset(TTLIncoming):
             raise IncompatibilityError('Incompatible TTL parameters')
 
-        # syncExpected = set(self.expectedSyncParameters)
-        # syncIncoming = set(stageParameterList)
-
-        # if not syncExpected.issubset(syncIncoming):
-        #     raise IncompatibilityError('Incompatible sync parameters')
-
     def getScanSignalsDict(self, scanParameters):
         """ Generates scan signals. """
         self._checkScanDefined()
@@ -88,6 +76,23 @@ class ScanManager(SuperScanManager):
         parameterDict.update(TTLParameters)
         return self._TTLCycleDesigner.make_signal(parameterDict, self._setupInfo, scanInfoDict)
 
+    def _checkScanDefined(self):
+        if not self._setupInfo.scan:
+            raise RuntimeError(
+                'scan field is not defined in hardware configuration; cannot proceed'
+            )
+
+class ScanManagerBase(SuperScanManager):
+    """ ScanManager helps with generating signals for scanning. """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def TTLTimeUnits(self):
+        self._checkScanDefined()
+        return self._TTLCycleDesigner.timeUnits
+
     def makeFullScan(self, scanParameters, TTLParameters, staticPositioner=False):
         """ Generates stage and TTL scan signals. """
         self._checkScanDefined()
@@ -97,7 +102,7 @@ class ScanManager(SuperScanManager):
             if not self._scanDesigner.checkSignalComp(
                     scanParameters, self._setupInfo, scanInfoDict
             ):
-                self.__logger.error(
+                self._logger.error(
                     'Signal voltages outside scanner ranges: try scanning a smaller ROI or a slower'
                     ' scan.'
                 )
@@ -114,12 +119,6 @@ class ScanManager(SuperScanManager):
              'TTLCycleSignalsDict': TTLCycleSignalsDict},
             scanInfoDict
         )
-
-    def _checkScanDefined(self):
-        if not self._setupInfo.scan:
-            raise RuntimeError(
-                'scan field is not defined in hardware configuration; cannot proceed'
-            )
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

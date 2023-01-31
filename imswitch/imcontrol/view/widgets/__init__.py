@@ -12,9 +12,12 @@ from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
+from .SLMWidget import SLMWidget
+from .ScanWidgetBase import ScanWidgetBase
+from .ScanWidgetMoNaLISA import ScanWidgetMoNaLISA
+from .ScanWidgetPointScan import ScanWidgetPointScan
 from .RotationScanWidget import RotationScanWidget
 from .RotatorWidget import RotatorWidget
-from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
 from .SLMWidget import SLMWidget
 from .TilingWidget import TilingWidget

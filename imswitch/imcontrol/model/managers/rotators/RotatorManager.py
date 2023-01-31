@@ -8,7 +8,7 @@ class RotatorManager(ABC):
     rotator corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, rotatorInfo, name: str):
+    def __init__(self, rotatorInfo, name: str, *args, **kwargs):
         """
         Args:
             rotatorInfo: See setup file documentation.

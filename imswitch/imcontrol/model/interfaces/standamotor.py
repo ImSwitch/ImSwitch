@@ -28,7 +28,6 @@ class StandaMotor():
             enum_hints = b"addr="
             devenum = pyximc.lib.enumerate_devices(probe_flags, enum_hints)
             dev_count = pyximc.lib.get_device_count(devenum)
-            self.__logger.info(f"Number of devices: {repr(dev_count)}")
             if dev_count > 0:
                 #open_name = pyximc.lib.get_device_name(devenum, self._device_id)
                 open_name = pyximc.lib.get_device_name(devenum, 0)
@@ -46,7 +45,6 @@ class StandaMotor():
             if type(open_name) is str:
                 open_name = open_name.encode()
 
-            self.__logger.info(f"Open device {repr(open_name)}")
             self._device_id = pyximc.lib.open_device(open_name)
             self.set_def_sync_in_settings()
             self.set_def_sync_out_settings()

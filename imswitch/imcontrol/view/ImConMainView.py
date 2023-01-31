@@ -23,6 +23,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.pickSetupDialog = PickSetupDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
+        self.viewSetupInfo = viewSetupInfo
+
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
         self.docks = {}
@@ -82,7 +84,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 
         dockArea = DockArea()
-        enabledDockKeys = viewSetupInfo.availableWidgets
+        enabledDockKeys = self.viewSetupInfo.availableWidgets
         if enabledDockKeys is False:
             enabledDockKeys = []
         elif enabledDockKeys is True:
@@ -150,6 +152,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         for widgetKey, dockInfo in dockInfoDict.items():
             self.widgets[widgetKey] = self.factory.createWidget(
                 getattr(widgets, f'{widgetKey}Widget')
+                if widgetKey != 'Scan' else
+                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
             )
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])

@@ -24,7 +24,6 @@ class SLMManager(SignalInterface):
         self.__slmInfo = slmInfo
         self.__wavelength = self.__slmInfo.wavelength
         self.__pixelsize = self.__slmInfo.pixelSize
-        self.__angleMount = self.__slmInfo.angleMount
         self.__slmSize = (self.__slmInfo.width, self.__slmInfo.height)
         self.__correctionPatternsDir = self.__slmInfo.correctionPatternsDir
         self.__maskLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2), self.__wavelength)
@@ -71,10 +70,10 @@ class SLMManager(SignalInterface):
         # Add blazed grating tilting mask
         self.__maskTiltLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
                                    self.__wavelength)
-        self.__maskTiltLeft.setTilt(self.__angleMount, self.__pixelsize)
+        self.__maskTiltLeft.setTilt(self.__pixelsize)
         self.__maskTiltRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
                                     self.__wavelength)
-        self.__maskTiltRight.setTilt(-self.__angleMount, self.__pixelsize)
+        self.__maskTiltRight.setTilt(self.__pixelsize)
 
     def initAberrationMask(self):
         # Add blazed grating tilting mask
@@ -87,7 +86,7 @@ class SLMManager(SignalInterface):
 
     def setMask(self, mask, maskMode):
         if self.__masks[mask].mask_type == MaskMode.Black and maskMode != MaskMode.Black:
-            self.__masksTilt[mask].setTilt(self.__angleMount, self.__pixelsize)
+            self.__masksTilt[mask].setTilt(self.__pixelsize)
         if maskMode == maskMode.Donut:
             self.__masks[mask].setDonut()
         elif maskMode == maskMode.Tophat:
@@ -105,6 +104,7 @@ class SLMManager(SignalInterface):
         elif maskMode == maskMode.Black:
             self.__masks[mask].setBlack()
             self.__masksTilt[mask].setBlack()
+            self.__masksAber[mask].setBlack()
 
     def moveMask(self, mask, direction, amount):
         if direction == direction.Up:
@@ -140,13 +140,23 @@ class SLMManager(SignalInterface):
         self.setRadius(general_info["radius"])
         self.setSigma(general_info["sigma"])
         self.setRotationAngle(general_info["rotationAngle"])
+        self.setTiltAngle(general_info["tiltAngle"])
 
-    def setAberrations(self, aber_info):
-        dAberFactors = aber_info["left"]
-        tAberFactors = aber_info["right"]
-        self.__masksAber[0].setAberrations(dAberFactors)
-        self.__masksAber[1].setAberrations(tAberFactors)
-        # self.__logger.debug(f'Set aberrations on both phase mask.')
+    def setAberrationFactors(self, aber_info):
+        lAberFactors = aber_info["left"]
+        self.__masksAber[0].setAberrationFactors(lAberFactors)
+        rAberFactors = aber_info["right"]
+        self.__masksAber[1].setAberrationFactors(rAberFactors)
+
+    def setAberrations(self, aber_info, mask):
+        if mask == 0 or mask == None:
+            lAberFactors = aber_info["left"]
+            self.__masksAber[0].setAberrationFactors(lAberFactors)
+            self.__masksAber[0].setAberrations()
+        if mask == 1 or mask == None:
+            rAberFactors = aber_info["right"]
+            self.__masksAber[1].setAberrationFactors(rAberFactors)
+            self.__masksAber[1].setAberrations()
 
     def setRadius(self, radius):
         for mask, masktilt, maskaber in zip(self.__masks, self.__masksTilt, self.__masksAber):
@@ -161,6 +171,11 @@ class SLMManager(SignalInterface):
     def setRotationAngle(self, rotation_angle):
         for mask in self.__masks:
             mask.setRotationAngle(rotation_angle)
+
+    def setTiltAngle(self, tilt_angle):
+        inverts = [1,-1]
+        for idx, mask in enumerate(self.__masksTilt):
+            mask.setTiltAngle(tilt_angle, inverts[idx])
 
     def update(self, maskChange=False, tiltChange=False, aberChange=False):
         if maskChange:
@@ -184,7 +199,7 @@ class Mask:
         n,m corresponds to the width,height of the created image
         wavelength is the illumination wavelength in nm"""
         self.__logger = initLogger(self, tryInheritParent=True)
-
+        self.zeroimg = np.zeros((height, width), dtype=np.uint8)
         self.img = np.zeros((height, width), dtype=np.uint8)
         self.height = height
         self.width = width
@@ -197,6 +212,7 @@ class Mask:
         self.mask_type = MaskMode.Black
         self.angle_rotation = 0
         self.angle_tilt = 0
+        self.pixelSize = 0
         if wavelength == 561:
             self.value_max = 148
         elif wavelength == 491:
@@ -255,10 +271,8 @@ class Mask:
     def pi2uint8(self):
         """Method converting a phase image (values from 0 to 2Pi) into a uint8
         image"""
-        # self.__logger.debug(np.max(np.max(self.img)))
         self.img *= self.value_max / (2 * math.pi)
         self.img = np.round(self.img).astype(np.uint8)
-        # self.__logger.debug(np.max(np.max(self.img)))
 
     def load(self, img):
         """Initiates the mask with an existing image."""
@@ -274,9 +288,7 @@ class Mask:
 
     def setCircular(self):
         """This method sets to 0 all the values within Mask except the ones
-        included in a circle centered in (x,y) with a radius r"""
-        # self.centerx = np.max(x, self.height // 2)
-        # self.centery = np.max(y, self.width // 2)
+        included in a circle centered in (centerx,centery) with a radius r"""
         x, y = np.ogrid[-self.centerx: self.height - self.centerx,
                         -self.centery: self.width - self.centery]
         mask_bin = x * x + y * y <= self.radius * self.radius
@@ -284,27 +296,14 @@ class Mask:
         result[mask_bin] = self.img[mask_bin]
         self.img = result
 
-    def setTilt(self, angle=None, pixelsize=None):
+    def setTilt(self, pixelsize=None):
         """Creates a tilt mask, blazed grating, for off-axis holography."""
-        # TODO: double check calculations
-        # Necessary inversion because going through 4f-system (for right mask)
-        # angle = -1 * angle  # angle in degrees
-        if angle:
-            self.angle_tilt = angle
-
-            # conversion to radians, JA comment: but it is already in radians no?
-            self.angle_tilt *= math.pi / 180
         if pixelsize:
             self.pixelSize = pixelsize
         wavelength = self.wavelength * 10 ** -6  # conversion to mm
         mask = np.indices((self.height, self.width), dtype="float")[1, :, :]
-        # d_spat = wavelength / np.sin(angle)
-        # f_spat = 1 / d_spat
-        # f_spat_px = round(f_spat / self.pixelSize)
-        # np.round(wavelength / (self.pixelSize * np.sin(angle)))
-        # Round spatial frequency to avoid aliasing
+        # Spatial frequency, round to avoid aliasing
         f_spat = np.round(wavelength / (self.pixelSize * np.sin(self.angle_tilt)))
-        # f_spat = 10
         if np.absolute(f_spat) < 3:
             self.__logger.debug(f"Spatial frequency: {f_spat} pixels")
         period = 2 * math.pi / f_spat  # period
@@ -315,9 +314,10 @@ class Mask:
         self.img = tilt
         self.mask_type = MaskMode.Tilt
 
-    def setAberrations(self, aber_params_info=None):
-        if aber_params_info:
-            self.aber_params_info = aber_params_info
+    def setAberrationFactors(self, aber_params_info):
+        self.aber_params_info = aber_params_info
+
+    def setAberrations(self):
         fTilt = self.aber_params_info["tilt"]
         fTip = self.aber_params_info["tip"]
         fDefoc = self.aber_params_info["defocus"]
@@ -356,12 +356,15 @@ class Mask:
     def setRotationAngle(self, rotation_angle):
         self.angle_rotation = rotation_angle
 
+    def setTiltAngle(self, tilt_angle, invert):
+        self.angle_tilt = invert * tilt_angle * math.pi / 180
+
     def moveCenter(self, move_v):
         self.centerx = self.centerx + move_v[0]
         self.centery = self.centery + move_v[1]
 
     def setBlack(self):
-        self.img = np.zeros((self.height, self.width), dtype=np.uint8)
+        self.img = self.zeroimg
         self.mask_type = MaskMode.Black
 
     def setGauss(self):

@@ -1,6 +1,8 @@
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
+from imswitch.imcommon.model import initLogger
 import numpy as np
+import re
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -8,6 +10,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.__logger = initLogger(self, tryInheritParent=True)
         if not self._master.detectorsManager.hasDevices():
             return
 
@@ -26,6 +29,7 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigAddItemToVb.connect(self.addItemToVb)
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
+        self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -50,14 +54,14 @@ class ImageController(LiveUpdatedController):
         """ Remove item from communication channel to viewbox."""
         self._widget.removeItem(item)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update new image in the viewbox. """
         if np.prod(im.shape)>1: # TODO: This seems weird!
-            print(np.shape(im))
+
             if not init:
                 self.autoLevels([detectorName], im)
 
-            self._widget.setImage(detectorName, im)
+            self._widget.setImage(detectorName, im, scale)
 
             if not init or self._shouldResetView:
                 self.adjustFrame(instantResetView=True)
@@ -94,6 +98,11 @@ class ImageController(LiveUpdatedController):
         self._widget.addStaticLayer(name, image)
         if self._shouldResetView:
             self.adjustFrame(image.shape, instantResetView=True)
+
+    def setExposure(self, exp):
+        detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
+        self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
+        #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

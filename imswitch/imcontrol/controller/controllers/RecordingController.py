@@ -1,6 +1,7 @@
 import os
 import time
 from typing import Optional, Union, List
+import numpy as np
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
@@ -27,7 +28,7 @@ class RecordingController(ImConWidgetController):
         self.lapseCurrent = -1
         self.lapseTotal = 0
 
-        self._widget.setSnapSaveFormat(SaveFormat.HDF5.value)
+        self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
         self._widget.setSnapSaveModeVisible(self._setupInfo.hasWidget('Image'))
 
@@ -76,9 +77,9 @@ class RecordingController(ImConWidgetController):
 
     def snapSaveModeChanged(self):
         saveMode = SaveMode(self._widget.getSnapSaveMode())
-        self._widget.setSnapSaveFormatEnabled(saveMode != SaveMode.RAM)
+        self._widget.setsaveFormatEnabled(saveMode != SaveMode.RAM)
         if saveMode == SaveMode.RAM:
-            self._widget.setSnapSaveFormat(SaveFormat.TIFF.value)
+            self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
         """ Take a snap and save it to a file. """
@@ -98,8 +99,22 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getSnapSaveFormat()),
+                                           SaveFormat(self._widget.getsaveFormat()),
                                            attrs)
+        
+    def snapNumpy(self):
+        self.updateRecAttrs(isSnapping=True)
+        detectorNames = self.getDetectorNamesToCapture()
+        attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
+                 for detectorName in detectorNames}
+
+        return self._master.recordingManager.snap(detectorNames,
+                                           "",
+                                           SaveMode(4), # for Numpy
+                                           "",
+                                           attrs)
+
+
 
     def snapImagePrev(self, *args):
         """ Snap an already taken image and save it to a file. """
@@ -145,6 +160,7 @@ class RecordingController(ImConWidgetController):
                 'recMode': self.recMode,
                 'savename': self.savename,
                 'saveMode': SaveMode(self._widget.getRecSaveMode()),
+                'saveFormat': SaveFormat(self._widget.getsaveFormat()),
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and
@@ -171,6 +187,7 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(**self.recordingArgs)
 
             self.recording = True
+            self.endedRecording = False
         else:
             if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
                 self._commChannel.sigAbortScan.emit()
@@ -228,7 +245,7 @@ class RecordingController(ImConWidgetController):
 
     def recordingEnded(self):
         self.endedRecording = True
-        if self.doneScan or not (self.recMode == RecMode.ScanLapse or
+        if not self.doneScan or not (self.recMode == RecMode.ScanLapse or
                                  self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
 
@@ -356,9 +373,12 @@ class RecordingController(ImConWidgetController):
         return self._widget.getTimelapseFreq()
 
     @APIExport(runOnUIThread=True)
-    def snapImage(self) -> None:
+    def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
         """ Take a snap and save it to a .tiff file at the set file path. """
-        self.snap()
+        if output:
+            return self.snapNumpy()
+        else:
+            self.snap()
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:

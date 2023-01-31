@@ -116,6 +116,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
         }
     },
     "scan": {
+        "scanWidgetType": "Base",
         "scanDesigner": "BetaScanDesigner",
         "scanDesignerParams": {
             "return_time": 0.01

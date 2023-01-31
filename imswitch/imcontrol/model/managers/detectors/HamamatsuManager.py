@@ -62,7 +62,7 @@ class HamamatsuManager(DetectorManager):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 
-    def getLatestFrame(self):
+    def getLatestFrame(self, is_save=True):
         return self._camera.getLast()
 
     def getChunk(self):

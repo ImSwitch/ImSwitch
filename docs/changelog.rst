@@ -2,6 +2,20 @@
 Changelog
 *********
 
+2.0.0
+=====
+
+Highlights:
+
+- Added support for Pulse Streamer and other devices, and improve low lever managers: https://github.com/kasasxav/ImSwitch/pull/1
+- Server-client support with fastAPI and Pyro5: https://github.com/kasasxav/ImSwitch/tree/master/imswitch/imcontrol/controller/server
+- Added features for open microscopy hardware (OpenUC2, SQUID, ESP32) more on beniroquai's fork
+- Support for event triggered sted (https://www.nature.com/articles/s41592-022-01588-y)
+- Improvements in scanning curve design
+- Implementation of file watcher (see also https://github.com/kasasxav/napari-file-watcher/)
+- Fix bugs (most reported in Issues).
+
+A list of all code changes is available on GitHub: https://github.com/kasasxav/ImSwitch/compare/v1.2.1...v2.0.0
 
 1.2.1
 =====

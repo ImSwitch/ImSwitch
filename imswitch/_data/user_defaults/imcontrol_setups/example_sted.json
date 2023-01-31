@@ -60,8 +60,7 @@
       "analogChannel": null,
       "digitalLine": "Dev1/port0/line1",
       "managerName": "NidaqLaserManager",
-      "managerProperties": {
-      },
+      "managerProperties": {},
       "wavelength": 561,
       "valueRangeMin": 0,
       "valueRangeMax": 1,
@@ -71,8 +70,7 @@
       "analogChannel": null,
       "digitalLine": "Dev1/port0/line2",
       "managerName": "NidaqLaserManager",
-      "managerProperties": {
-      },
+      "managerProperties": {},
       "wavelength": 640,
       "valueRangeMin": 0,
       "valueRangeMax": 1,
@@ -83,8 +81,8 @@
       "digitalLine": null,
       "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-          "rs232device": "aaaotf",
-          "channel": 1
+        "rs232device": "aaaotf",
+        "channel": 1
       },
       "wavelength": 561,
       "valueRangeMin": 0,
@@ -96,8 +94,8 @@
       "digitalLine": null,
       "managerName": "AAAOTFLaserManager",
       "managerProperties": {
-          "rs232device": "aaaotf",
-          "channel": 2
+        "rs232device": "aaaotf",
+        "channel": 2
       },
       "wavelength": 640,
       "valueRangeMin": 0,
@@ -108,8 +106,7 @@
       "analogChannel": "Dev1/ao3",
       "digitalLine": "Dev1/port0/line4",
       "managerName": "NidaqLaserManager",
-      "managerProperties": {
-      },
+      "managerProperties": {},
       "wavelength": 775,
       "valueRangeMin": 0,
       "valueRangeMax": 10,
@@ -212,6 +209,26 @@
       "h": 2048
     }
   },
+  "rotators": {
+    "HWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 0,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    },
+    "QWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 1,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    }
+  },
   "availableWidgets": [
     "Settings",
     "View",
@@ -221,14 +238,24 @@
     "Positioner",
     "Scan",
     "FocusLock",
-    "SLM"
+    "SLM",
+    "Rotation",
+    "RotationScan"
   ],
+
   "scan": {
+    "scanWidgetType": "PointScan",
     "scanDesigner": "GalvoScanDesigner",
     "scanDesignerParams": {},
     "TTLCycleDesigner": "PointScanTTLCycleDesigner",
     "TTLCycleDesignerParams": {},
-    "sampleRate": 100000
+    "sampleRate": 100000,
+    "lineClockLine": "Dev1/port0/line5",
+    "frameClockLine": "Dev1/port0/line6"
+  },
+  "nidaq": {
+    "timerCounterChannel": "Dev1/ctr2",
+    "startTrigger": true
   },
   "slm": {
     "monitorIdx": 2,

@@ -150,9 +150,35 @@ class FocusLockInfo:
     frameCroph: int
     """ Height of frame crop. """
 
+@dataclass(frozen=True)
+class AutofocusInfo:
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
+    updateFreq: int
+    """ Update frequency, in milliseconds. """
+
+    frameCropx: int
+    """ Starting X position of frame crop. """
+
+    frameCropy: int
+    """ Starting Y position of frame crop. """
+
+    frameCropw: int
+    """ Width of frame crop. """
+
+    frameCroph: int
+    """ Height of frame crop. """
+
 
 @dataclass(frozen=True)
 class ScanInfo:
+    scanWidgetType: str
+    """ Type of scan widget to generate: PointScan/MoNaLISA/Base/etc."""
+
     scanDesigner: str
     """ Name of the scan designer class to use. """
 
@@ -168,6 +194,15 @@ class ScanInfo:
     sampleRate: int
     """ Scan sample rate. """
 
+    lineClockLine: Optional[Union[str, int]]
+    """ Line for line clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{lineClockLine}".
+    """
+
+    frameClockLine: Optional[Union[str, int]]
+    """ Line for frame clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{frameClockLine}".
+    """
 
 @dataclass(frozen=True)
 class EtSTEDInfo:
@@ -203,7 +238,15 @@ class PulseStreamerInfo:
     ipAddress: Optional[str] = None
     """ IP address of Pulse Streamer hardware. """
 
-    
+
+@dataclass(frozen=True)
+class PyroServerInfo:
+    name: Optional[str] = 'ImSwitchServer'
+    host: Optional[str] = '127.0.0.1'
+    port: Optional[int] = 54333
+    active: Optional[bool] = False
+
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -234,6 +277,10 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
+    
+    autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
+    """ Autofocus settings. Required to be defined to use autofocus 
+    functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
     """ Scan settings. Required to be defined to use scan functionality. """
@@ -241,11 +288,16 @@ class SetupInfo:
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
 
+    rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
+    """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """
+
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """
 
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
+
+    pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 
     _catchAll: CatchAll = None
 

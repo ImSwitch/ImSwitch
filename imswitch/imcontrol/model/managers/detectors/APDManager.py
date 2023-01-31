@@ -52,7 +52,6 @@ class APDManager(DetectorManager):
         self._nidaqManager.sigScanBuilt.connect(
             lambda scanInfoDict, signalDict, _: self.initiateScan(scanInfoDict, signalDict)
         )
-        self.__logger.debug('sigScanInitiate is connected')
         self._nidaqManager.sigScanStarted.connect(self.startScan)
         self.__shape = fullShape
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],

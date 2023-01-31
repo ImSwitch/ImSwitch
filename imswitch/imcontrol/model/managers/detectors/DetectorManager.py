@@ -211,7 +211,7 @@ class DetectorManager(SignalInterface):
         """ The pixel sizes in micrometers, all axes, in the format high dim
         to low dim (ex. [..., 'Z', 'Y', 'X']). Override in managers handling
         >3 dim images (e.g. APDManager). """
-        return self.pixelSizeUm
+        return self.pixelSizeUm[1:]
 
     @property
     @abstractmethod

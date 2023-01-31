@@ -11,14 +11,14 @@ class MultiManager(ABC):
 
     @abstractmethod
     def __init__(self, managedDeviceInfos, subManagersPackage, **lowLevelManagers):
-        self.__logger = initLogger(self, instanceName='MultiManager')
+        #self.__logger = initLogger(self, instanceName='MultiManager')
         self._subManagers = {}
         currentPackage = '.'.join(__name__.split('.')[:-1])
         if managedDeviceInfos:
             for managedDeviceName, managedDeviceInfo in managedDeviceInfos.items():
                 # Create sub-manager
-                self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
-                self.__logger.debug(managedDeviceInfo)
+                #self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
+                #self.__logger.debug(managedDeviceInfo)
                 package = importlib.import_module(
                     pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
                                             managedDeviceInfo.managerName)

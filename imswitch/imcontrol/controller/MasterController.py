@@ -42,18 +42,19 @@ class MasterController:
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         # Generate scanManager type according to setupInfo
-        if self.__setupInfo.scan.scanWidgetType == "PointScan":
-            self.scanManager = ScanManagerPointScan(self.__setupInfo)
-        elif self.__setupInfo.scan.scanWidgetType == "Base":
-            self.scanManager = ScanManagerBase(self.__setupInfo)
-        elif self.__setupInfo.scan.scanWidgetType == "MoNaLISA":
-            self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
-        else:
-            self.__logger.error(
-                'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'
-                ' ["Base", "PointScan", "MoNaLISA"].'
-            )
-            return
+        if self.__setupInfo.scan:
+            if self.__setupInfo.scan.scanWidgetType == "PointScan":
+                self.scanManager = ScanManagerPointScan(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "Base":
+                self.scanManager = ScanManagerBase(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "MoNaLISA":
+                self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
+            else:
+                self.__logger.error(
+                    'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'
+                    ' ["Base", "PointScan", "MoNaLISA"].'
+                )
+                return
 
         # Connect signals
         cc = self.__commChannel

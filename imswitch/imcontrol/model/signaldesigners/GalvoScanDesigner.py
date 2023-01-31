@@ -192,11 +192,11 @@ class GalvoScanDesigner(ScanDesigner):
             'padlens': pad_maxes
         }
         #'extra_laser_on': parameterDict['extra_laser_on']
-        self._logger.debug(scanInfoDict)
+        #self._logger.debug(scanInfoDict)
 
         self.__plot_curves(plot=False, signals=axis_signals)  # for debugging
 
-        self._logger.info(f'Scanning curves generated, d3 step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)}.')
+        self._logger.info(f'Scanning curves generated, third dimension step time: {round(self.__timestep * 1e-6 * n_scan_samples_dx[2], ndigits=5)} s.')
         return sig_dict, axis_positions, scanInfoDict
 
     def __calc_settling_time(self, axis_length, axis_centerpos, vel_max, acc_max):

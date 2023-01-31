@@ -1,4 +1,7 @@
 import traceback
+import configparser
+
+from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
 
@@ -28,11 +31,15 @@ class ScanControllerPointScan(SuperScanController):
                                              self._analogParameterDict['axis_step_size'][i])
                 self._widget.setScanCenterPos(positionerName,
                                               self._analogParameterDict['axis_centerpos'][i])
+            for i in range(len(self._analogParameterDict['scan_dim_target_device'])):
+                scanDimName = self._analogParameterDict['scan_dim_target_device']
+                self._widget.setScanDim(i, scanDimName)
 
             setTTLDevices = []
             for i in range(len(self._digitalParameterDict['target_device'])):
                 deviceName = self._digitalParameterDict['target_device'][i]
                 self._widget.setTTLSequences(deviceName, self._digitalParameterDict['TTL_sequence'][i])
+                self._widget.setTTLSequenceAxis(deviceName, self._digitalParameterDict['TTL_sequence_axis'][i])
                 setTTLDevices.append(deviceName)
 
             for deviceName in self.TTLDevices:
@@ -108,17 +115,18 @@ class ScanControllerPointScan(SuperScanController):
         self._positionersScan = []
         for i in range(len(self.positioners)):
             self._positionersScan.append(self._widget.getScanDim(i))
-        for positionerName in self._positionersScan:
-            if positionerName != 'None':
-                size = self._widget.getScanSize(positionerName)
-                stepSize = self._widget.getScanStepSize(positionerName)
-                center = self._widget.getScanCenterPos(positionerName)
-                start = list(self._master.positionersManager[positionerName].position.values())
-                self._analogParameterDict['target_device'].append(positionerName)
-                self._analogParameterDict['axis_length'].append(size)
-                self._analogParameterDict['axis_step_size'].append(stepSize)
-                self._analogParameterDict['axis_centerpos'].append(center)
-                self._analogParameterDict['axis_startpos'].append(start)
+        self._analogParameterDict['scan_dim_target_device'] = self._positionersScan
+        self._logger.debug(self._analogParameterDict['scan_dim_target_device'])
+        for positionerName in self.positioners:
+            size = self._widget.getScanSize(positionerName)
+            stepSize = self._widget.getScanStepSize(positionerName)
+            center = self._widget.getScanCenterPos(positionerName)
+            start = list(self._master.positionersManager[positionerName].position.values())
+            self._analogParameterDict['target_device'].append(positionerName)
+            self._analogParameterDict['axis_length'].append(size)
+            self._analogParameterDict['axis_step_size'].append(stepSize)
+            self._analogParameterDict['axis_centerpos'].append(center)
+            self._analogParameterDict['axis_startpos'].append(start)
         for positionerName in self.positioners:
             if positionerName not in self._positionersScan:
                 size = 1.0
@@ -157,6 +165,36 @@ class ScanControllerPointScan(SuperScanController):
 
     def emitScanSignal(self, signal, *args):
         signal.emit(*args)
+
+    def saveScanParamsToFile(self, filePath: str) -> None:
+        """ Saves the set scanning parameters to the specified file. """
+        self.getParameters()
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        config['analogParameterDict'] = self._analogParameterDict
+        config['digitalParameterDict'] = self._digitalParameterDict
+
+        with open(filePath, 'w') as configfile:
+            config.write(configfile)
+
+    def loadScanParamsFromFile(self, filePath: str) -> None:
+        """ Loads scanning parameters from the specified file. """
+        config = configparser.ConfigParser()
+        config.optionxform = str
+        config.read(filePath)
+
+        for key in self._analogParameterDict:
+            self._analogParameterDict[key] = literal_eval(
+                config._sections['analogParameterDict'][key]
+            )
+
+        for key in self._digitalParameterDict:
+            self._digitalParameterDict[key] = literal_eval(
+                config._sections['digitalParameterDict'][key]
+            )
+
+        self.setParameters()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

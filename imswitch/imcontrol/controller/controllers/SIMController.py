@@ -25,8 +25,6 @@ try:
 except:
     imscSIM=False
 
-import pygame
-
 if ismcSIM:
     try:
         import cupy as cp
@@ -80,17 +78,6 @@ class SIMController(LiveUpdatedController):
 
         # initialize external dispaly (if available => id = 2?)
         self._widget.initSIMDisplay(self._setupInfo.sim.monitorIdx)
-        pygame.init()
-        self.monitorResolution  = [640, 360]
-        self.pygDisplay = pygame.display.set_mode(self.monitorResolution, pygame.FULLSCREEN)
-        myImg = np.ones(self.monitorResolution)
-        pygame.mouse.set_visible(False) # turn of the mouse cursor
-        
-        # set image and display
-        surf = pygame.surfarray.make_surface(myImg*255)
-        self.pygDisplay.blit(surf, (0, 0))
-        pygame.display.update()
-
         # self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
@@ -198,6 +185,9 @@ class SIMController(LiveUpdatedController):
     def displayMask(self, image):
         self._widget.updateSIMDisplay(image)
 
+    def setIlluPatternByID(self, iRot, iPhi):
+        self.detector.setIlluPatternByID(iRot, iPhi)
+
     def displayImage(self, im):
         """ Displays the image in the view. """
         self._widget.setImage(im, name="SIM Reconstruction")
@@ -232,14 +222,8 @@ class SIMController(LiveUpdatedController):
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
-        #self._widget.updateSIMDisplay(image)
-        # show pygame image
-        self.scalingFactor = 1
-        surf = pygame.surfarray.make_surface(image*self.scalingFactor)
-        self.pygDisplay.blit(surf, (0, 0))
-        pygame.display.update()
-
-        self._logger.debug("Updated displayed image")
+        self._widget.updateSIMDisplay(image)
+        # self._logger.debug("Updated displayed image")
 
     @APIExport(runOnUIThread=True)
     def simPatternByID(self, patternID):
@@ -323,7 +307,7 @@ class SIMController(LiveUpdatedController):
                 self._numQueuedImagesMutex.unlock()
 
                 # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-                #self.computeSIMImage()
+                self.computeSIMImage()
 
 
 

@@ -13,9 +13,9 @@ class FocusLockWidget(Widget):
         super().__init__(*args, **kwargs)
 
         # Focus lock
-        self.kpEdit = QtWidgets.QLineEdit('5')
+        self.kpEdit = QtWidgets.QLineEdit('0')
         self.kpLabel = QtWidgets.QLabel('kp')
-        self.kiEdit = QtWidgets.QLineEdit('0.1')
+        self.kiEdit = QtWidgets.QLineEdit('0')
         self.kiLabel = QtWidgets.QLabel('ki')
 
         self.lockButton = guitools.BetterPushButton('Lock')
@@ -101,6 +101,12 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.positionEdit, 1, 7)
         grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
         grid.addWidget(self.camDialogButton, 3, 6, 1, 2)
+
+    def setKp(self, kp):
+        self.kpEdit.setText(str(kp))
+
+    def setKi(self, ki):
+        self.kiEdit.setText(str(ki))
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

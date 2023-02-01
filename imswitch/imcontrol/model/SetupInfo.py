@@ -139,16 +139,22 @@ class FocusLockInfo:
     """ Update frequency, in milliseconds. """
 
     frameCropx: int
-    """ Starting X position of frame crop. """
+    """ Starting X position of camera frame crop. """
 
     frameCropy: int
-    """ Starting Y position of frame crop. """
+    """ Starting Y position of camera frame crop. """
 
     frameCropw: int
-    """ Width of frame crop. """
+    """ Width of camera frame crop. """
 
     frameCroph: int
-    """ Height of frame crop. """
+    """ Height of camera frame crop. """
+
+    piKp: float
+    """ Default kp value of feedback loop. """
+
+    piKi: float
+    """ Default ki value of feedback loop. """
 
 @dataclass(frozen=True)
 class AutofocusInfo:

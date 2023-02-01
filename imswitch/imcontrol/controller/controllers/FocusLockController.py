@@ -29,6 +29,8 @@ class FocusLockController(ImConWidgetController):
                           self._setupInfo.focusLock.frameCropw,
                           self._setupInfo.focusLock.frameCroph)
         self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        self._widget.setKp(self._setupInfo.focusLock.piKp)
+        self._widget.setKi(self._setupInfo.focusLock.piKi)
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)

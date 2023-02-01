@@ -7,6 +7,8 @@ import threading
 from datetime import datetime
 import tifffile as tif
 
+import slmpy
+
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
@@ -126,6 +128,10 @@ class SIMController(LiveUpdatedController):
         else:
             self.IS_HAMAMATSU = False
 
+        # init pyslm
+        self.slm = slmpy.SLMdisplay(monitor = self._setupInfo.sim.monitorIdx, isImageLock = False)
+        resX, resY = self.slm.getSize()
+
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """     
         
@@ -230,6 +236,8 @@ class SIMController(LiveUpdatedController):
         try:
             currentPattern = self._master.simManager.allPatterns[patternID]
             self.updateDisplayImage(currentPattern)
+            self.slm.updateArray(currentPattern.astype('uint8'))
+            print(2)
             return currentPattern
         except Exception as e:
             self._logger.error(e)
@@ -307,7 +315,7 @@ class SIMController(LiveUpdatedController):
                 self._numQueuedImagesMutex.unlock()
 
                 # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-                self.computeSIMImage()
+                # self.computeSIMImage()
 
 
 

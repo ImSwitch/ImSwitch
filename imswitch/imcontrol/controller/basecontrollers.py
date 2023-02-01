@@ -97,13 +97,9 @@ class SuperScanController(ImConWidgetController):
         self._widget.sigLoadScanClicked.connect(self.loadScan)
         self._widget.sigRunScanClicked.connect(self.runScan)
         self._widget.sigSeqTimeParChanged.connect(self.updateScanTTLAttrs)
-        self._widget.sigStageParChanged.connect(self.test) #####
         self._widget.sigStageParChanged.connect(self.updatePixels)
         self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
-
-    def test(self): #####
-        self._logger.debug('test called')
 
     @property
     def parameterDict(self):
@@ -232,7 +228,6 @@ class SuperScanController(ImConWidgetController):
             self.settingAttr = False
 
     def updateScanStageAttrs(self):
-        self._logger.debug('updateScanStageAttrs')
         self.getParameters()
 
         for key, value in self._analogParameterDict.items():
@@ -259,7 +254,6 @@ class SuperScanController(ImConWidgetController):
         self.runScanAdvanced(sigScanStartingEmitted=False)
         
     def sendScanParameters(self):
-        self._logger.debug('sendScanParameters')
         self.getParameters()
         self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
 

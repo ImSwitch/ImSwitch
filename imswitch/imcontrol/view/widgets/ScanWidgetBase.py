@@ -95,20 +95,16 @@ class SuperScanWidget(Widget):
         self.scanButton.setChecked(checked)
 
     def setScanDim(self, index, positionerName):
-        self._logger.debug("setScanDim")
         scanDimPar = self.scanPar['scanDim' + str(index)]
         scanDimPar.setCurrentIndex(scanDimPar.findText(positionerName))
 
     def setScanSize(self, positionerName, size):
-        self._logger.debug("setScanSize")
         self.scanPar['size' + positionerName].setText(str(round(size, 3)))
 
     def setScanStepSize(self, positionerName, stepSize):
-        self._logger.debug("setScanStepSize")
         self.scanPar['stepSize' + positionerName].setText(str(round(stepSize, 3)))
 
     def setScanCenterPos(self, positionerName, centerPos):
-        self._logger.debug("setScanCenterPos")
         self.scanPar['center' + positionerName].setText(str(round(centerPos, 3)))
 
     def setScanPixels(self, positionerName, pixels):
@@ -168,8 +164,6 @@ class ScanWidgetBase(SuperScanWidget):
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
         currentRow = 0
         self.scanDims = list(positionerNames)
-        self._logger.debug(positionerNames)
-        self._logger.debug(type(positionerNames))
         self.scanDims.append('None')
 
         # Add general buttons

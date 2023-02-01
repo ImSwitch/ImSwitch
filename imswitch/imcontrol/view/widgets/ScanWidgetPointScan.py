@@ -112,9 +112,9 @@ class ScanWidgetPointScan(SuperScanWidget):
             self.scanPar['stepSize' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['pixels' + positionerName].textChanged.connect(self.sigStageParChanged)
             self.scanPar['center' + positionerName].textChanged.connect(self.sigStageParChanged)
-            #self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(
-            #    self.sigStageParChanged
-            #)
+            self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(
+                self.sigStageParChanged
+            )
 
         currentRow += 1
 
@@ -206,16 +206,13 @@ class ScanWidgetPointScan(SuperScanWidget):
     #    return float(self.extraLaserOnPar.text())
 
     def setScanPixels(self, positionerName, pixels):
-        self._logger.debug("setScanPixels_ps")
         txt = str(pixels) if pixels > 1 else '-'
         self.scanPar['pixels' + positionerName].setText(txt)
 
     def setTTLSequences(self, deviceName, sequence):
-        self._logger.debug("setTTLSequences")
         self.ttlParameters['seq' + deviceName].setText(sequence)
 
     def setTTLSequenceAxis(self, deviceName, axis):
-        self._logger.debug("setTTLSequenceAxis")
         idx = self.ttlParameters['seqAxis' + deviceName].findText(axis)
         if idx >= 0:
             self.ttlParameters['seqAxis' + deviceName].setCurrentIndex(idx)
@@ -224,11 +221,9 @@ class ScanWidgetPointScan(SuperScanWidget):
         self.ttlParameters['seq' + deviceName].setText('')
 
     def setSeqTimePar(self, seqTimePar):
-        self._logger.debug("setSeqTimePar")
         self.seqTimePar.setText(str(round(float(1000 * seqTimePar), 3)))
 
     def setPhaseDelayPar(self, phaseDelayPar):
-        self._logger.debug("setPhaseDelayPar")
         self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
 
 

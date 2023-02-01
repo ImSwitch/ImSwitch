@@ -19,7 +19,7 @@ class SIMDisplay(QtWidgets.QLabel):
         self.setWindowState(QtCore.Qt.WindowFullScreen)
 
         self.setMonitor(preferredMonitor)
-        self.imgArr = np.zeros((2, 2))
+        self.imgArr = np.zeros((200, 200))
         self.hasShownMonitorWarning = False
 
     def setMonitor(self, monitor, updateImage=False):

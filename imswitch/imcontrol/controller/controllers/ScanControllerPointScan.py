@@ -24,7 +24,6 @@ class ScanControllerPointScan(SuperScanController):
         try:
             for i in range(len(self._analogParameterDict['target_device'])):
                 positionerName = self._analogParameterDict['target_device'][i]
-                self._widget.setScanDim(i, positionerName)
                 self._widget.setScanSize(positionerName,
                                          self._analogParameterDict['axis_length'][i])
                 self._widget.setScanStepSize(positionerName,
@@ -105,6 +104,7 @@ class ScanControllerPointScan(SuperScanController):
             self.runScanAdvanced(sigScanStartingEmitted=True)
 
     def getParameters(self):
+        self._logger.debug('getParameters')
         if self.settingParameters:
             return
         self._analogParameterDict['target_device'] = []
@@ -156,6 +156,7 @@ class ScanControllerPointScan(SuperScanController):
         #self._analogParameterDict['extra_laser_on'] = self._widget.getExtraLaserOnPar()
 
     def updatePixels(self):
+        self._logger.debug('updatePixels')
         self.getParameters()
         for index, positionerName in enumerate(self._analogParameterDict['target_device']):
             if float(self._analogParameterDict['axis_step_size'][index]) != 0:

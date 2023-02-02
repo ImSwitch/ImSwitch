@@ -37,7 +37,6 @@ class FocusLockController(ImConWidgetController):
 
         self._widget.lockButton.clicked.connect(self.toggleFocus)
         self._widget.camDialogButton.clicked.connect(self.cameraDialog)
-        self._widget.positionSetButton.clicked.connect(self.moveZ)
         self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
         self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
 
@@ -50,15 +49,16 @@ class FocusLockController(ImConWidgetController):
         self.zStackVar = False
         self.twoFociVar = False
         self.noStepVar = True
-        self.focusTime = 1000 / self.updateFreq  # time between focus signal updates in ms
+        self.focusTime = 1000 / self.updateFreq  # focus signal update interval (ms)
+        self.zStepLimLo = 0
+        self.aboutToLockDiffMax = 0.4
         self.lockPosition = 0
         self.currentPosition = 0
-        self.lastZ = 0
+        self.lastPosition = 0
         self.buffer = 40
         self.currPoint = 0
         self.setPointData = np.zeros(self.buffer)
         self.timeData = np.zeros(self.buffer)
-        self.lockingData = np.zeros(7)
 
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
@@ -84,11 +84,10 @@ class FocusLockController(ImConWidgetController):
             self._widget.focusPlot.removeItem(self._widget.focusLockGraph.lineLock)
 
     def toggleFocus(self):
+        self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            absz = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(float(self._widget.kpEdit.text()),
-                           float(self._widget.kiEdit.text()),
-                           absz)
+            zpos = self._master.positionersManager[self.positioner].get_abs()
+            self.lockFocus(zpos)
             self._widget.lockButton.setText('Unlock')
         else:
             self.unlockFocus()
@@ -96,10 +95,6 @@ class FocusLockController(ImConWidgetController):
 
     def cameraDialog(self):
         self._master.detectorsManager[self.camera].openPropertiesDialog()
-
-    def moveZ(self):
-        abspos = float(self._widget.positionEdit.text())
-        self._master.positionersManager[self.positioner].setPosition(abspos, 0)
 
     def focusCalibrationStart(self):
         self.__focusCalibThread.start()
@@ -119,22 +114,18 @@ class FocusLockController(ImConWidgetController):
         else:
             self.twoFociVar = True
 
-    # Update focus lock
     def update(self):
-        # 1 Grab camera frame
+        # get data
         img = self.__processDataThread.grabCameraFrame()
-        # 2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
         self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
-        # 3 Update PI with the new setPointSignal and get back the distance to move, send to
-        # update the PI control, and then send the move-distance to the z-piezo
+        # move
         if self.locked:
             value_move = self.updatePI()
             if self.noStepVar and abs(value_move) > 0.002:
-                # self.zstepupdate = self.zstepupdate + 1
                 self._master.positionersManager[self.positioner].move(value_move, 0)
-        # elif self.aboutToLock:
-        #    self.lockingPI()
-        # 4 Update image and focusSignalPosition in FocusLockWidget
+        elif self.aboutToLock:
+           self.aboutToLockUpdate()
+        # udpate graphics
         self.updateSetPointData()
         self._widget.camImg.setImage(img)
         if self.currPoint < self.buffer:
@@ -142,15 +133,24 @@ class FocusLockController(ImConWidgetController):
                                                 self.setPointData[1:self.currPoint])
         else:
             self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
+    
+    def aboutToLockUpdate(self):
+        self.aboutToLockDataPoints = np.roll(self.aboutToLockDataPoints,1)
+        self.aboutToLockDataPoints[0] = self.setPointSignal
+        averageDiff = np.std(self.aboutToLockDataPoints)
+        if averageDiff < self.aboutToLockDiffMax:
+            zpos = self._master.positionersManager[self.positioner].get_abs()
+            self.lockFocus(zpos)
+            self.aboutToLock = False
 
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint] = self.setPointSignal
             self.timeData[self.currPoint] = perf_counter() - self.startTime
         else:
-            self.setPointData[:-1] = self.setPointData[1:]
+            self.setPointData = np.roll(self.setPointData, -1)
             self.setPointData[-1] = self.setPointSignal
-            self.timeData[:-1] = self.timeData[1:]
+            self.timeData = np.roll(self.timeData, -1)
             self.timeData[-1] = perf_counter() - self.startTime
         self.currPoint += 1
 
@@ -158,24 +158,37 @@ class FocusLockController(ImConWidgetController):
         if not self.noStepVar:
             self.noStepVar = True
         self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
+        self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
         distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
-        self.lastZ = self.currentPosition
+        self.lastPosition = self.currentPosition
 
         if abs(distance) > 5 or abs(move) > 3:
             self._logger.warning(f'Safety unlocking! Distance to lock: {distance:.3f}, current move step: {move:.3f}.')
             self.unlockFocus()
-
+        elif self.zStackVar:
+            if self.stepDistance > self.zStepLimLo:
+                self.unlockFocus()
+                self.aboutToLockDataPoints = np.zeros(5)
+                self.aboutToLock = True
+                self.noStepVar = False
         return move
 
-    def lockFocus(self, kp, ki, absz):
+    def lockFocus(self, zpos):
         if not self.locked:
+            kp = float(self._widget.kpEdit.text())
+            ki = float(self._widget.kiEdit.text())
             self.pi = PI(self.setPointSignal, 0.001, kp, ki)
-            self.lockPosition = absz
+            self.lockPosition = zpos
             self.locked = True
             self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(
                 y=self.setPointSignal, pen='r'
             )
+            self._widget.lockButton.setChecked(True)
+            self.updateZStepLimits()
+
+    def updateZStepLimits(self):
+        self.zStepLimLo = 0.001 * float(self._widget.zStepFromEdit.text())
 
 
 class ProcessDataThread(Thread):

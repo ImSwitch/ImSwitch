@@ -26,16 +26,9 @@ class FocusLockWidget(Widget):
         self.twoFociBox = QtWidgets.QCheckBox('Two foci')
 
         self.zStepFromEdit = QtWidgets.QLineEdit('40')
-        self.zStepFromLabel = QtWidgets.QLabel('Min step (nm)')
-        self.zStepToEdit = QtWidgets.QLineEdit('100')
-        self.zStepToLabel = QtWidgets.QLabel('Max step (nm)')
+        self.zStepFromLabel = QtWidgets.QLabel('Min z-stack step (nm)')
 
         self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
-
-        # Piezo absolute positioning
-        self.positionLabel = QtWidgets.QLabel('Position (µm)')
-        self.positionEdit = QtWidgets.QLineEdit('50')
-        self.positionSetButton = guitools.BetterPushButton('Set')
 
         # Focus lock calibration
         self.calibFromLabel = QtWidgets.QLabel('From (µm)')
@@ -78,21 +71,16 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.kiLabel, 2, 3)
         grid.addWidget(self.kiEdit, 2, 4)
         grid.addWidget(self.lockButton, 1, 5, 2, 1)
-        grid.addWidget(self.zStackBox, 4, 2)
-        grid.addWidget(self.twoFociBox, 4, 6)
+        grid.addWidget(self.zStackBox, 3, 6)
+        grid.addWidget(self.twoFociBox, 2, 6)
         grid.addWidget(self.zStepFromLabel, 3, 4)
-        grid.addWidget(self.zStepFromEdit, 4, 4)
-        grid.addWidget(self.zStepToLabel, 3, 5)
-        grid.addWidget(self.zStepToEdit, 4, 5)
+        grid.addWidget(self.zStepFromEdit, 3, 5)
         grid.addWidget(self.calibFromLabel, 1, 0)
         grid.addWidget(self.calibFromEdit, 1, 1)
         grid.addWidget(self.calibToLabel, 2, 0)
         grid.addWidget(self.calibToEdit, 2, 1)
         grid.addWidget(self.calibCurveButton, 3, 2)
-        grid.addWidget(self.positionLabel, 1, 6)
-        grid.addWidget(self.positionEdit, 1, 7)
-        grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
-        grid.addWidget(self.camDialogButton, 3, 6, 1, 2)
+        grid.addWidget(self.camDialogButton, 1, 6, 1, 2)
 
     def setKp(self, kp):
         self.kpEdit.setText(str(kp))

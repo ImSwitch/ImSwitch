@@ -150,6 +150,9 @@ class FocusLockInfo:
     frameCroph: int
     """ Height of camera frame crop. """
 
+    swapImageAxes: bool
+    """ Swap camera image axes when grabbing camera frame. """
+
     piKp: float
     """ Default kp value of feedback loop. """
 

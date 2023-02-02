@@ -96,19 +96,15 @@ class FocusLockController(ImConWidgetController):
 
     def cameraDialog(self):
         self._master.detectorsManager[self.camera].openPropertiesDialog()
-        self._logger.debug('Open camera settings dialog')
 
     def moveZ(self):
         abspos = float(self._widget.positionEdit.text())
         self._master.positionersManager[self.positioner].setPosition(abspos, 0)
-        self._logger.debug(f'Move Z-piezo to absolute position {abspos} um')
 
     def focusCalibrationStart(self):
-        self._logger.debug('Start focus calibration thread and calibrate')
         self.__focusCalibThread.start()
 
     def showCalibrationCurve(self):
-        self._logger.debug('Show calibration curve')
         self._widget.showCalibrationCurve(self.__focusCalibThread.getData())
 
     def zStackVarChange(self):
@@ -191,7 +187,8 @@ class ProcessDataThread(Thread):
         detectorManager = self._controller._master.detectorsManager[self._controller.camera]
         self.latestimg = detectorManager.getLatestFrame()
         # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
-        self.latestimg = np.swapaxes(self.latestimg,0,1)
+        if self._controller._setupInfo.focusLock.swapImageAxes:
+            self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
 
     def update(self, twoFociVar):
@@ -258,31 +255,22 @@ class FocusCalibThread(Thread):
             self.focusCalibSignal = self._controller.setPointSignal
             self.signalData.append(self.focusCalibSignal)
             self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs())
-
         self.poly = np.polyfit(self.positionData, self.signalData, 1)
         self.calibrationResult = np.around(self.poly, 4)
-        self.export()
+        self.show()
 
-    def export(self):
-        self._controller._logger.debug(self.positionData)
-        self._controller._logger.debug(self.signalData)
-        self._controller._logger.debug(self.calibrationResult)
-
-    def exportReal(self):
-        np.savetxt('calibration.txt', self.calibrationResult)
+    def show(self):
         cal_nm = np.round(1000 / self.poly[0], 1)
         calText = f'1 px --> {cal_nm} nm'
         self._controller._widget.calibrationDisplay.setText(calText)
-        d = [self.positionData, self.calibrationResult[::-1]]
-        self.savedCalibData = [self.positionData,
-                               self.signalData,
-                               np.polynomial.polynomial.polyval(d[0], d[1])]
-        self._controller._logger.debug(self.savedCalibData)
-        #np.savetxt('calibrationcurves.txt', self.savedCalibData)
 
     def getData(self):
-        # ADD DATA SEND BACK HERE, SHOULD BE THE LAST THING
-        pass
+        data = {
+            'signalData': self.signalData,
+            'positionData': self.positionData,
+            'poly': self.poly
+        }
+        return data
 
 
 class PI:

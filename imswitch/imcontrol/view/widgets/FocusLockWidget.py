@@ -8,7 +8,6 @@ from .basewidgets import Widget
 
 class FocusLockWidget(Widget):
     """ Widget containing focus lock interface. """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -31,7 +30,6 @@ class FocusLockWidget(Widget):
         self.zStepToEdit = QtWidgets.QLineEdit('100')
         self.zStepToLabel = QtWidgets.QLabel('Max step (nm)')
 
-        # self.focusDataBox = QtWidgets.QCheckBox('Save data')  # Connect to exportData
         self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
 
         # Piezo absolute positioning
@@ -48,10 +46,9 @@ class FocusLockWidget(Widget):
         self.focusCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                             QtWidgets.QSizePolicy.Expanding)
         self.calibCurveButton = guitools.BetterPushButton('See calib')
-        self.calibrationDisplay = QtWidgets.QLineEdit('Previous calib: none')
+        self.calibrationDisplay = QtWidgets.QLineEdit('No calibration')
         self.calibrationDisplay.setReadOnly(True)
         self.focusCalibrationWindow = FocusCalibrationWindow()
-        # CREATE CALIBRATION CURVE WINDOW AND FOCUS CALIBRATION GRAPH SOMEHOW
 
         # Focus lock graph
         self.focusLockGraph = pg.GraphicsLayoutWidget()
@@ -59,8 +56,7 @@ class FocusLockWidget(Widget):
         self.focusPlot = self.focusLockGraph.addPlot(row=1, col=0)
         self.focusPlot.setLabels(bottom=('Time', 's'), left=('Laser position', 'px'))
         self.focusPlot.showGrid(x=True, y=True)
-        # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
-        self.focusPlotCurve = self.focusPlot.plot(pen='y')
+        self.focusPlotCurve = self.focusPlot.plot(pen='y') # update from FocusLockController
 
         # Webcam graph
         self.webcamGraph = pg.GraphicsLayoutWidget()
@@ -88,7 +84,6 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.zStepFromEdit, 4, 4)
         grid.addWidget(self.zStepToLabel, 3, 5)
         grid.addWidget(self.zStepToEdit, 4, 5)
-        # grid.addWidget(self.focusDataBox, 4, 0, 1, 2)
         grid.addWidget(self.calibFromLabel, 1, 0)
         grid.addWidget(self.calibFromEdit, 1, 1)
         grid.addWidget(self.calibToLabel, 2, 0)
@@ -109,6 +104,7 @@ class FocusLockWidget(Widget):
         self.focusCalibrationWindow.run(data)
         self.focusCalibrationWindow.show()
 
+
 class FocusCalibrationWindow(QtWidgets.QFrame):
     def __init__(self):
         super().__init__()
@@ -124,17 +120,16 @@ class FocusCalibrationWindow(QtWidgets.QFrame):
 class FocusCalibrationGraph(pg.GraphicsLayoutWidget):
     def __init__(self):
         super().__init__()
-        # Graph without a fixed range
         self.plot = self.addPlot(row=1, col=0)
-        self.plot.setLabels(bottom=('Piezo position', 'um'),
-                            left=('Laser position', 'px'))
+        self.plot.setLabels(bottom=('Set z position', 'µm'),
+                            left=('Laser spot position', 'px'))
         self.plot.showGrid(x=True, y=True)
 
     def draw(self, data):
         self.plot.clear()
-        self.positionData = data['positionData'] #self.focusWidget.focusCalibThread.positionData
-        self.signalData = data['signalData'] #self.focusWidget.focusCalibThread.signalData
-        self.poly = data['poly'] #self.focusWidget.focusCalibThread.poly
+        self.positionData = data['positionData']
+        self.signalData = data['signalData']
+        self.poly = data['poly']
         self.plot.plot(self.positionData,
                        self.signalData, pen=None, symbol='o')
         self.plot.plot(self.positionData,

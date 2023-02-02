@@ -35,8 +35,7 @@ class FocusLockWidget(Widget):
         self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
 
         # Piezo absolute positioning
-        self.positionLabel = QtWidgets.QLabel(
-            'Position (µm)')  # Potentially disregard this and only use in the positioning widget?
+        self.positionLabel = QtWidgets.QLabel('Position (µm)')
         self.positionEdit = QtWidgets.QLineEdit('50')
         self.positionSetButton = guitools.BetterPushButton('Set')
 
@@ -49,9 +48,9 @@ class FocusLockWidget(Widget):
         self.focusCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                             QtWidgets.QSizePolicy.Expanding)
         self.calibCurveButton = guitools.BetterPushButton('See calib')
-        self.calibrationDisplay = QtWidgets.QLineEdit(
-            'Previous calib: none')  # Edit this from the controller with calibration values
+        self.calibrationDisplay = QtWidgets.QLineEdit('Previous calib: none')
         self.calibrationDisplay.setReadOnly(True)
+        self.focusCalibrationWindow = FocusCalibrationWindow()
         # CREATE CALIBRATION CURVE WINDOW AND FOCUS CALIBRATION GRAPH SOMEHOW
 
         # Focus lock graph
@@ -70,8 +69,6 @@ class FocusLockWidget(Widget):
         self.vb = self.webcamGraph.addViewBox(invertY=True, invertX=False)
         self.vb.setAspectLocked(True)
         self.vb.addItem(self.camImg)
-
-        # PROCESS DATA THREAD - ADD SOMEWHERE ELSE, NOT HERE, AS IT HAS NO GRAPHICAL ELEMENTS!
 
         # GUI layout below
         grid = QtWidgets.QGridLayout()
@@ -107,6 +104,41 @@ class FocusLockWidget(Widget):
 
     def setKi(self, ki):
         self.kiEdit.setText(str(ki))
+
+    def showCalibrationCurve(self, data):
+        self.focusCalibrationWindow.run(data)
+        self.focusCalibrationWindow.show()
+
+class FocusCalibrationWindow(QtWidgets.QFrame):
+    def __init__(self):
+        super().__init__()
+        self.__focusCalibGraph = FocusCalibrationGraph()
+        grid = QtWidgets.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.__focusCalibGraph, 0, 0)
+
+    def run(self, data):
+        self.__focusCalibGraph.draw(data)
+
+
+class FocusCalibrationGraph(pg.GraphicsLayoutWidget):
+    def __init__(self):
+        super().__init__()
+        # Graph without a fixed range
+        self.plot = self.addPlot(row=1, col=0)
+        self.plot.setLabels(bottom=('Piezo position', 'um'),
+                            left=('Laser position', 'px'))
+        self.plot.showGrid(x=True, y=True)
+
+    def draw(self, data):
+        self.plot.clear()
+        self.positionData = data['positionData'] #self.focusWidget.focusCalibThread.positionData
+        self.signalData = data['signalData'] #self.focusWidget.focusCalibThread.signalData
+        self.poly = data['poly'] #self.focusWidget.focusCalibThread.poly
+        self.plot.plot(self.positionData,
+                       self.signalData, pen=None, symbol='o')
+        self.plot.plot(self.positionData,
+                       np.polyval(self.poly, self.positionData), pen='r')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

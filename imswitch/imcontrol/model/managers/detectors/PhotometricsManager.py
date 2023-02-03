@@ -123,9 +123,10 @@ class PhotometricsManager(DetectorManager):
             self._setReadoutPort(value)
         return self.parameters
 
-    def startAcquisition(self):
+    def startAcquisition(self, liveView=False):
         self.__acquisition = True
-        self._camera.start_live()
+        if liveView:
+            self._camera.start_live()
 
     def stopAcquisition(self):
         self.__acquisition = False

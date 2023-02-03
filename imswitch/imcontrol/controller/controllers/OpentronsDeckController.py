@@ -21,6 +21,7 @@ _attrCategory = 'Positioner'
 _positionAttr = 'Position'
 _speedAttr = "Speed"
 _objectiveRadius = 21.8 / 2
+_objectiveRadius = 29.0 / 2 # Olympus
 
 
 class OpentronsDeckController(LiveUpdatedController):

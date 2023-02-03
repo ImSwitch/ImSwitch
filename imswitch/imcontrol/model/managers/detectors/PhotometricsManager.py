@@ -76,12 +76,9 @@ class PhotometricsManager(DetectorManager):
 
     def getChunk(self):
         frames = []
-        status = self._camera.check_frame_status()
         try:
-            if not status == "READOUT_NOT_ACTIVE":
-                while True:
-                    im = np.array(self._camera.poll_frame()[0]['pixel_data'])
-                    frames.append(im)
+            im = np.array(self._camera.get_frame())
+            frames.append(im)
         except RuntimeError:
             pass
         return frames

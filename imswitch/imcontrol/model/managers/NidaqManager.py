@@ -82,9 +82,14 @@ class NidaqManager(SignalInterface):
 
         for line in lines:
             dotask.do_channels.add_do_chan(line)
-        dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
-                                          sample_mode=acquisitionType,
-                                          samps_per_chan=sampsInScan)
+        if source:
+            dotask.timing.cfg_samp_clk_timing(source=source, rate=rate,
+                                            sample_mode=acquisitionType,
+                                            samps_per_chan=sampsInScan)
+        else:
+            dotask.timing.cfg_samp_clk_timing(rate=rate,
+                                            sample_mode=acquisitionType,
+                                            samps_per_chan=sampsInScan)
         if starttrig:
             dotask.triggers.start_trigger.cfg_dig_edge_start_trig(reference_trigger)
         #self.__logger.debug(f'Created DO task: {name}')

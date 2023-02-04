@@ -113,6 +113,21 @@ class TiffStorer(Storer):
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
 
+class MP4Storer(Storer):
+    """ A storer that writes the frames to an MP4 file """
+
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        for channel, image in images.items():
+            with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
+                shape = self.detectorManager[channel].shape
+            
+                #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
+                frame = cv2.cvtColor(cv2.convertScaleAbs(image), cv2.COLOR_GRAY2BGR)
+                datasets[detectorName].write(frame)
+
+                tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
+
+
 
 
 class SaveMode(enum.Enum):
@@ -126,12 +141,14 @@ class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
     ZARR = 3
+    MP4 = 4
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,
-    SaveFormat.TIFF: TiffStorer
+    SaveFormat.TIFF: TiffStorer,
+    SaveFormat.MP4: MP4Storer
 }
 
 
@@ -465,6 +482,16 @@ class RecordingWorker(Worker):
                                 else:
                                     dataset.append(newFrames)
                                 currentFrame[detectorName] += n
+                            elif self.saveFormat == SaveFormat.MP4:
+                                # Need to initiliaze videowriter for each detector
+                                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                fileExtension = str(self.saveFormat.name).lower()
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                                datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
+                                #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
+
+                                self.__logger.debug(shapes[detectorName])
+                                self.__logger.debug(filePath)
 
                             # Things get a bit weird if we have multiple detectors when we report
                             # the current frame number, since the detectors may not be synchronized.
@@ -503,6 +530,17 @@ class RecordingWorker(Worker):
                                 dataset = datasets[detectorName]
                                 dataset.resize(n + it, axis=0)
                                 dataset[it:it + n, :, :] = newFrames
+                            elif self.saveFormat == SaveFormat.MP4:
+                                # Need to initiliaze videowriter for each detector
+                                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                fileExtension = str(self.saveFormat.name).lower()
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                                datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
+                                #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
+
+                                self.__logger.debug(shapes[detectorName])
+                                self.__logger.debug(filePath)
+
                             currentFrame[detectorName] += n
                             self.__recordingManager.sigRecordingTimeUpdated.emit(
                                 np.around(currentRecTime, decimals=2)
@@ -551,6 +589,16 @@ class RecordingWorker(Worker):
                                         dataset.append(newFrames[1:n, :, :])
                                 else:
                                     dataset.append(newFrames)
+                            elif self.saveFormat == SaveFormat.MP4:
+                                # Need to initiliaze videowriter for each detector
+                                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                fileExtension = str(self.saveFormat.name).lower()
+                                filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                                datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
+                                #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
+
+                                self.__logger.debug(shapes[detectorName])
+                                self.__logger.debug(filePath)
 
                             currentFrame[detectorName] += n
 
@@ -589,6 +637,9 @@ class RecordingWorker(Worker):
                     else:
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
+                        elif self.saveFormat == SaveFormat.MP4:
+                            for detectorName, file in files.items():
+                                datasets[detectorName].release()
                         else:
                             datasets[detectorName].attrs['writing'] = False
                             self.store.close()

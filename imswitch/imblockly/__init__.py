@@ -42,11 +42,16 @@ def start_server(httpd):
      
 def run(server_class=HTTPServer, handler_class=StaticServer, port=1889):
     server_address = ('', port)
-    httpd = server_class(server_address, handler_class)
-    t = threading.Thread(target=start_server, args=(httpd,))
-    t.start()
-    #print('httpd started on port {}'.format(port))
-
+    try:
+        httpd = server_class(server_address, handler_class)
+        t = threading.Thread(target=start_server, args=(httpd,))
+        t.start()
+    
+        print('httpd started on port {}'.format(port))
+    except Exception as e:
+        print('httpd failed to start on port {}'.format(port))
+        print(e)
+        return
 run()
  
 

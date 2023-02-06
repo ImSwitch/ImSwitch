@@ -61,8 +61,7 @@ class PhotometricsManager(DetectorManager):
 
     def getLatestFrame(self, is_save=False):
         if is_save:
-            return self._camera.get_frame().reshape(
-                self._camera.sensor_size[::-1])
+            return self._camera.get_frame()
         try:
             status = self._camera.check_frame_status()
             if status == "READOUT_NOT_ACTIVE":

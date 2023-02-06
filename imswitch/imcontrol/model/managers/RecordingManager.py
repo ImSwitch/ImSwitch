@@ -459,7 +459,7 @@ class RecordingWorker(Worker):
                     raise ValueError('recTime must be specified in SpecTime mode')
 
                 start = time.time()
-                currentRecTime = 0
+                currentRecTimeS = 0
                 shouldStop = False
                 while True:
                     for detectorName in self.detectorNames:
@@ -483,9 +483,10 @@ class RecordingWorker(Worker):
                                 dataset[it:it + n, :, :] = newFrames
                             currentFrame[detectorName] += n
                             self.__recordingManager.sigRecordingTimeUpdated.emit(
-                                np.around(currentRecTime, decimals=2)
+                                np.around(currentRecTimeS, decimals=2)
                             )
                             currentRecTime = time.time() - start
+                            currentRecTimeS = int(currentRecTime % 60)
 
                     if shouldStop:
                         break  # Enter loop one final time, then stop

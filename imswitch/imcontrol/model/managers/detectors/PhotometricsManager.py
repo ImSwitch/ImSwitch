@@ -90,7 +90,7 @@ class PhotometricsManager(DetectorManager):
         roi = (hpos, hpos + hsize, vpos, vpos + vsize)
 
         def cropAction():
-            self._camera.roi = roi
+            self._camera.set_roi(hpos, vpos, hsize, vsize)
 
         self._performSafeCameraAction(cropAction)
         # This should be the only place where self.frameStart is changed

@@ -79,3 +79,4 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
+imswitch/imcontrol/model/managers/LeicaDMIManager.py

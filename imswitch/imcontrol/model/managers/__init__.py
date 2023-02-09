@@ -9,4 +9,5 @@ from .SLMManager import SLMManager
 from .ScanManagerPointScan import ScanManagerPointScan
 from .ScanManagerBase import ScanManagerBase
 from .ScanManagerMoNaLISA import ScanManagerMoNaLISA
+from .StandManager import StandManager
 from .RotatorsManager import RotatorsManager

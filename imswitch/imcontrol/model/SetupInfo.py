@@ -229,6 +229,15 @@ class EtSTEDInfo:
 
 
 @dataclass(frozen=True)
+class MicroscopeStandInfo:
+    managerName: str
+    """ Name of the manager to use. """
+
+    rs232device: str
+    """ Name of the rs232 device to use. """
+
+
+@dataclass(frozen=True)
 class NidaqInfo:
     timerCounterChannel: Optional[Union[str, int]] = None
     """ Output for Counter for timing purposes. If an integer is specified, it
@@ -302,6 +311,9 @@ class SetupInfo:
 
     rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
     """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """
+
+    microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
+    """ Microscope stand settings. Required to be defined to use MotCorr widget. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

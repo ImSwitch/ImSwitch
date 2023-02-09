@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, LeicaDMIManager, MultiManager, NidaqManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, RotatorsManager
+    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
 )
 
 
@@ -39,7 +39,10 @@ class MasterController:
 
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
-        self.leicadmiManager = LeicaDMIManager(**lowLevelManagers)
+
+        if self.__setupInfo.microscopeStand:
+            self.standManager = StandManager(self.__setupInfo.microscopeStand,
+                                             **lowLevelManagers)
 
         # Generate scanManager type according to setupInfo
         if self.__setupInfo.scan:

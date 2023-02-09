@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 venv
+
 # mypy
 .mypy_cache/
 
@@ -50,7 +51,7 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
+# Django
 *.log
 
 # Sphinx documentation
@@ -67,6 +68,7 @@ target/
 
 # Specific files
 imswitch/imcontrol/model/managers/lasers/KatanaLaserManager.py
+imswitch/imcontrol/model/managers/stands/LeicaDMIManager.py
 
 # Mac Files
 .DS_Store
@@ -79,4 +81,3 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
-imswitch/imcontrol/model/managers/LeicaDMIManager.py

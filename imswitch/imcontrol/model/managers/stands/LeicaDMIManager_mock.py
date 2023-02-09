@@ -13,14 +13,14 @@ class MockLeicaDMIManager:
 
     def move(self, value, *args):
         if not int(value) == 0:
-            cmd = '000 ' + str(int(value))
+            cmd = str(int(value))
             self._rs232Manager.write(cmd)
 
         self._position = self._position + value
         return self._position
 
     def setPosition(self, value, *args):
-        cmd = '000 ' + str(int(value))
+        cmd = str(int(value))
         self._rs232Manager.write(cmd)
 
         self._position = value
@@ -36,7 +36,7 @@ class MockLeicaDMIManager:
     def motCorrPos(self, value):
         """ Absolute mot_corr position movement. """
         movetopos = int(round(value))
-        cmd = '000' + str(movetopos)
+        cmd = str(movetopos)
         self._rs232Manager.write(cmd)
 
     # the serial command automatically sleeps until a reply is gotten, which it gets after flip is finished
@@ -50,5 +50,5 @@ class MockLeicaDMIManager:
         self._rs232Manager.query(cmd)
 
     def setILshutter(self, value):
-        cmd = '000 ' + str(value)
+        cmd = str(value)
         self._rs232Manager.query(cmd)

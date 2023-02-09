@@ -38,7 +38,8 @@ class PositionerController(ImConWidgetController):
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
-            lambda p: [p.setPosition(0, axis) for axis in p.axes]
+            lambda p: [p.setPosition(0, axis) for axis in p.axes],
+            condition = lambda p: p.resetOnClose
         )
 
     def getPos(self):

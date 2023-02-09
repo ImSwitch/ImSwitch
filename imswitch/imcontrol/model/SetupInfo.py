@@ -88,6 +88,9 @@ class PositionerInfo(DeviceInfo):
     forScanning: bool = False
     """ Whether the positioner is used for scanning. """
 
+    resetOnClose: bool = True
+    """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
+
 
 @dataclass(frozen=True)
 class RS232Info:

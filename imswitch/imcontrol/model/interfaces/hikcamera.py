@@ -6,12 +6,23 @@ from imswitch.imcommon.model import initLogger
 
 import sys
 import threading
-import msvcrt
-
 from ctypes import *
-
-from imswitch.imcontrol.model.interfaces.hikrobot.MvCameraControl_class import *
 import collections
+
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    # linux
+    pass
+elif platform == "darwin":
+    # OS X
+    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+    pass
+elif platform == "win32":
+    import msvcrt
+    from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+    
+
+
 
 
 class CameraHIK:
@@ -138,6 +149,8 @@ class CameraHIK:
             
             # Start grab image
             ret = self.camera.MV_CC_StartGrabbing()
+            self.__logger.debug("start grabbing")
+            self.__logger.debug(ret)
             try:
                 self.hThreadHandle = threading.Thread(target=self.work_thread, args=(self.camera, None, None))
                 self.hThreadHandle.start()
@@ -322,31 +335,69 @@ class CameraHIK:
         pass
     
     def work_thread(self, cam=0, pData=0, nDataSize=0):
-        stOutFrame = MV_FRAME_OUT()  
-        memset(byref(stOutFrame), 0, sizeof(stOutFrame))
-        while True:
-            ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
-            if None != stOutFrame.pBufAddr and 0 == ret:
-                #print ("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum))
-                nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
+        if platform == "win32":
+            stOutFrame = MV_FRAME_OUT()  
+            memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+            while True:
+                ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                if None != stOutFrame.pBufAddr and 0 == ret:
+                    #print ("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum))
+                    nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
 
-                pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
-                cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
-                           stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
-                data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
-                             dtype=np.uint8)
-                self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+                    pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
+                    cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
+                            stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
+                    data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
+                                dtype=np.uint8)
+                    self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
-                self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                    self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                    self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                    self.timestamp = time.time()
+                    self.frame_buffer.append(self.frame)
+                    self.frameid_buffer.append(self.frame_id)
+                else:
+                    pass 
+                if self.g_bExit == True:
+                    break
+        if platform == "darwin":
+            
+            # en:Get payload size
+            stParam =  MVCC_INTVALUE()
+            memset(byref(stParam), 0, sizeof(MVCC_INTVALUE))
+            
+            ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
+            if ret != 0:
+                print ("get payload size fail! ret[0x%x]" % ret)
+                sys.exit()
+            
+            nPayloadSize = stParam.nCurValue
+            stDeviceList = MV_FRAME_OUT_INFO_EX()
+            memset(byref(stDeviceList), 0, sizeof(stDeviceList))
+            
+            while True:
+                data_buf = (c_ubyte * nPayloadSize)()
+                ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
+                data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
+                self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
+
+                self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
+                self.frame_id = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.frame_id)
-            else:
-                pass 
-            if self.g_bExit == True:
-                break
-
+                    
+                    
+                '''
+                ret = cam.MV_CC_GetOneFrameTimeout(pData, nDataSize, stFrameInfo, 1000)
+                if ret == 0:
+                    print ("get one frame: Width[%d], Height[%d], PixelType[0x%x], nFrameNum[%d]"  % (stFrameInfo.nWidth, stFrameInfo.nHeight, stFrameInfo.enPixelType,stFrameInfo.nFrameNum))
+                else:
+                    print ("no data[0x%x]" % ret)
+                if self.g_bExit == True:
+                        break
+                '''
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

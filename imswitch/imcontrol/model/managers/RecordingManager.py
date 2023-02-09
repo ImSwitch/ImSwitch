@@ -119,19 +119,10 @@ class MP4Storer(Storer):
     """ A storer that writes the frames to an MP4 file """
 
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
-        for channel, image in images.items():
-            with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
-                shape = self.detectorManager[channel].shape
-            
-                #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
-                frame = cv2.cvtColor(cv2.convertScaleAbs(image), cv2.COLOR_GRAY2BGR)
-                datasets[detectorName].write(frame)
-
-                tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
-
-
-
-
+        # not yet implemented
+        pass 
+        
+        
 class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2

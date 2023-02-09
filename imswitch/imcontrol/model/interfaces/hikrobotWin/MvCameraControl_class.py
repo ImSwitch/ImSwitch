@@ -6,12 +6,21 @@ import ctypes
 
 from ctypes import *
 
-from imswitch.imcontrol.model.interfaces.hikrobot.PixelType_header import *
-from imswitch.imcontrol.model.interfaces.hikrobot.CameraParams_const import *
-from imswitch.imcontrol.model.interfaces.hikrobot.CameraParams_header import *
-from imswitch.imcontrol.model.interfaces.hikrobot.MvErrorDefine_const import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.PixelType_header import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_const import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_header import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.MvErrorDefine_const import *
 
-MvCamCtrldll = WinDLL("C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll")
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    # linux
+    pass
+elif platform == "darwin":
+    # OS X
+    pass
+elif platform == "win32":
+    # Windows...
+    MvCamCtrldll = WinDLL("C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll")
 
 # 用于回调函数传入相机实例
 class _MV_PY_OBJECT_(Structure):

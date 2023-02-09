@@ -2,8 +2,8 @@
 # flags '-c -d -v C:\test_h\CameraParams.xml -o CameraParams_header.py'
 from ctypes import *
 from enum import Enum
-from imswitch.imcontrol.model.interfaces.hikrobot.CameraParams_const import *
-from imswitch.imcontrol.model.interfaces.hikrobot.PixelType_header import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_const import *
+from imswitch.imcontrol.model.interfaces.hikrobotWin.PixelType_header import *
 
 STRING = c_char_p
 

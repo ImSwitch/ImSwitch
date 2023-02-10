@@ -32,39 +32,40 @@ class SIMWidget(NapariHybridWidget):
         self.simDisplayButton = guitools.BetterPushButton('Show SIM display (fullscreen)')
         self.simDisplayButton.setCheckable(True)
         self.simDisplayButton.toggled.connect(self.sigSIMDisplayToggled)
-        self.simDisplayLayout.addWidget(self.simDisplayButton, 1)
+        #self.simDisplayLayout.addWidget(self.simDisplayButton, 1)
 
         self.simMonitorLabel = QtWidgets.QLabel('Screen:')
-        self.simDisplayLayout.addWidget(self.simMonitorLabel)
+        #self.simDisplayLayout.addWidget(self.simMonitorLabel)
 
         self.simMonitorBox = QtWidgets.QSpinBox()
-        self.simMonitorBox.valueChanged.connect(self.sigSIMMonitorChanged)
-        self.simDisplayLayout.addWidget(self.simMonitorBox)
+        #self.simMonitorBox.valueChanged.connect(self.sigSIMMonitorChanged)
+        #self.simDisplayLayout.addWidget(self.simMonitorBox)
 
         # Button to apply changes
-        self.applyChangesButton = guitools.BetterPushButton('Apply changes')
+        #self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         
         self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
         self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
+        self.isRecordingButton = guitools.BetterPushButton("Start Recording")
         
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
-        self.controlPanel.choiceInterfaceLayout = QtWidgets.QGridLayout()
-        self.controlPanel.choiceInterface = QtWidgets.QWidget()
-        self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
+        #self.controlPanel.choiceInterfaceLayout = QtWidgets.QGridLayout()
+        #self.controlPanel.choiceInterface = QtWidgets.QWidget()
+        #self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
 
         # Buttons for saving, loading, and controlling the various phase patterns
-        self.controlPanel.saveButton = guitools.BetterPushButton("Save")
-        self.controlPanel.loadButton = guitools.BetterPushButton("Load")
+        #self.controlPanel.saveButton = guitools.BetterPushButton("Save")
+        #self.controlPanel.loadButton = guitools.BetterPushButton("Load")
         
         # Display patterns
         self.patternIDLabel = QtWidgets.QLabel('Pattern ID:')
-        self.simDisplayLayout.addWidget(self.patternIDLabel)
+        #self.simDisplayLayout.addWidget(self.patternIDLabel)
 
         self.patternIDBox = QtWidgets.QSpinBox()
         self.patternIDBox.valueChanged.connect(self.sigPatternID)
-        self.simDisplayLayout.addWidget(self.patternIDBox)
+        #self.simDisplayLayout.addWidget(self.patternIDBox)
 
 
         # Defining layout
@@ -72,24 +73,25 @@ class SIMWidget(NapariHybridWidget):
         self.controlPanel.arrowsLayout = QtWidgets.QGridLayout()
         self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
 
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
-        self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
+        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
+        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
 
         # Definition of the box layout:
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
         self.controlPanel.setLayout(self.controlPanel.boxLayout)
 
         #self.controlPanel.boxLayout.addWidget(self.controlPanel.choiceInterface)
-        self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
+        #self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
 
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         #self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
-        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        #self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
         self.grid.addWidget(self.stopSIMAcquisition, 2, 0, 1, 1)
+        self.grid.addWidget(self.isRecordingButton, 3, 0, 1, 1)
         self.grid.addLayout(self.simDisplayLayout, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         

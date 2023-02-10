@@ -1,3 +1,4 @@
+
 import json
 import os
 
@@ -62,8 +63,11 @@ class SIMController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
-        self.nSyncCameraSLM = 3  # 5 frames will be captured before a frame is retrieved from buffer for prcoessing 
+        self.nSyncCameraSLM = 1  # 5 frames will be captured before a frame is retrieved from buffer for prcoessing 
         self.iSyncCameraSLM = 0 # counter for syncCameraSLM
+
+        # switch to detect if a recording is in progress
+        self.isRecording = False
         
         # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
@@ -86,15 +90,16 @@ class SIMController(LiveUpdatedController):
         self._commChannel.sigSIMMaskUpdated.connect(self.displayMask)
 
         # Connect SIMWidget signals
-        self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
-        self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
+        #self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
+        #self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
 
-        self._widget.applyChangesButton.clicked.connect(self.applyParams)
+        #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startSIMAcquisition.clicked.connect(self.startSIM)
+        self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
         self._widget.stopSIMAcquisition.clicked.connect(self.stopSIM)
-        self._widget.sigSIMDisplayToggled.connect(self.toggleSIMDisplay)
-        self._widget.sigSIMMonitorChanged.connect(self.monitorChanged)
-        self._widget.sigPatternID.connect(self.patternIDChanged)
+        #self._widget.sigSIMDisplayToggled.connect(self.toggleSIMDisplay)
+        #self._widget.sigSIMMonitorChanged.connect(self.monitorChanged)
+        #self._widget.sigPatternID.connect(self.patternIDChanged)
 
         # sim parameters
         self.patternID = 0
@@ -127,6 +132,9 @@ class SIMController(LiveUpdatedController):
             self.initHamamatsuSLM()
         else:
             self.IS_HAMAMATSU = False
+
+        # enable display of SIM pattern by default 
+        self.toggleSIMDisplay(enabled=True)
 
 
     def update(self, detectorName, im, init, isCurrentDetector):
@@ -176,7 +184,7 @@ class SIMController(LiveUpdatedController):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
 
-    def toggleSIMDisplay(self, enabled):
+    def toggleSIMDisplay(self, enabled=True):
         self._widget.setSIMDisplayVisible(enabled)
 
     def monitorChanged(self, monitor):
@@ -215,6 +223,15 @@ class SIMController(LiveUpdatedController):
         
         # reset the pattern iterator
         self.imageComputationWorker.setNumReconstructed(numReconstructed=self.iReconstructed)
+
+    def toggleRecording(self):
+        self.isRecording = not self.isRecording
+        self.imageComputationWorker.toggleRecording(self.isRecording)
+        if self.isRecording:
+            self._widget.isRecordingButton.setText("Stop Recording")
+        else:
+            self._widget.isRecordingButton.setText("Start Recording")
+
 
     def stopSIM(self):
         # stop live processing 
@@ -264,6 +281,8 @@ class SIMController(LiveUpdatedController):
             self.allFrames = []
             self.allFramesNP = None
 
+            self.isRecording = False
+
             # initilaize the reconstructor
             self.processor = SIMProcessor()
 
@@ -301,9 +320,11 @@ class SIMController(LiveUpdatedController):
                 self.allFramesNP = np.array(self.allFrames)
                 self.allFramesList = self.allFrames
                 self.allFrames = []
-                if isDEBUG:
+                if self.isRecording:
                     date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-                    tif.imsave(f"filename_{date}.tif", self.allFramesNP)
+                    mFilename = f"filename_{date}.tif"
+                    tif.imsave(mFilename, self.allFramesNP)
+                    self._logger.debug("Saving file: "+mFilename)
                 
                 self._numQueuedImagesMutex.lock()
                 self._numQueuedImages += 1
@@ -312,6 +333,8 @@ class SIMController(LiveUpdatedController):
                 # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
                 # self.computeSIMImage()
 
+        def toggleRecording(self, isRecording):
+            self.isRecording = isRecording
 
 
 '''#####################################

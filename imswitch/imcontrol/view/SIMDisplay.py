@@ -46,17 +46,19 @@ class SIMDisplay(QtWidgets.QLabel):
         if updateImage:
             self.updateImage(self.imgArr)
 
-    def updateImage(self, imgArr):
+    def updateImage(self, imgArr, isFlip=True):
         if len(imgArr.shape)<3:
             imgArr=np.stack((imgArr,imgArr,imgArr), 2)
         self.imgArr = np.transpose(imgArr, (1,0,2))
+        if isFlip:
+            self.imgArr = np.flip(self.imgArr,0)
         if not self.isVisible():
             return
         # todo: This operation is expensive! -> skimage.transform.resize( do that outside the thread!!
         #imgScaled = skimage.img_as_ubyte(
         #    skimage.transform.resize(self.imgArr, (self.imgHeight, self.imgWidth), order=0)
         #)
-        imgScaled = self.imgArr
+        imgScaled = self.imgArr.copy()
         qimage = QtGui.QImage(
             imgScaled, imgScaled.shape[1], imgScaled.shape[0], QtGui.QImage.Format_RGB888
         )

@@ -159,7 +159,7 @@ class MCTController(ImConWidgetController):
                 self.Laser1ValueOld = self.lasers[0].power
             if len(self.lasers)>1:
                 self.Laser2ValueOld = self.lasers[1].power
-            if len(self.leds)>1:
+            if len(self.leds)>0:
                 self.LEDValueOld = self.leds[0].power
 
             # reserve space for the stack
@@ -404,7 +404,7 @@ class MCTController(ImConWidgetController):
 
         # initialize xyz coordinates
         self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        self.stages.move(value=self.initialPositionZ+self.zStackMin-15, axis="Z", is_absolute=True, is_blocking=True)
+        self.stages.move(value=self.initialPositionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
 
         # initialize iterator
         imageIndex = 0
@@ -414,8 +414,8 @@ class MCTController(ImConWidgetController):
             if not self.isMCTrunning:
                 break
             # move to xy position is necessary
-            self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-
+            if self.xyScanEnabled:
+                self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
             # measure framenumber and check if it has been renewed after stage has stopped => avoid motion blur!
             if hasattr(self.detector, "getFrameNumber"):
                 frameNumber = self.detector.getFrameNumber()

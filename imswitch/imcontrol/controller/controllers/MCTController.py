@@ -279,6 +279,11 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
+        
+        # get current position
+        currentPositions = self.stages.getPosition()
+        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
+        self.initialPositionZ = currentPositions["Z"]
 
         # run as long as the MCT is active
         while(self.isMCTrunning):
@@ -301,10 +306,6 @@ class MCTController(ImConWidgetController):
                 self.LastStackLaser2 = []
                 self.LastStackLED = []
 
-                # get current position
-                currentPositions = self.stages.getPosition()
-                self.initialPosition = (currentPositions["X"], currentPositions["Y"])
-                self.initialPositionZ = currentPositions["Z"]
 
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")

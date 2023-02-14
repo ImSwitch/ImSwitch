@@ -62,6 +62,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'Rotator': _DockInfo(name='Rotator', yPosition=1),
+            'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'RotationScan': _DockInfo(name='RotationScan', yPosition=2),

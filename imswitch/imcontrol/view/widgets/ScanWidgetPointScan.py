@@ -210,9 +210,12 @@ class ScanWidgetPointScan(SuperScanWidget):
         self.scanPar['pixels' + positionerName].setText(txt)
 
     def setTTLSequences(self, deviceName, sequence):
-        self.ttlParameters['seq' + deviceName].setText(
-            ','.join(map(lambda s: str(s), sequence))
-        )
+        self.ttlParameters['seq' + deviceName].setText(sequence)
+
+    def setTTLSequenceAxis(self, deviceName, axis):
+        idx = self.ttlParameters['seqAxis' + deviceName].findText(axis)
+        if idx >= 0:
+            self.ttlParameters['seqAxis' + deviceName].setCurrentIndex(idx)
 
     def unsetTTL(self, deviceName):
         self.ttlParameters['seq' + deviceName].setText('')

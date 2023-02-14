@@ -88,6 +88,9 @@ class PositionerInfo(DeviceInfo):
     forScanning: bool = False
     """ Whether the positioner is used for scanning. """
 
+    resetOnClose: bool = True
+    """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
+
 
 @dataclass(frozen=True)
 class RS232Info:
@@ -139,16 +142,25 @@ class FocusLockInfo:
     """ Update frequency, in milliseconds. """
 
     frameCropx: int
-    """ Starting X position of frame crop. """
+    """ Starting X position of camera frame crop. """
 
     frameCropy: int
-    """ Starting Y position of frame crop. """
+    """ Starting Y position of camera frame crop. """
 
     frameCropw: int
-    """ Width of frame crop. """
+    """ Width of camera frame crop. """
 
     frameCroph: int
-    """ Height of frame crop. """
+    """ Height of camera frame crop. """
+
+    swapImageAxes: bool
+    """ Swap camera image axes when grabbing camera frame. """
+
+    piKp: float
+    """ Default kp value of feedback loop. """
+
+    piKi: float
+    """ Default ki value of feedback loop. """
 
 @dataclass(frozen=True)
 class AutofocusInfo:
@@ -214,6 +226,15 @@ class EtSTEDInfo:
 
     laserFast: str
     """ Name of the widefield laser to use. """
+
+
+@dataclass(frozen=True)
+class MicroscopeStandInfo:
+    managerName: str
+    """ Name of the manager to use. """
+
+    rs232device: str
+    """ Name of the rs232 device to use. """
 
 
 @dataclass(frozen=True)
@@ -290,6 +311,9 @@ class SetupInfo:
 
     rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
     """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """
+
+    microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
+    """ Microscope stand settings. Required to be defined to use MotCorr widget. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

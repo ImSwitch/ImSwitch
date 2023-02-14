@@ -273,6 +273,8 @@
     "frameCropx": 780,
     "frameCropy": 400,
     "frameCropw": 500,
-    "frameCroph": 100
+    "frameCroph": 100,
+    "piKp": -5.0,
+    "piKi": -0.1
   }
 }

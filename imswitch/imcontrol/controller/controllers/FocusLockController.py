@@ -3,7 +3,6 @@ import time
 import numpy as np
 from time import perf_counter
 import scipy.ndimage as ndi
-from lantz import Q_
 from skimage.feature import peak_local_max
 
 from imswitch.imcommon.framework import Thread, Timer
@@ -16,7 +15,7 @@ class FocusLockController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self)
+        self._logger = initLogger(self)
 
         if self._setupInfo.focusLock is None:
             return
@@ -29,6 +28,8 @@ class FocusLockController(ImConWidgetController):
                           self._setupInfo.focusLock.frameCropw,
                           self._setupInfo.focusLock.frameCroph)
         self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        self._widget.setKp(self._setupInfo.focusLock.piKp)
+        self._widget.setKi(self._setupInfo.focusLock.piKi)
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)
@@ -36,7 +37,6 @@ class FocusLockController(ImConWidgetController):
 
         self._widget.lockButton.clicked.connect(self.toggleFocus)
         self._widget.camDialogButton.clicked.connect(self.cameraDialog)
-        self._widget.positionSetButton.clicked.connect(self.moveZ)
         self._widget.focusCalibButton.clicked.connect(self.focusCalibrationStart)
         self._widget.calibCurveButton.clicked.connect(self.showCalibrationCurve)
 
@@ -49,18 +49,20 @@ class FocusLockController(ImConWidgetController):
         self.zStackVar = False
         self.twoFociVar = False
         self.noStepVar = True
-        self.focusTime = 1000 / self.updateFreq  # time between focus signal updates in ms
+        self.focusTime = 1000 / self.updateFreq  # focus signal update interval (ms)
+        self.zStepLimLo = 0
+        self.aboutToLockDiffMax = 0.4
         self.lockPosition = 0
         self.currentPosition = 0
-        self.lastZ = 0
+        self.lastPosition = 0
         self.buffer = 40
         self.currPoint = 0
         self.setPointData = np.zeros(self.buffer)
         self.timeData = np.zeros(self.buffer)
-        self.lockingData = np.zeros(7)
 
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
+        self.__focusCalibThread = FocusCalibThread(self)
 
         self.timer = Timer()
         self.timer.timeout.connect(self.update)
@@ -70,6 +72,8 @@ class FocusLockController(ImConWidgetController):
     def __del__(self):
         self.__processDataThread.quit()
         self.__processDataThread.wait()
+        self.__focusCalibThread.quit()
+        self.__focusCalibThread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -80,11 +84,10 @@ class FocusLockController(ImConWidgetController):
             self._widget.focusPlot.removeItem(self._widget.focusLockGraph.lineLock)
 
     def toggleFocus(self):
+        self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            absz = self._master.positionersManager[self.positioner].get_abs()
-            self.lockFocus(float(self._widget.kpEdit.text()),
-                           float(self._widget.kiEdit.text()),
-                           absz)
+            zpos = self._master.positionersManager[self.positioner].get_abs()
+            self.lockFocus(zpos)
             self._widget.lockButton.setText('Unlock')
         else:
             self.unlockFocus()
@@ -92,18 +95,12 @@ class FocusLockController(ImConWidgetController):
 
     def cameraDialog(self):
         self._master.detectorsManager[self.camera].openPropertiesDialog()
-        self.__logger.debug('Open camera settings dialog')
-
-    def moveZ(self):
-        abspos = float(self._widget.positionEdit.text())
-        self._master.positionersManager[self.positioner].setPosition(abspos, 0)
-        self.__logger.debug(f'Move Z-piezo to absolute position {abspos} um')
 
     def focusCalibrationStart(self):
-        self.__logger.debug('Start focus calibration thread and calibrate')
+        self.__focusCalibThread.start()
 
     def showCalibrationCurve(self):
-        self.__logger.debug('Show calibration curve')
+        self._widget.showCalibrationCurve(self.__focusCalibThread.getData())
 
     def zStackVarChange(self):
         if self.zStackVar:
@@ -117,22 +114,18 @@ class FocusLockController(ImConWidgetController):
         else:
             self.twoFociVar = True
 
-    # Update focus lock
     def update(self):
-        # 1 Grab camera frame
+        # get data
         img = self.__processDataThread.grabCameraFrame()
-        # 2 Pass camera frame and get back focusSignalPosition from ProcessDataThread
         self.setPointSignal = self.__processDataThread.update(self.twoFociVar)
-        # 3 Update PI with the new setPointSignal and get back the distance to move, send to
-        # update the PI control, and then send the move-distance to the z-piezo
+        # move
         if self.locked:
             value_move = self.updatePI()
             if self.noStepVar and abs(value_move) > 0.002:
-                # self.zstepupdate = self.zstepupdate + 1
                 self._master.positionersManager[self.positioner].move(value_move, 0)
-        # elif self.aboutToLock:
-        #    self.lockingPI()
-        # 4 Update image and focusSignalPosition in FocusLockWidget
+        elif self.aboutToLock:
+           self.aboutToLockUpdate()
+        # udpate graphics
         self.updateSetPointData()
         self._widget.camImg.setImage(img)
         if self.currPoint < self.buffer:
@@ -140,15 +133,24 @@ class FocusLockController(ImConWidgetController):
                                                 self.setPointData[1:self.currPoint])
         else:
             self._widget.focusPlotCurve.setData(self.timeData, self.setPointData)
+    
+    def aboutToLockUpdate(self):
+        self.aboutToLockDataPoints = np.roll(self.aboutToLockDataPoints,1)
+        self.aboutToLockDataPoints[0] = self.setPointSignal
+        averageDiff = np.std(self.aboutToLockDataPoints)
+        if averageDiff < self.aboutToLockDiffMax:
+            zpos = self._master.positionersManager[self.positioner].get_abs()
+            self.lockFocus(zpos)
+            self.aboutToLock = False
 
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
             self.setPointData[self.currPoint] = self.setPointSignal
             self.timeData[self.currPoint] = perf_counter() - self.startTime
         else:
-            self.setPointData[:-1] = self.setPointData[1:]
+            self.setPointData = np.roll(self.setPointData, -1)
             self.setPointData[-1] = self.setPointSignal
-            self.timeData[:-1] = self.timeData[1:]
+            self.timeData = np.roll(self.timeData, -1)
             self.timeData[-1] = perf_counter() - self.startTime
         self.currPoint += 1
 
@@ -156,24 +158,37 @@ class FocusLockController(ImConWidgetController):
         if not self.noStepVar:
             self.noStepVar = True
         self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
+        self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
         distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
-        self.lastZ = self.currentPosition
+        self.lastPosition = self.currentPosition
 
         if abs(distance) > 5 or abs(move) > 3:
-            self.__logger.debug(f'Safety unlocking! Distance: {distance}, move: {move}.')
+            self._logger.warning(f'Safety unlocking! Distance to lock: {distance:.3f}, current move step: {move:.3f}.')
             self.unlockFocus()
-
+        elif self.zStackVar:
+            if self.stepDistance > self.zStepLimLo:
+                self.unlockFocus()
+                self.aboutToLockDataPoints = np.zeros(5)
+                self.aboutToLock = True
+                self.noStepVar = False
         return move
 
-    def lockFocus(self, kp, ki, absz):
+    def lockFocus(self, zpos):
         if not self.locked:
+            kp = float(self._widget.kpEdit.text())
+            ki = float(self._widget.kiEdit.text())
             self.pi = PI(self.setPointSignal, 0.001, kp, ki)
-            self.lockPosition = absz
+            self.lockPosition = zpos
             self.locked = True
             self._widget.focusLockGraph.lineLock = self._widget.focusPlot.addLine(
                 y=self.setPointSignal, pen='r'
             )
+            self._widget.lockButton.setChecked(True)
+            self.updateZStepLimits()
+
+    def updateZStepLimits(self):
+        self.zStepLimLo = 0.001 * float(self._widget.zStepFromEdit.text())
 
 
 class ProcessDataThread(Thread):
@@ -185,7 +200,8 @@ class ProcessDataThread(Thread):
         detectorManager = self._controller._master.detectorsManager[self._controller.camera]
         self.latestimg = detectorManager.getLatestFrame()
         # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
-        self.latestimg = np.swapaxes(self.latestimg,0,1)
+        if self._controller._setupInfo.focusLock.swapImageAxes:
+            self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
 
     def update(self, twoFociVar):
@@ -228,60 +244,53 @@ class ProcessDataThread(Thread):
         yhigh = min(1280, (centercoords2[1] + subsizey))
 
         imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
-
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
-
         # add the information about where the center of the subarray is
         massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
-
         return massCenterGlobal
 
 
 class FocusCalibThread(Thread):
-    def __init__(self, focusWidget, *args, **kwargs):
+    def __init__(self, controller, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.z = focusWidget.z
-        self.focusWidget = focusWidget  # mainwidget será FocusLockWidget
-        self.um = Q_(1, 'micrometer')
+        self._controller = controller
 
     def run(self):
         self.signalData = []
         self.positionData = []
-        self.start = float(self.focusWidget.CalibFromEdit.text())
-        self.end = float(self.focusWidget.CalibToEdit.text())
-        self.scan_list = np.round(np.linspace(self.start, self.end, 20), 2)
-        for x in self.scan_list:
-            self.z.move_absZ(x * self.um)
+        self.fromVal = float(self._controller._widget.calibFromEdit.text())
+        self.toVal = float(self._controller._widget.calibToEdit.text())
+        self.scan_list = np.round(np.linspace(self.fromVal, self.toVal, 20), 2)
+        for z in self.scan_list:
+            self._controller._master.positionersManager[self._controller.positioner].setPosition(z, 0)
             time.sleep(0.5)
-            self.focusCalibSignal = \
-                self.focusWidget.processDataThread.focusSignal
+            self.focusCalibSignal = self._controller.setPointSignal
             self.signalData.append(self.focusCalibSignal)
-            self.positionData.append(self.z.absZ.magnitude)
-
+            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs())
         self.poly = np.polyfit(self.positionData, self.signalData, 1)
         self.calibrationResult = np.around(self.poly, 4)
-        self.export()
+        self.show()
 
-    def export(self):
-        np.savetxt('calibration.txt', self.calibrationResult)
-        cal = self.poly[0]
-        calText = '1 px --> {} nm'.format(np.round(1000 / cal, 1))
-        self.focusWidget.calibrationDisplay.setText(calText)
-        d = [self.positionData, self.calibrationResult[::-1]]
-        self.savedCalibData = [self.positionData,
-                               self.signalData,
-                               np.polynomial.polynomial.polyval(d[0], d[1])]
-        np.savetxt('calibrationcurves.txt', self.savedCalibData)
+    def show(self):
+        cal_nm = np.round(1000 / self.poly[0], 1)
+        calText = f'1 px --> {cal_nm} nm'
+        self._controller._widget.calibrationDisplay.setText(calText)
+
+    def getData(self):
+        data = {
+            'signalData': self.signalData,
+            'positionData': self.positionData,
+            'poly': self.poly
+        }
+        return data
 
 
 class PI:
     """Simple implementation of a discrete PI controller.
     Taken from http://code.activestate.com/recipes/577231-discrete-pid-controller/
     Author: Federico Barabas"""
-
     def __init__(self, setPoint, multiplier=1, kp=0, ki=0):
-
         self._kp = multiplier * kp
         self._ki = multiplier * ki
         self._setPoint = setPoint
@@ -290,24 +299,17 @@ class PI:
         self._started = False
 
     def update(self, currentValue):
-        """
-        Calculate PID output value for given reference input and feedback.
-        I'm using the iterative formula to avoid integrative part building.
-        ki, kp > 0
-        """
+        """ Calculate PI output value for given reference input and feedback.
+        Using the iterative formula to avoid integrative part building. """
         self.error = self.setPoint - currentValue
-
         if self.started:
             self.dError = self.error - self.lastError
             self.out = self.out + self.kp * self.dError + self.ki * self.error
-
         else:
             # This only runs in the first step
             self.out = self.kp * self.error
             self.started = True
-
         self.lastError = self.error
-
         return self.out
 
     def restart(self):

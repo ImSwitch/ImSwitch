@@ -164,8 +164,6 @@ class ScanWidgetBase(SuperScanWidget):
     def initControls(self, positionerNames, TTLDeviceNames, TTLTimeUnits):
         currentRow = 0
         self.scanDims = list(positionerNames)
-        self._logger.debug(positionerNames)
-        self._logger.debug(type(positionerNames))
         self.scanDims.append('None')
 
         # Add general buttons

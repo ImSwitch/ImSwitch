@@ -1,6 +1,9 @@
 import traceback
+import configparser
 
 import numpy as np
+
+from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
 from imswitch.imcommon.view.guitools import colorutils
@@ -211,6 +214,43 @@ class ScanControllerMoNaLISA(SuperScanController):
     def emitScanSignal(self, signal, *args):
         if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
             signal.emit(*args)
+
+    def saveScanParamsToFile(self, filePath: str) -> None:
+        """ Saves the set scanning parameters to the specified file. """
+        self.getParameters()
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        config['analogParameterDict'] = self._analogParameterDict
+        config['digitalParameterDict'] = self._digitalParameterDict
+        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
+
+        with open(filePath, 'w') as configfile:
+            config.write(configfile)
+
+    def loadScanParamsFromFile(self, filePath: str) -> None:
+        """ Loads scanning parameters from the specified file. """
+        config = configparser.ConfigParser()
+        config.optionxform = str
+        config.read(filePath)
+
+        for key in self._analogParameterDict:
+            self._analogParameterDict[key] = literal_eval(
+                config._sections['analogParameterDict'][key]
+            )
+
+        for key in self._digitalParameterDict:
+            self._digitalParameterDict[key] = literal_eval(
+                config._sections['digitalParameterDict'][key]
+            )
+
+        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
+        if scanOrNot:
+            self._widget.setScanMode()
+        else:
+            self._widget.setContLaserMode()
+
+        self.setParameters()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

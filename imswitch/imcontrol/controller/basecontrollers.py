@@ -1,9 +1,7 @@
-import configparser
 import functools
 import os
 
 from abc import abstractmethod
-from ast import literal_eval
 
 from imswitch.imcommon.controller import WidgetController, WidgetControllerFactory
 from imswitch.imcontrol.model import InvalidChildClassError
@@ -152,6 +150,18 @@ class SuperScanController(ImConWidgetController):
         """ Called when scan is done, clean up and toggle GUI. """
         pass
 
+    @APIExport(runOnUIThread=True)
+    @abstractmethod
+    def saveScanParamsToFile(self, filePath: str) -> None:
+        """ Saves the set scanning parameters to the specified file. """
+        pass
+
+    @APIExport(runOnUIThread=True)
+    @abstractmethod
+    def loadScanParamsFromFile(self, filePath: str) -> None:
+        """ Loads scanning parameters from the specified file. """
+        pass
+
     def getNumScanPositions(self):
         """ Returns the number of scan positions for the configured scan. """
         _, positions, _ = self._master.scanManager.getScanSignalsDict(self._analogParameterDict)
@@ -163,58 +173,14 @@ class SuperScanController(ImConWidgetController):
         fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
         if not fileName:
             return
-
         self.saveScanParamsToFile(fileName)
-
-    @APIExport(runOnUIThread=True)
-    def saveScanParamsToFile(self, filePath: str) -> None:
-        """ Saves the set scanning parameters to the specified file. """
-        self.getParameters()
-        config = configparser.ConfigParser()
-        config.optionxform = str
-
-        config['analogParameterDict'] = self._analogParameterDict
-        config['digitalParameterDict'] = self._digitalParameterDict
-        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
-
-        with open(filePath, 'w') as configfile:
-            config.write(configfile)
 
     def loadScan(self):
         """ Load scan parameters template. """
         fileName = guitools.askForFilePath(self._widget, 'Load scan', self.scanDir)
         if not fileName:
             return
-
         self.loadScanParamsFromFile(fileName)
-
-    @APIExport(runOnUIThread=True)
-    def loadScanParamsFromFile(self, filePath: str) -> None:
-        """ Loads scanning parameters from the specified file. """
-
-        config = configparser.ConfigParser()
-        config.optionxform = str
-
-        config.read(filePath)
-
-        for key in self._analogParameterDict:
-            self._analogParameterDict[key] = literal_eval(
-                config._sections['analogParameterDict'][key]
-            )
-
-        for key in self._digitalParameterDict:
-            self._digitalParameterDict[key] = literal_eval(
-                config._sections['digitalParameterDict'][key]
-            )
-
-        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
-
-        if scanOrNot:
-            self._widget.setScanMode()
-        else:
-            self._widget.setContLaserMode()
-
-        self.setParameters()
 
     def abortScan(self):
         """ Abort scan. """

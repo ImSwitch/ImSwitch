@@ -322,12 +322,9 @@ class MCTController(ImConWidgetController):
                     #increase iterator in case something fails during frame acquisition => avoid forever loop
                     self.nImagesTaken += 1
 
-                    if self.Laser1Value>0:
-                        self.takeImageIllu(illuMode = "Laser1", intensity=self.Laser1Value, timestamp=self.nImagesTaken)
-                    if self.Laser2Value>0:
-                        self.takeImageIllu(illuMode = "Laser2", intensity=self.Laser2Value, timestamp=self.nImagesTaken)
-                    if self.LEDValue>0:
-                        self.takeImageIllu(illuMode = "Brightfield", intensity=self.LEDValue, timestamp=self.nImagesTaken)
+                    # acquire one xyzc scan
+                    self.acquireScan(timestamp=self.nImagesTaken)
+                   
                     self._widget.setnImagesTaken(self.nImagesTaken)
 
                     # sneak images into arrays for displaying stack
@@ -348,26 +345,9 @@ class MCTController(ImConWidgetController):
 
 
 
-    def takeImageIllu(self, illuMode, intensity, timestamp=0):
-        self._logger.debug("Take image: " + illuMode + " - " + str(intensity))
+    def acquireScan(self, timestamp=0):
         fileExtension = 'tif'
 
-        # turn on illuminationn
-        if illuMode == "Laser1" and len(self.lasers)>0:
-            self.lasers[0].setValue(intensity)
-            self.lasers[0].setEnabled(True)
-        elif illuMode == "Laser2" and len(self.lasers)>1:
-            self.lasers[1].setValue(intensity)
-            self.lasers[1].setEnabled(True)
-        elif illuMode == "Brightfield":
-            try:
-                if intensity > 255: intensity=255
-                if intensity < 0: intensity=0
-                if len(self.leds)>0:
-                    self.leds[0].setValue(intensity)
-                    self.leds[0].setEnabled(True)
-            except:
-                pass
         # precompute steps for xy scan
         # snake scan
         if self.xyScanEnabled:
@@ -411,6 +391,7 @@ class MCTController(ImConWidgetController):
         imageIndex = 0
         self._widget.gridLayer = None
         # iterate over all xy coordinates iteratively
+
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break
@@ -423,41 +404,67 @@ class MCTController(ImConWidgetController):
             else:
                 frameNumber = -1
 
-            if self.zStackEnabled:
-                # perform a z-stack
-                # overshoot first step slightly to compensate backlash
-                self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
+            # overshoot first step slightly to compensate backlash
+            self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
 
-                backlash=0
-                try: # only relevant for UC2 stuff
-                    self.stages.setEnabled(is_enabled=True)
-                except:
-                    pass
-
-                for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
-                    # move to each position
-
-                    self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
-                                                    timestamp=timestamp,
-                                                    filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
-                                                    extension=fileExtension)
-                    time.sleep(self.tUnshake) # unshake
-                    lastFrame = self.detector.getLatestFrame()
-                    # self.switchOffIllumination()
-                    #self._logger.debug(filePath)
-                    tif.imwrite(filePath, lastFrame, append=True)
-                    imageIndex += 1
-
-                    # store frames for displaying
-                    if illuMode == "Laser1": self.LastStackLaser1.append(lastFrame.copy())
-                    if illuMode == "Laser2": self.LastStackLaser2.append(lastFrame.copy())
-                    if illuMode == "Brightfield": self.LastStackLED.append(lastFrame.copy())
-
-                self.stages.setEnabled(is_enabled=False)
-                # reduce backlash => increase chance to endup at the same position
-                self.stages.move(value=-self.zStackMax, axis="Z", is_absolute=False, is_blocking=True)
+            # perform a z-stack
+            for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
+                # move to each position
+                self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
+                time.sleep(self.tUnshake) # unshake
                 
+                # capture image for every illumination
+                if self.Laser1Value>0 and len(self.lasers)>0:
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                                timestamp=timestamp,
+                                filename=f'{self.MCTFilename}_Laser1_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                extension=fileExtension)
+                    self.lasers[0].setValue(self.Laser1Value)
+                    self.lasers[0].setEnabled(True)
+                    lastFrame = self.detector.getLatestFrame()
+                    tif.imwrite(filePath, lastFrame, append=True)
+                    self.lasers[0].setEnabled(False)
+                    self.LastStackLaser1.append(lastFrame.copy())
+
+                if self.Laser2Value>0 and len(self.lasers)>0:
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                                timestamp=timestamp,
+                                filename=f'{self.MCTFilename}_Laser2_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                extension=fileExtension)
+                    self.lasers[1].setValue(self.Laser2Value)
+                    self.lasers[1].setEnabled(True)
+                    lastFrame = self.detector.getLatestFrame()
+                    tif.imwrite(filePath, lastFrame, append=True)
+                    self.lasers[1].setEnabled(False)
+                    self.LastStackLaser2.append(lastFrame.copy())
+
+                if self.LEDValue>0 and len(self.leds)>0:
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                                timestamp=timestamp,
+                                filename=f'{self.MCTFilename}_LED_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                extension=fileExtension)
+                    try:
+                        if self.LEDValue > 255: self.LEDValue=255
+                        if self.LEDValue < 0: self.LEDValue=0
+                        if len(self.leds)>0:
+                            self.leds[0].setValue(self.LEDValue)
+                            self.leds[0].setEnabled(True)
+                        lastFrame = self.detector.getLatestFrame()
+                        tif.imwrite(filePath, lastFrame, append=True)
+                        self.leds[0].setEnabled(False)
+                        self.LastStackLED.append(lastFrame.copy())
+                    except:
+                        pass
+
+
+                imageIndex += 1
+
+            # reduce backlash => increase chance to endup at the same position
+            #self.stages.move(value=-self.zStackMax, axis="Z", is_absolute=False, is_blocking=True)
+            self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
+
+            
+            '''
             else:
                 # single file timelapse
                 time.sleep(self.tUnshake) # unshake
@@ -483,7 +490,7 @@ class MCTController(ImConWidgetController):
                 if illuMode == "Laser1": self.LastStackLaser1=(lastFrame.copy())
                 if illuMode == "Laser2": self.LastStackLaser2=(lastFrame.copy())
                 if illuMode == "Brightfield": self.LastStackLED=(lastFrame.copy())
-
+            '''
 
             if self.xyScanEnabled:
                 # lets try to visualize each slice in napari
@@ -506,8 +513,8 @@ class MCTController(ImConWidgetController):
 
 
         # initialize xy coordinates
-        if self.xyScanEnabled:
-            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
         self.switchOffIllumination()
 

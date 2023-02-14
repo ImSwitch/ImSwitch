@@ -445,7 +445,7 @@ class MCTController(ImConWidgetController):
                     time.sleep(self.tUnshake) # unshake
                     lastFrame = self.detector.getLatestFrame()
                     # self.switchOffIllumination()
-                    self._logger.debug(filePath)
+                    #self._logger.debug(filePath)
                     tif.imwrite(filePath, lastFrame, append=True)
                     imageIndex += 1
 
@@ -469,13 +469,13 @@ class MCTController(ImConWidgetController):
                 # wait for frame after next frame to appear. Avoid motion blurring
                 while self.detector.getFrameNumber()<(frameNumber+5):
                     time.sleep(0.05)
-                    print(self.detector.getFrameNumber()-frameNumber)
+                    #print(self.detector.getFrameNumber()-frameNumber)
 
                 # snap image
                 lastFrame = self.detector.getLatestFrame()
 
                 # save image tile to tif # TODO: Should we use record manager here?
-                self._logger.debug(filePath)
+                #self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)
                 imageIndex += 1
 
@@ -506,7 +506,8 @@ class MCTController(ImConWidgetController):
 
 
         # initialize xy coordinates
-        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        if self.xyScanEnabled:
+            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
 
         self.switchOffIllumination()
 

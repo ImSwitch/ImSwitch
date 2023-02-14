@@ -391,7 +391,7 @@ class MCTController(ImConWidgetController):
         imageIndex = 0
         self._widget.gridLayer = None
         # iterate over all xy coordinates iteratively
-        backlash=0
+
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break
@@ -405,7 +405,7 @@ class MCTController(ImConWidgetController):
                 frameNumber = -1
 
             # overshoot first step slightly to compensate backlash
-            self.stages.move(value=self.zStackMin-backlash, axis="Z", is_absolute=False, is_blocking=True)
+            self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
 
             # perform a z-stack
             for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
@@ -460,7 +460,9 @@ class MCTController(ImConWidgetController):
                 imageIndex += 1
 
             # reduce backlash => increase chance to endup at the same position
-            self.stages.move(value=-self.zStackMax, axis="Z", is_absolute=False, is_blocking=True)
+            #self.stages.move(value=-self.zStackMax, axis="Z", is_absolute=False, is_blocking=True)
+            self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
+
             
             '''
             else:
@@ -512,6 +514,7 @@ class MCTController(ImConWidgetController):
 
         # initialize xy coordinates
         self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
         self.switchOffIllumination()
 

@@ -87,8 +87,6 @@ class ESP32LEDLaserManager(LaserManager):
                                                 int(self.power*self.enabled), self.filter_change, 
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
-                                                filter_axis = self.filter_axis, 
-                                                filter_position = self.filter_position, 
                                                 is_blocking=True)
 
     def setValue(self, power):
@@ -104,8 +102,6 @@ class ESP32LEDLaserManager(LaserManager):
                                     int(self.power), 0*self.filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
-                                    filter_axis = self.filter_axis, 
-                                    filter_position = self.filter_position, 
                                     is_blocking=True)
 
     def sendTrigger(self, triggerId):

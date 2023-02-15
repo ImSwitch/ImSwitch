@@ -28,14 +28,11 @@ class AutofocusController(ImConWidgetController):
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
-        # self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        #self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect AutofocusWidget buttons
         self._widget.focusButton.clicked.connect(self.focusButton)
         self._commChannel.sigAutoFocus.connect(self.autoFocus)
-
-        # select stage
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
     def __del__(self):
         self._AutofocusThead.quit()
@@ -47,11 +44,11 @@ class AutofocusController(ImConWidgetController):
         if not self.isAutofusRunning:
             rangez = float(self._widget.zStepRangeEdit.text())
             resolutionz = float(self._widget.zStepSizeEdit.text())
-            initialz = float(self._widget.positionEdit.text())
             self._widget.focusButton.setText('Stop')
-            self.autoFocus(rangez, resolutionz, initialz)
+            self.autoFocus(rangez,resolutionz)
         else:
             self.isAutofusRunning = False
+
 
     @APIExport(runOnUIThread=True)
     # Update focus lock

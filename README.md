@@ -43,6 +43,21 @@ imswitch
 ```
 (Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
+#### On Mac with ARM
+https://stackoverflow.com/questions/70217885/configure-m1-vscode-arm-but-with-a-rosetta-terminal
+```
+brew install --cask miniforge
+conda init 
+# open new shell
+conda create -n imswitch python=3.9
+
+conda install -c conda-forge napari
+
+nano setup.cfg
+# uncomment pypylon and QScintila and PyQtWebEngine and PyQT5
+pip install --no-deps <LIB_NAME>
+```
+
 
 ### Option C: Install from Github (UC2 version)
 

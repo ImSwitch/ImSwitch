@@ -175,6 +175,7 @@ class SIMInfo:
 
     isSimulation: bool
     
+    isHamamatsuSLM: bool
 
 @dataclass(frozen=True)
 class MCTInfo:

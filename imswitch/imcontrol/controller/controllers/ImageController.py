@@ -16,9 +16,15 @@ class ImageController(LiveUpdatedController):
         self._lastShape = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         self._shouldResetView = False
 
-        self._widget.setLiveViewLayers(
-            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
-        )
+        detectorName = self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)[0]
+        # check if RGB 
+        try:
+            isRGB = self._master.detectorsManager[detectorName]._isRGB
+        except: 
+            isRGB = False        
+
+        self._widget.setLiveViewLayers(detectorName, isRGB)
+
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)

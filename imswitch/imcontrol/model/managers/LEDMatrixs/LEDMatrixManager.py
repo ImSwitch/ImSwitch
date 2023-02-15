@@ -27,14 +27,9 @@ class LEDMatrixManager(ABC):
         self.valueRangeStep = 1
         self.valueUnits = ""
         
-        if isModulated:
-            self.__freqRangeMin = laserInfo.freqRangeMin
-            self.__freqRangeMax = laserInfo.freqRangeMax
-            self.__freqRangeInit = laserInfo.freqRangeInit
-        else:
-            self.__freqRangeMin = None
-            self.__freqRangeMax = None
-            self.__freqRangeInit = None
+        self.__freqRangeMin = None
+        self.__freqRangeMax = None
+        self.__freqRangeInit = None
       
     def name(self) -> str:
         """ Unique LEDMatrix name, defined in the LEDMatrix's setup info. """

@@ -26,6 +26,7 @@ class SettingsControllerParams:
     allDetectorsFrame: Any
 
 
+
 class SettingsController(ImConWidgetController):
     """ Linked to SettingsWidget."""
 

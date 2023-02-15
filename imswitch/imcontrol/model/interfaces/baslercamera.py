@@ -53,7 +53,12 @@ class CameraBasler:
         self.camera.MaxNumBuffer = 5
         
         # set camera to mono12 mode
-        self.camera.PixelFormat.SetValue('Mono12')
+        try:
+            self.camera.PixelFormat.SetValue('Mono12')
+        except:
+            # we have a RGB camera
+            self.camera.PixelFormat.SetValue('RGB8')
+            pass
 
         # get framesize 
         self.SensorHeight = self.camera.HeightMax.GetValue()
@@ -236,6 +241,8 @@ class CameraBasler:
             self.set_blacklevel(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
+        elif property_name == "isRGB":
+            self.isRGB = property_value
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -255,6 +262,8 @@ class CameraBasler:
             property_value = self.camera.Height.GetValue()    
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "isRGB":
+            property_value = self.isRGB
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

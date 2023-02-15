@@ -20,10 +20,12 @@ class GXPIPYManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
 
-        binning =  detectorInfo.managerProperties['gxipycam']["binning"]
+        binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        self._camera = self._getGXObj(cameraId, binning)
+        pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         
+        
+        self._camera = self._getGXObj(cameraId, binning)
         
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -37,17 +39,15 @@ class GXPIPYManager(DetectorManager):
 
         # TODO: Not implemented yet 
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
-        exposure = self._camera.exposure_time if hasattr(self._camera,"exposure_time") else 1
-        gain = self._camera.gain if hasattr(self._camera,"gain") else 1
-        blacklevel = self._camera.blacklevel if hasattr(self._camera,"blacklevel") else 1
+
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=exposure, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=gain, valueUnits='arb.u.',
+            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=blacklevel, valueUnits='arb.u.',
+            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
                                             editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
@@ -60,7 +60,9 @@ class GXPIPYManager(DetectorManager):
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True)
+                            editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -157,7 +159,11 @@ class GXPIPYManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
 

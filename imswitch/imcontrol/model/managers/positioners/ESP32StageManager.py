@@ -17,6 +17,7 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
+
         # calibrated stepsize in steps/µm
         if positionerInfo.managerProperties.get('stepsizeX') is not None:
             self.stepsizeX = positionerInfo.managerProperties['stepsizeX']

@@ -36,7 +36,7 @@ class LEDMatrixController(ImConWidgetController):
 
         self._widget.ButtonAllOn.clicked.connect(self.setAllLEDOn)
         self._widget.ButtonAllOff.clicked.connect(self.setAllLEDOff)
-        self._widget.slider.valueChanged.connect(self.setIntensity)
+        self._widget.slider.sliderReleased.connect(self.setIntensity)
 
     @APIExport()
     def setAllLEDOn(self):

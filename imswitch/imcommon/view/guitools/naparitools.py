@@ -92,7 +92,7 @@ class NapariBaseWidget(QtWidgets.QWidget):
 
         # Add dock for this widget
         widget = cls(napariViewer)
-        napariViewer.window.add_dock_widget(widget, name=widget.name, area=position)
+        dockWidget = napariViewer.window.add_dock_widget(widget, name=widget.name, area=position)
 
         # Move layer list to bottom
         napariViewer.window._qt_window.removeDockWidget(
@@ -103,7 +103,7 @@ class NapariBaseWidget(QtWidgets.QWidget):
             napariViewer.window.qt_viewer.dockLayerList
         )
         napariViewer.window.qt_viewer.dockLayerList.show()
-        return widget
+        return widget, dockWidget
 
     def addItemToViewer(self, item):
         item.attach(self.viewer,

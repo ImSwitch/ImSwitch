@@ -161,7 +161,7 @@ Compared to the STED setup, there is one additional laser defined. This is the 4
 
 The focus lock does not have a separate manager, but instead is associated with one of the TIS cameras and the Z-piezo rs232device. The properties for the focus lock specifies what hardware devices it should associate with, what part of the camera frame should be cropped, and the update frequency (in Hz) of the PI control loop.
 
-The event-triggered imaging does not have a separate manager, but is loaded by adding ``EtSTED`` under ``availableWidgets``. Additionally, a field called ``etSTED`` should be added, where ``detectorFast``, ``detectorSlow``, and ``laserFast`` should be defined as the names of the detectors and laser used for the fast (widefield) and slow (STED) imaging respectively.
+The event-triggered imaging does not have a separate manager, but is loaded by adding ``EtSTED`` under ``availableWidgets``. Additionally, a field called ``etSTED`` should be added, where ``detectorFast`` and ``laserFast`` should be defined as the names of the detector and laser used for the fast (widefield) imaging.
 
 Other config parameters and a list of widgets to be loaded are added in this file as well. 
 

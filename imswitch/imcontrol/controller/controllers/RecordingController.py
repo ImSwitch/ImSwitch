@@ -99,7 +99,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getsaveFormat()),
+                                           SaveFormat(self._widget.getSaveFormat()),
                                            attrs)
         
     def snapNumpy(self):
@@ -135,7 +135,7 @@ class RecordingController(ImConWidgetController):
 
         self._master.recordingManager.snapImagePrev(detectorName,
                                                     savename,
-                                                    SaveFormat(self._widget.getSnapSaveFormat()),
+                                                    SaveFormat(self._widget.getSaveFormat()),
                                                     image,
                                                     attrs)
 
@@ -160,7 +160,7 @@ class RecordingController(ImConWidgetController):
                 'recMode': self.recMode,
                 'savename': self.savename,
                 'saveMode': SaveMode(self._widget.getRecSaveMode()),
-                'saveFormat': SaveFormat(self._widget.getsaveFormat()),
+                'saveFormat': SaveFormat(self._widget.getSaveFormat()),
                 'attrs': {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                           for detectorName in detectorsBeingCaptured},
                 'singleMultiDetectorFile': (len(detectorsBeingCaptured) > 1 and

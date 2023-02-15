@@ -228,7 +228,7 @@ class RecordingWidget(Widget):
     def getMultiDetectorSingleFile(self):
         return self.singleFileMultiDetectorBox.isChecked()
 
-    def getsaveFormat(self):
+    def getSaveFormat(self):
         return self.saveFormatList.currentIndex() + 1
 
     def getSnapSaveMode(self):

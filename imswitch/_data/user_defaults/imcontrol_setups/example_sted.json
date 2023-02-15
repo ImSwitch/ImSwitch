@@ -263,7 +263,6 @@
     "height": 600,
     "wavelength": 775,
     "pixelSize": 0.02,
-    "angleMount": 0.15,
     "correctionPatternsDir": "E:\\PhD\\SLM\\defcorrpatt\\"
   },
   "focusLock": {

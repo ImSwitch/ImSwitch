@@ -1,5 +1,3 @@
-from typing import List, Union
-
 import os
 import sys
 import ctypes
@@ -10,49 +8,39 @@ import h5py
 from collections import deque
 from datetime import datetime
 from inspect import signature
-from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
 import pyqtgraph as pg
 import numpy as np
 from tkinter.filedialog import askopenfilename
 
-from imswitch.imcommon.model import APIExport
-from imswitch.imcontrol.model import configfiletools
 from imswitch.imcommon.model import dirtools
-from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 
 _logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etsted')
 
 
-# HIGH-RES TIMING FUNCTIONS FROM https://stackoverflow.com/questions/38319606/how-can-i-get-millisecond-and-microsecond-resolution-timestamps-in-python/38319607#38319607
-def micros():
-    "return a timestamp in microseconds (us)"
+def timestamp():
+    """Return current time (s). High-res timing function adapted from:
+    https://stackoverflow.com/questions/38319606/how-can-i-get-millisecond-and-microsecond-resolution-timestamps-in-python/38319607#38319607 """
     tics = ctypes.c_int64()
     freq = ctypes.c_int64()
-
     #get ticks on the internal ~2MHz QPC clock
     ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics)) 
     #get the actual freq. of the internal ~2MHz QPC clock
     ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(freq))  
-    
-    t_us = tics.value*1e6/freq.value
-    return t_us
+    return tics.value, freq.value 
+
+def micros():
+    "Return a timestamp in microseconds (us). "
+    tics, freq = timestamp()
+    return tics*1e6/freq
     
 def millis():
-    "return a timestamp in milliseconds (ms)"
-    tics = ctypes.c_int64()
-    freq = ctypes.c_int64()
-
-    #get ticks on the internal ~2MHz QPC clock
-    ctypes.windll.Kernel32.QueryPerformanceCounter(ctypes.byref(tics)) 
-    #get the actual freq. of the internal ~2MHz QPC clock 
-    ctypes.windll.Kernel32.QueryPerformanceFrequency(ctypes.byref(freq)) 
-    
-    t_ms = tics.value*1e3/freq.value
-    return t_ms
+    "Return a timestamp in milliseconds (ms). "
+    tics, freq = timestamp()
+    return tics*1e3/freq
 
 
 class EtSTEDController(ImConWidgetController):
@@ -60,9 +48,6 @@ class EtSTEDController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        if self._setupInfo.etSTED is None:
-            return
 
         self._widget.setFastDetectorList(
             self._master.detectorsManager.execOnAll(lambda c: c.name,
@@ -75,9 +60,6 @@ class EtSTEDController(ImConWidgetController):
 
         self.scanInitiationList = ['ScanWidget','RecordingWidget']
         self._widget.setScanInitiationList(self.scanInitiationList)
-
-        self.__logger = initLogger(self)
-        self.__logger.debug('Initializing')
 
         sys.path.append(self._widget.analysisDir)
         sys.path.append(self._widget.transformDir)
@@ -106,7 +88,6 @@ class EtSTEDController(ImConWidgetController):
         self.__running = False
         self.__validating = False
         self.__busy = False
-        self.__bkg = None
         self.__prevFrames = deque(maxlen=10)
         self.__prevAnaFrames = deque(maxlen=10)
         self.__binary_mask = None
@@ -115,7 +96,7 @@ class EtSTEDController(ImConWidgetController):
         self.__init_frames = 5
         self.__validationFrames = 0
         self.__frame = 0
-        self.t_call = 0
+        self.__t_call = 0
         self.__maxAnaImgVal = 0
         self.__flipwfcalib = True  # flipping widefield image when loading for transformation calibration
 
@@ -162,7 +143,6 @@ class EtSTEDController(ImConWidgetController):
                 self._commChannel.sigRecordingEnded.connect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
 
-            #self._widget.setEventScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         else:
@@ -175,7 +155,6 @@ class EtSTEDController(ImConWidgetController):
                 self._commChannel.sigRecordingEnded.disconnect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
 
-            #self._widget.setEventScatterVisible(False)
             self._widget.initiateButton.setText('Initiate')
             self.resetParamVals()
             self.resetRunParams()
@@ -185,8 +164,11 @@ class EtSTEDController(ImConWidgetController):
         self.setDetLogLine("scan_end",datetime.now().strftime('%Ss%fus'))
         if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
             self._commChannel.sigSnapImg.emit()
-            frame_period = self.scanInfoDict['scan_samples_frame'] * 10e-6  # length (s) of total scan signal
-            self.setDetLogLine("frame_period", frame_period)
+            try:
+                total_scan_time = self.scanInfoDict['scan_samples_total'] * 10e-6  # length (s) of total scan signal
+                self.setDetLogLine("total_scan_time", total_scan_time)
+            except:
+                self._logger.info("Scan 'total_scan_time' not saved in log as 'scan_samples_total' not available in scanInfoDict using current signal designer.")
         self.endRecording()
         self.continueFastModality()
         self.__frame = 0
@@ -233,7 +215,7 @@ class EtSTEDController(ImConWidgetController):
 
     def logPipelineParamVals(self):
         """ Put analysis pipeline parameter values in the log file. """
-        params_ignore = ['img','bkg','binary_mask','testmode','exinfo']
+        params_ignore = ['img','prev_frames','binary_mask','testmode','exinfo']
         param_names = list()
         for pipeline_param_name, _ in self.__pipeline_params.items():
             if pipeline_param_name not in params_ignore:
@@ -248,7 +230,6 @@ class EtSTEDController(ImConWidgetController):
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
             
-            #self._widget.setEventScatterVisible(True)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         elif not self._widget.endlessScanCheck.isChecked():
@@ -286,6 +267,7 @@ class EtSTEDController(ImConWidgetController):
 
     def addImgBinStack(self, detectorName, img, init, scale, isCurrentDetector):
         """ Add image to the stack of images used to calculate a binary mask of the region of interest. """
+        del init, scale, isCurrentDetector
         if detectorName == self.detectorFast:
             if self.__binary_stack is None:
                 self.__binary_stack = img
@@ -297,8 +279,6 @@ class EtSTEDController(ImConWidgetController):
                 if np.ndim(self.__binary_stack) == 2:
                     self.__binary_stack = np.stack((self.__binary_stack, img))
                 else:
-                    #self.__logger.debug(np.shape(img))
-                    #self.__logger.debug(np.shape(self.__binary_stack))
                     self.__binary_stack = np.concatenate((self.__binary_stack,  [img]), axis=0)
 
     def calculateBinaryMask(self, img_stack):
@@ -312,28 +292,21 @@ class EtSTEDController(ImConWidgetController):
 
     def setAnalysisHelpImg(self, img_ana, exinfo=None):
         """ Set the preprocessed image in the analysis help widget. """
-        #self._widget.analysisHelpWidget.img.setOnlyRenderVisible(True, render=False)
         if np.max(img_ana) > self.__maxAnaImgVal:
             self.__maxAnaImgVal = np.max(img_ana)
             autolevels = True
         else:
             autolevels = False
-        #self.__logger.debug(autolevels)
         if img_ana.ndim == 3:
             img_ana = img_ana[0,:,:]
-        #self.__logger.debug(type(img_ana))
-        #self.__logger.debug(np.shape(img_ana))
-        #self.__logger.debug(img_ana.dtype)
         self._widget.analysisHelpWidget.img.setImage(img_ana, autoLevels=autolevels)
         infotext = f'Min: {np.min(img_ana)}, max: {np.max(img_ana)}'
         self._widget.analysisHelpWidget.info_label.setText(infotext)
 
         # scatter plot exinfo if there is something (cdvesprox or dynamin)
         if exinfo is not None:
-            if 'cd_vesicle_prox' in self.__pipelinename or 'dynamin' in self.__pipelinename:
+            if any(name in self.__pipelinename for name in ['cd_vesicle_prox', 'dynamin']):
                 self._widget.analysisHelpWidget.scatter.setData(x=np.array(exinfo['y']), y=np.array(exinfo['x']), pen=pg.mkPen(None), brush='g', symbol='x', size=15)
-            #else:
-            #    self._widget.analysisHelpWidget.scatter.setData(x=[], y=[])
 
         #self._widget.analysisHelpWidget.img.render()
 
@@ -351,9 +324,10 @@ class EtSTEDController(ImConWidgetController):
 
     def assignScanParameters(self, analogParams, digitalParams, positionersScan):
         """ Assign scan parameters from the scanning widget. """
-        self._analogParameterDict = analogParams
-        self._digitalParameterDict = digitalParams
-        self._positionersScan = positionersScan
+        self._analogParameterDict = analogParams.copy()
+        self._digitalParameterDict = digitalParams.copy()
+        self._positionersScan = positionersScan.copy()
+        self.setScanParametersStatus(analogParams, positionersScan)
 
     def readParams(self):
         """ Read user-provided analysis pipeline parameter values. """
@@ -391,26 +365,26 @@ class EtSTEDController(ImConWidgetController):
 
     def runPipeline(self, detectorName, img, init, scale, isCurrentDetector):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
+        del init, scale, isCurrentDetector
         if detectorName == self.detectorFast:
             if not self.__busy:
-                t_sincelastcall = millis() - self.t_call
-                self.t_call = millis()
+                t_sincelastcall = millis() - self.__t_call
+                self.__t_call = millis()
                 self.setDetLogLine("pipeline_rep_period", str(t_sincelastcall))
                 self.setDetLogLine("pipeline_start", datetime.now().strftime('%Ss%fus'))
                 self.__busy = True
-                t_pre = millis()
+                #t_pre = millis()
                 if self.__runMode == RunMode.Visualize or self.__runMode == RunMode.Validate:
                     coords_detected, self.__exinfo, img_ana = self.pipeline(img, self.__prevFrames, self.__binary_mask, (self.__runMode==RunMode.Visualize or self.__runMode==RunMode.Validate), self.__exinfo, *self.__param_vals)
                 else:
                     coords_detected, self.__exinfo = self.pipeline(img, self.__prevFrames, self.__binary_mask, self.__runMode==RunMode.Visualize, self.__exinfo, *self.__param_vals)
-                t_post = millis()
+                #t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
-                #self.__logger.debug(f'Pipeline time: {t_post-t_pre} ms')
-                #self.__logger.debug(coords_detected)
+                #self._logger.debug(f'Pipeline time: {t_post-t_pre} ms')
+                #self._logger.debug(coords_detected)
 
                 if self.__frame > self.__init_frames:
                     # run if the initial frames have passed
-                    #self.__logger.debug(self.__runMode)
                     if self.__runMode == RunMode.Visualize:
                         self.updateScatter(coords_detected, clear=True)
                         self.setAnalysisHelpImg(img_ana, self.__exinfo)
@@ -449,14 +423,10 @@ class EtSTEDController(ImConWidgetController):
                         else:
                             coords_wf = np.copy(coords_detected[0])
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
-                        #coords_wf = np.flip(np.copy(coords_wf))  # not needed? see comment below
                         self.setDetLogLine("fastscan_x_center", coords_wf[0])
                         self.setDetLogLine("fastscan_y_center", coords_wf[1])
-                        #coords_wf[1] = np.shape(img)[0] - coords_wf[1]  # not needed if I have the napari coordinate before (napari coords should be inputted in transform), and napari coordinates should be the same as numpy coordinates. No flip nowhere needed?
                         self.pauseFastModality()
                         self.setDetLogLine("coord_transf_start", datetime.now().strftime('%Ss%fus'))
-                        #coords_wf[1] = np.shape(img)[1] - coords_wf[1]  # mirror y-coord
-                        #coords_wf = np.flip(np.copy(coords_wf))  # should be correct with flip and no mirror, according to non-live testing
                         coords_scan = self.transform(coords_wf, self.__transformCoeffs)
                         self.setDetLogLine("slowscan_x_center", coords_scan[0])
                         self.setDetLogLine("slowscan_y_center", coords_scan[1])
@@ -467,13 +437,21 @@ class EtSTEDController(ImConWidgetController):
                                 self.setDetLogLine("det_coord_x_", coords_wf[0], i)
                                 self.setDetLogLine("det_coord_y_", coords_wf[1], i)
                         
-                        self.__logger.debug(f'coords_wf: {coords_wf}')
-                        self.__logger.debug(f'coords_scan: {coords_scan}')
-                        self.initiateSlowScan(position=coords_scan)
+                        #self._logger.debug(f'coords_wf: {coords_wf}')
+                        #self._logger.debug(f'coords_scan: {coords_scan}')
+                        try:
+                            self.initiateSlowScan(position=coords_scan)
+                        except Exception as e:
+                            self._logger.error(f"Failed to initiate slow scan, likely due to not having loaded scanning parameters. Error message: {e}")
+                            self.setBusyFalse()
+                            return
+                        # trigger scan starting signal emission or not - if triggered, use scan-standard laser preset
+                        if self._widget.useScanLaserPresetCheck.isChecked():
+                            self._commChannel.sigScanStarting.emit()
+                        
                         self.runSlowScan()
 
                         # update scatter plot of event coordinates in the shown fast method image
-                        #self.updateScatter(np.flip(np.copy(coords_detected)), clear=True)
                         self.updateScatter(coords_detected, clear=True)
 
                         self.__prevFrames.append(img)
@@ -481,7 +459,7 @@ class EtSTEDController(ImConWidgetController):
                         self.__exinfo = None
                         self.__busy = False
                         return
-                self.__bkg = img
+                #self.__bkg = img
                 self.__prevFrames.append(img)
                 if self.__runMode == RunMode.Validate:
                     self.__prevAnaFrames.append(img_ana)
@@ -490,36 +468,33 @@ class EtSTEDController(ImConWidgetController):
 
     def initiateSlowScan(self, position=[0.0,0.0,0.0]):
         """ Initiate a STED scan. """
-        dt = datetime.now()
-        time_curr_before = round(dt.microsecond/1000)
+        #dt = datetime.now()
+        #time_curr_before = round(dt.microsecond/1000)
         self.setCenterScanParameter(position)
-        dt = datetime.now()
-        time_curr_mid = round(dt.microsecond/1000)
+        #dt = datetime.now()
+        #time_curr_mid = round(dt.microsecond/1000)
         if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            self.__logger.debug('Initiating scan with ScanWidget')
             try:
                 self.signalDic, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                    self._analogParameterDict, self._digitalParameterDict, staticPositioner=False
+                    self._analogParameterDict, self._digitalParameterDict, False
                 )
             except:
-                self.__logger.debug('Error when initiating ScanWidget scan')
+                self._logger.debug('Error when initiating ScanWidget scan')
                 return
         elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
-            self.__logger.debug('Initiating scan with RecordingWidget')
             self._commChannel.sigRequestScanFreq.emit()
             # Set scan axis centers in scanwidget
             self.setCentersScanWidget()
-        #self.scanInfoDict['phase_delay'] = np.float(self._widget.phase_delay_edit.text())
-        dt = datetime.now()
-        time_curr_after = round(dt.microsecond/1000)
-        self.__logger.debug(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
-        self.__logger.debug(f'Time for signal curve generation: {time_curr_after-time_curr_mid} ms')
+        #dt = datetime.now()
+        #time_curr_after = round(dt.microsecond/1000)
+        #self._logger.debug(f'Time for curve parameters: {time_curr_mid-time_curr_before} ms')
+        #self._logger.debug(f'Time for signal curve generation: {time_curr_after-time_curr_mid} ms')
 
     def setCenterScanParameter(self, position):
         """ Set the scanning center from the detected event coordinates. """
         if self._analogParameterDict:
             for index, positionerName in enumerate(self._analogParameterDict['target_device']):
-                #self.__logger.debug(positionerName)
+                #self._logger.debug(positionerName)
                 if positionerName != 'None':
                     if positionerName == 'ND-GalvoX':
                         center = position[0]
@@ -529,13 +504,13 @@ class EtSTEDController(ImConWidgetController):
                     elif positionerName == 'ND-GalvoY':
                         center = position[1]
                         self._analogParameterDict['axis_centerpos'][index] = center
-        self.__logger.debug(self._analogParameterDict)
+        #self._logger.debug(self._analogParameterDict)
         # set actual positions of scanners not in scan from centerpos (usually done in ScanController.runScanAdvanced())
         for index, positionerName in enumerate(self._analogParameterDict['target_device']):
             if positionerName not in self._positionersScan:
                 position = self._analogParameterDict['axis_centerpos'][index]
                 self._master.positionersManager[positionerName].setPosition(position, 0)
-                self.__logger.debug(f'set {positionerName} center to {position} before scan')
+                #self._logger.debug(f'set {positionerName} center to {position} before scan')
 
     def logScanFreq(self, scanFreq):
         self.setDetLogLine("scan_period", scanFreq)
@@ -550,6 +525,22 @@ class EtSTEDController(ImConWidgetController):
         shift_compensation = np.sum(params*C)
         center -= shift_compensation
         return(center)
+
+    def setScanParametersStatus(self, scanInfo, positionersScan):
+        pixel_sizes = scanInfo['axis_step_size']
+        axis_lens = scanInfo['axis_length']
+        pixels = np.divide(axis_lens,pixel_sizes)
+        dwell_time = scanInfo['sequence_time'] * 1E6
+        dwell_time_message = f'{dwell_time:.0f} µs'
+        scan_axes = [positioner for positioner in positionersScan if positioner != 'None']
+        scan_axes_message = ' x '.join(map(str, scan_axes))
+        size_list = [len for len, pixel in zip(axis_lens, pixels) if pixel != 1]
+        size_message = ' x '.join(map(str, size_list)) + ' µm'
+        pixel_sizes_list = [pxsize for pxsize, pixel in zip(pixel_sizes, pixels) if pixel != 1]
+        pixel_sizes_message = ' x '.join(map(str, pixel_sizes_list)) + ' µm'
+        
+        text = f'Current scan loaded: axes: {scan_axes_message}, axis lengths: {size_message}, pixel sizes: {pixel_sizes_message}, dwell time: {dwell_time_message}'
+        self._widget.loadScanParametersStatus.setText(text)
 
     def setCentersScanWidget(self):
         devices = []
@@ -599,7 +590,6 @@ class EtSTEDCoordTransformHelper():
     def __init__(self, etSTEDController, coordTransformWidget, saveFolder, *args, **kwargs):
         
         self.__logger = initLogger(self)
-        self.__logger.debug('Initializing')
 
         self.etSTEDController = etSTEDController
         self._widget = coordTransformWidget

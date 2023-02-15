@@ -248,7 +248,6 @@ class NidaqManager(SignalInterface):
         if not self.busy:
             self.busy = True
             self.signalSent = False
-            self.__logger.debug('Create nidaq scan...')
 
             try:
                 # TODO: fill this

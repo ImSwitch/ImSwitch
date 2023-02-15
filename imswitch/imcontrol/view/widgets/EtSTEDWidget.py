@@ -1,5 +1,5 @@
 import os
-from inspect import signature
+#from inspect import signature
 from imswitch.imcommon.model import initLogger
 
 import pyqtgraph as pg
@@ -8,7 +8,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 from imswitch.imcommon.model import dirtools
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.view.guitools import naparitools
-from .basewidgets import Widget, NapariHybridWidget
+from .basewidgets import Widget#, NapariHybridWidget
 
 _etstedDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_etsted')
 
@@ -62,24 +62,24 @@ class EtSTEDWidget(Widget):
         self.fastImgDetectors = list()
         self.fastImgDetectorsPar = QtGui.QComboBox()
         self.fastImgDetectorsPar_label = QtGui.QLabel('Fast detector')
-        self.fastImgDetectorsPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.fastImgDetectorsPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         # add all lasers in a dropdown list, for being the fastImgLaser (widefield)
         self.fastImgLasers = list()
         self.fastImgLasersPar = QtGui.QComboBox()
         self.fastImgLasersPar_label = QtGui.QLabel('Fast laser')
-        self.fastImgLasersPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.fastImgLasersPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         # add all experiment modes in a dropdown list
         self.experimentModes = ['Experiment','TestVisualize','TestValidate']
         self.experimentModesPar = QtGui.QComboBox()
         self.experimentModesPar_label = QtGui.QLabel('Experiment mode')
-        self.experimentModesPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignCenter)
+        self.experimentModesPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignCenter)
         self.experimentModesPar.addItems(self.experimentModes)
         self.experimentModesPar.setCurrentIndex(0)
         # add dropdown list for the type of recording I want to perform (pure scanWidget or recordingManager for timelapses with defined frequency)
         self.scanInitiation = list()
         self.scanInitiationPar = QtGui.QComboBox()
         self.scanInitiationPar_label = QtGui.QLabel('Scan type')
-        self.scanInitiationPar_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.scanInitiationPar_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
 
         self.param_names = list()
         self.param_edits = list()
@@ -90,18 +90,25 @@ class EtSTEDWidget(Widget):
         
         self.coordTransfCalibButton = guitools.BetterPushButton('Transform calibration')
         self.recordBinaryMaskButton = guitools.BetterPushButton('Record binary mask')
+        self.recordBinaryMaskButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.loadScanParametersButton = guitools.BetterPushButton('Load scan parameters')
         self.setUpdatePeriodButton = guitools.BetterPushButton('Set update period')
         self.setBusyFalseButton = guitools.BetterPushButton('Unlock softlock')
 
-        self.endlessScanCheck = QtGui.QCheckBox('Endless')
-        self.fastaxisshiftCheck = QtGui.QCheckBox('Fast axis shift')
+        self.loadScanParametersStatus = QtGui.QTextEdit('')
+        self.loadScanParametersStatus.setEnabled(False)
+        #self.loadScanParametersStatus.setTextColor(QtGui.QColor('white'))
+        self.loadScanParametersStatus.setText('No scan parameters loaded.')
 
-        self.bin_thresh_label = QtGui.QLabel('Bin. threshold')
-        self.bin_thresh_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.endlessScanCheck = QtGui.QCheckBox('Endless')
+        self.fastaxisshiftCheck = QtGui.QCheckBox('Fast scan axis shift')
+        self.useScanLaserPresetCheck = QtGui.QCheckBox('Use laser preset for triggered scan')
+
+        self.bin_thresh_label = QtGui.QLabel('Bin. threshold (int.)')
+        self.bin_thresh_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.bin_thresh_edit = QtGui.QLineEdit(str(10))
         self.bin_smooth_label = QtGui.QLabel('Bin. smooth (px)')
-        self.bin_smooth_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
+        self.bin_smooth_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.bin_smooth_edit = QtGui.QLineEdit(str(2))
         self.update_period_label = QtGui.QLabel('Update period (ms)')
         self.update_period_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
@@ -123,54 +130,54 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.endlessScanCheck, currentRow, 1)
         self.grid.addWidget(self.experimentModesPar_label, currentRow, 2)
         self.grid.addWidget(self.experimentModesPar, currentRow, 3)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.bin_smooth_label, currentRow, 0)
-        self.grid.addWidget(self.bin_smooth_edit, currentRow, 1)
-        self.grid.addWidget(self.bin_thresh_label, currentRow,2)
-        self.grid.addWidget(self.bin_thresh_edit, currentRow, 3)
+        self.grid.addWidget(self.setBusyFalseButton, currentRow, 4)
 
         currentRow += 1
 
         self.grid.addWidget(self.loadPipelineButton, currentRow, 0)
         self.grid.addWidget(self.analysisPipelinePar, currentRow, 1)
-        self.grid.addWidget(self.transformPipelinePar, currentRow, 2)
-        self.grid.addWidget(self.coordTransfCalibButton, currentRow, 3)
+        self.grid.addWidget(self.bin_smooth_label, currentRow, 2)
+        self.grid.addWidget(self.bin_smooth_edit, currentRow, 3)
+        self.grid.addWidget(self.recordBinaryMaskButton, currentRow, 4, 2, 1)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.bin_thresh_label, currentRow, 2)
+        self.grid.addWidget(self.bin_thresh_edit, currentRow, 3)
+
+        currentRow += 1
+
+        self.grid.addWidget(self.transformPipelinePar, currentRow, 3)
+        self.grid.addWidget(self.coordTransfCalibButton, currentRow, 4)
 
         currentRow += 1
 
         self.grid.addWidget(self.update_period_label, currentRow, 2)
         self.grid.addWidget(self.update_period_edit, currentRow, 3)
-
-        currentRow += 1
-
-        self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 2)
-        self.grid.addWidget(self.recordBinaryMaskButton, currentRow, 3)
+        self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 4)
 
         currentRow +=1
 
         self.grid.addWidget(self.fastImgDetectorsPar_label, currentRow, 2)
         self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
+        self.grid.addWidget(self.fastaxisshiftCheck, currentRow, 4)
 
         currentRow += 1
 
         self.grid.addWidget(self.fastImgLasersPar_label, currentRow, 2)
         self.grid.addWidget(self.fastImgLasersPar, currentRow, 3)
+        self.grid.addWidget(self.useScanLaserPresetCheck, currentRow, 4)
 
         currentRow +=1
 
         self.grid.addWidget(self.scanInitiationPar_label, currentRow, 2)
         self.grid.addWidget(self.scanInitiationPar, currentRow, 3)
-
-        currentRow +=1 
-
-        self.grid.addWidget(self.loadScanParametersButton, currentRow, 2)
-        self.grid.addWidget(self.setBusyFalseButton, currentRow, 3)
+        self.grid.addWidget(self.loadScanParametersButton, currentRow, 4)
 
         currentRow +=1
 
-        self.grid.addWidget(self.fastaxisshiftCheck, currentRow, 2)
+        self.grid.addWidget(self.loadScanParametersStatus, currentRow, 3, 2, 2)
+        
 
 
     def initParamFields(self, parameters: dict):
@@ -184,7 +191,7 @@ class EtSTEDWidget(Widget):
             param.deleteLater()
 
         # initiate parameter fields for all the parameters in the pipeline chosen
-        currentRow = 4
+        currentRow = 2
         
         self.param_names = list()
         self.param_edits = list()

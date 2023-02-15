@@ -119,11 +119,6 @@ class SLMInfo:
     pixelSize: float
     """ Pixel size or pixel pitch of the SLM, in millimetres. """
 
-    angleMount: float
-    """ The angle of incidence and reflection of the laser line that is shaped
-    by the SLM, in radians. For adding a blazed grating to create off-axis
-    holography. """
-
     correctionPatternsDir: str
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
@@ -216,17 +211,6 @@ class ScanInfo:
     If integer, it will be translated to "Dev1/port0/line{frameClockLine}".
     """
 
-@dataclass(frozen=True)
-class EtSTEDInfo:
-    detectorFast: str
-    """ Name of the STED detector to use. """
-
-    detectorSlow: str
-    """ Name of the widefield detector to use. """
-
-    laserFast: str
-    """ Name of the widefield laser to use. """
-
 
 @dataclass(frozen=True)
 class MicroscopeStandInfo:
@@ -305,9 +289,6 @@ class SetupInfo:
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
     """ Scan settings. Required to be defined to use scan functionality. """
-
-    etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
-    """ EtSTED settings. Required to be defined to use etSTED functionality. """
 
     rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
     """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """

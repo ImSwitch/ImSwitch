@@ -11,7 +11,7 @@ class MockRS232Driver:
         pass
 
     def query(self, arg):
-        self.__logger.debug(f"Querying to {self._settings['port']}: {arg}")
+        self.__logger.info(f"Querying to {self._settings['port']}: {arg}")
         pass
 
     def initialize(self):
@@ -21,7 +21,7 @@ class MockRS232Driver:
         pass
 
     def write(self, arg):
-        self.__logger.debug(f"Writing to {self._settings['port']}: {arg}")
+        self.__logger.info(f"Writing to {self._settings['port']}: {arg}")
         pass
 
 

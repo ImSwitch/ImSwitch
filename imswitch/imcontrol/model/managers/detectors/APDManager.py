@@ -168,21 +168,18 @@ class APDManager(DetectorManager):
         return self.__shape
 
     def setShape(self, img_dims):
-        #self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
         self.__shape = tuple(img_dims)
 
     @property
     def scale(self):
         return self.__pixel_sizes[::-1]
-        #return list(reversed(self.__pixel_sizes))
         
     @property
     def pixelSizeUm(self):
-        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]  # TODO: is this not in the wrong order, considering setPixelSize below?
+        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]
 
     def setPixelSize(self, pixel_sizes: list):
-        # pixel_sizes: list of low dim to high dim
-        #pixel_sizes.append(1)
+        """ pixel_sizes: list of low dim to high dim. """
         self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):

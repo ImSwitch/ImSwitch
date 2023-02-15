@@ -41,12 +41,12 @@ class Cobolt0601LaserManager(LantzLaserManager):
             powerQ = self._laser.power_sp * self._numLasers
             self._laser.enter_mod_mode()
             self._setModPower(powerQ)
-            self.__logger.debug('Entered digital modulation mode')
-            self.__logger.debug(f'Modulation mode is: {self._laser.mod_mode}')
+            #self.__logger.debug('Entered digital modulation mode')
+            #self.__logger.debug(f'Modulation mode is: {self._laser.mod_mode}')
         else:
             self._laser.digital_mod = False
             self._laser.query('cp')
-            self.__logger.debug('Exited digital modulation mode')
+            #self.__logger.debug('Exited digital modulation mode')
 
         self._digitalMod = active
 
@@ -55,7 +55,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
 
     def _setModPower(self, power):
         self._laser.power_mod = power / self._numLasers
-        self.__logger.debug(f'Set digital modulation mode power to: {power}')
+        #self.__logger.debug(f'Set digital modulation mode power to: {power}')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -7,7 +7,7 @@ class ScanManagerPointScan(SuperScanManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def makeFullScan(self, scanParameters, TTLParameters):
+    def makeFullScan(self, scanParameters, TTLParameters, *args):
         """ Generates stage and TTL scan signals. """
         self._checkScanDefined()
         if not self._scanDesigner.checkSignalLength(
@@ -28,7 +28,6 @@ class ScanManagerPointScan(SuperScanManager):
             )
             return
         TTLCycleSignalsDict = self.getTTLCycleSignalsDict(TTLParameters, scanInfoDict)
-
         return (
             {'scanSignalsDict': scanSignalsDict,
              'TTLCycleSignalsDict': TTLCycleSignalsDict},

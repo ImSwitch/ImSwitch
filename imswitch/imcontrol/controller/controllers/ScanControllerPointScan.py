@@ -115,18 +115,6 @@ class ScanControllerPointScan(SuperScanController):
         self._positionersScan = []
         for i in range(len(self.positioners)):
             self._positionersScan.append(self._widget.getScanDim(i))
-        ### NEW
-        #for positionerName in self.positioners:
-        #    size = self._widget.getScanSize(positionerName)
-        #    stepSize = self._widget.getScanStepSize(positionerName)
-        #    center = self._widget.getScanCenterPos(positionerName)
-        #    start = list(self._master.positionersManager[positionerName].position.values())
-        #    self._analogParameterDict['target_device'].append(positionerName)
-        #    self._analogParameterDict['axis_length'].append(size)
-        #    self._analogParameterDict['axis_step_size'].append(stepSize)
-        #    self._analogParameterDict['axis_centerpos'].append(center)
-        #    self._analogParameterDict['axis_startpos'].append(start)
-        ### OLD
         self._analogParameterDict['scan_dim_target_device'] = self._positionersScan
         for positionerName in self._positionersScan:
             if positionerName != 'None':
@@ -150,8 +138,6 @@ class ScanControllerPointScan(SuperScanController):
                 self._analogParameterDict['axis_step_size'].append(stepSize)
                 self._analogParameterDict['axis_centerpos'].append(center)
                 self._analogParameterDict['axis_startpos'].append(start)
-
-        ###
         self._digitalParameterDict['target_device'] = []
         self._digitalParameterDict['TTL_sequence'] = []
         self._digitalParameterDict['TTL_sequence_axis'] = []
@@ -166,7 +152,6 @@ class ScanControllerPointScan(SuperScanController):
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
-        #self._analogParameterDict['extra_laser_on'] = self._widget.getExtraLaserOnPar()
 
     def updatePixels(self):
         self.getParameters()

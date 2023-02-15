@@ -59,6 +59,7 @@ class SuperScanController(ImConWidgetController):
 
         self._analogParameterDict = {}
         self._digitalParameterDict = {}
+        self._positionersScan = []
         self.signalDict = None
         self.scanInfoDict = None
         self.isRunning = False

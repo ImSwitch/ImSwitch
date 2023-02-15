@@ -112,9 +112,6 @@ Item types that may be included
    :members:
    :inherited-members:
 
-.. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.EtSTEDInfo
-   :members:
-   :inherited-members:
 
 
 Available managers

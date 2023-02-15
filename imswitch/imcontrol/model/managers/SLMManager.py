@@ -207,11 +207,11 @@ class Mask:
         self.centerx = self.height // 2
         self.centery = self.width // 2
         self.radius = 100
-        self.sigma = 35
+        self.sigma = 65
         self.wavelength = wavelength
         self.mask_type = MaskMode.Black
         self.angle_rotation = 0
-        self.angle_tilt = 0
+        self.angle_tilt = 0.01
         self.pixelSize = 0
         if wavelength == 561:
             self.value_max = 148
@@ -304,8 +304,6 @@ class Mask:
         mask = np.indices((self.height, self.width), dtype="float")[1, :, :]
         # Spatial frequency, round to avoid aliasing
         f_spat = np.round(wavelength / (self.pixelSize * np.sin(self.angle_tilt)))
-        if np.absolute(f_spat) < 3:
-            self.__logger.debug(f"Spatial frequency: {f_spat} pixels")
         period = 2 * math.pi / f_spat  # period
         mask *= period  # getting a mask that is time along x-axis with a certain period
         tilt = sg.sawtooth(mask) + 1  # creating the blazed grating

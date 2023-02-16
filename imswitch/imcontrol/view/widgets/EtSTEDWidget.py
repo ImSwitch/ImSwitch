@@ -33,7 +33,7 @@ class EtSTEDWidget(Widget):
         self.eventScatterPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
         self.eventScatterPlot.hide()
         
-        # add all available analysis pipelines to the dropdown list
+        # add all available analysis pipelines to a dropdown list
         self.analysisPipelines = list()
         self.analysisPipelinePar = QtGui.QComboBox()
         for pipeline in os.listdir(self.analysisDir):
@@ -46,17 +46,33 @@ class EtSTEDWidget(Widget):
 
         self.__paramsExclude = ['img', 'prev_frames', 'binary_mask', 'exinfo', 'testmode']
         
-        #TODO: add way to save current coordinate transform as a file that can be loaded from the list
-        # add all available coordinate transformations to the dropdown list
+        # add all available coordinate transformations to a dropdown list
+        self.transformPipeline_label = QtGui.QLabel('Transform pipeline')
+        self.transformPipeline_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
         self.transformPipelines = list()
         self.transformPipelinePar = QtGui.QComboBox()
         for transform in os.listdir(self.transformDir):
             if os.path.isfile(os.path.join(self.transformDir, transform)):
-                transform = transform.split('.')[0]
-                self.transformPipelines.append(transform)
+                if transform.endswith('.py'):
+                    transform = transform.split('.')[0]
+                    self.transformPipelines.append(transform)
         
         self.transformPipelinePar.addItems(self.transformPipelines)
         self.transformPipelinePar.setCurrentIndex(0)
+        
+        # add all available coordinate transform coefs to a dropdown list
+        self.transformCoefs_label = QtGui.QLabel('Transform coefficients')
+        self.transformCoefs_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignBottom)
+        self.transformCoefs = list()
+        self.transformCoefsPar = QtGui.QComboBox()
+        for transform in os.listdir(self.transformDir):
+            if os.path.isfile(os.path.join(self.transformDir, transform)):
+                if transform.endswith('.csv'):
+                    transform = transform.split('.')[0]
+                    self.transformCoefs.append(transform)
+        
+        self.transformCoefsPar.addItems(self.transformCoefs)
+        self.transformCoefsPar.setCurrentIndex(0)
 
         # add all forAcquisition detectors in a dropdown list, for being the fastImgDetector (widefield)
         self.fastImgDetectors = list()
@@ -89,6 +105,7 @@ class EtSTEDWidget(Widget):
         self.loadPipelineButton = guitools.BetterPushButton('Load pipeline')
         
         self.coordTransfCalibButton = guitools.BetterPushButton('Transform calibration')
+        self.coordTransfCalibButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.recordBinaryMaskButton = guitools.BetterPushButton('Record binary mask')
         self.recordBinaryMaskButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.loadScanParametersButton = guitools.BetterPushButton('Load scan parameters')
@@ -147,8 +164,14 @@ class EtSTEDWidget(Widget):
 
         currentRow += 1
 
+        self.grid.addWidget(self.transformPipeline_label, currentRow, 2)
         self.grid.addWidget(self.transformPipelinePar, currentRow, 3)
-        self.grid.addWidget(self.coordTransfCalibButton, currentRow, 4)
+        self.grid.addWidget(self.coordTransfCalibButton, currentRow, 4, 2, 1)
+
+        currentRow +=1
+
+        self.grid.addWidget(self.transformCoefs_label, currentRow, 2)
+        self.grid.addWidget(self.transformCoefsPar, currentRow, 3)
 
         currentRow += 1
 
@@ -177,8 +200,6 @@ class EtSTEDWidget(Widget):
         currentRow +=1
 
         self.grid.addWidget(self.loadScanParametersStatus, currentRow, 3, 2, 2)
-        
-
 
     def initParamFields(self, parameters: dict):
         """ Initialized etSTED widget parameter fields. """
@@ -230,6 +251,18 @@ class EtSTEDWidget(Widget):
             self.scanInitiation.append(initiationType)
         self.scanInitiationPar.addItems(self.scanInitiation)
         self.scanInitiationPar.setCurrentIndex(0)
+
+    def updateCoordTransformCoeffPar(self):
+        """ Update dropdown list of available coordinate transform coefficient parameters. """
+        self.transformCoefs = list()
+        self.transformCoefsPar.clear()
+        for transform in os.listdir(self.transformDir):
+            if os.path.isfile(os.path.join(self.transformDir, transform)):
+                if transform.endswith('.csv'):
+                    transform = transform.split('.')[0]
+                    self.transformCoefs.append(transform)
+        self.transformCoefsPar.addItems(self.transformCoefs)
+        self.transformCoefsPar.setCurrentIndex(0)
 
     def setEventScatterData(self, x, y):
         """ Updates scatter plot of detected coordinates with new data. """

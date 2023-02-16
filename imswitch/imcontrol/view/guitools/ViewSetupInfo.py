@@ -65,10 +65,10 @@ class ViewSetupInfo(SetupInfo):
     - ``uLenses`` (uLenses tool widget; requires ``Image`` widget)
     - ``FFT`` (FFT tool widget)
     - ``Console`` (Python console widget)
-    - ``EtSTED`` (etSTED widget; requires ``etSTED`` field to be defined)
+    - ``EtSTED`` (etSTED widget)
     - ``Rotator`` (Rotator widget; requires "Rotator" field to be defined)
     - ``RotationScan`` (Rotation scan widget; requires "Rotator" field to be defined)
-    - ``MotCorr`` (Leica motorized correction collar widget; requires "leicastand" rs232 device to be defined)
+    - ``MotCorr`` (Leica motorized correction collar widget; requires rs232 stand device to be defined)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.

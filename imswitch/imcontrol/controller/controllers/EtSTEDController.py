@@ -4,6 +4,7 @@ import ctypes
 import importlib
 import enum
 import h5py
+import csv
 
 from collections import deque
 from datetime import datetime
@@ -206,6 +207,12 @@ class EtSTEDController(ImConWidgetController):
         transformidx = self._widget.transformPipelinePar.currentIndex()
         transformname = self._widget.transformPipelines[transformidx]
         return transformname
+    
+    def getTransformCoefName(self):
+        """ Get the name of the file with the selected coordinate transform parameters. """
+        transformidx = self._widget.transformCoefsPar.currentIndex()
+        transformname = self._widget.transformCoefs[transformidx]
+        return transformname
 
     def getPipelineName(self):
         """ Get the name of the pipeline currently used. """
@@ -243,9 +250,13 @@ class EtSTEDController(ImConWidgetController):
             self.resetParamVals()
 
     def loadTransform(self):
-        """ Load a previously saved coordinate transform. """
+        """ Load a coordinate transform and previously saved transform coefficients. """
         transformname = self.getTransformName()
         self.transform = getattr(importlib.import_module(f'{transformname}'), f'{transformname}')
+        transformCoefName = self.getTransformCoefName()
+        with open(os.path.join(self._widget.transformDir, transformCoefName+'.csv'), newline='') as f:
+            reader = csv.reader(f)
+            self.__transformCoeffs = [float(el[0]) for el in list(reader)]
 
     def loadPipeline(self):
         """ Load the selected analysis pipeline, and its parameters into the GUI. """
@@ -381,7 +392,6 @@ class EtSTEDController(ImConWidgetController):
                 #t_post = millis()
                 self.setDetLogLine("pipeline_end", datetime.now().strftime('%Ss%fus'))
                 #self._logger.debug(f'Pipeline time: {t_post-t_pre} ms')
-                #self._logger.debug(coords_detected)
 
                 if self.__frame > self.__init_frames:
                     # run if the initial frames have passed
@@ -495,7 +505,6 @@ class EtSTEDController(ImConWidgetController):
         """ Set the scanning center from the detected event coordinates. """
         if self._analogParameterDict:
             for index, positionerName in enumerate(self._analogParameterDict['target_device']):
-                #self._logger.debug(positionerName)
                 if positionerName != 'None':
                     if positionerName == 'ND-GalvoX':
                         center = position[0]
@@ -505,13 +514,11 @@ class EtSTEDController(ImConWidgetController):
                     elif positionerName == 'ND-GalvoY':
                         center = position[1]
                         self._analogParameterDict['axis_centerpos'][index] = center
-        #self._logger.debug(self._analogParameterDict)
         # set actual positions of scanners not in scan from centerpos (usually done in ScanController.runScanAdvanced())
         for index, positionerName in enumerate(self._analogParameterDict['target_device']):
             if positionerName not in self._positionersScan:
                 position = self._analogParameterDict['axis_centerpos'][index]
                 self._master.positionersManager[positionerName].setPosition(position, 0)
-                #self._logger.debug(f'set {positionerName} center to {position} before scan')
 
     def logScanFreq(self, scanFreq):
         self.setDetLogLine("scan_period", scanFreq)
@@ -635,14 +642,18 @@ class EtSTEDCoordTransformHelper():
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
             pos = (np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3), np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3))
             self.__hiResCoords.append(pos)
+
         # calibrate coordinate transform
         self.coordinateTransformCalibrate()
-        #self.__logger.debug(self.__loResCoords)
-        #self.__logger.debug(self.__hiResCoords)
-        #self.__logger.debug(f'Transformation coeffs: {self.__transformCoeffs}')
-        name = datetime.utcnow().strftime('%Hh%Mm%Ss%fus')
-        filename = os.path.join(self.__saveFolder, name) + '_transformCoeffs.txt'
-        np.savetxt(fname=filename, X=self.__transformCoeffs)
+        name_short = datetime.utcnow().strftime('%Hh%Mm%Ss')
+        name_long = datetime.utcnow().strftime('%Y-%m-%d-%Hh%Mm%Ss')
+        filename_txt = os.path.join(self.__saveFolder, name_short+'_transformCoeffs.txt')
+        filename_csv = os.path.join(self.etSTEDController._widget.transformDir, name_long+'.csv')
+        np.savetxt(fname=filename_txt, X=self.__transformCoeffs)
+        with open(filename_csv, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for el in self.__transformCoeffs:
+                writer.writerow([str(el)])
 
         # plot the resulting transformed low-res coordinates on the hi-res image
         coords_transf = []
@@ -653,6 +664,9 @@ class EtSTEDCoordTransformHelper():
             coords_transf.append(pos_px)
         coords_transf = np.array(coords_transf)
         self._widget.pointsLayerTransf.data = coords_transf
+
+        # update list of available coordinate transform coefficients
+        self.etSTEDController._widget.updateCoordTransformCoeffPar()
 
     def resetCalibrationCoords(self):
         """ Reset all selected coordinates. """

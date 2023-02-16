@@ -24,6 +24,11 @@ import tifffile
 
 try:
     import mcsim
+    ismcSIM=True
+except:
+    imscSIM=False
+
+if ismcSIM:
     try:
         import cupy as cp
         from mcsim.analysis import sim_reconstruction as sim
@@ -33,9 +38,6 @@ try:
         import numpy as cp 
         from mcsim.analysis import sim_reconstruction as sim
         isGPU = False
-
-except:
-    imscSIM=False
 
 try:
     import NanoImagingPack as nip
@@ -111,6 +113,14 @@ class SIMController(LiveUpdatedController):
         self.nRotations = 3
         self.nPhases = 3
 
+        # se    ect lasers
+        allLaserNames = self._master.lasersManager.getAllDeviceNames()
+        self.lasers = []
+        for iDevice in allLaserNames:
+            if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
+                self.lasers.append(self._master.lasersManager[iDevice])
+
+
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
@@ -121,7 +131,6 @@ class SIMController(LiveUpdatedController):
 
         self.imageComputationThread = Thread()
         self.imageComputationWorker.moveToThread(self.imageComputationThread)
-        #self.sigImageReceived.connect(self.imageComputationWorker.computeSIMImage)
         self.imageComputationThread.start()
 
         # Initial SIM display
@@ -158,6 +167,32 @@ class SIMController(LiveUpdatedController):
         #self._logger.debug("Pattern ID:"+str(self.patternID))
         self.simPatternByID(self.patternID)
      
+        '''
+                     # capture image for every illumination
+                if self.Laser1Value>0 and len(self.lasers)>0:
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                                timestamp=timestamp,
+                                filename=f'{self.MCTFilename}_Laser1_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                extension=fileExtension)
+                    self.lasers[0].setValue(self.Laser1Value)
+                    self.lasers[0].setEnabled(True)
+                    lastFrame = self.detector.getLatestFrame()
+                    tif.imwrite(filePath, lastFrame, append=True)
+                    self.lasers[0].setEnabled(False)
+                    self.LastStackLaser1.append(lastFrame.copy())
+
+                if self.Laser2Value>0 and len(self.lasers)>0:
+                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                                timestamp=timestamp,
+                                filename=f'{self.MCTFilename}_Laser2_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                extension=fileExtension)
+                    self.lasers[1].setValue(self.Laser2Value)
+                    self.lasers[1].setEnabled(True)
+                    lastFrame = self.detector.getLatestFrame()
+                    tif.imwrite(filePath, lastFrame, append=True)
+                    self.lasers[1].setEnabled(False)
+                    self.LastStackLaser2.append(lastFrame.copy())
+        '''
         if self.iSyncCameraSLM>=self.nSyncCameraSLM:
             self.iSyncCameraSLM=0
             self.patternID+=1
@@ -331,15 +366,20 @@ class SIMController(LiveUpdatedController):
                 if self.isRecording:
                     date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
                     mFilename = f"filename_{date}.tif"
-                    tif.imsave(mFilename, self.allFramesNP)
-                    self._logger.debug("Saving file: "+mFilename)
+                    # TODO: implement this as a qeue
+                    threading.Thread(target=self.saveImageInBackground, args=(self.allFramesNP,mFilename,), daemon=True).start()
+            
                 
 
                 # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-                self.computeSIMImage()
+                #self.computeSIMImage()
 
         def toggleRecording(self, isRecording):
             self.isRecording = isRecording
+
+        def saveImageInBackground(self, image, filename):
+            tif.imsave(filename, image)
+            self._logger.debug("Saving file: "+filename)
 
 
 '''#####################################

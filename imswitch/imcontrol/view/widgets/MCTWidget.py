@@ -14,6 +14,7 @@ class MCTWidget(NapariHybridWidget):
     sigMCTShowLast = QtCore.Signal(bool)  # (enabled)
     sigMCTStop = QtCore.Signal(bool)  # (enabled)
     sigMCTStart = QtCore.Signal(bool)  # (enabled)
+    sigMCTSelectScanCoordinates = QtCore.Signal(bool)
 
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
@@ -107,6 +108,13 @@ class MCTWidget(NapariHybridWidget):
         self.mctEditFileName  = QtWidgets.QLineEdit('MCT')
         self.mctNImages  = QtWidgets.QLabel('Number of images: ')
 
+        # loading scan position list
+        self.mctLabelScanPositionList = QtWidgets.QLabel("Scan Position List:")
+        self.mctSelectScanPositionList = guitools.BetterPushButton('Select XY Coordinates')
+        self.mctSelectScanPositionList.setCheckable(True)
+        self.mctSelectScanPositionList.toggled.connect(self.sigMCTSelectScanCoordinates)
+
+        # Start scan
         self.mctStartButton = guitools.BetterPushButton('Start')
         self.mctStartButton.setCheckable(False)
         self.mctStartButton.toggled.connect(self.sigMCTStart)
@@ -271,7 +279,7 @@ class MCTWidget(NapariHybridWidget):
         mctEditFileName = self.mctEditFileName.text()
         return mctEditFileName
     
-    def setNImages(self, nImages):
+    def setnImagesTaken(self, nImages):
         nImages2Do = self.getTimelapseValues()[-1]
         self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     

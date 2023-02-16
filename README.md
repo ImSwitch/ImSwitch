@@ -41,23 +41,8 @@ You will then be able to start ImSwitch with this command:
 ```
 imswitch
 ```
+
 (Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
-
-#### On Mac with ARM
-https://stackoverflow.com/questions/70217885/configure-m1-vscode-arm-but-with-a-rosetta-terminal
-```
-brew install --cask miniforge
-conda init 
-# open new shell
-conda create -n imswitch python=3.9
-
-conda install -c conda-forge napari
-
-nano setup.cfg
-# uncomment pypylon and QScintila and PyQtWebEngine and PyQT5
-pip install --no-deps <LIB_NAME>
-```
-
 
 ### Option C: Install from Github (UC2 version)
 
@@ -80,6 +65,49 @@ git clone https://github.com/beniroquai/ImSwitchConfig
 # Alternatively download the repository as a zip, unzip the file into the folder Documents/ImSwitchConfig
 ```
 
+#### On Mac with ARM
+
+On Mac (with M1 chip and on) open a terminal and enter `arch` to verify that your system-architecture is `arm64`. Now you have two options: 
+
+##### 1) Emulating Intel-chipset like behaviour
+
+To emulate the used Intel-chipset like behaviour configure a [second terminal according to this guide](https://stackoverflow.com/questions/70217885/configure-m1-vscode-arm-but-with-a-rosetta-terminal). Once done, open this terminal, type `arch` again and verify that it is now emulating `i386`. Now you can continue the standard installation-procedure as given below.
+
+```
+brew install --cask mambaforge
+mamba init 
+# open new shell
+mamba create -n imswitch python=3.9
+
+mamba install -c conda-forge napari
+
+nano setup.cfg
+# comment pypylon and QScintila and PyQtWebEngine and PyQT5
+pip install --no-deps <LIB_NAME>
+```
+
+In the above code-snipped we suggest to use [mamba](https://github.com/mamba-org/mamba) which is a faster reimplementation of conda that still uses the same syntax and servers/packages. Make sure to have a look into the [documentation of mamba](https://mamba.readthedocs.io/en/latest/installation.html) and to check the [status of the brew-package](https://formulae.brew.sh/cask/mambaforge) before installation. first Once all easily compatible packages are installed run `pip install --no-deps <LIB_NAME>` and replace `<LIB_NAME>` with the commented packages individually, so e.g. `pip install --no-deps pypylon` and so on.
+
+##### 2) Working on arm64 chipset (e.g. Mac M1, M2 and on)
+
+If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or Jetson Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
+
+On example of the [QtScintilla package](https://pypi.org/project/QScintilla/) for PyQt5 we will demonstrate how to build the existing conda-recipe on your machine. First, try to install as many packages as possible along the [installation description above](#option-c-install-from-github-UC2-version).
+
+In our case `mamba install -c conda-forge qt-main=5.15.6` did not succeed as somehow the downloading-pipe always broke and so the downloaded package was incomplete. Downloading the package by hand solved the problem. To find the package URL, first find out the correct package version (in our case `qt-main-5.15.6-hda43d4a_5.conda`) and then type `mamba search qt-main="5.15.6 hda43d4a_5" --info` in your terminal. You will find the url in the upfollowing list, here [https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda](https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda) with timestamp `2022-12-19 00:52:55 UTC`. Download it into your active environment's packages folder, which on default is `/opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/pkgs`. 
+
+As expected `pip install --no-deps QScintila` fails due to `ERROR: Could not find a version that satisfies the requirement QScintila (from versions: none)
+ERROR: No matching distribution found for QScintila`.  Now clone the [conda feedstock of qscintilla2](https://github.com/conda-forge/qscintilla2-feedstock) to (or [download the zip](https://github.com/conda-forge/qscintilla2-feedstock/archive/refs/heads/main.zip) and unzip it into) your `/opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/resources/` folder. Then run:
+
+mamba activate imswitch
+mamba install conda-build
+cd /opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/resources/qscintilla2/qscintilla2_recipe
+mamba build --debug .
+mamba install /opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/conda-bld/osx-arm64/qscintilla2-2.13.3-py39h70deae4_4.tar.bz2
+
+in case you built the package `qscintilla2-2.13.3-py39h70deae4_4.tar.bz2`. Et voilà, you just build a package from a conda recipe for `macOS arm64`.  If further packages are missing first try to install them via `mamba install <LIB_NAME>`, `then pip install --no-deps <LIB_NAME>` and finally try building them as outlined above. 
+
+Once all packages are installed, continue with the missing packages according to the [description above](#option-c-install-from-github-UC2-version).
 
 ***DLL not found error***
 
@@ -188,7 +216,16 @@ Please go to the Review [here]()
   - `conda activate imswitch`
   - `install.bat`
 
+## STORM
 
+```
+git clone https://github.com/beniroquai/microEye
+cd microEye
+pip install -e .
+pip install -r requirements.txt
+pip install scikit-learn
+pip install pydantic --force-reinstall
+```
 ## Documentation
 
 Further documentation is available at [imswitch.readthedocs.io](https://imswitch.readthedocs.io).

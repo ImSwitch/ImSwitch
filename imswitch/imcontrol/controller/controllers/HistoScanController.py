@@ -365,6 +365,14 @@ class HistoScanController(LiveUpdatedController):
     def setLED(self, value):
         self._logger.info("Setting LED...")
         self._camera.setLED(value)
+        
+        
+    def openFolder(self):
+        """ Opens current folder in File Explorer. """
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        ostools.openFolderInOS(folder)
 
     
     

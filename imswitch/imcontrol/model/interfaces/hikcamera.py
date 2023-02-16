@@ -4,21 +4,34 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 
-import imswitch.imcontrol.model.interfaces.gxipy as gx
+import sys
+import threading
+from ctypes import *
 import collections
 
-class TriggerMode:
-    SOFTWARE = 'Software Trigger'
-    HARDWARE = 'Hardware Trigger'
-    CONTINUOUS = 'Continuous Acqusition'
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    # linux
+    pass
+elif platform == "darwin":
+    # OS X
+    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+    pass
+elif platform == "win32":
+    import msvcrt
+    from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+    
 
-class CameraGXIPY:
+
+
+
+class CameraHIK:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
-        self.model = "CameraGXIPY"
+        self.model = "CameraHIK"
         self.shape = (0, 0)
         
         self.is_connected = False
@@ -47,30 +60,64 @@ class CameraGXIPY:
         # binning 
         self.binning = binning
 
-        self.device_manager = gx.DeviceManager()
-        dev_num, dev_info_list = self.device_manager.update_device_list()
-
-        if dev_num  != 0:
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-        else:
-            raise Exception("No camera GXIPY connected")
+        self.SensorHeight = 0
+        self.SensorWidth = 0
+        self.frame = np.zeros((self.SensorHeight, self.SensorWidth))
         
+        # thread switch
+        self.g_bExit = False
+        self._init_cam(cameraNo=self.cameraNo, callback_fct=None)
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
         # start camera
         self.is_connected = True
-        
+
+        deviceList = MV_CC_DEVICE_INFO_LIST()
+        tlayerType = MV_USB_DEVICE
+
+        # Enum device
+        ret = MvCamera.MV_CC_EnumDevices(tlayerType, deviceList)
+        if ret != 0:
+            raise Exception("enum devices fail! ret[0x%x]", ret)
+
+        if deviceList.nDeviceNum == 0:
+            raise Exception("No camera HIK connected")
+
         # open the first device
-        self.camera = self.device_manager.open_device_by_index(cameraNo)
+        self.camera = MvCamera()
 
-        # exit when the camera is a color camera
-        if self.camera.PixelColorFilter.is_implemented() is True:
-            print("This sample does not support color camera.")
-            self.camera.close_device()
-            return
-            
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
+        # Select device and create handle
+        stDeviceList = cast(deviceList.pDeviceInfo[int(cameraNo)], POINTER(MV_CC_DEVICE_INFO)).contents
 
+        ret = self.camera.MV_CC_CreateHandle(stDeviceList)
+        if ret != 0:
+            raise Exception("create handle fail! ret[0x%x]", ret)
+                
+        #  Open device
+        ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
+        if ret != 0:
+            raise Exception("open device fail! ret[0x%x]", ret)            
+
+        stBool = c_bool(False)
+        ret = self.camera.MV_CC_GetBoolValue("AcquisitionFrameRateEnable", stBool)
+        if ret != 0:
+            self.__logger.debug("get AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
+
+        #  Set trigger mode as off
+        ret = self.camera.MV_CC_SetEnumValue("TriggerMode", MV_TRIGGER_MODE_OFF)
+        if ret != 0:
+            self.__logger.debug("set trigger mode fail! ret[0x%x]" % ret)
+            sys.exit()
+
+        # get framesize 
+        stFloatParam_height = MVCC_INTVALUE()
+        memset(byref(stFloatParam_height), 0, sizeof(MVCC_INTVALUE))
+        stFloatParam_width = MVCC_INTVALUE()
+        memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
+        self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
+        self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
+
+        '''
         # set exposure
         self.camera.ExposureTime.set(self.exposure_time)
 
@@ -90,85 +137,81 @@ class CameraGXIPY:
         # self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
         # set camera to mono8 mode
         self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
-
-        # get framesize 
-        self.SensorHeight = self.camera.HeightMax.get()//self.binning
-        self.SensorWidth = self.camera.WidthMax.get()//self.binning
         
         # register the frame callback
         user_param = None
         self.camera.register_capture_callback(user_param, self.set_frame)
 
+        '''
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
-            self.camera.stream_on()
+            
+            # Start grab image
+            ret = self.camera.MV_CC_StartGrabbing()
+            self.__logger.debug("start grabbing")
+            self.__logger.debug(ret)
+            try:
+                self.hThreadHandle = threading.Thread(target=self.work_thread, args=(self.camera, None, None))
+                self.hThreadHandle.start()
+            except Exception:
+                self.__logger.error("Coul dnot start frame grabbing")
+            
+            if ret != 0:
+                self.__logger.debug("start grabbing fail! ret[0x%x]" % ret)
+                return
             self.is_streaming = True
 
     def stop_live(self):
         if self.is_streaming:
-            # start data acquisition
-            self.camera.stream_off()
+            # stop data acquisition
+            self.g_bExit = False
+            self.hThreadHandle.join()
             self.is_streaming = False
 
     def suspend_live(self):
         if self.is_streaming:
         # start data acquisition
             try:
-                self.camera.stream_off()
+               # Stop grab image
+                ret = self.camera.MV_CC_StopGrabbing()
             except:
-                # camera was disconnected? 
-                self.camera.unregister_capture_callback()
-                self.camera.close_device()
-                self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-
+                pass
             self.is_streaming = False
         
     def prepare_live(self):
         pass
 
     def close(self):
-        self.camera.close_device()
+        ret = self.camera.MV_CC_CloseDevice()
+        ret = self.camera.MV_CC_DestroyHandle()
         
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        self.camera.ExposureTime.set(self.exposure_time*1000)
+        self.camera.MV_CC_SetFloatValue("ExposureTime", self.exposure_time*1000)
 
     def set_gain(self,gain):
         self.gain = gain
-        self.camera.Gain.set(self.gain)
+        self.camera.MV_CC_SetFloatValue("Gain", self.gain)
 
     def set_frame_rate(self, frame_rate):
-        if frame_rate == -1:
-            frame_rate = 10000 # go as fast as you can
-        self.frame_rate = frame_rate
-        
-        # temporary
-        self.camera.AcquisitionFrameRate.set(self.frame_rate)
-        self.camera.AcquisitionFrameRateMode.set(gx.GxSwitchEntry.ON)
-
-
-        
+        pass    
+        # ret = self.cam.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
+        # if ret != 0:
+        #     print("set AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
+        #     sys.exit()
+        #
+        # ret = self.cam.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
+        # if ret != 0:
+        #     print("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
+        #     sys.exit() 
+               
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
-        self.camera.BlackLevel.set(self.blacklevel)
+        self.camera.MV_CC_SetFloatValue("BlackLevel", self.blacklevel)
 
     def set_pixel_format(self,format):
-        if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
-            if format == 'MONO8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
-            if format == 'MONO12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
-            if format == 'MONO14':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO14)
-            if format == 'MONO16':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO16)
-            if format == 'BAYER_RG8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG8)
-            if format == 'BAYER_RG12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
-        else:
-            print("pixel format is not implemented or not writable")
+        self.camera.MV_CC_SetEnumValue("PixelFormat", PixelType_Gvsp_Mono8_Signed)
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
@@ -181,7 +224,6 @@ class CameraGXIPY:
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
         return self.frame
-
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
@@ -284,87 +326,78 @@ class CameraGXIPY:
         return property_value
 
     def setTriggerSource(self, trigger_source):
-        if trigger_source =='Continous':
-            self.set_continuous_acquisition()
-        elif trigger_source =='Internal trigger':
-            self.set_software_triggered_acquisition()
-        elif trigger_source =='External trigger':
-            self.set_hardware_triggered_acquisition()
-            
-    def set_continuous_acquisition(self):
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
-        self.trigger_mode = TriggerMode.CONTINUOU
-
-    def set_software_triggered_acquisition(self):
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.SOFTWARE)
-        self.trigger_mode = TriggerMode.SOFTWARE
-
-    def set_hardware_triggered_acquisition(self):
-                # set continuous acquisition
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-
-        # set trigger source with line2
-        self.camera.TriggerSource.set(3)
-
-        # set line selector with linw
-        self.camera.LineSelector.set(2)
-
-        # set line mode input
-        self.camera.LineMode.set(0)
-        
-        # set line source
-        #cam.LineSource.set(2)
-
-        status = False
-        status = self.camera.LineStatus.get()
-
-        # User Set Selector
-        self.camera.UserSetSelector.set(1)
-        # User Set Save
-        self.camera.UserSetSave.send_command()
-        
-        '''
-        self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
-        self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
-        #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
-        '''
-        self.trigger_mode = TriggerMode.HARDWARE
-        
-        self.flushBuffer()
-
-    def getFrameNumber(self):
-        return self.frameNumber 
+        pass
 
     def send_trigger(self):
-        if self.is_streaming:
-            self.camera.TriggerSoftware.send_command()
-        else:
-        	print('trigger not sent - camera is not streaming')
+        pass
 
     def openPropertiesGUI(self):
         pass
     
-    def set_frame(self, user_param, frame):
-        if frame is None:
-            self.__logger.error("Getting image failed.")
-            return
-        if frame.get_status() != 0:
-            self.__logger.error("Got an incomplete frame")
-            return
-        numpy_image = frame.get_numpy_array()
-        if numpy_image is None:
-            return
-        self.frame = numpy_image
-        self.frameNumber = frame.get_frame_id()
-        self.timestamp = time.time()
-        
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
-        self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frameNumber)
-    
+    def work_thread(self, cam=0, pData=0, nDataSize=0):
+        if platform == "win32":
+            stOutFrame = MV_FRAME_OUT()  
+            memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+            while True:
+                ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                if None != stOutFrame.pBufAddr and 0 == ret:
+                    #print ("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum))
+                    nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
+
+                    pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
+                    cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
+                            stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
+                    data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
+                                dtype=np.uint8)
+                    self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+
+                    self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                    self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                    self.timestamp = time.time()
+                    self.frame_buffer.append(self.frame)
+                    self.frameid_buffer.append(self.frame_id)
+                else:
+                    pass 
+                if self.g_bExit == True:
+                    break
+        if platform == "darwin":
+            
+            # en:Get payload size
+            stParam =  MVCC_INTVALUE()
+            memset(byref(stParam), 0, sizeof(MVCC_INTVALUE))
+            
+            ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
+            if ret != 0:
+                print ("get payload size fail! ret[0x%x]" % ret)
+                sys.exit()
+            
+            nPayloadSize = stParam.nCurValue
+            stDeviceList = MV_FRAME_OUT_INFO_EX()
+            memset(byref(stDeviceList), 0, sizeof(stDeviceList))
+            
+            while True:
+                data_buf = (c_ubyte * nPayloadSize)()
+                ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
+                data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
+                self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
+
+                self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
+                self.frame_id = stDeviceList.nFrameNum
+                self.timestamp = time.time()
+                self.frame_buffer.append(self.frame)
+                self.frameid_buffer.append(self.frame_id)
+                    
+                    
+                '''
+                ret = cam.MV_CC_GetOneFrameTimeout(pData, nDataSize, stFrameInfo, 1000)
+                if ret == 0:
+                    print ("get one frame: Width[%d], Height[%d], PixelType[0x%x], nFrameNum[%d]"  % (stFrameInfo.nWidth, stFrameInfo.nHeight, stFrameInfo.enPixelType,stFrameInfo.nFrameNum))
+                else:
+                    print ("no data[0x%x]" % ret)
+                if self.g_bExit == True:
+                        break
+                '''
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

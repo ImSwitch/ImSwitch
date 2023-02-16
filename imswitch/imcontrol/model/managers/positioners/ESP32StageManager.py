@@ -17,6 +17,8 @@ class ESP32StageManager(PositionerManager):
         ]
         self.__logger = initLogger(self, instanceName=name)
 
+
+
         # calibrated stepsize in steps/µm
         if positionerInfo.managerProperties.get('stepsizeX') is not None:
             self.stepsizeX = positionerInfo.managerProperties['stepsizeX']
@@ -102,9 +104,39 @@ class ESP32StageManager(PositionerManager):
             self.backlashT = positionerInfo.managerProperties['backlashT']
         else:
             self.backlashT = 1
+
+        # setup homing coordinates and speed
+        if positionerInfo.managerProperties.get ('homeSpeedX') is not None:
+            self.homeSpeedX = positionerInfo.managerProperties['homeSpeedX']
+        else:
+            self.homeSpeedX = 15000
+        if positionerInfo.managerProperties.get ('homeDirectionX') is not None:
+            self.homeDirectionX = positionerInfo.managerProperties['homeDirectionX']
+        else:
+            self.homeDirectionX = -1
+            
+        if positionerInfo.managerProperties.get ('homeSpeedY') is not None:
+            self.homeSpeedY = positionerInfo.managerProperties['homeSpeedY']
+        else:
+            self.homeSpeedY = 15000
+        if positionerInfo.managerProperties.get ('homeDirectionY') is not None:
+            self.homeDirectionY = positionerInfo.managerProperties['homeDirectionY']
+        else:
+            self.homeDirectionY = -1
+
+        if positionerInfo.managerProperties.get ('homeSpeedZ') is not None:
+            self.homeSpeedZ = positionerInfo.managerProperties['homeSpeedZ']
+        else:
+            self.homeSpeedZ = 15000
+        if positionerInfo.managerProperties.get ('homeDirectionZ') is not None:
+            self.homeDirectionZ = positionerInfo.managerProperties['homeDirectionZ']
+        else:
+            self.homeDirectionZ = -1
+
             
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
+        self._homeModule = self._rs232manager._esp32.home
             
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
@@ -113,6 +145,15 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minT, self.maxT, self.stepsizeT, self.backlashT, "T")
         
         self.is_enabled = False
+
+        # get bootup position and write to GUI
+        self._position  = self.getPosition()
+        # force setting the position
+        self.setPosition(self._position['X'],"X")
+        self.setPosition(self._position['Y'],"X")
+        self.setPosition(self._position['Z'],"Z")
+
+
 
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
@@ -191,16 +232,47 @@ class ESP32StageManager(PositionerManager):
         
         return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
     
+    def forceStop(self, axis):
+        if axis=="X":
+            self.stop_x()
+        elif axis=="Y":
+            self.stop_y()
+        elif axis=="Z":
+            self.stop_z()
+        else: 
+            self.stopAll()
+        
+    def stop_x(self):
+        self._motor.stop(axis = "X")
+
+    def stop_y(self):
+        self._motor.stop(axis = "Y")
+
+    def stop_z(self):
+        self._motor.stop(axis = "Z")
+
+    def stopAll(self):
+        self._motor.stop()
+
+        
+    def doHome(self, axis):
+        if axis=="X":
+            self.home_x()
+        if axis=="Y":
+            self.home_y()
+        if axis=="Z":
+            self.home_z()
+
     def home_x(self):
-        self._motor.home_x()
+        self._homeModule.home_x(speed = self.homeSpeedX, direction = self.homeDirectionX )
         self._position["X"] = 0
         
     def home_y(self):
-        self._motor.home_y()
+        self._homeModule.home_y(speed = self.homeSpeedY, direction = self.homeDirectionY)
         self._position["Y"] = 0
         
     def home_z(self):
-        self._motor.home_z()
+        self._homeModule.home_z(speed = self.homeSpeedZ, direction = self.homeDirectionZ)
         self._position["Z"] = 0
         
     def home_xyz(self):

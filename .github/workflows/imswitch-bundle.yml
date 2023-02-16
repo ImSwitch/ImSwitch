@@ -38,11 +38,11 @@ jobs:
         repository: openUC2/UC2-REST
         releases-only: true
     - name: bump version
-      uses: jacobtomlinson/gha-find-replace@v2
+      uses: mad9000/actions-find-and-replace-string@2
       with:
-        find: '__version__ = "__version__develop"'
-        replace: '__version__ = "${{ steps.remote_chart.outputs.tag }}"'
-        regex: false
+          source: ${{ github.ref }} # this translates to ref/heads/main on the main branch, but can be any arbitrary string 
+          find: '__version__ = "v0.0.0"'        # we want to remove ref/heads/ from source 
+          replace: '__version__ = "${{ steps.remote_chart.outputs.tag }}"'               # and replace it with a blank string (ie. removing it)
     - name: Build bundle
       run: |
         pyinstaller imswitch.spec

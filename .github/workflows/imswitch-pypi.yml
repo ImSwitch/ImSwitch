@@ -26,7 +26,7 @@ jobs:
     - name: bump version
       uses: jacobtomlinson/gha-find-replace@v2
       with:
-        find: '__version__ = "__version__develop"'
+        find: '__version__ = "v0.0.0"'
         replace: '__version__ = "${{ steps.remote_chart.outputs.tag }}"'
         regex: false
     - name: Install pypa/build

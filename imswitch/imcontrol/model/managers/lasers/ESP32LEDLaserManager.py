@@ -78,8 +78,8 @@ class ESP32LEDLaserManager(LaserManager):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
-            if self.filter_change and (self.power*self.enabled)>0:
-                self._motor.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
+            #if self.filter_change and (self.power*self.enabled)>0:
+            #    self._motor.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
             self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
             # self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
@@ -87,8 +87,6 @@ class ESP32LEDLaserManager(LaserManager):
                                                 int(self.power*self.enabled), self.filter_change, 
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
-                                                filter_axis = self.filter_axis, 
-                                                filter_position = self.filter_position, 
                                                 is_blocking=True)
 
     def setValue(self, power):
@@ -104,8 +102,6 @@ class ESP32LEDLaserManager(LaserManager):
                                     int(self.power), 0*self.filter_change, 
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
-                                    filter_axis = self.filter_axis, 
-                                    filter_position = self.filter_position, 
                                     is_blocking=True)
 
     def sendTrigger(self, triggerId):

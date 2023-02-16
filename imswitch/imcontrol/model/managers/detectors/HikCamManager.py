@@ -1,45 +1,43 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
 
 
-class BaslerManager(DetectorManager):
+class HikCamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
 
     Manager properties:
 
-    - ``cameraListIndex`` -- the camera's index in the Basler camera list (list
+    - ``cameraListIndex`` -- the camera's index in the Hik Vision camera list (list
       indexing starts at 0); set this string to an invalid value, e.g. the
       string "mock" to load a mocker
-    - ``basler`` -- dictionary of Basler camera properties
+    - ``hik`` -- dictionary of Hik Vision camera properties
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.detectorInfo = detectorInfo
 
-        self._camera = self._getBaslerObj(detectorInfo.managerProperties['cameraListIndex'])
-        try:        
+        binning = 1
+        cameraId = detectorInfo.managerProperties['cameraListIndex']
+        try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
-        except Exception as e:
-            self.__logger.error("No value is given for the effective pixelsize in the config json!")
+        except:
             pixelSize = 1
+        
+        self._camera = self._getHikObj(cameraId, binning)
+        
+        for propertyName, propertyValue in detectorInfo.managerProperties['hikcam'].items():
+            self._camera.setPropertyValue(propertyName, propertyValue)
 
+        fullShape = (self._camera.SensorWidth, 
+                     self._camera.SensorHeight)
+        
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
-
-        for propertyName, propertyValue in detectorInfo.managerProperties['basler'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
-
-        try: # FIXME: get that form the real camera
-            isRGB = detectorInfo.managerProperties['basler']['isRGB']  
-        except:
-            isRGB = False
-
-        fullShape = (self._camera.SensorHeight, 
-                     self._camera.SensorWidth)
 
         # TODO: Not implemented yet 
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
@@ -55,11 +53,17 @@ class BaslerManager(DetectorManager):
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False), 
-            'isRGB': DetectorNumberParameter(group='Misc', value=isRGB, valueUnits='arb.u.',
                         editable=False),
-            'Camera pixel size': DetectorNumberParameter(group='Misc', value=pixelSize,
-                                    valueUnits='µm', editable=True)
+            'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
+                                    editable=True),
+            'trigger_source': DetectorListParameter(group='Acquisition mode',
+                            value='Continous',
+                            options=['Continous',
+                                        'Internal trigger',
+                                        'External trigger'],
+                            editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -70,15 +74,10 @@ class BaslerManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-
-    def setPixelSizeUm(self, pixelSizeUm):
-        self.parameters['Camera pixel size'].value = pixelSizeUm
+        
 
     def getLatestFrame(self, is_save=False):
-        if is_save:
-            return self._camera.getLastChunk()
-        else:
-            return self._camera.getLast()
+        return self._camera.getLast()
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -106,20 +105,24 @@ class BaslerManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
-    def setBinning(self, binning):
-        super().setBinning(binning) 
-        
 
+    def setTriggerSource(self, source):
+        pass
+        
     def getChunk(self):
         try:
-            return np.expand_dims(self._camera.getLastChunk(),0)
+            return self._camera.getLastChunk()
         except:
             return None
 
     def flushBuffers(self):
-        pass
+        self._camera.flushBuffer()
 
     def startAcquisition(self):
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -146,20 +149,11 @@ class BaslerManager(DetectorManager):
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 
-    def crop(self, hpos, vpos, hsize, vsize):
-        def cropAction():
-            # self.__logger.debug(
-            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            # )
-            pass
-            #self._camera.setROI(hpos, vpos, hsize, vsize)
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
-        self._performSafeCameraAction(cropAction)
-        # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-        self._frameStart = (hpos, vpos)
-        # Only place self.shapes is changed
-        self._shape = (hsize, vsize)
+    def crop(self, hpos, vpos, hsize, vsize):
+        pass
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -176,14 +170,14 @@ class BaslerManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getBaslerObj(self, cameraId):
+    def _getHikObj(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.baslercamera import CameraBasler
-            self.__logger.debug(f'Trying to initialize Basler Imaging camera {cameraId}')
-            camera = CameraBasler(cameraId)
+            from imswitch.imcontrol.model.interfaces.hikcamera import CameraHIK
+            self.__logger.debug(f'Trying to initialize Hik camera {cameraId}')
+            camera = CameraHIK(cameraNo=cameraId, binning=binning)
         except Exception as e:
-            print(e)
-            self.__logger.warning(f'Failed to initialize basler camera {cameraId}, loading TIS mocker')
+            self.__logger.debug(e)
+            self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 
@@ -192,9 +186,6 @@ class BaslerManager(DetectorManager):
 
     def closeEvent(self):
         self._camera.close()
-
-    def getFrameNumber(self):
-        return self._camera.getFrameNumber()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

@@ -4,6 +4,8 @@ import time
 from io import BytesIO
 from typing import Dict, Optional, Type
 
+import debugpy 
+
 import h5py
 import zarr
 import numpy as np
@@ -113,8 +115,14 @@ class TiffStorer(Storer):
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
 
+class MP4Storer(Storer):
+    """ A storer that writes the frames to an MP4 file """
 
-
+    def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
+        # not yet implemented
+        pass 
+        
+        
 class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2
@@ -126,12 +134,14 @@ class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
     ZARR = 3
+    MP4 = 4
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,
-    SaveFormat.TIFF: TiffStorer
+    SaveFormat.TIFF: TiffStorer,
+    SaveFormat.MP4: MP4Storer
 }
 
 
@@ -333,7 +343,7 @@ class RecordingWorker(Worker):
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
-
+        
         currentFrame = {}
         datasets = {}
         filenames = {}
@@ -387,14 +397,14 @@ class RecordingWorker(Worker):
 
             elif self.saveFormat == SaveFormat.MP4:
                 # Need to initiliaze videowriter for each detector
+                self.__logger.debug("Initialize MP4 recorder")
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 fileExtension = str(self.saveFormat.name).lower()
                 filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
+                filenames[detectorName] = filePath 
                 datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
                 #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
 
-                self.__logger.debug(shapes[detectorName])
-                self.__logger.debug(filePath)
 
             elif self.saveFormat == SaveFormat.TIFF:
                 fileExtension = str(self.saveFormat.name).lower()
@@ -412,6 +422,7 @@ class RecordingWorker(Worker):
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
                 datasets[detectorName].attrs['writing'] = True
+
 
         self.__recordingManager.sigRecordingStarted.emit()
         try:
@@ -465,6 +476,15 @@ class RecordingWorker(Worker):
                                 else:
                                     dataset.append(newFrames)
                                 currentFrame[detectorName] += n
+                            elif self.saveFormat == SaveFormat.MP4:
+                                for iframe in range(n):
+                                    frame = newFrames[iframe,:,:]
+                                    #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
+                                    frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+                                    self.__logger.debug(type(frame))
+
+                                    datasets[detectorName].write(frame)
+                                    
 
                             # Things get a bit weird if we have multiple detectors when we report
                             # the current frame number, since the detectors may not be synchronized.
@@ -503,6 +523,15 @@ class RecordingWorker(Worker):
                                 dataset = datasets[detectorName]
                                 dataset.resize(n + it, axis=0)
                                 dataset[it:it + n, :, :] = newFrames
+                            elif self.saveFormat == SaveFormat.MP4:
+                                for iframe in range(n):
+                                    frame = newFrames[iframe,:,:]
+                                    #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
+                                    frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+                                    self.__logger.debug(type(frame))
+
+                                    datasets[detectorName].write(frame)
+                                    
                             currentFrame[detectorName] += n
                             self.__recordingManager.sigRecordingTimeUpdated.emit(
                                 np.around(currentRecTime, decimals=2)
@@ -551,6 +580,14 @@ class RecordingWorker(Worker):
                                         dataset.append(newFrames[1:n, :, :])
                                 else:
                                     dataset.append(newFrames)
+                            elif self.saveFormat == SaveFormat.MP4:
+                                for iframe in range(n):
+                                    frame = newFrames[iframe,:,:]
+                                    #https://stackoverflow.com/questions/30509573/writing-an-mp4-video-using-python-opencv
+                                    frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
+
+                                    datasets[detectorName].write(frame)
+                                    
 
                             currentFrame[detectorName] += n
 
@@ -589,6 +626,9 @@ class RecordingWorker(Worker):
                     else:
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
+                        elif self.saveFormat == SaveFormat.MP4:
+                            for detectorName, file in files.items():
+                                datasets[detectorName].release()
                         else:
                             datasets[detectorName].attrs['writing'] = False
                             self.store.close()

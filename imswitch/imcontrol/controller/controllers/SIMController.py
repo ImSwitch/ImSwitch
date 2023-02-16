@@ -24,11 +24,6 @@ import tifffile
 
 try:
     import mcsim
-    ismcSIM=True
-except:
-    imscSIM=False
-
-if ismcSIM:
     try:
         import cupy as cp
         from mcsim.analysis import sim_reconstruction as sim
@@ -38,6 +33,9 @@ if ismcSIM:
         import numpy as cp 
         from mcsim.analysis import sim_reconstruction as sim
         isGPU = False
+
+except:
+    imscSIM=False
 
 try:
     import NanoImagingPack as nip

@@ -42,7 +42,7 @@ class STORMReconWidget(NapariHybridWidget):
             self.image_control_layout.addRow(
                 QLabel('MicroEye not installed. Please install MicroEye to use this feature.'),
                 None)
-            self.tabView.addTab(self.controls_group, 'Prefit Options')
+            #xself.tabView.addTab(self.controls_group, 'Prefit Options')
             return 
             
 

@@ -22,8 +22,14 @@ class GXPIPYManager(DetectorManager):
 
         binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        self._camera = self._getGXObj(cameraId, binning)
+        try:
+            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
+        except:
+            # returning back to default pixelsize
+            pixelSize = 1
         
+        
+        self._camera = self._getGXObj(cameraId, binning)
         
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -59,7 +65,7 @@ class GXPIPYManager(DetectorManager):
                                         'Internal trigger',
                                         'External trigger'],
                             editable=True), 
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
             }            
 
@@ -213,6 +219,9 @@ class GXPIPYManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
+    
+    def getFrameNumber(self):
+        return self._camera.getFrameNumber()
 
     def closeEvent(self):
         self._camera.close()

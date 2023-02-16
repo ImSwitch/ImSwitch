@@ -1,4 +1,4 @@
-
+    
 import json
 import os
 
@@ -50,8 +50,15 @@ try:
     from napari_sim_processor.convSimProcessor import ConvSimProcessor
     from napari_sim_processor.hexSimProcessor import HexSimProcessor
     isSIM = True
+    
 except:
     isSIM = False
+
+try:
+    import torch
+    isPytorch = True
+except:
+    isPytorch = False
 
 isDEBUG = False
 
@@ -153,7 +160,7 @@ class SIMController(LiveUpdatedController):
         #self._logger.debug("Pattern ID:"+str(self.patternID))
         self.simPatternByID(self.patternID)
      
-        if self.iSyncCameraSLM==self.nSyncCameraSLM:
+        if self.iSyncCameraSLM>=self.nSyncCameraSLM:
             self.iSyncCameraSLM=0
             self.patternID+=1
     
@@ -222,6 +229,7 @@ class SIMController(LiveUpdatedController):
         self._master.detectorsManager.startAcquisition(liveView=False)
         
         # reset the pattern iterator
+        self.nSyncCameraSLM = self._widget.getFrameSyncVal()
         self.imageComputationWorker.setNumReconstructed(numReconstructed=self.iReconstructed)
 
     def toggleRecording(self):
@@ -237,7 +245,8 @@ class SIMController(LiveUpdatedController):
         # stop live processing 
         self.active = False
         self._master.detectorsManager.startAcquisition(liveView=True)
-        self._master.detectorsManager.stopAcquisition()
+        self.iSyncCameraSLM = 0
+        #self._master.detectorsManager.stopAcquisition()
 
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -271,9 +280,10 @@ class SIMController(LiveUpdatedController):
             self.nPhases=nPhases
             self.nRotations=nRotations
             
-            self.isCalibrated = False
+            self.isCalibrated = True
 
             self.iReconstructed = 0
+            self.isReconstructionRunning = False
 
             self._numQueuedImages = 0
             self._numQueuedImagesMutex = Mutex()
@@ -289,33 +299,33 @@ class SIMController(LiveUpdatedController):
         def setNumReconstructed(self, numReconstructed=0):
             self.iReconstructed = numReconstructed
 
+        def computeSIMImageThread(self):
+            # initialize the model
+            self._logger.debug("Processing frames")
+            if not self.processor.getIsCalibrated():
+                self.processor.setReconstructor()
+                self.processor.calibrate(self.allFramesNP)
+            SIMframe = self.processor.reconstruct(self.allFramesNP)
+            self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
+
+            self.iReconstructed += 1
+            self.isReconstructionRunning = False
+
+
         def computeSIMImage(self):
             """ Compute SIM of an image stack. """
-            try:
-                if self._numQueuedImages > 1:
-                    return  # Skip this frame in order to catch up
+            if not self.isReconstructionRunning:
+                self.isReconstructionRunning = True            
+                self.SIMProcessingThread = threading.Thread(target=self.computeSIMImageThread, args=(), daemon=True)
+                self.SIMProcessingThread.start()
 
-                # Simulate SIM Stack
-                #self._image = self.processor.simSimulator(Nx=512, Ny=512, Nrot=3, Nphi=3)
-
-                # initialize the model
-                if not self.processor.getIsCalibrated():
-                    self.processor.setReconstructor()
-                    self.processor.calibrate(self.allFramesNP)
-                SIMframe = self.processor.reconstruct(self.allFramesNP)
-                self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
-
-                self.iReconstructed += 1
-
-            finally:
-                self._numQueuedImagesMutex.lock()
-                self._numQueuedImages -= 1
-                self._numQueuedImagesMutex.unlock()
 
         def prepareForNewSIMStack(self, image):
             """ Must always be called before the worker receives a new image. """
             self.allFrames.append(image)
-            self._logger.debug(len(self.allFrames))
+            #self._logger.debug(len(self.allFrames))
+
+            # process frames once we have a stack of 9 frames 
             if len(self.allFrames)>8:
                 self.allFramesNP = np.array(self.allFrames)
                 self.allFramesList = self.allFrames
@@ -326,12 +336,9 @@ class SIMController(LiveUpdatedController):
                     tif.imsave(mFilename, self.allFramesNP)
                     self._logger.debug("Saving file: "+mFilename)
                 
-                self._numQueuedImagesMutex.lock()
-                self._numQueuedImages += 1
-                self._numQueuedImagesMutex.unlock()
 
                 # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-                # self.computeSIMImage()
+                self.computeSIMImage()
 
         def toggleRecording(self, isRecording):
             self.isRecording = isRecording
@@ -366,7 +373,7 @@ class SIMProcessor(object):
         self.pixelsize = 6.5
         self.isCalibrated = False
         self.use_phases =  True
-        self.use_torch = False
+        self.use_torch = isPytorch
         
         # initialize logger
         self._logger = initLogger(self, tryInheritParent=False)
@@ -456,8 +463,6 @@ class SIMProcessor(object):
         '''
         calibration
         '''
-        
-        
         self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
@@ -471,7 +476,7 @@ class SIMProcessor(object):
                 self.ky_input = self.h.ky
                 self.p_input = self.h.p
                 self.ampl_input = self.h.ampl
-                
+            self._logger.debug("Done calibrating the stack")
         elif self.reconstructionMethod == "mcSIM":
             """
             test running SIM reconstruction at full speed on GPU

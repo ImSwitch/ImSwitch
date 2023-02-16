@@ -55,9 +55,9 @@ class SIMWidget(NapariHybridWidget):
         #self.controlPanel.choiceInterface = QtWidgets.QWidget()
         #self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
 
-        # Buttons for saving, loading, and controlling the various phase patterns
-        #self.controlPanel.saveButton = guitools.BetterPushButton("Save")
-        #self.controlPanel.loadButton = guitools.BetterPushButton("Load")
+        #Enter the frames to wait for frame-sync
+        self.simFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
+        self.simFrameSyncVal = QtWidgets.QLineEdit('1')
         
         # Display patterns
         self.patternIDLabel = QtWidgets.QLabel('Pattern ID:')
@@ -87,14 +87,16 @@ class SIMWidget(NapariHybridWidget):
         self.setLayout(self.grid)
 
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
-        #self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
-        #self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
         self.grid.addWidget(self.stopSIMAcquisition, 2, 0, 1, 1)
         self.grid.addWidget(self.isRecordingButton, 3, 0, 1, 1)
         self.grid.addLayout(self.simDisplayLayout, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
+        # 2nd column
+        self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
+        self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
+
         self.layer = None
 
     def initSIMDisplay(self, monitor):
@@ -121,6 +123,9 @@ class SIMWidget(NapariHybridWidget):
         if self.layer is None or self.layer.name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, name=name, blending='additive')
         self.layer.data = im
+    
+    def getFrameSyncVal(self):
+        return abs(int(self.simFrameSyncVal.text()))
         
 
 # Copyright (C) 2020-2021 ImSwitch developers

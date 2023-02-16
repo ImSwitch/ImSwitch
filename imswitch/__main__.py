@@ -10,7 +10,7 @@ from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 def main():
     logger = initLogger('main')
-    logger.info(f'Starting ImSwitch {imswitch.__version__}')
+    logger.info(f'Starting ImSwitch {imswitch.__version__}')    
 
     app = prepareApp()
 

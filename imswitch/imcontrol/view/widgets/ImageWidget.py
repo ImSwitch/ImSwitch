@@ -14,10 +14,10 @@ class ImageWidget(QtWidgets.QWidget):
         naparitools.addNapariGrayclipColormap()
         self.napariViewer = naparitools.EmbeddedNapari()
         self.updateLevelsWidget, updateLevelsDock = naparitools.NapariUpdateLevelsWidget.addToViewer(
-            self.napariViewer
+            self.napariViewer, position='left'
         )
-        self.resetViewWidget, resetViewDock = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer)
-        self.shiftWidget, shiftDock = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
+        self.resetViewWidget, resetViewDock = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, position='left')
+        self.shiftWidget, shiftDock = naparitools.NapariShiftWidget.addToViewer(self.napariViewer, position='left')
 
         # group napari widgets in the GUI
         self.napariViewer.window._qt_window.tabifyDockWidget(shiftDock, resetViewDock)

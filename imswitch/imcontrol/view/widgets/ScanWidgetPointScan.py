@@ -34,27 +34,28 @@ class ScanWidgetPointScan(SuperScanWidget):
         self.grid.addWidget(self.loadScanBtn, currentRow, 0)
         self.grid.addWidget(self.saveScanBtn, currentRow, 1)
         self.grid.addItem(
-            QtWidgets.QSpacerItem(40, 20,
+            QtWidgets.QSpacerItem(10, 10,
                                   QtWidgets.QSizePolicy.Expanding,
                                   QtWidgets.QSizePolicy.Minimum),
             currentRow, 2, 1, 3
         )
         self.grid.addWidget(self.repeatBox, currentRow, 5)
         self.grid.addWidget(self.scanButton, currentRow, 6)
+        
         currentRow += 1
 
-        # Add space item to make the grid look nicer
         self.grid.addItem(
-            QtWidgets.QSpacerItem(20, 40,
+            QtWidgets.QSpacerItem(10, 10,
                                   QtWidgets.QSizePolicy.Minimum,
                                   QtWidgets.QSizePolicy.Expanding),
             currentRow, 0, 1, -1
         )
+
         currentRow += 1
 
         # Add param labels
         sizeLabel = QtWidgets.QLabel('Size (µm)')
-        stepLabel = QtWidgets.QLabel('Step size (µm)')
+        stepLabel = QtWidgets.QLabel('Step (µm)')
         pixelsLabel = QtWidgets.QLabel('Pixels (#)')
         centerLabel = QtWidgets.QLabel('Center (µm)')
         scandimLabel = QtWidgets.QLabel('Scan dim')
@@ -115,17 +116,30 @@ class ScanWidgetPointScan(SuperScanWidget):
             self.scanPar['scanDim' + str(index)].currentIndexChanged.connect(
                 self.sigStageParChanged
             )
+        
+        currentRow += 1
+
+        self.grid.addItem(
+            QtWidgets.QSpacerItem(10, 10,
+                                  QtWidgets.QSizePolicy.Minimum,
+                                  QtWidgets.QSizePolicy.Expanding),
+            currentRow, 0, 1, -1
+        )
 
         currentRow += 1
 
         # Add dwell time parameter
-        self.grid.addWidget(QtWidgets.QLabel('Dwell time (ms):'), currentRow, 5)
+        dwellTimeLabel = QtWidgets.QLabel('Dwell time (ms):')
+        self.grid.addWidget(dwellTimeLabel, currentRow, 5)
+        dwellTimeLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.grid.addWidget(self.seqTimePar, currentRow, 6)
 
         currentRow += 1
         
         # Add detection phase delay parameter
-        self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
+        phaseDelayLabel = QtWidgets.QLabel('Phase delay (samp.):')
+        self.grid.addWidget(phaseDelayLabel, currentRow, 5)
+        phaseDelayLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
         #currentRow += 1
@@ -134,35 +148,29 @@ class ScanWidgetPointScan(SuperScanWidget):
         #self.grid.addWidget(QtWidgets.QLabel('Extra laser on (samples):'), currentRow, 5)
         #self.grid.addWidget(self.extraLaserOnPar, currentRow, 6)
 
-        # Add space item to make the grid look nicer
-        self.grid.addItem(
-            QtWidgets.QSpacerItem(20, 40,
-                                  QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
-            currentRow, 0, 1, -1
-        )
-        currentRow += 1
+        currentRow -= 2
 
         # TTL param labels
         sequenceLabel = QtWidgets.QLabel('Sequence (h#,l#,...)')
         sequenceLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(sequenceLabel, currentRow, 1)
+        self.grid.addWidget(sequenceLabel, currentRow, 1, 1, 2)
         sequenceAxisLabel = QtWidgets.QLabel('Axis')
         sequenceAxisLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignBottom)
-        self.grid.addWidget(sequenceAxisLabel, currentRow, 2)
+        self.grid.addWidget(sequenceAxisLabel, currentRow, 3)
         currentRow += 1
 
         for deviceName in TTLDeviceNames:
             # TTL sequence param
             self.grid.addWidget(QtWidgets.QLabel(deviceName), currentRow, 0)
             self.ttlParameters['seq' + deviceName] = QtWidgets.QLineEdit('l1')
-            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1)
+            self.grid.addWidget(self.ttlParameters['seq' + deviceName], currentRow, 1, 1, 2)
 
             # TTL sequence axis param
             ttlAxisPar = QtWidgets.QComboBox()
             ttlAxisPar.addItems(self.scanDims)
             ttlAxisPar.setCurrentIndex(self.scanDims.index('None'))
             self.ttlParameters['seqAxis' + deviceName] = ttlAxisPar
-            self.grid.addWidget(ttlAxisPar, currentRow, 2)
+            self.grid.addWidget(ttlAxisPar, currentRow, 3)
 
             currentRow += 1
 
@@ -171,7 +179,7 @@ class ScanWidgetPointScan(SuperScanWidget):
             self.ttlParameters['seqAxis' + deviceName].currentIndexChanged.connect(self.sigSignalParChanged)
         
         # Set grid layout options
-        self.grid.setColumnMinimumWidth(6, 90)
+        #self.grid.setColumnMinimumWidth(6, 90)
 
     def getScanStepSize(self, positionerName):
         if self.scanPar['stepSize' + positionerName].isEnabled():

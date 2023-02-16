@@ -444,6 +444,7 @@ class EtSTEDController(ImConWidgetController):
                         except Exception as e:
                             self._logger.error(f"Failed to initiate slow scan, likely due to not having loaded scanning parameters. Error message: {e}")
                             self.setBusyFalse()
+                            self.continueFastModality()
                             return
                         # trigger scan starting signal emission or not - if triggered, use scan-standard laser preset
                         if self._widget.useScanLaserPresetCheck.isChecked():

@@ -11,6 +11,10 @@ def getBaseStyleSheet():
             color: {DarkPalette.COLOR_BACKGROUND_5};
         }}
 
+        QWidget {{
+            font-size: 10px;
+        }}
+
         QComboBox {{
             padding-right: 4px;
             min-width: 40px;

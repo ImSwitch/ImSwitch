@@ -38,7 +38,8 @@ class MockCameraTIS:
         pass
 
     def setROI(self, hpos, vpos, hsize, vsize):
-        pass
+        self.shape = (self.shape[0], hsize)
+        self.shape = (vsize, self.shape[1])
 
     def setBinning(self, binning):
         pass
@@ -46,11 +47,11 @@ class MockCameraTIS:
     def grabFrame(self, **kwargs):
         mocktype = "random_peak"
         if mocktype=="focus_lock":
-            img = np.zeros((500, 600))
+            img = np.zeros(self.shape)
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
         elif mocktype=="random_peak":
-            imgsize = (800, 800)
+            imgsize = self.shape
             peakmax = 60
             noisemean = 10
             # generate image
@@ -67,7 +68,7 @@ class MockCameraTIS:
             # add Poisson noise
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
         elif mocktype=="random_beads":
-            imgsize = (800, 800)
+            imgsize = self.shape
             x, y = np.meshgrid(np.linspace(0,imgsize[1],imgsize[1]), np.linspace(0,imgsize[0],imgsize[0]))
             pos = np.dstack((x, y))
             peakmax = 60
@@ -88,7 +89,7 @@ class MockCameraTIS:
             # add Poisson noise
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
         else:
-            img = np.zeros((500, 600))
+            img = np.zeros(self.shape)
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0],img.shape[1])

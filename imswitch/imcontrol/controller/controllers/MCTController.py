@@ -381,6 +381,13 @@ class MCTController(ImConWidgetController):
             self.yScanMin = 0
             self.yScanMax = 0
 
+        
+        # precompute steps for z scan
+        if self.zStackEnabled:
+            zStepsAbsolute =  np.arange(self.zStackMin, self.zStackMax, self.zStackStep) + self.initialPositionZ
+        else:
+            zStepsAbsolute = [self.initialPositionZ]
+
 
 
         # initialize xyz coordinates
@@ -399,18 +406,16 @@ class MCTController(ImConWidgetController):
             if self.xyScanEnabled:
                 self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
             # measure framenumber and check if it has been renewed after stage has stopped => avoid motion blur!
+            nFrameSyncWait = 5
             if hasattr(self.detector, "getFrameNumber"):
                 frameNumber = self.detector.getFrameNumber()
             else:
-                frameNumber = -1
-
-            # overshoot first step slightly to compensate backlash
-            self.stages.move(value=self.zStackMin, axis="Z", is_absolute=False, is_blocking=True)
+                frameNumber = -nFrameSyncWait
 
             # perform a z-stack
-            for iZ in np.arange(self.zStackMin, self.zStackMax, self.zStackStep):
+            for iZ in zStepsAbsolute:
                 # move to each position
-                self.stages.move(value=self.zStackStep, axis="Z", is_absolute=False, is_blocking=True)
+                self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
                 time.sleep(self.tUnshake) # unshake
                 
                 # capture image for every illumination
@@ -421,7 +426,10 @@ class MCTController(ImConWidgetController):
                                 extension=fileExtension)
                     self.lasers[0].setValue(self.Laser1Value)
                     self.lasers[0].setEnabled(True)
+                    time.sleep(.05)
                     lastFrame = self.detector.getLatestFrame()
+                    # wait for frame after next frame to appear. Avoid motion blurring
+                    #while self.detector.getFrameNumber()<(frameNumber+nFrameSyncWait):time.sleep(0.05)
                     tif.imwrite(filePath, lastFrame, append=True)
                     self.lasers[0].setEnabled(False)
                     self.LastStackLaser1.append(lastFrame.copy())
@@ -433,6 +441,7 @@ class MCTController(ImConWidgetController):
                                 extension=fileExtension)
                     self.lasers[1].setValue(self.Laser2Value)
                     self.lasers[1].setEnabled(True)
+                    time.sleep(.05)
                     lastFrame = self.detector.getLatestFrame()
                     tif.imwrite(filePath, lastFrame, append=True)
                     self.lasers[1].setEnabled(False)
@@ -449,6 +458,7 @@ class MCTController(ImConWidgetController):
                         if len(self.leds)>0:
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)
+                        time.sleep(.05)
                         lastFrame = self.detector.getLatestFrame()
                         tif.imwrite(filePath, lastFrame, append=True)
                         self.leds[0].setEnabled(False)
@@ -473,10 +483,7 @@ class MCTController(ImConWidgetController):
                                                 filename=f'{self.MCTFilename}_{illuMode}_i_{imageIndex}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                                 extension=fileExtension)
 
-                # wait for frame after next frame to appear. Avoid motion blurring
-                while self.detector.getFrameNumber()<(frameNumber+5):
-                    time.sleep(0.05)
-                    #print(self.detector.getFrameNumber()-frameNumber)
+
 
                 # snap image
                 lastFrame = self.detector.getLatestFrame()

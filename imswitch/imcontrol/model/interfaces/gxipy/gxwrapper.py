@@ -17,10 +17,14 @@ elif sys.platform == 'win32':
         #dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
         mPWD = os.getcwd()
         try:
-            dll = WinDLL(mPWD+'\\imcontrol\\model\\interfaces\\gxipy\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+            try:
+                dll = WinDLL(mPWD+'\\imcontrol\\model\\interfaces\\gxipy\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+            except:
+                dll = WinDLL(mPWD+'\\imswitch\\imcontrol\\model\\interfaces\\gxipy\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
         except:
             dll = WinDLL('GxIAPI.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-        
+            
+
     
     except OSError:
         print('Cannot find GxIAPI.dll.')

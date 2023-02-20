@@ -87,9 +87,11 @@ class CameraGXIPY:
         self.camera.data_stream[0].set_acquisition_buffer_number(1)
         
         # set camera to mono12 mode
-        # self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+        try:
+            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
         # set camera to mono8 mode
-        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+        except:
+            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
 
         # get framesize 
         self.SensorHeight = self.camera.HeightMax.get()//self.binning

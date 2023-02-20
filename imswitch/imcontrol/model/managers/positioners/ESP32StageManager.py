@@ -154,7 +154,8 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(self._position['Z'],"Z")
 
 
-
+    def enalbeMotors(self, enable=True):
+        self._motor.set_motor_enable(axis=0, is_enable=enable)
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)

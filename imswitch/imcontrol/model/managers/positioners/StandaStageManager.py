@@ -20,11 +20,12 @@ class StandaStageManager(PositionerManager):
         #                                                positionerInfo.managerProperties["initialSpeed"])
         #
         #         }
+
         self.__logger.debug(f'Initializing {positionerInfo.axes} ')
         self.setSpeed(self._speed)
 
     def setSpeed(self, speed, axis = "XYZ"):
-        self.__logger.debug(f"Setting stage speed {speed}. Previous speed {self.speed}")
+        old_speed = self.speed
         if axis == "XYZ":
             self.speed = speed
         elif axis == "XY":
@@ -35,6 +36,7 @@ class StandaStageManager(PositionerManager):
         else:
             raise ValueError("Invalid axis.")
         self._positioner.set_speed(self.speed)
+        self.__logger.debug(f"Setting stage speed {self.speed}. Previous speed {old_speed}")
 
 
     def home(self):

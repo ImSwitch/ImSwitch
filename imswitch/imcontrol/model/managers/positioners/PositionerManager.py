@@ -21,23 +21,11 @@ class PositionerManager(ABC):
         self._positionerInfo = positionerInfo
         self._position = initialPosition
         self.__axes = positionerInfo.axes
-        if positionerInfo.managerProperties.get("initialSpeed") is not None:
-            self._speed = positionerInfo.managerProperties["initialSpeed"]
-        else:
-            self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
-        if positionerInfo.managerProperties.get("initialIsHomed") is not None:
-        # if hasattr(positionerInfo.managerProperties, "initialIsHomed"):
-            self._is_homed = positionerInfo.managerProperties["initialIsHomed"]
-        else:
-            self._is_homed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
-
-        # settings for stopping the axis
-        initialStop={
-            axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?
-        }
-        self._is_stopped = initialStop # is stopped?
-
         self.__name = name
+
+        self._speed = positionerInfo.managerProperties.get("initialSpeed", {axis: 0 for axis in self.__axes })
+        self._is_homed = positionerInfo.managerProperties.get("initialIsHomed", {axis: 0 for axis in self.__axes })
+        self._is_stopped = positionerInfo.managerProperties.get("initialIsStopped", {axis: False for axis in self.__axes })
 
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning

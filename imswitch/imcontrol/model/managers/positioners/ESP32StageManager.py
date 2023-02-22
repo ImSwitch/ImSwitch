@@ -105,6 +105,8 @@ class ESP32StageManager(PositionerManager):
             self.backlashT = 1
 
         # setup homing coordinates and speed
+        # self.homeSpeed = positionerInfo.managerProperties.get("homeSpeed", {axis: 15000 for axis in self.__axes })
+
         if positionerInfo.managerProperties.get('homeSpeedX') is not None:
             self.homeSpeedX = positionerInfo.managerProperties['homeSpeedX']
         else:

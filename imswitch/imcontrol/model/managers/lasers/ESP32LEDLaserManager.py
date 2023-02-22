@@ -28,20 +28,6 @@ class ESP32LEDLaserManager(LaserManager):
         self.power = 0
         self.channel_index = laserInfo.managerProperties['channel_index']
         
-        # do we have a setup with a filter wheel?
-        try:
-            self.filter_change = laserInfo.managerProperties['filter_change']
-            self.filter_position = laserInfo.managerProperties['filter_position']
-            self.filter_axis = laserInfo.managerProperties['filter_axis']
-            self.laser_position_init =  laserInfo.managerProperties['filter_position_init']
-            self.__logger.debug("Filter change enabled")
-        except:
-            self.filter_change = False
-            self.filter_position = 0
-            self.filter_axis = -1
-            self.laser_position_init =  None
-            self.__logger.debug("Filter change disabled")
-
         # do we want to vary the laser intensity to despeckle the image?
         try:
             self.laser_despeckle_amplitude = laserInfo.managerProperties['laser_despeckle_amplitude']
@@ -52,39 +38,18 @@ class ESP32LEDLaserManager(LaserManager):
             self.laser_despeckle_period = 10 # ms
             self.__logger.debug("Laser despeckle disabled")
 
-        # 
-        if self.filter_change:
-           self.initFilter(nSteps=self.laser_position_init)
-
         # set the laser to 0
         self.enabled = False
         self.setEnabled(self.enabled)
-        
-    def initFilter(self, nSteps=None, speed=None):
-        '''
-        if self.filter_change:
-            if nSteps is None:
-                if self.laser_position_init is None:
-                    nSteps = self._motor.filter_pos_init
-                else:
-                    nSteps = self._motor.laser_position_init
-            if speed is None:
-                speed = self._motor.filter_speed
-            self._motor.init_filter(nSteps = nSteps, speed = speed, filter_axis = self.filter_axis)
-        '''
-        self.__logger.debug("Filter initialization not implemented yet")
         
     def setEnabled(self, enabled):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
-            #if self.filter_change and (self.power*self.enabled)>0:
-            #    self._motor.switch_filter(filter_pos=self.filter_position, filter_axis=self.filter_axis, is_blocking=True)
             self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
-            # self._led.setAll((self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
         else:
             self._laser.set_laser(self.channel_index, 
-                                                int(self.power*self.enabled), self.filter_change, 
+                                                int(self.power*self.enabled),  
                                                 despeckleAmplitude = self.laser_despeckle_amplitude,
                                                 despecklePeriod = self.laser_despeckle_period, 
                                                 is_blocking=True)
@@ -99,7 +64,7 @@ class ESP32LEDLaserManager(LaserManager):
                 self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled))
             else:
                 self._laser.set_laser(self.channel_index, 
-                                    int(self.power), 0*self.filter_change, 
+                                    int(self.power),
                                     despeckleAmplitude = self.laser_despeckle_amplitude,
                                     despecklePeriod = self.laser_despeckle_period, 
                                     is_blocking=True)

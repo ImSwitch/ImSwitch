@@ -187,7 +187,8 @@ class MCTController(ImConWidgetController):
 
         # go back to initial position
         try:
-            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+            if self.xyScanEnabled:
+                self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
         except:
             pass
 
@@ -403,10 +404,16 @@ class MCTController(ImConWidgetController):
             zStepsAbsolute = [self.initialPositionZ]
 
 
+        # in case something is not connected we want to reconnect! 
+        # TODO: This should go into some function outside the MCT!!!
+        if not ("IDENTIFIER_NAME" in self._master.UC2ConfigManager.ESP32.state.get_state() and self._master.UC2ConfigManager.ESP32.state.get_state()["IDENTIFIER_NAME"] == "uc2-esp"):
+            mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
+            mThread.start()
+            mThread.join()
 
         # initialize xyz coordinates
-        self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        #self.stages.move(value=self.initialPositionZ+self.zStackMin, axis="Z", is_absolute=True, is_blocking=True)
+        if self.xyScanEnabled:
+            self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
 
         # initialize iterator
         imageIndex = 0
@@ -429,8 +436,9 @@ class MCTController(ImConWidgetController):
             # perform a z-stack
             for iZ in zStepsAbsolute:
                 # move to each position
-                self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
-                time.sleep(self.tUnshake) # unshake
+                if self.zStackEnabled:
+                    self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
+                    time.sleep(self.tUnshake) # unshake
                 
                 # capture image for every illumination
                 if self.Laser1Value>0 and len(self.lasers)>0:
@@ -485,8 +493,8 @@ class MCTController(ImConWidgetController):
                 imageIndex += 1
 
             # reduce backlash => increase chance to endup at the same position
-            #self.stages.move(value=-self.zStackMax, axis="Z", is_absolute=False, is_blocking=True)
-            self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
+            if self.zStackEnabled:
+                self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
             if self.xyScanEnabled:
                 # lets try to visualize each slice in napari
@@ -509,8 +517,10 @@ class MCTController(ImConWidgetController):
 
 
         # initialize xy coordinates
-        self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
+        if self.xyScanEnabled:
+            self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
+        if self.zStackEnabled:
+            self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
         # ensure all illus are off
         self.switchOffIllumination()

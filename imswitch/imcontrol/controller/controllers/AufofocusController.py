@@ -34,6 +34,9 @@ class AutofocusController(ImConWidgetController):
         self._widget.focusButton.clicked.connect(self.focusButton)
         self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
+        # select stage
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+
     def __del__(self):
         self._AutofocusThead.quit()
         self._AutofocusThead.wait()

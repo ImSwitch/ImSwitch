@@ -8,7 +8,7 @@ class PositionerManager(ABC):
     positioner corresponds to a manager derived from this class. """
 
     @abstractmethod
-    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float], initialSpeed: Dict[str, float]):
+    def __init__(self, positionerInfo, name: str, initialPosition: Dict[str, float]):
         """
         Args:
             positionerInfo: See setup file documentation.
@@ -20,15 +20,25 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
+        self.__axes = positionerInfo.axes
+        if positionerInfo.managerProperties.get("initialSpeed") is not None:
+            self._speed = positionerInfo.managerProperties["initialSpeed"]
+        else:
+            self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        if positionerInfo.managerProperties.get("initialIsHomed") is not None:
+        # if hasattr(positionerInfo.managerProperties, "initialIsHomed"):
+            self._is_homed = positionerInfo.managerProperties["initialIsHomed"]
+        else:
+            self._is_homed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
 
-        # initialSpeed={
-        #     axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
-        # }
-        self._speed = initialSpeed
+        # settings for stopping the axis
+        initialStop={
+            axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }
+        self._is_stopped = initialStop # is stopped?
 
         self.__name = name
 
-        self.__axes = positionerInfo.axes
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
@@ -53,6 +63,18 @@ class PositionerManager(ABC):
         return self._speed
 
     @property
+    def is_homed(self) -> Dict[str, bool]:
+        """ The home of each axis. This is a dict in the format
+        ``{ axis: homed }``. """
+        return self._is_homed
+
+    @property
+    def is_stopped(self) -> Dict[str, bool]:
+        """ The stop of each axis. This is a dict in the format
+        ``{ axis: stopped }``. """
+        return self._is_stopped
+
+    @property
     def axes(self) -> List[str]:
         """ The list of axes that are controlled by this positioner. """
         return self.__axes
@@ -74,12 +96,18 @@ class PositionerManager(ABC):
         the positioner controls multiple axes, the axis must be specified. """
         pass
 
-    @abstractmethod
+    # @abstractmethod
+    # def _set_position(self, pos, axis):
+    #     pass
+
     def setPosition(self, position: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
         """
+        # result_pos = self._set_position(position, axis)
+        # self._position[axis] = result_pos
+
         pass
 
     def finalize(self) -> None:

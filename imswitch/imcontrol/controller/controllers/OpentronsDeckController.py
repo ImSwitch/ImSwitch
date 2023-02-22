@@ -218,7 +218,7 @@ class OpentronsDeckController(LiveUpdatedController):
         self.selected_slot = slot
         self.selected_well = None
         self.connect_wells()
-        self.connect_add_position()
+        # self.connect_add_position()
 
     @APIExport(runOnUIThread=True)
     def select_well(self, well):
@@ -270,11 +270,14 @@ class OpentronsDeckController(LiveUpdatedController):
         self._widget.current_slot = self.scanner.get_slot()
         well = self.scanner.get_closest_well()
         self._widget.current_well = well.well_name if well is not None else None
+        x,y,z = self.positioner.get_position()
+        self._widget.current_absolute_position = (x,y,z)
+        self._widget.current_z_focus = z
         if self._widget.current_slot is not None and self._widget.current_well is not None:
             # Offset gets defined positively: when shifting an offset it should be shift = offset - current_position
             offset = tuple([b - a if np.abs(a - b) > 10e-4 else 0.00 for (a, b) in
                             zip(well.geometry.position + Point(*self.corner_offset),
-                                self.positioner.get_position())][:2])
+                                [x,y,z])][:2])
             self._widget.current_offset = offset
 
     def connect_add_current_position(self):
@@ -286,13 +289,13 @@ class OpentronsDeckController(LiveUpdatedController):
             self._widget.add_current_btn.clicked.connect(self.update_values)
             self._widget.add_current_btn.clicked.connect(self._widget.add_current_position_to_scan)
         else:
-            slot, well, offset = (0,"Z0",("inf","inf"))
+            slot, well, offset, z_focus, absolute_position = (0,"Z0",("inf","inf"), 0, ("inf","inf","inf"))
             if isinstance(self._widget.add_current_btn, guitools.BetterPushButton):
                 try:
                     self._widget.add_current_btn.disconnect()
                 except Exception:
                     pass
-                self._widget.add_current_btn.clicked.connect(partial(self._widget.add_position_to_scan, slot, well, offset))
+                self._widget.add_current_btn.clicked.connect(partial(self._widget.add_position_to_scan, slot, well, offset, z_focus, absolute_position))
 
 
     def connect_add_position(self):
@@ -301,40 +304,43 @@ class OpentronsDeckController(LiveUpdatedController):
                 self._widget.add_btn.disconnect()
             except Exception:
                 pass
+            well = self.labwares[self.selected_slot].wells(self.selected_well)[0]
+            x, y, _ = well.geometry.position + Point(*self.corner_offset)
+            z = self._widget.current_z_focus if self._widget.current_z_focus is not None else self.positioner.position["Z"]
             if self._widget.positions_in_well == 1:
                 offset = self.scanner.default_positions_in_well["center"]
                 self._widget.add_btn.clicked.connect(
-                    partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well, offset))
+                    partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well, offset, self._widget.current_z_focus, (x, y, z)))
             elif self._widget.positions_in_well == 2:
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["left"]))
+                            self.scanner.default_positions_in_well["left"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["right"]))
+                            self.scanner.default_positions_in_well["right"], self._widget.current_z_focus, (x, y, z)))
             elif self._widget.positions_in_well == 3:
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["left"]))
+                            self.scanner.default_positions_in_well["left"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["right"]))
+                            self.scanner.default_positions_in_well["right"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["up"]))
+                            self.scanner.default_positions_in_well["up"], self._widget.current_z_focus, (x, y, z)))
             elif self._widget.positions_in_well == 4:
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["left"]))
+                            self.scanner.default_positions_in_well["left"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["right"]))
+                            self.scanner.default_positions_in_well["right"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["up"]))
+                            self.scanner.default_positions_in_well["up"], self._widget.current_z_focus, (x, y, z)))
                 self._widget.add_btn.clicked.connect(
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
-                            self.scanner.default_positions_in_well["down"]))
+                            self.scanner.default_positions_in_well["down"], self._widget.current_z_focus, (x, y, z)))
 
             # offset = well.geometry.position - self.positioner.get_position()
 
@@ -378,7 +384,6 @@ class OpentronsDeckController(LiveUpdatedController):
             # )
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.select_well, well))
-
 
 class LabwareScanner():
     def __init__(self, positioner, deck, labwares, objective_radius):

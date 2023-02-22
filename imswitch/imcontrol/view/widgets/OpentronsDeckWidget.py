@@ -31,6 +31,8 @@ class OpentronsDeckWidget(Widget):
         self.current_slot = None
         self.current_well = None
         self.current_offset = (None,None)
+        self.current_z_focus = None
+        self.current_absolute_position = (None,None,None)
 
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
 
@@ -60,7 +62,7 @@ class OpentronsDeckWidget(Widget):
             self, 'Open File', '', 'CSV(*.csv)')
         # if not path.isEmpty():
         with open(path[0], 'r') as stream:
-            self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+            self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
             self.scan_list.setRowCount(0)
             self.scan_list_items = 0
             for rowdata in csv.reader(stream):
@@ -125,7 +127,7 @@ class OpentronsDeckWidget(Widget):
 
         self._wells_group_box.setMaximumHeight(300)
         self._wells_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1,2)
+        self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1,3)
         self.setLayout(self.main_grid_layout)
 
     def add_home(self, layout):
@@ -182,13 +184,13 @@ class OpentronsDeckWidget(Widget):
             layout.addWidget(self.deck_slots[corrds])
         self._deck_group_box.setFixedHeight(70)
         self._deck_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1,2)
+        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1,3)
         self.setLayout(self.main_grid_layout)
 
     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
-        self.scan_list.setColumnCount(3)
-        self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+        self.scan_list.setColumnCount(5)
+        self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
         self.scan_list_items = 0
         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
@@ -207,7 +209,7 @@ class OpentronsDeckWidget(Widget):
 
         actions_layout.addWidget(self.goto_btn, 0)
         actions_layout.addWidget(self.add_current_btn, 1)
-        actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 2)
+        actions_layout.addWidget(QtWidgets.QLabel("#Pos. in well"), 2)
         actions_layout.addWidget(self.pos_in_well_lined, 3)
         actions_layout.addWidget(self.add_btn, 4)
         actions_layout.addWidget(self.buttonOpen, 5)
@@ -222,19 +224,22 @@ class OpentronsDeckWidget(Widget):
         # actions_layout.addWidget(self.buttonSave, 0, 8, 1, 1)
 
         self._actions_widget.setFixedHeight(200)
+        self._actions_widget.setFixedWidth(140)
         self._actions_widget.setLayout(actions_layout)
         self.scan_list.setFixedHeight(200)
 
-        self.main_grid_layout.addWidget(self.scan_list, 1, 0, 1, 1)
-        self.main_grid_layout.addWidget(self._actions_widget, 1, 1, 1, 1)
+        self.main_grid_layout.addWidget(self.scan_list, 1, 1, 1, 2)
+        self.main_grid_layout.addWidget(self._actions_widget, 1, 0, 1, 1)
 
 
-    def add_position_to_scan(self, slot, well, offset):
+    def add_position_to_scan(self, slot, well, offset, z_focus, absolute_position):
 
         self.scan_list.insertRow(self.scan_list_items)
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
+        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(z_focus)))
+        self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(absolute_position)))
         self.scan_list_items += 1
 
     def add_current_position_to_scan(self):
@@ -242,6 +247,8 @@ class OpentronsDeckWidget(Widget):
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
+        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
+        self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(self.current_absolute_position)))
         self.scan_list_items += 1
 
     def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
@@ -296,7 +303,7 @@ class OpentronsDeckWidget(Widget):
             self.numPositioners += 1
         self._positioner_widget.setFixedHeight(120)
         self._positioner_widget.setLayout(layout)
-        self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1,2)
+        self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1,3)
 
     @property
     def current_slot(self):
@@ -316,6 +323,18 @@ class OpentronsDeckWidget(Widget):
     @current_offset.setter
     def current_offset(self, current_offset):
         self._current_offset = current_offset
+    @property
+    def current_z_focus(self):
+        return self._current_z_focus
+    @current_z_focus.setter
+    def current_z_focus(self, current_z_focus):
+        self._current_z_focus = current_z_focus
+    @property
+    def current_absolute_position(self):
+        return self._current_absolute_position
+    @current_absolute_position.setter
+    def current_absolute_position(self, current_absolute_position):
+        self._current_absolute_position = current_absolute_position
 
     @property
     def positions_in_well(self):
@@ -362,61 +381,6 @@ class OpentronsDeckWidget(Widget):
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
 
-#
-# class ScannerWidget(QtWidgets.QGroupBox):
-#     def __init__(self, title = "Scan list"):
-#         main_layout = QtWidgets.QGridLayout()
-#         self.scan_list = TableWidgetDragRows()
-#
-#     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
-#         self._scanner_widget = QtWidgets.QGroupBox("Scan list")
-#         main_layout = QtWidgets.QGridLayout()
-#
-#         self.scan_list = TableWidgetDragRows()
-#
-#         self.scan_list.setColumnCount(3)
-#         self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
-#         self.scan_list_items = 0
-#         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
-#
-#         self._actions_widget = QtWidgets.QGroupBox("Actions")
-#
-#         actions_layout = QtWidgets.QGridLayout()
-#         self.goto_btn = guitools.BetterPushButton('GO TO')
-#         self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
-#         self.pos_in_well_lined = QtWidgets.QLineEdit("1")
-#         self.add_btn = guitools.BetterPushButton('ADD')
-#
-#         actions_layout.addWidget(self.goto_btn, 0, 0, 2, 2)
-#         actions_layout.addWidget(self.add_current_btn, 0, 2, 2, 2)
-#         actions_layout.addWidget(QtWidgets.QLabel("# Positions in well"), 0, 4, 1, 1)
-#         actions_layout.addWidget(self.pos_in_well_lined, 0, 5, 1, 1)
-#         actions_layout.addWidget(self.add_btn, 0, 6, 1, 1)
-#
-#         self._actions_widget.setLayout(actions_layout)
-#
-#
-#         main_layout.addWidget(self.scan_list)
-#         main_layout.addWidget(self._actions_widget)
-#         self._scanner_widget.setLayout(main_layout)
-#         self.main_grid_layout.addWidget(self._scanner_widget)
-#
-#     def add_position_to_scan(self, slot, well, offset):
-#         self.scan_list.insertRow(self.scan_list_items)
-#         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
-#         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
-#         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-#         self.scan_list_items += 1
-#
-#     def add_current_position_to_scan(self):
-#         self.scan_list.insertRow(self.scan_list_items)
-#         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
-#         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
-#         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
-#         self.scan_list_items += 1
-
-
-
 # From https://stackoverflow.com/questions/26227885/drag-and-drop-rows-within-qtablewidget
 class TableWidgetDragRows(QtWidgets.QTableWidget):
     def __init__(self, *args, **kwargs):
@@ -437,11 +401,11 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
             for i in self.selectionModel().selection().indexes():
                 row, column = i.row(), i.column()
             menu = QtWidgets.QMenu()
-            open_action = menu.addAction("Open")
+            goto_action = menu.addAction("Go To")
             delete_action = menu.addAction("Delete")
 
             action = menu.exec_(self.mapToGlobal(event.pos()))
-            if action == open_action:
+            if action == goto_action:
                 self.gotoAction(row)
                 print(f"{row}, {column}")
             elif action == delete_action:
@@ -449,13 +413,10 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
     def gotoAction(self, row):
         print(f"Go to position in row {row}")
-        # if self._slideShowWin:
-        #     self._slideShowWin.showImageByPath(self._twoDLst[row][column])
-        #     self._animateUpOpen()
 
     def deleteSelected(self, row):
-        print("deleteSelected")
         self.removeRow(row)
+        print(f"Deleted row {row}")
 
 
     def dropEvent(self, event):

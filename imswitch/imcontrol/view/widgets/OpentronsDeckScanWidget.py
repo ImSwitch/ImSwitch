@@ -48,8 +48,8 @@ class OpentronsDeckScanWidget(NapariHybridWidget):
 
     def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
-        self.scan_list.setColumnCount(3)
-        self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+        self.scan_list.setColumnCount(5)
+        self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
         self.scan_list_items = 0
         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
         self.buttonOpen = guitools.BetterPushButton('Open')
@@ -94,7 +94,7 @@ class OpentronsDeckScanWidget(NapariHybridWidget):
         # if not path.isEmpty():
         try:
             with open(path[0], 'r') as stream:
-                self.scan_list.setHorizontalHeaderLabels(["Slot/Labware", "Well", "Offset"])
+                self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
                 self.scan_list.setRowCount(0)
                 self.scan_list_items = 0
                 for rowdata in csv.reader(stream):

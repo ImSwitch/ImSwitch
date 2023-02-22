@@ -8,29 +8,45 @@ import numpy as np
 from PIL import Image
 from scipy import signal as sg
 import uc2rest as uc2
+import json
 
+from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
 
 class UC2ConfigManager(SignalInterface):
-    sigUC2ConfigMaskUpdated = Signal(object)  # (maskCombined)
 
-    def __init__(self, UC2ConfigInfo, lowLevelManagers, *args, **kwargs):
+    def __init__(self, Info, lowLevelManagers, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if UC2ConfigInfo is None:
+        # TODO: HARDCODED!!
+        try:
+            self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
+        except:
             return
-        
-        self.UC2ConfigInfo = UC2ConfigInfo
 
-        #TODO: HARDCODED!!
-        self.ESP32 = lowLevelManagers["rs232sManager"]["ESP32"]._esp32
+        # get default configs
+        try:
+            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", Info.defaultConfig)
+        except:
+            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", "pindefWemos.json")
 
         # initialize the firmwareupdater
-        self.firmwareUpdater = uc2.updater(ESP32=self.ESP32)
-        
+        self.firmwareUpdater = uc2.updater(parent=self.ESP32)
+        self.firmwareConfigurator = self.ESP32.config
+        # alternatively: self.firmwareUpdater = self.ESP32.updater
+        try:
+            with open(self.defaultConfigPath) as jf:
+                self.defaultConfig = json.load(jf)
+        except Exception as e:
+            self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
+            self.defaultConfig = self.config.loadDefaultConfig()
+
+    def getDefaultConfig(self):
+        # this gets the default config from the ESP32 from the disk
+        return self.defaultConfig
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
@@ -42,10 +58,10 @@ class UC2ConfigManager(SignalInterface):
 
     def setGeneral(self, general_info):
         pass
-    
+
     def loadPinDefDevice(self):
         return self.ESP32.config.loadConfigDevice()
-    
+
     def loadDefaultConfig(self):
         return self.ESP32.config.loadDefaultConfig()
 
@@ -53,28 +69,33 @@ class UC2ConfigManager(SignalInterface):
         self.ESP32.config.setConfigDevice(pinDef_info)
         # check if setting pins was successfull
         pinDef_infoDevice = self.loadPinDefDevice()
-        shared_items = {k: pinDef_info[k] for k in pinDef_info if k in pinDef_infoDevice and pinDef_info[k] == pinDef_infoDevice[k]}
+        shared_items = {k: pinDef_info[k] for k in pinDef_info if
+                        k in pinDef_infoDevice and pinDef_info[k] == pinDef_infoDevice[k]}
         return shared_items
-        
+
     def update(self, maskChange=False, tiltChange=False, aberChange=False):
         pass
-    
+
     def closeSerial(self):
         return self.ESP32.closeSerial()
-    
+
+    def isConnected(self):
+        self.ESP32.serial.is_connected
+
     def initSerial(self):
         self.ESP32.serial.open()
-        
+
     def downloadFirmware(self, firmwarePath=None):
         return self.firmwareUpdater.downloadFirmware()
-        
+
     def flashFirmware(self, firmwarePath=None):
         return self.firmwareUpdater.flashFirmware(firmwarePath)
-            
+
     def removeFirmware(self):
         return self.firmwareUpdater.removeFirmware()
 
-
+    def setDebug(self, debug):
+        self.ESP32.serial.DEBUG = debug
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

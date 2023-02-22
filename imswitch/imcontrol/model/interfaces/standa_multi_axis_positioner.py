@@ -80,6 +80,8 @@ class MultiAxisPositioner():
             return p
         elif isinstance(p, tuple):
             return Point(*p)
+        elif isinstance(p, dict):
+            return Point(*[v for v in p.values()])
         else:
             raise TypeError("The position must be a Point or tuple.")
 
@@ -100,7 +102,6 @@ class MultiAxisPositioner():
         for dev, p in zip(self.devices, shift):
             dev.shift_on(p)
         # self.wait_for_stop(self.devices)
-
 
     def get_speed(self):
         return [dev.get_speed() for dev in self.devices]

@@ -15,19 +15,15 @@ import numpy as np
 import copy
 from PyQt5.QtGui import QPixmap, QImage
 
-
-
-
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
-
 
 
 class PixelCalibrationWidget(NapariHybridWidget):
     """ Widget containing PixelCalibration interface. """
 
     def __post_init__(self):
-        #super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         # initialize all GUI elements
 
         # Add Painter for drawing a line on pixels
@@ -41,12 +37,20 @@ class PixelCalibrationWidget(NapariHybridWidget):
         self.PixelCalibrationUndoButton = guitools.BetterPushButton('Undo')
         self.PixelCalibrationUndoButton.setCheckable(False)
 
-        # editable for entering pixelvalues         
-        self.PixelCalibrationLabelKnownDistance  = QtWidgets.QLabel('Known Distance: (µm)')
-        self.PixelCalibrationEditFileName  = QtWidgets.QLineEdit('100')
+        # editable for entering pixelvalues
+        self.PixelCalibrationLabelKnownDistance = QtWidgets.QLabel('Known Distance: (µm)')
+        self.PixelCalibrationEditFileName = QtWidgets.QLineEdit('100')
+
+        self.PixelCalibrationPixelSizeLabel = QtWidgets.QLabel('Pixel Size: (nm)')
+        self.PixelCalibrationPixelSizeEdit = QtWidgets.QLineEdit('500')
+        self.PixelCalibrationPixelSizeButton = guitools.BetterPushButton('Set Pixel Size')
+
         self.PixelCalibrationCalibrateButton = guitools.BetterPushButton('Start')
         self.PixelCalibrationCalibrateButton.setCheckable(False)
         self.PixelCalibrationLabelInfo = QtWidgets.QLabel("")
+
+        self.PixelCalibrationStageCalibrationInfo = QtWidgets.QLabel("Stage Calibration Info")
+        self.PixelCalibrationStageCalibrationButton = guitools.BetterPushButton('Start Stage Calibration')
 
         # Defining layout
         self.grid = QtWidgets.QGridLayout()
@@ -54,58 +58,70 @@ class PixelCalibrationWidget(NapariHybridWidget):
 
         #
         self.grid.addWidget(self.canvas, 0, 0, 3, 3)
-        
+
         #
         self.grid.addWidget(self.PixelCalibrationSnapPreviewButton, 1, 0, 1, 1)
         self.grid.addWidget(self.PixelCalibrationUndoButton, 1, 1, 1, 1)
         self.grid.addWidget(self.PixelCalibrationCalibrateButton, 1, 2, 1, 1)
-        
+        self.grid.addWidget(self.PixelCalibrationLabelInfo, 1, 3, 1, 1)
         #
         self.grid.addWidget(self.PixelCalibrationLabelKnownDistance, 2, 0, 1, 1)
         self.grid.addWidget(self.PixelCalibrationEditFileName, 2, 1, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationLabelInfo, 2, 2, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationPixelSizeLabel, 2, 2, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationPixelSizeEdit, 2, 3, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationPixelSizeButton, 2, 4, 1, 1)
+
+        #
+        self.grid.addWidget(self.PixelCalibrationStageCalibrationInfo, 3, 0, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationStageCalibrationButton, 3, 1, 1, 1)
 
         self.layer = None
-        
-        
+
     def getPixelSize(self):
         knownDistance = int(self.PixelCalibrationEditFileName.text())
         lineLength = self.canvas.getLineLength()
-        pixelSize = knownDistance/lineLength
-        return pixelSize   
+        pixelSize = knownDistance / lineLength
+        return pixelSize
 
+    def getPixelSizeTextEdit(self):
+        pixelsize = 1000
+        try:
+            pixelsize = int(self.PixelCalibrationPixelSizeEdit.text())
+        except:
+            self.PixelCalibrationLabelInfo.setText("Pixel Size must be an integer")
+        return pixelsize
 
     def getCoordinateList(self):
         return self.canvas.getCoordinateList()
-    
+
     def setInformationLabel(self, information):
         self.PixelCalibrationLabelInfo.setText(information)
-    
+
     def setPreviewImage(self, image):
         self.canvas.setImage(image)
+
 
 class Canvas(QtWidgets.QLabel):
     def __init__(self):
         super().__init__()
-        self.dimensions = (400,400)
-        self.setFixedSize(self.dimensions[0],self.dimensions[1])
+        self.dimensions = (400, 400)
+        self.setFixedSize(self.dimensions[0], self.dimensions[1])
         self.setImage()
-        
+
         self.pos = None
-        #self.setMouseTracking(False)
-        self.pressPos = (0,0)
-        self.lineCoordinates = (0,0,0,0)
-        
+        # self.setMouseTracking(False)
+        self.pressPos = (0, 0)
+        self.lineCoordinates = (0, 0, 0, 0)
+
         self.isTracking = False
-        
 
     def setImage(self, npImage=None, pathImage='histo.jpg'):
-        
+
         if npImage is None:
             npImage = np.array(cv2.imread(pathImage))
             npImage = cv2.resize(npImage, self.dimensions)
         if len(npImage.shape) == 2:
-            npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
+            npImage = np.repeat(npImage[:, :, np.newaxis], 3, axis=2)
 
         height, width, channel = npImage.shape
         bytesPerLine = 3 * width
@@ -121,24 +137,24 @@ class Canvas(QtWidgets.QLabel):
     def leaveEvent(self, event):
         super().leaveEvent(event)
         self.isTracking = False
-        
+
     def mouseMoveEvent(self, event):
         self.pos = event.pos()
         self.update()
 
     def paintEvent(self, event):
-        if self.pos and self.isTracking:
-            painter = QPainter(self)         
+        if self.pos and self.pressPos and self.isTracking:
+            painter = QPainter(self)
             pen = QtGui.QPen()
             pen.setWidth(4)
             pen.setColor(QtGui.QColor('yellow'))
-            painter.setPen(pen)   
-            try:                
+            painter.setPen(pen)
+            try:
                 painter.drawLine(self.pos.x(), self.pos.y(), self.pressPos.x(), self.pressPos.y())
                 painter.end()
                 self.lineCoordinates = [self.pos.x(), self.pos.y(), self.pressPos.x(), self.pressPos.y()]
             except Exception as e:
-                print (e)
+                print(e)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -148,20 +164,21 @@ class Canvas(QtWidgets.QLabel):
     def mouseReleaseEvent(self, event):
         # ensure that the left button was pressed *and* released within the
         # geometry of the widget; if so, emit the signal;
-        if (self.pressPos is not None and 
-            event.button() == Qt.LeftButton and 
-            event.pos() in self.rect()):
-                self.setMouseTracking(False)
-        self.pressPos = None  
-        
+        if (self.pressPos is not None and
+                event.button() == Qt.LeftButton and
+                event.pos() in self.rect()):
+            self.setMouseTracking(False)
+        self.pressPos = None
+
     def getLineLength(self):
         try:
-            lineLength = np.sqrt(np.abs(self.lineCoordinates[2]-self.lineCoordinates[0])**2+np.abs(self.lineCoordinates[3]-self.lineCoordinates[1])**2)
+            lineLength = np.sqrt(np.abs(self.lineCoordinates[2] - self.lineCoordinates[0]) ** 2 + np.abs(
+                self.lineCoordinates[3] - self.lineCoordinates[1]) ** 2)
         except:
             lineLength = 1
-        return lineLength 
-                
-# Copyright (C) 2020-2021 ImSwitch developers
+        return lineLength
+
+    # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

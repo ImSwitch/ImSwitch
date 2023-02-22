@@ -18,7 +18,7 @@ class PositionerManager(ABC):
               in the format ``{ axis: position }``.
         """
 
-        self._positionerInfo = positionerInfo
+        self._positioner_info = positionerInfo
         self._position = initialPosition
         self.__axes = positionerInfo.axes
         self.__name = name
@@ -27,8 +27,8 @@ class PositionerManager(ABC):
         self._is_homed = positionerInfo.managerProperties.get("initialIsHomed", {axis: 0 for axis in self.__axes })
         self._is_stopped = positionerInfo.managerProperties.get("initialIsStopped", {axis: False for axis in self.__axes })
 
-        self.__forPositioning = positionerInfo.forPositioning
-        self.__forScanning = positionerInfo.forScanning
+        self.__for_positioning = positionerInfo.forPositioning
+        self.__for_scanning = positionerInfo.forScanning
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -68,14 +68,14 @@ class PositionerManager(ABC):
         return self.__axes
 
     @property
-    def forPositioning(self) -> bool:
+    def for_positioning(self) -> bool:
         """ Whether the positioner is used for manual positioning. """
-        return self.__forPositioning
+        return self.__for_positioning
 
     @property
-    def forScanning(self) -> bool:
+    def for_scanning(self) -> bool:
         """ Whether the positioner is used for scanning. """
-        return self.__forScanning
+        return self.__for_scanning
 
     @abstractmethod
     def move(self, dist: float, axis: str):

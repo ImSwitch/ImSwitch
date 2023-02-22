@@ -1,3 +1,5 @@
+import abc
+
 from imswitch.imcontrol.model.interfaces.standa_linear_positioner import LinearPositioner
 from imswitch.imcontrol.model.interfaces.standa_ximc_lib_wrapper import XimcLibraryWrapper
 import numpy as np
@@ -8,6 +10,10 @@ from opentrons.types import Point
 X_SPEED = 12.5
 Y_SPEED = 12.5
 Z_SPEED = 8
+
+
+def get_standa_stage(axes, layout):
+    pass
 
 def get_multiaxis_positioner(axes):
     logger = initLogger('get_multiaxis_positioner', tryInheritParent=True)
@@ -23,40 +29,68 @@ def get_multiaxis_positioner(axes):
         logger.warning(
             f'Failed to initialize Standa multiaxis positioner: {e})'
         )
-        [lib.close_device(cfg_stages[axis]["device_ind"]) for axis in ["X","Y","Z"]]
+        [lib.close_device(cfg_stages[axis]["device_ind"]) for axis in ["X", "Y", "Z"]]
 
-class MultiAxisPositioner():
+
+class IMove(abc.ABC):
+    @abc.abstractmethod
+    def move_to(self, pt: Point):
+        pass
+
+    @abc.abstractmethod
+    def get_position(self) -> Point:
+        pass
+
+
+class ILayout(abc.ABC):
+    pass
+
+
+class CAMultiAxisPositioner(IMove):
+    def move_to(self, pt: Point):
+        self.pos.move_to(pt)
+
+    def get_position(self) -> Point:
+        return self.pos.get_position()
+
+    def __init__(self, i_move: IMove, layout_manager: ILayout):
+        self.pos = i_move
+
+
+class MultiAxisPositioner(IMove):
 
     def __init__(self, x_axis: LinearPositioner, y_axis: LinearPositioner, z_axis: LinearPositioner,
-                 default_speeds = [X_SPEED, Y_SPEED, Z_SPEED], verbose = 0):
+                 default_speeds=[X_SPEED, Y_SPEED, Z_SPEED], verbose=0):
         self.x_axis = x_axis
         self.y_axis = y_axis
         self.z_axis = z_axis
         self.verbose = verbose
         self.default_speeds = default_speeds
-        self.mapper = {"X":0, "Y":1, "Z":2}
+        self.mapper = {"X": 0, "Y": 1, "Z": 2}
 
     @property
     def verbose(self):
         return self._verbose
+
     @verbose.setter
     def verbose(self, v):
         for dev in self.devices:
             dev.verbose = v
         self._verbose = v
+
     @property
     def devices(self):
         return [self.x_axis, self.y_axis, self.z_axis]
 
     def home(self):
-        if hasattr(self,"z_axis"):
+        if hasattr(self, "z_axis"):
             self.z_axis.home()
             self.z_axis.flex_wait_for_stop()
         self.x_axis.home()
         self.y_axis.home()
-        for i,dev in enumerate(self.devices):
+        for i, dev in enumerate(self.devices):
             dev.flex_wait_for_stop()
-            if self.verbose: print(f"Axis {i+1}")
+            if self.verbose: print(f"Axis {i + 1}")
 
     def zero(self):
         for dev in self.devices:
@@ -65,10 +99,10 @@ class MultiAxisPositioner():
             dev.flex_wait_for_stop()
             if self.verbose: print(f"Axis {i + 1}")
 
-    def get_position(self):
+    def get_position(self) -> Point:
         if len(self.devices) == 3:
             d = []
-            for i,dev in enumerate(self.devices):
+            for i, dev in enumerate(self.devices):
                 d.append(dev.get_position().to_float())
         else:
             print(f"{len(self.devices)} devices detected. Unable to get 3D position")
@@ -85,7 +119,7 @@ class MultiAxisPositioner():
         else:
             raise TypeError("The position must be a Point or tuple.")
 
-    def move_to(self, position):
+    def move_to(self, position) -> Point:
         position = self.check_position(position)
         for dev, p in zip(self.devices, position):
             dev.move_to(p)
@@ -112,6 +146,7 @@ class MultiAxisPositioner():
     @property
     def default_speeds(self):
         return self._default_speeds
+
     @default_speeds.setter
     def default_speeds(self, speeds):
         self.set_speed(speed=speeds)
@@ -133,6 +168,7 @@ class MultiAxisPositioner():
         else:
             raise ValueError(f"Type {type(speed)} unvalid")
 
+
 def initialize_stage():
     from locai.microscope.stage.ximc_lib_wrapper import XimcLibraryWrapper
     lib = XimcLibraryWrapper()
@@ -147,6 +183,7 @@ def initialize_stage():
     stage.z_axis.set_speed(Z_SPEED)
     return stage
 
+
 def multi_axis_positioner_test(device: MultiAxisPositioner):
     import numpy as np
 
@@ -154,22 +191,22 @@ def multi_axis_positioner_test(device: MultiAxisPositioner):
 
     travel_range = [d.travel_range for d in device.devices]
 
-    shifts = [[t/5, -t/8, t/4, -t/5] for t in travel_range]
+    shifts = [[t / 5, -t / 8, t / 4, -t / 5] for t in travel_range]
     trajectory = np.array(shifts).transpose()
 
     speed = [0.1, 0.25, 0.75, 0.5]
     max_speed = device.get_max_speed()
-    speeds = np.array([speed]).transpose()*np.array([max_speed])
+    speeds = np.array([speed]).transpose() * np.array([max_speed])
     device.home()
     device.get_position()
-    for s,sp in zip(trajectory, speeds):
+    for s, sp in zip(trajectory, speeds):
         device.set_speed(sp)
         device.shift_on(s)
-    device.set_speed((5,5,2.5))
+    device.set_speed((5, 5, 2.5))
     device.home()
-    device.set_speed((1,5,2.5))
-    device.move_to((100,100,25))
-    device.set_speed((10,10,5))
+    device.set_speed((1, 5, 2.5))
+    device.move_to((100, 100, 25))
+    device.set_speed((10, 10, 5))
     device.home()
 
 # if __name__ == "__main__":

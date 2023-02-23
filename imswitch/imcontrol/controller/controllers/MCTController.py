@@ -344,7 +344,7 @@ class MCTController(ImConWidgetController):
 
                     # sneak images into arrays for displaying stack
                     if self.zStackEnabled and not self.xyScanEnabled:
-                        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+                        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
                         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 

@@ -9,6 +9,7 @@ from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
+import NanoImagingPack as nip
 
 
 # global axis for Z-positioning - should be Z
@@ -111,6 +112,8 @@ class AutofocusController(ImConWidgetController):
             # 1 Grab camera frame
             self._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
+            # crop frame, only take inner 40%
+            img = nip.extract(img, (int(img.shape[0]*0.4),int(img.shape[1]*0.4)))
             allfocusimages.append(img)
 
             # 2 Gaussian filter the image, to remove noise
@@ -139,12 +142,13 @@ class AutofocusController(ImConWidgetController):
             self._logger.debug(f'Moving focus to {zindex*resolutionz}')
             self.stages.move(value=bestzpos, axis="Z", is_absolute=True, is_blocking=True)
 
-            #allfocusimages=np.array(allfocusimages)
-            #np.save('allfocusimages.npy', allfocusimages)
-            #import tifffile as tif
-            #tif.imsave("llfocusimages.tif", allfocusimages)
-            #np.save('allfocuspositions.npy', allfocuspositions)
-            #np.save('allfocusvals.npy', allfocusvals)
+            if False:
+                allfocusimages=np.array(allfocusimages)
+                np.save('allfocusimages.npy', allfocusimages)
+                import tifffile as tif
+                tif.imsave("llfocusimages.tif", allfocusimages)
+                np.save('allfocuspositions.npy', allfocuspositions)
+                np.save('allfocusvals.npy', allfocusvals)
 
         else:
             self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)

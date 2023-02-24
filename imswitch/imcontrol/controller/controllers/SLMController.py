@@ -204,13 +204,11 @@ class SLMController(ImConWidgetController):
                 )
 
     def setMask(self, maskMode):
-        # 0 = donut (left), 1 = tophat (right)
-        mask = self._widget.controlPanel.maskComboBox.currentIndex()
-        if maskMode != MaskMode.Black:
-            slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
-                                            aberParams=self._widget.aberParameterTree.p)
-            self.applyAberrations(slm_info_dict["aber"], mask)
+        mask = self._widget.controlPanel.maskComboBox.currentIndex()  # 0 = donut (left), 1 = tophat (right)
         self._master.slmManager.setMask(mask, maskMode)
+        slm_info_dict = self.getInfoDict(generalParams=self._widget.slmParameterTree.p,
+                                        aberParams=self._widget.aberParameterTree.p)
+        self.applyAberrations(slm_info_dict["aber"], mask)
         image = self._master.slmManager.update(maskChange=True, tiltChange=True, aberChange=True)
         self.updateDisplayImage(image)
 

@@ -18,17 +18,29 @@ class PositionerManager(ABC):
               in the format ``{ axis: position }``.
         """
 
-        self._positioner_info = positionerInfo
+        self._positionerInfo = positionerInfo
         self._position = initialPosition
         self.__axes = positionerInfo.axes
+        if positionerInfo.managerProperties.get("initialSpeed") is not None:
+            self._speed = positionerInfo.managerProperties["initialSpeed"]
+        else:
+            self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        if positionerInfo.managerProperties.get("initialIsHomed") is not None:
+        # if hasattr(positionerInfo.managerProperties, "initialIsHomed"):
+            self._home = positionerInfo.managerProperties["initialIsHomed"]
+        else:
+            self._home = {axis: True for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+
+        # settings for stopping the axis
+        initialStop={
+            axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }
+        self._stop = initialStop # is stopped?
+
         self.__name = name
 
-        self._speed = positionerInfo.managerProperties.get("initialSpeed", {axis: 0 for axis in self.__axes })
-        self._is_homed = positionerInfo.managerProperties.get("initialIsHomed", {axis: 0 for axis in self.__axes })
-        self._is_stopped = positionerInfo.managerProperties.get("initialIsStopped", {axis: False for axis in self.__axes })
-
-        self.__for_positioning = positionerInfo.forPositioning
-        self.__for_scanning = positionerInfo.forScanning
+        self.__forPositioning = positionerInfo.forPositioning
+        self.__forScanning = positionerInfo.forScanning
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -51,16 +63,16 @@ class PositionerManager(ABC):
         return self._speed
 
     @property
-    def is_homed(self) -> Dict[str, bool]:
+    def home(self) -> Dict[str, bool]:
         """ The home of each axis. This is a dict in the format
         ``{ axis: homed }``. """
-        return self._is_homed
+        return self._home
 
     @property
-    def is_stopped(self) -> Dict[str, bool]:
+    def stop(self) -> Dict[str, bool]:
         """ The stop of each axis. This is a dict in the format
         ``{ axis: stopped }``. """
-        return self._is_stopped
+        return self._stop
 
     @property
     def axes(self) -> List[str]:
@@ -68,14 +80,14 @@ class PositionerManager(ABC):
         return self.__axes
 
     @property
-    def for_positioning(self) -> bool:
+    def forPositioning(self) -> bool:
         """ Whether the positioner is used for manual positioning. """
-        return self.__for_positioning
+        return self.__forPositioning
 
     @property
-    def for_scanning(self) -> bool:
+    def forScanning(self) -> bool:
         """ Whether the positioner is used for scanning. """
-        return self.__for_scanning
+        return self.__forScanning
 
     @abstractmethod
     def move(self, dist: float, axis: str):

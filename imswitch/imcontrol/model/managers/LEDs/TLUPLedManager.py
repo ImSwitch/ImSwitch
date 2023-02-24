@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.managers.LEDs.LEDManager import LEDManager
-from imswitch.imcontrol.model.interfaces.tlupled import getLED
-
+# from imswitch.imcontrol.model.interfaces.tlupled import getLED
+from locai.microscope.light_source.tlupled import getLED
 
 class TLUPLedManager(LEDManager):
     """ LaserManager for controlling a Thorlabs UpLed LED
@@ -11,7 +11,7 @@ class TLUPLedManager(LEDManager):
 
     def __init__(self, ledInfo, name, **lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
-        self._led = getLED()
+        self._led = getLED(self.__logger)
         self.__device_index = ledInfo.managerProperties['device_index']
         self.enabled = False
         super().__init__(ledInfo, name, isBinary=False, valueUnits='A', valueDecimals=3)

@@ -1,6 +1,7 @@
 from .PositionerManager import PositionerManager
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.standa_multi_axis_positioner import get_multiaxis_positioner
+# from imswitch.imcontrol.model.interfaces.standa_multi_axis_positioner import get_multiaxis_positioner
+from locai.microscope.stage.standa_multi_axis_positioner import get_multiaxis_positioner
 
 class StandaStageManager(PositionerManager):
 
@@ -11,7 +12,8 @@ class StandaStageManager(PositionerManager):
             raise RuntimeError(f'{self.__class__.__name__} only supports 3 axes,'
                                f' {len(positionerInfo.axes)} provided.')
 
-        self._positioner = get_multiaxis_positioner(positionerInfo.axes)
+        self.__logger.debug(f'Initializing {positionerInfo.axes} ')
+        self._positioner = get_multiaxis_positioner(positionerInfo.axes, logger=self.__logger)
         super().__init__(positionerInfo, name, initialPosition={
             axis: pos for pos, axis in zip(self._positioner.get_position(), positionerInfo.axes)
         })
@@ -20,8 +22,6 @@ class StandaStageManager(PositionerManager):
         #                                                positionerInfo.managerProperties["initialSpeed"])
         #
         #         }
-
-        self.__logger.debug(f'Initializing {positionerInfo.axes} ')
         self.setSpeed(self._speed)
 
     def setSpeed(self, speed, axis = "XYZ"):

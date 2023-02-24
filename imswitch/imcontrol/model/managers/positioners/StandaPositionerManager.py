@@ -1,6 +1,7 @@
 from .PositionerManager import PositionerManager
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.model.interfaces.standa_linear_positioner import get_linear_positioner
+# from imswitch.imcontrol.model.interfaces.standa_linear_positioner import get_linear_positioner
+from locai.microscope.stage.standa_linear_positioner import get_linear_positioner
 
 class StandaPositionerManager(PositionerManager):
 
@@ -12,11 +13,11 @@ class StandaPositionerManager(PositionerManager):
                                f' {len(positionerInfo.axes)} provided.')
 
         self._speed = positionerInfo.managerProperties["initialSpeed"]
-        self._positioner = get_linear_positioner(positionerInfo.axes[0])
+        self.__logger.debug(f'Initializing {positionerInfo.axes[0]} ')
+        self._positioner = get_linear_positioner(positionerInfo.axes[0], logger=self.__logger)
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
         })
-        self.__logger.debug(f'Initializing {positionerInfo.axes[0]} ')
 
     def move(self, dist, axis):
         self._positioner.shift_on(dist)

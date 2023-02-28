@@ -6,6 +6,7 @@ from .basewidgets import WidgetFactory
 from .BeadRecWidget import BeadRecWidget
 from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
+from .EtMonalisaWidget import EtMonalisaWidget
 from .FFTWidget import FFTWidget
 from .FocusLockWidget import FocusLockWidget
 from .ImageWidget import ImageWidget

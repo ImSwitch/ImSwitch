@@ -5,6 +5,7 @@ from .AufofocusController import AutofocusController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
+from .EtMonalisaController import EtMonalisaController
 from .FFTController import FFTController
 from .FocusLockController import FocusLockController
 from .ImageController import ImageController

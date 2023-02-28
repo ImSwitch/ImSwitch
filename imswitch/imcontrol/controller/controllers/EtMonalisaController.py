@@ -5,6 +5,7 @@ import importlib
 import enum
 import h5py
 import csv
+import time
 
 from collections import deque
 from datetime import datetime
@@ -19,7 +20,7 @@ from imswitch.imcommon.model import dirtools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 
-_logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etsted')
+_logsDir = os.path.join(dirtools.UserFileDirs.Root, 'recordings', 'logs_etmonalisa')
 
 
 def timestamp():
@@ -44,8 +45,8 @@ def millis():
     return tics*1e3/freq
 
 
-class EtSTEDController(ImConWidgetController):
-    """ Linked to EtSTEDWidget."""
+class EtMonalisaController(ImConWidgetController):
+    """ Linked to EtMonalisaWidget."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -105,8 +106,12 @@ class EtSTEDController(ImConWidgetController):
         ####self._master.standManager._subManager.setILShutter(0)
 
     def initiate(self):
-        """ Initiate or stop an etSTED experiment. """
+        """ Initiate or stop an etMonalisa experiment. """
         if not self.__running:
+
+            self._master.standManager._subManager.setFLUO()
+            time.sleep(1)
+            self._master.standManager._subManager.setILshutter(1)
 
             detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
@@ -122,7 +127,7 @@ class EtSTEDController(ImConWidgetController):
             self.__param_vals = self.readParams()
             # Reset parameter for extra information that pipelines can input and output
             self.__exinfo = None
-            
+
             # Check if visualization mode, in case launch help widget
             experimentModeIdx = self._widget.experimentModesPar.currentIndex()
             self.experimentMode = self._widget.experimentModes[experimentModeIdx]
@@ -149,7 +154,9 @@ class EtSTEDController(ImConWidgetController):
 
             self._widget.initiateButton.setText('Stop')
             self.__running = True
+
         else:
+
             # disconnect communication channel signals and turn off wf laser
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
@@ -713,7 +720,7 @@ class EtSTEDCoordTransformHelper():
             viewer = self._widget.napariViewerHi
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
-            if self.etSTEDController.getFlipWf():
+            if self.etMonalisaController.getFlipWf():
                 img_data = np.moveaxis(img_data, 0, 1)
         viewer.add_image(img_data)
         viewer.layers.unselect_all()

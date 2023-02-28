@@ -79,6 +79,24 @@ class GXPIPYManager(DetectorManager):
                          model=model, parameters=parameters, actions=actions, croppable=True)
         
 
+    def _updatePropertiesFromCamera(self):
+        self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
+        self.setParameter('Internal frame interval',
+                          self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
+        self.setParameter('Internal frame rate',
+                          self._camera.getPropertyValue('internal_frame_rate')[0])
+
+        triggerSource = self._camera.getPropertyValue('trigger_source')
+        if triggerSource == 1:
+            self.setParameter('Trigger source', 'Internal trigger')
+        else:
+            triggerMode = self._camera.getPropertyValue('trigger_mode')
+            if triggerSource == 2 and triggerMode == 6:
+                self.setParameter('Trigger source', 'External "start-trigger"')
+            elif triggerSource == 2 and triggerMode == 1:
+                self.setParameter('Trigger source', 'External "frame-trigger"')
+
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
 

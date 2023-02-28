@@ -99,7 +99,7 @@ class CameraGXIPY:
         
         # register the frame callback
         user_param = None
-        self.camera.register_capture_callback(user_param, self.set_frame)
+        self.camera.register_capture_callback(user_param, callback_fct)
 
     def start_live(self):
         if not self.is_streaming:
@@ -182,7 +182,12 @@ class CameraGXIPY:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        return self.frame
+        
+        # only return fresh frames
+        if not self.lastFrameId == self.frameNumber:    
+            self.lastFrameId = self.frameNumber 
+            return self.frame
+
 
 
     def flushBuffer(self):

@@ -29,6 +29,7 @@ class UC2ConfigController(ImConWidgetController):
             self.mConfigDevice = self.loadDefaultConfigFromFile()
             self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
 
+        '''TODO: Reimplement?
         # 1b. load default config if device not valid -> E.G. after flashing
         if "motorconfig" in self.mConfigDevice and self.mConfigDevice['motorconfig'][1]["enable"]==0: # the defaultconfig has not been written
             try:
@@ -44,7 +45,7 @@ class UC2ConfigController(ImConWidgetController):
         self.displayConfig(config=self.mConfigDevice)
         
         #here we should write the default pindef for uc2 standalone or esp32 standalone
-        
+        '''
         # save parameters on the disk
         self.defaultPinDefFile = "pinDef.json"
         
@@ -53,6 +54,7 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
+        
         
         self.isFirmwareUpdating = False
         

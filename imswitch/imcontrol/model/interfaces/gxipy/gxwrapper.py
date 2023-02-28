@@ -15,12 +15,9 @@ elif sys.platform == 'win32':
     try:
         os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
         #dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-        mPWD = os.getcwd()
+        mFWD = os.path.dirname(os.path.realpath(__file__))
         try:
-            try:
-                dll = WinDLL(mPWD+'\\imcontrol\\model\\interfaces\\gxipy\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-            except:
-                dll = WinDLL(mPWD+'\\imswitch\\imcontrol\\model\\interfaces\\gxipy\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+            dll = WinDLL(mFWD+'\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
         except:
             dll = WinDLL('GxIAPI.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
             

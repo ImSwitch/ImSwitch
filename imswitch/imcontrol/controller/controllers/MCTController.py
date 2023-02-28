@@ -556,7 +556,7 @@ class MCTController(ImConWidgetController):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
-        if len(self.leds): self.leds[0].setValue(self.LEDValue)
+        if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
         #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
 
     def __del__(self):

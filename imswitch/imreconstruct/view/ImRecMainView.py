@@ -236,7 +236,7 @@ class ReconParTree(ParameterTree):
 
         # Parameter tree for the reconstruction
         params = [
-            {'name': 'Pixel size', 'type': 'float', 'value': 65, 'suffix': 'nm'},
+            {'name': 'Pixel size', 'type': 'float', 'value': 77, 'suffix': 'nm'},
             {'name': 'CPU/GPU', 'type': 'list', 'values': ['GPU', 'CPU']},
             {'name': 'Pattern', 'type': 'group', 'children': [
                 {'name': 'Row-offset', 'type': 'float', 'value': 9.89, 'limits': (0, 9999)},

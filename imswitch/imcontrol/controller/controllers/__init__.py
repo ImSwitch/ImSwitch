@@ -6,6 +6,7 @@ from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
 from .HoloController import HoloController
+from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
 from .SquidStageScanController import SquidStageScanController

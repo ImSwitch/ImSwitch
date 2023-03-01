@@ -139,6 +139,10 @@ class SIMController(ImConWidgetController):
 
         # initialize SIM processor
         self.processor = SIMProcessor()
+        
+        # connect the reconstructed image to the displayer
+        self.sigSIMProcessorImageComputed.connect(self.displayImage)
+        
 
 
 
@@ -190,22 +194,18 @@ class SIMController(ImConWidgetController):
         
         # reset the pattern iterator
         self.nSyncCameraSLM = self._widget.getFrameSyncVal()
+
+        self.active = True
+        self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(), daemon=True)
+        self.simThread.start()
         self._widget.startSIMAcquisition.setEnabled(False)
         
-        self.active = True
-        self.simThread = threading.Thread(self.performSIMExperimentThread, deamon=True)
-        self.simThread.start()
-        
-        
-
     def toggleRecording(self):
         self.isRecording = not self.isRecording
-        self.imageComputationWorker.toggleRecording(self.isRecording)
         if self.isRecording:
             self._widget.isRecordingButton.setText("Stop Recording")
         else:
             self._widget.isRecordingButton.setText("Start Recording")
-
 
     def stopSIM(self):
         # stop live processing 
@@ -233,10 +233,9 @@ class SIMController(ImConWidgetController):
         """ 
         Iterate over all SIM patterns, display them and acquire images 
         """     
-        
         SIMstack = []
         self.patternID = 0
-        self.self.isReconstructing = Falsae
+        self.isReconstructing = False
         while self.active:
             # 1 display the pattern
             self.simPatternByID(self.patternID)    
@@ -246,13 +245,13 @@ class SIMController(ImConWidgetController):
             SIMstack.append(frame)
             
             # 3 add the frame to the list 
-            if self.patternID>=(self.nRotations*self.nPhases):
+            if len(SIMstack)>=(self.nRotations*self.nPhases):
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
                 self.patternID = 0
                 if not self.isReconstructing:
                     self.isReconstructing=True
-                    self.mReconstructionThread = threading.Thread(self.reconstructSIMStack, args=(SIMstack.copy(),))
+                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMstack.copy(),), daemon=True)
                     self.mReconstructionThread.start()
                 SIMstack = []
                 
@@ -270,10 +269,8 @@ class SIMController(ImConWidgetController):
             # TODO: implement this as a qeue
             threading.Thread(target=self.saveImageInBackground, args=(self.allFramesNP,mFilename,), daemon=True).start()
             # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-        self.computeSIMImage()
-        self.isReconstructing = False
-
-    def computeSIMImageThread(self):
+        
+        # compute image
         # initialize the model
         self._logger.debug("Processing frames")
         if not self.processor.getIsCalibrated():
@@ -283,8 +280,8 @@ class SIMController(ImConWidgetController):
         self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
 
         self.iReconstructed += 1
-        self.isReconstructionRunning = False
-        
+        self.isReconstructing = False
+
     def saveImageInBackground(self, image, filename):
         tif.imsave(filename, image)
         self._logger.debug("Saving file: "+filename)
@@ -349,7 +346,7 @@ class SIMProcessor(object):
         
         # initialize logger
         self._logger = initLogger(self, tryInheritParent=False)
-        
+
         # switch for the different reconstruction algorithms
         self.reconstructionMethod = "napari"
 
@@ -497,9 +494,6 @@ class SIMProcessor(object):
     def getIsCalibrated(self):
         return self.isCalibrated
 
-                                
-
-
     def reconstruct(self, currentImage):
         '''
         reconstruction
@@ -508,9 +502,10 @@ class SIMProcessor(object):
             # we use the napari reconstruction method   
             self._logger.debug("reconstructing the stack with napari") 
             assert self.isCalibrated, 'SIM processor not calibrated, unable to perform SIM reconstruction'
+            
             dshape= currentImage.shape
             phases_angles = self.phases_number*self.angles_number
-            rdata = currentImage.reshape(phases_angles, dshape[-2],dshape[-1])
+            rdata = currentImage[:phases_angles, :, :].reshape(phases_angles, dshape[-2],dshape[-1])
             if self.use_torch:
                 imageSIM = self.h.reconstruct_pytorch(rdata.astype(np.float32)) #TODO:this is left after conversion from torch
             else:

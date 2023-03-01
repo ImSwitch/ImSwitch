@@ -16,10 +16,7 @@ elif sys.platform == 'win32':
     try:
         mFWD = os.path.dirname(os.path.realpath(__file__))
         try:
-            try:
-                dll = WinDLL('.\\dll\\DxImageProc.dll', winmode=0)  # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-            except:
-                dll = WinDLL(mFWD+'\\dll\\DxImageProc.dll', winmode=0)
+            dll = WinDLL(mFWD+'\\dll\\DxImageProc.dll', winmode=0)
         except:
             dll = WinDLL('DxImageProc.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
 

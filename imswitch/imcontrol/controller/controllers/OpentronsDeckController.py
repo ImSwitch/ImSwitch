@@ -193,12 +193,14 @@ class OpentronsDeckController(LiveUpdatedController):
         return labwares_dict
 
     def load_deck(self, deck):
-        if deck.deck_name is None:
-            deck_dict = load(name="ot2_standard", version=3)
+        if hasattr(deck, "deck_file"):
+            deck_def_dict = json.load(open(deck.deck_file))
+        elif hasattr(deck, "deck_name"):  # Default for OT2: "ot2_standard"
+            deck_def_dict = load(name=deck.deck_name, version=3)
         else:
             path = os.sep.join([deck.deck_path, deck.deck_name + ".json"])
-            deck_dict = json.load(open(path))
-        self.deck = deck_dict
+            deck_def_dict = json.load(open(path))
+        self.deck = deck_def_dict
         self.ordered_slots = {slot["id"]: slot for i, slot in enumerate(self.deck["locations"]["orderedSlots"])}
         self.corner_offset = [abs(i) for i in self.deck["cornerOffsetFromOrigin"]]
         return

@@ -282,11 +282,11 @@ class EtSTEDInfo:
 
 @dataclass(frozen=True)
 class OpentronsDeckInfo:
-    deck_name: str
-    """ Name of the deck file to use. """
+    deck_file: Optional[str]
+    """ File of the deck to use. """
 
-    deck_path: Optional[str]
-    """ Name of the deck definition file to use. Needed when using non-standard decks. """
+    deck_name: Optional[str]
+    """ Name of the deck file to use if using a default OT deck. """
 
     labwares: Optional[Dict[str, Any]]
     """ Params to be read by the labware loader. Corresponds to standard and custom 

@@ -21,8 +21,8 @@ class StandaPositionerManager(PositionerManager):
         })
 
     def move(self, dist, axis):#
-        self._positioner.deck_cfg.get_well_position("A1", 2)
-        self._positioner.
+        # self._positioner.deck_cfg.get_well_position("A1", 2)
+        # self._positioner.
         self._positioner.shift_on(dist)
         self.setPosition(self._position[self.axes[0]] + dist, axis)
 

@@ -1,13 +1,12 @@
-from qtpy import QtCore, QtWidgets, QtGui
-from PyQt5.QtCore import Qt, QLine
+import csv
 
-from imswitch.imcontrol.view import guitools as guitools
-from .basewidgets import Widget
+from PyQt5.QtCore import Qt
 from imswitch.imcommon.model import initLogger
-from imswitch.imcontrol.view.widgets.StandaPositionerWidget import StandaPositionerWidget
+from imswitch.imcontrol.view import guitools as guitools
+from qtpy import QtCore, QtWidgets
 
-import json
-import sys, csv, unicodedata
+from .basewidgets import Widget
+
 
 class OpentronsDeckWidget(Widget):
     """ Widget in control of the piezo movement. """

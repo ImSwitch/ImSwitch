@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 import ctypes
 import importlib
@@ -132,6 +133,7 @@ class EtSTEDController(ImConWidgetController):
                 self.__runMode = RunMode.Validate
             else:
                 self.__runMode = RunMode.Experiment
+
             # check if visualization or validation mode
             if self.__runMode == RunMode.Validate or self.__runMode == RunMode.Visualize:
                 self.launchHelpWidget()
@@ -146,7 +148,11 @@ class EtSTEDController(ImConWidgetController):
             elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
                 self._commChannel.sigRecordingEnded.connect(self.scanEnded)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
-
+            # switch to FLUO mode and set IL Shutter to 1 if Experiment mode
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.FLUO()
+                time.sleep(1)
+                self._master.standManager._subManager.setILShutter(1)
             self._widget.initiateButton.setText('Stop')
             self.__running = True
         else:
@@ -236,6 +242,12 @@ class EtSTEDController(ImConWidgetController):
     def continueFastModality(self):
         """ Continue the fast method, after an event scan has been performed. """
         if self._widget.endlessScanCheck.isChecked() and not self.__running:
+
+            #switch back to FLUO mode if in experiment mode
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.setFLUO()
+                time.sleep(1)
+                self._master.standManager._subManager.setILShutter(1)
             # connect communication channel signals
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
@@ -585,6 +597,9 @@ class EtSTEDController(ImConWidgetController):
     def pauseFastModality(self):
         """ Pause the fast method, when an event has been detected. """
         if self.__running:
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.setCS()
+                time.sleep(1)
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
             self.__running = False

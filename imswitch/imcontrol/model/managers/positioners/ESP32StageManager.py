@@ -19,6 +19,7 @@ class ESP32StageManager(PositionerManager):
 
 
 
+        
         # calibrated stepsize in steps/µm
         if positionerInfo.managerProperties.get('stepsizeX') is not None:
             self.stepsizeX = positionerInfo.managerProperties['stepsizeX']
@@ -132,12 +133,20 @@ class ESP32StageManager(PositionerManager):
             self.homeDirectionZ = positionerInfo.managerProperties['homeDirectionZ']
         else:
             self.homeDirectionZ = -1
+            
+        if positionerInfo.managerProperties.get ('axisOrder') is not None:
+            self.axisOrder = positionerInfo.managerProperties['axisOrder']
+        else:
+            self.axisOrder = [0,1,2,3]
 
             
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
             
+        # swap axes eventually
+        self.setAxisOrder(order=self.axisOrder)
+        
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
         self.setupMotor(self.minY, self.maxY, self.stepsizeY, self.backlashY, "Y")
@@ -153,7 +162,9 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(self._position['Y'],"X")
         self.setPosition(self._position['Z'],"Z")
 
-
+    def setAxisOrder(self, order=[0,1,2,3]):
+        self._motor.setMotorAxisOrder(order=order)
+        
     def enalbeMotors(self, enable=True):
         self._motor.set_motor_enable(axis=0, is_enable=enable)
 

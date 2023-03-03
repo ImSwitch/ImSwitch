@@ -99,7 +99,7 @@ class EtSTEDController(ImConWidgetController):
         self.__frame = 0
         self.__t_call = 0
         self.__maxAnaImgVal = 0
-        self.__flipwfcalib = True  # flipping widefield image when loading for transformation calibration
+        self.__flipwfcalib = False  # flipping widefield image when loading for transformation calibration
 
 
     def initiate(self):
@@ -134,7 +134,7 @@ class EtSTEDController(ImConWidgetController):
                 self.launchHelpWidget()
             # load selected coordinate transform
             self.loadTransform()
-            self.__transformCoeffs = self.__coordTransformHelper.getTransformCoeffs()
+            #self.__transformCoeffs = self.__coordTransformHelper.getTransformCoeffs()
             # connect communication channel signals and turn on wf laser
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
@@ -432,6 +432,9 @@ class EtSTEDController(ImConWidgetController):
                             coords_wf = np.copy(coords_detected[0,:])
                         else:
                             coords_wf = np.copy(coords_detected[0])
+                        self._logger.debug(coords_wf)
+                        coords_wf = self.adjustDetectedCoords(coords_wf, np.shape(img))
+                        self._logger.debug(coords_wf)
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
                         self.setDetLogLine("fastscan_x_center", coords_wf[0])
                         self.setDetLogLine("fastscan_y_center", coords_wf[1])
@@ -447,8 +450,8 @@ class EtSTEDController(ImConWidgetController):
                                 self.setDetLogLine("det_coord_x_", coords_wf[0], i)
                                 self.setDetLogLine("det_coord_y_", coords_wf[1], i)
                         
-                        #self._logger.debug(f'coords_wf: {coords_wf}')
-                        #self._logger.debug(f'coords_scan: {coords_scan}')
+                        self._logger.debug(f'coords_wf: {coords_wf}')
+                        self._logger.debug(f'coords_scan: {coords_scan}')
                         try:
                             self.initiateSlowScan(position=coords_scan)
                         except Exception as e:
@@ -476,6 +479,27 @@ class EtSTEDController(ImConWidgetController):
                     self.__prevAnaFrames.append(img_ana)
                 self.__frame += 1
                 self.setBusyFalse()
+
+    def adjustDetectedCoords(self, coords, img_shape):
+        # TODO: THIS IS MY ATTEMPT AT FIXING THE WRONG SCAN POSITION. IT BRINGS ME TO A SMALL SHIFT OF ~300-500 NM IN BOTH X AND Y, BUT THAT SHIFT IS CONSTANT
+        # IT DOES NOT DEPEND ON X,Y POSITION, SCAN SPEED, SCAN PIXEL SIZE. HAD THE SAME ISSUE IN 2022-05, MANAGED TO SOLVE IT THEN BY ADDING A FLIP OF WF
+        # IMAGE BEFORE LOADING IT FOR THE TRANSFORM CALIBRATION AND REMOVING ANY FLIP OR INVERT OF COORDINATES PRE-TRANSFORM.
+        # REMOVING THIS FLIP NOW (AND REMOVING ALL INVERT AND FLIP PRE-TRANSFORM) DOES NOT HELP, THE COORDINATES ARE STILL COMPLETELY OFF. SOMETHING MUST HAVE CHANGED
+        # WITH HAMAMATSU IMAGE SAVING/VIEWING? ARE SOME AXES THERE INVERTED? SHOULD I INVERT AXES PRE-LOAD IN CALIBRATION? REMOVE FLIP AND ADD Y-INVERT WOULD BRING 
+        # ME TO A SITUATION WHERE THE WF AND CONF IMAGES ARE IN THE SAME ROTATION AND FLIPPING IN THE CALIB WINDOW, IT SHOULD BE LIKE THAT RIGHT?
+        # TRIED TO INVERT AXES PRE-LOAD, AND NOT FLIPPING. IMAGES ARE LOADED IN THE SAME ORIENTATION THEN, ENABLING EASY CALIBRATION, BUT THE COORDINATE TRANSFORM
+        # DURING ETSTED IS THEN NOT WORKING AT ALL STILL (IN THE SAME WAY AS BEFORE SOMEHOW?)
+        # It is weird that the offset in the coord_transform parameters (params 9 and 19) are roughly ~30-50 in size, corresponding to the small shift I have post-transform
+        # Is this a coincidence, or is this the cause, and what I have to get rid of? If true, it means that it is the calibration that is wrong somehow, just like last year.
+        # This would make sense. However, the parameters are on the same order of size as the transform coords from last year, so maybe it is correct? It is simply the camera
+        # offset from the scanning space anyway, and I can see that I indeed have that shift now.
+        if self._setupInfo.etSTED.invertX:
+            coords[0] = img_shape[0] - coords[0]
+        if self._setupInfo.etSTED.invertY:
+            coords[1] = img_shape[1] - coords[1]
+        if self._setupInfo.etSTED.swapXY:
+            coords = np.copy(np.flip(coords))
+        return coords
 
     def initiateSlowScan(self, position=[0.0,0.0,0.0]):
         """ Initiate a STED scan. """
@@ -519,6 +543,7 @@ class EtSTEDController(ImConWidgetController):
             if positionerName not in self._positionersScan:
                 position = self._analogParameterDict['axis_centerpos'][index]
                 self._master.positionersManager[positionerName].setPosition(position, 0)
+                self._logger.debug([positionerName, position])
 
     def logScanFreq(self, scanFreq):
         self.setDetLogLine("scan_period", scanFreq)
@@ -712,6 +737,9 @@ class EtSTEDCoordTransformHelper():
             viewer = self._widget.napariViewerLo
             if self.etSTEDController.getFlipWf():
                 img_data = np.moveaxis(img_data, 0, 1)
+            else:
+                img_data = np.flip(img_data, 0)
+                img_data = np.flip(img_data, 1)
         viewer.add_image(img_data)
         viewer.layers.unselect_all()
         viewer.layers.move_selected(len(viewer.layers)-1,0)

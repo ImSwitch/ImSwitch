@@ -73,7 +73,6 @@ class LaserInfo(DeviceInfo):
     """
 
 
-
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
     axes: List[str]
@@ -222,6 +221,18 @@ class MicroscopeStandInfo:
 
 
 @dataclass(frozen=True)
+class EtSTEDInfo:
+    swapXY: bool = False
+    """ Swap X and Y axes before transforming coordinates of a detected event. """
+
+    invertX: bool = False
+    """ Invert X value before transforming coordinates of a detected event. """
+    
+    invertY: bool = False
+    """ Invert Y value before transforming coordinates of a detected event. """
+
+
+@dataclass(frozen=True)
 class NidaqInfo:
     timerCounterChannel: Optional[Union[str, int]] = None
     """ Output for Counter for timing purposes. If an integer is specified, it
@@ -295,6 +306,9 @@ class SetupInfo:
 
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
+
+    etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
+    """ EtSTED stand settings. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

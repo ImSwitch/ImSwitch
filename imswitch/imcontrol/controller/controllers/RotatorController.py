@@ -28,7 +28,8 @@ class RotatorController(ImConWidgetController):
         self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
 
         # Update current position in GUI
-        self.updatePosition(name)
+        for name, _ in self._master.rotatorsManager:
+            self.updatePosition(name)
 
     def closeEvent(self):
         pass

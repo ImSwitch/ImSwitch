@@ -71,9 +71,11 @@ class SLMManager(SignalInterface):
         self.__maskTiltLeft = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
                                    self.__wavelength)
         self.__maskTiltLeft.setTilt(self.__pixelsize)
+        self.__maskTiltLeft.setBlack()
         self.__maskTiltRight = Mask(self.__slmSize[1], int(self.__slmSize[0] / 2),
                                     self.__wavelength)
         self.__maskTiltRight.setTilt(self.__pixelsize)
+        self.__maskTiltRight.setBlack()
 
     def initAberrationMask(self):
         # Add blazed grating tilting mask
@@ -148,15 +150,17 @@ class SLMManager(SignalInterface):
         rAberFactors = aber_info["right"]
         self.__masksAber[1].setAberrationFactors(rAberFactors)
 
-    def setAberrations(self, aber_info, mask):
+    def setAberrations(self, aber_info, mask=None):
         if mask == 0 or mask == None:
-            lAberFactors = aber_info["left"]
-            self.__masksAber[0].setAberrationFactors(lAberFactors)
-            self.__masksAber[0].setAberrations()
+            if self.__masks[0].mask_type != MaskMode.Black:
+                lAberFactors = aber_info["left"]
+                self.__masksAber[0].setAberrationFactors(lAberFactors)
+                self.__masksAber[0].setAberrations()
         if mask == 1 or mask == None:
-            rAberFactors = aber_info["right"]
-            self.__masksAber[1].setAberrationFactors(rAberFactors)
-            self.__masksAber[1].setAberrations()
+            if self.__masks[1].mask_type != MaskMode.Black:
+                rAberFactors = aber_info["right"]
+                self.__masksAber[1].setAberrationFactors(rAberFactors)
+                self.__masksAber[1].setAberrations()
 
     def setRadius(self, radius):
         for mask, masktilt, maskaber in zip(self.__masks, self.__masksTilt, self.__masksAber):
@@ -300,7 +304,7 @@ class Mask:
         """Creates a tilt mask, blazed grating, for off-axis holography."""
         if pixelsize:
             self.pixelSize = pixelsize
-        wavelength = self.wavelength * 10 ** -6  # conversion to mm
+        wavelength = self.wavelength * 10**-6  # conversion to mm
         mask = np.indices((self.height, self.width), dtype="float")[1, :, :]
         # Spatial frequency, round to avoid aliasing
         f_spat = np.round(wavelength / (self.pixelSize * np.sin(self.angle_tilt)))

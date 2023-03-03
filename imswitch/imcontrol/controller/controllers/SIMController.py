@@ -138,7 +138,8 @@ class SIMController(ImConWidgetController):
         self.toggleSIMDisplay(enabled=True)
 
         # initialize SIM processor
-        self.processor = SIMProcessor()
+        self.SimProcessorLaser1 = SIMProcessor()
+        self.SimProcessorLaser2 = SIMProcessor()
         
         # connect the reconstructed image to the displayer
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
@@ -236,28 +237,44 @@ class SIMController(ImConWidgetController):
         SIMstack = []
         self.patternID = 0
         self.isReconstructing = False
+        nColour = 2
+
         while self.active:
-            # 1 display the pattern
-            self.simPatternByID(self.patternID)    
             
-            # 2 grab a frame 
-            frame = self.detector.getLatestFrame()
-            SIMstack.append(frame)
+            for iColour in range(nColour):
+                # toggle laser
+                if iColour == 0:
+                    self.lasers[0].setEnabled(True)
+                    self.lasers[1].setEnabled(False)
+                    self._logger.debug("Switching to pattern"+self.lasers[0].name)
+                    processor = self.SimProcessorLaser1
+                    # set the pattern-path for laser wl 1
+                if iColour == 1:
+                    self.lasers[0].setEnabled(False)
+                    self.lasers[1].setEnabled(True)
+                    processor = self.SimProcessorLaser2
+                    self._logger.debug("Switching to pattern"+self.lasers[1].name)
+                    # set the pattern-path for laser wl 1
             
-            # 3 add the frame to the list 
-            if len(SIMstack)>=(self.nRotations*self.nPhases):
+                for iPattern in range(self.nRotations*self.nPhases):
+                
+                    # 1 display the pattern
+                    self.simPatternByID(iPattern)
+                    time.sleep(0.30) #???
+                    
+                    # 2 grab a frame 
+                    frame = self.detector.getLatestFrame()
+                    SIMstack.append(frame)
+            
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
-                self.patternID = 0
                 if not self.isReconstructing:
                     self.isReconstructing=True
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMstack.copy(),), daemon=True)
+                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMstack.copy(),processor,), daemon=True)
                     self.mReconstructionThread.start()
                 SIMstack = []
-                
-            self.patternID+=1
         
-    def reconstructSIMStack(self, imageStack):
+    def reconstructSIMStack(self, imageStack, processor):
         '''
         reconstruct the image stack asychronously
         '''
@@ -273,10 +290,10 @@ class SIMController(ImConWidgetController):
         # compute image
         # initialize the model
         self._logger.debug("Processing frames")
-        if not self.processor.getIsCalibrated():
-            self.processor.setReconstructor()
-            self.processor.calibrate(self.allFramesNP)
-        SIMframe = self.processor.reconstruct(self.allFramesNP)
+        if not processor.getIsCalibrated():
+            processor.setReconstructor()
+            processor.calibrate(self.allFramesNP)
+        SIMframe = processor.reconstruct(self.allFramesNP)
         self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
 
         self.iReconstructed += 1
@@ -286,32 +303,6 @@ class SIMController(ImConWidgetController):
         tif.imsave(filename, image)
         self._logger.debug("Saving file: "+filename)
 
-        '''
-                     # capture image for every illumination
-                if self.Laser1Value>0 and len(self.lasers)>0:
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
-                                timestamp=timestamp,
-                                filename=f'{self.MCTFilename}_Laser1_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
-                                extension=fileExtension)
-                    self.lasers[0].setValue(self.Laser1Value)
-                    self.lasers[0].setEnabled(True)
-                    lastFrame = self.detector.getLatestFrame()
-                    tif.imwrite(filePath, lastFrame, append=True)
-                    self.lasers[0].setEnabled(False)
-                    self.LastStackLaser1.append(lastFrame.copy())
-
-                if self.Laser2Value>0 and len(self.lasers)>0:
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
-                                timestamp=timestamp,
-                                filename=f'{self.MCTFilename}_Laser2_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
-                                extension=fileExtension)
-                    self.lasers[1].setValue(self.Laser2Value)
-                    self.lasers[1].setEnabled(True)
-                    lastFrame = self.detector.getLatestFrame()
-                    tif.imwrite(filePath, lastFrame, append=True)
-                    self.lasers[1].setEnabled(False)
-                    self.LastStackLaser2.append(lastFrame.copy())
-        '''
             
 '''#####################################
 # SIM PROCESSOR

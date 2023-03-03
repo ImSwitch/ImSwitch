@@ -47,6 +47,8 @@ class SIMWidget(NapariHybridWidget):
         self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
         self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
         self.isRecordingButton = guitools.BetterPushButton("Start Recording")
+        self.is488LaserButton = guitools.BetterPushButton("488 off")
+        self.is635LaserButton = guitools.BetterPushButton("635 off")
         
 
         # Control panel with most buttons
@@ -96,6 +98,10 @@ class SIMWidget(NapariHybridWidget):
         # 2nd column
         self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
         self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
+
+        # Laser control
+        self.grid.addWidget(self.is488LaserButton, 4, 1, 1, 1)
+        self.grid.addWidget(self.is635LaserButton, 5, 1, 1, 1)
 
         self.layer = None
 

@@ -73,6 +73,13 @@ class SIMController(ImConWidgetController):
 
         # switch to detect if a recording is in progress
         self.isRecording = False
+
+        # Laser flag
+        self.LaserWL = 0
+
+        # Choose which laser will be recorded
+        self.is488 = False
+        self.is635 = False
         
         # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
@@ -101,6 +108,8 @@ class SIMController(ImConWidgetController):
         #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startSIMAcquisition.clicked.connect(self.startSIM)
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
+        self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
+        self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
         self._widget.stopSIMAcquisition.clicked.connect(self.stopSIM)
         #self._widget.sigSIMDisplayToggled.connect(self.toggleSIMDisplay)
         #self._widget.sigSIMMonitorChanged.connect(self.monitorChanged)
@@ -207,6 +216,20 @@ class SIMController(ImConWidgetController):
             self._widget.isRecordingButton.setText("Stop Recording")
         else:
             self._widget.isRecordingButton.setText("Start Recording")
+    
+    def toggle488Laser(self):
+        self.is488 = not self.is488
+        if self.is488:
+            self._widget.is488LaserButton.setText("488 on")
+        else:
+            self._widget.is488LaserButton.setText("488 off")
+
+    def toggle635Laser(self):
+        self.is635 = not self.is635
+        if self.is635:
+            self._widget.is635LaserButton.setText("635 on")
+        else:
+            self._widget.is635LaserButton.setText("635 off")
 
     def stopSIM(self):
         # stop live processing 
@@ -214,6 +237,8 @@ class SIMController(ImConWidgetController):
         self._master.detectorsManager.startAcquisition(liveView=True)
         self.simThread.join()
         self._widget.startSIMAcquisition.setEnabled(True)
+        self.lasers[0].setEnabled(False)
+        self.lasers[1].setEnabled(False)
         
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -243,18 +268,24 @@ class SIMController(ImConWidgetController):
             
             for iColour in range(nColour):
                 # toggle laser
-                if iColour == 0:
+                if iColour == 0 and self.is488:
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
                     self._logger.debug("Switching to pattern"+self.lasers[0].name)
                     processor = self.SimProcessorLaser1
+                    self.LaserWL = 488
                     # set the pattern-path for laser wl 1
-                if iColour == 1:
+                if iColour == 1 and self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
                     processor = self.SimProcessorLaser2
                     self._logger.debug("Switching to pattern"+self.lasers[1].name)
+                    self.LaserWL = 635
                     # set the pattern-path for laser wl 1
+                elif not self.is488 and not self.is635:
+                    self.lasers[0].setEnabled(False)
+                    self.lasers[1].setEnabled(False)
+                    # disable both laser
             
                 for iPattern in range(self.nRotations*self.nPhases):
                 
@@ -283,7 +314,7 @@ class SIMController(ImConWidgetController):
         self.allFramesList = imageStack
         if self.isRecording:
             date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilename = f"filename_{date}.tif"
+            mFilename = f"filename_{date}_{self.LaserWL}nm.tif"
             # TODO: implement this as a qeue
             threading.Thread(target=self.saveImageInBackground, args=(self.allFramesNP,mFilename,), daemon=True).start()
             # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!

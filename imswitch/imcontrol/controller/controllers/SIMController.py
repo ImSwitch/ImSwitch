@@ -264,7 +264,8 @@ class SIMController(ImConWidgetController):
                     
                     # 2 grab a frame 
                     frame = self.detector.getLatestFrame()
-                    SIMstack.append(frame)
+                    processor.addFrameToStack(frame)
+                    
             
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
@@ -272,7 +273,7 @@ class SIMController(ImConWidgetController):
                     self.isReconstructing=True
                     self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMstack.copy(),processor,), daemon=True)
                     self.mReconstructionThread.start()
-                SIMstack = []
+                processor.clearStack()
         
     def reconstructSIMStack(self, imageStack, processor):
         '''
@@ -334,6 +335,7 @@ class SIMProcessor(object):
         self.isCalibrated = False
         self.use_phases =  True
         self.use_torch = isPytorch
+        self.stack = []
         
         # initialize logger
         self._logger = initLogger(self, tryInheritParent=False)
@@ -397,6 +399,12 @@ class SIMProcessor(object):
             self.h.kx = self.kx_input
             self.h.ky = self.ky_input
 
+    def addFrameToStack(self, frame):
+        self.stack.append(frame)
+        
+    def clearStack(self):
+        self.stack=[]
+        
     def get_current_stack_for_calibration(self,data):
         self._logger.error("get_current_stack_for_calibration not implemented yet")
         '''

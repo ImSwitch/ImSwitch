@@ -52,13 +52,14 @@ class PixelCalibrationController(LiveUpdatedController):
         self._logger.info("Snap preview...")
         previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
         self._widget.setImage(previewImage)
+        self._widget.addPointLayer()
         
     def startPixelCalibration(self):
         # initilaze setup
         # this is not a thread!
         knownDistance = self._widget.getKnownDistance()
         try:
-            self.lastTwoPoints = self._widget.viewer.layers["Points"].data[-2:,]
+            self.lastTwoPoints = self._widget.viewer.layers["Pixelcalibration Points"].data[-2:,]
             dx = self.lastTwoPoints[1,0]-self.lastTwoPoints[0,0]
             dy = self.lastTwoPoints[1,1]-self.lastTwoPoints[0,1]
             dr = np.sqrt(dx**2+dy**2)

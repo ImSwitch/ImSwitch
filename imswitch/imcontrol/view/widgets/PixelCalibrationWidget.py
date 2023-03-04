@@ -85,11 +85,17 @@ class PixelCalibrationWidget(NapariHybridWidget):
         self.grid.addWidget(self.PixelCalibrationStageCalibrationInfo, 4, 1, 1, 1)
 
         self.layer = None
+        self.pointLayer = None
         
     def setImage(self, im):
         if self.layer is None or self.layer.name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, name="Pixelcalibration", blending='additive')
             self.layer.data = im
+    
+    def addPointLayer(self):
+        if self.pointLayer is None:
+            self.pointLayer = self.viewer.add_points(name="Pixelcalibration Points")
+            
     
     def getKnownDistance(self):
         return int(self.PixelCalibrationEditKnownDistance.text())

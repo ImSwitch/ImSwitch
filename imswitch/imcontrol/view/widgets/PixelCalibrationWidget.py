@@ -43,15 +43,17 @@ class PixelCalibrationWidget(NapariHybridWidget):
 
         # editable for entering pixelvalues         
         self.PixelCalibrationLabelKnownDistance  = QtWidgets.QLabel('Known Distance: (µm)')
-        self.PixelCalibrationEditFileName  = QtWidgets.QLineEdit('100')
+        self.PixelCalibrationEditKnownDistance  = QtWidgets.QLineEdit('100')
         
         self.PixelCalibrationPixelSizeLabel = QtWidgets.QLabel('Pixel Size: (nm)')
         self.PixelCalibrationPixelSizeEdit = QtWidgets.QLineEdit('500') 
         self.PixelCalibrationPixelSizeButton = guitools.BetterPushButton('Set Pixel Size')
         
-        
+        self.PixelCalibrationLabelExplanation = QtWidgets.QLabel("Please snap an image and select \n two points with the mouse. \n The distance between the two points will \n be used to calculate the pixel size.")
         self.PixelCalibrationCalibrateButton = guitools.BetterPushButton('Start')
         self.PixelCalibrationCalibrateButton.setCheckable(False)
+        
+        self.PixelCalibrationLabelText = QtWidgets.QLabel("Calibrated distance")
         self.PixelCalibrationLabelInfo = QtWidgets.QLabel("")
       
         self.PixelCalibrationStageCalibrationInfo = QtWidgets.QLabel("Stage Calibration Info")
@@ -65,31 +67,33 @@ class PixelCalibrationWidget(NapariHybridWidget):
         self.grid.addWidget(self.canvas, 0, 0, 3, 3)
         
         #
+        self.grid.addWidget(self.PixelCalibrationLabelExplanation, 0, 0, 1, 1)
         self.grid.addWidget(self.PixelCalibrationSnapPreviewButton, 1, 0, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationUndoButton, 1, 1, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationCalibrateButton, 1, 2, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationLabelInfo, 1, 3, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationLabelKnownDistance, 1, 1, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationEditKnownDistance, 1, 2, 1, 1)
+        #self.grid.addWidget(self.PixelCalibrationUndoButton, 1, 1, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationCalibrateButton, 1, 3, 1, 1)
+
+        self.grid.addWidget(self.PixelCalibrationLabelText, 3, 1, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationLabelInfo, 3, 2, 1, 1)
         #
-        self.grid.addWidget(self.PixelCalibrationLabelKnownDistance, 2, 0, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationEditFileName, 2, 1, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeLabel, 2, 2, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeEdit, 2, 3, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationPixelSizeButton, 2, 4, 1, 1)
-        
+        self.grid.addWidget(self.PixelCalibrationPixelSizeLabel, 2, 1, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationPixelSizeEdit, 2, 2, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationPixelSizeButton, 2, 3, 1, 1)
         # 
-        self.grid.addWidget(self.PixelCalibrationStageCalibrationInfo, 3, 0, 1, 1)
-        self.grid.addWidget(self.PixelCalibrationStageCalibrationButton, 3, 1, 1, 1)
-        
+        self.grid.addWidget(self.PixelCalibrationStageCalibrationButton, 4, 0, 1, 1)
+        self.grid.addWidget(self.PixelCalibrationStageCalibrationInfo, 4, 1, 1, 1)
 
         self.layer = None
         
-        
-    def getPixelSize(self):
-        knownDistance = int(self.PixelCalibrationEditFileName.text())
-        lineLength = self.canvas.getLineLength()
-        pixelSize = knownDistance/lineLength
-        return pixelSize   
+    def setImage(self, im):
+        if self.layer is None or self.layer.name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, name="Pixelcalibration", blending='additive')
+            self.layer.data = im
     
+    def getKnownDistance(self):
+        return int(self.PixelCalibrationEditKnownDistance.text())
+        
     def getPixelSizeTextEdit(self):
         pixelsize = 1000
         try:

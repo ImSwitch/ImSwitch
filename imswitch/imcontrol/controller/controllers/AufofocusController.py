@@ -9,18 +9,11 @@ from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
-<<<<<<< Updated upstream
-import NanoImagingPack as nip
-=======
-<<<<<<< Updated upstream
-=======
 try:
     import NanoImagingPack as nip
     isNIP=True  
 except:
     isNIP = False
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 
 # global axis for Z-positioning - should be Z
@@ -123,17 +116,9 @@ class AutofocusController(ImConWidgetController):
             # 1 Grab camera frame
             self._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
-<<<<<<< Updated upstream
-            # crop frame, only take inner 40%
-            img = nip.extract(img, (int(img.shape[0]*0.4),int(img.shape[1]*0.4)))
-=======
-<<<<<<< Updated upstream
-=======
             # crop frame, only take inner 40%
             if isNIP:
                 img = nip.extract(img, (int(img.shape[0]*0.4),int(img.shape[1]*0.4)))
->>>>>>> Stashed changes
->>>>>>> Stashed changes
             allfocusimages.append(img)
 
             # 2 Gaussian filter the image, to remove noise

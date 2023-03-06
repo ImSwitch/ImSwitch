@@ -75,7 +75,7 @@ class APDManager(DetectorManager):
                 lambda pixels, pos: self.updateImage(pixels, pos)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisitionLocal)
-            self._scanWorker.newFrame.connect(lambda: self.sigNewFrame.emit())
+            self._scanWorker.d3Step.connect(lambda: self.sigNewFrame.emit())
 
     def startScan(self):
         if self.acquisition:
@@ -213,8 +213,8 @@ class APDManager(DetectorManager):
 
 class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
-    newLine = Signal(np.ndarray, int, int)
-    newFrame = Signal()
+    d3Step = Signal()
+    #newFrame = Signal()
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict, signalDict):
@@ -358,8 +358,9 @@ class ScanWorker(Worker):
                     throwdatalen = self._throw_startzero + self._samples_d3_step * np.sum(throwdatalen_term1_terms) + throwdatalen_highdsteps - self._samples_read
                     if throwdatalen > 0:
                         self.throwdata(throwdatalen)
+                    self.d3Step.emit()
                 if dim > 3:
-                    self.throwdata(self._samples_padlens[dim-1])                  
+                    self.throwdata(self._samples_padlens[dim-1])  
             else:
                 self.run_loop_d2()
             self._pos[dim-1] += 1

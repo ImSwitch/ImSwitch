@@ -36,7 +36,7 @@ class RotationScanController(ImConWidgetController):
         self.__currentStep = 0
 
         # Initiate parameters used during calibration
-        self.__calibrationPolSteps = np.arange(0,181,15).tolist()
+        self.__calibrationPolSteps = np.arange(0,181,20).tolist()
         self.__calibration_filename = 'polarization_calibration.json'
         self.__calibration_dir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_rotscan')
         if not os.path.exists(self.__calibration_dir):
@@ -96,7 +96,7 @@ class RotationScanController(ImConWidgetController):
     def prepRotationStep(self):
         """ Called when a polarization rotation step needs to be prepped, i.e. just after one step has been taken. """
         for idx, rotator in enumerate(self.__rotators):
-            self.__logger.debug([self.__currentStep, rotator, self.__rot_step_pos[idx][self.__currentStep]])
+            #self.__logger.debug([self.__currentStep, rotator, self.__rot_step_pos[idx][self.__currentStep]])
             self.moveAbsRotator(rotator, self.__rot_step_pos[idx][self.__currentStep])
             #self._commChannel.sigSetSyncInMovementSettings.emit(rotator, self.__rot_step_pos[idx][self.__currentStep+1])
             self._commChannel.sigUpdateRotatorPosition.emit(rotator)
@@ -110,17 +110,18 @@ class RotationScanController(ImConWidgetController):
         self.__rotCalPos = []
         self.calibrationStep(step=0)
 
-    def calibrateRotationsFinish(self):
+    def calibrateRotationsFinish(self, load_data=False):
         """ Finish calibration by interpolating/fitting the stored positions across the range of polarization rotations. """
         self.__interp_splines = []
-        self.__rotCalPos = np.swapaxes(self.__rotCalPos,0,1).tolist()
+        if not load_data:
+            self.__rotCalPos = np.swapaxes(self.__rotCalPos,0,1).tolist()
         for rotator, positions in enumerate(self.__rotCalPos):
             # get spline interpolation of calibrated positions
             self.__interp_splines.append(interp.splrep(self.__calibrationPolSteps, positions))
             # evaluate and plot spline interpolations
             pol_eval = np.arange(0, self.__calibrationPolSteps[-1], 1)
             pos_eval = interp.splev(pol_eval, self.__interp_splines[rotator])
-            plt.figure(rotator)
+            plt.figure(f"Rotator{rotator}")
             plt.scatter(self.__calibrationPolSteps, positions)
             plt.plot(pol_eval, pos_eval)
             plt.show()
@@ -149,6 +150,7 @@ class RotationScanController(ImConWidgetController):
         self.__rotCalPos = rotator_positions
         self.__logger.debug(self.__calibrationPolSteps)
         self.__logger.debug(self.__rotCalPos)
+        self.calibrateRotationsFinish(load_data=True)
 
     def calibrationStep(self, step):
         """ Takes a step of the calibration routine, saving set rotations and preparing for the next step. """

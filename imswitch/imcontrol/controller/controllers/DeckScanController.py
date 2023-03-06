@@ -232,7 +232,8 @@ class DeckScanController(LiveUpdatedController):
             self.leds[0].setEnabled(True)
         elif self.led_matrixs:
             self.led_matrixs[0].setAll(state=(1, 1, 1))
-            [self.ledMatrix.setLEDSingle(indexled=int(LEDid), state=(0, 0, 0)) for LEDid in [12, 13, 14, 15]]
+            [self.led_matrixs[0].setLEDSingle(indexled=int(LEDid), state=0) for LEDid in [12, 13, 14, 15]]
+            time.sleep(0.1)
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -322,7 +323,7 @@ class DeckScanController(LiveUpdatedController):
                     self.positioner.move(value=iZ - z, axis="Z", is_blocking=True)  # , is_absolute=False
                     stepsCounter += self.zStackStep
                     self.switchOnIllumination(intensity)
-                    time.sleep(self.tUnshake)  # unshake + Light
+                    time.sleep(self.tUnshake*3)  # unshake + Light
 
                     self.__logger.info(f"Taking image at Z:{iZ:.3f}.")
                     filename_str = f'{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_p{pos_row}_Z{zn}_i{imageIndex}'
@@ -342,7 +343,7 @@ class DeckScanController(LiveUpdatedController):
             else:
                 # single file timelapse
                 self.switchOnIllumination(intensity)
-                time.sleep(self.tUnshake)  # unshake + Light
+                time.sleep(self.tUnshake*3)  # unshake + Light
                 self.__logger.info(f"Taking image.")
                 x, y, z = self.positioner.get_position()
                 filename_str = f'{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_Z{z:.3f}_i{imageIndex}'.replace(

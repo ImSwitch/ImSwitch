@@ -9,6 +9,9 @@ from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
+import NanoImagingPack as nip
+# pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack@feature2-calreadnoise
+
 # global axis for Z-positioning - should be Z
 gAxis = "Z"
 T_DEBOUNCE = .2
@@ -28,7 +31,7 @@ class AutofocusController(ImConWidgetController):
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
-        #self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        # self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect AutofocusWidget buttons
         self._widget.focusButton.clicked.connect(self.focusButton)
@@ -48,14 +51,13 @@ class AutofocusController(ImConWidgetController):
             rangez = float(self._widget.zStepRangeEdit.text())
             resolutionz = float(self._widget.zStepSizeEdit.text())
             self._widget.focusButton.setText('Stop')
-            self.autoFocus(rangez,resolutionz)
+            self.autoFocus(rangez, resolutionz)
         else:
             self.isAutofusRunning = False
 
-
     @APIExport(runOnUIThread=True)
     # Update focus lock
-    def autoFocus(self, rangez=100, resolutionz=10, initialz = 0):
+    def autoFocus(self, rangez=100, resolutionz=10):
 
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
@@ -64,7 +66,7 @@ class AutofocusController(ImConWidgetController):
         '''
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         self.isAutofusRunning = True
-        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz, initialz),
+        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz),
                                                 daemon=True)
         self._AutofocusThead.start()
 
@@ -72,27 +74,23 @@ class AutofocusController(ImConWidgetController):
         detectorManager = self._master.detectorsManager[self.camera]
         return detectorManager.getLatestFrame()
 
-    def doAutofocusBackground(self, rangez=100, resolutionz=10, initialz = 0):
+    def doAutofocusBackground(self, rangez=100, resolutionz=10):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
-        # TODO: Autofocus is missing initial_position parameter, as shown in the Widget.
+
         allfocusvals = []
         allfocuspositions = []
 
-        # TODO: Go to intial position:
         # get current position
-        currentPosition = self.stages.getPosition()["Z"]
-        self.stages.move(dist=initialz-currentPosition, axis="Z", is_blocking=True)
+        initialPosition = self.stages.getPosition()["Z"]
 
         # precompute values for Z-scan
         Nz = int(2 * rangez // resolutionz)
         allfocusvals = np.zeros(Nz)
-        allfocuspositions = np.linspace(-abs(rangez), abs(rangez), Nz) + initialz
+        allfocuspositions = np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition
         allfocusimages = []
 
         # 0 move focus to initial position
-        # TODO: stages.move has different signature as Positioner class: value != dist
-        # self.stages.move(dist=allfocuspositions[0]-initialPosition, axis="Z", is_absolute=True, is_blocking=True)
-        self.stages.move(dist=allfocuspositions[0]-initialz, axis="Z", is_blocking=True)
+        self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
         # grab dummy frame?
         self.grabCameraFrame()
@@ -104,9 +102,7 @@ class AutofocusController(ImConWidgetController):
             if not self.isAutofusRunning:
                 break
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
-            # self.stages.move(dist=allfocuspositions[iz], axis="Z", is_absolute=True, is_blocking=True)
-            # self.stages.move(dist=resolutionz, axis="Z", is_absolute=True, is_blocking=True)
-            self.stages.move(dist=resolutionz, axis="Z", is_blocking=True)
+            self.stages.move(value=allfocuspositions[iz], axis="Z", is_absolute=True, is_blocking=True)
 
             time.sleep(T_DEBOUNCE)
             self._logger.debug(f'Moving focus to {allfocuspositions[iz]}')
@@ -114,6 +110,8 @@ class AutofocusController(ImConWidgetController):
             # 1 Grab camera frame
             self._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
+            # crop frame, only take inner 40%
+            img = nip.extract(img, (int(img.shape[0] * 0.4), int(img.shape[1] * 0.4)))
             allfocusimages.append(img)
 
             # 2 Gaussian filter the image, to remove noise
@@ -132,31 +130,26 @@ class AutofocusController(ImConWidgetController):
 
             # 4 find maximum focus value and move stage to this position
             allfocusvals = np.array(allfocusvals)
-            # zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
-            zindex = np.argmax(allfocusvals)
+            zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
             bestzpos = allfocuspositions[np.squeeze(zindex)]
 
             # 5 move focus back to initial position (reduce backlash)
-            # self.stages.move(dist=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
-            # self.stages.move(dist=allfocuspositions[-1]-initialPosition, axis="Z", is_absolute=True, is_blocking=True)
-            self.stages.move(dist=allfocuspositions[-1]-initialz, axis="Z", is_blocking=True)
+            self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
             # 6 Move stage to the position with max focus value
-            self._logger.debug(f'Moving focus to {zindex * resolutionz + initialz}')
-            # self.stages.move(dist=bestzpos-initialPosition, axis="Z", is_absolute=True, is_blocking=True)
-            self.stages.move(dist=bestzpos-initialz, axis="Z", is_blocking=True)
+            self._logger.debug(f'Moving focus to {zindex * resolutionz}')
+            self.stages.move(value=bestzpos, axis="Z", is_absolute=True, is_blocking=True)
 
-            # allfocusimages=np.array(allfocusimages)
-            # np.save('allfocusimages.npy', allfocusimages)
-            # import tifffile as tif
-            # tif.imsave("llfocusimages.tif", allfocusimages)
-            # np.save('allfocuspositions.npy', allfocuspositions)
-            # np.save('allfocusvals.npy', allfocusvals)
+            if False:
+                allfocusimages = np.array(allfocusimages)
+                np.save('allfocusimages.npy', allfocusimages)
+                import tifffile as tif
+                tif.imsave("llfocusimages.tif", allfocusimages)
+                np.save('allfocuspositions.npy', allfocuspositions)
+                np.save('allfocusvals.npy', allfocusvals)
 
         else:
-            currentPosition = self.stages.getPosition()["Z"]
-            # self.stages.move(dist=initialPosition-currentPosition, axis="Z", is_absolute=True, is_blocking=True)
-            self.stages.move(dist=initialz-currentPosition, axis="Z", is_blocking=True)
+            self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
 
         # DEBUG
 

@@ -30,7 +30,7 @@ class PositionerManager(ABC):
             self._home = positionerInfo.managerProperties["initialIsHomed"]
         else:
             self._home = {axis: True for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
-
+        self._home["Z"] = False
         # settings for stopping the axis
         initialStop={
             axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?

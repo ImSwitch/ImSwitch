@@ -105,8 +105,6 @@ class ESP32StageManager(PositionerManager):
             self.backlashT = 1
 
         # setup homing coordinates and speed
-        # self.homeSpeed = positionerInfo.managerProperties.get("homeSpeed", {axis: 15000 for axis in self.__axes })
-
         if positionerInfo.managerProperties.get('homeSpeedX') is not None:
             self.homeSpeedX = positionerInfo.managerProperties['homeSpeedX']
         else:
@@ -134,9 +132,17 @@ class ESP32StageManager(PositionerManager):
         else:
             self.homeDirectionZ = -1
 
+        if positionerInfo.managerProperties.get('axisOrder') is not None:
+            self.axisOrder = positionerInfo.managerProperties['axisOrder']
+        else:
+            self.axisOrder = [0, 2, 1, 3]
+
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
+
+        # swap axes eventually
+        self.setAxisOrder(order=self.axisOrder)
 
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
@@ -152,6 +158,12 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(self._position['X'], "X")
         self.setPosition(self._position['Y'], "X")
         self.setPosition(self._position['Z'], "Z")
+
+    def setAxisOrder(self, order=[0, 1, 2, 3]):
+        self._motor.setMotorAxisOrder(order=order)
+
+    def enalbeMotors(self, enable=True):
+        self._motor.set_motor_enable(axis=0, is_enable=enable)
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
@@ -228,6 +240,7 @@ class ESP32StageManager(PositionerManager):
     def setPosition(self, value, axis):
         if value: value += 1  # TODO: Firmware weirdness
         self._motor.set_position(axis=axis, position=value)
+        # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
         self._position[axis] = value
 
     def closeEvent(self):
@@ -242,8 +255,7 @@ class ESP32StageManager(PositionerManager):
         return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
     #
     def get_position(self):
-        pos = self.getPosition()
-        return pos["X"], pos["Y"], pos["Z"]
+        return self._position["X"], self._position["Y"], self._position["Z"]
 
     def forceStop(self, axis):
         if axis == "X":

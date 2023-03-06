@@ -22,6 +22,10 @@ class DeckWidget(Widget):
     sigAddCurrentClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigAddClicked = QtCore.Signal(str, str)  # (positionerName, axis)
 
+    sigStepAbsoluteClicked = QtCore.Signal(str)
+    sigHomeAxisClicked = QtCore.Signal(str, str)
+    sigStopAxisClicked = QtCore.Signal(str, str)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -30,9 +34,9 @@ class DeckWidget(Widget):
         self.main_grid_layout = QtWidgets.QGridLayout()
         self.current_slot = None
         self.current_well = None
-        self.current_offset = (None,None)
+        self.current_offset = (None, None)
         self.current_z_focus = None
-        self.current_absolute_position = (None,None,None)
+        self.current_absolute_position = (None, None, None)
 
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
 
@@ -62,7 +66,7 @@ class DeckWidget(Widget):
             self, 'Open File', '', 'CSV(*.csv)')
         # if not path.isEmpty():
         with open(path[0], 'r') as stream:
-            self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
+            self.scan_list.setHorizontalHeaderLabels(["Slot", "Well", "Offset", "Z_focus", "Absolute"])
             self.scan_list.setRowCount(0)
             self.scan_list_items = 0
             for rowdata in csv.reader(stream):
@@ -81,7 +85,7 @@ class DeckWidget(Widget):
                     btn.setStyleSheet("background-color: grey; font-size: 14px")
 
     def select_labware(self, slot):
-        if hasattr(self,"_wells_group_box"):
+        if hasattr(self, "_wells_group_box"):
             self.main_grid_layout.removeWidget(self._wells_group_box)
         self._wells_group_box = QtWidgets.QGroupBox(f"Labware layout: {slot}: {self._labware_dict[slot]}")
         layout = QtWidgets.QGridLayout()
@@ -95,11 +99,11 @@ class DeckWidget(Widget):
         columns = len(self._labware_dict[slot].columns())
         for r in list(range(rows)):
             for c in list(range(columns)):
-                well_buttons[c+1] = (0, c+1)
+                well_buttons[c + 1] = (0, c + 1)
                 well = labware.rows()[r][c]
-                well_buttons[well.well_name] = (r+1,c+1)
-            well_buttons[well.well_name[0]] = (r+1, 0)
-        well_buttons[""] = (0,0)
+                well_buttons[well.well_name] = (r + 1, c + 1)
+            well_buttons[well.well_name[0]] = (r + 1, 0)
+        well_buttons[""] = (0, 0)
         # Create wells (buttons) and add them to the grid layout
         for corrds, pos in well_buttons.items():
             if 0 in pos:
@@ -125,7 +129,7 @@ class DeckWidget(Widget):
 
         self._wells_group_box.setMaximumHeight(300)
         self._wells_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1,3)
+        self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1, 3)
         self.setLayout(self.main_grid_layout)
 
     def add_home(self, layout):
@@ -160,21 +164,21 @@ class DeckWidget(Widget):
         self.deck_slots = {}
 
         # Create dictionary to store deck slots names (button texts)
-        slots_buttons = {s: (0,i+2) for i,s in enumerate(slots)}
+        slots_buttons = {s: (0, i + 2) for i, s in enumerate(slots)}
         for corrds, pos in slots_buttons.items():
             if corrds in used_slots:
                 # Do button if slot contains labware
                 self.deck_slots[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
                 self.deck_slots[corrds].setFixedSize(30, 30)
                 self.deck_slots[corrds].setStyleSheet("QPushButton"
-                                     "{"
-                                     "background-color : grey; font-size: 14px"
-                                     "}"
-                                     "QPushButton::pressed"
-                                     "{"
-                                     "background-color : red; font-size: 14px"
-                                     "}"
-                                     )
+                                                      "{"
+                                                      "background-color : grey; font-size: 14px"
+                                                      "}"
+                                                      "QPushButton::pressed"
+                                                      "{"
+                                                      "background-color : red; font-size: 14px"
+                                                      "}"
+                                                      )
             else:
                 self.deck_slots[corrds] = QtWidgets.QLabel(corrds)  # QtWidgets.QPushButton(corrds)
                 self.deck_slots[corrds].setFixedSize(30, 30)
@@ -182,13 +186,14 @@ class DeckWidget(Widget):
             layout.addWidget(self.deck_slots[corrds])
         self._deck_group_box.setFixedHeight(70)
         self._deck_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1,3)
+        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
         self.setLayout(self.main_grid_layout)
 
-    def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
+    def addScanner(
+            self):  # , detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
         self.scan_list.setColumnCount(5)
-        self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
+        self.scan_list.setHorizontalHeaderLabels(["Slot", "Well", "Offset", "Z_focus", "Absolute"])
         self.scan_list_items = 0
         # self.scan_list.setEditTriggers(self.scan_list.NoEditTriggers)
 
@@ -229,7 +234,6 @@ class DeckWidget(Widget):
         self.main_grid_layout.addWidget(self.scan_list, 1, 1, 1, 2)
         self.main_grid_layout.addWidget(self._actions_widget, 1, 0, 1, 1)
 
-
     def add_position_to_scan(self, slot, well, offset, z_focus, absolute_position):
 
         self.scan_list.insertRow(self.scan_list_items)
@@ -249,30 +253,65 @@ class DeckWidget(Widget):
         self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(self.current_absolute_position)))
         self.scan_list_items += 1
 
-    def addPositioner(self, positionerName, axes, hasSpeed, initial_position, initial_speed ):
+    def getAbsPosition(self, positionerName, axis):
+        """ Returns the absolute position of the  specified positioner axis in
+        micrometers. """
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        return float(self.pars['AbsolutePosEdit' + parNameSuffix].text())
+
+    def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
         self._positioner_widget = QtWidgets.QGroupBox("Positioners")
         layout = QtWidgets.QGridLayout()
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
-            label = f'{axis}' if positionerName != axis else positionerName
+            label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
 
             self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
             self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{initial_position[axis]:.3f} mm</strong>')
+            self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
             self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
-            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
-            self.pars['StepUnit' + parNameSuffix] = QtWidgets.QLabel('mm')
+            self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+
+            self.pars['AbsolutePosEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
+            self.pars['AbsolutePosButton' + parNameSuffix] = guitools.BetterPushButton('Go!')
 
             layout.addWidget(self.pars['Label' + parNameSuffix], self.numPositioners, 0)
             layout.addWidget(self.pars['Position' + parNameSuffix], self.numPositioners, 1)
             layout.addWidget(self.pars['UpButton' + parNameSuffix], self.numPositioners, 2)
             layout.addWidget(self.pars['DownButton' + parNameSuffix], self.numPositioners, 3)
-            layout.addWidget(QtWidgets.QLabel('Step'), self.numPositioners, 4)
+            layout.addWidget(QtWidgets.QLabel('Rel'), self.numPositioners, 4)
             layout.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
-            layout.addWidget(self.pars['StepUnit' + parNameSuffix], self.numPositioners, 6)
+            layout.addWidget(QtWidgets.QLabel('Abs'), self.numPositioners, 6)
+
+            layout.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], self.numPositioners, 7)
+            layout.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], self.numPositioners, 8)
+
+            if hasSpeed:
+                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
+                self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
+                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+
+                layout.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 9)
+                layout.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
+
+            if hasHome:
+                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home ' + parNameSuffix)
+                layout.addWidget(self.pars['Home' + parNameSuffix], self.numPositioners, 11)
+
+                self.pars['Home' + parNameSuffix].clicked.connect(
+                    lambda *args, axis=axis: self.sigHomeAxisClicked.emit(positionerName, axis)
+                )
+
+            if hasStop:
+                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop ' + parNameSuffix)
+                layout.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners, 12)
+
+                self.pars['Stop' + parNameSuffix].clicked.connect(
+                    lambda *args, axis=axis: self.sigStopAxisClicked.emit(positionerName, axis)
+                )
 
             # Connect signals
             self.pars['UpButton' + parNameSuffix].clicked.connect(
@@ -281,55 +320,52 @@ class DeckWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
-
-            if hasSpeed:
-                self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{initial_speed[axis]:.2f} mm/s</strong>')
-                self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['ButtonSpeedEnter' + parNameSuffix] = guitools.BetterPushButton('Set')
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit(f'{initial_speed[axis]}')
-                self.pars['SpeedUnit' + parNameSuffix] = QtWidgets.QLabel('mm/s')
-                layout.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
-                layout.addWidget(self.pars['SpeedUnit' + parNameSuffix], self.numPositioners, 11)
-                layout.addWidget(self.pars['ButtonSpeedEnter' + parNameSuffix], self.numPositioners, 12)
-                layout.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 7)
-
-
-                self.pars['ButtonSpeedEnter'+ parNameSuffix].clicked.connect(
-                    lambda *args, axis=axis: self.sigsetSpeedClicked.emit(positionerName, axis)
-                )
+            self.pars['AbsolutePosButton' + parNameSuffix].clicked.connect(
+                lambda *args, axis=axis: self.sigStepAbsoluteClicked.emit(axis)
+            )
 
             self.numPositioners += 1
+
         self._positioner_widget.setFixedHeight(120)
         self._positioner_widget.setLayout(layout)
-        self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1,3)
+        self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1, 3)
 
     @property
     def current_slot(self):
         return self._current_slot
+
     @current_slot.setter
     def current_slot(self, current_slot):
         self._current_slot = current_slot
+
     @property
     def current_well(self):
         return self._current_well
+
     @current_well.setter
     def current_well(self, current_well):
         self._current_well = current_well
+
     @property
     def current_offset(self):
         return self._current_offset
+
     @current_offset.setter
     def current_offset(self, current_offset):
         self._current_offset = current_offset
+
     @property
     def current_z_focus(self):
         return self._current_z_focus
+
     @current_z_focus.setter
     def current_z_focus(self, current_z_focus):
         self._current_z_focus = current_z_focus
+
     @property
     def current_absolute_position(self):
         return self._current_absolute_position
+
     @current_absolute_position.setter
     def current_absolute_position(self, current_absolute_position):
         self._current_absolute_position = current_absolute_position
@@ -379,8 +415,11 @@ class DeckWidget(Widget):
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
 
+
 # From https://stackoverflow.com/questions/26227885/drag-and-drop-rows-within-qtablewidget
 class TableWidgetDragRows(QtWidgets.QTableWidget):
+    sigGoToTableClicked = QtCore.Signal(tuple)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -393,6 +432,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+
 
     def contextMenuEvent(self, event):
         if self.selectionModel().selection().indexes():
@@ -410,12 +450,15 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
                 self.deleteSelected(row)
 
     def gotoAction(self, row):
-        print(f"Go to position in row {row}")
+        # TODO: avoid hardcoded 4: Absolute
+        if self.item(row, 4) is not None:
+            absolute_position = tuple(map(float, self.item(row, 4).text().strip('()').split(',')))
+        print(f"Go to position {absolute_position}")
+        self.sigGoToTableClicked.emit(absolute_position)
 
     def deleteSelected(self, row):
         self.removeRow(row)
         print(f"Deleted row {row}")
-
 
     def dropEvent(self, event):
         if not event.isAccepted() and event.source() == self:
@@ -479,7 +522,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
             return True
         # noinspection PyTypeChecker
         return rect.contains(pos, True) and not (
-                    int(self.model().flags(index)) & Qt.ItemIsDropEnabled) and pos.y() >= rect.center().y()
+                int(self.model().flags(index)) & Qt.ItemIsDropEnabled) and pos.y() >= rect.center().y()
 
     def addColumn(self, name):
         newColumn = self.columnCount()

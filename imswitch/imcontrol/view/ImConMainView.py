@@ -90,6 +90,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'Deck': _DockInfo(name="Deck Tool", yPosition=1),
+            'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
             'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
             'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),

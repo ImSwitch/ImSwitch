@@ -48,7 +48,7 @@ class HamamatsuManager(DetectorManager):
                                                              'External "start-trigger"',
                                                              'External "frame-trigger"'],
                                                     editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=0.1,
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=1,
                                                          valueUnits='µm', editable=True)
         }
 

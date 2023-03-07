@@ -24,7 +24,7 @@ try:
     import mcsim
     ismcSIM=True
 except:
-    imscSIM=False
+    ismcSIM=False
 
 if ismcSIM:
     try:

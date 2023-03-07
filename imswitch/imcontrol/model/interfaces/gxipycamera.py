@@ -40,7 +40,8 @@ class CameraGXIPY:
         self.NBuffer = 200
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-        
+        self.lastFrameId = -1
+                
         #%% starting the camera thread
         self.camera = None
 
@@ -54,6 +55,8 @@ class CameraGXIPY:
             self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
         else:
             raise Exception("No camera GXIPY connected")
+
+
         
 
     def _init_cam(self, cameraNo=1, callback_fct=None):

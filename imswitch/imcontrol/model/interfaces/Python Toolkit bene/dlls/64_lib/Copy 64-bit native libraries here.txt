@@ -1,0 +1,2 @@
+The examples are using a relative path to this directory when searching for DLLs. Copy the native DLLs to this folder to run the examples out of the box, or modify the examples to point to a directory with the native DLLs.
+When writing your own applications, you will need to make sure that a directory containing the DLLs is visible from your application.

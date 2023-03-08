@@ -179,7 +179,7 @@ Add environment
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
 ./anaconda3/bin/conda init
-conda create -n imswitch  python=3.8
+conda create -n imswitch  python=3.9
 ```
 
 Now lets add pyqt5 via conda
@@ -193,6 +193,38 @@ Make sure you install this repo without `pyqt` in `setup.cfg`
 install imswitch without pyqt
 sudo apt-get install python3-pyqt5.qsci
 
+sudo date -s "8 MAR 2023"
+
+```
+conda create -n imswitch python=3.9 -y
+conda activate imswitch
+conda install pyqt5==5.12.3
+cd ~/Downloads/imswitch
+pip install -e .
+```
+
+rotate the screen
+```
+export DISPLAY=:0
+xrandr -o inverted
+```
+
+sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf 
+```
+
+
+# Match on all types of devices but joysticks
+Section "InputClass"
+        Identifier "libinput pointer catchall"
+        Option "CalibrationMatrix" "0 1 0 -1 0 1 0 0 1"        
+        MatchIsPointer "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+EndSection
+```
+
+cd ~
+git clone https://github.com/openUC2/ImSwitchConfig
 
 
 ## Configure the System

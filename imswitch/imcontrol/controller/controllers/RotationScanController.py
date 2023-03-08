@@ -36,7 +36,8 @@ class RotationScanController(ImConWidgetController):
         self.__currentStep = 0
 
         # Initiate parameters used during calibration
-        self.__calibrationPolSteps = np.arange(0,181,20).tolist()
+        self.__calibration_range = 180
+        self.__calibrationPolSteps = np.arange(0,self.__calibration_range+1,20).tolist()
         self.__calibration_filename = 'polarization_calibration.json'
         self.__calibration_dir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_rotscan')
         if not os.path.exists(self.__calibration_dir):
@@ -83,7 +84,9 @@ class RotationScanController(ImConWidgetController):
         return (self._widget.getRotationStart(), self._widget.getRotationStop(), self._widget.getRotationStep())
 
     def getRotationStepPositions(self, pol_steps):
-        """ Get the interpolated rotator step positions for each rotator in the experiment, as a list of lists. """
+        """ Get the interpolated rotator step positions for each rotator in the experiment, as a list of lists.
+        Prep polarization rotation steps by mod (calibration range), to move all values to the calibrated range (normally 180 deg). """
+        pol_steps = np.mod(pol_steps, self.__calibration_range)
         rotator_step_pos = []
         for spline in self.__interp_splines:
             rotator_step_pos.append(interp.splev(pol_steps, spline))

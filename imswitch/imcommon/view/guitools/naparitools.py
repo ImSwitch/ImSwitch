@@ -250,6 +250,9 @@ class NapariSumImageWidget(NapariBaseWidget):
             self.ydata = np.swapaxes(self.ydata, 0, 1)
         self.xdata = np.arange(len(self.ydata))*float(self.step_deg.text())
         self.canvas.axes.plot(self.xdata, self.ydata, label=self.__plot_num)
+        if np.ndim(self.ydata) > 1:
+            ydata_mean = np.mean(self.ydata,axis=1)
+            self.canvas.axes.plot(self.xdata, ydata_mean, label=f'Mean {self.__plot_num}')
         self.canvas.axes.legend(loc='lower right')
         self.canvas.axes.autoscale(True)
         self.canvas.draw()

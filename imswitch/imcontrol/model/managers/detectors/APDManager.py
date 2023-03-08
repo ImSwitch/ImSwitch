@@ -349,6 +349,7 @@ class ScanWorker(Worker):
                 self.run_loop_dx(dim-1)
                 if dim == 3:
                     # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
+                    self.d3Step.emit()
                     throwdatalen_term1_terms = np.copy(self._pos[2:])
                     for n in range(len(self._img_dims),3,-1):
                         for m in range(n-1,2,-1):
@@ -358,7 +359,6 @@ class ScanWorker(Worker):
                     throwdatalen = self._throw_startzero + self._samples_d3_step * np.sum(throwdatalen_term1_terms) + throwdatalen_highdsteps - self._samples_read
                     if throwdatalen > 0:
                         self.throwdata(throwdatalen)
-                    self.d3Step.emit()
                 if dim > 3:
                     self.throwdata(self._samples_padlens[dim-1])  
             else:

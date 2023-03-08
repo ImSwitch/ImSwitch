@@ -157,10 +157,12 @@ class ESP32StageManager(PositionerManager):
 
         # get bootup position and write to GUI
         self._position  = self.getPosition()
+
         # force setting the position
         self.setPosition(self._position['X'],"X")
         self.setPosition(self._position['Y'],"X")
         self.setPosition(self._position['Z'],"Z")
+        self.setPosition(self._position['T'],"T")
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
@@ -176,6 +178,7 @@ class ESP32StageManager(PositionerManager):
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]
             if axis == "Z": speed = self.speed["Z"]
+            if axis == "T": speed = self.speed["T"]
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
         if axis == 'X':
@@ -190,6 +193,10 @@ class ESP32StageManager(PositionerManager):
             self._motor.move_z(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
+        elif axis == 'T':
+            self._motor.move_t(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            if not is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value            
         elif axis == 'XY':
             self._motor.move_xy(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
@@ -224,6 +231,7 @@ class ESP32StageManager(PositionerManager):
             self._speed["X"] = speed
             self._speed["Y"] = speed
             self._speed["Z"] = speed
+            self._speed["T"] = speed
         else:
             self._speed[axis] = speed
 
@@ -242,7 +250,7 @@ class ESP32StageManager(PositionerManager):
         except:
             allPositions = [0,0,0,0]
         
-        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
+        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
     
     def forceStop(self, axis):
         if axis=="X":
@@ -251,6 +259,8 @@ class ESP32StageManager(PositionerManager):
             self.stop_y()
         elif axis=="Z":
             self.stop_z()
+        elif aixs=="T":
+            self.stop_t()
         else: 
             self.stopAll()
         
@@ -262,6 +272,9 @@ class ESP32StageManager(PositionerManager):
 
     def stop_z(self):
         self._motor.stop(axis = "Z")
+
+    def stop_t(self):
+        self._motor.stop(axis = "T")        
 
     def stopAll(self):
         self._motor.stop()

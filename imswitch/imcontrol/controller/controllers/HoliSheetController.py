@@ -6,7 +6,6 @@ except:
     isNIP = False
 import time
 import threading
-import pyqtgraph.ptime as ptime
 import collections
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
@@ -43,7 +42,7 @@ class HoliSheetController(LiveUpdatedController):
         self.currPoint = 0
         self.setPointData = np.zeros((self.buffer,2))
         self.timeData = np.zeros(self.buffer)
-        self.startTime = ptime.time()
+        self.startTime = time.time()
 
         # settings for the controller
         self.controlTarget = 500
@@ -115,7 +114,7 @@ class HoliSheetController(LiveUpdatedController):
         self.timer = Timer()
         self.timer.timeout.connect(self.updateMeasurements)
         self.timer.start(self.tMeasure)
-        self.startTime = ptime.time()
+        self.startTime = time.time()
 
     def valueFocusChanged(self, magnitude):
         """ Change magnitude. """
@@ -199,14 +198,14 @@ class HoliSheetController(LiveUpdatedController):
             self.setPointData[self.currPoint,0] = self.pressureValue 
             self.setPointData[self.currPoint,1] = self.controlTarget
 
-            self.timeData[self.currPoint] = ptime.time() - self.startTime
+            self.timeData[self.currPoint] = time.time() - self.startTime
         else:
             self.setPointData[:-1,0] = self.setPointData[1:,0]
             self.setPointData[-1,0] = self.pressureValue 
             self.setPointData[:-1,1] = self.setPointData[1:,1]
             self.setPointData[-1,1] = self.controlTarget
             self.timeData[:-1] = self.timeData[1:]
-            self.timeData[-1] = ptime.time() - self.startTime
+            self.timeData[-1] = time.time() - self.startTime
         self.currPoint += 1
 
     def updateMeasurements(self):

@@ -1,6 +1,9 @@
 import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.ptime as ptime
+try:
+    import pyqtgraph.ptime as ptime
+except:
+    pass
 from qtpy import QtCore, QtGui, QtWidgets
 
 

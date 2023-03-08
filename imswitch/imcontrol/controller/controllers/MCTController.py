@@ -11,7 +11,7 @@ from datetime import datetime
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import pyqtgraph.ptime as ptime
+
 
 from ..basecontrollers import LiveUpdatedController
 
@@ -129,7 +129,6 @@ class MCTController(LiveUpdatedController):
             self.timer = Timer()
             self.timer.timeout.connect(self.takeTimelapse())
             self.timer.start(self.timePeriod*1000)
-            self.startTime = ptime.time()
 
         else:
 

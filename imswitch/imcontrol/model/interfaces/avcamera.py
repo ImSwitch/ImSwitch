@@ -2,9 +2,13 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+
+
 try:
+    isVimba = True
     from pymba import Vimba, VimbaException
 except:
+    isVimba = False
     print("No pymba installed..")
     
 import collections
@@ -31,14 +35,22 @@ class CameraAV:
         self.hsize = 0
         self.hpos = 0 
         self.vpos = 0 
+
         
         # reserve some space for the framebuffer
         self.buffersize = 60
         self.frame_buffer = collections.deque(maxlen=self.buffersize)
         
         #%% starting the camera thread
-        self.vimba = self.startVimba()
-        self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
+        if isVimba:
+            self.vimba = self.startVimba()
+            self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
+
+            # creating dummy frame
+            self.frame = np.zeros(self.shape)
+        else:
+            raise Exception("Camera not connected or pymba not installed?")
+                
 
     def start_live(self):
         # check if camera is open

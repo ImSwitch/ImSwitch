@@ -71,8 +71,6 @@ class SLMController(ImConWidgetController):
         self._widget.setSLMDisplayMonitor(monitor)
 
     def displayMask(self, maskCombined):
-        """ Display the mask in the SLM display. Originates from slmPy:
-        https://github.com/wavefrontshaping/slmPy """
 
         arr = maskCombined.image()
 

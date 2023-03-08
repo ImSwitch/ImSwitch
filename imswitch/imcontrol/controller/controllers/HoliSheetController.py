@@ -195,13 +195,13 @@ class HoliSheetController(LiveUpdatedController):
 
     def updateSetPointData(self):
         if self.currPoint < self.buffer:
-            self.setPointData[self.currPoint,0] = self.pressureValue 
+            self.setPointData[self.currPoint,0] = self.pressureValue
             self.setPointData[self.currPoint,1] = self.controlTarget
 
             self.timeData[self.currPoint] = time.time() - self.startTime
         else:
             self.setPointData[:-1,0] = self.setPointData[1:,0]
-            self.setPointData[-1,0] = self.pressureValue 
+            self.setPointData[-1,0] = self.pressureValue
             self.setPointData[:-1,1] = self.setPointData[1:,1]
             self.setPointData[-1,1] = self.controlTarget
             self.timeData[:-1] = self.timeData[1:]

@@ -40,6 +40,7 @@ def generateAPI(objs, *, missingAttributeErrorMsg=None):
             if runOnUIThread:
                 wrapper = _UIThreadExecWrapper(subObj)
                 exportedFuncs[subObjName] = wrapper
+                wrapper.module = subObj.__module__.split('.')[-1]
             else:
                 exportedFuncs[subObjName] = subObj
 

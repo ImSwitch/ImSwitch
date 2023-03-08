@@ -1,5 +1,4 @@
-from uc2rest import ESP32Client # pip install UC2-REST
-
+import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.model import APIExport
 
@@ -21,10 +20,18 @@ class ESP32Manager:
         except:
             self._serialport = None
 
+        try:
+            self._identity = rs232Info.managerProperties['identity']
+        except:
+            self._identity = "UC2_Feather"
+            
         # initialize the ESP32 device adapter
-        self._esp32 = ESP32Client.ESP32Client(host=self._host, port=80, serialport=self._serialport, baudrate=115200)
-        # self._esp32 = ESP32Client(self._host, port=80)
-    
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200)
+        self._esp32.serial.DEBUG = False
+
+        # disable the WifiModule 
+        #self._esp32.modules.set_modules("{'wifi':0}")
+        #self._esp32.serial.DEBUG = True
 
     def finalize(self):
         pass

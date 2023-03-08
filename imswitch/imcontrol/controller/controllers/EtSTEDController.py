@@ -9,14 +9,13 @@ import h5py
 
 from collections import deque
 from datetime import datetime
-from tkinter import Tk
 from inspect import signature
-from tkinter.filedialog import askopenfilename
 from wsgiref import validate
 from scipy.optimize import least_squares
 import scipy.ndimage as ndi
 import pyqtgraph as pg
 import numpy as np
+from tkinter.filedialog import askopenfilename
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcontrol.model import configfiletools
@@ -200,10 +199,7 @@ class EtSTEDController(ImConWidgetController):
     def runSlowScan(self):
         """ Run a scan of the slow method (STED). """
         self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
-        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            # Run scan in nidaqManager
-            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
-        elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+        if self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
             # Run recording from RecWidget
             self.triggerRecordingWidgetScan()
 
@@ -686,7 +682,6 @@ class EtSTEDCoordTransformHelper():
 
     def openFolder(self):
         """ Opens current folder in File Explorer and returns chosen filename. """
-        Tk().withdraw()
         filename = askopenfilename()
         return filename
 

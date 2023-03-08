@@ -6,6 +6,8 @@ from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
 from .HoloController import HoloController
+from .HistogrammController import HistogrammController
+from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
 from .SquidStageScanController import SquidStageScanController
 from .FocusLockController import FocusLockController
@@ -17,10 +19,15 @@ from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
+from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .MCTController import MCTController
+from .HistoScanController import HistoScanController
+from .PixelCalibrationController import PixelCalibrationController
 from .ISMController import ISMController
 from .ScanController import ScanController
 from .SettingsController import SettingsController
 from .ULensesController import ULensesController
 from .ViewController import ViewController
+from .TilingController import TilingController
+from .WatcherController import WatcherController

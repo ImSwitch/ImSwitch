@@ -1,0 +1,47 @@
+{
+   "motorconfig":[
+      {
+         "axis":"A",
+         "stepperid":0,
+         "dir":0,
+         "step":0,
+         "enable":12
+      },
+      {
+         "axis":"X",
+         "stepperid":1,
+         "dir":16,
+         "step":26,
+         "enable":12
+      },
+      {
+         "axis":"Y",
+         "stepperid":2,
+         "dir":27,
+         "step":25,
+         "enable":12
+      },
+      {
+         "axis":"Z",
+         "dir":14,
+         "step":17,
+         "enable":12
+      }
+   ],
+   "ledconfig":{
+      "ledArrNum":25,
+      "ledArrPin":4
+   },
+   "laserconfig":{
+      "LASER1pin":19,
+      "LASER2pin":18,
+      "LASER3pin":0
+   },
+   "stateconfig":{
+      "identifier_name":"UC2_Feather",
+      "identifier_id":"V1.2",
+      "identifier_date":"Nov  7 202212:52:14",
+      "identifier_author":"BD",
+      "IDENTIFIER_NAME":""
+   }
+}

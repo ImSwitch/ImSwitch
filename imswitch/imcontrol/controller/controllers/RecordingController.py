@@ -1,6 +1,7 @@
 import os
 import time
 from typing import Optional, Union, List
+import numpy as np
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
@@ -96,13 +97,13 @@ class RecordingController(ImConWidgetController):
 
         attrs = {detectorName: self._commChannel.sharedAttrs.getHDF5Attributes()
                  for detectorName in detectorNames}
-        
+
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
                                            SaveFormat(self._widget.getsaveFormat()),
                                            attrs)
-        
+
     def snapNumpy(self):
         self.updateRecAttrs(isSnapping=True)
         detectorNames = self.getDetectorNamesToCapture()
@@ -372,10 +373,19 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
-    @APIExport(runOnUIThread=True)
+    
+    '''
     def snapImage(self, name=None) -> None:
-        """ Take a snap and save it to a .tiff file at the set file path. """
         self.snap(name)
+    '''
+    @APIExport(runOnUIThread=True)
+    def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
+        """ Take a snap and save it to a .tiff file at the set file path. """
+        if output:
+            return self.snapNumpy()
+        else:
+            self.snap()
+
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:

@@ -2,7 +2,7 @@ import enum
 import glob
 import cv2
 import os
-
+import re
 import numpy as np
 from PIL import Image
 from scipy import signal as sg
@@ -29,13 +29,16 @@ class SIMManager(SignalInterface):
         self.__patternsDir = self.__simInfo.patternsDir
         self.isSimulation = self.__simInfo.isSimulation
         
+        self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
+        
         # Load all patterns
         self.allPatterns = self.loadPatterns(self.__patternsDir)
 
         self.update()
 
     def loadPatterns(self,patternsDir, filetype="bmp"):
-        allPatternPaths = glob.glob(os.path.join(patternsDir, "*."+filetype))
+        # sort filenames numerically
+        allPatternPaths = sorted(glob.glob(os.path.join(patternsDir, "*."+filetype)))
         allPatterns = []
         for iPatternPath in allPatternPaths:
             mImage = cv2.imread(iPatternPath)

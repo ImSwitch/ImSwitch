@@ -4,23 +4,29 @@
 
 from ctypes import *
 import sys
-
+import os
 
 if sys.platform == 'linux2' or sys.platform == 'linux':
     try:
         dll = CDLL('/usr/lib/libgxiapi.so')
     except OSError:
         print("Cannot find libgxiapi.so.")
-else:
+elif sys.platform == 'win32':
     try:
-        import os
         os.add_dll_directory("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\")
-        dll = WinDLL('GxIAPI.dll')
-        #dll = WinDLL("C:\\Program Files\\Daheng Imaging\\GalaxySDK\\APIDll\\Win64\\GxIAPI.dll")
-        
+        #dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+        mFWD = os.path.dirname(os.path.realpath(__file__))
+        try:
+            dll = WinDLL(mFWD+'\\dll\\GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+        except:
+            dll = WinDLL('GxIAPI.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+            
+
+    
     except OSError:
         print('Cannot find GxIAPI.dll.')
-
+else:
+    dll = -1
 
 # Error code
 class GxStatusList:

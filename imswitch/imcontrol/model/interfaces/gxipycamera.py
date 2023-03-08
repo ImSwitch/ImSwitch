@@ -40,7 +40,8 @@ class CameraGXIPY:
         self.NBuffer = 200
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-        
+        self.lastFrameId = -1
+                
         #%% starting the camera thread
         self.camera = None
 
@@ -54,6 +55,8 @@ class CameraGXIPY:
             self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
         else:
             raise Exception("No camera GXIPY connected")
+
+
         
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
@@ -87,9 +90,11 @@ class CameraGXIPY:
         self.camera.data_stream[0].set_acquisition_buffer_number(1)
         
         # set camera to mono12 mode
-        # self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
+        try:
+            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
         # set camera to mono8 mode
-        self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
+        except:
+            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
 
         # get framesize 
         self.SensorHeight = self.camera.HeightMax.get()//self.binning
@@ -97,7 +102,7 @@ class CameraGXIPY:
         
         # register the frame callback
         user_param = None
-        self.camera.register_capture_callback(user_param, self.set_frame)
+        self.camera.register_capture_callback(user_param, callback_fct)
 
     def start_live(self):
         if not self.is_streaming:
@@ -180,7 +185,12 @@ class CameraGXIPY:
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        return self.frame
+        
+        # only return fresh frames
+        if not self.lastFrameId == self.frameNumber:    
+            self.lastFrameId = self.frameNumber 
+            return self.frame
+
 
 
     def flushBuffer(self):
@@ -332,10 +342,9 @@ class CameraGXIPY:
         self.trigger_mode = TriggerMode.HARDWARE
         
         self.flushBuffer()
-        
-        
 
-
+    def getFrameNumber(self):
+        return self.frameNumber 
 
     def send_trigger(self):
         if self.is_streaming:
@@ -357,14 +366,14 @@ class CameraGXIPY:
         if numpy_image is None:
             return
         self.frame = numpy_image
-        self.frame_id = frame.get_frame_id()
+        self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
         
         if self.binning > 1:
             numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
     
         self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frame_id)
+        self.frameid_buffer.append(self.frameNumber)
     
 
 # Copyright (C) ImSwitch developers 2021

@@ -6,6 +6,8 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
+from .HistogrammWidget import HistogrammWidget
+from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget
@@ -16,12 +18,17 @@ from .LaserWidget import LaserWidget
 from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
+from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .MCTWidget import MCTWidget
+from .HistoScanWidget import HistoScanWidget
+from .PixelCalibrationWidget import PixelCalibrationWidget
+from .SquidStageScanWidget import SquidStageScanWidget
 from .ISMWidget import ISMWidget
 from .ScanWidget import ScanWidget
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
+from .WatcherWidget import WatcherWidget
 from .ViewWidget import ViewWidget
+from .TilingWidget import TilingWidget
 from .basewidgets import WidgetFactory
-

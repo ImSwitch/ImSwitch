@@ -9,7 +9,7 @@ from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 
-import NanoImagingPack as nip
+# import NanoImagingPack as nip
 # pip install git+https://gitlab.com/bionanoimaging/nanoimagingpack@feature2-calreadnoise
 
 # global axis for Z-positioning - should be Z
@@ -111,7 +111,7 @@ class AutofocusController(ImConWidgetController):
             self._logger.debug("Grabbing Frame")
             img = self.grabCameraFrame()
             # crop frame, only take inner 40%
-            img = nip.extract(img, (int(img.shape[0] * 0.4), int(img.shape[1] * 0.4)))
+            # img = nip.extract(img, (int(img.shape[0] * 0.4), int(img.shape[1] * 0.4)))
             allfocusimages.append(img)
 
             # 2 Gaussian filter the image, to remove noise

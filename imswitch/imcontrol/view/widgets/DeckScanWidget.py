@@ -136,7 +136,7 @@ class DeckScanWidget(NapariHybridWidget):
         # LED
         valueDecimalsLED = 1
         valueRangeLED = (0, 2 ** 8)
-        tickIntervalLED = 0.01
+        tickIntervalLED = 1
         singleStepLED = 1
 
         self.sliderLED, self.LabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED,

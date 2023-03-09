@@ -255,7 +255,6 @@ class DeckController(LiveUpdatedController):
         else:
             raise NotImplementedError(f"Not recognized units.")
 
-    @APIExport(runOnUIThread=True)
     def moveToWell(self, well: str, slot: Optional[str] = None):
         """ Moves positioner to center of selecterd well keeping the current Z-axis position. """
         self.__logger.debug(f"Move to {well} ({slot})")

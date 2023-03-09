@@ -232,21 +232,32 @@ class OpentronsDeckWidget(Widget):
 
 
     def add_position_to_scan(self, slot, well, offset, z_focus, absolute_position):
-
         self.scan_list.insertRow(self.scan_list_items)
+        if self.scan_list_items == 0:
+            self.first_z_focus = z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(z_focus)))
+        else:
+            relative_z_focus = absolute_position[2] - self.first_z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
+
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(z_focus)))
         self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(absolute_position)))
         self.scan_list_items += 1
 
     def add_current_position_to_scan(self):
         self.scan_list.insertRow(self.scan_list_items)
+        if self.scan_list_items == 0:
+            self.first_z_focus = self.current_z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
+        else:
+            relative_z_focus = self.current_absolute_position[2] - self.self.current_z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
+
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
-        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
         self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(self.current_absolute_position)))
         self.scan_list_items += 1
 

@@ -18,11 +18,18 @@ class GXPIPYManager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.detectorInfo = detectorInfo
 
         binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
-        self._camera = self._getGXObj(cameraId, binning)
+        try:
+            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
+        except:
+            # returning back to default pixelsize
+            pixelSize = 1
         
+        
+        self._camera = self._getGXObj(cameraId, binning)
         
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -57,7 +64,9 @@ class GXPIPYManager(DetectorManager):
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True)
+                            editable=True), 
+            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                                                valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -69,6 +78,24 @@ class GXPIPYManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
         
+
+    def _updatePropertiesFromCamera(self):
+        self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
+        self.setParameter('Internal frame interval',
+                          self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
+        self.setParameter('Internal frame rate',
+                          self._camera.getPropertyValue('internal_frame_rate')[0])
+
+        triggerSource = self._camera.getPropertyValue('trigger_source')
+        if triggerSource == 1:
+            self.setParameter('Trigger source', 'Internal trigger')
+        else:
+            triggerMode = self._camera.getPropertyValue('trigger_mode')
+            if triggerSource == 2 and triggerMode == 6:
+                self.setParameter('Trigger source', 'External "start-trigger"')
+            elif triggerSource == 2 and triggerMode == 1:
+                self.setParameter('Trigger source', 'External "frame-trigger"')
 
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
@@ -127,6 +154,10 @@ class GXPIPYManager(DetectorManager):
         self._camera.flushBuffer()
 
     def startAcquisition(self):
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -150,7 +181,11 @@ class GXPIPYManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
 
@@ -202,6 +237,9 @@ class GXPIPYManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
+    
+    def getFrameNumber(self):
+        return self._camera.getFrameNumber()
 
     def closeEvent(self):
         self._camera.close()

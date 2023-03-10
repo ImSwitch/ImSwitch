@@ -1,7 +1,9 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    DetectorsManager, LasersManager, MultiManager, PositionersManager,
+    RecordingManager, RS232sManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager,
+    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager,
+    StandManager, RotatorsManager
 )
 
 
@@ -18,13 +20,9 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
-            'nidaqManager': self.nidaqManager,
-            #'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
@@ -34,11 +32,21 @@ class MasterController:
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                               **lowLevelManagers)
+                                            **lowLevelManagers)   
+            
 
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
+        self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
+        self.simManager = SIMManager(self.__setupInfo.sim)
+        self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
+        self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
+        self.ismManager = ISMManager(self.__setupInfo.ism)
 
         if self.__setupInfo.microscopeStand:
             self.standManager = StandManager(self.__setupInfo.microscopeStand,
@@ -76,6 +84,7 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

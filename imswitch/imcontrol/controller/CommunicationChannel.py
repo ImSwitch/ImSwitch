@@ -61,6 +61,7 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+    sigSIMMaskUpdated = Signal(object) # (mask)
 
     sigToggleBlockScanWidget = Signal(bool)
 
@@ -77,12 +78,17 @@ class CommunicationChannel(SignalInterface):
     sigStartRecordingExternal = Signal()
 
     sigRequestScanFreq = Signal()
-    
+
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
+
+    sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
+    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
+
+    sigBroadcast = Signal(str, str, object)
 
     sigSaveFocus = Signal()
 
@@ -111,6 +117,7 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.output = []
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -134,10 +141,15 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
+
+    def move(self, positionerName, axis="X", dist=0):
+        return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
+
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:
         image = self.get_image()
         self.output.append(image)
+        return image
 
     def runScript(self, text):
         self.output = []

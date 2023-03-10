@@ -1,6 +1,7 @@
 name: imswitch-pypi
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'
@@ -16,6 +17,18 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
+    - name: Find latest tag of dependency
+      id: remote_chart
+      uses: oprypin/find-latest-tag@v1
+      with:
+        repository: openUC2/UC2-REST
+        releases-only: true
+    - name: bump version
+      uses: jacobtomlinson/gha-find-replace@v2
+      with:
+        find: '__version__ = "v0.0.0"'
+        replace: '__version__ = "${{ steps.remote_chart.outputs.tag }}"'
+        regex: false
     - name: Install pypa/build
       run: |
         python3 -m pip install build --user

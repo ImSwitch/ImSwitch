@@ -18,7 +18,7 @@ class ThorCamSciManager(DetectorManager):
         self.detectorInfo = detectorInfo
 
         # cast the json-parsed values to the correct type
-        binning = detectorInfo.managerProperties['thorcamscicam']["binning"]
+        binning = 1 #detectorInfo.managerProperties['thorcamscicam']["binning"]
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
@@ -30,7 +30,7 @@ class ThorCamSciManager(DetectorManager):
         self._camera = self._getGXObj(cameraId, binning)
         
         # assign the properties from the json file to the camera
-        for propertyName, propertyValue in detectorInfo.managerProperties['thorcamscicam'].items():
+        for propertyName, propertyValue in detectorInfo.managerProperties['thorcamsci'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         # set the shape (important for the recording manager)
@@ -245,7 +245,7 @@ class ThorCamSciManager(DetectorManager):
         """Load the camera object from the cameraId and if it fails, load the MOCK"""
         try:
             from imswitch.imcontrol.model.interfaces.thorcamscicamera import CameraThorCamSci
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+            self.__logger.debug(f'Trying to initialize Thorlabs Scientific camera {cameraId}')
             camera = CameraThorCamSci(cameraNo=cameraId, binning=binning)
         except Exception as e:
             self.__logger.debug(e)

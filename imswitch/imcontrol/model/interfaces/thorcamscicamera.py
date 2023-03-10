@@ -61,12 +61,9 @@ class CameraThorCamSci:
         # binning 
         self.binning = binning
 
-        # connect to camera using the brand-specific python interface
-        dev_num, dev_info_list = self.device_manager.update_device_list()
-
-        if dev_num  != 0:
+        try:
             self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-        else:
+        except:
             raise Exception("No camera ThorCamSci connected")
         
 
@@ -79,7 +76,7 @@ class CameraThorCamSci:
         # open the first device
         self.sdk = TLCameraSDK()
         cameras = self.sdk.discover_available_cameras()
-        self.camera = cameras[cameraNo]
+        self.camera = self.sdk.open_camera(cameras[cameraNo])
         
         self.camera.frames_per_trigger_zero_for_unlimited = 0
         self.camera.image_poll_timeout_ms = 2000  # 2 second timeout
@@ -87,7 +84,7 @@ class CameraThorCamSci:
 
         # save these values to place in our custom TIFF tags later
         bit_depth = self.camera.bit_depth
-        self.camera.
+        
         exposure = self.camera.exposure_time_us
 
         # need to save the image width and height for color processing
@@ -177,12 +174,12 @@ class CameraThorCamSci:
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         pass
-        self.camera.ExposureTime.set(self.exposure_time*1000)
+        #self.camera.ExposureTime.set(self.exposure_time*1000)
 
     def set_gain(self,gain):
         self.gain = gain
         pass
-        self.camera.Gain.set(self.gain)
+        #self.camera.Gain.set(self.gain)
 
     def set_frame_rate(self, frame_rate):
         if frame_rate == -1:
@@ -195,7 +192,7 @@ class CameraThorCamSci:
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         pass
-        self.camera.BlackLevel.set(self.blacklevel)
+        #self.camera.BlackLevel.set(self.blacklevel)
 
     def set_pixel_format(self,format):
         pass

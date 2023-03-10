@@ -63,12 +63,18 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         )
         self.linkLabel.setText(
             'The new version may be downloaded from '
-            '<a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">'
+            '<a href="https://github.com/openUC2/ImSwitch/releases" style="color: orange">'
             'the GitHub releases page'
             '</a>'
             '.'
         )
         self.linkLabel.setVisible(True)
+
+    def showInfo(self, text):
+        self.informationLabel.setText(text)
+        self.linkLabel.setText("")
+        self.linkLabel.setVisible(False)
+
 
     def showPyPIUpdate(self, newVersion):
         self.informationLabel.setText(

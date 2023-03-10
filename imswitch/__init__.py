@@ -1,4 +1,5 @@
-__version__ = '2.0.0'
+# NEVER EVER CHANGE THIS! It gets altered by the github action!
+__version__ = "v0.0.0" # used to be, but actions will replace this with the current release TAG ->1.2.9
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

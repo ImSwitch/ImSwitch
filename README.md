@@ -227,6 +227,18 @@ cd ~
 git clone https://github.com/openUC2/ImSwitchConfig
 
 
+### install drivers for daheng
+
+```
+cd ~/Downlodas
+git clone https://github.com/hongquanli/octopi-research
+cd octopi-research/software/drivers and libraries/daheng camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271
+chmod +x Galaxy_camera.run
+sudo ./Galaxy_camera.run
+```
+
+
+
 ## Configure the System
 
 We created a set of UC2-specific `json`-configuration files. ***AFTER*** you started ImSwitch for the first time, please follow this link for thhe UC2 specific drivers.

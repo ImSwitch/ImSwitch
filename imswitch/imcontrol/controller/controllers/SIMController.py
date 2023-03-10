@@ -64,7 +64,7 @@ class SIMController(ImConWidgetController):
     """Linked to SIMWidget."""
 
     sigImageReceived = Signal()
-    sigSIMProcessorImageComputed = Signal(np.ndarray)
+    sigSIMProcessorImageComputed = Signal(np.ndarray, str)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -147,8 +147,8 @@ class SIMController(ImConWidgetController):
         self.toggleSIMDisplay(enabled=True)
 
         # initialize SIM processor
-        self.SimProcessorLaser1 = SIMProcessor()
-        self.SimProcessorLaser2 = SIMProcessor()
+        self.SimProcessorLaser1 = SIMProcessor(self)
+        self.SimProcessorLaser2 = SIMProcessor(self)
         
         # connect the reconstructed image to the displayer
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
@@ -182,9 +182,9 @@ class SIMController(ImConWidgetController):
     def setIlluPatternByID(self, iRot, iPhi):
         self.detector.setIlluPatternByID(iRot, iPhi)
 
-    def displayImage(self, im):
+    def displayImage(self, im, name="SIM Reconstruction"):
         """ Displays the image in the view. """
-        self._widget.setImage(im, name="SIM Reconstruction")
+        self._widget.setImage(im, name=name)
 
     def saveParams(self):
         pass
@@ -285,8 +285,12 @@ class SIMController(ImConWidgetController):
                 elif not self.is488 and not self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(False)
+                    processor = None
                     # disable both laser
             
+                if processor is None:
+                    return
+                
                 for iPattern in range(self.nRotations*self.nPhases):
                 
                     # 1 display the pattern
@@ -295,28 +299,34 @@ class SIMController(ImConWidgetController):
                     
                     # 2 grab a frame 
                     frame = self.detector.getLatestFrame()
-                    processor.addFrameToStack(frame)
+                    processor.addFrameToStack(nip.extract(frame, (512,512)))
                     
             
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
                 if not self.isReconstructing:
                     self.isReconstructing=True
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMstack.copy(),processor,), daemon=True)
+
+                    # load the per-colour SIM Stack for further processing
+                    SIMStack = processor.getSIMStack()
+                    
+                    # reconstruct and save the stack in background to not block the main thread
+                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
                     self.mReconstructionThread.start()
+
+                # reset the per-colour stack to add new frames in the next imaging series
                 processor.clearStack()
         
-    def reconstructSIMStack(self, imageStack, processor):
+    def reconstructSIMStack(self, SIMStack, processor):
         '''
         reconstruct the image stack asychronously
         '''
-        self.allFramesNP = np.array(imageStack)
-        self.allFramesList = imageStack
+
         if self.isRecording:
             date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
             mFilename = f"filename_{date}_{self.LaserWL}nm.tif"
             # TODO: implement this as a qeue
-            threading.Thread(target=self.saveImageInBackground, args=(self.allFramesNP,mFilename,), daemon=True).start()
+            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilename,), daemon=True).start()
             # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
         
         # compute image
@@ -324,9 +334,9 @@ class SIMController(ImConWidgetController):
         self._logger.debug("Processing frames")
         if not processor.getIsCalibrated():
             processor.setReconstructor()
-            processor.calibrate(self.allFramesNP)
-        SIMframe = processor.reconstruct(self.allFramesNP)
-        self.sigSIMProcessorImageComputed.emit(np.array(SIMframe))
+            processor.calibrate(SIMStack)
+        SIMReconstruction = processor.reconstruct(SIMStack)
+        self.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
 
         self.iReconstructed += 1
         self.isReconstructing = False
@@ -342,10 +352,11 @@ class SIMController(ImConWidgetController):
 
 class SIMProcessor(object):
 
-    def __init__(self):
+    def __init__(self, parent):
         '''
         setup parameters
         '''
+        self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
         self.phases_number = 3
         self.angles_number = 3
@@ -432,6 +443,14 @@ class SIMProcessor(object):
 
     def addFrameToStack(self, frame):
         self.stack.append(frame)
+        # display the BF image
+        if len(self.stack) % 3 == 0 and len(self.stack)>0:
+            bfFrame = np.sum(np.array(self.stack[-3:]), 0)
+            self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" nm") 
+
+
+    def getSIMStack(self):
+        return np.array(self.stack)
         
     def clearStack(self):
         self.stack=[]

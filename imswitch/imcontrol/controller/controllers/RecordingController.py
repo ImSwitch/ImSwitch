@@ -189,6 +189,7 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(**self.recordingArgs)
 
             self.recording = True
+            self.endedRecording = False
         else:
             if self.recMode == RecMode.ScanLapse and self.lapseCurrent != -1:
                 self._commChannel.sigAbortScan.emit()
@@ -246,7 +247,7 @@ class RecordingController(ImConWidgetController):
 
     def recordingEnded(self):
         self.endedRecording = True
-        if self.doneScan or not (self.recMode == RecMode.ScanLapse or
+        if not self.doneScan or not (self.recMode == RecMode.ScanLapse or
                                  self.recMode == RecMode.ScanOnce):
             self.recordingCycleEnded()
 

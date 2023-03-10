@@ -26,6 +26,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
+        self.viewSetupInfo = viewSetupInfo
+
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
         self.docks = {}
@@ -73,8 +75,11 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Rotator': _DockInfo(name='Rotator', yPosition=1),
+            'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
+            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
@@ -101,7 +106,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 
         dockArea = DockArea()
-        enabledDockKeys = viewSetupInfo.availableWidgets
+        enabledDockKeys = self.viewSetupInfo.availableWidgets
         if enabledDockKeys is False:
             enabledDockKeys = []
         elif enabledDockKeys is True:
@@ -173,6 +178,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         for widgetKey, dockInfo in dockInfoDict.items():
             self.widgets[widgetKey] = self.factory.createWidget(
                 getattr(widgets, f'{widgetKey}Widget')
+                if widgetKey != 'Scan' else
+                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
             )
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])

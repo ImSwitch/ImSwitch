@@ -1,38 +1,17 @@
-import configparser
-import functools
-from logging import exception
-import os
 import traceback
-from ast import literal_eval
+import configparser
 
 import numpy as np
 
-from imswitch.imcommon.model import APIExport, dirtools, initLogger
-from imswitch.imcommon.view.guitools import colorutils
-from imswitch.imcontrol.view import guitools
+from ast import literal_eval
+
 from ..basecontrollers import SuperScanController
+from imswitch.imcommon.view.guitools import colorutils
 
 
-class ScanController(SuperScanController):
+class ScanControllerMoNaLISA(SuperScanController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__logger = initLogger(self)
-
-        self.settingAttr = False
-        self.settingParameters = False
-
-        self._analogParameterDict = {}
-        self._digitalParameterDict = {}
-        self.signalDict = None
-        self.scanInfoDict = None
-        self.isRunning = False
-        self.doingNonFinalPartOfSequence = False
-
-        self.positioners = {
-            pName: pManager for pName, pManager in self._setupInfo.positioners.items()
-            if pManager.forScanning
-        }
-        self.TTLDevices = self._setupInfo.getTTLDevices()
 
         self._widget.initControls(
             self.positioners.keys(),
@@ -40,42 +19,15 @@ class ScanController(SuperScanController):
             self._master.scanManager.TTLTimeUnits
         )
 
-        self.scanDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_scans')
-        if not os.path.exists(self.scanDir):
-            os.makedirs(self.scanDir)
-
-        self.getParameters()
         self.updatePixels()
         self.plotSignalGraph()
         self.updateScanStageAttrs()
         self.updateScanTTLAttrs()
 
-        '''
-        self._master.nidaqManager.sigScanStarted.connect(
-            lambda: self.emitScanSignal(self._commChannel.sigScanStarted)
-        )
-        self._master.nidaqManager.sigScanDone.connect(self.scanDone)
-        self._master.nidaqManager.sigScanBuildFailed.connect(self.scanFailed)
-        '''
-        # Connect CommunicationChannel signals
-        self._commChannel.sigRunScan.connect(self.runScanExternal)
-        self._commChannel.sigAbortScan.connect(self.abortScan)
-        self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-        self._commChannel.sigToggleBlockScanWidget.connect(lambda block: self.toggleBlockWidget(block))
-        self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
-        self._commChannel.sigSetAxisCenters.connect(lambda devices, centers: self.setCenterParameters(devices, centers))
-
         # Connect ScanWidget signals
-        self._widget.sigSaveScanClicked.connect(self.saveScan)
-        self._widget.sigLoadScanClicked.connect(self.loadScan)
-        self._widget.sigRunScanClicked.connect(self.runScan)
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
-        self._widget.sigSeqTimeParChanged.connect(self.updateScanTTLAttrs)
-        self._widget.sigStageParChanged.connect(self.updatePixels)
-        self._widget.sigStageParChanged.connect(self.updateScanStageAttrs)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
-        self._widget.sigSignalParChanged.connect(self.updateScanTTLAttrs)
 
 
     def getDimsScan(self):
@@ -90,68 +42,6 @@ class ScanController(SuperScanController):
         z = lengths[2] / stepSizes[1]
 
         return x, y, z
-
-    def getNumScanPositions(self):
-        """ Returns the number of scan positions for the configured scan. """
-        _, positions, _ = self._master.scanManager.getScanSignalsDict(self._analogParameterDict)
-        numPositions = functools.reduce(lambda x, y: x * y, positions)
-        return numPositions
-
-    def saveScan(self):
-        fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
-        if not fileName:
-            return
-
-        self.saveScanParamsToFile(fileName)
-
-    @APIExport(runOnUIThread=True)
-    def saveScanParamsToFile(self, filePath: str) -> None:
-        """ Saves the set scanning parameters to the specified file. """
-        self.getParameters()
-        config = configparser.ConfigParser()
-        config.optionxform = str
-
-        config['analogParameterDict'] = self._analogParameterDict
-        config['digitalParameterDict'] = self._digitalParameterDict
-        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
-
-        with open(filePath, 'w') as configfile:
-            config.write(configfile)
-
-    def loadScan(self):
-        fileName = guitools.askForFilePath(self._widget, 'Load scan', self.scanDir)
-        if not fileName:
-            return
-
-        self.loadScanParamsFromFile(fileName)
-
-    @APIExport(runOnUIThread=True)
-    def loadScanParamsFromFile(self, filePath: str) -> None:
-        """ Loads scanning parameters from the specified file. """
-
-        config = configparser.ConfigParser()
-        config.optionxform = str
-
-        config.read(filePath)
-
-        for key in self._analogParameterDict:
-            self._analogParameterDict[key] = literal_eval(
-                config._sections['analogParameterDict'][key]
-            )
-
-        for key in self._digitalParameterDict:
-            self._digitalParameterDict[key] = literal_eval(
-                config._sections['digitalParameterDict'][key]
-            )
-
-        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
-
-        if scanOrNot:
-            self._widget.setScanMode()
-        else:
-            self._widget.setContLaserMode()
-
-        self.setParameters()
 
     def setParameters(self):
         self.settingParameters = True
@@ -182,13 +72,6 @@ class ScanController(SuperScanController):
             self.settingParameters = False
             self.plotSignalGraph()
 
-    def runScanExternal(self, recalculateSignals, isNonFinalPartOfSequence):
-        self._widget.setScanMode()
-        self._widget.setRepeatEnabled(False)
-        self.runScanAdvanced(recalculateSignals=recalculateSignals,
-                             isNonFinalPartOfSequence=isNonFinalPartOfSequence,
-                             sigScanStartingEmitted=True)
-
     def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
                         sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
@@ -204,7 +87,7 @@ class ScanController(SuperScanController):
                         staticPositioner=self._widget.isContLaserMode()
                     )
                 except TypeError:
-                    self.__logger.error(traceback.format_exc())
+                    self._logger.error(traceback.format_exc())
                     self.isRunning = False
                     return
 
@@ -217,17 +100,12 @@ class ScanController(SuperScanController):
                 if positionerName not in self._positionersScan:
                     position = self._analogParameterDict['axis_centerpos'][index]
                     self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self.__logger.debug(f'set {positionerName} center to {position} before scan')
+                    self._logger.debug(f'set {positionerName} center to {position} before scan')
             # run scan
             self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
         except Exception:
-            self.__logger.error(traceback.format_exc())
+            self._logger.error(traceback.format_exc())
             self.isRunning = False
-
-    def abortScan(self):
-        self.doingNonFinalPartOfSequence = False  # So that sigScanEnded is emitted
-        if not self.isRunning:
-            self.scanFailed()
 
     def scanDone(self):
         self.isRunning = False
@@ -237,23 +115,8 @@ class ScanController(SuperScanController):
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
                 self.emitScanSignal(self._commChannel.sigScanEnded)
-            # set positions of certain scanners to centerpos
-            # TODO: fix this in a nicer way, to not hardcode the positionerNames here that should be centered.
-            # Make it a .json parameter of the scanners?
-            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
-                if positionerName == 'ND-PiezoZ':
-                    position = self._analogParameterDict['axis_centerpos'][index]
-                    self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self.__logger.debug(f'set {positionerName} center to {position} after scan')
         else:
             self.runScanAdvanced(sigScanStartingEmitted=True)
-
-    def scanFailed(self):
-        self.__logger.error('Scan failed')
-        self.isRunning = False
-        self.doingNonFinalPartOfSequence = False
-        self._widget.setScanButtonChecked(False)
-        self.emitScanSignal(self._commChannel.sigScanEnded)
 
     def getParameters(self):
         if self.settingParameters:
@@ -302,7 +165,6 @@ class ScanController(SuperScanController):
 
         self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
         self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
-        self._analogParameterDict['phase_delay'] = self._widget.getPhaseDelayPar()
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self.positioners)):
@@ -319,14 +181,6 @@ class ScanController(SuperScanController):
                 pixels = round(float(self._analogParameterDict['axis_length'][index]) /
                                float(self._analogParameterDict['axis_step_size'][index]))
                 self._widget.setScanPixels(positionerName, pixels)
-
-    def setCenterParameters(self, devices, centers):
-        for centerpos, scannerSet in zip(centers, devices):
-            # for every incoming device, listed in order of scanAxes
-            for scannerAxis in self.positioners:
-                # for every device, listed in order as device list
-                if scannerSet == scannerAxis:
-                    self._widget.setScanCenterPos(scannerSet, centerpos)
 
     def plotSignalGraph(self):
         if self.settingParameters:
@@ -361,61 +215,42 @@ class ScanController(SuperScanController):
         if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
             signal.emit(*args)
 
-    def attrChanged(self, key, value):
-        if self.settingAttr or len(key) != 2:
-            return
-
-        if key[0] == _attrCategoryStage:
-            self._analogParameterDict[key[1]] = value
-            self.setParameters()
-        elif key[0] == _attrCategoryTTL:
-            self._digitalParameterDict[key[1]] = value
-            self.setParameters()
-
-    def setSharedAttr(self, category, attr, value):
-        self.settingAttr = True
-        try:
-            self._commChannel.sharedAttrs[(category, attr)] = value
-        finally:
-            self.settingAttr = False
-
-    def updateScanStageAttrs(self):
+    def saveScanParamsToFile(self, filePath: str) -> None:
+        """ Saves the set scanning parameters to the specified file. """
         self.getParameters()
+        config = configparser.ConfigParser()
+        config.optionxform = str
 
-        for key, value in self._analogParameterDict.items():
-            self.setSharedAttr(_attrCategoryStage, key, value)
+        config['analogParameterDict'] = self._analogParameterDict
+        config['digitalParameterDict'] = self._digitalParameterDict
+        config['Modes'] = {'scan_or_not': self._widget.isScanMode()}
 
-        positiveDirections = []
-        for i in range(len(self.positioners)):
-            positionerName = self._analogParameterDict['target_device'][i]
-            if positionerName != 'None':
-                positiveDirection = self._setupInfo.positioners[positionerName].isPositiveDirection
-                positiveDirections.append(positiveDirection)
+        with open(filePath, 'w') as configfile:
+            config.write(configfile)
 
-        self.setSharedAttr(_attrCategoryStage, 'positive_direction', positiveDirections)
+    def loadScanParamsFromFile(self, filePath: str) -> None:
+        """ Loads scanning parameters from the specified file. """
+        config = configparser.ConfigParser()
+        config.optionxform = str
+        config.read(filePath)
 
-    def updateScanTTLAttrs(self):
-        self.getParameters()
+        for key in self._analogParameterDict:
+            self._analogParameterDict[key] = literal_eval(
+                config._sections['analogParameterDict'][key]
+            )
 
-        for key, value in self._digitalParameterDict.items():
-            self.setSharedAttr(_attrCategoryTTL, key, value)
+        for key in self._digitalParameterDict:
+            self._digitalParameterDict[key] = literal_eval(
+                config._sections['digitalParameterDict'][key]
+            )
 
-    @APIExport(runOnUIThread=True)
-    def runScan(self) -> None:
-        """ Runs a scan with the set scanning parameters. """
-        self.runScanAdvanced(sigScanStartingEmitted=False)
+        scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
+        if scanOrNot:
+            self._widget.setScanMode()
+        else:
+            self._widget.setContLaserMode()
 
-    def toggleBlockWidget(self, block):
-        """ Blocks/unblocks scan widget if scans are run from elsewhere. """
-        self._widget.setEnabled(block)
-        
-    def sendScanParameters(self):
-        self.getParameters()
-        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
-
-
-_attrCategoryStage = 'ScanStage'
-_attrCategoryTTL = 'ScanTTL'
+        self.setParameters()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

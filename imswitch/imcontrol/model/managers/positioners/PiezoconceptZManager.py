@@ -23,7 +23,7 @@ class PiezoconceptZManager(PositionerManager):
             positionerInfo.managerProperties['rs232device']
         ]
 
-    def move(self, value, axis):
+    def move(self, value, _):
         if value == 0:
             return
         elif float(value) > 0:
@@ -34,11 +34,16 @@ class PiezoconceptZManager(PositionerManager):
 
         self._position[self.axes[0]] = self._position[self.axes[0]] + value
 
-    def setPosition(self, value, axis):
+    def setPosition(self, value, _):
         cmd = 'MOVEX ' + str(round(float(value), 3)) + 'u'
         self._rs232Manager.query(cmd)
 
         self._position[self.axes[0]] = value
+
+    @property
+    def position(self):
+        _ = self.get_abs()
+        return self._position
 
     def get_abs(self):
         cmd = 'GET_X'
@@ -47,6 +52,7 @@ class PiezoconceptZManager(PositionerManager):
             reply = self._position[self.axes[0]]
         else:
             reply = float(reply.split(' ')[0])
+        self._position[self.axes[0]] = reply
         return reply
 
 

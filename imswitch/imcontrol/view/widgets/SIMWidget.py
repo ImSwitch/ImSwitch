@@ -44,18 +44,11 @@ class SIMWidget(NapariHybridWidget):
         # Button to apply changes
         #self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         
-        self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
-        self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
+        self.startSIMAcquisition = guitools.BetterPushButton('Start')
         self.isRecordingButton = guitools.BetterPushButton("Start Recording")
         self.is488LaserButton = guitools.BetterPushButton("488 on")
         self.is635LaserButton = guitools.BetterPushButton("635 on")
         
-
-        # Control panel with most buttons
-        self.controlPanel = QtWidgets.QFrame()
-        #self.controlPanel.choiceInterfaceLayout = QtWidgets.QGridLayout()
-        #self.controlPanel.choiceInterface = QtWidgets.QWidget()
-        #self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
 
         #Enter the frames to wait for frame-sync
         self.simFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
@@ -106,21 +99,11 @@ class SIMWidget(NapariHybridWidget):
         pmtreeDock.addWidget(self.SIMParameterTree)
         self.paramtreeDockArea.addDock(pmtreeDock)
         
-        
-        # Defining layout
-        self.controlPanel.arrowsFrame = QtWidgets.QFrame()
-        self.controlPanel.arrowsLayout = QtWidgets.QGridLayout()
-        self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
-
         # Select reconstructor
         self.SIMReconstructorLabel = QtWidgets.QLabel('<strong>SIM Processor:</strong>')
         self.SIMReconstructorList = QtWidgets.QComboBox()
         self.SIMReconstructorList.addItems(['napari', 'mcsim'])
         
-        # Definition of the box layout:
-        self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
-        self.controlPanel.setLayout(self.controlPanel.boxLayout)
-
         self.useGPUCheckbox = QtWidgets.QCheckBox('Use GPU?')
         self.useGPUCheckbox.setCheckable(True)
 
@@ -130,10 +113,8 @@ class SIMWidget(NapariHybridWidget):
 
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
-        self.grid.addWidget(self.stopSIMAcquisition, 1, 1, 1, 1)
-        self.grid.addWidget(self.isRecordingButton, 1, 2, 1, 1)
+        self.grid.addWidget(self.isRecordingButton, 1, 1, 1, 1)
         
-        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
         # Laser control
         self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)

@@ -110,11 +110,7 @@ class SIMController(ImConWidgetController):
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
         self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
         self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
-        self._widget.stopSIMAcquisition.clicked.connect(self.stopSIM)
-        #self._widget.sigSIMDisplayToggled.connect(self.toggleSIMDisplay)
-        #self._widget.sigSIMMonitorChanged.connect(self.monitorChanged)
-        #self._widget.sigPatternID.connect(self.patternIDChanged)
-
+        
         # sim parameters
         self.patternID = 0
         self.nRotations = 3
@@ -197,23 +193,32 @@ class SIMController(ImConWidgetController):
         self.updateDisplayImage(currentPattern)
 
     def startSIM(self):
-        # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
-        self.iReconstructed = 0
-        #  Start acquisition if not started already
-        self._master.detectorsManager.startAcquisition(liveView=False)
-        
-        # reset the pattern iterator
-        self.nSyncCameraSLM = self._widget.getFrameSyncVal()
+        if self._widget.startSIMAcquisition.text() == "Start":
+            # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
+            self.iReconstructed = 0
+            #  Start acquisition if not started already
+            self._master.detectorsManager.startAcquisition(liveView=False)
+            
+            # reset the pattern iterator
+            self.nSyncCameraSLM = self._widget.getFrameSyncVal()
 
-        # start the background thread
-        self.active = True
-        sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
-        sim_info_dict["reconstructionMethod"] = self.getReconstructionMethod()
-        sim_info_dict["useGPU"] = self.getIsUseGPU()
-        self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
-        self.simThread.start()
-        self._widget.startSIMAcquisition.setEnabled(False)
-        
+            # start the background thread
+            self.active = True
+            sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
+            sim_info_dict["reconstructionMethod"] = self.getReconstructionMethod()
+            sim_info_dict["useGPU"] = self.getIsUseGPU()
+            self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
+            self.simThread.start()
+            self._widget.startSIMAcquisition.setText("Stop")
+        else:
+            # stop live processing 
+            self.active = False
+            self._master.detectorsManager.startAcquisition(liveView=True)
+            self.simThread.join()
+            self.lasers[0].setEnabled(False)
+            self.lasers[1].setEnabled(False)
+            self._widget.startSIMAcquisition.setText("Start")
+            
     def toggleRecording(self):
         self.isRecording = not self.isRecording
         if self.isRecording:
@@ -235,14 +240,6 @@ class SIMController(ImConWidgetController):
         else:
             self._widget.is635LaserButton.setText("635 off")
 
-    def stopSIM(self):
-        # stop live processing 
-        self.active = False
-        self._master.detectorsManager.startAcquisition(liveView=True)
-        self.simThread.join()
-        self._widget.startSIMAcquisition.setEnabled(True)
-        self.lasers[0].setEnabled(False)
-        self.lasers[1].setEnabled(False)
         
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -271,6 +268,9 @@ class SIMController(ImConWidgetController):
             
             for iColour in range(nColour):
                 # toggle laser
+                if not self.active:
+                    break
+                    
                 if iColour == 0 and self.is488:
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
@@ -301,7 +301,9 @@ class SIMController(ImConWidgetController):
                     return
                 
                 for iPattern in range(self.nRotations*self.nPhases):
-                
+                    if not self.active:
+                        break
+                    
                     # 1 display the pattern
                     self.simPatternByID(iPattern)
                     time.sleep(0.30) #???
@@ -373,7 +375,7 @@ class SIMController(ImConWidgetController):
         return self._widget.SIMReconstructorList.currentText()
 
     def getIsUseGPU(self):
-        return self._widget.useGPUCheckbox.value()
+        return self._widget.useGPUCheckbox.isChecked()
     
 '''#####################################
 # SIM PROCESSOR
@@ -542,10 +544,13 @@ class SIMProcessor(object):
             # this step is slow, can take ~1-2 minutes
             # ############################
             self._logger.debug("running initial reconstruction with full parameter estimation")
+            
+            # first we need to reshape the stack to become 3x3xNxxNy
+            imRawMCSIM = np.stack((imRaw[0:3,],imRaw[3:6,],imRaw[6:,]),0)
             imgset = sim.SimImageSet({"pixel_size": self.pixelsize ,
                                     "na": self.NA,
                                     "wavelength": self.wavelength*1e-3},
-                                    imRaw,
+                                    imRawMCSIM,
                                     otf=None,
                                     wiener_parameter=0.3,
                                     frq_estimation_mode="band-correlation",

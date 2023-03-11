@@ -8,6 +8,7 @@ import pathlib
 from imswitch.imcommon.model import initLogger
 import collections
 
+# inspiration  https://github.com/nanophotonics/nplab/blob/master/nplab/instrument/camera/thorlabs/kiralux.py
 def configure_path():
     absolute_path_to_dlls = str(pathlib.Path(__file__).resolve().parent)+"\\thorlabs_tsi_sdk\\dll\\"
     os.environ['PATH'] = absolute_path_to_dlls + os.pathsep + os.environ['PATH']

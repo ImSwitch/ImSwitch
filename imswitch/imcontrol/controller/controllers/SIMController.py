@@ -205,8 +205,11 @@ class SIMController(ImConWidgetController):
         # reset the pattern iterator
         self.nSyncCameraSLM = self._widget.getFrameSyncVal()
 
+        # start the background thread
         self.active = True
-        self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(), daemon=True)
+        sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
+        sim_info_dict["reconstructionMethod"] = self.getReconstructionMethod()
+        self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
         self.simThread.start()
         self._widget.startSIMAcquisition.setEnabled(False)
         
@@ -255,11 +258,10 @@ class SIMController(ImConWidgetController):
         except Exception as e:
             self._logger.error(e)
             
-    def performSIMExperimentThread(self):
+    def performSIMExperimentThread(self, sim_info_dict):
         """ 
         Iterate over all SIM patterns, display them and acquire images 
         """     
-        SIMstack = []
         self.patternID = 0
         self.isReconstructing = False
         nColour = 2
@@ -273,12 +275,18 @@ class SIMController(ImConWidgetController):
                     self.lasers[1].setEnabled(False)
                     self._logger.debug("Switching to pattern"+self.lasers[0].name)
                     processor = self.SimProcessorLaser1
+                    sim_info_dict_1 = sim_info_dict
+                    sim_info_dict_1["wavelength"]=sim_info_dict_1["wavelength (p1)"]
+                    processor.setParameters(sim_info_dict_1)
                     self.LaserWL = 488
                     # set the pattern-path for laser wl 1
                 if iColour == 1 and self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
                     processor = self.SimProcessorLaser2
+                    sim_info_dict_2 = sim_info_dict
+                    sim_info_dict_2["wavelength"]=sim_info_dict_1["wavelength (p1)"]
+                    processor.setParameters(sim_info_dict_2)                    
                     self._logger.debug("Switching to pattern"+self.lasers[1].name)
                     self.LaserWL = 635
                     # set the pattern-path for laser wl 1
@@ -344,6 +352,21 @@ class SIMController(ImConWidgetController):
     def saveImageInBackground(self, image, filename):
         tif.imsave(filename, image)
         self._logger.debug("Saving file: "+filename)
+
+    def getInfoDict(self, generalParams=None):
+        state_general = None
+        if generalParams is not None:
+            # create dict for general params
+            generalparamnames = []
+            for i in generalParams.getValues()["general"][1]: generalparamnames.append(i)
+            state_general = {generalparamname: float(
+                generalParams.param("general").param(generalparamname).value()) for generalparamname
+                             in generalparamnames}
+            
+        return state_general
+
+    def getReconstructionMethod(self):
+        return self._widget.SIMReconstructorList.currentText()
 
             
 '''#####################################
@@ -417,6 +440,14 @@ class SIMProcessor(object):
             pinned_mempool = cp.get_default_pinned_memory_pool()
             memory_start = mempool.used_bytes()
 
+    def setParameters(self, sim_info_dict):
+        # uses parameters from GUI
+        self.wavelength = sim_info_dict["wavelength"]
+        self.pixelsize= sim_info_dict["pixelsize"]
+        self.NA= sim_info_dict["NA"]
+        self.n= sim_info_dict["n"]
+        self.reconstructionMethod = sim_info_dict["reconstructionMethod"]
+        
 
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method
@@ -495,7 +526,7 @@ class SIMProcessor(object):
                 self.p_input = self.h.p
                 self.ampl_input = self.h.ampl
             self._logger.debug("Done calibrating the stack")
-        elif self.reconstructionMethod == "mcSIM":
+        elif self.reconstructionMethod == "mcsim":
             """
             test running SIM reconstruction at full speed on GPU
             """

@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
-
+from pyqtgraph.parametertree import ParameterTree
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
@@ -69,15 +69,54 @@ class SIMWidget(NapariHybridWidget):
         self.patternIDBox.valueChanged.connect(self.sigPatternID)
         #self.simDisplayLayout.addWidget(self.patternIDBox)
 
+        # parameter tree for SIM reconstruction paramters
+        self.SIMParameterTree = ParameterTree()
+        self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
+            {'name': 'wavelength (p1)', 'type': 'int', 'value': 488, 'limits': (400, 700), 'step': 1,
+             'suffix': 'nm'},
+            {'name': 'wavelength (p2)', 'type': 'int', 'value': 635, 'limits': (400, 700), 'step': 1,
+             'suffix': 'nm'},
+            {'name': 'NA', 'type': 'float', 'value': 0.85, 'limits': (0, 1.6), 'step': 0.05,
+             'suffix': 'A.U.'},
+            {'name': 'n', 'type': 'float', 'value': 1.0, 'limits': (1.0, 1.6),
+             'step': 0.1,
+             'suffix': 'A.U.'},
+            {'name': 'pixelsize', 'type': 'float', 'value': 6.5, 'limits': (0.1, 20),
+             'step': 0.1,
+             'suffix': 'nm'}
+        ]}]
+        self.SIMParameterTree.setStyleSheet("""
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
 
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        """)
+        self.SIMParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group',
+                                                                    children=self.generalparams)
+        self.SIMParameterTree.setParameters(self.SIMParameterTree.p, showTop=False)
+        self.SIMParameterTree._writable = True
+
+        self.paramtreeDockArea = pg.dockarea.DockArea()
+        pmtreeDock = pg.dockarea.Dock('SIM Recon Parameters', size=(1, 1))
+        pmtreeDock.addWidget(self.SIMParameterTree)
+        self.paramtreeDockArea.addDock(pmtreeDock)
+        
+        
         # Defining layout
         self.controlPanel.arrowsFrame = QtWidgets.QFrame()
         self.controlPanel.arrowsLayout = QtWidgets.QGridLayout()
         self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
 
-        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
-        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
-
+        # Select reconstructor
+        self.SIMReconstructorLabel = QtWidgets.QLabel('<strong>SIM Processor:</strong>')
+        self.SIMReconstructorList = QtWidgets.QComboBox()
+        self.SIMReconstructorList.addItems(['napari', 'mcsim'])
+        
         # Definition of the box layout:
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
         self.controlPanel.setLayout(self.controlPanel.boxLayout)
@@ -96,13 +135,20 @@ class SIMWidget(NapariHybridWidget):
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
         # 2nd column
-        self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
-        self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
+        #self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
+        #self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
 
         # Laser control
-        self.grid.addWidget(self.is488LaserButton, 4, 1, 1, 1)
-        self.grid.addWidget(self.is635LaserButton, 5, 1, 1, 1)
+        self.grid.addWidget(self.is488LaserButton, 1, 1, 1, 1)
+        self.grid.addWidget(self.is635LaserButton, 2, 1, 1, 1)
 
+        # row 3
+        self.grid.addWidget(self.paramtreeDockArea, 4, 0, 3, 2)
+        
+        # row 4
+        self.grid.addWidget(self.SIMReconstructorLabel, 3, 0)
+        self.grid.addWidget(self.SIMReconstructorList, 3, 1, 1, -1)
+        
         self.layer = None
 
     def initSIMDisplay(self, monitor):

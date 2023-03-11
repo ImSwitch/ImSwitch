@@ -47,8 +47,8 @@ class SIMWidget(NapariHybridWidget):
         self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
         self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
         self.isRecordingButton = guitools.BetterPushButton("Start Recording")
-        self.is488LaserButton = guitools.BetterPushButton("488 off")
-        self.is635LaserButton = guitools.BetterPushButton("635 off")
+        self.is488LaserButton = guitools.BetterPushButton("488 on")
+        self.is635LaserButton = guitools.BetterPushButton("635 on")
         
 
         # Control panel with most buttons
@@ -83,7 +83,7 @@ class SIMWidget(NapariHybridWidget):
              'suffix': 'A.U.'},
             {'name': 'pixelsize', 'type': 'float', 'value': 6.5, 'limits': (0.1, 20),
              'step': 0.1,
-             'suffix': 'nm'}
+             'suffix': 'µm'}
         ]}]
         self.SIMParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
@@ -121,33 +121,31 @@ class SIMWidget(NapariHybridWidget):
         self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
         self.controlPanel.setLayout(self.controlPanel.boxLayout)
 
-        #self.controlPanel.boxLayout.addWidget(self.controlPanel.choiceInterface)
-        #self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
+        self.useGPUCheckbox = QtWidgets.QCheckBox('Use GPU?')
+        self.useGPUCheckbox.setCheckable(True)
 
+        # Assign locations for gui elements
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
-        self.grid.addWidget(self.stopSIMAcquisition, 2, 0, 1, 1)
-        self.grid.addWidget(self.isRecordingButton, 3, 0, 1, 1)
-        self.grid.addLayout(self.simDisplayLayout, 3, 1, 1, 1)
+        self.grid.addWidget(self.stopSIMAcquisition, 1, 1, 1, 1)
+        self.grid.addWidget(self.isRecordingButton, 1, 2, 1, 1)
+        
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
         
-        # 2nd column
-        #self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
-        #self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
-
         # Laser control
-        self.grid.addWidget(self.is488LaserButton, 1, 1, 1, 1)
+        self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)
         self.grid.addWidget(self.is635LaserButton, 2, 1, 1, 1)
+        self.grid.addWidget(self.useGPUCheckbox, 2,2,1,1)
 
-        # row 3
+        # Reconstructor
+        self.grid.addWidget(self.SIMReconstructorLabel, 3, 0, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorList, 3, 1, 1, 1)
+            
+        # SIM parameters 
         self.grid.addWidget(self.paramtreeDockArea, 4, 0, 3, 2)
-        
-        # row 4
-        self.grid.addWidget(self.SIMReconstructorLabel, 3, 0)
-        self.grid.addWidget(self.SIMReconstructorList, 3, 1, 1, -1)
         
         self.layer = None
 

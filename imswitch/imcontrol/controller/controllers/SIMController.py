@@ -78,8 +78,8 @@ class SIMController(ImConWidgetController):
         self.LaserWL = 0
 
         # Choose which laser will be recorded
-        self.is488 = False
-        self.is635 = False
+        self.is488 = True
+        self.is635 = True
         
         # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
@@ -209,6 +209,7 @@ class SIMController(ImConWidgetController):
         self.active = True
         sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
         sim_info_dict["reconstructionMethod"] = self.getReconstructionMethod()
+        sim_info_dict["useGPU"] = self.getIsUseGPU()
         self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
         self.simThread.start()
         self._widget.startSIMAcquisition.setEnabled(False)
@@ -330,13 +331,7 @@ class SIMController(ImConWidgetController):
         reconstruct the image stack asychronously
         '''
 
-        if self.isRecording:
-            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-            mFilename = f"filename_{date}_{self.LaserWL}nm.tif"
-            # TODO: implement this as a qeue
-            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilename,), daemon=True).start()
-            # FIXME: This is not how we should do it, but how can we tell the compute SimImage to process the images in background?!
-        
+
         # compute image
         # initialize the model
         self._logger.debug("Processing frames")
@@ -344,6 +339,15 @@ class SIMController(ImConWidgetController):
             processor.setReconstructor()
             processor.calibrate(SIMStack)
         SIMReconstruction = processor.reconstruct(SIMStack)
+        
+        # save images eventually
+        if self.isRecording:
+            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
+            mFilenameRecon = f"{date}_SIM_Reconstruction_{self.LaserWL}nm.tif"                            
+            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
+            threading.Thread(target=self.saveImageInBackground, args=(SIMReconstruction, mFilenameRecon,), daemon=True).start()
+            
         self.sigSIMProcessorImageComputed.emit(np.array(SIMReconstruction), "SIM Reconstruction")
 
         self.iReconstructed += 1
@@ -368,7 +372,9 @@ class SIMController(ImConWidgetController):
     def getReconstructionMethod(self):
         return self._widget.SIMReconstructorList.currentText()
 
-            
+    def getIsUseGPU(self):
+        return self._widget.useGPUCheckbox.value()
+    
 '''#####################################
 # SIM PROCESSOR
 #####################################'''
@@ -399,7 +405,7 @@ class SIMProcessor(object):
         self.pixelsize = 6.5
         self.isCalibrated = False
         self.use_phases =  True
-        self.use_torch = isPytorch
+        self.use_gpu = isPytorch
         self.stack = []
         
         # initialize logger
@@ -447,8 +453,8 @@ class SIMProcessor(object):
         self.NA= sim_info_dict["NA"]
         self.n= sim_info_dict["n"]
         self.reconstructionMethod = sim_info_dict["reconstructionMethod"]
+        self.use_gpu = sim_info_dict["useGPU"]
         
-
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method
 
@@ -515,7 +521,7 @@ class SIMProcessor(object):
         self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
-            if self.use_torch:
+            if self.use_gpu:
                 self.h.calibrate_pytorch(imRaw, self.find_carrier)
             else:
                 self.h.calibrate(imRaw, self.find_carrier)
@@ -530,20 +536,15 @@ class SIMProcessor(object):
             """
             test running SIM reconstruction at full speed on GPU
             """
-                        # physical parameters
-            na = 1.3 # numerical aperture
-            dxy = 0.065 # um
-            wavelength = 0.488 # um
-
 
             # ############################
             # for the first image, estimate the SIM parameters
             # this step is slow, can take ~1-2 minutes
             # ############################
-            print("running initial reconstruction with full parameter estimation")
-            imgset = sim.SimImageSet({"pixel_size": dxy,
-                                    "na": na,
-                                    "wavelength": wavelength},
+            self._logger.debug("running initial reconstruction with full parameter estimation")
+            imgset = sim.SimImageSet({"pixel_size": self.pixelsize ,
+                                    "na": self.NA,
+                                    "wavelength": self.wavelength*1e-3},
                                     imRaw,
                                     otf=None,
                                     wiener_parameter=0.3,
@@ -558,7 +559,7 @@ class SIMProcessor(object):
                                     normalize_histograms=False,
                                     background=100,
                                     gain=2,
-                                    use_gpu=True)
+                                    use_gpu=self.use_gpu)
             
             # this included parameter estimation
             imgset.reconstruct()
@@ -586,7 +587,7 @@ class SIMProcessor(object):
             dshape= currentImage.shape
             phases_angles = self.phases_number*self.angles_number
             rdata = currentImage[:phases_angles, :, :].reshape(phases_angles, dshape[-2],dshape[-1])
-            if self.use_torch:
+            if self.use_gpu:
                 imageSIM = self.h.reconstruct_pytorch(rdata.astype(np.float32)) #TODO:this is left after conversion from torch
             else:
                 imageSIM = self.h.reconstruct_rfftw(rdata)

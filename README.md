@@ -179,8 +179,10 @@ Add environment
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
-./anaconda3/bin/conda init
-conda create -n imswitch  python=3.9
+#./anaconda3/bin/conda init
+#restart
+conda create -n imswitch  python=3.9 -y
+conda activate imswitch
 ```
 
 Now lets add pyqt5 via conda
@@ -200,8 +202,14 @@ sudo date -s "8 MAR 2023"
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
 conda install pyqt5==5.12.3
-cd ~/Downloads/imswitch
+cd ~
+git clone https://github.com/openUC2/ImSwitch
+conda install pyqt5==5.12.3
+cd ~/ImSwitch
 pip install -e .
+cd ~
+git clone https://github.com/openUC2/ImSwitchConfig
+
 ```
 
 rotate the screen
@@ -243,6 +251,34 @@ sudo ./Galaxy_camera.run
 ```
 sudo usermod -a -G dialout $USER
 ```
+
+### Run Jetson Headless
+
+turn off x server 
+
+https://forums.developer.nvidia.com/t/how-to-boot-jetson-nano-in-text-mode/73636/8
+
+```
+# To disable GUI on boot, run:
+sudo systemctl set-default multi-user.target
+
+# To enable GUI again issue the command:
+sudo systemctl set-default graphical.target
+
+# to start Gui session on a system without a current GUI just execute:
+sudo systemctl start gdm3.service
+```
+
+install screen
+
+```
+sudo apt-get install xvfb -y
+xvfb-run -s "-screen 0 1024x768x24" python ~/ImSwitch/main.py
+```
+
+### Reduce memory consumption 
+
+reduce `nFramebuffer from 200 to 10!!!!
 
 
 ## Configure the System

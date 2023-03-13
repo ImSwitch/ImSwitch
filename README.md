@@ -90,7 +90,8 @@ In the above code-snipped we suggest to use [mamba](https://github.com/mamba-org
 
 ##### 2) Working on arm64 chipset (e.g. Mac M1, M2 and on)
 
-If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or Jetson Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
+If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or 
+Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
 
 On example of the [QtScintilla package](https://pypi.org/project/QScintilla/) for PyQt5 we will demonstrate how to build the existing conda-recipe on your machine. First, try to install as many packages as possible along the [installation description above](#option-c-install-from-github-UC2-version).
 
@@ -237,6 +238,11 @@ chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run
 ```
 
+### Permissions for the serial driver
+
+```
+sudo usermod -a -G dialout $USER
+```
 
 
 ## Configure the System

@@ -52,8 +52,10 @@ class CameraGXIPY:
         dev_num, dev_info_list = self.device_manager.update_device_list()
 
         if dev_num  != 0:
+            self.__logger.debug("Trying to connect to camera: ")
+            self.__logger.debug(dev_info_list)
             self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-        else:
+        else :  
             raise Exception("No camera GXIPY connected")
 
 

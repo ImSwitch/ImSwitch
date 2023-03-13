@@ -196,20 +196,23 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
                 signal_dict[target] = signal.astype(bool)
 
-            # Generate frame and line clocks
+            # Generate line and frame clocks
             # line clock
-            line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=False, line=True)
+            line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=True)
             signal_dict['line_clock'] = line_clock.astype(bool)
-            # frame clock
-            frame_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=True, line=False)
-            signal_dict['frame_clock'] = frame_clock.astype(bool)
+            # frame start clock
+            frame_start_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_start=True)
+            signal_dict['frame_start_clock'] = frame_start_clock.astype(bool)
+            # frame end clock
+            frame_end_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_end=True)
+            signal_dict['frame_end_clock'] = frame_end_clock.astype(bool)
 
-            self.__plot_curves(plot=False, signals=signal_dict, targets=targets+['frame_clock','line_clock'])  # for debugging
+            self.__plot_curves(plot=False, signals=signal_dict, targets=targets+['frame_start_clock','frame_end_clock','line_clock'])  # for debugging
 
             # return signal_dict, which contains bool arrays for each target
             return signal_dict
 
-    def __generate_frame_line_clock(self, n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame=True, line=False, clock_len=10):
+    def __generate_frame_line_clock(self, n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=False, frame_start=False, frame_end=False, clock_len=10):
         """ Generate frame and line clock signals, to be returned in signal_dict and used if user wants frame/line clock at a digital output. """
         # zeros to d1 axis length
         signal_d2_step = np.zeros(n_scan_samples_dx[1] + onepad_extraon, dtype='bool')
@@ -221,9 +224,12 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         signal_d2 = np.tile(signal_d2_period, n_steps_dx[1] - 1)
         # add last d2 step (without flyback)
         signal_d2 = np.append(signal_d2, signal_d2_step)
-        if frame:
-            # replace first part with a frame clock pulse
+        if frame_start:
+            # replace first part with a frame start clock pulse
             signal_d2[:clock_len] = 1
+        if frame_end:
+            # replace last part with a frame end clock pulse
+            signal_d2[-clock_len:] = 1
         # pad extra bits of smooth d2 curve: first step acc, start settling, and initial positioning
         signal_d2 = np.append(np.zeros(zeropad_startacc+zeropad_settling+zeropad_initpos, dtype='bool'), signal_d2)
         # adjust to frame len 

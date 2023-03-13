@@ -287,7 +287,7 @@ class ScanWorker(Worker):
         """
         if datalen > 0:
             throwdata = self._manager._nidaqManager.readInputTask(self._name, datalen)
-            self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+            #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
             self._last_value = throwdata[-1]
             self._samples_read += datalen
 
@@ -295,7 +295,7 @@ class ScanWorker(Worker):
         """ Read data with length datalen and add length of data to total samples_read length.
         """
         data = self._manager._nidaqManager.readInputTask(self._name, datalen)
-        self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+        #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
         self._samples_read += datalen
         return data
 
@@ -333,7 +333,7 @@ class ScanWorker(Worker):
         # start looping through all dimensions to record data, starting with the outermost dimension
         self.run_loop_dx(dim=len(self._img_dims))
 
-        # throw acquisition-final positioning datae
+        # throw acquisition-final positioning data
         self.throwdata(self._throw_startzero + self._throw_finalpos)
         self.acqDoneSignal.emit()
 

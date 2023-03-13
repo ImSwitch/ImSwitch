@@ -84,6 +84,7 @@ class HDF5Storer(Storer):
                 dataset.attrs['element_size_um'] = \
                     self.detectorManager[channel].pixelSizeUm
 
+                # REMOVE THE FOLLOWING?
                 if False:
                     if image.ndim == 3:
                         dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])

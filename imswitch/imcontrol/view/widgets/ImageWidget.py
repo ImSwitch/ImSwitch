@@ -16,6 +16,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
             self.napariViewer
         )
+        self.NapariResetViewWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, 'right')
         self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
@@ -67,8 +68,9 @@ class ImageWidget(QtWidgets.QWidget):
     def getImage(self, name):
         return self.imgLayers[name].data
 
-    def setImage(self, name, im):
+    def setImage(self, name, im, scale):
         self.imgLayers[name].data = im
+        self.imgLayers[name].scale = tuple(scale)
 
     def clearImage(self, name):
         self.setImage(name, np.zeros((1, 1)))

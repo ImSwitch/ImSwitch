@@ -86,9 +86,9 @@ class BetaScanDesigner(ScanDesigner):
             settling = int(np.ceil(0.001 * sampleRate))
             rampSignal[start: end] = rampValues[s]
             if s is not fast_axis_positions - 1:
-                self._logger.debug(s)
-                rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
-                rampSignal[end - settling:end] = rampValues[s + 1]
+                if (end - smooth - settling) > 0:
+                    rampSignal[end - smooth - settling: end - settling] = self.__smoothRamp(rampValues[s], rampValues[s + 1], smooth)
+                    rampSignal[end - settling:end] = rampValues[s + 1]
 
         returnRamp = self.__smoothRamp(fast_axis_size, fast_axis_start, returnSamples)
         fullLineSignal = np.concatenate((rampSignal, returnRamp))

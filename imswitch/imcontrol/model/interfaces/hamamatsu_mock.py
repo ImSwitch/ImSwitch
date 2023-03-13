@@ -3,7 +3,6 @@ import ctypes.util
 import time
 
 import numpy as np
-from lantz import Driver
 from lantz import Q_
 
 from imswitch.imcommon.model import initLogger
@@ -53,7 +52,7 @@ class HMockCamData:
         return self.np_array.ctypes.data
 
 
-class MockHamamatsu(Driver):
+class MockHamamatsu:
 
     def __init__(self):
         self.__logger = initLogger(self, tryInheritParent=True)

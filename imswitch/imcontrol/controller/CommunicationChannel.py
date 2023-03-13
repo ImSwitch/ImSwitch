@@ -13,8 +13,8 @@ class CommunicationChannel(SignalInterface):
     """
 
     sigUpdateImage = Signal(
-        str, np.ndarray, bool, bool
-    )  # (detectorName, image, init, isCurrentDetector)
+        str, np.ndarray, bool, list, bool
+    )  # (detectorName, image, init, scale, isCurrentDetector)
 
     sigAcquisitionStarted = Signal()
 
@@ -92,6 +92,17 @@ class CommunicationChannel(SignalInterface):
 
     sigSaveFocus = Signal()
 
+    sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
+    
+    sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
+
+    sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
+
+    sigNewFrame = Signal()
+
+    # useq-schema related signals
+    sigSetXYPosition = Signal(float, float)
+    sigSetZPosition = Signal(float)
     sigSetExposure = Signal(float)
     sigSetSpeed = Signal(float)
 

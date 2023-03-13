@@ -209,6 +209,26 @@
       "h": 2048
     }
   },
+  "rotators": {
+    "HWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 0,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    },
+    "QWP": {
+      "managerName": "StandaRotatorManager",
+      "managerProperties": {
+        "motorListIndex": 1,
+        "ximcLibLocation": "T:\\RedSTED\\Standa\\Standa\\ximc-2.13.6\\ximc",
+        "stepsPerTurn": 200,
+        "microstepsPerStep": 255
+      }
+    }
+  },
   "availableWidgets": [
     "Settings",
     "View",
@@ -219,14 +239,19 @@
     "Scan",
     "FocusLock",
     "SLM",
-    "Watcher"
+    "Rotation",
+    "RotationScan"
   ],
+
   "scan": {
+    "scanWidgetType": "PointScan",
     "scanDesigner": "GalvoScanDesigner",
     "scanDesignerParams": {},
     "TTLCycleDesigner": "PointScanTTLCycleDesigner",
     "TTLCycleDesignerParams": {},
-    "sampleRate": 100000
+    "sampleRate": 100000,
+    "lineClockLine": "Dev1/port0/line5",
+    "frameClockLine": "Dev1/port0/line6"
   },
   "nidaq": {
     "timerCounterChannel": "Dev1/ctr2",
@@ -248,6 +273,8 @@
     "frameCropx": 780,
     "frameCropy": 400,
     "frameCropw": 500,
-    "frameCroph": 100
+    "frameCroph": 100,
+    "piKp": -5.0,
+    "piKi": -0.1
   }
 }

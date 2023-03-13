@@ -24,12 +24,12 @@ class ESP32Manager:
             self._identity = rs232Info.managerProperties['identity']
         except:
             self._identity = "UC2_Feather"
-            
+
         # initialize the ESP32 device adapter
         self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200)
         self._esp32.serial.DEBUG = False
 
-        # disable the WifiModule 
+        # disable the WifiModule
         #self._esp32.modules.set_modules("{'wifi':0}")
         #self._esp32.serial.DEBUG = True
 

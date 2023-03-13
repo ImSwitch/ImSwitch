@@ -52,6 +52,11 @@ class ScanDesigner(SignalDesigner, ABC):
         the acceptable scanner voltages."""
         pass
 
+    def checkSignalLength(self, scanParameters, setupInfo):
+        """ Check that the signal would not be too large (to be stored in
+        the RAM and to be generated and run inside a reasonable time). """
+        return True
+
     @abstractmethod
     def make_signal(self, parameterDict, setupInfo):
         """ Method to be defined by child. Should return a dictionary with

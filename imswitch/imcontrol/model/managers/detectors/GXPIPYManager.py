@@ -153,7 +153,7 @@ class GXPIPYManager(DetectorManager):
     def flushBuffers(self):
         self._camera.flushBuffer()
 
-    def startAcquisition(self):
+    def startAcquisition(self, liveView=False):
         if self._camera.model == "mock":
             self.__logger.debug('We could attempt to reconnect the camera')
             pass

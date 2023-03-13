@@ -2,6 +2,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger
 import numpy as np
+import re
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -59,14 +60,14 @@ class ImageController(LiveUpdatedController):
         """ Remove item from communication channel to viewbox."""
         self._widget.removeItem(item)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update new image in the viewbox. """
         if np.prod(im.shape)>1: # TODO: This seems weird!
 
             if not init:
                 self.autoLevels([detectorName], im)
 
-            self._widget.setImage(detectorName, im)
+            self._widget.setImage(detectorName, im, scale)
 
             if not init or self._shouldResetView:
                 self.adjustFrame(instantResetView=True)
@@ -108,6 +109,7 @@ class ImageController(LiveUpdatedController):
         detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

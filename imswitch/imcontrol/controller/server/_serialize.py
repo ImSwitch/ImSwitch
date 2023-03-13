@@ -6,7 +6,6 @@ from typing import Deque, Generic, TypeVar
 import numpy as np
 import Pyro5
 import Pyro5.api
-import useq
 
 T = TypeVar("T")
 

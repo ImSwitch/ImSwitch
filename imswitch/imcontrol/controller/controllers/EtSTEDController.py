@@ -280,7 +280,7 @@ class EtSTEDController(ImConWidgetController):
         self._commChannel.sigUpdateImage.connect(self.addImgBinStack)
         self._widget.recordBinaryMaskButton.setText('Recording...')
 
-    def addImgBinStack(self, detectorName, img, init, isCurrentDetector):
+    def addImgBinStack(self, detectorName, img, init, scale, isCurrentDetector):
         """ Add image to the stack of images used to calculate a binary mask of the region of interest. """
         if detectorName == self.detectorFast:
             if self.__binary_stack is None:
@@ -385,7 +385,7 @@ class EtSTEDController(ImConWidgetController):
         self.__frame = 0
         self.__maxAnaImgVal = 0
 
-    def runPipeline(self, detectorName, img, init, isCurrentDetector):
+    def runPipeline(self, detectorName, img, init, scale, isCurrentDetector):
         """ If detector is detectorFast: run the analyis pipeline, called after every fast method frame. """
         if detectorName == self.detectorFast:
             if not self.__busy:

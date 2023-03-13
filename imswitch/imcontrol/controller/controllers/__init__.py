@@ -28,6 +28,7 @@ from .RotatorController import RotatorController
 from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .MCTController import MCTController
+from .JetsonNanoController import JetsonNanoController
 from .HistoScanController import HistoScanController
 from .PixelCalibrationController import PixelCalibrationController
 from .ISMController import ISMController

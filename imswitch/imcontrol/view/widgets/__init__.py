@@ -28,6 +28,7 @@ from .RotatorWidget import RotatorWidget
 from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .MCTWidget import MCTWidget
+from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget
 from .PixelCalibrationWidget import PixelCalibrationWidget
 from .SquidStageScanWidget import SquidStageScanWidget

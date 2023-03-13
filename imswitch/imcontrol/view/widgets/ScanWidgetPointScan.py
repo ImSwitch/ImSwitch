@@ -241,6 +241,9 @@ class ScanWidgetPointScan(SuperScanWidget):
     def setd3StepDelayPar(self, d3StepDelayPar):
         self.d3StepDelayPar.setText(str(round(int(d3StepDelayPar))))
 
+    def setScanMode(self):
+        pass
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -122,7 +122,6 @@ class APDManager(DetectorManager):
         self.setPixelSize(px_sizes[::-1])
 
     def updateImage(self, pixels, pos: tuple):
-        pass
         # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
         (*pos_rest, pos_d2) = (0,) + pos
         img_slice = tuple(pos_rest)+tuple([pos_d2,])
@@ -137,7 +136,7 @@ class APDManager(DetectorManager):
         img_dims_extra = tuple(reversed((*img_dims,1)))
         if np.shape(self._image) != img_dims_extra:
             self._image = np.zeros(img_dims_extra)
-            self.setShape(img_dims_extra)  # not sure it will work. Previous order: [1],[0],[2], even if self._image was [2],[1],[0]
+            self.setShape(img_dims_extra)
 
     def setParameter(self, name, value):
         pass
@@ -148,7 +147,6 @@ class APDManager(DetectorManager):
     def setBinning(self, binning):
         super().setBinning(binning)
 
-    # TODO: potentially fix for d>3, currently returns last finished frame
     def getChunk(self):
         if self.__newFrameReady and self.__currSlice[-1] > 0:
             self.__newFrameReady = False
@@ -168,21 +166,18 @@ class APDManager(DetectorManager):
         return self.__shape
 
     def setShape(self, img_dims):
-        #self.__shape = tuple(reversed(img_dims))  # previous order: [2],[0],[1] for d=3
         self.__shape = tuple(img_dims)
 
     @property
     def scale(self):
         return self.__pixel_sizes[::-1]
-        #return list(reversed(self.__pixel_sizes))
         
     @property
     def pixelSizeUm(self):
-        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]  # TODO: is this not in the wrong order, considering setPixelSize below?
+        return [1, *self.__pixel_sizes]
 
     def setPixelSize(self, pixel_sizes: list):
         # pixel_sizes: list of low dim to high dim
-        #pixel_sizes.append(1)
         self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):
@@ -214,7 +209,6 @@ class APDManager(DetectorManager):
 class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
     d3Step = Signal()
-    #newFrame = Signal()
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict, signalDict):

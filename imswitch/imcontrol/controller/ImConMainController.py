@@ -20,7 +20,7 @@ from .basecontrollers import ImConWidgetControllerFactory
 class ImConMainController(MainController):
     def __init__(self, options, setupInfo, mainView, moduleCommChannel):
         self.__logger = initLogger(self)
-        self.__logger.debug('Initializing')
+        self.__logger.info('Initializing')
 
         self.__options = options
         self.__setupInfo = setupInfo

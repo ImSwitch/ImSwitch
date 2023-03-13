@@ -248,10 +248,8 @@ class NidaqManager(SignalInterface):
         if not self.busy:
             self.busy = True
             self.signalSent = False
-            self.__logger.debug('Create nidaq scan...')
 
             try:
-                # TODO: fill this
                 stageDic = signalDic['scanSignalsDict']
                 ttlDic = signalDic['TTLCycleSignalsDict']
 
@@ -261,7 +259,6 @@ class NidaqManager(SignalInterface):
                 AOchannels = []
 
                 for device, channel in AOTargetChanPairs:
-                    #self.__logger.debug(f'Device {device}, channel {channel} is part of scan')
                     if device not in stageDic:
                         continue
                     AOdevices.append(device)
@@ -322,7 +319,7 @@ class NidaqManager(SignalInterface):
                 clockDO = scanclock
                 if len(AOsignals) > 0:
                     scanSampsInScan = len(AOsignals[0])
-                    self.__logger.debug(f'Total scan samples in scan: {scanSampsInScan}')
+                    self.__logger.info(f'Total scan samples in scan: {scanSampsInScan}')
                     self.aoTask = self.__createChanAOTask('ScanAOTask', AOchannels,
                                                           acquisitionTypeFinite, scanclock,
                                                           100000, min_val=-10, max_val=10,

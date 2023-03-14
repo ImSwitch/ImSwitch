@@ -142,7 +142,7 @@ class DeckWidget(Widget):
         # self.zero = guitools.BetterPushButton(text="ZERO")  # QtWidgets.QPushButton(corrds)
         # TODO: implement ZERO
         self.zero = guitools.BetterPushButton(text="ZERO Z-AXIS")  # QtWidgets.QPushButton(corrds)
-        self.zero.setFixedSize(70, 30)
+        self.zero.setFixedSize(90, 30)
         # self.zero.setStyleSheet("background-color: black; font-size: 14px")
         self.zero.setStyleSheet("background-color: white; color: black; font-size: 14px")
         layout.addWidget(self.zero)

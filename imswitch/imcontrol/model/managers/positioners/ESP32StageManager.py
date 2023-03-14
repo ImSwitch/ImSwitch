@@ -241,6 +241,7 @@ class ESP32StageManager(PositionerManager):
         # if value: value += 1  # TODO: Firmware weirdness
         # self._motor.set_position(axis=axis, position=value) # TODO: this line does nothing
         # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
+        print(f"Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
     def closeEvent(self):

@@ -136,7 +136,9 @@ class DeckController(LiveUpdatedController):
 
     @APIExport(runOnUIThread=True)
     def zero(self):
-        self.positioner.zero()
+        # TODO: zero z-axis when first position focal plane found.
+        self.setPositioner(position=0, axis="Z")
+        # self.positioner.zero()
 
     @APIExport(runOnUIThread=True)
     def move(self, new_position):

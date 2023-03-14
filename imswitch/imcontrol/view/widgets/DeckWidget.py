@@ -141,10 +141,10 @@ class DeckWidget(Widget):
     def add_zero(self, layout):
         # self.zero = guitools.BetterPushButton(text="ZERO")  # QtWidgets.QPushButton(corrds)
         # TODO: implement ZERO
-        self.zero = QtWidgets.QLabel(text="ZERO")  # QtWidgets.QPushButton(corrds)
-        self.zero.setFixedSize(50, 30)
+        self.zero = guitools.BetterPushButton(text="ZERO Z-AXIS")  # QtWidgets.QPushButton(corrds)
+        self.zero.setFixedSize(70, 30)
         # self.zero.setStyleSheet("background-color: black; font-size: 14px")
-        self.zero.setStyleSheet("background-color: None; font-size: 14px")
+        self.zero.setStyleSheet("background-color: white; color: black; font-size: 14px")
         layout.addWidget(self.zero)
 
     def initialize_deck(self, deck_dict: Dict, labwares_dict: Dict):

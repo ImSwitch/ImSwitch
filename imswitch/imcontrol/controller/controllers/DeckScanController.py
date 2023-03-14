@@ -239,6 +239,7 @@ class DeckScanController(LiveUpdatedController):
             for LEDid in [12, 13, 14]: # TODO: these LEDs generate artifacts
                 self.led_matrixs[0].setLEDSingle(indexled=int(LEDid), state=0)
                 time.sleep(0.1)
+        time.sleep(self.tUnshake*3)  # unshake + Light
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -249,6 +250,7 @@ class DeckScanController(LiveUpdatedController):
             # self.illu.setAll((0,0,0))
         elif self.led_matrixs:
             self.led_matrixs[0].setAll(state=(0, 0, 0))
+        time.sleep(self.tUnshake*3)  # unshake + Light
 
     def get_first_row(self):
         slot = self._widget.scan_list.item(0, 0).text()
@@ -334,7 +336,6 @@ class DeckScanController(LiveUpdatedController):
                     self.positioner.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)  # , is_absolute=False
                     time.sleep(self.tUnshake)  # unshake + Light
                     self.switchOnIllumination(intensity)
-                    time.sleep(self.tUnshake*3)  # unshake + Light
 
                     self.__logger.info(f"Taking image at Z:{iZ:.3f}.")
                     filename_str = f'{self.nRounds}_{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_p{pos_row}_Z{iZ:.3f}_i{imageIndex}'.replace(
@@ -343,6 +344,7 @@ class DeckScanController(LiveUpdatedController):
                                                     filename=filename_str, extension=fileExtension)
                     lastFrame = self.detector.getLatestFrame()
                     self.switchOffIllumination()
+
                     self._logger.debug(filePath)
                     tif.imwrite(filePath, lastFrame, append=True)
                     imageIndex += 1
@@ -355,7 +357,6 @@ class DeckScanController(LiveUpdatedController):
             else:
                 # single file timelapse
                 self.switchOnIllumination(intensity)
-                time.sleep(self.tUnshake*4)  # unshake + Light
                 self.__logger.info(f"Taking image.")
 
                 x, y, z = self.positioner.get_position()
@@ -374,7 +375,6 @@ class DeckScanController(LiveUpdatedController):
             self.sigImageReceived.emit()  # => displays image
             time.sleep(self.tUnshake*3)  # Time to see image
             self.switchOffIllumination()
-            time.sleep(self.tUnshake)
             yield pos_i, pos_row, lastFrame
 
     def stopScan(self):

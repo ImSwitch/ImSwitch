@@ -174,6 +174,17 @@ sudo rm /etc/apt/sources.list.d/cuda*local /etc/apt/sources.list.d/visionworks*r
 sudo rm -rf /usr/src/linux-headers-*
 ```
 
+Use light-weight x server
+
+```
+cd ~/Downloads
+git clone https://github.com/jetsonhacks/installLXDE/
+cd installLXDE
+./installLXDE.sh
+sudo reboot
+```
+
+
 Add environment
 
 ```

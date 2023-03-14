@@ -127,7 +127,7 @@ class DeckWidget(Widget):
                 else:
                     btn.setStyleSheet("background-color: grey; font-size: 14px")
 
-        self._wells_group_box.setMaximumHeight(300)
+        self._wells_group_box.setMaximumHeight(280)
         self._wells_group_box.setLayout(layout)
         self.main_grid_layout.addWidget(self._wells_group_box, 3, 0, 1, 3)
         self.setLayout(self.main_grid_layout)
@@ -184,7 +184,7 @@ class DeckWidget(Widget):
                 self.deck_slots[corrds].setFixedSize(30, 30)
                 self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
             layout.addWidget(self.deck_slots[corrds])
-        self._deck_group_box.setFixedHeight(70)
+        self._deck_group_box.setMaximumHeight(70)
         self._deck_group_box.setLayout(layout)
         self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
         self.setLayout(self.main_grid_layout)
@@ -204,8 +204,13 @@ class DeckWidget(Widget):
         self.add_current_btn = guitools.BetterPushButton('ADD CURRENT')
         self.pos_in_well_lined = QtWidgets.QLineEdit("1")
         self.add_btn = guitools.BetterPushButton('ADD')
+
         self.buttonOpen = guitools.BetterPushButton('Open')
+        self.buttonOpen.setFixedSize(60,20)
+        self.buttonOpen.setStyleSheet("background-color : gray; color: black")
         self.buttonSave = guitools.BetterPushButton('Save')
+        self.buttonSave.setFixedSize(60,20)
+        self.buttonSave.setStyleSheet("background-color : gray; color: black")
 
         self.buttonOpen.clicked.connect(self.handleOpen)
         self.buttonSave.clicked.connect(self.handleSave)
@@ -226,10 +231,10 @@ class DeckWidget(Widget):
         # actions_layout.addWidget(self.buttonOpen, 0, 7, 1, 1)
         # actions_layout.addWidget(self.buttonSave, 0, 8, 1, 1)
 
-        self._actions_widget.setFixedHeight(200)
-        self._actions_widget.setFixedWidth(140)
+        self._actions_widget.setMaximumHeight(200)
+        self._actions_widget.setMaximumWidth(140)
         self._actions_widget.setLayout(actions_layout)
-        self.scan_list.setFixedHeight(200)
+        self.scan_list.setMaximumHeight(200)
 
         self.main_grid_layout.addWidget(self.scan_list, 1, 1, 1, 2)
         self.main_grid_layout.addWidget(self._actions_widget, 1, 0, 1, 1)
@@ -302,14 +307,14 @@ class DeckWidget(Widget):
         return float(self.pars['AbsolutePosEdit' + parNameSuffix].text())
 
     def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
-        self._positioner_widget = QtWidgets.QGroupBox("Positioners")
+        self._positioner_widget = QtWidgets.QGroupBox(f"{positionerName}")
         layout = QtWidgets.QGridLayout()
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
-            label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
+            # label = f'{positionerName} -- {axis}' if positionerName != axis else positionerName
 
-            self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
+            self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{axis}</strong>')
             self.pars['Label' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
             self.pars['Position' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{0:.2f} µm</strong>')
             self.pars['Position' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
@@ -334,13 +339,13 @@ class DeckWidget(Widget):
             if hasSpeed:
                 self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
                 self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
-                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
+                self.pars['SpeedEdit' + parNameSuffix] = QtWidgets.QLineEdit('15000')
 
                 layout.addWidget(self.pars['Speed' + parNameSuffix], self.numPositioners, 9)
                 layout.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
 
             if hasHome:
-                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home ' + parNameSuffix)
+                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home')
                 layout.addWidget(self.pars['Home' + parNameSuffix], self.numPositioners, 11)
 
                 self.pars['Home' + parNameSuffix].clicked.connect(
@@ -348,7 +353,7 @@ class DeckWidget(Widget):
                 )
 
             if hasStop:
-                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop ' + parNameSuffix)
+                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop')
                 layout.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners, 12)
 
                 self.pars['Stop' + parNameSuffix].clicked.connect(
@@ -368,7 +373,8 @@ class DeckWidget(Widget):
 
             self.numPositioners += 1
 
-        self._positioner_widget.setFixedHeight(120)
+        self._positioner_widget.setMaximumHeight(110)
+        self._positioner_widget.setMinimumWidth(140)
         self._positioner_widget.setLayout(layout)
         self.main_grid_layout.addWidget(self._positioner_widget, 0, 0, 1, 3)
 
@@ -448,11 +454,11 @@ class DeckWidget(Widget):
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} mm</strong>')
+        self.pars['Position' + parNameSuffix].setText(f'<strong>{position} um</strong>')
 
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed:.2f} mm/s</strong>')
+        self.pars['Speed' + parNameSuffix].setText(f'<strong>{speed} um/s</strong>')
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'

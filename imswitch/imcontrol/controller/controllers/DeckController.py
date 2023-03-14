@@ -128,7 +128,7 @@ class DeckController(LiveUpdatedController):
 
     @APIExport(runOnUIThread=True)
     def home(self) -> None:
-        # TODO: fix home in PositionerManager first
+        # TODO: fix home in PositionerManager
         self.positioner.doHome("X")
         time.sleep(0.1)
         self.positioner.doHome("Y")

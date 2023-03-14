@@ -136,7 +136,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
@@ -147,6 +146,11 @@ class ImConMainView(QtWidgets.QMainWindow):
             rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
+
+        # self.showMaximized()
+
+        # self.setMaximumSize(1720,900)
+
 
     def addShortcuts(self, shortcuts):
         for s in shortcuts.values():

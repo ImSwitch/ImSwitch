@@ -235,23 +235,65 @@ class DeckWidget(Widget):
         self.main_grid_layout.addWidget(self._actions_widget, 1, 0, 1, 1)
 
     def add_position_to_scan(self, slot, well, offset, z_focus, absolute_position):
-
+        # TODO: forward it to table: table logic inside table.
+        self.__logger.debug(f"Adding well: {slot}, {well}")
         self.scan_list.insertRow(self.scan_list_items)
+        if self.scan_list_items == 0:
+            self.first_z_focus = z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(z_focus)))
+        else:
+            relative_z_focus = absolute_position[2] - self.first_z_focus
+            self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
+
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(slot)))
         self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(well)))
         self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(offset)))
-        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(z_focus)))
         self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(absolute_position)))
         self.scan_list_items += 1
 
+    def _get_items(self):
+        rows = []
+        for row in range(self.scan_list.rowCount()):
+            rowdata = []
+            for column in range(self.scan_list.columnCount()):
+                item = self.scan_list.item(row, column)
+                if item is not None:
+                    rowdata.append(item.text())
+                else:
+                    rowdata.append('')
+            rows.append(rowdata)
+
+        return rows
+
+
     def add_current_position_to_scan(self):
-        self.scan_list.insertRow(self.scan_list_items)
-        self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
-        self.scan_list.setItem(self.scan_list_items, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
-        self.scan_list.setItem(self.scan_list_items, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
-        self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
-        self.scan_list.setItem(self.scan_list_items, 4, QtWidgets.QTableWidgetItem(str(self.current_absolute_position)))
-        self.scan_list_items += 1
+        self.__logger.debug(f"Adding current position: {self.current_slot}, {self.current_well}")
+        row_id = len(self._get_items())
+
+        self.scan_list.insertRow(row_id)
+        if row_id == 0:
+            self.first_z_focus = self.current_z_focus
+            self.scan_list.setItem(row_id, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
+        else:
+            relative_z_focus = self.current_absolute_position[2] - self.first_z_focus
+            self.scan_list.setItem(row_id, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
+
+        self.scan_list.setItem(row_id, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))
+        self.scan_list.setItem(row_id, 1, QtWidgets.QTableWidgetItem(str(self.current_well)))
+        self.scan_list.setItem(row_id, 2, QtWidgets.QTableWidgetItem(str(self.current_offset)))
+        self.scan_list.setItem(row_id, 4, QtWidgets.QTableWidgetItem(str(self.current_absolute_position)))
+        self.scan_list_items = row_id
+
+        for row in range(self.scan_list.rowCount()):
+            rowdata = []
+            for column in range(self.scan_list.columnCount()):
+                item = self.scan_list.item(row, column)
+                if item is not None:
+                    rowdata.append(
+                        item.text())
+                else:
+                    rowdata.append('')
+            self.__logger.debug(rowdata)
 
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in
@@ -432,7 +474,6 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
-
 
     def contextMenuEvent(self, event):
         if self.selectionModel().selection().indexes():

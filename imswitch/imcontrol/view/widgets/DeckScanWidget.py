@@ -131,6 +131,7 @@ class DeckScanWidget(NapariHybridWidget):
 
         self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
         self.autofocusLED1Checkbox.setCheckable(True)
+
         self.autofocusSelectionLabel = QtWidgets.QLabel('Lightsource for AF: ')
         self.autofocusInitialZLabel = QtWidgets.QLabel('Autofocus (Initial Z): ')
         # LED

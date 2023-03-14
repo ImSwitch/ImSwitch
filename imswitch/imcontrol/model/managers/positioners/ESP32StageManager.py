@@ -207,7 +207,7 @@ class ESP32StageManager(PositionerManager):
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled,
                                  is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
+            for i, iaxis in enumerate(("X", "Y", "Z")):
                 if not is_absolute:
                     self._position[iaxis] = self._position[iaxis] + value[i]
                 else:
@@ -238,8 +238,8 @@ class ESP32StageManager(PositionerManager):
             self._speed[axis] = speed
 
     def setPosition(self, value, axis):
-        if value: value += 1  # TODO: Firmware weirdness
-        self._motor.set_position(axis=axis, position=value)
+        # if value: value += 1  # TODO: Firmware weirdness
+        # self._motor.set_position(axis=axis, position=value) # TODO: this line does nothing
         # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
         self._position[axis] = value
 
@@ -289,21 +289,21 @@ class ESP32StageManager(PositionerManager):
 
     def home_x(self):
         self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX)
-        self._position["X"] = 0
+        self.setPosition(axis="X", value=0)
+        # self._position["X"] = 0
 
     def home_y(self):
         self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY)
-        self._position["Y"] = 0
+        self.setPosition(axis="Y", value=0)
+        # self._position["Y"] = 0
 
     def home_z(self):
         self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ)
-        self._position["Z"] = 0
-
+        self.setPosition(axis="Z", value=0)
     def home_xyz(self):
         self._motor.home_xyz()
-        self._position["X"] = 0
-        self._position["Y"] = 0
-        self._position["Z"] = 0
+        [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
+
 
 # Copyright (C) 2020, 2021 The imswitch developers
 # This file is part of ImSwitch.

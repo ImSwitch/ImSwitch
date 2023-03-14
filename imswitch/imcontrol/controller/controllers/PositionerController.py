@@ -96,6 +96,8 @@ class PositionerController(ImConWidgetController):
     def homeAxis(self, positionerName, axis):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis)
+        self.updatePosition(positionerName, axis)
+
 
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")

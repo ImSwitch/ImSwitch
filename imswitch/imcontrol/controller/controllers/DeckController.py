@@ -142,7 +142,7 @@ class DeckController(LiveUpdatedController):
     def move(self, new_position):
         """ Moves positioner to absolute position. """
         speed = [self._widget.getSpeed(self.positioner_name, axis) for axis in self.positioner.axes]
-        self.positioner.move(new_position, "XYZ", is_absolute=True, speed=speed)
+        self.positioner.move(new_position, "XYZ", is_absolute=True, is_blocking=False, speed=speed)
         [self.updatePosition(axis) for axis in self.positioner.axes]
         self.connect_add_current_position()
 
@@ -161,7 +161,8 @@ class DeckController(LiveUpdatedController):
         shift = self._widget.getStepSize(positionerName, axis)
         # if self.scanner.objective_collision_avoidance(axis=axis, shift=shift):
         try:
-            self.positioner.move(shift, axis)
+            self.positioner.move(shift, axis, is_blocking=False)
+            [self.updatePosition(axis) for axis in self.positioner.axes]
             self.connect_add_current_position()
         except Exception as e:
             self.__logger.info(f"Avoiding objective collision. {e}")
@@ -169,7 +170,8 @@ class DeckController(LiveUpdatedController):
     def stepDown(self, positionerName, axis):
         shift = -self._widget.getStepSize(positionerName, axis)
         try:
-            self.positioner.move(shift, axis)
+            self.positioner.move(shift, axis, is_blocking=False)
+            [self.updatePosition(axis) for axis in self.positioner.axes]
             self.connect_add_current_position()
         except Exception as e:
             self.__logger.info(f"Avoiding objective collision. {e}")
@@ -255,13 +257,15 @@ class DeckController(LiveUpdatedController):
         else:
             raise NotImplementedError(f"Not recognized units.")
 
+    @APIExport(runOnUIThread=True)
     def moveToWell(self, well: str, slot: Optional[str] = None):
         """ Moves positioner to center of selecterd well keeping the current Z-axis position. """
         self.__logger.debug(f"Move to {well} ({slot})")
         speed = [self._widget.getSpeed(self.positioner_name, axis) for axis in self.positioner.axes]
         well_position = self.deck_definition.get_well_position(slot=slot, well=well)
         well_position = self.translate_position(well_position)
-        self.positioner.move(well_position[:2], "XY", is_absolute=True, speed=speed[:2])
+        self.positioner.move(well_position[:2], "XY", is_absolute=True, is_blocking=False,
+                             speed=speed[:2])
         [self.updatePosition(axis) for axis in self.positioner.axes]
         self.connect_add_current_position()
 

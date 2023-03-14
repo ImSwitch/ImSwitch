@@ -252,7 +252,7 @@ class OpentronsDeckWidget(Widget):
             self.first_z_focus = self.current_z_focus
             self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
         else:
-            relative_z_focus = self.current_absolute_position[2] - self.self.current_z_focus
+            relative_z_focus = self.current_absolute_position[2] - self.first_z_focus
             self.scan_list.setItem(self.scan_list_items, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
 
         self.scan_list.setItem(self.scan_list_items, 0, QtWidgets.QTableWidgetItem(str(self.current_slot)))

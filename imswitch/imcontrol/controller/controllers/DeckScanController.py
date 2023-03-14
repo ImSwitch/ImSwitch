@@ -4,12 +4,13 @@ import threading
 import time
 from datetime import datetime
 from queue import Queue
+from typing import Optional
 
 import numpy as np
 import tifffile as tif
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.model import dirtools
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, APIExport
 
 from locai.deck.deck_config import DeckConfig
 from locai.utils.utils import strfdelta
@@ -70,6 +71,10 @@ class DeckScanController(LiveUpdatedController):
         self._widget.ScanShowLastButton.setEnabled(False)
         self._widget.scan_list.sigGoToTableClicked.connect(self.gototable)
 
+        self.ScanThread: Optional[threading.Thread] = None
+
+
+    @APIExport(runOnUIThread=True)
     def gototable(self, absolute_position):
         self.move(new_position=Point(*absolute_position))
 
@@ -155,23 +160,19 @@ class DeckScanController(LiveUpdatedController):
 
     def takeTimelapse(self, tperiod):
         # this is called periodically by the timer
-        if not self.isScanrunning:
-            try:
-                # make sure there is no exisiting thread
-                del self.ScanThread
-            except:
-                pass
+        if self.isScanrunning:
+            self.stopScan()
             # this should decouple the hardware-related actions from the GUI
-            self.isScanrunning = True
-            self.ScanThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod,), daemon=True)
-            self.ScanThread.start()
+        self.isScanrunning = True
+        self.ScanThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod,), daemon=True)
+        self.ScanThread.start()
 
     def takeTimelapseThread(self, tperiod=1):
         # this wil run i nthe background
         self.timeLast = 0
         self.timeStart = datetime.now()
         # run as long as the Scan is active
-        while (self.isScanrunning):
+        while self.isScanrunning:
             # stop measurement once done
             if self.nDuration <= self.nRounds:
                 self.isScanrunning = False
@@ -207,7 +208,11 @@ class DeckScanController(LiveUpdatedController):
                         timestamp_ = str(self.nRounds) + strfdelta(datetime.now() - self.timeStart,
                                                                    "_d{days}h{hours}m{minutes}s{seconds}")
                         self.z_focus = float(autofocusParams["valueInitial"])
-                        self.takeImageIllu(illuMode="Brightfield", intensity=self.LEDValue, timestamp=timestamp_)
+                        for pos_id, row_info, frame in self.takeImageIllu(illuMode="Brightfield", intensity=self.LEDValue, timestamp=timestamp_):
+
+
+                            if not self.isScanrunning:
+                                break
                     self.nRounds += 1
                     self._widget.setNImages(self.nRounds)
                     self.LastStackLEDArrayLast = np.array(self.LastStackLED)
@@ -231,7 +236,7 @@ class DeckScanController(LiveUpdatedController):
         elif self.led_matrixs:
             self.led_matrixs[0].setAll(state=(1, 1, 1))
             time.sleep(0.1)
-            for LEDid in [12, 13, 14, 15]:
+            for LEDid in [12, 13, 14]: # TODO: these LEDs generate artifacts
                 self.led_matrixs[0].setLEDSingle(indexled=int(LEDid), state=0)
                 time.sleep(0.1)
 
@@ -249,10 +254,11 @@ class DeckScanController(LiveUpdatedController):
         slot = self._widget.scan_list.item(0, 0).text()
         well = self._widget.scan_list.item(0, 1).text()
         first_position_offset = self._widget.scan_list.item(0, 2).text()
-        z_focus = float(self._widget.scan_list.item(0, 2).text())
+        # z_focus = float(self._widget.scan_list.item(0, 3).text())
         abs_pos = self._widget.scan_list.item(0, 4).text()
         first_position_offset = tuple(map(float, first_position_offset.strip('()').split(',')))
         abs_pos = tuple(map(float, abs_pos.strip('()').split(',')))
+        z_focus = abs_pos[2] + float(self._widget.scan_list.item(0, 3).text())
         return slot, well, first_position_offset, z_focus, abs_pos
 
     def doAutofocus(self, params):
@@ -283,12 +289,14 @@ class DeckScanController(LiveUpdatedController):
         elif None not in queue_item:
             self.current_scanning_row = queue_item
             self.current_scanning_row[2] = tuple(map(float, queue_item[2].strip('()').split(',')))
+            self.current_scanning_row[3] = float(queue_item[3])
             self.current_scanning_row[4] = tuple(map(float, queue_item[4].strip('()').split(',')))
             return self.current_scanning_row
         else:
             raise ValueError("Get rid of None values in the list before scanning.")
 
     def takeImageIllu(self, illuMode, intensity, timestamp=0):
+        # TODO: include exit/stop logic inside this loop: if I want to stop after 1 well, it need to complete the whole run before deleting the thread.
         self._logger.debug("Take image: " + illuMode + " - " + str(intensity) + " A")
         fileExtension = 'tif'
         imageIndex = 0
@@ -296,12 +304,7 @@ class DeckScanController(LiveUpdatedController):
         # iterate over all xy coordinates iteratively
         self.__logger.info(f"Starting scan")#
         # Move to first position: focus is based on this first position.
-        slot, well, first_position_offset, first_z_focus, first_pos = self.get_first_row()
-        self.move(first_pos)
-        time.sleep(self.tUnshake)
-        self.positioner.move(value=first_z_focus, axis="Z", is_absolute=True, is_blocking=True)  # , is_absolute=False
-        time.sleep(self.tUnshake)
-
+        slot, well, first_position_offset, first_z_focus, first_pos = self.get_first_row() # TODO: check that the first position is not the one on the table but in the PositionerManager
         for pos_i, pos_row in enumerate(range(self._widget.scan_list.rowCount())):
             self.__logger.info(f"Total positions {self._widget.scan_list.rowCount()}. pos_i{pos_i} - pos_row{pos_row}")
             # Get position to scan
@@ -309,15 +312,18 @@ class DeckScanController(LiveUpdatedController):
             slot, well, offset, z_focus, current_pos = self.get_current_scan_row()
             self.__logger.info(f"Currently scanning row: {self.current_scanning_row}")
             time.sleep(self.tUnshake)
-            self.move(current_pos)
+            self.positioner.move(value=current_pos, axis="XYZ", is_absolute=True, is_blocking=True)
             time.sleep(self.tUnshake)
-            self.positioner.move(value=first_z_focus+z_focus, axis="Z", is_absolute = True, is_blocking=True)  # , is_absolute=False
+            if pos_i == 0:
+                self.positioner.move(value=first_z_focus, axis="Z", is_absolute=True,
+                                     is_blocking=True)  # , is_absolute=False
+            else:
+                self.positioner.move(value=first_z_focus+z_focus, axis="Z", is_absolute = True, is_blocking=True)  # , is_absolute=False
             time.sleep(self.tUnshake)
             if self.zStackEnabled:
                 self.__logger.info(f"zStackEnabled")
                 # perform a z-stack from z_focus
                 self.zStackDepth = self.zStackMax - self.zStackMin
-                time.sleep(self.tUnshake)  # unshake
                 # for zn, iZ in enumerate(np.arange(self.zStackMin, self.zStackMax, self.zStackStep)):
                 # Array of displacements from center point (z_focus) -/+ z_depth/2
                 for zn, iZ in enumerate(
@@ -326,11 +332,13 @@ class DeckScanController(LiveUpdatedController):
                     self.__logger.info(f"Z-stack : {iZ}")
                     # move to each position
                     self.positioner.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)  # , is_absolute=False
+                    time.sleep(self.tUnshake)  # unshake + Light
                     self.switchOnIllumination(intensity)
                     time.sleep(self.tUnshake*3)  # unshake + Light
 
                     self.__logger.info(f"Taking image at Z:{iZ:.3f}.")
-                    filename_str = f'{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_p{pos_row}_Z{zn}_i{imageIndex}'
+                    filename_str = f'{self.nRounds}_{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_p{pos_row}_Z{iZ:.3f}_i{imageIndex}'.replace(
+                    ".", "mm")
                     filePath = self.getSaveFilePath(date=self.ScanDate, timestamp=timestamp,
                                                     filename=filename_str, extension=fileExtension)
                     lastFrame = self.detector.getLatestFrame()
@@ -342,18 +350,20 @@ class DeckScanController(LiveUpdatedController):
                     if illuMode == "Brightfield":
                         self.LastStackLED.append(lastFrame.copy())
                 # self.scanner.positioner.setEnabled(is_enabled=False)
-                x, y, z = self.positioner.get_position()
-                self.positioner.move(value=self.z_focus - z, axis="Z", is_absolute=False, is_blocking=True)  # , is_absolute=True
+                # x, y, z = self.positioner.get_position()
+                # self.positioner.move(value=first_z_focus+z_focus, axis="Z", is_absolute=True, is_blocking=True)  # , is_absolute=True
             else:
                 # single file timelapse
                 self.switchOnIllumination(intensity)
-                time.sleep(self.tUnshake*3)  # unshake + Light
+                time.sleep(self.tUnshake*4)  # unshake + Light
                 self.__logger.info(f"Taking image.")
+
                 x, y, z = self.positioner.get_position()
-                filename_str = f'{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_Z{z:.3f}_i{imageIndex}'.replace(
+                filename_str = f'{self.nRounds}_{self.ScanFilename}_s{f"0{slot}" if int(slot) < 10 else slot}{well}_Z{z:.3f}_i{imageIndex}'.replace(
                     ".", "mm")
                 filePath = self.getSaveFilePath(date=self.ScanDate, timestamp=timestamp,
                                                 filename=filename_str, extension=fileExtension)
+
                 lastFrame = self.detector.getLatestFrame()
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame)
@@ -362,14 +372,13 @@ class DeckScanController(LiveUpdatedController):
                 if illuMode == "Brightfield":
                     self.LastStackLED = (lastFrame.copy())
             self.sigImageReceived.emit()  # => displays image
-            time.sleep(1)  # Time to see image
+            time.sleep(self.tUnshake*3)  # Time to see image
             self.switchOffIllumination()
             time.sleep(self.tUnshake)
+            yield pos_i, pos_row, lastFrame
 
     def stopScan(self):
-        self.isScanrunning = False
         self._widget.setNImages("Stopping timelapse...")
-        self._widget.ScanStartButton.setEnabled(True)
         # # delete any existing timer
         # try:
         #     del self.timer
@@ -377,15 +386,33 @@ class DeckScanController(LiveUpdatedController):
         #     pass
         # delete any existing thread
         try:
-            del self.ScanThread
-        except:
+            # make sure there is no exisiting thread
+            # del self.ScanThread
+            self.isScanrunning = False
+            if self.ScanThread is not None:
+                self.ScanThread.join(timeout=10)  # wait 10 seconds for the thread to exit
+                self.ScanThread = None
+            print("Deleted Scan Thread")
+        except Exception as e:
+            print(f"Error deleting existing Thread: {e}")
             pass
         self._widget.setNImages("Done wit timelapse...")
+
         self.positioner.move(value=0, axis="Z", is_blocking=True)
         # store old values for later
+        for axis in self.positioner.axes:
+            self.positioner.forceStop(axis)
+            time.sleep(self.tUnshake)
+        self.positioner.doHome("X")
+        time.sleep(self.tUnshake)
+        self.positioner.doHome("Y")
+        time.sleep(self.tUnshake)
+
         if len(self.leds) > 0:
             self.leds[0].setValue(self.LEDValueOld)
         self.switchOffIllumination()
+
+        self._widget.ScanStartButton.setEnabled(True)
 
 
     def getSaveFilePath(self, date, timestamp, filename, extension):
@@ -424,10 +451,10 @@ class DeckScanController(LiveUpdatedController):
             self._widget.sliderLED.setMaximum(100)  # TODO: Implement in LEDMatrix
         if len(self.leds) >= 1:
             self._widget.autofocusLED1Checkbox.setText(self.led_names[0])
-            self._widget.autofocusLED1Checkbox.setCheckState(True)
+            self._widget.autofocusLED1Checkbox.setCheckState(False)
         elif len(self.led_matrixs) >= 1:
             self._widget.autofocusLED1Checkbox.setText(self.ledMatrix_names[0])
-            self._widget.autofocusLED1Checkbox.setCheckState(True)
+            self._widget.autofocusLED1Checkbox.setCheckState(False)
 
     def valueLEDChanged(self, value):
         self.LEDValue = value
@@ -495,8 +522,8 @@ class DeckScanController(LiveUpdatedController):
 
     def move(self, new_position):
         """ Moves positioner to absolute position. """
-        self.positioner.move(new_position, "XYZ", is_absolute=True, is_blocking=True)
-        [self.updatePosition(self.positioner_name, axis) for axis in self.positioner.axes]
+        self.positioner.move(new_position, "XYZ", is_absolute=True, is_blocking=False)
+        # [self.updatePosition(self.positioner_name, axis) for axis in self.positioner.axes] # TODO: check if this breaks the focus.
 
 
 class mTimer(object):

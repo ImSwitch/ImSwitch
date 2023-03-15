@@ -69,6 +69,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),
             'MCT': _DockInfo(name='MCT', yPosition=0),
+            'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
             'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
             'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
             'ISM': _DockInfo(name='ISM', yPosition=0),

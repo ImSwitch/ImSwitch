@@ -3,7 +3,7 @@ from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager,
     ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager,
-    StandManager, RotatorsManager
+    StandManager, RotatorsManager, JetsonNanoManager,
 )
 
 
@@ -35,14 +35,15 @@ class MasterController:
         self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
                                            **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                            **lowLevelManagers)   
-            
+                                            **lowLevelManagers)
+
 
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
         self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)
         self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
         self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)

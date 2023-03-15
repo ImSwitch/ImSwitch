@@ -185,6 +185,10 @@ class MCTInfo:
     pass
 
 @dataclass(frozen=True)
+class JetsonNanoInfo:
+    pass
+
+@dataclass(frozen=True)
 class HistoScanInfo:
     pass
 
@@ -384,6 +388,9 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
 
+    jetsonnano: Optional[JetsonNanoInfo] = field(default_factory=lambda: None)
+    """ Jetson Nano settings for MCT. Required to be defined to use MCT functionality. """
+
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
 
@@ -391,7 +398,7 @@ class SetupInfo:
     """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
 
     uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
-    """ MCT settings. Required to be defined to use MCT functionality. """
+    """ UC2Config settings. Required to be defined to use UC2Config functionality. """
 
     ism: Optional[ISMInfo] = field(default_factory=lambda: None)
     """ ISM settings. Required to be defined to use ISM functionality. """

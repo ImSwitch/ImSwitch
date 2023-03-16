@@ -34,6 +34,7 @@ class ImageI(pydantic.BaseModel):
     z_focus: float
     pos_abs: Point
 
+
 @dataclasses.dataclass
 class ImageInfo:
     slot: str
@@ -41,13 +42,14 @@ class ImageInfo:
     offset: Tuple[float, float]
     z_focus: float
     pos_abs: Point
-    position_idx: int # TODO: depends on the amount of positions per well
+    position_idx: int  # TODO: depends on the amount of positions per well
     illu_mode: str
     timestamp: str
 
     def get_filename(self):
         # TODO: fix hardcode in self.position_idx
         return f"{self.slot}_{self.well}_{self.position_idx}_{self.illu_mode}_{round(self.z_focus)}_{self.timestamp}"
+
 
 class DeckScanController(LiveUpdatedController):
     """ Linked to OpentronsDeckScanWidget."""
@@ -344,7 +346,8 @@ class DeckScanController(LiveUpdatedController):
         self.zStackDepth = self.zStackMax - self.zStackMin
         # for zn, iZ in enumerate(np.arange(self.zStackMin, self.zStackMax, self.zStackStep)):
         # Array of displacements from center point (z_focus) -/+ z_depth/2
-        self.switchOnIllumination(intensity) # Lights stay on during Z-stack. Ideally it shouldn't, but we don't care so much about phototoxicity with brightfield
+        self.switchOnIllumination(
+            intensity)  # Lights stay on during Z-stack. Ideally it shouldn't, but we don't care so much about phototoxicity with brightfield
         for zn, iZ in enumerate(np.linspace(-self.zStackDepth / 2 + current_position.z,
                                             self.zStackDepth / 2 + current_position.z, int(self.zStackStep))):
             self.__logger.info(f"Z-stack : {iZ}")
@@ -382,8 +385,7 @@ class DeckScanController(LiveUpdatedController):
             # TODO: inform current status through front-end.
             slot, well, offset, z_focus, current_pos = self.get_current_scan_row()
             # TODO: avoid this:
-            current_pos = current_pos + Point(0,0,self.z_focus)
-
+            current_pos = current_pos + Point(0, 0, self.z_focus + z_focus - current_pos.z) # Z-position calculated with z_focus column and self.z_focus
 
             img_info = ImageInfo(slot, well, offset, z_focus, current_pos, illu_mode=illuMode,
                                  position_idx=image_index, timestamp=timestamp)  # TODO: avoid hardcoded position_idx
@@ -440,7 +442,6 @@ class DeckScanController(LiveUpdatedController):
         time.sleep(self.tUnshake)
         self.positioner.doHome("Y")
         time.sleep(self.tUnshake)
-
 
         if len(self.leds) > 0:
             self.leds[0].setValue(self.LEDValueOld)
@@ -520,7 +521,6 @@ class DeckScanController(LiveUpdatedController):
         time.sleep(0.1)
         self.positioner.doHome("Y")
         time.sleep(0.1)
-
 
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:
         """ Moves the specified positioner axis to the specified position. """

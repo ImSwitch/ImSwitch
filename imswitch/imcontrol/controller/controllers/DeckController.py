@@ -4,6 +4,7 @@ from functools import partial
 from typing import Optional
 
 import numpy as np
+from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.model import initLogger, APIExport
 from imswitch.imcontrol.view import guitools as guitools
 from opentrons.types import Point
@@ -44,11 +45,11 @@ class DeckController(LiveUpdatedController):
         self.selected_well = None
         # self.scanner = LabwareScanner(self.positioner, self.deck, self.labwares, _objectiveRadius)
         self._widget.initialize_deck(self.deck_definition.deck, self.deck_definition.labwares)
-        self._widget.addScanner()
+        self._widget.init_scan_list()
         self.connect_all_buttons()
-        self._widget.scan_list.sigGoToTableClicked.connect(self.gototable)
+        self._widget.scan_list.sigGoToTableClicked.connect(self.go_to_position_in_table)
 
-    def gototable(self, absolute_position):
+    def go_to_position_in_table(self, absolute_position):
         self.move(new_position=Point(*absolute_position))
 
     @property
@@ -137,7 +138,15 @@ class DeckController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def zero(self):
         # TODO: zero z-axis when first position focal plane found.
-        self.setPositioner(position=0, axis="Z")
+        _,_,self._widget.first_z_focus = self.positioner.get_position()
+        try:
+            self._commChannel.sigInitialFocalPlane.emit(self._widget.first_z_focus)
+            print(f"Updated initial focus {self._widget.first_z_focus}")
+        except Exception as e:
+            print(f"Zeroing failed {e}")
+        # self._commChannel.sigZeroZAxis.emit(self._widget.first_z_focus)
+
+        # self.setPositioner(position=0, axis="Z")
         # self.positioner.zero()
 
     @APIExport(runOnUIThread=True)
@@ -260,7 +269,7 @@ class DeckController(LiveUpdatedController):
             raise NotImplementedError(f"Not recognized units.")
 
     @APIExport(runOnUIThread=True)
-    def moveToWell(self, well: str, slot: Optional[str] = None):
+    def move_to_well(self, well: str, slot: Optional[str] = None):
         """ Moves positioner to center of selecterd well keeping the current Z-axis position. """
         self.__logger.debug(f"Move to {well} ({slot})")
         speed = [self._widget.getSpeed(self.positioner_name, axis) for axis in self.positioner.axes]
@@ -386,7 +395,7 @@ class DeckController(LiveUpdatedController):
                 self._widget.goto_btn.clicked.disconnect()
             except Exception:
                 pass
-            self._widget.goto_btn.clicked.connect(partial(self.moveToWell, self.selected_well, self.selected_slot))
+            self._widget.goto_btn.clicked.connect(partial(self.move_to_well, self.selected_well, self.selected_slot))
 
     def connect_home(self):
         """Connect Wells (Buttons) to the Sample Pop-Up Method"""
@@ -478,7 +487,7 @@ class DeckController(LiveUpdatedController):
 #                 return slot['id']
 #         return None
 #
-#     def moveToWell(self, well, slot):
+#     def move_to_well(self, well, slot):
 #         if not isinstance(well, Well):
 #             well = self.deck_definition.labwares[slot].wells_by_name()[well]
 #         x, y, _ = well.geometry.position
@@ -564,7 +573,7 @@ class DeckController(LiveUpdatedController):
 #                     return False
 #                 else:
 #                     return True
-#             # Called with moveToWell, knows slot -> keep z and check borders
+#             # Called with move_to_well, knows slot -> keep z and check borders
 #             elif slot is not None and slot == self.get_slot():
 #                 slot_dict = self.slots_list[int(self.get_slot()) - 1]
 #
@@ -579,7 +588,7 @@ class DeckController(LiveUpdatedController):
 #                     return False
 #                 else:
 #                     return True
-#             # Called with moveToWell, knows slot -> avoid collision and check borders
+#             # Called with move_to_well, knows slot -> avoid collision and check borders
 #             elif slot is not None and slot != self.get_slot():
 #                 slot_dict = self.slots_list[int(slot) - 1]
 #

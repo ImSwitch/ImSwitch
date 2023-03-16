@@ -40,7 +40,18 @@ class DeckScanWidget(NapariHybridWidget):
 
     sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
 
-    def addScanner(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
+    def update_z_autofocus(self, value):
+        self.z_focus = value
+        self.autofocusInitial.selectAll()
+        self.autofocusInitial.insert(str(value))
+        # TODO: could update the whole table: z_focus and absolute_values
+
+    def get_all_positions(self):
+        # TODO: implement
+
+        return []
+
+    def init_scan_list(self): #, detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
         self.scan_list.setColumnCount(5)
         self.scan_list.setHorizontalHeaderLabels(["Slot", "Well","Offset", "Z_focus","Absolute"])
@@ -96,12 +107,14 @@ class DeckScanWidget(NapariHybridWidget):
                         self.scan_list.insertRow(self.scan_list_items)
                         for column, data in enumerate(rowdata):
                             item = QtWidgets.QTableWidgetItem(data)
+                            if column == 4:
+                                # TODO: update absolute values with initial_z_focus
+                                pass
                             self.scan_list.setItem(self.scan_list_items, column, item)
                         self.scan_list_items += 1
         except:
             print("Action Open cancelled.")
 
-    # def __init__(self, *args, **kwargs):
     def __post_init__(self):
 
         # super().__init__(*args, **kwargs)
@@ -128,6 +141,7 @@ class DeckScanWidget(NapariHybridWidget):
         self.autofocusSteps = QtWidgets.QLineEdit('0.05')
         self.autofocusPeriod = QtWidgets.QLineEdit('1')
         self.autofocusInitial = QtWidgets.QLineEdit('0')
+        self.z_focus = float(self.autofocusInitial.text())
 
         self.autofocusLED1Checkbox = QtWidgets.QCheckBox('LED 1')
         self.autofocusLED1Checkbox.setCheckable(True)
@@ -193,7 +207,7 @@ class DeckScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.ScanShowLastButton, 10, 2, 1, 1)
         self.layer = None
 
-        self.addScanner()
+        self.init_scan_list()
 
 
     def isAutofocus(self):

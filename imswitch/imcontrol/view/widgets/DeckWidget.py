@@ -26,6 +26,8 @@ class DeckWidget(Widget):
     sigHomeAxisClicked = QtCore.Signal(str, str)
     sigStopAxisClicked = QtCore.Signal(str, str)
 
+    sigZeroZAxisClicked = QtCore.Signal(float)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -37,8 +39,10 @@ class DeckWidget(Widget):
         self.current_offset = (None, None)
         self.current_z_focus = None
         self.current_absolute_position = (None, None, None)
+        self.first_z_focus = 0.0
 
         self.__logger = initLogger(self, instanceName="OpentronsDeckWidget")
+
 
     # https://stackoverflow.com/questions/12608835/writing-a-qtablewidget-to-a-csv-or-xls
     # Extra blank row issue: https://stackoverflow.com/questions/3348460/csv-file-written-with-python-has-blank-lines-between-each-row
@@ -140,7 +144,7 @@ class DeckWidget(Widget):
 
     def add_zero(self, layout):
         # self.zero = guitools.BetterPushButton(text="ZERO")  # QtWidgets.QPushButton(corrds)
-        # TODO: implement ZERO
+        # TODO: implement ZERO -> solve ESP32StageManager/Motor issue with set_motor
         self.zero = guitools.BetterPushButton(text="ZERO Z-AXIS")  # QtWidgets.QPushButton(corrds)
         self.zero.setFixedSize(90, 30)
         # self.zero.setStyleSheet("background-color: black; font-size: 14px")
@@ -189,7 +193,7 @@ class DeckWidget(Widget):
         self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
         self.setLayout(self.main_grid_layout)
 
-    def addScanner(
+    def init_scan_list(
             self):  # , detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):
         self.scan_list = TableWidgetDragRows()
         self.scan_list.setColumnCount(5)
@@ -278,7 +282,7 @@ class DeckWidget(Widget):
         self.scan_list.insertRow(row_id)
         if row_id == 0:
             self.first_z_focus = self.current_z_focus
-            self.scan_list.setItem(row_id, 3, QtWidgets.QTableWidgetItem(str(self.current_z_focus)))
+            self.scan_list.setItem(row_id, 3, QtWidgets.QTableWidgetItem(str(0)))
         else:
             relative_z_focus = self.current_absolute_position[2] - self.first_z_focus
             self.scan_list.setItem(row_id, 3, QtWidgets.QTableWidgetItem(str(relative_z_focus)))
@@ -454,7 +458,7 @@ class DeckWidget(Widget):
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['Position' + parNameSuffix].setText(f'<strong>{position} um</strong>')
+        self.pars['Position' + parNameSuffix].setText(f'<strong>{round(position)} um</strong>') # TODO: depends if um or mm!
 
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -471,6 +475,8 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.columns = ["Slot", "Well", "Offset","Z_focus", "Absolute", "Pos_idx"]
+
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.viewport().setAcceptDrops(True)
@@ -480,6 +486,9 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+
+    def get_first_z_focus(self):
+        return float(self.item(0,3).text())
 
     def contextMenuEvent(self, event):
         if self.selectionModel().selection().indexes():
@@ -491,18 +500,19 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
             action = menu.exec_(self.mapToGlobal(event.pos()))
             if action == goto_action:
-                self.gotoAction(row)
+                self.got_to_action(row)
                 print(f"{row}, {column}")
             elif action == delete_action:
                 self.deleteSelected(row)
 
-    def gotoAction(self, row):
+    def got_to_action(self, row):
         # TODO: avoid hardcoded 4: Absolute
         if self.item(row, 4) is not None:
             absolute_position = tuple(map(float, self.item(row, 4).text().strip('()').split(',')))
-        print(f"Go to position {absolute_position}")
-        self.sigGoToTableClicked.emit(absolute_position)
-
+            print(f"Go to position {absolute_position}")
+            self.sigGoToTableClicked.emit(absolute_position)
+        else:
+            raise ValueError(f"Item in row {row} is of type None")
     def deleteSelected(self, row):
         self.removeRow(row)
         print(f"Deleted row {row}")

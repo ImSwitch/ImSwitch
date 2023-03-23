@@ -134,6 +134,7 @@ class Canvas(QtWidgets.QLabel):
 
     def setImage(self, npImage=None, pathImage='histo.jpg'):
         
+        return
         if npImage is None:
             npImage = np.array(cv2.imread(pathImage))
             npImage = cv2.resize(npImage, self.dimensions)

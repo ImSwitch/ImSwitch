@@ -152,8 +152,6 @@ class CameraGXIPY:
         self.camera.AcquisitionFrameRate.set(self.frame_rate)
         self.camera.AcquisitionFrameRateMode.set(gx.GxSwitchEntry.ON)
 
-
-        
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
@@ -187,9 +185,10 @@ class CameraGXIPY:
         #TODO: Napari only displays 8Bit?
         
         # only return fresh frames
-        if not self.lastFrameId == self.frameNumber:    
-            self.lastFrameId = self.frameNumber 
-            return self.frame
+        while(self.lastFrameId == self.frameNumber and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        self.lastFrameId = self.frameNumber 
+        return self.frame
 
 
 

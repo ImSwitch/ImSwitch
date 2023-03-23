@@ -66,7 +66,7 @@ class MCTController(ImConWidgetController):
         self._widget.mctStartButton.clicked.connect(self.startMCT)
         self._widget.mctStopButton.clicked.connect(self.stopMCT)
         self._widget.mctShowLastButton.clicked.connect(self.showLast)
-
+        
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
@@ -316,6 +316,7 @@ class MCTController(ImConWidgetController):
                 try:
                     # want to do autofocus?
                     autofocusParams = self._widget.getAutofocusValues()
+                    
                     if self._widget.isAutofocus() and np.mod(self.nImagesTaken, int(autofocusParams['valuePeriod'])) == 0:
                         self._widget.setnImagesTaken("Autofocusing...")
                         # turn on illuimination
@@ -420,6 +421,12 @@ class MCTController(ImConWidgetController):
         self._widget.gridLayer = None
         # iterate over all xy coordinates iteratively
 
+        # if we only have one light-source, keep it on during scanning
+        if (self.Laser1Value>0 + self.Laser2Value>0 + self.LEDValue>0)>1:
+            turnOffIlluInBetween = True
+        else:
+            turnOffIlluInBetween = False
+            
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break
@@ -432,6 +439,8 @@ class MCTController(ImConWidgetController):
                 frameNumber = self.detector.getFrameNumber()
             else:
                 frameNumber = -nFrameSyncWait
+
+
 
             # perform a z-stack
             for iZ in zStepsAbsolute:
@@ -454,7 +463,7 @@ class MCTController(ImConWidgetController):
                     #while self.detector.getFrameNumber()<(frameNumber+nFrameSyncWait):time.sleep(0.05)
                     #TODO: USE self._master.recordingManager.snap()
                     tif.imwrite(filePath, lastFrame, append=True)
-                    self.lasers[0].setEnabled(False)
+                    if turnOffIlluInBetween: self.lasers[0].setEnabled(False)
                     self.LastStackLaser1.append(lastFrame.copy())
 
                 if self.Laser2Value>0 and len(self.lasers)>0:
@@ -467,7 +476,7 @@ class MCTController(ImConWidgetController):
                     time.sleep(.05)
                     lastFrame = self.detector.getLatestFrame()
                     tif.imwrite(filePath, lastFrame, append=True)
-                    self.lasers[1].setEnabled(False)
+                    if turnOffIlluInBetween: self.lasers[1].setEnabled(False)
                     self.LastStackLaser2.append(lastFrame.copy())
 
                 if self.LEDValue>0 and len(self.leds)>0:
@@ -481,10 +490,10 @@ class MCTController(ImConWidgetController):
                         if len(self.leds)>0:
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)
-                        time.sleep(.05)
+                        time.sleep(.1)
                         lastFrame = self.detector.getLatestFrame()
                         tif.imwrite(filePath, lastFrame, append=True)
-                        self.leds[0].setEnabled(False)
+                        if turnOffIlluInBetween: self.leds[0].setEnabled(False)
                         self.LastStackLED.append(lastFrame.copy())
                     except:
                         pass

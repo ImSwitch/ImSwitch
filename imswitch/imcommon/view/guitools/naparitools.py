@@ -8,6 +8,13 @@ from vispy.color import Color
 from vispy.scene.visuals import Compound, Line, Markers
 from vispy.visuals.transforms import STTransform
 
+import matplotlib
+matplotlib.use('Qt5Agg')
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+import matplotlib.pyplot as plt
+
 from .imagetools import minmaxLevels
 
 
@@ -171,6 +178,85 @@ class NapariResetViewWidget(NapariBaseWidget):
         # Make sure widget isn't too big
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                                  QtWidgets.QSizePolicy.Maximum))
+
+    def _on_reset_view(self):
+        self.viewer.reset_view()
+
+    def _on_reset_axis_order(self):
+        order_curr = self.viewer.dims.order
+        self.viewer.dims.order = tuple(sorted(order_curr))
+        step_curr = self.viewer.dims.current_step
+        step_curr = [0 for _ in step_curr]
+        self.viewer.dims.current_step = tuple(step_curr)
+
+    def _on_set_axis_order(self):
+        order_new = [int(c) for c in self.setOrderLineEdit.text().split(',')]
+        self.viewer.dims.order = tuple(order_new)
+
+
+class MplCanvas(FigureCanvas):
+    """ Canvas for matplotlib figures in a qt gui layout.
+    Source code: https://www.pythonguis.com/tutorials/plotting-matplotlib/."""
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(MplCanvas, self).__init__(fig)
+
+
+class NapariSumImageWidget(NapariBaseWidget):
+    """ Napari widget for plotting the sum of individual frames in a stack. """
+
+    @property
+    def name(self):
+        return 'sum image widget'
+
+    def __init__(self, napariViewer):
+        super().__init__(napariViewer)
+
+        # Add matplotlib canvas
+        self.canvas = MplCanvas(self, width=5, height=4, dpi=100)
+
+        # Add buttons and edit fields
+        self.detector = QtWidgets.QLineEdit('Live: APDred')
+        self.step_deg = QtWidgets.QLineEdit('10')
+        self.resetPlotButton = QtWidgets.QPushButton('Reset plot')
+        self.updatePlotButton = QtWidgets.QPushButton('Update plot')
+        self.updatePlotButton.clicked.connect(self._plot_sum)
+        self.resetPlotButton.clicked.connect(self._reset_plot)
+
+        # Layout
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(self.detector)
+        self.layout().addWidget(self.step_deg)
+        self.layout().addWidget(self.resetPlotButton)
+        self.layout().addWidget(self.updatePlotButton)
+        self.layout().addWidget(self.canvas)
+
+        # Make sure widget isn't too big
+        self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                 QtWidgets.QSizePolicy.Maximum))
+        
+        self.__plot_num = 0
+
+    def _reset_plot(self):
+        self.canvas.axes.cla()
+        self.canvas.draw()
+        self.__plot_num = 0
+
+    def _plot_sum(self):
+        self.ydata = np.sum(self.viewer.layers[self.detector.text()].data[0],(-1,-2))
+        if self.ydata.ndim > 1:
+            self.ydata = np.swapaxes(self.ydata, 0, 1)
+        self.xdata = np.arange(len(self.ydata))*float(self.step_deg.text())
+        self.canvas.axes.plot(self.xdata, self.ydata, label=self.__plot_num)
+        if np.ndim(self.ydata) > 1:
+            ydata_mean = np.mean(self.ydata,axis=1)
+            self.canvas.axes.plot(self.xdata, ydata_mean, label=f'Mean {self.__plot_num}')
+        self.canvas.axes.legend(loc='lower right')
+        self.canvas.axes.autoscale(True)
+        self.canvas.draw()
+        self.__plot_num += 1
 
     def _on_reset_view(self):
         self.viewer.reset_view()

@@ -54,8 +54,8 @@ class StandaRotatorManager(RotatorManager):
     def stop_cont_rot(self):
         self._motor.stop_cont_rot()
 
-    def set_sync_in_pos(self, abs_pos_deg):
-        self._motor.set_sync_in_settings(abs_pos_deg)
+    def set_sync_in_set(self, abs_pos_deg, rel_shift, enabled):
+        self._motor.set_sync_in_settings(abs_pos_deg, rel_shift, enabled)
 
     def _getMotorObj(self, device_id, lib_loc, steps_per_turn, microsteps_per_step):
         try:

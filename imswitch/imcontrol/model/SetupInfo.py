@@ -205,10 +205,27 @@ class ScanInfo:
     If integer, it will be translated to "Dev1/port0/line{lineClockLine}".
     """
 
-    frameClockLine: Optional[Union[str, int]]
-    """ Line for frame clock output. ``null`` if not wanted or NI-DAQ is not used.
-    If integer, it will be translated to "Dev1/port0/line{frameClockLine}".
+    frameStartClockLine: Optional[Union[str, int]]
+    """ Line for frame startclock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{frameStartClockLine}".
     """
+
+    frameEndClockLine: Optional[Union[str, int]]
+    """ Line for frame end clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{frameEndClockLine}".
+    """
+
+
+@dataclass(frozen=True)
+class EtSTEDInfo:
+    detectorFast: str
+    """ Name of the STED detector to use. """
+
+    detectorSlow: str
+    """ Name of the widefield detector to use. """
+
+    laserFast: str
+    """ Name of the widefield laser to use. """
 
 
 @dataclass(frozen=True)

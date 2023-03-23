@@ -11,11 +11,13 @@ class ScanWidgetPointScan(SuperScanWidget):
 
         self.seqTimePar = QtWidgets.QLineEdit('0.02')  # ms
         self.phaseDelayPar = QtWidgets.QLineEdit('100')  # samples
+        self.d3StepDelayPar = QtWidgets.QLineEdit('1000')  # samples
         #self.extraLaserOnPar = QtWidgets.QLineEdit('10')  # samples
 
         self.scanPar = {
                         'seqTime': self.seqTimePar,
-                        'phaseDelay': self.phaseDelayPar
+                        'phaseDelay': self.phaseDelayPar,
+                        'frameDelay': self.d3StepDelayPar
                         }
 
         self.ttlParameters = {}
@@ -23,6 +25,7 @@ class ScanWidgetPointScan(SuperScanWidget):
         # Connect signals
         self.seqTimePar.textChanged.connect(self.sigSeqTimeParChanged)
         self.phaseDelayPar.textChanged.connect(self.sigStageParChanged)
+        self.d3StepDelayPar.textChanged.connect(self.sigStageParChanged)
         #self.extraLaserOnPar.textChanged.connect(self.sigStageParChanged)  # for debugging
 
     def initControls(self, positionerNames, TTLDeviceNames):
@@ -128,6 +131,12 @@ class ScanWidgetPointScan(SuperScanWidget):
         self.grid.addWidget(QtWidgets.QLabel('Phase delay (samples):'), currentRow, 5)
         self.grid.addWidget(self.phaseDelayPar, currentRow, 6)
 
+        currentRow += 1
+        
+        # Add scan d3 step delay parameter
+        self.grid.addWidget(QtWidgets.QLabel('D3 step delay (samples):'), currentRow, 5)
+        self.grid.addWidget(self.d3StepDelayPar, currentRow, 6)
+
         #currentRow += 1
         
         # Add detection phase delay parameter
@@ -202,6 +211,9 @@ class ScanWidgetPointScan(SuperScanWidget):
     def getPhaseDelayPar(self):
         return float(self.phaseDelayPar.text())
 
+    def getd3StepDelayPar(self):
+        return float(self.d3StepDelayPar.text())
+
     #def getExtraLaserOnPar(self):
     #    return float(self.extraLaserOnPar.text())
 
@@ -225,6 +237,12 @@ class ScanWidgetPointScan(SuperScanWidget):
 
     def setPhaseDelayPar(self, phaseDelayPar):
         self.phaseDelayPar.setText(str(round(int(phaseDelayPar))))
+
+    def setd3StepDelayPar(self, d3StepDelayPar):
+        self.d3StepDelayPar.setText(str(round(int(d3StepDelayPar))))
+
+    def setScanMode(self):
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

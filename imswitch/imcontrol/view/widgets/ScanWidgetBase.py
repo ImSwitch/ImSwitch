@@ -67,10 +67,8 @@ class SuperScanWidget(Widget):
     def getTTLIncluded(self, deviceName):
         pass
 
+    @abstractmethod
     def setScanMode(self):
-        pass
-
-    def setContLaserMode(self):
         pass
 
     def repeatEnabled(self):

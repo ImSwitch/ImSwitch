@@ -75,7 +75,7 @@ class APDManager(DetectorManager):
                 lambda pixels, pos: self.updateImage(pixels, pos)
             )
             self._scanWorker.acqDoneSignal.connect(self.stopAcquisitionLocal)
-            self._scanWorker.newFrame.connect(lambda: self.sigNewFrame.emit())
+            self._scanWorker.d3Step.connect(lambda: self.sigNewFrame.emit())
 
     def startScan(self):
         if self.acquisition:
@@ -122,7 +122,6 @@ class APDManager(DetectorManager):
         self.setPixelSize(px_sizes[::-1])
 
     def updateImage(self, pixels, pos: tuple):
-        pass
         # pos: tuple with current pos for new pixels to be entered, from high dim to low dim (ending at d2)
         (*pos_rest, pos_d2) = (0,) + pos
         img_slice = tuple(pos_rest)+tuple([pos_d2,])
@@ -137,7 +136,7 @@ class APDManager(DetectorManager):
         img_dims_extra = tuple(reversed((*img_dims,1)))
         if np.shape(self._image) != img_dims_extra:
             self._image = np.zeros(img_dims_extra)
-            self.setShape(img_dims_extra)  # not sure it will work. Previous order: [1],[0],[2], even if self._image was [2],[1],[0]
+            self.setShape(img_dims_extra)
 
     def setParameter(self, name, value):
         pass
@@ -148,7 +147,6 @@ class APDManager(DetectorManager):
     def setBinning(self, binning):
         super().setBinning(binning)
 
-    # TODO: potentially fix for d>3, currently returns last finished frame
     def getChunk(self):
         if self.__newFrameReady and self.__currSlice[-1] > 0:
             self.__newFrameReady = False
@@ -176,10 +174,10 @@ class APDManager(DetectorManager):
         
     @property
     def pixelSizeUm(self):
-        return [1, self.__pixel_sizes[-2], self.__pixel_sizes[-1]]
+        return [1, *self.__pixel_sizes]
 
     def setPixelSize(self, pixel_sizes: list):
-        """ pixel_sizes: list of low dim to high dim. """
+        # pixel_sizes: list of low dim to high dim
         self.__pixel_sizes = pixel_sizes
 
     def crop(self, hpos, vpos, hsize, vsize):
@@ -210,8 +208,7 @@ class APDManager(DetectorManager):
 
 class ScanWorker(Worker):
     d2Step = Signal(np.ndarray, tuple)
-    newLine = Signal(np.ndarray, int, int)
-    newFrame = Signal()
+    d3Step = Signal()
     acqDoneSignal = Signal()
 
     def __init__(self, manager, scanInfoDict, signalDict):
@@ -284,7 +281,7 @@ class ScanWorker(Worker):
         """
         if datalen > 0:
             throwdata = self._manager._nidaqManager.readInputTask(self._name, datalen)
-            self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+            #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
             self._last_value = throwdata[-1]
             self._samples_read += datalen
 
@@ -292,7 +289,7 @@ class ScanWorker(Worker):
         """ Read data with length datalen and add length of data to total samples_read length.
         """
         data = self._manager._nidaqManager.readInputTask(self._name, datalen)
-        self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+        #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
         self._samples_read += datalen
         return data
 
@@ -330,7 +327,7 @@ class ScanWorker(Worker):
         # start looping through all dimensions to record data, starting with the outermost dimension
         self.run_loop_dx(dim=len(self._img_dims))
 
-        # throw acquisition-final positioning datae
+        # throw acquisition-final positioning data
         self.throwdata(self._throw_startzero + self._throw_finalpos)
         self.acqDoneSignal.emit()
 
@@ -346,6 +343,7 @@ class ScanWorker(Worker):
                 self.run_loop_dx(dim-1)
                 if dim == 3:
                     # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
+                    self.d3Step.emit()
                     throwdatalen_term1_terms = np.copy(self._pos[2:])
                     for n in range(len(self._img_dims),3,-1):
                         for m in range(n-1,2,-1):
@@ -356,7 +354,7 @@ class ScanWorker(Worker):
                     if throwdatalen > 0:
                         self.throwdata(throwdatalen)
                 if dim > 3:
-                    self.throwdata(self._samples_padlens[dim-1])                  
+                    self.throwdata(self._samples_padlens[dim-1])  
             else:
                 self.run_loop_d2()
             self._pos[dim-1] += 1

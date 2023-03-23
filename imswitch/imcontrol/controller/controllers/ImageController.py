@@ -56,7 +56,8 @@ class ImageController(LiveUpdatedController):
 
     def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update new image in the viewbox. """
-        if np.prod(im.shape)>1: # TODO: This seems weird!
+        if np.prod(im.shape)>1:
+
             if not init:
                 self.autoLevels([detectorName], im)
 

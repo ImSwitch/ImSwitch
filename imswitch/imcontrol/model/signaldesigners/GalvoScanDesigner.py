@@ -67,9 +67,9 @@ class GalvoScanDesigner(ScanDesigner):
         self.__timestep = 1e6 / setupInfo.scan.sampleRate
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
-        self.__minsettlingtime = 1000
+        self.__paddingtime_d3step = int(parameterDict['d3step_delay'])
         # arbitrary for now  µs
-        self.__paddingtime = 1000
+        self.__paddingtime_full = 1000
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -155,7 +155,7 @@ class GalvoScanDesigner(ScanDesigner):
         # d>2 axes signals - all generated as pure step signals
         if axis_count_scan > 2:
             for axis in range(2, axis_count_scan):
-                pos, pad_max = self.__zero_padding(pos, padlen_base=0)
+                pos, pad_max = self.__zero_padding(pos, padlen_base=[0,0])
                 pad_maxes.append(pad_max)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
                 smooth = False if 'mock' in self.axis_devs_order[axis].lower() else True
@@ -164,7 +164,7 @@ class GalvoScanDesigner(ScanDesigner):
                 n_scan_samples_dx.append(len(pos[0]))
 
         # pad all signals with zeros, for initial and final settling of galvos and safety start and end
-        axis_signals, pad_max = self.__zero_padding(pos, padlen_base=int(round(self.__paddingtime / self.__timestep)))
+        axis_signals, pad_max = self.__zero_padding(pos, padlen_base=[int(round(self.__paddingtime_full / self.__timestep)),int(round(self.__paddingtime_full / self.__timestep))])
         pad_maxes.append(pad_max)
 
         # add all signals to a signal dictionary
@@ -180,7 +180,7 @@ class GalvoScanDesigner(ScanDesigner):
             'pixel_sizes': pixel_sizes,
             'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
             'scan_samples_total': len(axis_signals[0]),
-            'scan_throw_startzero': int(round(self.__paddingtime / self.__timestep)),
+            'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
             'scan_throw_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
             'scan_throw_startacc': self._samples_startacc,
@@ -209,7 +209,7 @@ class GalvoScanDesigner(ScanDesigner):
         t_acc_d1 = vel_max[0] / acc_max[0]
         t_initpos_d2 = t_initpos_vc_d2 + 2 * t_acc_d2
         t_initpos_d1 = t_initpos_vc_d1 + 2 * t_acc_d1
-        settlingtime = self.__minsettlingtime + np.max([0, t_initpos_d2 - t_initpos_d1])
+        settlingtime = self.__paddingtime_d3step + np.max([0, t_initpos_d2 - t_initpos_d1])
         return settlingtime
 
     def __generate_smooth_scan(self, parameterDict, v_max, a_max, n_d2):
@@ -525,7 +525,7 @@ class GalvoScanDesigner(ScanDesigner):
         """ Pad zeros to the beginning and end of all scanning curves. """
         pos_ret = []  # return array of padded axis signals
         n_axes = len(pos)  # number of axes
-        padlens = [np.array([padlen_base, padlen_base]) for i in range(n_axes)]  # basic padding length added to arrays for all axes
+        padlens = [np.array(padlen_base) for i in range(n_axes)]  # basic padding length added to arrays for all axes
         # calculate padding lengths for all axes
         # get longest axis index
         pos_lens = [len(pos_i) for pos_i in pos]

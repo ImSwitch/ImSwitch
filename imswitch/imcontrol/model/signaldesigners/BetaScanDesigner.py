@@ -135,6 +135,9 @@ class BetaScanDesigner(ScanDesigner):
             'positions': [fast_axis_positions, middle_axis_positions, slow_axis_positions],
             'return_time': parameterDict['return_time']
         }
+
+        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 
     def __makeRamp(self, start, end, samples):
@@ -150,6 +153,15 @@ class BetaScanDesigner(ScanDesigner):
         signal = np.append(signal, end * np.ones(int(np.ceil((1 - curve_half) * samples))))
         return signal
 
+    def __plot_curves(self, plot, signals):
+        """ Plot all scan curves, for debugging. """
+        if plot:
+            import matplotlib.pyplot as plt
+            plt.figure(1)
+            plt.clf()
+            for i, signal in enumerate(signals):
+                plt.plot(signal - 0.01 * i)
+            plt.show()
 
 # Copyright (C) 2020, 2021 TestaLab
 # This file is part of ImSwitch.

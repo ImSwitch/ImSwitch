@@ -47,8 +47,13 @@ class AAAOTFLaserManager(LaserManager):
         self._rs232manager.write(cmd)
 
     def internalControl(self):
-        """Switch the channel to external control"""
+        """Switch the channel to internal control"""
         cmd = 'L' + str(self._channel) + 'I1'
+        self._rs232manager.write(cmd)
+
+    def externalControl(self):
+        """Switch the channel to external control"""
+        cmd = 'L' + str(self._channel) + 'I0'
         self._rs232manager.write(cmd)
 
 

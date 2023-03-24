@@ -206,6 +206,9 @@ class ScanInfo:
     sampleRate: int
     """ Scan sample rate. """
 
+    maxScanTimeMin: Optional[int]
+    """ Maximum scan time allowed, in minutes. """
+
     lineClockLine: Optional[Union[str, int]]
     """ Line for line clock output. ``null`` if not wanted or NI-DAQ is not used.
     If integer, it will be translated to "Dev1/port0/line{lineClockLine}".

@@ -215,27 +215,30 @@ class MCTController(ImConWidgetController):
 
     def showLast(self, isCleanStack=False):
         #  isCleanStack=False => subtract backgroudn or not
-        try:
-            #subtract background and normalize stack
-            if isCleanStack: LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
-            else: LastStackLaser1ArrayLast = self.LastStackLaser1ArrayLast
-            self._widget.setImage(LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
-        except  Exception as e:
-            self._logger.error(e)
+        if hasattr(self, "LastStackLaser1ArrayLast"):
+            try:
+                #subtract background and normalize stack
+                if isCleanStack: LastStackLaser1ArrayLast = self.cleanStack(self.LastStackLaser1ArrayLast)
+                else: LastStackLaser1ArrayLast = self.LastStackLaser1ArrayLast
+                self._widget.setImage(LastStackLaser1ArrayLast, colormap="green", name="GFP",pixelsize=self.pixelsize)
+            except  Exception as e:
+                self._logger.error(e)
 
-        try:
-            if isCleanStack: LastStackLaser2ArrayLast = self.cleanStack(self.LastStackLaser2ArrayLast)
-            else: LastStackLaser2ArrayLast = self.LastStackLaser2ArrayLast
-            self._widget.setImage(LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
-        except Exception as e:
-            self._logger.error(e)
+        if hasattr(self, "LastStackLaser2ArrayLast"):
+            try:
+                if isCleanStack: LastStackLaser2ArrayLast = self.cleanStack(self.LastStackLaser2ArrayLast)
+                else: LastStackLaser2ArrayLast = self.LastStackLaser2ArrayLast
+                self._widget.setImage(LastStackLaser2ArrayLast, colormap="red", name="SiR",pixelsize=self.pixelsize)
+            except Exception as e:
+                self._logger.error(e)
 
-        try:
-            if isCleanStack: LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
-            else: LastStackLEDArrayLast = self.LastStackLEDArrayLast
-            self._widget.setImage(LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
-        except  Exception as e:
-            self._logger.error(e)
+        if hasattr(self, "LastStackLEDArrayLast"):
+            try:
+                if isCleanStack: LastStackLEDArrayLast = self.cleanStack(self.LastStackLEDArrayLast)
+                else: LastStackLEDArrayLast = self.LastStackLEDArrayLast
+                self._widget.setImage(LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsize=self.pixelsize)
+            except  Exception as e:
+                self._logger.error(e)
 
     def cleanStack(self, input):
         import NanoImagingPack as nip
@@ -343,7 +346,7 @@ class MCTController(ImConWidgetController):
 
                     # sneak images into arrays for displaying stack
                     if self.zStackEnabled and not self.xyScanEnabled:
-                        self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
+                        self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
                         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 

@@ -109,10 +109,6 @@ class EtMonalisaController(ImConWidgetController):
         """ Initiate or stop an etMonalisa experiment. """
         if not self.__running:
 
-            self._master.standManager._subManager.setFLUO()
-            time.sleep(1)
-            self._master.standManager._subManager.setILshutter(1)
-
             detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
             laserFastIdx = self._widget.fastImgLasersPar.currentIndex()
@@ -137,6 +133,11 @@ class EtMonalisaController(ImConWidgetController):
                 self.__runMode = RunMode.Validate
             else:
                 self.__runMode = RunMode.Experiment
+            # Switch to FLUO if in experiment mode
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.setFLUO()
+                time.sleep(1)
+                self._master.standManager._subManager.setILshutter(1)
             # check if visualization or validation mode
             if self.__runMode == RunMode.Validate or self.__runMode == RunMode.Visualize:
                 self.launchHelpWidget()
@@ -243,6 +244,12 @@ class EtMonalisaController(ImConWidgetController):
     def continueFastModality(self):
         """ Continue the fast method, after an event scan has been performed. """
         if self._widget.endlessScanCheck.isChecked() and not self.__running:
+            # switch back to FLUO mode if experiment mode
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.setFLUO()
+                time.sleep(1)
+                self._master.standManager._subManager.setILshutter(1)
+                time.sleep(0.1) #to ensure that next detected event is not just the LEDs turning on
             # connect communication channel signals
             self._commChannel.sigUpdateImage.connect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(True))
@@ -595,6 +602,9 @@ class EtMonalisaController(ImConWidgetController):
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)
             self._master.lasersManager.execOn(self.laserFast, lambda l: l.setEnabled(False))
             self.__running = False
+            if self.__runMode == RunMode.Experiment:
+                self._master.standManager._subManager.setCS()
+                time.sleep(1)
 
     def getFlipWf(self):
         return self.__flipwfcalib

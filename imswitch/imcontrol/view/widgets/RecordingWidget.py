@@ -23,6 +23,7 @@ class RecordingWidget(Widget):
     sigUntilStopPicked = QtCore.Signal()
 
     sigsaveFormatChanged = QtCore.Signal()
+    sigsaveSnapFormatChanged = QtCore.Signal()
     sigSnapSaveModeChanged = QtCore.Signal()
     sigRecSaveModeChanged = QtCore.Signal()
 
@@ -97,6 +98,10 @@ class RecordingWidget(Widget):
         self.saveFormatLabel = QtWidgets.QLabel('<strong>File format:</strong>')
         self.saveFormatList = QtWidgets.QComboBox()
         self.saveFormatList.addItems(['HDF5', 'TIFF', 'ZARR'])
+
+        self.saveSnapFormatLabel = QtWidgets.QLabel('<strong>Snap format:</strong>')
+        self.saveSnapFormatList = QtWidgets.QComboBox()
+        self.saveSnapFormatList.addItems(['HDF5', 'TIFF', 'ZARR'])
 
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
         self.snapSaveModeList = QtWidgets.QComboBox()
@@ -177,6 +182,10 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.saveFormatList, gridRow, 1, 1, -1)
         gridRow += 1
 
+        recGrid.addWidget(self.saveSnapFormatLabel, gridRow, 0)
+        recGrid.addWidget(self.saveSnapFormatList, gridRow, 1, 1, -1)
+        gridRow += 1
+
         recGrid.addWidget(self.snapSaveModeLabel, gridRow, 0)
         recGrid.addWidget(self.snapSaveModeList, gridRow, 1, 1, -1)
         gridRow += 1
@@ -208,6 +217,7 @@ class RecordingWidget(Widget):
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
 
         self.saveFormatList.currentIndexChanged.connect(self.sigsaveFormatChanged)
+        self.saveSnapFormatList.currentIndexChanged.connect(self.sigsaveSnapFormatChanged)
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
 
@@ -230,6 +240,9 @@ class RecordingWidget(Widget):
 
     def getSaveFormat(self):
         return self.saveFormatList.currentIndex() + 1
+
+    def getSaveSnapFormat(self):
+        return self.saveSnapFormatList.currentIndex() + 1
 
     def getSnapSaveMode(self):
         return self.snapSaveModeList.currentIndex() + 1

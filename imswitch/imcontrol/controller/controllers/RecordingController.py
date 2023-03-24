@@ -99,7 +99,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getSaveFormat()),
+                                           SaveFormat(self._widget.getSaveSnapFormat()),
                                            attrs)
         
     def snapNumpy(self):
@@ -135,7 +135,7 @@ class RecordingController(ImConWidgetController):
 
         self._master.recordingManager.snapImagePrev(detectorName,
                                                     savename,
-                                                    SaveFormat(self._widget.getSaveFormat()),
+                                                    SaveFormat(self._widget.getSaveSnapFormat()),
                                                     image,
                                                     attrs)
 

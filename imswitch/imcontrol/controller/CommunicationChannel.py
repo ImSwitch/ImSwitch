@@ -150,6 +150,30 @@ class CommunicationChannel(SignalInterface):
         image = self.get_image()
         self.output.append(image)
         return image
+        from io import BytesIO
+        import numpy as np
+        from PIL import Image
+        from fastapi import FastAPI
+        from fastapi.responses import StreamingResponse
+
+        app = FastAPI()
+
+        @app.get("/image")
+        async def get_image():
+            # Generate a NumPy array representing an image
+            img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
+            img_arr[:, :, 0] = 255  # set red channel to max value
+            
+            # Convert NumPy array to PIL Image
+            img = Image.fromarray(img_arr)
+            
+            # Save PIL Image to BytesIO buffer
+            img_bytes = BytesIO()
+            img.save(img_bytes, format="png")
+            
+            # Return image as StreamingResponse
+            img_bytes.seek(0)
+            return StreamingResponse(img_bytes, media_type="image/png")
 
     def runScript(self, text):
         self.output = []

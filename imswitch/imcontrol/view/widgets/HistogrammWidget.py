@@ -30,10 +30,9 @@ class HistogrammWidget(NapariHybridWidget):
         grid.addWidget(self.HistogrammGraph, 0, 0, 1, 1)
 
 
-    def setImage(self, im):
-        if self.layer is None or self.layer.name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, name="Histogramm", blending='additive')
-        self.layer.data = im
+    def setHistogrammData(self, units, hist):
+        self.histogrammPlotCurve.setData(units,hist)
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

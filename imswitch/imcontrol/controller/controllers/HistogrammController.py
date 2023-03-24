@@ -32,13 +32,12 @@ class HistogrammController(LiveUpdatedController):
 
 
         # compute histogramm and show
-        hist, bins = np.histogram(im[:], bins=50)
-        width = 0.7 * (bins[1] - bins[0])
-        center = (bins[:-1] + bins[1:]) / 2
-
+        nBins = 100
+        hist, bins = np.histogram(im[:], bins=nBins)
+        units = np.linspace(0, 2**10, nBins)
         # display the curve
-        self._widget.histogrammPlotCurve.setData(center,hist)
-
+        self._widget.setHistogrammData(units,hist)
+        
 
 
 

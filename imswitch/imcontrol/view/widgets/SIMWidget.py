@@ -1,7 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
-
+from pyqtgraph.parametertree import ParameterTree
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
@@ -44,16 +44,11 @@ class SIMWidget(NapariHybridWidget):
         # Button to apply changes
         #self.applyChangesButton = guitools.BetterPushButton('Apply changes')
         
-        self.startSIMAcquisition = guitools.BetterPushButton('Start SIM')
-        self.stopSIMAcquisition = guitools.BetterPushButton('Stop SIM')
+        self.startSIMAcquisition = guitools.BetterPushButton('Start')
         self.isRecordingButton = guitools.BetterPushButton("Start Recording")
+        self.is488LaserButton = guitools.BetterPushButton("488 on")
+        self.is635LaserButton = guitools.BetterPushButton("635 on")
         
-
-        # Control panel with most buttons
-        self.controlPanel = QtWidgets.QFrame()
-        #self.controlPanel.choiceInterfaceLayout = QtWidgets.QGridLayout()
-        #self.controlPanel.choiceInterface = QtWidgets.QWidget()
-        #self.controlPanel.choiceInterface.setLayout(self.controlPanel.choiceInterfaceLayout)
 
         #Enter the frames to wait for frame-sync
         self.simFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
@@ -67,36 +62,72 @@ class SIMWidget(NapariHybridWidget):
         self.patternIDBox.valueChanged.connect(self.sigPatternID)
         #self.simDisplayLayout.addWidget(self.patternIDBox)
 
+        # parameter tree for SIM reconstruction paramters
+        self.SIMParameterTree = ParameterTree()
+        self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
+            {'name': 'wavelength (p1)', 'type': 'int', 'value': 488, 'limits': (400, 700), 'step': 1,
+             'suffix': 'nm'},
+            {'name': 'wavelength (p2)', 'type': 'int', 'value': 635, 'limits': (400, 700), 'step': 1,
+             'suffix': 'nm'},
+            {'name': 'NA', 'type': 'float', 'value': 0.85, 'limits': (0, 1.6), 'step': 0.05,
+             'suffix': 'A.U.'},
+            {'name': 'n', 'type': 'float', 'value': 1.0, 'limits': (1.0, 1.6),
+             'step': 0.1,
+             'suffix': 'A.U.'},
+            {'name': 'pixelsize', 'type': 'float', 'value': 6.5, 'limits': (0.1, 20),
+             'step': 0.1,
+             'suffix': 'µm'}
+        ]}]
+        self.SIMParameterTree.setStyleSheet("""
+        QTreeView::item, QAbstractSpinBox, QComboBox {
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
 
-        # Defining layout
-        self.controlPanel.arrowsFrame = QtWidgets.QFrame()
-        self.controlPanel.arrowsLayout = QtWidgets.QGridLayout()
-        self.controlPanel.arrowsFrame.setLayout(self.controlPanel.arrowsLayout)
+        QComboBox QAbstractItemView {
+            min-width: 128px;
+        }
+        """)
+        self.SIMParameterTree.p = pg.parametertree.Parameter.create(name='params', type='group',
+                                                                    children=self.generalparams)
+        self.SIMParameterTree.setParameters(self.SIMParameterTree.p, showTop=False)
+        self.SIMParameterTree._writable = True
 
-        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.loadButton, 0, 3)
-        #self.controlPanel.arrowsLayout.addWidget(self.controlPanel.saveButton, 1, 3)
+        self.paramtreeDockArea = pg.dockarea.DockArea()
+        pmtreeDock = pg.dockarea.Dock('SIM Recon Parameters', size=(1, 1))
+        pmtreeDock.addWidget(self.SIMParameterTree)
+        self.paramtreeDockArea.addDock(pmtreeDock)
+        
+        # Select reconstructor
+        self.SIMReconstructorLabel = QtWidgets.QLabel('<strong>SIM Processor:</strong>')
+        self.SIMReconstructorList = QtWidgets.QComboBox()
+        self.SIMReconstructorList.addItems(['napari', 'mcsim'])
+        
+        self.useGPUCheckbox = QtWidgets.QCheckBox('Use GPU?')
+        self.useGPUCheckbox.setCheckable(True)
 
-        # Definition of the box layout:
-        self.controlPanel.boxLayout = QtWidgets.QVBoxLayout()
-        self.controlPanel.setLayout(self.controlPanel.boxLayout)
-
-        #self.controlPanel.boxLayout.addWidget(self.controlPanel.choiceInterface)
-        #self.controlPanel.boxLayout.addWidget(self.controlPanel.arrowsFrame)
-
+        # Assign locations for gui elements
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
-        self.grid.addWidget(self.stopSIMAcquisition, 2, 0, 1, 1)
-        self.grid.addWidget(self.isRecordingButton, 3, 0, 1, 1)
-        self.grid.addLayout(self.simDisplayLayout, 3, 1, 1, 1)
-        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+        self.grid.addWidget(self.isRecordingButton, 1, 1, 1, 1)
         
-        # 2nd column
-        self.grid.addWidget(self.simFrameSyncLabel, 1, 1, 1, 1)
-        self.grid.addWidget(self.simFrameSyncVal, 2, 1, 1, 1)
+        
+        # Laser control
+        self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)
+        self.grid.addWidget(self.is635LaserButton, 2, 1, 1, 1)
+        self.grid.addWidget(self.useGPUCheckbox, 2,2,1,1)
 
+        # Reconstructor
+        self.grid.addWidget(self.SIMReconstructorLabel, 3, 0, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorList, 3, 1, 1, 1)
+            
+        # SIM parameters 
+        self.grid.addWidget(self.paramtreeDockArea, 4, 0, 3, 2)
+        
         self.layer = None
 
     def initSIMDisplay(self, monitor):

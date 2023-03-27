@@ -3,8 +3,6 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
-
-import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
 
 class TriggerMode:
@@ -130,21 +128,15 @@ class CameraWebcam:
     def getPropertyValue(self, property_name):
         # Check if the property exists.
         if property_name == "gain":
-            property_value = self.camera.Gain.get()
+            property_value = 0# self.camera.Gain.get()
         elif property_name == "exposure":
-            property_value = self.camera.ExposureTime.get()
+            property_value = 0# self.camera.ExposureTime.get()
         elif property_name == "blacklevel":
             property_value = self.camera.BlackLevel.get()            
-        elif property_name == "image_width":
+        elif property_name == 0:# "image_width":
             property_value = self.camera.Width.get()//self.binning         
         elif property_name == "image_height":
-            property_value = self.camera.Height.get()//self.binning
-        elif property_name == "roi_size":
-            property_value = self.roi_size 
-        elif property_name == "frame_Rate":
-            property_value = self.frame_rate 
-        elif property_name == "trigger_source":
-            property_value = self.trigger_source
+            property_value = 0 #self.camera.Height.get()//self.binning
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

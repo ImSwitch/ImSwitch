@@ -167,25 +167,6 @@ class WebcamManager(DetectorManager):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-
-        def cropAction():
-            self.__logger.debug(
-                f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            )
-            self._camera.setROI(hpos, vpos, hsize, vsize)
-            # TOdO: weird hackaround
-            self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
-            self._frameStart = (hpos, vpos)
-            pass
-        try:
-            self._performSafeCameraAction(cropAction)
-        except Exception as e:
-            self.__logger.error(e)
-            # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-        
-        # Only place self.shapes is changed
-        
         pass 
 
     def _performSafeCameraAction(self, function):

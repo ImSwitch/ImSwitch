@@ -181,7 +181,8 @@ class AVManager(DetectorManager):
 
     def flushBuffer(self):
         self.__logger.info('Flush buffer!')
-        pass 
+        self._camera.flushBuffer()
+        
     
     def closeEvent(self):
         self._camera.close()

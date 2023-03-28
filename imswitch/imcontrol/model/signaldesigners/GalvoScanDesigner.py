@@ -178,7 +178,7 @@ class GalvoScanDesigner(ScanDesigner):
                 pad_maxes[axis-1] += pad_max
                 #pad_maxes.append(pad_max)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
-                #n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
+                n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
                 pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
                 if pad_prev_axis:
                     pos, pad_max = self.__zero_padding(pos, padlen_base=pad_prev_axis)

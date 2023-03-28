@@ -70,7 +70,6 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     seq_axis = 'None'
             seq_txt = parameterDict['TTL_sequence'][i]
             seq = self.__decode_sequence(seq_txt)
-            self._logger.debug(f'Seq axis: {seq_axis}')
             if seq_axis == 'None':
                 # no ttl sequences along axes
                 # repeat start of sequence to d1 axis length
@@ -130,7 +129,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     signal_d2 = signal_d2_base
                 print(len(signal_d2))
                 # adjust to d3 step len 
-                signal_d2 = np.append(signal_d2, np.zeros(self.zeropad_extrapad[1], dtype='bool'))
+                signal_d2 = np.append(signal_d2, np.zeros(self.zeropad_extrapad[1]))
                 if any(self.smooth_axes[:2]):
                     zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d2)
                     if zeropad_toframelen > 0:
@@ -159,7 +158,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     self.__init_added = True
                 else:
                     signal_d3 = signal_d3_base
-                signal_d3 = np.append(signal_d3, np.zeros(self.zeropad_extrapad[1], dtype='bool'))
+                # adjust to d3 step len 
+                signal_d3 = np.append(signal_d3, np.zeros(self.zeropad_extrapad[1]))
                 # adjust to d3 step len 
                 zeropad_toframelen = n_scan_samples_dx[2] - len(signal_d3)
                 if any(self.smooth_axes[:2]):
@@ -171,7 +171,6 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # repeat signal for all additional scan axes, if applicable
                 signal = self.__repeat_remaining_axes(signal=signal_d3, n_steps_dx=n_steps_dx, axis_start=2, axis_end=axis_count, initpad=self.signal_d3_initpad)
             elif seq_axis == 2:
-                self._logger.debug(target)
                 # ttl sequence along third (frame) axis
                 # repeat sequence to d3 axis length
                 seq = np.resize(seq, n_steps_dx[2])
@@ -185,21 +184,14 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 signal_d4 = np.array([])
                 for step in seq:
                     signal_d4 = np.append(signal_d4, on_d3_step) if step else np.append(signal_d4, off_d3_step)
-                    self._logger.debug(f'length of signal_d4: {len(signal_d4)}')
-                if not any(self.smooth_axes[:2]) and self.smooth_axes[seq_axis]:
-                    signal_d4 = np.append(self.signal_d3_initpad, signal_d4)
-                    self.__init_added = True
-                    self._logger.debug(f'add initpad, no smooth :2, smooth 2: length of signal_d4: {len(signal_d4)}')
-                # adjust to d4 step len
+                # adjust to d4 step len 
                 zeropad_toframelen = n_scan_samples_dx[3] - len(signal_d4)
                 if zeropad_toframelen > 0:
                     signal_d4 = np.append(signal_d4, np.zeros(zeropad_toframelen, dtype='bool'))
-                    self._logger.debug(f'zeropadframelen+: length of signal_d4: {len(signal_d4)}')
                 elif zeropad_toframelen < 0:
                     signal_d4 = signal_d4[-zeropad_toframelen:]
-                    self._logger.debug(f'zeropadframelen-: length of signal_d4: {len(signal_d4)}')
                 # repeat signal for all additional scan axes, if applicable
-                signal = self.__repeat_remaining_axes(signal=signal_d4, n_steps_dx=n_steps_dx, axis_start=3, axis_end=axis_count, initpad=self.signal_d3_initpad)
+                signal = self.__repeat_remaining_axes(signal=signal_d4, n_steps_dx=n_steps_dx, axis_start=3, axis_end=axis_count, initpad=None)
             elif seq_axis == 3:
                 # ttl sequence along fourth (timelapse) axis
                 # repeat sequence to d4 axis length
@@ -224,7 +216,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 elif zeropad_toframelen < 0:
                     signal_d5 = signal_d5[-zeropad_toframelen:]
                 # repeat signal for all additional scan axes, if applicable
-                signal = self.__repeat_remaining_axes(signal=signal_d5, n_steps_dx=n_steps_dx, axis_start=4, axis_end=axis_count, initpad=self.signal_d3_initpad)
+                signal = self.__repeat_remaining_axes(signal=signal_d5, n_steps_dx=n_steps_dx, axis_start=4, axis_end=axis_count, initpad=None)
             
             # pad start zeros
             signal = np.append(np.zeros(zeropad_start, dtype='bool'), signal)
@@ -242,14 +234,14 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
         # Generate line and frame clocks
         # line clock
-        #line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=True, clock_len=clock_len)
-        #signal_dict['line_clock'] = line_clock.astype(bool)
+        line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=True, clock_len=clock_len)
+        signal_dict['line_clock'] = line_clock.astype(bool)
         # frame start clock
-        #frame_start_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_start=True, clock_len=clock_len)
-        #signal_dict['frame_start_clock'] = frame_start_clock.astype(bool)
+        frame_start_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_start=True, clock_len=clock_len)
+        signal_dict['frame_start_clock'] = frame_start_clock.astype(bool)
         # frame end clock
-        #frame_end_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_end=True, clock_len=clock_len)
-        #signal_dict['frame_end_clock'] = frame_end_clock.astype(bool)
+        frame_end_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, zeropad_startacc, zeropad_settling, zeropad_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_end=True, clock_len=clock_len)
+        signal_dict['frame_end_clock'] = frame_end_clock.astype(bool)
 
         self.__plot_curves(plot=True, signals=signal_dict, targets=targets)#+['frame_start_clock','frame_end_clock','line_clock'])  # for debugging
 
@@ -303,9 +295,9 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         """ Create a full d3 step signal. """
         d3_step_base = np.tile(d2_period, n_steps_d2 - 1)
         d3_step_base = np.append(d3_step_base, d2_step)
-        self.signal_d3_initpad = np.zeros(samples_zeropad_step, dtype='bool')
+        signal_d3_initpad = np.zeros(samples_zeropad_step, dtype='bool')
         if any(self.smooth_axes[:2]):
-            d3_step = np.append(self.signal_d3_initpad, d3_step_base)
+            d3_step = np.append(signal_d3_initpad, d3_step_base)
             self.__init_added = True
         else:
             d3_step = d3_step_base
@@ -325,17 +317,13 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
     def __repeat_remaining_axes(self, signal, n_steps_dx, axis_start, axis_end, initpad):
         """ Repeat a created signal for the remaining axes, from axis_start to axis_end. """
-        print([n_steps_dx, axis_start, axis_end, self.__init_added])
+        print([n_steps_dx, axis_start, axis_end])
         for axis in range(axis_start, axis_end):
             if axis > 2:
-                if not ((not all(self.smooth_axes[:axis-1])) and self.smooth_axes[axis-1] and self.smooth_axes[axis]):
-                    signal = np.append(signal, np.zeros(self.zeropad_extrapad[axis-1]))
-                    self._logger.debug(f'length of signal repeat rem axes, on axis {axis}, append zeropad extra: {len(signal)}')
+                signal = np.append(signal, np.zeros(self.zeropad_extrapad[axis-1]))
             signal = np.tile(signal, n_steps_dx[axis])
-            self._logger.debug(f'length of signal repeat rem axes, on axis {axis}, tile to n_steps_dx len: {len(signal)}')
             if not any(self.smooth_axes[:2]) and not self.__init_added:
                 signal = np.append(initpad, signal)
-                self._logger.debug(f'length of signal repeat rem axes, on axis {axis}, append init: {len(signal)}')
                 self.__init_added = True
         return signal
 

@@ -10,10 +10,32 @@
             "forAcquisition": true
         }
     },
+    "lasers": {
+        "592 (EXC)": {
+            "analogChannel": "Dev1/ao3",
+            "digitalLine": "Dev1/port0/line0",
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 592,
+            "valueRangeMin": 0,
+            "valueRangeMax": 1
+        },
+        "592 (OFF)": {
+            "analogChannel": null,
+            "digitalLine": "Dev1/port0/line6",
+            "managerName": "NidaqLaserManager",
+            "managerProperties": {},
+            "wavelength": 592,
+            "valueRangeMin": null,
+            "valueRangeMax": null
+        }
+    },
+
     "availableWidgets": [
         "Settings",
         "View",
         "Recording",
-        "Image"
+        "Image",
+        "Laser"
     ]
 }

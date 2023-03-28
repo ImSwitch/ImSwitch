@@ -90,6 +90,15 @@ class PositionerInfo(DeviceInfo):
 
 
 @dataclass(frozen=True)
+class StateSelectorInfo(DeviceInfo):
+    selectors: List[str]
+    """ A list of selectors that the state selector controls. """
+
+    port: str
+    """ Whether the positioner is used for manual positioning. """
+
+
+@dataclass(frozen=True)
 class RS232Info:
     managerName: str
     """ RS232 manager class name. """
@@ -252,6 +261,8 @@ class SetupInfo:
     """ Positioners in this setup. This is a map from unique positioner names
     to DetectorInfo objects. """
 
+    stateselectors: Dict[str, StateSelectorInfo] = field(default_factory=dict)
+
     rs232devices: Dict[str, RS232Info] = field(default_factory=dict)
     """ RS232 connections in this setup. This is a map from unique RS232
     connection names to RS232Info objects. Some detector/laser/positioner
@@ -321,7 +332,7 @@ class SetupInfo:
     def getAllDevices(self):
         """ :meta private: """
         devices = {}
-        for deviceInfos in self.lasers, self.detectors, self.positioners:
+        for deviceInfos in self.lasers, self.detectors, self.positioners, self.stateselectors:
             devices.update(deviceInfos)
 
         return devices

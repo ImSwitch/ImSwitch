@@ -13,6 +13,7 @@ from .PositionerWidget import PositionerWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
 from .ScanWidget import ScanWidget
+from .StateSelectorWidget import StateSelectorWidget
 from .SettingsWidget import SettingsWidget
 from .ULensesWidget import ULensesWidget
 from .WatcherWidget import WatcherWidget

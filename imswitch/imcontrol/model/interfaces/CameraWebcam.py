@@ -36,7 +36,11 @@ class CameraWebcam:
 
         
         # Initialize the webcam
-        self.camera = cv2.VideoCapture(cameraNo)
+        try:
+            self.camera = cv2.VideoCapture(cameraNo)
+        except:
+            # trying default camera index (e.g. inbuilt )
+            self.camera = cv2.VideoCapture(0)
 
         # get the shape of the frame
         shape = self.camera.read()[1].shape

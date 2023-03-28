@@ -185,12 +185,10 @@ class CameraGXIPY:
         #TODO: Napari only displays 8Bit?
         
         # only return fresh frames
-        while(self.lastFrameId == self.frameNumber and self.frame is None):
-            time.sleep(.01) # wait for fresh frame
+        #while(self.lastFrameId == self.frameNumber and self.frame is None):
+        #    time.sleep(.01) # wait for fresh frame
         self.lastFrameId = self.frameNumber 
         return self.frame
-
-
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
@@ -363,13 +361,14 @@ class CameraGXIPY:
             return
         numpy_image = frame.get_numpy_array()
         if numpy_image is None:
+            self.__logger.error("Got a None frame")
             return
         self.frame = numpy_image
         self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
         
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
+        #if self.binning > 1:
+        #    numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
     
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)

@@ -35,17 +35,17 @@ class AAAOTFLaserManager(LaserManager):
 
         if self._toggleTrueExternal:
             if self._ttlToggling:
-                self.blankingOnInternal()
+                #self.blankingOnInternal()
                 self.internalControl()
             else:
-                self.blankingOnExternal()
+                #self.blankingOnInternal()
                 self.externalControl()
         else:
             if self._ttlToggling:
-                self.blankingOnExternal()
+                #self.blankingOnExternal()
                 self.externalControl()
             else:
-                self.blankingOnInternal()
+                #self.blankingOnInternal()
                 self.internalControl()
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
@@ -62,7 +62,7 @@ class AAAOTFLaserManager(LaserManager):
                 self.externalControl()
             else:
                 self.internalControl()
-        self._rs232manager.write(cmd)
+        _ = self._rs232manager.query(cmd)
         if self._ttlToggling:
             if self._toggleTrueExternal:
                 self.internalControl()
@@ -80,32 +80,32 @@ class AAAOTFLaserManager(LaserManager):
                 self.externalControl()
             else:
                 self.internalControl()
-        self._rs232manager.write(cmd)
+        _ = self._rs232manager.query(cmd)
         if self._ttlToggling:
             if self._toggleTrueExternal:
                 self.internalControl()
             else:
                 self.externalControl()
 
-    def blankingOnInternal(self):
-        """Switch on the blanking of the channel, internal"""
-        cmd = 'L' + str(self._channel) + 'I1' + 'O0'
-        self._rs232manager.write(cmd)
+    #def blankingOnInternal(self):
+    #    """Switch on the blanking of the channel, internal"""
+    #    cmd = 'L' + str(self._channel) + 'O0'
+    #    self._rs232manager.write(cmd)
 
-    def blankingOnExternal(self):
-        """Switch on the blanking of the channel, external"""
-        cmd = 'L' + str(self._channel) + 'I0' + 'O0'
-        self._rs232manager.write(cmd)
+    #def blankingOnExternal(self):
+    #    """Switch on the blanking of the channel, external"""
+    #    cmd = 'L' + str(self._channel) + 'O0'
+    #    self._rs232manager.write(cmd)
 
     def internalControl(self):
         """Switch the channel to internal control"""
-        cmd = 'L' + str(self._channel) + 'I1'
-        self._rs232manager.write(cmd)
+        cmd = 'L' + str(self._channel) + 'I1' + 'O0'
+        _ = self._rs232manager.query(cmd)
 
     def externalControl(self):
         """Switch the channel to external control"""
         cmd = 'L' + str(self._channel) + 'I0'
-        self._rs232manager.write(cmd)
+        _ = self._rs232manager.query(cmd)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -432,9 +432,7 @@ class EtSTEDController(ImConWidgetController):
                             coords_wf = np.copy(coords_detected[0,:])
                         else:
                             coords_wf = np.copy(coords_detected[0])
-                        self._logger.debug(coords_wf)
                         coords_wf = self.adjustDetectedCoords(coords_wf, np.shape(img))
-                        self._logger.debug(coords_wf)
                         self.setDetLogLine("prepause", datetime.now().strftime('%Ss%fus'))
                         self.setDetLogLine("fastscan_x_center", coords_wf[0])
                         self.setDetLogLine("fastscan_y_center", coords_wf[1])
@@ -481,18 +479,6 @@ class EtSTEDController(ImConWidgetController):
                 self.setBusyFalse()
 
     def adjustDetectedCoords(self, coords, img_shape):
-        # TODO: THIS IS MY ATTEMPT AT FIXING THE WRONG SCAN POSITION. IT BRINGS ME TO A SMALL SHIFT OF ~300-500 NM IN BOTH X AND Y, BUT THAT SHIFT IS CONSTANT
-        # IT DOES NOT DEPEND ON X,Y POSITION, SCAN SPEED, SCAN PIXEL SIZE. HAD THE SAME ISSUE IN 2022-05, MANAGED TO SOLVE IT THEN BY ADDING A FLIP OF WF
-        # IMAGE BEFORE LOADING IT FOR THE TRANSFORM CALIBRATION AND REMOVING ANY FLIP OR INVERT OF COORDINATES PRE-TRANSFORM.
-        # REMOVING THIS FLIP NOW (AND REMOVING ALL INVERT AND FLIP PRE-TRANSFORM) DOES NOT HELP, THE COORDINATES ARE STILL COMPLETELY OFF. SOMETHING MUST HAVE CHANGED
-        # WITH HAMAMATSU IMAGE SAVING/VIEWING? ARE SOME AXES THERE INVERTED? SHOULD I INVERT AXES PRE-LOAD IN CALIBRATION? REMOVE FLIP AND ADD Y-INVERT WOULD BRING 
-        # ME TO A SITUATION WHERE THE WF AND CONF IMAGES ARE IN THE SAME ROTATION AND FLIPPING IN THE CALIB WINDOW, IT SHOULD BE LIKE THAT RIGHT?
-        # TRIED TO INVERT AXES PRE-LOAD, AND NOT FLIPPING. IMAGES ARE LOADED IN THE SAME ORIENTATION THEN, ENABLING EASY CALIBRATION, BUT THE COORDINATE TRANSFORM
-        # DURING ETSTED IS THEN NOT WORKING AT ALL STILL (IN THE SAME WAY AS BEFORE SOMEHOW?)
-        # It is weird that the offset in the coord_transform parameters (params 9 and 19) are roughly ~30-50 in size, corresponding to the small shift I have post-transform
-        # Is this a coincidence, or is this the cause, and what I have to get rid of? If true, it means that it is the calibration that is wrong somehow, just like last year.
-        # This would make sense. However, the parameters are on the same order of size as the transform coords from last year, so maybe it is correct? It is simply the camera
-        # offset from the scanning space anyway, and I can see that I indeed have that shift now.
         if self._setupInfo.etSTED.invertX:
             coords[0] = img_shape[0] - coords[0]
         if self._setupInfo.etSTED.invertY:
@@ -659,13 +645,13 @@ class EtSTEDCoordTransformHelper():
         # get annotated coordinates in both images and translate to real space coordinates
         self.__loResCoordsPx = self._widget.pointsLayerLo.data
         for pos_px in self.__loResCoordsPx:
-            #pos = (np.around(pos_px[0]*self.__loResPxSize, 3), np.around(pos_px[1]*self.__loResPxSize, 3))
             pos = (np.around(pos_px[0], 3), np.around(pos_px[1], 3))
             self.__loResCoords.append(pos)
         self.__hiResCoordsPx = self._widget.pointsLayerHi.data
         for pos_px in self.__hiResCoordsPx:
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos = (np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3), np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3))
+            # 230328 (JA): Added minus in front of both terms to fix the scan not occuring in the right position in etSTED. If it stops working again, perhaps some changes that made this necessary have been reverted. If so, just remove the minus here as a first try.
+            pos = (-np.around((self.__loResSize-pos_px[0])*self.__hiResPxSize - self.__hiResSize/2, 3), -np.around((self.__loResSize-pos_px[1])*self.__hiResPxSize - self.__hiResSize/2, 3))
             self.__hiResCoords.append(pos)
 
         # calibrate coordinate transform
@@ -685,7 +671,7 @@ class EtSTEDCoordTransformHelper():
         for i in range(0,len(self.__loResCoords)):
             pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos_px = (np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3))
+            pos_px = (-np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3), -np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3))
             coords_transf.append(pos_px)
         coords_transf = np.array(coords_transf)
         self._widget.pointsLayerTransf.data = coords_transf
@@ -736,10 +722,10 @@ class EtSTEDCoordTransformHelper():
         elif modality == 'lo':
             viewer = self._widget.napariViewerLo
             if self.etSTEDController.getFlipWf():
-                img_data = np.moveaxis(img_data, 0, 1)
+                img_data = np.moveaxis(img_data, 0, 1)  # swapXY
             else:
-                img_data = np.flip(img_data, 0)
-                img_data = np.flip(img_data, 1)
+                img_data = np.flip(img_data, 0)  # invertX
+                img_data = np.flip(img_data, 1)  # invertY
         viewer.add_image(img_data)
         viewer.layers.unselect_all()
         viewer.layers.move_selected(len(viewer.layers)-1,0)

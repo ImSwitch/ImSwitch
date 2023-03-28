@@ -168,7 +168,7 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.transformPipelinePar, currentRow, 3)
         self.grid.addWidget(self.coordTransfCalibButton, currentRow, 4, 2, 1)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.transformCoefs_label, currentRow, 2)
         self.grid.addWidget(self.transformCoefsPar, currentRow, 3)
@@ -179,7 +179,7 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.update_period_edit, currentRow, 3)
         self.grid.addWidget(self.setUpdatePeriodButton, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.fastImgDetectorsPar_label, currentRow, 2)
         self.grid.addWidget(self.fastImgDetectorsPar, currentRow, 3)
@@ -191,13 +191,13 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.fastImgLasersPar, currentRow, 3)
         self.grid.addWidget(self.useScanLaserPresetCheck, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.scanInitiationPar_label, currentRow, 2)
         self.grid.addWidget(self.scanInitiationPar, currentRow, 3)
         self.grid.addWidget(self.loadScanParametersButton, currentRow, 4)
 
-        currentRow +=1
+        currentRow += 1
 
         self.grid.addWidget(self.loadScanParametersStatus, currentRow, 3, 2, 2)
 

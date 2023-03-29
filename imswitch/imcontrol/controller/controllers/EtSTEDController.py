@@ -671,7 +671,7 @@ class EtSTEDCoordTransformHelper():
         for i in range(0,len(self.__loResCoords)):
             pos = self.poly_thirdorder_transform(self.__transformCoeffs, self.__loResCoords[i])
             # the following depends on the array viewing/axes order for camera and scan images, works for the current napari viewer (ImSwitch v1.2.1)
-            pos_px = (-np.around(self.__loResSize-(pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3), -np.around(self.__loResSize-(pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3))
+            pos_px = (np.around(self.__loResSize-(-pos[0] + self.__hiResSize/2)/self.__hiResPxSize, 3), np.around(self.__loResSize-(-pos[1] + self.__hiResSize/2)/self.__hiResPxSize, 3))
             coords_transf.append(pos_px)
         coords_transf = np.array(coords_transf)
         self._widget.pointsLayerTransf.data = coords_transf

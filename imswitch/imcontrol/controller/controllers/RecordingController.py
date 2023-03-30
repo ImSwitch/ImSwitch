@@ -20,12 +20,16 @@ class RecordingController(ImConWidgetController):
             self._master.detectorsManager.execOnAll(lambda c: c.model,
                                                     condition=lambda c: c.forAcquisition)
         )
+        self._widget.setLasersList(
+            self._master.lasersManager.execOnAll(lambda c: c.name)
+        )
 
         self.settingAttr = False
         self.recording = False
         self.doneScan = False
         self.endedRecording = False
         self.lapseCurrent = -1
+        self.specLapseCurrent = -1
         self.lapseTotal = 0
 
         self._widget.setsaveFormat(SaveFormat.HDF5.value)
@@ -61,6 +65,7 @@ class RecordingController(ImConWidgetController):
 
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
+        self._widget.sigSpecLapsePicked.connect(self.specLapse)
         self._widget.sigScanOncePicked.connect(self.recScanOnce)
         self._widget.sigScanLapsePicked.connect(self.recScanLapse)
         self._widget.sigUntilStopPicked.connect(self.untilStop)
@@ -113,8 +118,6 @@ class RecordingController(ImConWidgetController):
                                            SaveMode(4), # for Numpy
                                            "",
                                            attrs)
-
-
 
     def snapImagePrev(self, *args):
         """ Snap an already taken image and save it to a file. """
@@ -172,6 +175,12 @@ class RecordingController(ImConWidgetController):
                 self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.SpecTime:
                 self.recordingArgs['recTime'] = self._widget.getTimeToRec()
+                self._master.recordingManager.startRecording(**self.recordingArgs)
+            elif self.recMode == RecMode.SpecLapse:
+                #TODO: trying to implement a non-continuous camera-only imaging (widefield)
+                self.recordingArgs['recLapseFrames'] = self._widget.getTimelapseNumFrames()
+                self.recordingArgs['recLapseFrameTime'] = self._widget.getSpecTimelapseFrameTime()
+                self.recordingArgs['recLapseLaser'] = self._widget.getSpecTimelapseLaser()
                 self._master.recordingManager.startRecording(**self.recordingArgs)
             elif self.recMode == RecMode.ScanOnce:
                 self.recordingArgs['recFrames'] = self._commChannel.getNumScanPositions()
@@ -266,6 +275,11 @@ class RecordingController(ImConWidgetController):
         self._widget.checkSpecTime()
         self._widget.setEnabledParams(specTime=True)
         self.recMode = RecMode.SpecTime
+
+    def specLapse(self):
+        self._widget.checkSpecLapse()
+        self._widget.setEnabledParams(specLapse=True)
+        self.recMode = RecMode.SpecLapse
 
     def recScanOnce(self):
         self._widget.checkScanOnce()

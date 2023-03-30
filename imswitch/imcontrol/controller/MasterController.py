@@ -37,7 +37,7 @@ class MasterController:
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
                                                **lowLevelManagers)
 
-        self.recordingManager = RecordingManager(self.detectorsManager)
+        self.recordingManager = RecordingManager(self.detectorsManager, self.lasersManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         if self.__setupInfo.microscopeStand:

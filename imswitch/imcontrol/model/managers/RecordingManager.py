@@ -541,7 +541,7 @@ class RecordingWorker(Worker):
                 self.__specLapseFrame = 0
                 cam_exp_time = float(self.__recordingManager._detectorsManager.execOn(self.detectorNames[0], lambda l: l.getParameter('exposure_time')))
                 while not self.__specLapseDone:
-                    time.sleep(float(self.recLapseFrameTime)-cam_exp_time)
+                    time.sleep(np.max([0, float(self.recLapseFrameTime)-cam_exp_time]))
                     self._specLapseLoop(sleep_time=2*cam_exp_time)
             else:
                 raise ValueError('Unsupported recording mode specified')
@@ -580,11 +580,8 @@ class RecordingWorker(Worker):
 
     def _specLapseLoop(self, sleep_time=0):
         self.__recordingManager._lasersManager.execOn(self.recLapseLaser, lambda l: l.setEnabled(True))
-        # sleep for camera exposure time, to allow the laser on to actually impact the image we want to read out
-        #print(self.__specLapseFrame)
-        print(f'sleep: {sleep_time} s')
+        # sleep for camera exposure time, to allow the laser on to actually be exposed during the frame we read out
         time.sleep(sleep_time)
-        print('sleep over')
         for detectorName in self.detectorNames:
             newFrame = self._getNewFrame(detectorName)
             if newFrame is not None:
@@ -617,7 +614,6 @@ class RecordingWorker(Worker):
 
         self.__recordingManager._lasersManager.execOn(self.recLapseLaser, lambda l: l.setEnabled(False))
         self.__specLapseFrame += 1
-        #print(self.__specLapseFrame)
 
         if self.__specLapseFrame == self.recLapseFrames:
             self.__specLapseDone = True

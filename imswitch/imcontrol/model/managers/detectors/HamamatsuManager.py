@@ -114,6 +114,16 @@ class HamamatsuManager(DetectorManager):
             self._setTriggerSource(value)
 
         return self.parameters
+    
+    def getParameter(self, name):
+        """Gets a parameter value and returns the value.
+        If the parameter doesn't exist, return 0."""
+        try:
+            value, _ = self._camera.getPropertyValue(name)
+        except:
+            value = 0
+            self.__logger.error(f'Camera parmeter {name} not available. Returning default value 0.')
+        return value
 
     def startAcquisition(self):
         self._camera.startAcquisition()

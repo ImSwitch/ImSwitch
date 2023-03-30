@@ -18,6 +18,7 @@ class RecordingWidget(Widget):
 
     sigSpecFramesPicked = QtCore.Signal()
     sigSpecTimePicked = QtCore.Signal()
+    sigSpecLapsePicked = QtCore.Signal()
     sigScanOncePicked = QtCore.Signal()
     sigScanLapsePicked = QtCore.Signal()
     sigUntilStopPicked = QtCore.Signal()
@@ -82,14 +83,22 @@ class RecordingWidget(Widget):
         self.currentTime.setAlignment((QtCore.Qt.AlignRight |
                                        QtCore.Qt.AlignVCenter))
         self.timeToRec = QtWidgets.QLineEdit('1')
+        
+        self.recTimelapseBtn = QtWidgets.QRadioButton('Timelapse')
+        self.currentTimelapseFrame = QtWidgets.QLabel('0 / ')
+        self.timelapseFramesEdit = QtWidgets.QLineEdit('5')
+        self.timelapseFrameTimeLabel = QtWidgets.QLabel('Frame time [s]')
+        self.timelapseFrameTimeEdit = QtWidgets.QLineEdit('0')
+        self.lasersList = QtWidgets.QComboBox()
 
         self.recScanOnceBtn = QtWidgets.QRadioButton('Scan once')
 
-        self.recScanLapseBtn = QtWidgets.QRadioButton('Time-lapse scan')
+        self.recScanLapseBtn = QtWidgets.QRadioButton('Timelapse scan')
         self.currentLapse = QtWidgets.QLabel('0 / ')
         self.timeLapseEdit = QtWidgets.QLineEdit('5')
         self.freqLabel = QtWidgets.QLabel('Freq [s]')
         self.freqEdit = QtWidgets.QLineEdit('0')
+
         self.singleFileLapseBox = QtWidgets.QCheckBox('Save all scans in a single file')
 
         self.untilSTOPbtn = QtWidgets.QRadioButton('Run until STOP')
@@ -157,6 +166,14 @@ class RecordingWidget(Widget):
         recGrid.addWidget(self.currentTime, gridRow, 1)
         recGrid.addWidget(self.timeToRec, gridRow, 2)
         gridRow += 1
+        
+        recGrid.addWidget(self.recTimelapseBtn, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.currentTimelapseFrame, gridRow, 1)
+        recGrid.addWidget(self.timelapseFramesEdit, gridRow, 2)
+        recGrid.addWidget(self.timelapseFrameTimeLabel, gridRow, 3)
+        recGrid.addWidget(self.timelapseFrameTimeEdit, gridRow, 4)
+        recGrid.addWidget(self.lasersList, gridRow, 5)
+        gridRow += 1
 
         recGrid.addWidget(self.recScanOnceBtn, gridRow, 0, 1, 5)
         gridRow += 1
@@ -203,6 +220,7 @@ class RecordingWidget(Widget):
 
         self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
         self.specifyTime.clicked.connect(self.sigSpecTimePicked)
+        self.recTimelapseBtn.clicked.connect(self.sigSpecLapsePicked)
         self.recScanOnceBtn.clicked.connect(self.sigScanOncePicked)
         self.recScanLapseBtn.clicked.connect(self.sigScanLapsePicked)
         self.untilSTOPbtn.clicked.connect(self.sigUntilStopPicked)
@@ -261,6 +279,15 @@ class RecordingWidget(Widget):
     def getTimelapseSingleFile(self):
         return self.singleFileLapseBox.isChecked()
 
+    def getTimelapseNumFrames(self):
+        return int(float(self.timelapseFramesEdit.text()))
+
+    def getSpecTimelapseFrameTime(self):
+        return float(self.timelapseFrameTimeEdit.text())
+
+    def getSpecTimelapseLaser(self):
+        return self.lasersList.currentText()
+
     def setDetectorList(self, detectorModels):
         self.detectorModeList.addItem('Current detector at start', -1)
 
@@ -270,6 +297,10 @@ class RecordingWidget(Widget):
 
         for detectorName, detectorModel in detectorModels.items():
             self.detectorList.addItem(f'{detectorModel} ({detectorName})', detectorName)
+
+    def setLasersList(self, laserModels):
+        for laserName, _ in laserModels.items():
+            self.lasersList.addItem(f'{laserName}', laserName)
 
     def setSpecificDetectorListVisible(self, visible):
         """ Sets whether the "select specific detectors" list is visible. """
@@ -334,6 +365,9 @@ class RecordingWidget(Widget):
     def checkSpecTime(self):
         self.specifyTime.setChecked(True)
 
+    def checkSpecLapse(self):
+        self.recTimelapseBtn.setChecked(True)
+
     def checkScanOnce(self):
         self.recScanOnceBtn.setChecked(True)
 
@@ -346,12 +380,15 @@ class RecordingWidget(Widget):
     def setFieldsEnabled(self, enabled):
         self.recGridContainer.setEnabled(enabled)
 
-    def setEnabledParams(self, specFrames=False, specTime=False, scanLapse=False):
+    def setEnabledParams(self, specFrames=False, specTime=False, scanLapse=False, specLapse=False):
         self.numExpositionsEdit.setEnabled(specFrames)
         self.timeToRec.setEnabled(specTime)
         self.timeLapseEdit.setEnabled(scanLapse)
         self.freqEdit.setEnabled(scanLapse)
         self.singleFileLapseBox.setEnabled(scanLapse)
+        self.timelapseFramesEdit.setEnabled(specLapse)
+        self.timelapseFrameTimeEdit.setEnabled(specLapse)
+        self.lasersList.setEnabled(specLapse)
 
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)

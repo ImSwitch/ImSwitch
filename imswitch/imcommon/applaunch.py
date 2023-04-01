@@ -16,7 +16,6 @@ def prepareApp():
     pythontools.installExceptHook()
 
     # Set logging levels
-    logging.getLogger('pyvisa').setLevel(logging.WARNING)
     logging.getLogger('lantz').setLevel(logging.WARNING)
 
     # Create app
@@ -24,6 +23,7 @@ def prepareApp():
     os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'  # Force Qt to use PyQt5
     os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'  # Force HDF5 to not lock files
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+    #os.environ["QT_QPA_PLATFORM"] = "webgl"
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)  # Fixes Napari issues
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling, True) # proper scaling on Mac?
     #QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)

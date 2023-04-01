@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="832"
+   height="624"
+   viewBox="0 0 220.13333 165.1"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
+   sodipodi:docname="preview-placeholder.svg">
+  <defs
+     id="defs2">
+    <style
+       id="style900">.cls-1{fill:#4285f4;}.cls-2{fill:#c8d1db;}</style>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.98994949"
+     inkscape:cx="287.79858"
+     inkscape:cy="279.59153"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     units="px"
+     inkscape:window-width="1920"
+     inkscape:window-height="1027"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-131.89998)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.49736595;stroke-linecap:round;stroke-miterlimit:1.41420996;stroke-dasharray:none;stroke-opacity:1"
+       id="rect4580"
+       width="220.13333"
+       height="165.10001"
+       x="0"
+       y="131.89998" />
+    <g
+       id="g4578"
+       transform="translate(5.8309072)">
+      <g
+         transform="matrix(0.3469863,0,0,0.3469863,23.77655,152.82174)"
+         id="g4542"
+         style="clip-rule:evenodd;fill-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
+        <g
+           id="path3773"
+           transform="matrix(0.376342,0,0,0.376342,-8.65757,-85.6939)">
+        <path
+   inkscape:connector-curvature="0"
+   d="m 212.85,344.652 c 21.202,-67.739 84.497,-116.95 159.197,-116.95 74.7,0 137.995,49.211 159.198,116.95 l 10e-4,0.004 c 0.543,1.735 1.058,3.482 1.545,5.24 23.661,71.722 122.802,43.972 122.802,43.972 l 65.497,169.188 -248.734,96.291 -42.05,-108.619 -0.177,0.066 -23.276,-60.652 c 1.768,-0.678 3.508,-1.406 5.219,-2.18 7.664,-3.73 14.332,-7.853 20.126,-12.259 15.797,-12.494 27.388,-29.662 33.059,-49.013 8.123,-31.37 -1.873,-59.999 -2.156,-60.799 -13.792,-36.932 -49.561,-63.525 -91.054,-63.525 -41.493,0 -77.262,26.593 -91.053,63.525 -0.283,0.798 -10.28,29.428 -2.156,60.799 5.671,19.351 17.261,36.519 33.059,49.013 5.793,4.406 12.462,8.529 20.126,12.259 1.711,0.774 3.451,1.502 5.219,2.18 l -0.076,0.198 -23.201,60.454 -0.177,-0.066 L 271.739,659.347 23.004,563.056 88.501,393.868 c 0,0 99.141,27.75 122.802,-43.972 0.487,-1.758 1.003,-3.505 1.546,-5.24 z"
+   style="fill:#24c56c;fill-rule:nonzero"
+   id="path4529" />
+
+    </g>
+      </g>
+      <g
+         id="g1013"
+         transform="matrix(0.38722159,0,0,0.38722159,131.64568,140.76799)"
+         inkscape:export-xdpi="96"
+         inkscape:export-ydpi="96">
+        <path
+           id="path906"
+           d="M 20.140625,32 C 13.433598,31.994468 7.9944684,37.433598 8,44.140625 V 148.85938 C 7.99447,155.56641 13.433598,161.00553 20.140625,161 h 4.726563 c 2.330826,8.74182 10.245751,14.82585 19.292968,14.83008 C 53.201562,175.81878 61.108176,169.73621 63.4375,161 h 4.841797 15.726562 c 4.418278,0 8,-3.58172 8,-8 V 40 l -8,-8 z"
+           style="fill:#4285f4"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccccccssccc" />
+        <path
+           sodipodi:nodetypes="ccccccccccccccccc"
+           inkscape:connector-curvature="0"
+           id="path908"
+           d="M 80.007812,31.994141 C 79.997147,49.696887 80,67.396525 80,85.109375 L 63.369141,75.710938 C 60.971784,74.358189 58.004891,76.087168 58,78.839844 v 40.621096 c 0.0049,2.75267 2.971786,4.48165 5.369141,3.1289 L 80,113.18945 v 37.5918 2.21875 8 h 8 1.425781 36.054689 c 6.36195,-2.6e-4 11.51927,-5.15758 11.51953,-11.51953 V 43.480469 C 136.97822,37.133775 131.8272,32.000222 125.48047,32 Z"
+           style="fill:#c8d1db" />
+      </g>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:10.58333302px;line-height:1.25;font-family:roboto;-inkscape-font-specification:roboto;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="110.18811"
+       y="243.01154"
+       id="text4568"><tspan
+         sodipodi:role="line"
+         id="tspan4566"
+         x="110.18811"
+         y="243.01154"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:roboto;-inkscape-font-specification:roboto;text-align:center;text-anchor:middle;stroke-width:0.26458332">To start using OpenFlexure with Blockly,</tspan><tspan
+         sodipodi:role="line"
+         x="110.18811"
+         y="256.24069"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:roboto;-inkscape-font-specification:roboto;text-align:center;text-anchor:middle;stroke-width:0.26458332"
+         id="tspan4570">connect to your microscope.</tspan></text>
+  </g>
+</svg>

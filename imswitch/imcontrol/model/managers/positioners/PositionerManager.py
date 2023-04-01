@@ -21,6 +21,23 @@ class PositionerManager(ABC):
         self._positionerInfo = positionerInfo
         self._position = initialPosition
 
+        initialSpeed={
+            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._speed = initialSpeed
+
+        # seetings for homign the axis
+        initialHome={
+            axis: False for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._home = initialHome # is homed?
+
+        # settings for stopping the axis
+        initialStop={
+            axis: False for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._stop = initialStop # is stopped?
+
         self.__name = name
 
         self.__axes = positionerInfo.axes
@@ -41,6 +58,24 @@ class PositionerManager(ABC):
         """ The position of each axis. This is a dict in the format
         ``{ axis: position }``. """
         return self._position
+
+    @property
+    def speed(self) -> Dict[str, float]:
+        """ The speed of each axis. This is a dict in the format
+        ``{ axis: position }``. """
+        return self._speed
+
+    @property
+    def home(self) -> Dict[str, bool]:
+        """ The home of each axis. This is a dict in the format
+        ``{ axis: homed }``. """
+        return self._home
+
+    @property
+    def stop(self) -> Dict[str, bool]:
+        """ The stop of each axis. This is a dict in the format
+        ``{ axis: stopped }``. """
+        return self._stop
 
     @property
     def axes(self) -> List[str]:

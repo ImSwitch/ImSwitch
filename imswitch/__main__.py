@@ -10,18 +10,25 @@ from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 IS_SERVER = True
 def main():
     logger = initLogger('main')
-    logger.info(f'Starting ImSwitch {imswitch.__version__}')
+    logger.info(f'Starting ImSwitch {imswitch.__version__}')    
 
     app = prepareApp()
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     enabledModuleIds = []
     if 'imscripting' in enabledModuleIds:
-        # Ensure that imscripting is added last
+        # Ensure th at imscripting is added last
         
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
+    # use only if available
+    #if "imblockly" in enabledModuleIds:
+    #    try:
+    #        from imswitch import imblockly
+    #    except:
+    #        enabledModuleIds.remove("imblockly")
+
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
-                  for moduleId in modulesconfigtools.getEnabledModuleIds()]
+                  for moduleId in enabledModuleIds]
 
     moduleCommChannel = ModuleCommunicationChannel()
 

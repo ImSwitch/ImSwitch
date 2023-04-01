@@ -7,15 +7,15 @@ import time
 class MockCameraTIS:
     def __init__(self):
         self.properties = {
-            'image_height': 800,
-            'image_width': 800,
+            'image_height': 500,
+            'image_width': 500,
             'subarray_vpos': 0,
             'subarray_hpos': 0,
             'exposure_time': 0.1,
-            'subarray_vsize': 800,
-            'subarray_hsize': 800,
-            'SensorHeight': 1024,
-            'SensorWidth': 1280
+            'subarray_vsize': 500,
+            'subarray_hsize': 500,
+            'SensorHeight': 500,
+            'SensorWidth': 500
         }
         self.exposure = 100
         self.gain = 1
@@ -46,11 +46,11 @@ class MockCameraTIS:
     def grabFrame(self, **kwargs):
         mocktype = "random_peak"
         if mocktype=="focus_lock":
-            img = np.zeros((500, 600))
+            img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
         elif mocktype=="random_peak":
-            imgsize = (800, 800)
+            imgsize = (self.SensorHeight, self.SensorWidth)
             peakmax = 60
             noisemean = 10
             # generate image
@@ -67,7 +67,7 @@ class MockCameraTIS:
             # add Poisson noise
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
         else:
-            img = np.zeros((500, 600))
+            img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0],img.shape[1])

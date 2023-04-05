@@ -13,7 +13,6 @@ from sys import platform
 if platform == "linux" or platform == "linux2":
     # linux
     from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-    pass
 elif platform == "darwin":
     # OS X
     from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
@@ -95,7 +94,7 @@ class CameraHIK:
             raise Exception("create handle fail! ret[0x%x]", ret)
                 
         #  Open device
-        ret = self.camera.s(MV_ACCESS_Exclusive, 0)
+        ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
         if ret != 0:
             raise Exception("open device fail! ret[0x%x]", ret)            
 
@@ -361,7 +360,7 @@ class CameraHIK:
                     pass 
                 if self.g_bExit == True:
                     break
-        if platform == "darwin":
+        if platform in ("darwin", "linux2", "linux"):
             
             # en:Get payload size
             stParam =  MVCC_INTVALUE()

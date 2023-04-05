@@ -54,14 +54,14 @@ class CameraGXIPY:
         if dev_num  != 0:
             self.__logger.debug("Trying to connect to camera: ")
             self.__logger.debug(dev_info_list)
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
+            self._init_cam(cameraNo=self.cameraNo, binning=self.binning, callback_fct=self.set_frame)
         else :  
             raise Exception("No camera GXIPY connected")
 
 
         
 
-    def _init_cam(self, cameraNo=1, callback_fct=None):
+    def _init_cam(self, cameraNo=1, binning = 1, callback_fct=None):
         # start camera
         self.is_connected = True
         
@@ -73,7 +73,11 @@ class CameraGXIPY:
             print("This sample does not support color camera.")
             self.camera.close_device()
             return
-            
+
+        # reduce pixel number
+        self.setBinning(binning)        
+
+        # set triggermode
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
 
         # set exposure
@@ -127,7 +131,7 @@ class CameraGXIPY:
                 # camera was disconnected? 
                 self.camera.unregister_capture_callback()
                 self.camera.close_device()
-                self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
+                self._init_cam(cameraNo=self.cameraNo, binning=self.binning, callback_fct=self.set_frame)
 
             self.is_streaming = False
         
@@ -179,15 +183,15 @@ class CameraGXIPY:
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
-        # self.camera.BinningHorizontal.set(binning)
-        # self.camera.BinningVertical.set(binning)
+        self.camera.BinningHorizontal.set(binning)
+        self.camera.BinningVertical.set(binning)
         self.binning = binning
 
     def getLast(self, is_resize=True):
         # get frame and save
 #        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
         #TODO: Napari only displays 8Bit?
-        
+        return self.frame 
         # only return fresh frames
         if not self.lastFrameId == self.frameNumber:    
             self.lastFrameId = self.frameNumber 
@@ -373,7 +377,7 @@ class CameraGXIPY:
         
         if self.binning > 1:
             numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
+     
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)
     

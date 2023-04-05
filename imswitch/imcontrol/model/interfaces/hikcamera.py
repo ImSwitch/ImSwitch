@@ -12,6 +12,7 @@ import collections
 from sys import platform
 if platform == "linux" or platform == "linux2":
     # linux
+    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
     pass
 elif platform == "darwin":
     # OS X
@@ -94,7 +95,7 @@ class CameraHIK:
             raise Exception("create handle fail! ret[0x%x]", ret)
                 
         #  Open device
-        ret = self.camera.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0)
+        ret = self.camera.s(MV_ACCESS_Exclusive, 0)
         if ret != 0:
             raise Exception("open device fail! ret[0x%x]", ret)            
 

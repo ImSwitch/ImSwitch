@@ -1,7 +1,9 @@
 # version:1.0.1905.9051
 import gxipy as gx
 from PIL import Image
-import cv2
+
+
+import napari 
 
 def main():
     # print the demo information
@@ -23,11 +25,17 @@ def main():
     # open the first device
     cam = device_manager.open_device_by_index(1)
 
+    viewer = napari.Viewer()
+
     # exit when the camera is a color camera
     if cam.PixelColorFilter.is_implemented() is True:
         print("This sample does not support color camera.")
         cam.close_device()
         return
+    
+    binning = 4
+    cam.BinningHorizontal.set(binning)
+    cam.BinningVertical.set(binning)
 
     # set continuous acquisition
     cam.TriggerMode.set(gx.GxSwitchEntry.OFF)
@@ -42,7 +50,7 @@ def main():
     cam.stream_on()
 
     # acquire image: num is the image number
-    num = 100
+    num = 1000
     for i in range(num):
         # get raw image
         raw_image = cam.data_stream[0].get_image()
@@ -58,8 +66,9 @@ def main():
         # show acquired image
         #img = Image.fromarray(numpy_image, 'L')
         #img.show()
-        cv2.imshow('image',numpy_image)
-        cv2.waitKey(0)
+        #cv2.imshow('image',numpy_image)
+        #cv2.waitKey(0)
+        viewer.add_image(numpy_image)
 
         # print height, width, and frame ID of the acquisition image
         print("Frame ID: %d   Height: %d   Width: %d"

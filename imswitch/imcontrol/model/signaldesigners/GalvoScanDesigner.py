@@ -175,10 +175,8 @@ class GalvoScanDesigner(ScanDesigner):
         if axis_count_scan > 2:
             for axis in range(2, axis_count_scan):
                 pos, pad_max = self.__zero_padding(pos, padlen_base=[0,0])
-                pad_maxes[axis-1] += pad_max
-                #pad_maxes.append(pad_max)
                 pos = self.__repeat_dlower(pos, n_steps_dx[axis])
-                #n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
+                n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
                 pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
                 if pad_prev_axis:
                     pos, pad_max = self.__zero_padding(pos, padlen_base=pad_prev_axis)
@@ -187,7 +185,8 @@ class GalvoScanDesigner(ScanDesigner):
                 n_scan_samples_dx.append(len(pos[0]))
 
         pos, pad_max = self.__zero_padding(pos, padlen_base=[0,0])
-        pad_maxes[-1] += pad_max
+        n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
+        #pad_maxes[-1] += pad_max
         #pad_maxes.append(pad_max)
 
         # pad all signals with zeros, for initial and final settling of galvos and safety start and end
@@ -290,6 +289,7 @@ class GalvoScanDesigner(ScanDesigner):
             else:
                 pos_ret = np.repeat(positions, len_axis)
 
+        pos_ret 
         return pos_ret, pad_prev_axis
 
     def __repeat_dlower(self, pos, n_steps_axis):

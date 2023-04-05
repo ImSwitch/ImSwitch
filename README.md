@@ -257,6 +257,16 @@ chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run
 ```
 
+### install drivers for hik (jetson)
+
+Download the Linux zip (MVS2.1)
+https://www.hikrobotics.com/cn/machinevision/service/download
+        
+```
+sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb 
+source ~/.bashrc
+```
+
 ### Permissions for the serial driver
 
 ```

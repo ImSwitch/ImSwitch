@@ -1,4 +1,5 @@
 import inspect
+import asyncio
 
 from imswitch.imcommon.framework import Mutex, Signal, SignalInterface
 
@@ -72,10 +73,16 @@ class _UIThreadExecWrapper(SignalInterface):
 
     def _apiCall(self):
         try:
-            self._apiFunc(*self._args, **self._kwargs)
+            if asyncio.iscoroutinefunction(self._apiFunc):
+                self._execAsync()
+            else:
+                self._apiFunc(*self._args, **self._kwargs)
         finally:
             self._execMutex.unlock()
 
+    async def _execAsync(self):
+        await self._apiFunc(*self._args, **self._kwargs)
+        
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

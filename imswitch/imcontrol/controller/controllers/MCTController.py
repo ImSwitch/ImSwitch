@@ -316,6 +316,9 @@ class MCTController(ImConWidgetController):
                 self.stages.setSpeed(speed=10000, axis="Y")
                 self.stages.setSpeed(speed=1000, axis="Z")
 
+                # set enable
+                self.stages.enalbeMotors(enable=True, enableauto=True)
+
                 try:
                     # want to do autofocus?
                     autofocusParams = self._widget.getAutofocusValues()
@@ -429,7 +432,7 @@ class MCTController(ImConWidgetController):
             turnOffIlluInBetween = True
         else:
             turnOffIlluInBetween = False
-            
+
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break

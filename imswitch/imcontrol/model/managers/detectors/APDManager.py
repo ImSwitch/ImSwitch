@@ -18,10 +18,9 @@ class APDManager(DetectorManager):
     """
 
     def __init__(self, detectorInfo, name, nidaqManager, **_lowLevelManagers):
-        # TODO: use the same manager for the PMT, with the type of detector as an argument.
-        #       NidaqPointDetectorManager
-        self.__logger = initLogger(self, instanceName=name)
 
+        self.__logger = initLogger(self, instanceName=name)
+        self.__logger.debug(name)
         model = name
         self._name = name
         self.setPixelSize([1, 1])
@@ -245,7 +244,11 @@ class ScanWorker(Worker):
 
         # # det samples per line:
         # time per line * det sampling rate
-        self._samples_line = round(scanInfoDict['scan_samples'][1] * self._frac_scan_det_rate)
+        #self._samples_line = round(scanInfoDict['scan_samples'][1] * self._frac_scan_det_rate)
+        # scan samples in a d3 step (period)
+        #self._samples_d3_step = round(scanInfoDict['scan_samples'][2] * self._frac_scan_det_rate)
+        # det samples per scan steps in different dims
+        self._samples_d_scanstep = [round(samples)*self._frac_scan_det_rate for samples in scanInfoDict['scan_samples']]
         # det samples per fast axis period
         self._samples_d2_period = round(scanInfoDict['scan_samples_d2_period'] * self._frac_scan_det_rate)
         # det samples in total signal
@@ -255,17 +258,14 @@ class ScanWorker(Worker):
         self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)  # smooth inital positioning time
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
         self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
-        # scan samples in a d3 step (period)
-        self._samples_d3_step = round(scanInfoDict['scan_samples'][2] * self._frac_scan_det_rate)
         # scan samples for zero padding at end of scanning curve dimensions
-        self._samples_padlens = [round(scanInfoDict['padlens'][i] * self._frac_scan_det_rate) for i in range(len(scanInfoDict['padlens']))]
+        #self._samples_padlens = [round(scanInfoDict['padlens'][i] * self._frac_scan_det_rate) for i in range(len(scanInfoDict['padlens']))]
 
-        self._phase_delay = int(scanInfoDict['phase_delay'])
-        self._samples_throw_init = self._throw_startzero
+        self._phase_delay = int(scanInfoDict['phase_delay'])  # phase delay samples - galvo response time
         self._smooth_axes = scanInfoDict['smooth_axes']
         
         # samples to throw due to smooth between d>2 step transitioning
-        self._throw_init_d2_step = (self._throw_initpos + self._throw_settling + self._throw_startacc + self._phase_delay)
+        self._throw_init_smooth = (self._throw_initpos + self._throw_settling + self._throw_startacc)
 
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
@@ -321,11 +321,12 @@ class ScanWorker(Worker):
         self._ploty = 1
         # create empty current position counter
         self._pos = np.zeros(len(self._img_dims), dtype='uint16')
-        # throw away initial recording samples
-        self.throwdata(self._samples_throw_init)
+        # throw away phase delay samples and start zero samples
+        self.throwdata(self._phase_delay)
+        self.throwdata(self._throw_startzero)
         if len(self._img_dims) == 2:
             # begin d3 step: throw data from initial d3 step positioning
-            self.throwdata(self._throw_init_d2_step)
+            self.throwdata(self._throw_init_smooth)
         # loop through all dimensions to record data, starting with the outermost dimension
         self.run_loop_dx(dim=len(self._img_dims))
         # emit acquisition done signal
@@ -339,30 +340,44 @@ class ScanWorker(Worker):
             if dim > 2:
                 if dim == 3:
                     if any(self._smooth_axes[:dim-1]):
-                        # begin d3 step: throw data from initial d3 step positioning
-                        self.throwdata(self._throw_init_d2_step)
+                        # begin d step: throw data from initial smooth step positioning, if this is the first smooth axis
+                        self.throwdata(self._throw_init_smooth)
                     elif self._pos[dim-1] == 0:
-                        self.throwdata(self._throw_init_d2_step)
+                        self.throwdata(self._throw_init_smooth)
                 self.run_loop_dx(dim-1)
                 if dim == 3:
                     # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
                     self.d3Step.emit()
-                    throwdatalen_term1_terms = np.copy(self._pos[2:])
-                    for n in range(len(self._img_dims),3,-1):
-                        for m in range(n-1,2,-1):
-                            throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
-                    throwdatalen_term1_terms[0] += 1
-                    throwdatalen_highdsteps = sum([self._samples_padlens[dim-1]*self._pos[dim] for dim in range(3,len(self._img_dims))])
+
+                    #throwdatalen_term1_terms = np.copy(self._pos[2:])
+                    #for n in range(len(self._img_dims),3,-1):
+                    #    for m in range(n-1,2,-1):
+                    #        throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
+                    #throwdatalen_term1_terms[0] += 1
+                    #throwdatalen_highdsteps = sum([self._samples_padlens[dim-1]*self._pos[dim] for dim in range(3,len(self._img_dims))])
                     #throwdatalen_highdsteps = 0
-                    throwdatalen = self._throw_startzero + self._samples_d3_step * np.sum(throwdatalen_term1_terms) + throwdatalen_highdsteps - self._samples_read
+                    #throwdatalen = self._throw_startzero + self._samples_d_scanstep[2] * np.sum(throwdatalen_term1_terms) + throwdatalen_highdsteps - self._samples_read
+                    
+                    # supposed samples = start_zero_samples + d_steps * d samples_per_step
+                    pos = np.copy(self._pos)
+                    pos[dim-1] += 1
+                    self.__logger.debug(pos)
+                    self.__logger.debug(self._samples_d_scanstep[:-1])
+                    self.__logger.debug(np.multiply(pos, self._samples_d_scanstep[:-1]))
+                    supposed_samples_read = self._throw_startzero + np.sum(np.multiply(pos, self._samples_d_scanstep[:-1]))
+                    throwdatalen = supposed_samples_read - (self._samples_read - self._phase_delay)
+                    self.__logger.debug(pos)
+                    self.__logger.debug([int(throwdatalen/10), int(supposed_samples_read/10), int((self._samples_read-self._phase_delay)/10)])
                     if throwdatalen > 0:
                         self.throwdata(throwdatalen)
                 if dim > 3:
                     if any(self._smooth_axes[:dim-1]):
-                        self.throwdata(self._samples_padlens[dim-2])  
+                        #self.throwdata(self._samples_padlens[dim-2])
+                        pass
             else:
                 self.run_loop_d2()
             self._pos[dim-1] += 1
+            self.__logger.debug(self._pos)
         self._pos[dim-1] = 0
 
     def run_loop_d2(self):
@@ -373,7 +388,7 @@ class ScanWorker(Worker):
                 # read a line
                 if self._manager._ttlmultiplying:
                     seq_signal_xstart = self._samples_read-self._phase_delay
-                data = self.readdata(self._samples_line)
+                data = self.readdata(self._samples_d_scanstep[1])
                 if self._manager._ttlmultiplying:
                     seq_signal_xend = self._samples_read-self._phase_delay
                     ttl_seq = self._seq_signal[seq_signal_xstart:seq_signal_xend]
@@ -389,9 +404,9 @@ class ScanWorker(Worker):
             data_cnts = np.concatenate(([data[0]-self._last_value], np.diff(data)))
             self._last_value = data[-1]
             # only take the first samples that corresponds to the samples during the line
-            line_samples = data_cnts[:self._samples_line]
+            line_samples = data_cnts[:self._samples_d_scanstep[1]]
             if self._manager._ttlmultiplying:
-                ttl_seq = ttl_seq[:self._samples_line]
+                ttl_seq = ttl_seq[:self._samples_d_scanstep[1]]
                 # mask with TTL sequence from ScanWidget, to say if detector should be on or not
                 line_samples = np.multiply(line_samples, 1*ttl_seq)
             # resample sample array to pixel counts array

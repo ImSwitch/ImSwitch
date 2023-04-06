@@ -70,10 +70,10 @@ class GalvoScanDesigner(ScanDesigner):
         # arbitrary for now  µs
         self.__paddingtime_full = 100 #1000
         # initiate default sample lengths
-        self._samples_initpos = 0
+        self._samples_initpos = []
+        self._samples_finalpos = []
         self._samples_settling = 0
         self._samples_startacc = 0
-        self._samples_finalpos = 0
 
         positioners = [positioner for positioner in setupInfo.positioners.values()
                        if positioner.forScanning]
@@ -158,7 +158,8 @@ class GalvoScanDesigner(ScanDesigner):
 
         # initiate pad length list
         #pad_maxes = [0]
-        pad_maxes = np.zeros(len(self.axis_length))
+        #pad_maxes = np.zeros(len(self.axis_length))
+        pad_prev_axes = []
 
         # d2 axis signal
         if axis_count_scan > 1:
@@ -166,8 +167,9 @@ class GalvoScanDesigner(ScanDesigner):
             axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1], self.__smooth_axis[axis-1])
             pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
             if pad_prev_axis:
-                pos, pad_max = self.__zero_padding(pos, padlen_base=pad_prev_axis)
-                pad_maxes[axis] += pad_max
+                pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
+                #pad_maxes[axis] += pad_max
+                pad_prev_axes.append(pad_prev_axis)
             pos.append(pos_temp)
             n_scan_samples_dx.append(len(pos[0]))
 
@@ -179,8 +181,9 @@ class GalvoScanDesigner(ScanDesigner):
                 n_scan_samples_dx[-1] = n_scan_samples_dx[-1] + pad_max
                 pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis])
                 if pad_prev_axis:
-                    pos, pad_max = self.__zero_padding(pos, padlen_base=pad_prev_axis)
-                    pad_maxes[axis] += pad_max
+                    pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
+                    #pad_maxes[axis] += pad_max
+                    pad_prev_axes.append(pad_prev_axis)
                 pos.append(pos_temp)
                 n_scan_samples_dx.append(len(pos[0]))
 
@@ -208,18 +211,21 @@ class GalvoScanDesigner(ScanDesigner):
             'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
             'scan_samples_total': len(axis_signals[0]),
             'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
-            'scan_throw_initpos': self._samples_initpos,
+            'scan_throw_initpos': np.max(self._samples_initpos) if self._samples_initpos else 0,
+            'scan_pads_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
             'scan_throw_startacc': self._samples_startacc,
-            'scan_throw_finalpos': self._samples_finalpos,
+            'scan_throw_finalpos': np.max(self._samples_finalpos) if self._samples_finalpos else 0,
+            'scan_pads_finalpos': self._samples_finalpos,
             'scan_time_step': round(self.__timestep * 1e-6, ndigits=10),
             'dwell_time': parameterDict['sequence_time'],
             'phase_delay': parameterDict['phase_delay'],
             'scan_samples_d2_period': samples_d2_period_read,
-            'padlens': [int(padmax) for padmax in pad_maxes],
+            'padlens_prevaxes': pad_prev_axes,
             'tot_scan_time_s': tot_scan_time,
             'smooth_axes': self.__smooth_axis
         }
+        #'padlens': [int(padmax) for padmax in pad_maxes],
         #'extra_laser_on': parameterDict['extra_laser_on']
         self._logger.debug(scanInfoDict)
 
@@ -260,27 +266,33 @@ class GalvoScanDesigner(ScanDesigner):
         if smooth_axis[dim]:
             # generate the initial smooth positioning curve
             pos_init = self.__init_positioning(positions[0], v_max, a_max)
-            if len(pos_init) > self._samples_initpos:
-                self._samples_initpos = len(pos_init)
+            #if len(pos_init) > self._samples_initpos:
+            #    self._samples_initpos = len(pos_init)
+            self._samples_initpos.append(len(pos_init))
             # generate the final smooth positioning curve
             pos_final = self.__final_positioning(positions[-1], v_max, a_max)
-            if len(pos_final) > self._samples_finalpos:
-                self._samples_finalpos = len(pos_final)
+            #if len(pos_final) > self._samples_finalpos:
+            #    self._samples_finalpos = len(pos_final)
+            self._samples_finalpos.append(len(pos_final))
             
             if dim==1:
-                if smooth_axis[0]:
-                    axis_reps[0] = axis_reps[0] - len(pos_init)
+                if smooth_axis[0] and self._samples_initpos[-1]==np.max(self._samples_initpos):
+                    axis_reps[0] = axis_reps[0] - np.max(self._samples_initpos[:-1])
                 pos_ret = np.repeat(positions, axis_reps)
             else:
                 reps = np.ones(len(positions))*len_axis
-                if True in smooth_axis[:dim]:
-                    reps[0] = reps[0] - len(pos_init)
+                if True in smooth_axis[:dim] and self._samples_initpos[-1]==np.max(self._samples_initpos):
+                    reps[0] = reps[0] - np.max(self._samples_initpos[:-1])
                 reps = [int(rep) for rep in reps]
                 pos_ret = np.repeat(positions, reps)
             pos_ret = np.concatenate((pos_init, pos_ret, pos_final))
 
-            if True not in smooth_axis[:dim]:
-                pad_prev_axis = [len(pos_init), len(pos_final)]
+            #if True not in smooth_axis[:dim]:
+            #    pad_prev_axis = [len(pos_init), len(pos_final)]
+            padlen_init = (len(pos_init)-np.max(self._samples_initpos[:-1])) if self._samples_initpos[:-1] else len(pos_init)
+            padlen_final = (len(pos_final)-np.max(self._samples_finalpos[:-1])) if self._samples_finalpos[:-1] else len(pos_final)
+            if padlen_init > 0 or padlen_final > 0:
+                pad_prev_axis = [padlen_init, padlen_final]
         else:
             # realign positions for non-smooth (mock) axes
             positions = positions - positions[0]
@@ -303,8 +315,8 @@ class GalvoScanDesigner(ScanDesigner):
         periods of the d1 axis """
         if smooth:
             # get length of first d2 step
-            start_skip = self._samples_initpos + self._samples_settling + self._samples_startacc
-            end_skip = self._samples_finalpos
+            start_skip = np.max(self._samples_initpos) + self._samples_settling + self._samples_startacc
+            end_skip = np.max(self._samples_finalpos)
             first_d2 = [np.argmax(pos[start_skip:-end_skip]) + start_skip]
             # get length of all other d2 steps
             rest_d2s = np.repeat(samples_period - 1, n_d2 - 1)
@@ -560,7 +572,7 @@ class GalvoScanDesigner(ScanDesigner):
         # generate five pieces, three before and two after, to be concatenated to the given positions array
         # initial smooth acceleration piece from 0
         pos_pre1 = self.__init_positioning(initpos=np.min(pos), v_max=v_max, a_max=a_max)
-        self._samples_initpos = len(pos_pre1)
+        self._samples_initpos.append(len(pos_pre1))
         # initial settling time before first d2 step
         settlinglen = int(round(self.__settlingtime / self.__timestep))
         pos_pre2 = np.repeat(np.min(pos), settlinglen)  # settling positions
@@ -575,7 +587,7 @@ class GalvoScanDesigner(ScanDesigner):
         pos_halfscand2step =\
             pos[:np.argmin(abs(pos[:np.where(pos == np.max(pos))[0][0]] - pos_fix[2]))]
         self._samples_startacc = len(pos_pre3) - len(pos_halfscand2step)
-        self._samples_finalpos = len(pos_post2)
+        self._samples_finalpos.append(len(pos_post2))
         return pos_ret
 
     def __zero_padding(self, pos, padlen_base):

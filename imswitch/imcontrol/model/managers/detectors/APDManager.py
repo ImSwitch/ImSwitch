@@ -255,7 +255,8 @@ class ScanWorker(Worker):
         self._samples_total = round(scanInfoDict['scan_samples_total'] * self._frac_scan_det_rate)
         # samples to throw due to: 
         self._throw_startzero = round(scanInfoDict['scan_throw_startzero'] * self._frac_scan_det_rate)  # starting zero-padding
-        self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)  # smooth inital positioning time
+        #self._throw_initpos = round(scanInfoDict['scan_throw_initpos'] * self._frac_scan_det_rate)  # smooth inital positioning time
+        self._scan_pads_initpos = [round(initpos)*self._frac_scan_det_rate for initpos in scanInfoDict['scan_pads_initpos']] # smooth inital positioning times
         self._throw_settling = round(scanInfoDict['scan_throw_settling'] * self._frac_scan_det_rate)  # settling time
         self._throw_startacc = round(scanInfoDict['scan_throw_startacc'] * self._frac_scan_det_rate)  # starting acceleration
         # scan samples for zero padding at end of scanning curve dimensions
@@ -265,7 +266,8 @@ class ScanWorker(Worker):
         self._smooth_axes = scanInfoDict['smooth_axes']
         
         # samples to throw due to smooth between d>2 step transitioning
-        self._throw_init_smooth = (self._throw_initpos + self._throw_settling + self._throw_startacc)
+        pad_initpos = self._scan_pads_initpos[0] if len(self._scan_pads_initpos)>0 else 0
+        self._throw_init_smooth = (pad_initpos + self._throw_settling + self._throw_startacc)
 
         self._manager._nidaqManager.startInputTask(self._name, 'ci', self._channel, 'finite',
                                                    self._manager._nidaq_clock_source,
@@ -281,7 +283,7 @@ class ScanWorker(Worker):
         """
         if datalen > 0:
             throwdata = self._manager._nidaqManager.readInputTask(self._name, datalen)
-            #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+            self.__plot_curves(plot=True, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)), style='r-')
             self._last_value = throwdata[-1]
             self._samples_read += datalen
             #self.__logger.debug(['throw', int(self._samples_read/10), int(datalen/10)])
@@ -290,7 +292,7 @@ class ScanWorker(Worker):
         """ Read data with length datalen and add length of data to total samples_read length.
         """
         data = self._manager._nidaqManager.readInputTask(self._name, datalen)
-        #self.__plot_curves(plot=False, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)))
+        self.__plot_curves(plot=True, xvals=range(int((self._samples_read)/10), int((self._samples_read+datalen)/10)), signal=self._ploty*np.ones(int((datalen)/10)), style='k-')
         self._samples_read += datalen
         #self.__logger.debug(['read', int(self._samples_read/10), int(datalen/10)])
         return data
@@ -305,12 +307,12 @@ class ScanWorker(Worker):
         line_pixels = np.array(line_samples).reshape(-1, self._frac_det_dwell).sum(axis=1)
         return line_pixels
 
-    def __plot_curves(self, plot, xvals, signal):
+    def __plot_curves(self, plot, xvals, signal, style='k-'):
         """ Plot detection curves, for debugging. """
         if plot:
             import matplotlib.pyplot as plt
             plt.figure(1)
-            plt.plot(xvals, signal)
+            plt.plot(xvals, signal, style)
             self._ploty += 0.01
             if self._ploty > 1.1:
                 self._ploty = 1
@@ -324,6 +326,11 @@ class ScanWorker(Worker):
         # throw away phase delay samples and start zero samples
         self.throwdata(self._phase_delay)
         self.throwdata(self._throw_startzero)
+        # throw away higher dim initpos, if any
+        if len(self._scan_pads_initpos)>1:
+            if any(np.greater(self._scan_pads_initpos[1:], self._scan_pads_initpos[0])):
+                throw_init_higher_d = np.max(self._scan_pads_initpos[1:]) - self._scan_pads_initpos[0]
+                self.throwdata(throw_init_higher_d)
         if len(self._img_dims) == 2:
             # begin d3 step: throw data from initial d3 step positioning
             self.throwdata(self._throw_init_smooth)
@@ -344,20 +351,12 @@ class ScanWorker(Worker):
                         self.throwdata(self._throw_init_smooth)
                     elif self._pos[dim-1] == 0:
                         self.throwdata(self._throw_init_smooth)
+                # TODO: NEED TO ADD SOMETHING HERE FOR DIM != 3 AND IF THERE STILL IS THROWING THAT NEEDS TO BE DONE, DUE TO HIGHER AXIS INITPOS
                 self.run_loop_dx(dim-1)
                 if dim == 3:
                     # end d3 step: realign actual N read samples with supposed N read samples, in case of discrepancy
                     self.d3Step.emit()
 
-                    #throwdatalen_term1_terms = np.copy(self._pos[2:])
-                    #for n in range(len(self._img_dims),3,-1):
-                    #    for m in range(n-1,2,-1):
-                    #        throwdatalen_term1_terms[(n-2)-1] *= self._img_dims[m-1]
-                    #throwdatalen_term1_terms[0] += 1
-                    #throwdatalen_highdsteps = sum([self._samples_padlens[dim-1]*self._pos[dim] for dim in range(3,len(self._img_dims))])
-                    #throwdatalen_highdsteps = 0
-                    #throwdatalen = self._throw_startzero + self._samples_d_scanstep[2] * np.sum(throwdatalen_term1_terms) + throwdatalen_highdsteps - self._samples_read
-                    
                     # supposed samples = start_zero_samples + d_steps * d samples_per_step
                     pos = np.copy(self._pos)
                     pos[dim-1] += 1
@@ -372,6 +371,7 @@ class ScanWorker(Worker):
                         self.throwdata(throwdatalen)
                 if dim > 3:
                     if any(self._smooth_axes[:dim-1]):
+                        # TODO: MAYBE IT IS HERE THAT I SHOULD ADD SOME INITPOS THROWING? PROBABLY NOT, BECAUSE THIS IS AFTER LOWER DIM LOOP, SO THIS SHOULD HAVE BEEN FINAL POSITIONING, WHICH IS ALREADY TAKEN CARE OF ABOVE NOW
                         #self.throwdata(self._samples_padlens[dim-2])
                         pass
             else:

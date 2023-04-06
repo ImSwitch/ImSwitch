@@ -147,7 +147,7 @@ parameterDict42 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse
 parameterDict43 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [0.5, 3.0, 3.0, 0.5, 1.0],
                  'axis_step_size': [0.1, 1.0, 1.0, 0.1, 1.0],
-                 'axis_centerpos': [0.0, 0.0, 0.0, 5.0, 0.0],
+                 'axis_centerpos': [0.0, 0.0, 0.0, 0.0, 0.0],
                  'axis_startpos': [[0], [0], [0], [0], [0]],
                  'scan_dim_target_device': ['ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoX', 'None'],
                  'sequence_time': 2e-05,
@@ -185,7 +185,7 @@ parameterDict52 = {'target_device': ['Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoY
 parameterDict53 = {'target_device': ['Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoY', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [3.0, 3.0, 0.5, 0.5, 1.0],
                  'axis_step_size': [1.0, 1.0, 0.1, 0.1, 1.0],
-                 'axis_centerpos': [0.0, 0.0, 0.0, 5.0, 0.0],
+                 'axis_centerpos': [0.0, 0.0, 0.0, 0.0, 0.0],
                  'axis_startpos': [[0], [0], [0], [0], [0]],
                  'scan_dim_target_device': ['Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoY', 'ND-GalvoX', 'None'],
                  'sequence_time': 2e-05,
@@ -222,7 +222,7 @@ parameterDict62 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'Mock-Timelapse
 parameterDict63 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'Mock-Timelapse', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [3.0, 0.5, 3.0, 0.5, 1.0],
                  'axis_step_size': [1.0, 0.1, 1.0, 0.1, 1.0],
-                 'axis_centerpos': [0.0, 0.0, 0.0, 5.0, 0.0],
+                 'axis_centerpos': [0.0, 0.0, 0.0, 0.0, 0.0],
                  'axis_startpos': [[0], [0], [0], [0], [0]],
                  'scan_dim_target_device': ['Mock-Repeat', 'ND-GalvoY', 'Mock-Timelapse', 'ND-GalvoX', 'None', 'None'],
                  'sequence_time': 2e-05,
@@ -241,7 +241,7 @@ scanDesigner = GalvoScanDesigner()
 ttlDesigner = PointScanTTLCycleDesigner()
 
 # TODO: NOW WORKS FOR ALL SEQ_AXIS, AND ALL NUMBER OF DIMENSIONS, FOR ARBITRARY SCAN DIMENSION ORDER (SMOOTH, STEP, MOCK). LINE AND FRAME CLOCKS ALSO WORK.
-# NEXT: FIX APD READING ALONG THE SAME LINES - TRY ON MICROSCOPE
+# NEXT: BUGFIX APD READING - WORKS FOR EVERYTHING EXCEPT WHEN THERE IS A SMOOTH AXIS ON THE THIRD AXIS WITH OFF-0 CENTER POS, AND THE TWO FIRST AXES ARE MOCK AXES. TTL CURVES WORKS, SO THE ISSUE I THINK IS WITH NOT ADDING BACK THE LONG D3 INITPOS (LONGER THAN D1 AND D2) AT THE BEGINNING OF EVERY STEP ON THE FOURTH AXIS, LIKE IT IS ADDED FOR THE TTLS. 
 for signalset in range(1,7):
     if signalset == 1:
         parameterDicts = [parameterDict11, parameterDict12, parameterDict13]

@@ -399,7 +399,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             for i, target in enumerate(targets):
                 plt.plot(signals[target] - 0.01 * i)
                 #self._logger.debug(f'Signal length {target}: {len(signals[target])}')
-            #plt.show()
+            plt.show()
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

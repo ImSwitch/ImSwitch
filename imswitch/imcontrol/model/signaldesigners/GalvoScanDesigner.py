@@ -167,6 +167,7 @@ class GalvoScanDesigner(ScanDesigner):
             axis_reps = self.__get_axis_reps(pos[0], samples_d2_period, n_steps_dx[1], self.__smooth_axis[axis-1])
             pos_temp, pad_prev_axis = self.__generate_step_scan(axis, n_scan_samples_dx[axis], n_steps_dx[axis], self.__smooth_axis, v_max=self.axis_vel_max[axis], a_max=self.axis_acc_max[axis], axis_reps=axis_reps)
             if pad_prev_axis:
+                self.__logger.debug(pad_prev_axis)
                 pos, _ = self.__zero_padding(pos, padlen_base=pad_prev_axis)
                 #pad_maxes[axis] += pad_max
                 pad_prev_axes.append(pad_prev_axis)
@@ -211,7 +212,6 @@ class GalvoScanDesigner(ScanDesigner):
             'minmaxes': [[min(axis_signals[i]), max(axis_signals[i])] for i in range(axis_count_scan)],
             'scan_samples_total': len(axis_signals[0]),
             'scan_throw_startzero': int(round(self.__paddingtime_full / self.__timestep)),
-            'scan_throw_initpos': np.max(self._samples_initpos) if self._samples_initpos else 0,
             'scan_pads_initpos': self._samples_initpos,
             'scan_throw_settling': self._samples_settling,
             'scan_throw_startacc': self._samples_startacc,
@@ -225,6 +225,7 @@ class GalvoScanDesigner(ScanDesigner):
             'tot_scan_time_s': tot_scan_time,
             'smooth_axes': self.__smooth_axis
         }
+        #'scan_throw_initpos': np.max(self._samples_initpos) if self._samples_initpos else 0,
         #'padlens': [int(padmax) for padmax in pad_maxes],
         #'extra_laser_on': parameterDict['extra_laser_on']
         self._logger.debug(scanInfoDict)
@@ -266,13 +267,9 @@ class GalvoScanDesigner(ScanDesigner):
         if smooth_axis[dim]:
             # generate the initial smooth positioning curve
             pos_init = self.__init_positioning(positions[0], v_max, a_max)
-            #if len(pos_init) > self._samples_initpos:
-            #    self._samples_initpos = len(pos_init)
             self._samples_initpos.append(len(pos_init))
             # generate the final smooth positioning curve
             pos_final = self.__final_positioning(positions[-1], v_max, a_max)
-            #if len(pos_final) > self._samples_finalpos:
-            #    self._samples_finalpos = len(pos_final)
             self._samples_finalpos.append(len(pos_final))
             
             if dim==1:
@@ -287,12 +284,10 @@ class GalvoScanDesigner(ScanDesigner):
                 pos_ret = np.repeat(positions, reps)
             pos_ret = np.concatenate((pos_init, pos_ret, pos_final))
 
-            #if True not in smooth_axis[:dim]:
-            #    pad_prev_axis = [len(pos_init), len(pos_final)]
             padlen_init = (len(pos_init)-np.max(self._samples_initpos[:-1])) if self._samples_initpos[:-1] else len(pos_init)
             padlen_final = (len(pos_final)-np.max(self._samples_finalpos[:-1])) if self._samples_finalpos[:-1] else len(pos_final)
             if padlen_init > 0 or padlen_final > 0:
-                pad_prev_axis = [padlen_init, padlen_final]
+                pad_prev_axis = [np.max([0,padlen_init]), np.max([0,padlen_final])]
         else:
             # realign positions for non-smooth (mock) axes
             positions = positions - positions[0]
@@ -627,7 +622,7 @@ class GalvoScanDesigner(ScanDesigner):
                 plt.plot(signal - 0.01 * i)
                 target = self.axis_devs_order[i]
                 self._logger.debug(f'Signal length {target}: {len(signal)}')
-            #plt.show()
+            plt.show()
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -6,7 +6,6 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
-import asyncio
 
 # SRC: https://code-maven.com/static-server-in-python
 class StaticServer(BaseHTTPRequestHandler):

@@ -1,19 +1,20 @@
+import threading
 import Pyro5
 import Pyro5.server
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-import cv2
 from io import BytesIO
 import numpy as np
 from PIL import Image
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 import asyncio
+from multiprocessing import Queue
 import uvicorn
 from functools import wraps
+import cv2
 
 
 app = FastAPI()
@@ -41,12 +42,11 @@ class ImSwitchServer(Worker):
 
         self._paused = False
         self._canceled = False
-        
-        self.frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) for _ in range(100)]
 
+        
     def run(self):
         self.createAPI()
-        uvicorn.run(app)
+        uvicorn.run(app, host="0.0.0.0")
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -67,37 +67,6 @@ class ImSwitchServer(Worker):
     def stop(self):
         self._daemon.shutdown()
 
-    @app.get("/video_feed")
-    async def video_feed(self, response: Response):
-        # Set headers for video streaming
-        
-        response.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
-        while True:
-            # Encode frame as jpg
-            frame = cv2.imencode('.jpg', self.frames.pop(0))[1].tobytes()
-            # Write encoded frame to response
-            response.body = (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            # Wait for a short time to simulate real-time streaming
-            await asyncio.sleep(0.1)
-        
-
-    @app.get("/image")
-    async def get_image(self):
-        # Generate a NumPy array representing an image
-        img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
-        img_arr[:, :, 0] = 255  # set red channel to max value
-        
-        # Convert NumPy array to PIL Image
-        img = Image.fromarray(img_arr)
-        
-        # Save PIL Image to BytesIO buffer
-        img_bytes = BytesIO()
-        img.save(img_bytes, format="png")
-        
-        # Return image as StreamingResponse
-        img_bytes.seek(0)
-        return StreamingResponse(img_bytes, media_type="image/png")
 
 
     @app.get("/")
@@ -194,6 +163,7 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
+            self.__logger.debug("/"+module+"/"+f)
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

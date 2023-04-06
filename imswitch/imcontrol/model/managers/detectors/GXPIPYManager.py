@@ -197,7 +197,7 @@ class GXPIPYManager(DetectorManager):
                                             'Internal trigger',
                                             'External trigger'],
                                 editable=True), 
-                'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                'pixelSize': DetectorNumberParameter(group='Miscellaneous', value=1,
                                                     valueUnits='µm', editable=True)
                 }            
 

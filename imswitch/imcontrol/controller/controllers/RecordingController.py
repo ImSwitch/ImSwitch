@@ -3,6 +3,10 @@ import time
 from typing import Optional, Union, List
 import numpy as np
 
+from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Response
+import cv2
+
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
@@ -27,6 +31,8 @@ class RecordingController(ImConWidgetController):
         self.endedRecording = False
         self.lapseCurrent = -1
         self.lapseTotal = 0
+        
+        self.streamstarted = False
 
         self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
@@ -375,11 +381,52 @@ class RecordingController(ImConWidgetController):
         return self._widget.getTimelapseFreq()
 
     
+
+    def start_stream(self):
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
+        detectorManager = self._master.detectorsManager
+        detectorNum1Name = detectorManager.getAllDeviceNames()[0]
+        detectorNum1 = detectorManager[detectorNum1Name]
+        detectorNum1.startAcquisition()
+        
+        while True:
+            output_frame = detectorNum1.getLatestFrame()
+            if output_frame is None:
+                continue
+            (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
+            if not flag:
+                continue
+            self.manager.put(encodedImage)
+    
+    
+    def streamer(self):
+        from multiprocessing import Queue
+        if not self.streamstarted:
+            import threading
+            self.manager = Queue(maxsize=10)
+            threading.Thread(target=self.start_stream).start()
+            self.streamstarted = True
+        try:
+
+            while self.manager:
+                yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
+                    bytearray(self.manager.get()) + b'\r\n')
+        except GeneratorExit:
+            print("cancelled")
+
+
+    @APIExport(runOnUIThread=False)
+    def video_feeder(self):
+        return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+
+    
     '''
     def snapImage(self, name=None) -> None:
         self.snap(name)
     '''
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:

@@ -1,14 +1,20 @@
+import threading
 import Pyro5
 import Pyro5.server
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-
+from io import BytesIO
+import numpy as np
+from PIL import Image
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import asyncio
+from multiprocessing import Queue
 import uvicorn
 from functools import wraps
+import cv2
 
 
 app = FastAPI()
@@ -35,8 +41,9 @@ class ImSwitchServer(Worker):
 
         self._paused = False
         self._canceled = False
-        
+
         self.__logger =  initLogger(self)
+
 
     def run(self):
         self.createAPI()
@@ -61,6 +68,8 @@ class ImSwitchServer(Worker):
     def stop(self):
         self._daemon.shutdown()
 
+
+
     @app.get("/")
     def createAPI(self):
         api_dict = self._api._asdict()
@@ -71,7 +80,7 @@ class ImSwitchServer(Worker):
             self.__logger.debug(str)
             self.__logger.debug(func)
             @app.get(str)
-            @wraps(func)            
+            @wraps(func)
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapper
@@ -159,6 +168,7 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
+            self.__logger.debug("/"+module+"/"+f)
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

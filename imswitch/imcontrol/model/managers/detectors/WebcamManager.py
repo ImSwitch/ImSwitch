@@ -4,7 +4,7 @@ from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
 
 
-class GXPIPYManager(DetectorManager):
+class WebcamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
 
@@ -19,67 +19,31 @@ class GXPIPYManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
+        cameraId = detectorInfo.managerProperties['cameraListIndex']
+        
+        # initialize the camera
+        self._camera = self._getWebCam(cameraId)
+        
+        for propertyName, propertyValue in detectorInfo.managerProperties['webcam'].items():
+            self._camera.setPropertyValue(propertyName, propertyValue)
 
-        try:
-            self.binningValue = detectorInfo.managerProperties['gxipycam']["binning"]
-        except:
-            self.binningValue = 1
-
-        try:
-            self.cameraId = detectorInfo.managerProperties['cameraListIndex']
-        except:
-            self.cameraId = 1
-
-        try:
-            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
-        except:
-            # returning back to default pixelsize
-            pixelSize = 1
-
-
-        self._camera = self._getGXObj(self.cameraId, self.binningValue)
-
-        fullShape = (self._camera.SensorWidth,
-                self._camera.SensorHeight)
-
+        fullShape = (self._camera.SensorWidth, 
+                     self._camera.SensorHeight)
+        
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
 
+        
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=1, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
-                                            editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
-                                            editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
-                                    editable=True),
-            'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
-            'trigger_source': DetectorListParameter(group='Acquisition mode',
-                            value='Continous',
-                            options=['Continous',
-                                        'Internal trigger',
-                                        'External trigger'],
-                            editable=True),
-            'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
-                                                valueUnits='µm', editable=True)
-            }
-
-        # reading parameters from disk and write them to camrea
-        for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
-            parameters[propertyName].value = propertyValue
-
-
-
-        # TODO: Not implemented yet
-        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
+            }            
 
         # Prepare actions
         actions = {
@@ -89,13 +53,12 @@ class GXPIPYManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-
+        
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
-        self.setParameter('Binning', self._camera.getPropertyValue('binning')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -124,7 +87,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setProperty(name, value)
+        value = self._camera.setPropertyValue(name, value)
         return value
 
     def getParameter(self, name):
@@ -156,7 +119,7 @@ class GXPIPYManager(DetectorManager):
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
 
-
+        
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
@@ -168,58 +131,9 @@ class GXPIPYManager(DetectorManager):
 
     def startAcquisition(self, liveView=False):
         if self._camera.model == "mock":
-
-            # reconnect? Not sure if this is smart..
-            del self._camera
-            self._camera = self._getGXObj(self.cameraId, self.binningValue)
-
-            for propertyName, propertyValue in self.detectorInfo.managerProperties['gxipycam'].items():
-                self._camera.setPropertyValue(propertyName, propertyValue)
-
-            fullShape = (self._camera.SensorWidth,
-                        self._camera.SensorHeight)
-
-            model = self._camera.model
-            self._running = False
-            self._adjustingParameters = False
-
-            # TODO: Not implemented yet
-            self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
-
-
-            # Prepare parameters
-            parameters = {
-                'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
-                                                    editable=True),
-                'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
-                                                editable=True),
-                'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
-                                                editable=True),
-                'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
-                            editable=False),
-                'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                            editable=False),
-                'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
-                                        editable=True),
-                'trigger_source': DetectorListParameter(group='Acquisition mode',
-                                value='Continous',
-                                options=['Continous',
-                                            'Internal trigger',
-                                            'External trigger'],
-                                editable=True),
-                'pixelSize': DetectorNumberParameter(group='Miscellaneous', value=1,
-                                                    valueUnits='µm', editable=True)
-                }
-
-            # Prepare actions
-            actions = {
-                'More properties': DetectorAction(group='Misc',
-                                                func=self._camera.openPropertiesGUI)
-            }
-
-            #super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-            #               model=model, parameters=parameters, actions=actions, croppable=True)
-
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -243,33 +157,17 @@ class GXPIPYManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        umxpx = self.parameters['Camera pixel size'].value
+        try:
+            umxpx =  self.parameters['Camera pixel size'].value
+        except:
+            umxpx = 1   
         return [1, umxpx, umxpx]
 
     def setPixelSizeUm(self, pixelSizeUm):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-
-        def cropAction():
-            self.__logger.debug(
-                f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            )
-            self._camera.setROI(hpos, vpos, hsize, vsize)
-            # TOdO: weird hackaround
-            self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
-            self._frameStart = (hpos, vpos)
-            pass
-        try:
-            self._performSafeCameraAction(cropAction)
-        except Exception as e:
-            self.__logger.error(e)
-            # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-
-        # Only place self.shapes is changed
-
-        pass
+        pass 
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -286,20 +184,20 @@ class GXPIPYManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getGXObj(self, cameraId, binning=1):
+    def _getWebCam(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-            camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
+            from imswitch.imcontrol.model.interfaces.CameraWebcam import CameraWebcam
+            self.__logger.debug(f'Trying to initialize Webcam {cameraId}')
+            camera = CameraWebcam(cameraNo=cameraId)
         except Exception as e:
             self.__logger.debug(e)
-            self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')
+            self.__logger.warning(f'Failed to initialize CameraWebcam {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-
+    
     def getFrameNumber(self):
         return self._camera.getFrameNumber()
 

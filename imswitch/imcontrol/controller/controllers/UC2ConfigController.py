@@ -15,12 +15,15 @@ class UC2ConfigController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
+        
         self.UC2ConfigDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_UC2Config')
         if not os.path.exists(self.UC2ConfigDir):
             os.makedirs(self.UC2ConfigDir)
         # get Updatemanager
         self.updater = self._master.UC2ConfigManager
-            
+        self._widget.reconnectButton.clicked.connect(self.reconnect)
+        
+        return
         # 1. load config from device
         self.mConfigDevice = self.loadConfigFromDevice()
         
@@ -53,7 +56,6 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.controlPanel.loadButton.clicked.connect(self.displayConfig)
         self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
         self._widget.applyChangesButton.clicked.connect(self.applyParams)
-        self._widget.reconnectButton.clicked.connect(self.reconnect)
         
         
         self.isFirmwareUpdating = False

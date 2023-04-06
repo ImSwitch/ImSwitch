@@ -12,14 +12,14 @@ import cv2
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-
+import time
 
 from ..basecontrollers import ImConWidgetController
 
 #import NanoImagingPack as nip
 
-class MCTController(ImConWidgetController):
-    """Linked to MCTWidget."""
+class MockXXController(ImConWidgetController):
+    """Linked to MockXXWidget."""
 
     sigImageReceived = Signal()
 
@@ -27,7 +27,7 @@ class MCTController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
 
-        # mct parameters
+        # MockXX parameters
         self.nImagesTaken = 0
         self.timePeriod = 60 # seconds
         self.zStackEnabled = False
@@ -52,20 +52,20 @@ class MCTController(ImConWidgetController):
         self.Laser1Value = 0
         self.Laser2Value = 0
         self.LEDValue = 0
-        self.MCTFilename = ""
+        self.MockXXFilename = ""
 
         self.pixelsize=(10,1,1) # zxy
 
         self.tUnshake = .15
 
-        if self._setupInfo.mct is None:
-            self._widget.replaceWithError('MCT is not configured in your setup file.')
+        if self._setupInfo.MockXX is None:
+            self._widget.replaceWithError('MockXX is not configured in your setup file.')
             return
 
-        # Connect MCTWidget signals
-        self._widget.mctStartButton.clicked.connect(self.startMCT)
-        self._widget.mctStopButton.clicked.connect(self.stopMCT)
-        self._widget.mctShowLastButton.clicked.connect(self.showLast)
+        # Connect MockXXWidget signals
+        self._widget.MockXXStartButton.clicked.connect(self.startMockXX)
+        self._widget.MockXXStopButton.clicked.connect(self.stopMockXX)
+        self._widget.MockXXShowLastButton.clicked.connect(self.showLast)
         
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
         self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
@@ -105,8 +105,8 @@ class MCTController(ImConWidgetController):
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
-        self.isMCTrunning = False
-        self._widget.mctShowLastButton.setEnabled(False)
+        self.isMockXXrunning = False
+        self._widget.MockXXShowLastButton.setEnabled(False)
 
         # setup gui limits
         if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
@@ -125,23 +125,23 @@ class MCTController(ImConWidgetController):
             self.Nx, self.Ny = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
             self.optDx = int(self.Nx* self.pixelSize[1]*overlap) # dx
             self.optDy = int(self.Ny* self.pixelSize[2]*overlap) # dy
-            self._widget.mctValueXsteps.setText(str(self.optDx))
-            self._widget.mctValueYsteps.setText(str(self.optDy))
+            self._widget.MockXXValueXsteps.setText(str(self.optDx))
+            self._widget.MockXXValueYsteps.setText(str(self.optDy))
 
         except Exception as e:
             self._logger.error(e)
 
 
-    def startMCT(self):
+    def startMockXX(self):
         # initilaze setup
         # this is not a thread!
-        self._widget.mctStartButton.setEnabled(False)
+        self._widget.MockXXStartButton.setEnabled(False)
 
         # don't show any message
         self._master.UC2ConfigManager.setDebug(False)
 
         # start the timelapse
-        if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
+        if not self.isMockXXrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
             self.nImagesTaken = 0
             self._widget.setnImagesTaken("Starting timelapse...")
             self.switchOffIllumination()
@@ -151,8 +151,8 @@ class MCTController(ImConWidgetController):
             self.xScanMin, self.xScanMax, self.xScanStep, self.yScanMin, self.yScanMax, self.yScanStep, self.xyScanEnabled = self._widget.getXYScanValues()
 
             self.timePeriod, self.nImagesToCapture = self._widget.getTimelapseValues()
-            self.MCTFilename = self._widget.getFilename()
-            self.MCTDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            self.MockXXFilename = self._widget.getFilename()
+            self.MockXXDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
             # store old values for later
             if len(self.lasers)>0:
@@ -163,7 +163,7 @@ class MCTController(ImConWidgetController):
                 self.LEDValueOld = self.leds[0].power
 
             # reserve space for the stack
-            self._widget.mctShowLastButton.setEnabled(False)
+            self._widget.MockXXShowLastButton.setEnabled(False)
 
             # start the timelapse - otherwise we have to wait for the first run after timePeriod to take place..
             self.takeTimelapse(self.timePeriod)
@@ -174,16 +174,16 @@ class MCTController(ImConWidgetController):
             '''
 
         else:
-            self.isMCTrunning = False
-            self._widget.mctStartButton.setEnabled(True)
+            self.isMockXXrunning = False
+            self._widget.MockXXStartButton.setEnabled(True)
 
 
-    def stopMCT(self):
-        self.isMCTrunning = False
+    def stopMockXX(self):
+        self.isMockXXrunning = False
 
         self._widget.setnImagesTaken("Stopping timelapse...")
 
-        self._widget.mctStartButton.setEnabled(True)
+        self._widget.MockXXStartButton.setEnabled(True)
 
         # go back to initial position
         try:
@@ -200,7 +200,7 @@ class MCTController(ImConWidgetController):
 
         # delete any existing thread
         try:
-            del self.MCTThread
+            del self.MockXXThread
         except:
             pass
 
@@ -255,17 +255,17 @@ class MCTController(ImConWidgetController):
 
     def takeTimelapse(self, tperiod):
         # this is called periodically by the timer
-        if not self.isMCTrunning:
+        if not self.isMockXXrunning:
             try:
                 # make sure there is no exisiting thrad
-                del self.MCTThread
+                del self.MockXXThread
             except:
                 pass
 
             # this should decouple the hardware-related actions from the GUI
-            self.isMCTrunning = True
-            self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
-            self.MCTThread.start()
+            self.isMockXXrunning = True
+            self.MockXXThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
+            self.MockXXThread.start()
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
@@ -283,20 +283,20 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
-
+        
         # get current position
         currentPositions = self.stages.getPosition()
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
         self.initialPositionZ = currentPositions["Z"]
 
-        # run as long as the MCT is active
-        while(self.isMCTrunning):
+        # run as long as the MockXX is active
+        while(self.isMockXXrunning):
 
             # stop measurement once done
             if self.nImagesTaken >= self.nImagesToCapture:
-                self.isMCTrunning = False
+                self.isMockXXrunning = False
                 self._logger.debug("Done with timelapse")
-                self._widget.mctStartButton.setEnabled(True)
+                self._widget.MockXXStartButton.setEnabled(True)
                 break
 
             # initialize a run
@@ -343,7 +343,7 @@ class MCTController(ImConWidgetController):
 
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
-
+                   
                     self._widget.setnImagesTaken(self.nImagesTaken)
 
                     # sneak images into arrays for displaying stack
@@ -352,7 +352,7 @@ class MCTController(ImConWidgetController):
                         self.LastStackLaser2ArrayLast = np.array(self.LastStackLaser2)
                         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
-                        self._widget.mctShowLastButton.setEnabled(True)
+                        self._widget.MockXXShowLastButton.setEnabled(True)
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
@@ -383,7 +383,7 @@ class MCTController(ImConWidgetController):
                 else:
                     for indexY, iy in enumerate(bwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
-
+            
             # reserve space for tiled image
             downScaleFactor = 4
             nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
@@ -400,7 +400,7 @@ class MCTController(ImConWidgetController):
             self.yScanMin = 0
             self.yScanMax = 0
 
-
+        
         # precompute steps for z scan
         if self.zStackEnabled:
             zStepsAbsolute =  np.arange(self.zStackMin, self.zStackMax, self.zStackStep) + self.initialPositionZ
@@ -408,8 +408,8 @@ class MCTController(ImConWidgetController):
             zStepsAbsolute = [self.initialPositionZ]
 
 
-        # in case something is not connected we want to reconnect!
-        # TODO: This should go into some function outside the MCT!!!
+        # in case something is not connected we want to reconnect! 
+        # TODO: This should go into some function outside the MockXX!!!
         if not ("IDENTIFIER_NAME" in self._master.UC2ConfigManager.ESP32.state.get_state() and self._master.UC2ConfigManager.ESP32.state.get_state()["IDENTIFIER_NAME"] == "uc2-esp"):
             mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
             mThread.start()
@@ -431,7 +431,7 @@ class MCTController(ImConWidgetController):
             turnOffIlluInBetween = False
             
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
-            if not self.isMCTrunning:
+            if not self.isMockXXrunning:
                 break
             # move to xy position is necessary
             if self.xyScanEnabled:
@@ -451,12 +451,12 @@ class MCTController(ImConWidgetController):
                 if self.zStackEnabled:
                     self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
                     time.sleep(self.tUnshake) # unshake
-
+                
                 # capture image for every illumination
                 if self.Laser1Value>0 and len(self.lasers)>0:
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                    filePath = self.getSaveFilePath(date=self.MockXXDate,
                                 timestamp=timestamp,
-                                filename=f'{self.MCTFilename}_Laser1_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                filename=f'{self.MockXXFilename}_Laser1_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                 extension=fileExtension)
                     self.lasers[0].setValue(self.Laser1Value)
                     self.lasers[0].setEnabled(True)
@@ -470,9 +470,9 @@ class MCTController(ImConWidgetController):
                     self.LastStackLaser1.append(lastFrame.copy())
 
                 if self.Laser2Value>0 and len(self.lasers)>0:
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                    filePath = self.getSaveFilePath(date=self.MockXXDate,
                                 timestamp=timestamp,
-                                filename=f'{self.MCTFilename}_Laser2_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                filename=f'{self.MockXXFilename}_Laser2_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                 extension=fileExtension)
                     self.lasers[1].setValue(self.Laser2Value)
                     self.lasers[1].setEnabled(True)
@@ -483,9 +483,9 @@ class MCTController(ImConWidgetController):
                     self.LastStackLaser2.append(lastFrame.copy())
 
                 if self.LEDValue>0 and len(self.leds)>0:
-                    filePath = self.getSaveFilePath(date=self.MCTDate,
+                    filePath = self.getSaveFilePath(date=self.MockXXDate,
                                 timestamp=timestamp,
-                                filename=f'{self.MCTFilename}_LED_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
+                                filename=f'{self.MockXXFilename}_LED_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                 extension=fileExtension)
                     try:
                         if self.LEDValue > 255: self.LEDValue=255
@@ -537,7 +537,7 @@ class MCTController(ImConWidgetController):
         # ensure all illus are off
         self.switchOffIllumination()
 
-        # disable motors to prevent overheating
+        # disable motors to prevent overheating 
         self.stages.enalbeMotors(enable=False)
 
     def switchOffIllumination(self):
@@ -552,21 +552,21 @@ class MCTController(ImConWidgetController):
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
-        self._widget.mctLabelLaser1.setText('Intensity (Laser 1):'+str(value))
+        self._widget.MockXXLabelLaser1.setText('Intensity (Laser 1):'+str(value))
         if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
-        self._widget.mctLabelLaser2.setText('Intensity (Laser 2):'+str(value))
+        self._widget.MockXXLabelLaser2.setText('Intensity (Laser 2):'+str(value))
         if not self.lasers[1].enabled: self.lasers[1].setEnabled(1)
         if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
         if self.lasers[0].power: self.lasers[0].setValue(0)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
-        self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
+        self._widget.MockXXLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
         #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))

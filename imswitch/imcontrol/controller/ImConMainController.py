@@ -78,7 +78,8 @@ class ImConMainController(MainController):
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
 
-        # always run the server
+
+        self.__logger.debug("Start ImSwitch Server")
         self._serverWorker = ImSwitchServer(self.__api, setupInfo)
         self.__logger.debug(self.__api)
         self._thread = Thread()
@@ -166,8 +167,8 @@ class ImConMainController(MainController):
             return
 
         guitools.informationDisplay(self.__mainView, "Now select 'load from file' in the UC2 Config Widget and flash the pin-configuration")
-        
-        
+
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

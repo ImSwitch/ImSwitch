@@ -2,7 +2,7 @@ import enum
 import os
 import time
 from io import BytesIO
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Type, List
 
 import debugpy
 
@@ -17,6 +17,8 @@ import cv2
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
+from ome_zarr.writer import write_multiscales_metadata
+from ome_zarr.format import format_from_version
 import abc
 import logging
 
@@ -60,14 +62,17 @@ class ZarrStorer(Storer):
 
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         with AsTemporayFile(f'{self.filepath}.zarr') as path:
+            datasets: List[dict] = []
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)
 
             for channel, image in images.items():
                 shape = self.detectorManager[channel].shape
-                d = root.create_dataset(channel, data=image, shape=tuple(reversed(shape)),
+                root.create_dataset(channel, data=image, shape=tuple(reversed(shape)),
                                         chunks=(512, 512), dtype='i2') #TODO: why not dynamic chunking?
-                d.attrs["ImSwitchData"] = attrs[channel]
+
+                datasets.append({"path": channel, "transformation": None})
+            write_multiscales_metadata(root, datasets, format_from_version("0.2"), shape, **attrs)
             logger.info(f"Saved image to zarr file {path}")
 
 
@@ -291,7 +296,8 @@ class RecordingManager(SignalInterface):
             shape = self.__detectorsManager[detectorName].shape
             d = root.create_dataset(detectorName, data=image, shape=tuple(reversed(shape)), chunks=(512, 512),
                                     dtype='i2')
-            d.attrs["ImSwitchData"] = attrs[detectorName]
+            datasets = {"path": detectorName, "transformation": None}
+            write_multiscales_metadata(root, datasets, format_from_version("0.2"), shape, **attrs)
             store.close()
         else:
             raise ValueError(f'Unsupported save format "{saveFormat}"')
@@ -339,6 +345,7 @@ class RecordingWorker(Worker):
         currentFrame = {}
         datasets = {}
         filenames = {}
+
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
@@ -408,13 +415,13 @@ class RecordingWorker(Worker):
                 datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
                                                                             dtype='i2', chunks=(1, 512, 512)
                                                                             )
-
-                datasets[detectorName].attrs['ImSwitchData'] = self.attrs[detectorName]
                 datasets[detectorName].attrs['detector_name'] = detectorName
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
                 datasets[detectorName].attrs['writing'] = True
+                info: List[dict] = [{"path": datasetName, "transformation": None}]
+                write_multiscales_metadata(files[detectorName], info, format_from_version("0.2"), shape, **self.attrs[detectorName])
 
 
         self.__recordingManager.sigRecordingStarted.emit()

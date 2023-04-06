@@ -28,7 +28,6 @@ class ImSwitchServer(Worker):
     def __init__(self, api, setupInfo):
         super().__init__()
 
-        self.__logger = initLogger(self, tryInheritParent=True)
         self._api = api
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
@@ -36,10 +35,12 @@ class ImSwitchServer(Worker):
 
         self._paused = False
         self._canceled = False
+        
+        self.__logger =  initLogger(self)
 
     def run(self):
         self.createAPI()
-        uvicorn.run(app)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -65,12 +66,16 @@ class ImSwitchServer(Worker):
         api_dict = self._api._asdict()
         functions = api_dict.keys()
 
+
         def includeAPI(str, func):
+            self.__logger.debug(str)
+            self.__logger.debug(func)
             @app.get(str)
-            @wraps(func)
+            @wraps(func)            
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapper
+
 
 
         '''

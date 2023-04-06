@@ -20,8 +20,16 @@ class GXPIPYManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
 
-        binning = 1# detectorInfo.managerProperties['gxipycam']["binning"]
-        cameraId = detectorInfo.managerProperties['cameraListIndex']
+        try:
+            binning = detectorInfo.managerProperties['gxipycam']["binning"]
+        except:
+            binning = 1
+
+        try:
+            cameraId = detectorInfo.managerProperties['cameraListIndex']
+        except:
+            cameraId = 0
+
         try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
@@ -59,6 +67,7 @@ class GXPIPYManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
@@ -83,6 +92,7 @@ class GXPIPYManager(DetectorManager):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Binning', self._camera.getPropertyValue('binning')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -111,7 +121,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setPropertyValue(name, value)
+        value = self._camera.setProperty(name, value)
         return value
 
     def getParameter(self, name):

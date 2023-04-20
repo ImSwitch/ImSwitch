@@ -9,8 +9,10 @@ import logging
 from imswitch.imcontrol.view import ViewSetupInfo
 
 logger = logging.getLogger('test stage')
-logging.basicConfig(level=logging.DEBUG)
-logger.error('critical1')
+logging.basicConfig(level=logging.INFO)
+
+
+OK_to_run=True
 
 class TestReadConfig(TestCase):
 
@@ -20,9 +22,20 @@ class TestReadConfig(TestCase):
         setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo )
         print(setupInfo)
 
-class Test_PM(TestCase):
+class TestSmarACTPositionManager(TestCase):
 
     def setUp(self) -> None:
+        global OK_to_run
+        if OK_to_run is None:
+            print(
+                'WARNING!!! This is a hardware test. The stage will move in random directions. Only run this if that is safe')
+            answer = input('Continue? [n]')
+            if answer.lower() != 'y':
+                OK_to_run = False
+            else:
+                OK_to_run = True
+        elif OK_to_run is False:
+            raise RuntimeError('Cannot run test as running hasnt been confirmed')
         options, optionsDidNotExist = configfiletools.loadOptions()
         setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         p_info = setupInfo.positioners['SmarACT']
@@ -31,19 +44,17 @@ class Test_PM(TestCase):
     def tearDown(self) -> None:
         self.drive.finalize()
 
-    def test_connect(self):
-        print('Setting up what the positioners are')
-        print('Drive name: ', self.drive.name)
-
-
 
     def test_get_position(self):
+        """
+        Get the position and display it.
+        """
         current_position = self.drive.position
-        logger.critical(f'Current position: {current_position}')
-        print(current_position)
+        logger.info(f'Current position: {current_position}')
+
 
     def test_move(self):
-
+        "Move all axes once and check that the movements are what we expect."
         for i, axis in enumerate('XYZ'):
             print(f'###### {i} #### {axis}')
             position = self.drive.position
@@ -51,7 +62,7 @@ class Test_PM(TestCase):
             direction = -1*np.sign(position_at_axis)
             self.drive.move(direction, axis)
             new_position = self.drive.position
-            new_position_at_axis = new_position[axis]
+
             position_as_array = np.array([position[a] for a in 'XYZ'])
             new_position_as_array = np.array([new_position[a] for a in 'XYZ'])
             diff = new_position_as_array - position_as_array
@@ -65,6 +76,7 @@ class Test_PM(TestCase):
 
 
     def test_move_to_zero(self):
+        """Move every axis to 0 and check that it ends up at zero."""
         for ax in self.drive.axes:
             logger.info(f'Moving axis {ax} to 0')
             self.drive.setPosition(position=0, axis=ax)

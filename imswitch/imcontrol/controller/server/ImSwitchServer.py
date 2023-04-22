@@ -15,7 +15,11 @@ from multiprocessing import Queue
 import uvicorn
 from functools import wraps
 import cv2
+import os
 
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import os
+import threading
 
 app = FastAPI()
 
@@ -46,6 +50,11 @@ class ImSwitchServer(Worker):
 
 
     def run(self):
+        
+        # serve APP
+        self.startAPP()       
+            
+        # serve the fastapi
         self.createAPI()
         uvicorn.run(app, host="0.0.0.0", port=8000)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
@@ -67,6 +76,52 @@ class ImSwitchServer(Worker):
 
     def stop(self):
         self._daemon.shutdown()
+
+
+    # SRC: https://code-maven.com/static-server-in-python
+    class StaticServer(BaseHTTPRequestHandler):
+    
+        def do_GET(self):
+            root = os.path.dirname(os.path.abspath(__file__).split("imswitch")[0]+"imswitch/app/public/")
+            
+            if self.path == '/':
+                filename = root + '/index.html'
+            else:
+                filename = root + self.path
+    
+            self.send_response(200)
+            if filename[-4:] == '.css':
+                self.send_header('Content-type', 'text/css')
+            elif filename[-5:] == '.json':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-3:] == '.js':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-4:] == '.ico':
+                self.send_header('Content-type', 'image/x-icon')
+            else:
+                self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            with open(filename, 'rb') as fh:
+                html = fh.read()
+                #html = bytes(html, 'utf8')
+                self.wfile.write(html)
+ 
+    def start_server(self, httpd):
+        #print('Starting httpd')
+        httpd.serve_forever()
+     
+    def startAPP(self, server_class=HTTPServer, handler_class=StaticServer, port=5001):
+        server_address = ('', port)
+        try:
+            httpd = server_class(server_address, handler_class)
+            t = threading.Thread(target=self.start_server, args=(httpd,))
+            t.start()
+        
+            print('httpd started on port {}'.format(port))
+        except Exception as e:
+            print('httpd failed to start on port {}'.format(port))
+            print(e)
+            return
 
 
 

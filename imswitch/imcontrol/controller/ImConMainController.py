@@ -78,14 +78,14 @@ class ImConMainController(MainController):
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
 
-        if setupInfo.pyroServerInfo.active:
-            self._serverWorker = ImSwitchServer(self.__api, setupInfo)
-            self.__logger.debug(self.__api)
-            self._thread = Thread()
-            self._serverWorker.moveToThread(self._thread)
-            self._thread.started.connect(self._serverWorker.run)
-            self._thread.finished.connect(self._serverWorker.stop)
-            self._thread.start()
+        self.__logger.debug("Start ImSwitch Server")
+        self._serverWorker = ImSwitchServer(self.__api, setupInfo)
+        self.__logger.debug(self.__api)
+        self._thread = Thread()
+        self._serverWorker.moveToThread(self._thread)
+        self._thread.started.connect(self._serverWorker.run)
+        self._thread.finished.connect(self._serverWorker.stop)
+        self._thread.start()
 
     @property
     def api(self):

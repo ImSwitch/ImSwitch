@@ -1,5 +1,6 @@
 from imswitch.imcommon.model import initLogger
 from .LaserManager import LaserManager
+import numpy as np
 
 class ESP32LEDLaserManager(LaserManager):
     """ LaserManager for controlling LEDs and LAsers connected to an 
@@ -24,7 +25,12 @@ class ESP32LEDLaserManager(LaserManager):
         self._laser = self._rs232manager._esp32.laser
         self._motor = self._rs232manager._esp32.motor
         self._led = self._rs232manager._esp32.led
-        
+
+        # preset the pattern
+        self._led.ledpattern = np.ones(self._led.ledpattern.shape)
+        self.ledIntesity = 0
+        self._led.Intensity = self.ledIntesity
+
         self.power = 0
         self.channel_index = laserInfo.managerProperties['channel_index']
         
@@ -46,7 +52,8 @@ class ESP32LEDLaserManager(LaserManager):
         """Turn on (N) or off (F) laser emission"""
         self.enabled = enabled
         if self.channel_index == "LED":
-            self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+            self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
         else:
             self._laser.set_laser(self.channel_index, 
                                                 int(self.power*self.enabled),  
@@ -61,7 +68,9 @@ class ESP32LEDLaserManager(LaserManager):
         self.power = power
         if self.enabled:
             if self.channel_index == "LED":
-                self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+                self._led.setIntensity(intensity=(self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
+                self.ledIntesity=self.power
+                #self._led.send_LEDMatrix_full(intensity = (self.power*self.enabled,self.power*self.enabled,self.power*self.enabled), getReturn=getReturn)
             else:
                 self._laser.set_laser(self.channel_index, 
                                     int(self.power),

@@ -16,6 +16,7 @@ def prepareApp():
     pythontools.installExceptHook()
 
     # Set logging levels
+    logging.getLogger('pyvisa').setLevel(logging.WARNING)
     logging.getLogger('lantz').setLevel(logging.WARNING)
 
     # Create app
@@ -38,8 +39,9 @@ def launchApp(app, mainView, moduleMainControllers):
     logger = initLogger('launchApp')
 
     # Show app
-    mainView.showMaximized()
-    mainView.show()
+    if mainView is not None:
+        mainView.showMaximized()
+        mainView.show()
     exitCode = app.exec_()
 
     # Clean up

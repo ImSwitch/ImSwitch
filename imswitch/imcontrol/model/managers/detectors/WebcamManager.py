@@ -4,7 +4,7 @@ from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
 
 
-class AVManager(DetectorManager):
+class WebcamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
 
@@ -18,34 +18,31 @@ class AVManager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
-
-        self._camera = self._getAVObj(detectorInfo.managerProperties['cameraListIndex'])
-
-        model = self._camera.model
-        self._running = False
+        self.detectorInfo = detectorInfo
+        cameraId = detectorInfo.managerProperties['cameraListIndex']
         
-
-        for propertyName, propertyValue in detectorInfo.managerProperties['avcam'].items():
+        # initialize the camera
+        self._camera = self._getWebCam(cameraId)
+        
+        for propertyName, propertyValue in detectorInfo.managerProperties['webcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.getPropertyValue('image_width'),
-                     self._camera.getPropertyValue('image_height'))
+        fullShape = (self._camera.SensorWidth, 
+                     self._camera.SensorHeight)
+        
+        model = self._camera.model
+        self._running = False
+        self._adjustingParameters = False
 
-        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
-        self.pixel_format = self._camera.getPropertyValue("pixel_format")
+        
         # Prepare parameters
         parameters = {
             'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
-                                            editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
-                                            editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            'pixel_format': DetectorListParameter(group='Misc', value='Mono12', options=['Mono8','Mono12'], editable=True)
             }            
 
         # Prepare actions
@@ -56,15 +53,28 @@ class AVManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
+        
+
+    def _updatePropertiesFromCamera(self):
+        self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
+        self.setParameter('Internal frame interval',
+                          self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
+        self.setParameter('Internal frame rate',
+                          self._camera.getPropertyValue('internal_frame_rate')[0])
+
+        triggerSource = self._camera.getPropertyValue('trigger_source')
+        if triggerSource == 1:
+            self.setParameter('Trigger source', 'Internal trigger')
+        else:
+            triggerMode = self._camera.getPropertyValue('trigger_mode')
+            if triggerSource == 2 and triggerMode == 6:
+                self.setParameter('Trigger source', 'External "start-trigger"')
+            elif triggerSource == 2 and triggerMode == 1:
+                self.setParameter('Trigger source', 'External "frame-trigger"')
 
     def getLatestFrame(self, is_save=False):
-        if is_save:
-            return self._camera.getLast(is_resize=False)
-        else:
-            # for preview purpose (speed up GUI?)
-            return self._camera.getLast(is_resize=True)
-            #return self._camera.getLastChunk()
-            
+        return self._camera.getLast()
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -92,16 +102,38 @@ class AVManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
 
-    def setBinning(self, binning):
-        super().setBinning(binning) 
+
+    def setTriggerSource(self, source):
+        if source == 'Continous':
+            self._performSafeCameraAction(
+                lambda: self._camera.setPropertyValue('trigger_source', 0)
+            )
+        elif source == 'Internal trigger':
+            self._performSafeCameraAction(
+                lambda: self._camera.setPropertyValue('trigger_source', 1)
+            )
+        elif source == 'External trigger':
+            self._performSafeCameraAction(
+                lambda: self._camera.setPropertyValue('trigger_source', 2)
+            )
+        else:
+            raise ValueError(f'Invalid trigger source "{source}"')
+
         
-    def getChunk(self):        
-        return self._camera.getLastChunk()
+    def getChunk(self):
+        try:
+            return self._camera.getLastChunk()
+        except:
+            return None
 
     def flushBuffers(self):
-        pass
+        self._camera.flushBuffer()
 
-    def startAcquisition(self):
+    def startAcquisition(self, liveView=False):
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -116,7 +148,7 @@ class AVManager(DetectorManager):
     def stopAcquisitionForROIChange(self):
         self._running = False
         self._camera.stop_live()
-        self.__logger.debug('stoplive for roi change')
+        self.__logger.debug('stoplive')
 
     def finalize(self) -> None:
         super().finalize()
@@ -125,31 +157,18 @@ class AVManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        try:
+            umxpx =  self.parameters['Camera pixel size'].value
+        except:
+            umxpx = 1   
+        return [1, umxpx, umxpx]
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-        '''
-        def cropAction():
-            # self.__logger.debug(
-            #     f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
-            # )
-            self._camera.setROI(hpos, vpos, hsize, vsize)
+        pass 
 
-        try:
-            self._performSafeCameraAction(cropAction)
-        except Exception as e:
-            self.__logger.error(e)
-            # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-        
-        vsize = self._camera.getPropertyValue('image_height')
-        hsize = self._camera.getPropertyValue('image_width')
-        '''
-        self._camera.setROI(hpos, vpos, hsize, vsize)
-        self._shape = (hsize, vsize)
-        self._frameStart = (hpos, vpos)
-        pass
-    
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
         the camera to be idle to be able to be adjusted.
@@ -165,25 +184,23 @@ class AVManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getAVObj(self, cameraId):
+    def _getWebCam(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.avcamera import CameraAV
-            self.__logger.debug(f'Trying to initialize Allied Vision camera {cameraId}')
-            camera = CameraAV(cameraId)
+            from imswitch.imcontrol.model.interfaces.CameraWebcam import CameraWebcam
+            self.__logger.debug(f'Trying to initialize Webcam {cameraId}')
+            camera = CameraWebcam(cameraNo=cameraId)
         except Exception as e:
-            self.__logger.error(e)
-            self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
+            self.__logger.debug(e)
+            self.__logger.warning(f'Failed to initialize CameraWebcam {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
-        
+
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-
-    def flushBuffer(self):
-        self.__logger.info('Flush buffer!')
-        self._camera.flushBuffer()
-        
     
+    def getFrameNumber(self):
+        return self._camera.getFrameNumber()
+
     def closeEvent(self):
         self._camera.close()
 

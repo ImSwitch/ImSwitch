@@ -185,6 +185,10 @@ class MCTInfo:
     pass
 
 @dataclass(frozen=True)
+class MockXXInfo:
+    pass
+
+@dataclass(frozen=True)
 class JetsonNanoInfo:
     pass
 
@@ -387,9 +391,12 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
+    """ MockXX settings. Required to be defined to use MockXX functionality."""
 
     jetsonnano: Optional[JetsonNanoInfo] = field(default_factory=lambda: None)
-    """ Jetson Nano settings for MCT. Required to be defined to use MCT functionality. """
+    """ Jetson Nano settings for jetson nano. Required to be defined to use jetson nano functionality. """
 
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """

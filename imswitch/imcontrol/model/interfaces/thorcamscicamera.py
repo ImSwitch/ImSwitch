@@ -105,138 +105,90 @@ class CameraThorCamSci:
                 self.camera.bit_depth
             )
 
+        # get framesize 
+        self.SensorHeight = self.camera.sensor_height_pixels
+        self.SensorWidth = self.camera.sensor_width_pixels
+        
+        self.camera.issue_software_trigger()
 
-        '''
         # set exposure
-        self.camera.ExposureTime.set(self.exposure_time)
+        self.camera.exposure_time_us=int(self.exposure_time*1000)
 
         # set gain
-        self.camera.Gain.set(self.gain)
-        
-        # set framerate
-        self.set_frame_rate(self.frame_rate)
+        self.camera.gain=int(self.gain)
         
         # set blacklevel
-        self.camera.BlackLevel.set(self.blacklevel)
-
-        # set the acq buffer count
-        self.camera.data_stream[0].set_acquisition_buffer_number(1)
-        
-        # set camera to mono12 mode
-        try:
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
-        # set camera to mono8 mode
-        except:
-            self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
-
-        # get framesize 
-        self.SensorHeight = self.camera.HeightMax.get()//self.binning
-        self.SensorWidth = self.camera.WidthMax.get()//self.binning
-        
-        # register the frame callback
-        user_param = None
-        self.camera.register_capture_callback(user_param, callback_fct)
-        '''
+        self.camera.blacklevel=int(self.blacklevel)
         
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
             self.is_streaming = True
-            pass
-            self.camera.stream_on()
+            return
             
-
     def stop_live(self):
         if self.is_streaming:
             # start data acquisition
             self.is_streaming = False
-            pass
-            self.camera.stream_off()
+            return
 
     def suspend_live(self):
         if self.is_streaming:
         # start data acquisition
             try:
-                pass
+                return
                 self.camera.stream_off()
             except:
                 # camera was disconnected? 
-                pass
+                return
 
             self.is_streaming = False
         
     def prepare_live(self):
-        pass
+        return
 
     def close(self):
         self.camera.disarm()
         
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
-        pass
-        #self.camera.ExposureTime.set(self.exposure_time*1000)
+        self.camera.exposure_time_us=int(exposure_time*1000)
 
     def set_gain(self,gain):
         self.gain = gain
-        pass
-        #self.camera.Gain.set(self.gain)
+        self.camera.gain = gain
 
     def set_frame_rate(self, frame_rate):
-        if frame_rate == -1:
-            frame_rate = 10000 # go as fast as you can
-        self.frame_rate = frame_rate
-        
-        # temporary
         pass
+        
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
-        pass
-        #self.camera.BlackLevel.set(self.blacklevel)
-
+        self.camera.black_level=blacklevel
+        
     def set_pixel_format(self,format):
         pass
-        if self.camera.PixelFormat.is_implemented() and self.camera.PixelFormat.is_writable():
-            if format == 'MONO8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
-            if format == 'MONO12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO12)
-            if format == 'MONO14':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO14)
-            if format == 'MONO16':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO16)
-            if format == 'BAYER_RG8':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG8)
-            if format == 'BAYER_RG12':
-                self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
-        else:
-            print("pixel format is not implemented or not writable")
-
+    
     def setBinning(self, binning=1):
         # Unfortunately this does not work
         # self.camera.BinningHorizontal.set(binning)
         # self.camera.BinningVertical.set(binning)
+        self.camera.binx=binnning
+        self.camera.biny=binning
         self.binning = binning
 
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
-        
-        # only return fresh frames
-        self.frame = self.camera.get_pending_frame_or_null()
-        pass
-        if not self.lastFrameId == self.frameNumber:    
-            self.lastFrameId = self.frameNumber 
-            return self.frame
+        framebuffer = self.camera.get_pending_frame_or_null()
+        self.frame = framebuffer.image_buffer
+        return self.frame 
 
     def flushBuffer(self):
-        pass
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
         
     def getLastChunk(self):
-        pass
+        return
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
         self.flushBuffer()
@@ -244,52 +196,7 @@ class CameraThorCamSci:
         return chunk
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
-        #hsize = max(hsize, 25)*10  # minimum ROI size
-        #vsize = max(vsize, 3)*10  # minimum ROI size
         pass
-        hpos = self.camera.OffsetX.get_range()["inc"]*((hpos)//self.camera.OffsetX.get_range()["inc"])
-        vpos = self.camera.OffsetY.get_range()["inc"]*((vpos)//self.camera.OffsetY.get_range()["inc"])  
-        hsize = int(np.min((self.camera.Width.get_range()["inc"]*((hsize*self.binning)//self.camera.Width.get_range()["inc"]),self.camera.WidthMax.get())))
-        vsize = int(np.min((self.camera.Height.get_range()["inc"]*((vsize*self.binning)//self.camera.Height.get_range()["inc"]),self.camera.HeightMax.get())))
-
-        if vsize is not None:
-            self.ROI_width = hsize
-            # update the camera setting
-            if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
-                message = self.camera.Width.set(self.ROI_width)
-                self.__logger.debug(message)
-            else:
-                self.__logger.debug("OffsetX is not implemented or not writable")
-
-        if hsize is not None:
-            self.ROI_height = vsize
-            # update the camera setting
-            if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
-                message = self.camera.Height.set(self.ROI_height)
-                self.__logger.debug(message)
-            else:
-                self.__logger.debug("Height is not implemented or not writable")
-
-        if hpos is not None:
-            self.ROI_hpos = hpos
-            # update the camera setting
-            if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
-                message = self.camera.OffsetX.set(self.ROI_hpos)
-                self.__logger.debug(message)
-            else:
-                self.__logger.debug("OffsetX is not implemented or not writable")
-
-        if vpos is not None:
-            self.ROI_vpos = vpos
-            # update the camera setting
-            if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
-                message = self.camera.OffsetY.set(self.ROI_vpos)
-                self.__logger.debug(message)
-            else:
-                self.__logger.debug("OffsetX is not implemented or not writable")
-
-        return hpos,vpos,hsize,vsize
-
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
@@ -334,19 +241,19 @@ class CameraThorCamSci:
         return property_value
 
     def setTriggerSource(self, trigger_source):
-        pass
+        return
             
     def getFrameNumber(self):
         return self.frameNumber 
 
     def send_trigger(self):
-        pass
+        return
 
     def openPropertiesGUI(self):
-        pass
+        return
     
     def set_frame(self, user_param, frame):
-        pass
+        return
         if frame is None:
             self.__logger.error("Getting image failed.")
             return

@@ -78,6 +78,7 @@ class ThorCamSciManager(DetectorManager):
                                               func=self._camera.openPropertiesGUI)
         }
 
+
         # Initialize DetectorManager
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
@@ -206,6 +207,7 @@ class ThorCamSciManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Crop the camera frame to the specified size and position. This is a parameter carried on the camera"""
+        return
         def cropAction():
             self.__logger.debug(
                 f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'

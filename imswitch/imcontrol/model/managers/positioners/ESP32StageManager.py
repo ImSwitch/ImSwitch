@@ -163,13 +163,24 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(self._position['Y'],"X")
         self.setPosition(self._position['Z'],"Z")
         self.setPosition(self._position['T'],"T")
+        
+        # setup auto-enable according to json settings 
+        if positionerInfo.managerProperties.get('enableauto') is not None:
+            self.enableauto = positionerInfo.managerProperties['enableauto']
+        else:
+            self.enableauto = True
+        self.enalbeMotors(enable=True, enableauto=self.enableauto)
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
         
-    def enalbeMotors(self, enable=True):
-        self._motor.set_motor_enable(axis=0, is_enable=enable)
-
+    def enalbeMotors(self, enable=None, enableauto=None):
+        """
+        enable - Enable Motors (i.e. switch on/off power to motors)
+        enableauto - Enable automatic motor power off after motors are not used for a while; will be turned on automatically
+        """
+        self._motor.set_motor_enable(axis=0, is_enable=enable, enableauto=enableauto)
+        
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
         

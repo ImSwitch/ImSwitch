@@ -90,17 +90,26 @@ class JetsonNanoWidget(NapariHybridWidget):
         
         self.labelExposureTime = QtWidgets.QLabel("Exposure Time")
         self.gridLayout_3.addWidget(self.labelExposureTime, 0, 0)
+        self.spinBoxExposure = QtWidgets.QSpinBox()
+        self.spinBoxExposure.setMinimum(0)
+        self.spinBoxExposure.setMaximum(100000000)
+        self.gridLayout_3.addWidget(self.spinBoxExposure, 0, 1)
         
         self.labelGain = QtWidgets.QLabel("Gain")
         self.gridLayout_3.addWidget(self.labelGain, 1, 0)
         self.spinBoxGain = QtWidgets.QSpinBox()
+        self.spinBoxGain.setMinimum(0)
+        self.spinBoxGain.setMaximum(23)
         self.gridLayout_3.addWidget(self.spinBoxGain, 1, 1)
         
         self.labelBlackelvel = QtWidgets.QLabel("Blacklevel")
         self.gridLayout_3.addWidget(self.labelBlackelvel, 2, 0)
+        self.spinBoxBlacklevel = QtWidgets.QSpinBox()
+        self.gridLayout_3.addWidget(self.spinBoxBlacklevel,2,1)
         
         self.checkBoxAutosettings = QtWidgets.QCheckBox("Auto Settings")
         self.gridLayout_3.addWidget(self.checkBoxAutosettings, 3, 0)
+        
 
         
         # initialize all GUI elements

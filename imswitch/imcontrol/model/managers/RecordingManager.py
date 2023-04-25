@@ -7,7 +7,10 @@ from typing import Dict, Optional, Type, List
 import debugpy
 
 import h5py
-import zarr
+try:
+    import zarr
+except:
+    pass
 import numpy as np
 import tifffile as tiff
 import cv2

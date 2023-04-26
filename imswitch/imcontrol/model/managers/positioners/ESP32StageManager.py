@@ -184,7 +184,7 @@ class ESP32StageManager(PositionerManager):
         enable - Enable Motors (i.e. switch on/off power to motors)
         enableauto - Enable automatic motor power off after motors are not used for a while; will be turned on automatically
         """
-        self._motor.set_motor_enable(is_enable=enable, enableauto=enableauto)
+        self._motor.set_motor_enable(enable=enable, enableauto=enableauto)
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)

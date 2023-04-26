@@ -174,7 +174,7 @@ class ESP32StageManager(PositionerManager):
             self.enableauto = positionerInfo.managerProperties['enableauto']
         else:
             self.enableauto = True
-        self.enalbeMotors(enable=True, enableauto=self.enableauto)
+        self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)

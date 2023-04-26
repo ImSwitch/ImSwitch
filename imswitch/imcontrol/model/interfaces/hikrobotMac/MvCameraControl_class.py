@@ -13,7 +13,11 @@ from imswitch.imcontrol.model.interfaces.hikrobotMac.MvErrorDefine_const import 
 from imswitch.imcontrol.model.interfaces.hikrobotMac.PixelType_const import *
 from imswitch.imcontrol.model.interfaces.hikrobotMac.PixelType_header import *
 
-MvCamCtrldll = ctypes.cdll.LoadLibrary("/usr/local/lib/libMvCameraControl.dylib")
+from sys import platform
+if platform == "linux" or platform == "linux2":
+    MvCamCtrldll = ctypes.cdll.LoadLibrary("/opt/MVS/lib/aarch64/libMvCameraControl.so")
+elif platform == "darwin":
+    MvCamCtrldll = ctypes.cdll.LoadLibrary("/usr/local/lib/libMvCameraControl.dylib")
 
 # 用于回调函数传入相机实例
 class _MV_PY_OBJECT_(Structure):

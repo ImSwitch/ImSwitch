@@ -35,19 +35,20 @@ class JetsonNanoController(ImConWidgetController):
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
         self._master.detectorsManager.startAcquisition(liveView=True)
 
-        # select lasers
-        allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self.lasers = []
-        for iDevice in allLaserNames:
-            if iDevice.lower().find("laser")>=0 or iDevice.lower().find("led"):
-                self.lasers.append(self._master.lasersManager[iDevice])
-
+        
         # TODO: misleading we have LEDs and LED Matrices here...
+        self.intensity = 100
+        allLEDNames = self._master.LEDMatrixsManager.getAllDeviceNames()
         self.leds = []
-        for iDevice in allLaserNames:
+        for iDevice in allLEDNames:
             if iDevice.find("LED")>=0:
-                self.leds.append(self._master.lasersManager[iDevice])
-
+                self.leds.append(self._master.LEDMatrixsManager[iDevice])
+        # turn on a little bit
+        self.leds[0].setAll(self.intensity)
+        
+        # default stepsize for steppers
+        self.zDistance = 1000
+        
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)
 
@@ -55,7 +56,7 @@ class JetsonNanoController(ImConWidgetController):
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         self.isJetsonNanorunning = False
 
-
+        
         # wire up the gui        
         self._widget.pushButtonFocusDown.clicked.connect(self.focusDown)
         self._widget.pushButtonFocusUp.clicked.connect(self.focusUp)
@@ -63,19 +64,44 @@ class JetsonNanoController(ImConWidgetController):
         self._widget.pushButtonIlluOn.clicked.connect(self.illuOn)
         self._widget.pushButtonIlluOff.clicked.connect(self.illuOff)
         self._widget.pushButtonSnap.clicked.connect(self.snap)
-        self._widget.pushButtonRec .clicked.connect(self.toggleRec)
+        self._widget.pushButtonRec.clicked.connect(self.toggleRec)
+        self._widget.spinBoxExposure.valueChanged.connect(self.setExposureTime)
+        self._widget.spinBoxGain.valueChanged.connect(self.setGain)
+        self._widget.spinBoxBlacklevel.valueChanged.connect(self.setBlacklevel)
         
         # autofocus related
         self.isAutofocusRunning = False
         #self._commChannel.sigAutoFocusRunning.connect(self.setAutoFocusIsRunning)
 
-
-    def focusDown(self, zDistance=100):
+    def setExposureTime(self, value=None):
+        if value is None:
+            value = self._widget.spinBoxExposure.value()
+        #self.detector.setProperty("exposure", value)
+        self.detector._camera.set_exposure_time(value*1e-3)
+        
+    def setGain(self, value=None):
+        if value is None:
+            value = self._widget.spinBoxGain.value()
+        #self.detector.setProperty("gain", value)
+        self.detector._camera.set_gain(value)
+        
+    def setBlacklevel(self, value=None):
+        if value is None:
+            value = self._widget.spinBoxBlacklevel.value()
+        #self.detector.setProperty("blacklevel", value)
+        self.detector._camera.set_blacklevel(value)
+               
+    def moveFocusStage(self, zDistance=100):
+        self.illuOff()
         self.stages.move(value=zDistance, axis="Z", is_absolute=False, is_blocking=True)
-
-    def focusUp(self, zDistance=-100):
-        self.stages.move(value=zDistance, axis="Z", is_absolute=False, is_blocking=True)
-
+        self.illuOn()
+    
+    def focusDown(self, buttonValue):
+        self.moveFocusStage(zDistance=-100)
+        
+    def focusUp(self, buttonValue=False, zDistance=-100):
+        self.moveFocusStage(zDistance=100)
+        
     def autofocus(self):
         #autofocusParams = self._widget.getAutofocusValues()
         autofocusParams = {}
@@ -83,31 +109,31 @@ class JetsonNanoController(ImConWidgetController):
         autofocusParams["valueSteps"] = 30
         
         # turn on illumination
-        self.leds[0].setValue(255)
-        self.leds[0].setEnabled(True)
+        self.illuOn(value=255)
         time.sleep(.05)
 
         self.doAutofocus(autofocusParams)
     
-    def illuOn(self, value=255):
-        self.leds[0].setValue(value)
-        self.leds[0].setEnabled(True)
+    def setIllu(self, value=100):
+        self.leds[0].setAll(value)
         
-    def illuOff(self, value=0):
-        self.leds[0].setValue(value)
-        self.leds[0].setEnabled(False)
+    def illuOn(self, buttonValue=False):
+        self.setIllu(self.intensity)
+        
+    def illuOff(self, buttonValue=False):
+        self.setIllu(0)
     
     def snap(self):
         '''snap a single image and save it to disk'''
         self.JetsonNanoFilename = "UC2_JetsonNano_Snap"
         JetsonNanoDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
-        fileExtension = ".tif"
+        fileExtension = "tif"
         filePath = self.getSaveFilePath(date=JetsonNanoDate,
                     timestamp=1,
                     filename=f'{self.JetsonNanoFilename}',
                     extension=fileExtension)
-        self.leds[0].setValue(255)
-        self.leds[0].setEnabled(True)
+        self.leds[0].setAll(100)
+        time.sleep(0.1)
         
         lastFrame = self.detector.getLatestFrame()
         # wait for frame after next frame to appear. Avoid motion blurring

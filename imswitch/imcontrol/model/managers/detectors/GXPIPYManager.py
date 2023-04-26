@@ -20,18 +20,26 @@ class GXPIPYManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
 
-        self.binningValue = 1# detectorInfo.managerProperties['gxipycam']["binning"]
-        self.cameraId = detectorInfo.managerProperties['cameraListIndex']
+        try:
+            self.binningValue = detectorInfo.managerProperties['gxipycam']["binning"]
+        except:
+            self.binningValue = 1
+
+        try:
+            self.cameraId = detectorInfo.managerProperties['cameraListIndex']
+        except:
+            self.cameraId = 1
+
         try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
             # returning back to default pixelsize
             pixelSize = 1
-        
-        
+
+
         self._camera = self._getGXObj(self.cameraId, self.binningValue)
-        
-        fullShape = (self._camera.SensorWidth, 
+
+        fullShape = (self._camera.SensorWidth,
                 self._camera.SensorHeight)
 
         model = self._camera.model
@@ -54,15 +62,16 @@ class GXPIPYManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True), 
+                            editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
-            }            
+            }
 
         # reading parameters from disk and write them to camrea
         for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
@@ -70,8 +79,8 @@ class GXPIPYManager(DetectorManager):
             parameters[propertyName].value = propertyValue
 
 
-        
-        # TODO: Not implemented yet 
+
+        # TODO: Not implemented yet
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
         # Prepare actions
@@ -82,12 +91,13 @@ class GXPIPYManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-        
+
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Binning', self._camera.getPropertyValue('binning')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -117,7 +127,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setPropertyValue(name, value)
+        value = self._camera.setProperty(name, value)
         return value
 
     def getParameter(self, name):
@@ -149,7 +159,7 @@ class GXPIPYManager(DetectorManager):
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
 
-        
+
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
@@ -165,18 +175,18 @@ class GXPIPYManager(DetectorManager):
             # reconnect? Not sure if this is smart..
             del self._camera
             self._camera = self._getGXObj(self.cameraId, self.binningValue)
-        
+
             for propertyName, propertyValue in self.detectorInfo.managerProperties['gxipycam'].items():
                 self._camera.setPropertyValue(propertyName, propertyValue)
 
-            fullShape = (self._camera.SensorWidth, 
+            fullShape = (self._camera.SensorWidth,
                         self._camera.SensorHeight)
-            
+
             model = self._camera.model
             self._running = False
             self._adjustingParameters = False
 
-            # TODO: Not implemented yet 
+            # TODO: Not implemented yet
             self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
 
@@ -199,10 +209,10 @@ class GXPIPYManager(DetectorManager):
                                 options=['Continous',
                                             'Internal trigger',
                                             'External trigger'],
-                                editable=True), 
-                'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
+                                editable=True),
+                'pixelSize': DetectorNumberParameter(group='Miscellaneous', value=1,
                                                     valueUnits='µm', editable=True)
-                }            
+                }
 
             # Prepare actions
             actions = {
@@ -259,10 +269,10 @@ class GXPIPYManager(DetectorManager):
             self.__logger.error(e)
             # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
-        
+
         # Only place self.shapes is changed
-        
-        pass 
+
+        pass
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -292,7 +302,7 @@ class GXPIPYManager(DetectorManager):
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    
+
     def getFrameNumber(self):
         return self._camera.getFrameNumber()
 

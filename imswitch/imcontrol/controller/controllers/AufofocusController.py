@@ -1,7 +1,6 @@
 import time
 
 import numpy as np
-from time import perf_counter
 import scipy.ndimage as ndi
 import threading
 
@@ -11,25 +10,25 @@ from ..basecontrollers import ImConWidgetController
 
 try:
     import NanoImagingPack as nip
-    isNIP=True  
+    isNIP=True
 except:
     isNIP = False
 
 
 # global axis for Z-positioning - should be Z
-gAxis = "Z" 
+gAxis = "Z"
 T_DEBOUNCE = .2
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
 
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
         if self._setupInfo.autofocus is None:
             return
-        
+
         self.isAutofusRunning = False
 
         self.camera = self._setupInfo.autofocus.camera
@@ -77,18 +76,18 @@ class AutofocusController(ImConWidgetController):
     def grabCameraFrame(self):
         detectorManager = self._master.detectorsManager[self.camera]
         return detectorManager.getLatestFrame()
-        
+
     def doAutofocusBackground(self, rangez=100, resolutionz=10):
         self._commChannel.sigAutoFocusRunning.emit(True) # inidicate that we are running the autofocus
 
         allfocusvals = []
         allfocuspositions = []
 
-                        
+
         # get current position
         initialPosition = self.stages.getPosition()["Z"]
-        
-        
+
+
         # precompute values for Z-scan
         Nz = int(2*rangez//resolutionz)
         allfocusvals = np.zeros(Nz)
@@ -98,9 +97,9 @@ class AutofocusController(ImConWidgetController):
         # 0 move focus to initial position
         self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
-        # grab dummy frame? 
-        self.grabCameraFrame()     
-        
+        # grab dummy frame?
+        self.grabCameraFrame()
+
         # 1 compute focus for every z position
         for iz in range(Nz):
 
@@ -158,14 +157,14 @@ class AutofocusController(ImConWidgetController):
         else:
             self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
 
-            
+
 
         # DEBUG
 
         # We are done!
         self._commChannel.sigAutoFocusRunning.emit(False) # inidicate that we are running the autofocus
         self.isAutofusRunning = False
-        
+
         self._widget.focusButton.setText('Autofocus')
         return bestzpos
 

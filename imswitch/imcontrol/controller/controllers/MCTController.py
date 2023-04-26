@@ -12,7 +12,7 @@ import cv2
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import time
+
 
 from ..basecontrollers import ImConWidgetController
 
@@ -283,7 +283,7 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
-        
+
         # get current position
         currentPositions = self.stages.getPosition()
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
@@ -346,7 +346,7 @@ class MCTController(ImConWidgetController):
 
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
-                   
+
                     self._widget.setnImagesTaken(self.nImagesTaken)
 
                     # sneak images into arrays for displaying stack
@@ -386,7 +386,7 @@ class MCTController(ImConWidgetController):
                 else:
                     for indexY, iy in enumerate(bwdpath):
                         xyScanStepsAbsolute.append([ix, iy])
-            
+
             # reserve space for tiled image
             downScaleFactor = 4
             nTilesX = int(np.ceil((self.xScanMax-self.xScanMin)/self.xScanStep))
@@ -403,7 +403,7 @@ class MCTController(ImConWidgetController):
             self.yScanMin = 0
             self.yScanMax = 0
 
-        
+
         # precompute steps for z scan
         if self.zStackEnabled:
             zStepsAbsolute =  np.arange(self.zStackMin, self.zStackMax, self.zStackStep) + self.initialPositionZ
@@ -411,7 +411,7 @@ class MCTController(ImConWidgetController):
             zStepsAbsolute = [self.initialPositionZ]
 
 
-        # in case something is not connected we want to reconnect! 
+        # in case something is not connected we want to reconnect!
         # TODO: This should go into some function outside the MCT!!!
         if not ("IDENTIFIER_NAME" in self._master.UC2ConfigManager.ESP32.state.get_state() and self._master.UC2ConfigManager.ESP32.state.get_state()["IDENTIFIER_NAME"] == "uc2-esp"):
             mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
@@ -454,7 +454,7 @@ class MCTController(ImConWidgetController):
                 if self.zStackEnabled:
                     self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
                     time.sleep(self.tUnshake) # unshake
-                
+
                 # capture image for every illumination
                 if self.Laser1Value>0 and len(self.lasers)>0:
                     filePath = self.getSaveFilePath(date=self.MCTDate,
@@ -540,7 +540,7 @@ class MCTController(ImConWidgetController):
         # ensure all illus are off
         self.switchOffIllumination()
 
-        # disable motors to prevent overheating 
+        # disable motors to prevent overheating
         self.stages.enalbeMotors(enable=False)
 
     def switchOffIllumination(self):

@@ -12,7 +12,7 @@ import collections
 from sys import platform
 if platform == "linux" or platform == "linux2":
     # linux
-    pass
+    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
 elif platform == "darwin":
     # OS X
     from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
@@ -360,7 +360,7 @@ class CameraHIK:
                     pass 
                 if self.g_bExit == True:
                     break
-        if platform == "darwin":
+        if platform in ("darwin", "linux2", "linux"):
             
             # en:Get payload size
             stParam =  MVCC_INTVALUE()

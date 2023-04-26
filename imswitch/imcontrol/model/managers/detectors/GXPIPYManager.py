@@ -20,8 +20,16 @@ class GXPIPYManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
         self.detectorInfo = detectorInfo
 
-        self.binningValue = 1# detectorInfo.managerProperties['gxipycam']["binning"]
-        self.cameraId = detectorInfo.managerProperties['cameraListIndex']
+        try:
+            self.binningValue = detectorInfo.managerProperties['gxipycam']["binning"]
+        except:
+            self.binningValue = 1
+
+        try:
+            self.cameraId = detectorInfo.managerProperties['cameraListIndex']
+        except:
+            self.cameraId = 1
+
         try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
@@ -46,12 +54,15 @@ class GXPIPYManager(DetectorManager):
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
                                             editable=True),
+            'binning': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                               editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
@@ -86,6 +97,7 @@ class GXPIPYManager(DetectorManager):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Binning', self._camera.getPropertyValue('binning')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -101,7 +113,8 @@ class GXPIPYManager(DetectorManager):
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
     def getLatestFrame(self, is_save=False):
-        return self._camera.getLast()
+        frame = self._camera.getLast()
+        return frame
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -114,7 +127,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setPropertyValue(name, value)
+        value = self._camera.setProperty(name, value)
         return value
 
     def getParameter(self, name):

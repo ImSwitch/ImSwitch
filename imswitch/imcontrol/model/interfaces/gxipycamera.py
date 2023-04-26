@@ -37,7 +37,7 @@ class CameraGXIPY:
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.NBuffer = 200
+        self.NBuffer = 20
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.lastFrameId = -1

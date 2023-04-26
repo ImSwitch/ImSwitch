@@ -46,7 +46,7 @@ class ImSwitchServer(Worker):
         
     def run(self):
         self.createAPI()
-        uvicorn.run(app, host="0.0.0.0")
+        uvicorn.run(app, host="0.0.0.0", port=80)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"

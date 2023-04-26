@@ -127,7 +127,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setProperty(name, value)
+        value = self._camera.setPropertyValue(name, value)
         return value
 
     def getParameter(self, name):

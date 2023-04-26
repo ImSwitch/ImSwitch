@@ -181,6 +181,7 @@ class CameraThorCamSci:
         # get frame and save
         framebuffer = self.camera.get_pending_frame_or_null()
         self.frame = framebuffer.image_buffer
+        self.logger.debug("Frame:"+str(self.frame.shape))
         return self.frame 
 
     def flushBuffer(self):

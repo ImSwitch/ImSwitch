@@ -139,6 +139,10 @@ class ESP32StageManager(PositionerManager):
         else:
             self.axisOrder = [0,1,2,3]
 
+        if positionerInfo.managerProperties.get("isCoreXY") is not None:
+            self.isCoreXY = positionerInfo.managerProperties["isCoreXY"]
+        else:
+            self.isCoreXY = False
 
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
@@ -146,6 +150,10 @@ class ESP32StageManager(PositionerManager):
 
         # swap axes eventually
         self.setAxisOrder(order=self.axisOrder)
+
+        # choose if we have a coreXY geometry or not
+        self._motor.setIsCoreXY(isCoreXY = self.isCoreXY)
+
 
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
@@ -179,7 +187,7 @@ class ESP32StageManager(PositionerManager):
         enable - Enable Motors (i.e. switch on/off power to motors)
         enableauto - Enable automatic motor power off after motors are not used for a while; will be turned on automatically
         """
-        self._motor.set_motor_enable(axis=0, is_enable=enable, enableauto=enableauto)
+        self._motor.set_motor_enable(is_enable=enable, enableauto=enableauto)
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)

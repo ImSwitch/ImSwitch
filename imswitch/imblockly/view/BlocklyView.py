@@ -1,7 +1,6 @@
 import uuid
 
 from PyQt5.QtWebEngineWidgets import *
-from PyQt5 import Qsci
 from qtpy import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *

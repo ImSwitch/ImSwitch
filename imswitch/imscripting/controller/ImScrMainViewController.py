@@ -1,6 +1,6 @@
 from .ConsoleController import ConsoleController
 try:
-    import Qsci
+    from PyQt5 import Qsci
     from .EditorController import EditorController
     isQsciAvailable = True
 except:

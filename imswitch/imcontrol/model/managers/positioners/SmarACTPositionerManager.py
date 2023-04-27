@@ -29,6 +29,23 @@ class SmarACTPositionerManager(PositionerManager):
 
     It is based on the unofficial wrapper of the MCS2 stages. Newer stages may need more things.
 
+    Known issues:
+        - The stage will not gracefully exit when resetOnClose is set to True.
+
+    Example json file configuration:
+        "positioners": {
+      "SmarACT": {
+          "managerName": "SmarACTPositionerManager",
+          "managerProperties": {
+            "holdTime": 60000,
+            "axis_lookup_table": {"X":0, "Y":2, "Z":1}
+          },
+          "axes": ["X", "Y", "Z"],
+          "forScanning": false,
+          "forPositioning": true,
+          "resetOnClose": false
+      }
+
 
 
     Manager properties:

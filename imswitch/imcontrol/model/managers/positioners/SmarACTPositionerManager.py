@@ -25,30 +25,42 @@ class StageStatusException(BaseException):
 class SmarACTPositionerManager(PositionerManager):
     """ SmarACT Positioner manager.
 
+    This manager should function with old-style MCS1 stages but may not be compatible with the newer versions.
+
+    It is based on the unofficial wrapper of the MCS2 stages. Newer stages may need more things.
+
+
+
     Manager properties:
 
     None
     """
 
-    tol_nm = 10
     holdTime_ms = 60_000
-
+    axis_lookup_table = dict(X=0, Y=2, Z=1)
     def __init__(self, positionerInfo, name, **lowLevelManagers):
 
-        super().__init__(positionerInfo, name, initialPosition={
-            axis: 0 for axis in positionerInfo.axes
-        })
-        self.axis_lookup_table = dict(X=0, Y=2, Z=1)
+
+        if 'holdTime' in positionerInfo.managerProperties:
+            self.holdTime_ms = positionerInfo.managerProperties['holdTime']
+        if 'axis_lookup_table' in positionerInfo.managerProperties:
+            self.axis_lookup_table = positionerInfo.managerProperties['axis_lookup_table']
+        # generate the inverse looup table for later use
         self.reverse_axis_lookup_table = {}
         for key, value in self.axis_lookup_table.items():
             self.reverse_axis_lookup_table[value] = key
 
+        super().__init__(positionerInfo, name, initialPosition={'X': 0, 'Y':0, 'Z':0})
 
-        self.__logger__ = logging.getLogger(self.name)
+        self.__logger__ = logging.getLogger(name)
         self.__logger__.setLevel(logging.DEBUG)
         self.__logger__.debug('Connecting to stage')
         self.__setup_connection_and_buffers()
         self.__logger__.debug('Connected to stage')
+
+
+
+        self._position = self.position
 
     def ExitIfError(self, status):
         # init error_msg variable
@@ -201,6 +213,7 @@ class SmarACTPositionerManager(PositionerManager):
         positions = {}
         for ax, p in zip(self.axes, pos):
             positions[ax] = p
+        self._position = positions
         return positions
 
     def _get_position_channel(self, channel):

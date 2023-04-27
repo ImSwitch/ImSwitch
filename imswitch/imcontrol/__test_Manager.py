@@ -14,13 +14,6 @@ logging.basicConfig(level=logging.INFO)
 
 OK_to_run=True
 
-class TestReadConfig(TestCase):
-
-    def test_me(self):
-        options, optionsDidNotExist = configfiletools.loadOptions()
-        print(options)
-        setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo )
-        print(setupInfo)
 
 class TestSmarACTPositionManager(TestCase):
 
@@ -39,7 +32,7 @@ class TestSmarACTPositionManager(TestCase):
         options, optionsDidNotExist = configfiletools.loadOptions()
         setupInfo = configfiletools.loadSetupInfo(options, ViewSetupInfo)
         p_info = setupInfo.positioners['SmarACT']
-        self.drive: SmarACTPositionerManager = SmarACTPositionerManager(positionerInfo=p_info, name='something')
+        self.drive: SmarACTPositionerManager = SmarACTPositionerManager(positionerInfo=p_info, name='drive to test')
 
     def tearDown(self) -> None:
         self.drive.finalize()
@@ -54,7 +47,9 @@ class TestSmarACTPositionManager(TestCase):
 
 
     def test_move(self):
-        "Move all axes once and check that the movements are what we expect."
+        """
+        Move all axes once and check that the movements are what we expect.
+        """
         for i, axis in enumerate('XYZ'):
             print(f'###### {i} #### {axis}')
             position = self.drive.position
@@ -72,7 +67,6 @@ class TestSmarACTPositionManager(TestCase):
             msg += str(self.drive.position)
             self.assertLessEqual(diff[i]-direction, 0.1, msg)
 
-            logger.critical(f'Current position {self.drive.position}')
 
 
     def test_move_to_zero(self):

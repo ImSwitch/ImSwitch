@@ -31,11 +31,22 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSetSpeed.connect(lambda speed: self.setSpeedGUI(speed))
 
+
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+        self._widget.sigJoystick.connect(self.setJoystickStatus)
 
+        # Update of XY stage
+        self.updatePosition('Stage', 'X')
+        self.updatePosition('Stage', 'Y')
+
+    def setJoystickStatus(self, enabled):
+        if enabled:
+            self._master.positionersManager['Stage'].activate_joystick()
+        else:
+            self._master.positionersManager['Stage'].deactivate_joystick()
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
             lambda p: [p.setPosition(0, axis) for axis in p.axes],

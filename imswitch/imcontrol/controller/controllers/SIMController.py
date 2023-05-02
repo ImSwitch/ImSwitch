@@ -95,7 +95,10 @@ class SIMController(ImConWidgetController):
             return
 
         # initialize external dispaly (if available => id = 2?)
-        self._widget.initSIMDisplay(self._setupInfo.sim.monitorIdx)
+        monitorindex = self._setupInfo.sim.monitorIdx
+        if monitorindex is None: monitorindex = 0
+        self._widget.initSIMDisplay(monitorindex)
+        
         # self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
@@ -113,8 +116,8 @@ class SIMController(ImConWidgetController):
         
         # sim parameters
         self.patternID = 0
-        self.nRotations = 3
-        self.nPhases = 3
+        self.nRotations = self._master.simManager.nRotations
+        self.nPhases = self._master.simManager.nPhases
 
         # se    ect lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -129,18 +132,21 @@ class SIMController(ImConWidgetController):
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # show placeholder pattern
-        initPattern = self._master.simManager.allPatterns[self.patternID]
-        self._widget.updateSIMDisplay(initPattern)
-
+        
         # activate hamamatsu slm if necessary
         if self._master.simManager.isHamamatsuSLM:
             self.IS_HAMAMATSU = True
             self.initHamamatsuSLM()
+        elif self._master.simManager.isFastAPISIM:
+            self.IS_FASTAPISIM = True
+            self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
         else:
             self.IS_HAMAMATSU = False
+            initPattern = self._master.simManager.allPatterns[self.patternID]
+            self._widget.updateSIMDisplay(initPattern)
 
-        # enable display of SIM pattern by default 
-        self.toggleSIMDisplay(enabled=True)
+            # enable display of SIM pattern by default 
+            self.toggleSIMDisplay(enabled=True)
 
         # initialize SIM processor
         self.SimProcessorLaser1 = SIMProcessor(self)
@@ -149,7 +155,9 @@ class SIMController(ImConWidgetController):
         # connect the reconstructed image to the displayer
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
         
-
+        
+    def initFastAPISIM(self, params):
+        self.fastAPISIMParams = params
 
 
     def initHamamatsuSLM(self):
@@ -246,15 +254,38 @@ class SIMController(ImConWidgetController):
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
         self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
+        
+    @APIExport(runOnUIThread=True)
+    def updateDisplayImageImageFastAPISIM(self, patternID, host, port):
+        import requests
+        if host.find("http://")<0:
+            host = "http://" + host
+        full_url = f"{host}:{port}/{patternID}"
+        headers = {"accept": "application/json"}
+        try:
+            response = requests.get(full_url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error: {response.status_code}")
+                return None
+        except:
+            self._logger.error("couldn't display fastapi image")
+            return None
 
     @APIExport(runOnUIThread=True)
     def simPatternByID(self, patternID):
-        try:
-            currentPattern = self._master.simManager.allPatterns[patternID]
-            self.updateDisplayImage(currentPattern)
-            return currentPattern
-        except Exception as e:
-            self._logger.error(e)
+        if self.IS_FASTAPISIM:
+            host = self.fastAPISIMParams["host"]
+            port = self.fastAPISIMParams["port"]
+            self.updateDisplayImageImageFastAPISIM(patternID, host, port)
+        else:   
+            try:
+                currentPattern = self._master.simManager.allPatterns[patternID]
+                self.updateDisplayImage(currentPattern)
+                return currentPattern
+            except Exception as e:
+                self._logger.error(e)
             
     def performSIMExperimentThread(self, sim_info_dict):
         """ 
@@ -263,6 +294,7 @@ class SIMController(ImConWidgetController):
         self.patternID = 0
         self.isReconstructing = False
         nColour = 2
+        
 
         while self.active:
             
@@ -270,7 +302,9 @@ class SIMController(ImConWidgetController):
                 # toggle laser
                 if not self.active:
                     break
-                    
+                
+                processor = None
+                
                 if iColour == 0 and self.is488:
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)

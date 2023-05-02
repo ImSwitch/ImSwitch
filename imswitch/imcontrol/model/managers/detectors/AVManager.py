@@ -19,6 +19,11 @@ class AVManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
+        try:
+            self._mocktype = detectorInfo.managerProperties['mocktype']
+        except:
+            self._mocktype = "normal"
+            
         self._camera = self._getAVObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
@@ -30,6 +35,8 @@ class AVManager(DetectorManager):
 
         fullShape = (self._camera.getPropertyValue('image_width'),
                      self._camera.getPropertyValue('image_height'))
+        
+        
 
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
         self.pixel_format = self._camera.getPropertyValue("pixel_format")
@@ -174,7 +181,7 @@ class AVManager(DetectorManager):
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS()
+            camera = MockCameraTIS(mocktype=self._mocktype)
         
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera

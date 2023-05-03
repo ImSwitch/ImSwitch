@@ -30,6 +30,12 @@ class SIMManager(SignalInterface):
         self.isSimulation = self.__simInfo.isSimulation
         self.nRotations = self.__simInfo.nRotations
         self.nPhases = self.__simInfo.nPhases
+        self.simMagnefication = self.__simInfo.nPhases
+        self.simPixelsize = self.__simInfo.simPixelsize
+        self.simNA = self.__simInfo.simNA
+        self.simN = self.__simInfo.simN # refr
+        self.simETA = self.__simInfo.simETA
+        self.simN = self.__simInfo.simN
         
         self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
 

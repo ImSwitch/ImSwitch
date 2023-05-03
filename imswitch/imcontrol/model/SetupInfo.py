@@ -189,6 +189,16 @@ class SIMInfo:
     nRotations: int
     
     nPhases: int
+    
+    simMagnefication: float
+    
+    simPixelsize: float
+    
+    simNA: float
+    
+    simETA: float
+    
+    simN: float
 
 @dataclass(frozen=True)
 class MCTInfo:

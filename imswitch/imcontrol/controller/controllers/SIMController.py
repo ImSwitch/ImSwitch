@@ -119,6 +119,11 @@ class SIMController(ImConWidgetController):
         self.patternID = 0
         self.nRotations = self._master.simManager.nRotations
         self.nPhases = self._master.simManager.nPhases
+        self.simMagnefication = self._master.simManager.simMagnefication
+        self.simPixelsize = self._master.simManager.simPixelsize
+        self.simNA = self._master.simManager.simNA
+        self.simETA = self._master.simManager.simETA
+        self.simN =  self._master.simManager.simN
 
         # se    ect lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -132,8 +137,7 @@ class SIMController(ImConWidgetController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        # show placeholder pattern
-        
+
         # activate hamamatsu slm if necessary
         if self._master.simManager.isHamamatsuSLM:
             self.IS_HAMAMATSU = True
@@ -150,8 +154,9 @@ class SIMController(ImConWidgetController):
             self.toggleSIMDisplay(enabled=True)
 
         # initialize SIM processor
-        self.SimProcessorLaser1 = SIMProcessor(self)
-        self.SimProcessorLaser2 = SIMProcessor(self)
+        sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
+        self.SimProcessorLaser1 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p1)"])
+        self.SimProcessorLaser2 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p2)"])
         
         # connect the reconstructed image to the displayer
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
@@ -303,36 +308,27 @@ class SIMController(ImConWidgetController):
                 # toggle laser
                 if not self.active:
                     break
-                
-                processor = None
-                
+
                 if iColour == 0 and self.is488:
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
                     self._logger.debug("Switching to pattern"+self.lasers[0].name)
                     processor = self.SimProcessorLaser1
-                    sim_info_dict_1 = sim_info_dict
-                    sim_info_dict_1["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_1)
-                    self.LaserWL = 488
+                    processor.setParameters(sim_info_dict)
+                    self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                if iColour == 1 and self.is635:
+                elif iColour == 1 and self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
                     processor = self.SimProcessorLaser2
-                    sim_info_dict_2 = sim_info_dict
-                    sim_info_dict_2["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_2)                    
-                    self._logger.debug("Switching to pattern"+self.lasers[1].name)
-                    self.LaserWL = 635
+                    processor.setParameters(sim_info_dict)                    
+                    self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                elif not self.is488 and not self.is635:
+                else:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(False)
                     processor = None
                     # disable both laser
-            
-                if processor is None:
                     return
                 
                 for iPattern in range(self.nRotations*self.nPhases):
@@ -418,30 +414,28 @@ class SIMController(ImConWidgetController):
 
 class SIMProcessor(object):
 
-    def __init__(self, parent):
+    def __init__(self, parent, wavelength):
         '''
         setup parameters
         '''
         self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
-        self.phases_number = 3
-        self.angles_number = 3
-        self.magnification = 60
-        self.NA = 1.05
-        self.n = 1.33
-        self.wavelength = 0.57
-        self.pixelsize = 6.5
+        self.phases_number = parent.nPhases
+        self.angles_number = parent.nRotations
+        self.magnification = parent.simMagnefication
+        self.NA = parent.simNA
+        self.n = parent.simN
+        self.wavelength = wavelength
+        self.pixelsize = parent.simPixelsize
         self.dz= 0.55
         self.alpha = 0.5
         self.beta = 0.98
         self.w = 0.2
-        self.eta = 0.65
+        self.eta = parent.simETA
         self.group = 30
         self.use_phases = True
         self.find_carrier = True
-        self.pixelsize = 6.5
         self.isCalibrated = False
-        self.use_phases =  True
         self.use_gpu = isPytorch
         self.stack = []
         
@@ -485,12 +479,13 @@ class SIMProcessor(object):
 
     def setParameters(self, sim_info_dict):
         # uses parameters from GUI
-        self.wavelength = sim_info_dict["wavelength"]
         self.pixelsize= sim_info_dict["pixelsize"]
         self.NA= sim_info_dict["NA"]
         self.n= sim_info_dict["n"]
         self.reconstructionMethod = sim_info_dict["reconstructionMethod"]
         self.use_gpu = sim_info_dict["useGPU"]
+        self.eta = sim_info_dict["eta"]
+        self.magnification = sim_info_dict["magnefication"]
         
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method

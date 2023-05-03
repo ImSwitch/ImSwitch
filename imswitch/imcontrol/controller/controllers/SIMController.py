@@ -45,12 +45,13 @@ except:
 
 
 try:
-    from napari_sim_processor.convSimProcessor import ConvSimProcessor
-    from napari_sim_processor.hexSimProcessor import HexSimProcessor
+    from napari_sim_processor.processors.convSimProcessor import ConvSimProcessor
+    from napari_sim_processor.processors.hexSimProcessor import HexSimProcessor
     isSIM = True
-    
+    isGPU = False
 except:
     isSIM = False
+    isGPU = False
 
 try:
     import torch

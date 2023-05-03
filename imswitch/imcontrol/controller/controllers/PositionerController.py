@@ -20,12 +20,25 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
+            if pManager.joystick:
+                self._widget.addJoystick(pName)
+
             speed = hasattr(pManager, 'speed')
-            self._widget.addPositioner(pName, pManager.axes, speed)
+            self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
             for axis in pManager.axes:
                 self.setSharedAttr(pName, axis, _positionAttr, pManager.position[axis])
                 if speed:
                     self.setSharedAttr(pName, axis, _positionAttr, pManager.speed)
+                if pName == 'Stage':
+                    self.updatePosition(pName, axis)
+
+            if pManager.joystick:
+                # Set joystick checkbox status
+                self.setJoystickCheckStatus(self._master.positionersManager[pName].joystickStatus)
+                # Connect joystick channels
+                self._widget.sigJoystick.connect(self.setJoystickStatus)
+                self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
+
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -36,17 +49,22 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
-        self._widget.sigJoystick.connect(self.setJoystickStatus)
 
-        # Update of XY stage
-        self.updatePosition('Stage', 'X')
-        self.updatePosition('Stage', 'Y')
 
-    def setJoystickStatus(self, enabled):
+    def setJoystickStatus(self, enabled, pName):
         if enabled:
             self._master.positionersManager['Stage'].activate_joystick()
         else:
             self._master.positionersManager['Stage'].deactivate_joystick()
+            self.updatePosition(pName, 'all')
+
+    def setJoystickCheckStatus(self, state=bool):
+        if not state and self._widget.joystickCheck.isChecked():
+            self._widget.joystickCheck.setChecked(False)
+        if state and not self._widget.joystickCheck.isChecked():
+            self._widget.joystickCheck.setChecked(True)
+
+
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
             lambda p: [p.setPosition(0, axis) for axis in p.axes],
@@ -84,9 +102,17 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].setSpeed(speed)
         
     def updatePosition(self, positionerName, axis):
-        newPos = self._master.positionersManager[positionerName].position[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        if axis == 'all':
+            for axisName in self._master.positionersManager[positionerName].axes:
+                newPos = self._master.positionersManager[positionerName].position[axisName]
+                self._widget.updatePosition(positionerName, axisName, newPos)
+                self.setSharedAttr(positionerName, axisName, _positionAttr, newPos)
+        else:
+            newPos = self._master.positionersManager[positionerName].position[axis]
+            self._widget.updatePosition(positionerName, axis, newPos)
+            self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+
 
     def attrChanged(self, key, value):
         if self.settingAttr or len(key) != 4 or key[0] != _attrCategory:

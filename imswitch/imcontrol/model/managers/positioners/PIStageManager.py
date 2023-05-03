@@ -22,7 +22,7 @@ class PIStageManager(PositionerManager):
                                f' respectively, {positionerInfo.axes} provided.')
 
         super().__init__(positionerInfo, name, initialPosition={
-            axis: 12.5 for axis in positionerInfo.axes})
+            axis: 0 for axis in positionerInfo.axes})
 
         # TO DO: device name and usb description not as hard value but either picked up from the config file or
         # automatically found with the GSCdevice.enumarateUSB() command
@@ -31,13 +31,14 @@ class PIStageManager(PositionerManager):
 
         self.X = GCSDevice(self.device)
         self.Y = GCSDevice(self.device)
-        self.joystick_status = 'enabled'
         self.rangeMin = 0
-        self.rangeMax = 25
+        self.rangeMax = 25 #in mm
+        self.joystickStatus = False
 
         try:
             self.connect()
-        except SerialException:
+            self.getJoystickEnabledStatus()
+        except:
             self.__logger.debug('Could not initialize PI Stage motorized stage.')
             self.dev = None
 
@@ -55,28 +56,31 @@ class PIStageManager(PositionerManager):
         self.Y.ConnectDaisyChainDevice(2, daisychainid)
         gcs2pitools.startup(self.X)
         gcs2pitools.startup(self.Y)
-        self.rangeMin = self.X.qTMN()['1']
-        self.rangeMax = self.X.qTMX()['1']
-        self._position['X'] = self.X.qPOS(1)[1]
-        self._position['Y'] = self.Y.qPOS(1)[1]
+        self.rangeMin = self.X.qTMN()['1'] #in mm
+        self.rangeMax = self.X.qTMX()['1'] #in mm
+        self._position['X'] = self.X.qPOS(1)[1]*1000 #converted to um for display in GUI
+        self._position['Y'] = self.Y.qPOS(1)[1]*1000 #converted to um for display in GUI
 
         self.__logger.debug('PI stage connected')
         self.__logger.debug('\n{}:\n{}'.format(self.X.GetInterfaceDescription(), self.X.qIDN()))
         self.__logger.debug('\n{}:\n{}'.format(self.Y.GetInterfaceDescription(), self.Y.qIDN()))
 
     def move(self, value, axis):
-        value = value / 1000
+        # value extracted from widget is in um, must be converted to mm to be passed to PI stage controller
+        # self.'axis'.qPOS gives value in mm
+        # Therefore, distance to move = self.'axis'.qPOS + value/1000
         if axis == "X":
-            self._position['X'] = self.X.qPOS(1)[1]
-            self.setPosition(self._position['X'] + value, axis)
+            dist = self.X.qPOS(1)[1] + value / 1000
+            self.setPosition(dist, axis)
         elif axis == "Y":
-            self._position['Y'] = self.Y.qPOS(1)[1]
-            self.setPosition(self._position['X'] + value, axis)
+            dist = self.Y.qPOS(1)[1] + value / 1000
+            self.setPosition(dist, axis)
 
     def setPosition(self, position: float, axis: str):
 
         if self.rangeMax >= position >= self.rangeMin:
-            self.deactivate_joystick()
+            if self.joystickStatus:
+                self.deactivate_joystick()
             if axis == 'X':
                 self.X.MOV(1, position)
             if axis == 'Y':
@@ -84,19 +88,27 @@ class PIStageManager(PositionerManager):
         else:
             self.__logger.debug('Out of the stage range')
 
-        self._position[axis] = position
+        self._position[axis] = position * 1000
 
     def activate_joystick(self):
         self.X.JON(1, True)
         self.Y.JON(1, True)
-        self.joystick_status = 'enabled'
-        # self.__logger.debug('Joystick activated')
+        self.joystickStatus = True
+        self.__logger.debug('Joystick activated')
 
     def deactivate_joystick(self):
         self.X.JON(1, False)
         self.Y.JON(1, False)
-        self.joystick_status = 'disabled'
-        # self.__logger.debug('Joystick deactivated')
+        self.joystickStatus = False
+        self._position['X'] = self.X.qPOS(1)[1] * 1000
+        self._position['Y'] = self.Y.qPOS(1)[1] * 1000
+        self.__logger.debug('Joystick deactivated')
+
+    def getJoystickEnabledStatus(self):
+        """
+        Status of X axis joystick, assuming status is same for Y axis
+        """
+        self.joystickStatus = self.X.qJON()[1]
 
     """
     

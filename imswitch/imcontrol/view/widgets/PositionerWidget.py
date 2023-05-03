@@ -7,7 +7,8 @@ from .basewidgets import Widget
 class PositionerWidget(Widget):
     """ Widget in control of the piezo movement. """
 
-    sigJoystick = QtCore.Signal(bool)
+    sigJoystick = QtCore.Signal(bool, str)
+    sigSetJoystickCheck = QtCore.Signal(bool)
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigsetSpeedClicked = QtCore.Signal()  # (speed)
@@ -19,15 +20,18 @@ class PositionerWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-    def addPositioner(self, positionerName, axes, speed):
+    def addJoystick(self, pName):
+        # create and add check box
+        self.joystickCheck = QtWidgets.QCheckBox('Enable Joystick')
+        self.joystickCheck.setCheckable(True)
+        self.grid.addWidget(self.joystickCheck, 0, 0)
+        # connect checkbox signal
+        self.joystickCheck.toggled.connect(
+            lambda state: self.sigJoystick.emit(state, pName)
+        )
+        self.numPositioners += 1
 
-        if positionerName == 'Stage':
-            self.joystickCheck = QtWidgets.QCheckBox('Enable Joystick')
-            self.joystickCheck.setCheckable(True)
-            self.grid.addWidget(self.joystickCheck, 0, 0)
-            self.numPositioners += 1
-            self.joystickCheck.toggled.connect(self.sigJoystick)
-
+    def addPositioner(self, positionerName, axes, speed, joystick):
         for i in range(len(axes)):
             axis = axes[i]
             parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -41,7 +45,7 @@ class PositionerWidget(Widget):
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
             if positionerName == 'Stage':
-                self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('5')
+                self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('25')
             else:
                 self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('0.05')
 
@@ -62,6 +66,17 @@ class PositionerWidget(Widget):
             self.pars['DownButton' + parNameSuffix].clicked.connect(
                 lambda *args, axis=axis: self.sigStepDownClicked.emit(positionerName, axis)
             )
+
+            if joystick:
+                # uncheck joystick when +/- buttons are pressed
+                self.pars['UpButton' + parNameSuffix].clicked.connect(
+                    lambda *args, state=False: self.sigSetJoystickCheck.emit(state)
+                )
+                self.pars['DownButton' + parNameSuffix].clicked.connect(
+                    lambda *args, state=False: self.sigSetJoystickCheck.emit(state)
+                )
+
+
             if speed:
                 self.pars['Speed'] = QtWidgets.QLabel(f'<strong>{0:.2f} µm/s</strong>')
                 self.pars['Speed'].setTextFormat(QtCore.Qt.RichText)

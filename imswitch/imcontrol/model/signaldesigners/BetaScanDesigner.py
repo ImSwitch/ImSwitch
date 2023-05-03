@@ -52,7 +52,7 @@ class BetaScanDesigner(ScanDesigner):
         [fast_axis_step_size, middle_axis_step_size, slow_axis_step_size] = \
             [(parameterDict['axis_step_size'][i] / convFactors[i]) for i in range(3)]
 
-        # Retrive starting position
+        # Retrieve starting position
         [fast_axis_start, middle_axis_start, slow_axis_start] = \
             [(parameterDict['axis_startpos'][i][0] / convFactors[i]) for i in range(3)]
 
@@ -79,6 +79,7 @@ class BetaScanDesigner(ScanDesigner):
         rampSignal = np.zeros(rampSamples)
         self._logger.debug(fast_axis_positions)
         rampValues = self.__makeRamp(fast_axis_start, fast_axis_size, fast_axis_positions)
+        print(rampValues)
         for s in range(fast_axis_positions):
             start = s * sequenceSamples
             end = s * sequenceSamples + sequenceSamples
@@ -98,6 +99,7 @@ class BetaScanDesigner(ScanDesigner):
         colSamples = middle_axis_positions * lineSamples
         colValues = self.__makeRamp(middle_axis_start, middle_axis_size, middle_axis_positions)
         fullSquareSignal = np.zeros(colSamples)
+        print(colValues)
         for s in range(middle_axis_positions):
             fullSquareSignal[s * lineSamples: s * lineSamples + rampSamples] = colValues[s]
 
@@ -136,7 +138,7 @@ class BetaScanDesigner(ScanDesigner):
             'return_time': parameterDict['return_time']
         }
 
-        self.__plot_curves(plot=False, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
+        self.__plot_curves(plot=True, signals=[fastAxisSignal, middleAxisSignal, slowAxisSignal])
 
         return sig_dict, scanInfoDict['positions'], scanInfoDict
 

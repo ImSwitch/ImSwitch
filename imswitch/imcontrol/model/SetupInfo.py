@@ -91,6 +91,9 @@ class PositionerInfo(DeviceInfo):
     resetOnClose: bool = True
     """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
 
+    joystick: bool = False
+    """ Whether the positioner is connected to a joystick. """
+
 
 @dataclass(frozen=True)
 class RS232Info:

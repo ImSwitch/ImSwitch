@@ -24,6 +24,11 @@ class AVManager(DetectorManager):
         except:
             self._mocktype = "normal"
             
+        try:
+            self._mockstackpath = detectorInfo.managerProperties['mockstackpath']
+        except:
+            self._mockstackpath = None
+            
         self._camera = self._getAVObj(detectorInfo.managerProperties['cameraListIndex'])
 
         model = self._camera.model
@@ -181,7 +186,7 @@ class AVManager(DetectorManager):
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize AV camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS(mocktype=self._mocktype)
+            camera = MockCameraTIS(mocktype=self._mocktype, mockstackpath=self._mockstackpath)
         
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera

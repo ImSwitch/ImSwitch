@@ -5,7 +5,7 @@ import time
 
 
 class MockCameraTIS:
-    def __init__(self, mocktype = None):
+    def __init__(self, mocktype = None, mockstackpath=None):
         self.properties = {
             'image_height': 500,
             'image_width': 500,
@@ -22,6 +22,9 @@ class MockCameraTIS:
             self.mocktype = "default"
         else:
             self.mocktype = mocktype
+        
+        if mockstackpath is not None:
+            self.mockstackpath = mockstackpath
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
@@ -36,7 +39,7 @@ class MockCameraTIS:
             import tifffile as tif
 
             # Open the TIFF file
-            mFile = '/Users/bene/Downloads/New_SMLM_datasets/ROI_cos7MT_AF647fluopaint.tif'
+            mFile = self.mockstackpath
             self.tifr = tif.TiffFile(mFile)
             dummyFrame = self.tifr.pages[0].asarray()
             self.SensorHeight = dummyFrame.shape[0]

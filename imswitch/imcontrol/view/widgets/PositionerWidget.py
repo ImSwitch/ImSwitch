@@ -26,7 +26,7 @@ class PositionerWidget(Widget):
         self.joystickCheck.setCheckable(True)
         self.grid.addWidget(self.joystickCheck, 0, 0)
         # connect checkbox signal
-        self.joystickCheck.toggled.connect(
+        self.joystickCheck.clicked.connect(
             lambda state: self.sigJoystick.emit(state, pName)
         )
         self.numPositioners += 1

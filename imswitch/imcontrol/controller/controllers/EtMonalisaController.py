@@ -72,7 +72,7 @@ class EtMonalisaController(ImConWidgetController):
         # Initiate coordinate transform coeffs
         self.__transformCoeffs = np.zeros(20)
 
-        # Connect EtSTEDWidget and communication channel signals
+        # Connect EtMonalisaWidget and communication channel signals
         self._widget.initiateButton.clicked.connect(self.initiate)
         self._widget.loadPipelineButton.clicked.connect(self.loadPipeline)
         self._widget.recordBinaryMaskButton.clicked.connect(self.initiateBinaryMask)
@@ -108,6 +108,8 @@ class EtMonalisaController(ImConWidgetController):
     def initiate(self):
         """ Initiate or stop an etMonalisa experiment. """
         if not self.__running:
+
+            self._commChannel.sigInitiateEtMonalisa.emit(True)
 
             detectorFastIdx = self._widget.fastImgDetectorsPar.currentIndex()
             self.detectorFast = self._widget.fastImgDetectors[detectorFastIdx]
@@ -157,6 +159,7 @@ class EtMonalisaController(ImConWidgetController):
             self.__running = True
 
         else:
+            self._commChannel.sigInitiateEtMonalisa.emit(False)
 
             # disconnect communication channel signals and turn off wf laser
             self._commChannel.sigUpdateImage.disconnect(self.runPipeline)

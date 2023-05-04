@@ -95,6 +95,8 @@ class PositionerInfo(DeviceInfo):
     """ Whether the positioner is connected to a joystick. """
 
 
+
+
 @dataclass(frozen=True)
 class RS232Info:
     managerName: str

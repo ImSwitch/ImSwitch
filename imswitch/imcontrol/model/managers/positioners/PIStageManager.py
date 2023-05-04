@@ -24,8 +24,7 @@ class PIStageManager(PositionerManager):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes})
 
-        # TO DO: device name and usb description not as hard value but either picked up from the config file or
-        # automatically found with the GSCdevice.enumarateUSB() command
+        # TODO: device name and usb description not as hard value but either picked up from the config file or automatically found with the GSCdevice.enumarateUSB() command
         self.device = 'C-663.11'
         self.usb_description = '0205500074'
 
@@ -39,14 +38,15 @@ class PIStageManager(PositionerManager):
             self.connect()
             self.getJoystickEnabledStatus()
         except:
-            self.__logger.debug('Could not initialize PI Stage motorized stage.')
-            self.dev = None
+            self.__logger.debug('Could not initialize PI motorized stage.')
+            self.device = None
 
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
-        self.activate_joystick()
-        self.X.CloseDaisyChain()
-        self.__logger.debug('PIstage connection closed, joystick activated')
+        if self.device is not None:
+            self.activate_joystick()
+            self.X.CloseDaisyChain()
+            self.__logger.debug('PIstage connection closed, joystick activated')
 
     def connect(self):
         self.__logger.debug('Connecting PI stage...')
@@ -79,8 +79,7 @@ class PIStageManager(PositionerManager):
     def setPosition(self, position: float, axis: str):
 
         if self.rangeMax >= position >= self.rangeMin:
-            if self.joystickStatus:
-                self.deactivate_joystick()
+            self.deactivate_joystick()
             if axis == 'X':
                 self.X.MOV(1, position)
             if axis == 'Y':
@@ -91,18 +90,20 @@ class PIStageManager(PositionerManager):
         self._position[axis] = position * 1000
 
     def activate_joystick(self):
-        self.X.JON(1, True)
-        self.Y.JON(1, True)
-        self.joystickStatus = True
-        self.__logger.debug('Joystick activated')
+        if not self.joystickStatus:
+            self.X.JON(1, True)
+            self.Y.JON(1, True)
+            self.joystickStatus = True
+            self.__logger.debug('Joystick activated')
 
     def deactivate_joystick(self):
-        self.X.JON(1, False)
-        self.Y.JON(1, False)
-        self.joystickStatus = False
-        self._position['X'] = self.X.qPOS(1)[1] * 1000
-        self._position['Y'] = self.Y.qPOS(1)[1] * 1000
-        self.__logger.debug('Joystick deactivated')
+        if self.joystickStatus:
+            self.X.JON(1, False)
+            self.Y.JON(1, False)
+            self.joystickStatus = False
+            self._position['X'] = self.X.qPOS(1)[1] * 1000
+            self._position['Y'] = self.Y.qPOS(1)[1] * 1000
+            self.__logger.debug('Joystick deactivated')
 
     def getJoystickEnabledStatus(self):
         """

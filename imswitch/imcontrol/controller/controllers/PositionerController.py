@@ -20,6 +20,10 @@ class PositionerController(ImConWidgetController):
             if not pManager.forPositioning:
                 continue
 
+            if pName == 'Stage':
+                if self._master.positionersManager[pName].device is None:
+                    continue
+
             if pManager.joystick:
                 self._widget.addJoystick(pName)
 
@@ -33,11 +37,14 @@ class PositionerController(ImConWidgetController):
                     self.updatePosition(pName, axis)
 
             if pManager.joystick:
-                # Set joystick checkbox status
+                # Set joystick checkbox status for first start
                 self.setJoystickCheckStatus(self._master.positionersManager[pName].joystickStatus)
-                # Connect joystick channels
+                # Connect channels
                 self._widget.sigJoystick.connect(self.setJoystickStatus)
                 self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
+                self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
+                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatus(True, pName))
+                self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
 
 
         # Connect CommunicationChannel signals
@@ -57,6 +64,7 @@ class PositionerController(ImConWidgetController):
         else:
             self._master.positionersManager['Stage'].deactivate_joystick()
             self.updatePosition(pName, 'all')
+        self.setJoystickCheckStatus(enabled)
 
     def setJoystickCheckStatus(self, state=bool):
         if not state and self._widget.joystickCheck.isChecked():

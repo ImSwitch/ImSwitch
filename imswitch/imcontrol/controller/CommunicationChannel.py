@@ -94,6 +94,8 @@ class CommunicationChannel(SignalInterface):
 
     sigNewFrame = Signal()
 
+    sigInitiateEtMonalisa = Signal(bool)
+
     # useq-schema related signals
     sigSetXYPosition = Signal(float, float)
     sigSetZPosition = Signal(float)

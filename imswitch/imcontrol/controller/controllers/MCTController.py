@@ -547,9 +547,10 @@ class MCTController(ImConWidgetController):
     def switchOffIllumination(self):
         # switch off all illu sources
         for lasers in self.lasers:
-            lasers.setEnabled(False)
-            #lasers.setValue(0)
-            time.sleep(0.1)
+            if lasers.name.find("Laser")>-1:
+                lasers.setEnabled(False)
+                #lasers.setValue(0)
+                time.sleep(0.1)
         if len(self.leds)>0:
             self.leds[0].setValue(0)
             #self.illu.setAll((0,0,0))

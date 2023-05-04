@@ -269,7 +269,7 @@ class SIMController(ImConWidgetController):
         full_url = f"{host}:{port}/{patternID}"
         headers = {"accept": "application/json"}
         try:
-            response = requests.get(full_url, headers=headers)
+            response = requests.get(full_url, headers=headers, timeout=0.1)
             if response.status_code == 200:
                 return response.json()
             else:

@@ -84,10 +84,11 @@ class PIStageManager(PositionerManager):
                 self.X.MOV(1, position)
             if axis == 'Y':
                 self.Y.MOV(1, position)
+            self._position[axis] = position * 1000
         else:
             self.__logger.debug('Out of the stage range')
 
-        self._position[axis] = position * 1000
+
 
     def activate_joystick(self):
         if not self.joystickStatus:

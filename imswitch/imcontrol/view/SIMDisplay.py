@@ -23,6 +23,8 @@ class SIMDisplay(QtWidgets.QLabel):
         self.hasShownMonitorWarning = False
 
     def setMonitor(self, monitor, updateImage=False):
+        if monitor is None:
+            monitor = 0
         app = QtWidgets.QApplication.instance()
         screens = app.screens()
 

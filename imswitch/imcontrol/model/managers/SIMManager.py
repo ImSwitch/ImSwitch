@@ -28,18 +28,35 @@ class SIMManager(SignalInterface):
         self.__simSize = (self.__simInfo.width, self.__simInfo.height)
         self.__patternsDir = self.__simInfo.patternsDir
         self.isSimulation = self.__simInfo.isSimulation
+        self.nRotations = self.__simInfo.nRotations
+        self.nPhases = self.__simInfo.nPhases
+        self.simMagnefication = self.__simInfo.nPhases
+        self.simPixelsize = self.__simInfo.simPixelsize
+        self.simNA = self.__simInfo.simNA
+        self.simN = self.__simInfo.simN # refr
+        self.simETA = self.__simInfo.simETA
+        self.simN = self.__simInfo.simN
         
         self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
-        
+
         # Load all patterns
         self.allPatterns = self.loadPatterns(self.__patternsDir)
 
-        self.update()
+        # define paramerters for fastAPI (optional)
+        fastAPISIM_host = self.__simInfo.fastAPISIM_host
+        fastAPISIM_port = self.__simInfo.fastAPISIM_port
+        self.fastAPISIMParams = {"host":fastAPISIM_host, "port":fastAPISIM_port}
+        self.isFastAPISIM = self.__simInfo.isFastAPISIM
 
     def loadPatterns(self,patternsDir, filetype="bmp"):
         # sort filenames numerically
-        allPatternPaths = sorted(glob.glob(os.path.join(patternsDir, "*."+filetype)))
         allPatterns = []
+        try:
+            allPatternPaths = sorted(glob.glob(os.path.join(patternsDir, "*."+filetype)))
+        except Exception as e:
+            self.__logger.error("Could not load patterns")
+            self.__logger.error(e)
+            return allPatterns
         for iPatternPath in allPatternPaths:
             mImage = cv2.imread(iPatternPath)
             mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)

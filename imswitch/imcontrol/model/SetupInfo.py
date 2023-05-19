@@ -179,6 +179,26 @@ class SIMInfo:
     isSimulation: bool
 
     isHamamatsuSLM: bool
+    
+    fastAPISIM_host: str
+    
+    fastAPISIM_port: str
+    
+    isFastAPISIM: bool
+    
+    nRotations: int
+    
+    nPhases: int
+    
+    simMagnefication: float
+    
+    simPixelsize: float
+    
+    simNA: float
+    
+    simETA: float
+    
+    simN: float
 
 @dataclass(frozen=True)
 class MCTInfo:

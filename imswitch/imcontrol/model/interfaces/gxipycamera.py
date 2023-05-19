@@ -187,12 +187,9 @@ class CameraGXIPY:
 
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-        #TODO: Napari only displays 8Bit?
-        return self.frame
         # only return fresh frames
-        #while(self.lastFrameId == self.frameNumber and self.frame is None):
-        #    time.sleep(.01) # wait for fresh frame
+        while(self.lastFrameId == self.frameNumber and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
         self.lastFrameId = self.frameNumber
         return self.frame
 

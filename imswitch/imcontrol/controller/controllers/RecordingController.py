@@ -427,7 +427,7 @@ class RecordingController(ImConWidgetController):
         self.snap(name)
     '''
     @APIExport(runOnUIThread=True)
-    def snapImage(self, output: bool = False) -> np.ndarray:
+    def snapImage(self, output: bool = False):# -> np.ndarray:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
             return self.snapNumpy()

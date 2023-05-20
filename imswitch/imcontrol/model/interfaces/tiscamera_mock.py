@@ -98,7 +98,7 @@ class MockCameraTIS:
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0],img.shape[1])
-        return img
+        return np.abs(img)
 
     def getLast(self, is_resize=False):
         return self.grabFrame()

@@ -36,7 +36,7 @@ configure_path()
 import os
 import tifffile
 
-    from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
+from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from thorlabs_tsi_sdk.tl_mono_to_color_processor import MonoToColorProcessorSDK
 from thorlabs_tsi_sdk.tl_camera_enums import SENSOR_TYPE
 

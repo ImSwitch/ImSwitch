@@ -50,10 +50,10 @@ class ImSwitchServer(Worker):
 
 
     def run(self):
-        
+
         # serve APP
-        self.startAPP()       
-            
+        self.startAPP()
+
         # serve the fastapi
         self.createAPI()
         uvicorn.run(app, host="0.0.0.0", port=8000)
@@ -80,15 +80,15 @@ class ImSwitchServer(Worker):
 
     # SRC: https://code-maven.com/static-server-in-python
     class StaticServer(BaseHTTPRequestHandler):
-    
+
         def do_GET(self):
             root = os.path.dirname(os.path.abspath(__file__).split("imswitch")[0]+"imswitch/app/public/")
-            
+
             if self.path == '/':
                 filename = root + '/index.html'
             else:
                 filename = root + self.path
-    
+
             self.send_response(200)
             if filename[-4:] == '.css':
                 self.send_header('Content-type', 'text/css')
@@ -105,18 +105,18 @@ class ImSwitchServer(Worker):
                 html = fh.read()
                 #html = bytes(html, 'utf8')
                 self.wfile.write(html)
- 
+
     def start_server(self, httpd):
         #print('Starting httpd')
         httpd.serve_forever()
-     
+
     def startAPP(self, server_class=HTTPServer, handler_class=StaticServer, port=5001):
         server_address = ('', port)
         try:
             httpd = server_class(server_address, handler_class)
             t = threading.Thread(target=self.start_server, args=(httpd,))
             t.start()
-        
+
             print('httpd started on port {}'.format(port))
         except Exception as e:
             print('httpd failed to start on port {}'.format(port))

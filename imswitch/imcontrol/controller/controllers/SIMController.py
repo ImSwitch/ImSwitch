@@ -45,12 +45,13 @@ except:
 
 
 try:
-    from napari_sim_processor.convSimProcessor import ConvSimProcessor
-    from napari_sim_processor.hexSimProcessor import HexSimProcessor
+    from napari_sim_processor.processors.convSimProcessor import ConvSimProcessor
+    from napari_sim_processor.processors.hexSimProcessor import HexSimProcessor
     isSIM = True
-    
+    isGPU = False
 except:
     isSIM = False
+    isGPU = False
 
 try:
     import torch
@@ -95,7 +96,10 @@ class SIMController(ImConWidgetController):
             return
 
         # initialize external dispaly (if available => id = 2?)
-        self._widget.initSIMDisplay(self._setupInfo.sim.monitorIdx)
+        monitorindex = self._setupInfo.sim.monitorIdx
+        if monitorindex is None: monitorindex = 0
+        self._widget.initSIMDisplay(monitorindex)
+        
         # self.loadPreset(self._defaultPreset)
 
         # Connect CommunicationChannel signals
@@ -113,8 +117,13 @@ class SIMController(ImConWidgetController):
         
         # sim parameters
         self.patternID = 0
-        self.nRotations = 3
-        self.nPhases = 3
+        self.nRotations = self._master.simManager.nRotations
+        self.nPhases = self._master.simManager.nPhases
+        self.simMagnefication = self._master.simManager.simMagnefication
+        self.simPixelsize = self._master.simManager.simPixelsize
+        self.simNA = self._master.simManager.simNA
+        self.simETA = self._master.simManager.simETA
+        self.simN =  self._master.simManager.simN
 
         # se    ect lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -128,28 +137,33 @@ class SIMController(ImConWidgetController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        # show placeholder pattern
-        initPattern = self._master.simManager.allPatterns[self.patternID]
-        self._widget.updateSIMDisplay(initPattern)
 
         # activate hamamatsu slm if necessary
         if self._master.simManager.isHamamatsuSLM:
             self.IS_HAMAMATSU = True
             self.initHamamatsuSLM()
+        elif self._master.simManager.isFastAPISIM:
+            self.IS_FASTAPISIM = True
+            self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
         else:
             self.IS_HAMAMATSU = False
+            initPattern = self._master.simManager.allPatterns[self.patternID]
+            self._widget.updateSIMDisplay(initPattern)
 
-        # enable display of SIM pattern by default 
-        self.toggleSIMDisplay(enabled=True)
+            # enable display of SIM pattern by default 
+            self.toggleSIMDisplay(enabled=True)
 
         # initialize SIM processor
-        self.SimProcessorLaser1 = SIMProcessor(self)
-        self.SimProcessorLaser2 = SIMProcessor(self)
+        sim_info_dict = self.getInfoDict(generalParams=self._widget.SIMParameterTree.p)
+        self.SimProcessorLaser1 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p1)"])
+        self.SimProcessorLaser2 = SIMProcessor(self, wavelength=sim_info_dict["wavelength (p2)"])
         
         # connect the reconstructed image to the displayer
         self.sigSIMProcessorImageComputed.connect(self.displayImage)
         
-
+        
+    def initFastAPISIM(self, params):
+        self.fastAPISIMParams = params
 
 
     def initHamamatsuSLM(self):
@@ -246,15 +260,38 @@ class SIMController(ImConWidgetController):
         self._widget.img.setImage(image, autoLevels=True, autoDownsample=False)
         self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
+        
+    @APIExport(runOnUIThread=True)
+    def updateDisplayImageImageFastAPISIM(self, patternID, host, port):
+        import requests
+        if host.find("http://")<0:
+            host = "http://" + host
+        full_url = f"{host}:{port}/{patternID}"
+        headers = {"accept": "application/json"}
+        try:
+            response = requests.get(full_url, headers=headers, timeout=0.1)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error: {response.status_code}")
+                return None
+        except:
+            self._logger.error("couldn't display fastapi image")
+            return None
 
     @APIExport(runOnUIThread=True)
     def simPatternByID(self, patternID):
-        try:
-            currentPattern = self._master.simManager.allPatterns[patternID]
-            self.updateDisplayImage(currentPattern)
-            return currentPattern
-        except Exception as e:
-            self._logger.error(e)
+        if self.IS_FASTAPISIM:
+            host = self.fastAPISIMParams["host"]
+            port = self.fastAPISIMParams["port"]
+            self.updateDisplayImageImageFastAPISIM(patternID, host, port)
+        else:   
+            try:
+                currentPattern = self._master.simManager.allPatterns[patternID]
+                self.updateDisplayImage(currentPattern)
+                return currentPattern
+            except Exception as e:
+                self._logger.error(e)
             
     def performSIMExperimentThread(self, sim_info_dict):
         """ 
@@ -263,6 +300,7 @@ class SIMController(ImConWidgetController):
         self.patternID = 0
         self.isReconstructing = False
         nColour = 2
+        
 
         while self.active:
             
@@ -270,34 +308,27 @@ class SIMController(ImConWidgetController):
                 # toggle laser
                 if not self.active:
                     break
-                    
+
                 if iColour == 0 and self.is488:
                     self.lasers[0].setEnabled(True)
                     self.lasers[1].setEnabled(False)
                     self._logger.debug("Switching to pattern"+self.lasers[0].name)
                     processor = self.SimProcessorLaser1
-                    sim_info_dict_1 = sim_info_dict
-                    sim_info_dict_1["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_1)
-                    self.LaserWL = 488
+                    processor.setParameters(sim_info_dict)
+                    self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                if iColour == 1 and self.is635:
+                elif iColour == 1 and self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
                     processor = self.SimProcessorLaser2
-                    sim_info_dict_2 = sim_info_dict
-                    sim_info_dict_2["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_2)                    
-                    self._logger.debug("Switching to pattern"+self.lasers[1].name)
-                    self.LaserWL = 635
+                    processor.setParameters(sim_info_dict)                    
+                    self.LaserWL = processor.wavelength
                     # set the pattern-path for laser wl 1
-                elif not self.is488 and not self.is635:
+                else:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(False)
                     processor = None
                     # disable both laser
-            
-                if processor is None:
                     return
                 
                 for iPattern in range(self.nRotations*self.nPhases):
@@ -383,30 +414,28 @@ class SIMController(ImConWidgetController):
 
 class SIMProcessor(object):
 
-    def __init__(self, parent):
+    def __init__(self, parent, wavelength):
         '''
         setup parameters
         '''
         self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
-        self.phases_number = 3
-        self.angles_number = 3
-        self.magnification = 60
-        self.NA = 1.05
-        self.n = 1.33
-        self.wavelength = 0.57
-        self.pixelsize = 6.5
+        self.phases_number = parent.nPhases
+        self.angles_number = parent.nRotations
+        self.magnification = parent.simMagnefication
+        self.NA = parent.simNA
+        self.n = parent.simN
+        self.wavelength = wavelength
+        self.pixelsize = parent.simPixelsize
         self.dz= 0.55
         self.alpha = 0.5
         self.beta = 0.98
         self.w = 0.2
-        self.eta = 0.65
+        self.eta = parent.simETA
         self.group = 30
         self.use_phases = True
         self.find_carrier = True
-        self.pixelsize = 6.5
         self.isCalibrated = False
-        self.use_phases =  True
         self.use_gpu = isPytorch
         self.stack = []
         
@@ -450,12 +479,13 @@ class SIMProcessor(object):
 
     def setParameters(self, sim_info_dict):
         # uses parameters from GUI
-        self.wavelength = sim_info_dict["wavelength"]
         self.pixelsize= sim_info_dict["pixelsize"]
         self.NA= sim_info_dict["NA"]
         self.n= sim_info_dict["n"]
         self.reconstructionMethod = sim_info_dict["reconstructionMethod"]
         self.use_gpu = sim_info_dict["useGPU"]
+        self.eta = sim_info_dict["eta"]
+        self.magnification = sim_info_dict["magnefication"]
         
     def setReconstructionMethod(self, method):
         self.reconstructionMethod = method

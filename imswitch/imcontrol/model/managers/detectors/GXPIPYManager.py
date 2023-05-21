@@ -54,6 +54,8 @@ class GXPIPYManager(DetectorManager):
                                             editable=True),
             'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
                                             editable=True),
+            'binning': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                               editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
@@ -111,7 +113,8 @@ class GXPIPYManager(DetectorManager):
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
     def getLatestFrame(self, is_save=False):
-        return self._camera.getLast()
+        frame = self._camera.getLast()
+        return frame
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -124,7 +127,7 @@ class GXPIPYManager(DetectorManager):
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
-        value = self._camera.setProperty(name, value)
+        value = self._camera.setPropertyValue(name, value)
         return value
 
     def getParameter(self, name):

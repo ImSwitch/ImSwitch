@@ -315,9 +315,9 @@ class MCTController(ImConWidgetController):
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
                 self.stages.setSpeed(speed=1000, axis="Z")
-
-                # set enable
-                self.stages.enalbeMotors(enable=True, enableauto=True)
+                
+                # ensure motors are enabled
+                self.stages.enalbeMotors(enable=True)
 
                 try:
                     # want to do autofocus?
@@ -541,14 +541,16 @@ class MCTController(ImConWidgetController):
         self.switchOffIllumination()
 
         # disable motors to prevent overheating
-        self.stages.enalbeMotors(enable=False)
+        self._logger.debug("Setting enable to: "+str(self.stages.is_enabled))
+        self.stages.enalbeMotors(enable=self.stages.is_enabled)
 
     def switchOffIllumination(self):
         # switch off all illu sources
         for lasers in self.lasers:
-            lasers.setEnabled(False)
-            #lasers.setValue(0)
-            time.sleep(0.1)
+            if lasers.name.find("Laser")>-1:
+                lasers.setEnabled(False)
+                #lasers.setValue(0)
+                time.sleep(0.1)
         if len(self.leds)>0:
             self.leds[0].setValue(0)
             #self.illu.setAll((0,0,0))

@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
-    RecordingManager, RS232sManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, MockXXManager,
+    RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, MockXXManager,
     ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager,
     StandManager, RotatorsManager, JetsonNanoManager,
 )
@@ -42,6 +42,7 @@ class MasterController:
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
+        self.dpcManager = DPCManager(self.__setupInfo.dpc)
         self.mctManager = MCTManager(self.__setupInfo.mct)
         self.MockXXManager = MockXXManager(self.__setupInfo.mockxx)
         self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)

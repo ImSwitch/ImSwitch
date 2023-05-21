@@ -157,10 +157,6 @@ class AutofocusController(ImConWidgetController):
         else:
             self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
 
-
-
-        # DEBUG
-
         # We are done!
         self._commChannel.sigAutoFocusRunning.emit(False) # inidicate that we are running the autofocus
         self.isAutofusRunning = False

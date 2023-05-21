@@ -7,6 +7,7 @@ from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModule
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
+# FIXME: Add to configuration file
 global IS_HEADLESS 
 IS_HEADLESS = False
 def main():

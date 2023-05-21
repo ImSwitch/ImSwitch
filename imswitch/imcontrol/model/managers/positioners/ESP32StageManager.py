@@ -143,7 +143,15 @@ class ESP32StageManager(PositionerManager):
             self.isCoreXY = positionerInfo.managerProperties["isCoreXY"]
         else:
             self.isCoreXY = False
+        # setting for setting motors under current yes/no after performing steps
+        if positionerInfo.managerProperties.get('isEnable') is not None:
+            self.is_enabled = positionerInfo.managerProperties['isEnable']
+        else:
+            self.is_enabled = True
 
+
+
+            
         # grab motor object
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
@@ -161,8 +169,6 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minZ, self.maxZ, self.stepsizeZ, self.backlashZ, "Z")
         self.setupMotor(self.minT, self.maxT, self.stepsizeT, self.backlashT, "T")
 
-        self.is_enabled = False
-
         # get bootup position and write to GUI
         self._position  = self.getPosition()
 
@@ -177,7 +183,7 @@ class ESP32StageManager(PositionerManager):
             self.enableauto = positionerInfo.managerProperties['enableauto']
         else:
             self.enableauto = True
-        self.enalbeMotors(enable=True, enableauto=self.enableauto)
+        self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
@@ -187,12 +193,14 @@ class ESP32StageManager(PositionerManager):
         enable - Enable Motors (i.e. switch on/off power to motors)
         enableauto - Enable automatic motor power off after motors are not used for a while; will be turned on automatically
         """
-        self._motor.set_motor_enable(is_enable=enable, enableauto=enableauto)
+        self._motor.set_motor_enable(enable=enable, enableauto=enableauto)
 
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
-
-    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, speed=None, timeout=gTIMEOUT):
+        
+    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, speed=None, isEnable=None, timeout=gTIMEOUT):
+        if isEnable is None:
+            isEnable = self.is_enabled
         if speed is None:
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]
@@ -201,28 +209,28 @@ class ESP32StageManager(PositionerManager):
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
         if axis == 'X':
-            self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Y':
-            self._motor.move_y(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_y(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Z':
-            self._motor.move_z(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_z(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'T':
-            self._motor.move_t(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_t(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'XY':
-            self._motor.move_xy(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_xy(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         elif axis == 'XYZ':
-            self._motor.move_xyz(value, speed, is_absolute=is_absolute, is_enabled=self.is_enabled, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_xyz(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]

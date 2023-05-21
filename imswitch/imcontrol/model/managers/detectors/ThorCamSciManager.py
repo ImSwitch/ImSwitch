@@ -106,7 +106,9 @@ class ThorCamSciManager(DetectorManager):
     
     def getLatestFrame(self, is_save=False):
         """this function waits for the latest frame from the camera and returns it"""
-        return self._camera.getLast()
+        frame = self._camera.getLast()        
+        if frame is not None: self.__logger.debug("Frame : "+str(frame.shape))
+        return frame
 
 
     def setParameter(self, name, value):

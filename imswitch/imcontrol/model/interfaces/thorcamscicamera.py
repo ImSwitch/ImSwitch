@@ -7,6 +7,7 @@ import sys
 import pathlib
 from imswitch.imcommon.model import initLogger
 import collections
+import threading
 
 def configure_path():
     absolute_path_to_dlls = str(pathlib.Path(__file__).resolve().parent)+"\\thorlabs_tsi_sdk\\dll\\"
@@ -54,6 +55,7 @@ class CameraThorCamSci:
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.lastFrameId = -1
+        self.lastFrame = None
                 
         #%% starting the camera thread
         self.camera = None
@@ -62,14 +64,11 @@ class CameraThorCamSci:
         self.binning = binning
 
         try:
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
+            self._init_cam(cameraNo=self.cameraNo)
         except:
             raise Exception("No camera ThorCamSci connected")
-        
 
-        
-
-    def _init_cam(self, cameraNo=1, callback_fct=None):
+    def _init_cam(self, cameraNo=1):
         # start camera
         self.is_connected = True
         
@@ -84,12 +83,7 @@ class CameraThorCamSci:
 
         # save these values to place in our custom TIFF tags later
         bit_depth = self.camera.bit_depth
-        
         exposure = self.camera.exposure_time_us
-
-        # need to save the image width and height for color processing
-        image_width = self.camera.image_width_pixels
-        image_height = self.camera.image_height_pixels
 
         # initialize a mono to color processor if this is a color self.camera
         is_color_camera = (self.camera.camera_sensor_type == SENSOR_TYPE.BAYER)
@@ -108,9 +102,9 @@ class CameraThorCamSci:
         # get framesize 
         self.SensorHeight = self.camera.sensor_height_pixels
         self.SensorWidth = self.camera.sensor_width_pixels
-        
+        # begin acquisition
         self.camera.issue_software_trigger()
-
+        
         # set exposure
         self.camera.exposure_time_us=int(self.exposure_time*1000)
 
@@ -119,35 +113,38 @@ class CameraThorCamSci:
         
         # set blacklevel
         self.camera.blacklevel=int(self.blacklevel)
+
+        # start frame grabber thread
+        self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
+        self.frameGrabberThread.start()
         
     def start_live(self):
+        self.__logger.debug("Starting Live Thorcam")  
         if not self.is_streaming:
             # start data acquisition
-            self.is_streaming = True
-            return
-            
+            self.frameGrabberThread = threading.Thread(target=self.frameGrabber(), daemon=True)
+            self.frameGrabberThread.start()
+
     def stop_live(self):
+        self.__logger.debug("Stpüüomg Live Thorcam")  
         if self.is_streaming:
             # start data acquisition
             self.is_streaming = False
-            return
+            self.frameGrabberThread.join()
 
     def suspend_live(self):
+        self.__logger.debug("Suspending Live Thorcam")  
         if self.is_streaming:
-        # start data acquisition
-            try:
-                return
-                self.camera.stream_off()
-            except:
-                # camera was disconnected? 
-                return
-
             self.is_streaming = False
-        
+            self.frameGrabberThread.join()
+
+
     def prepare_live(self):
+        self.__logger.debug("Preparing Live Thorcam")  
         return
 
     def close(self):
+        self.__logger.debug("Closing Thorcam")
         self.camera.disarm()
         
     def set_exposure_time(self,exposure_time):
@@ -161,7 +158,6 @@ class CameraThorCamSci:
     def set_frame_rate(self, frame_rate):
         pass
         
-        
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.black_level=blacklevel
@@ -173,26 +169,23 @@ class CameraThorCamSci:
         # Unfortunately this does not work
         # self.camera.BinningHorizontal.set(binning)
         # self.camera.BinningVertical.set(binning)
-        self.camera.binx=binnning
+        self.camera.binx=binning
         self.camera.biny=binning
         self.binning = binning
 
     def getLast(self, is_resize=True):
         # get frame and save
-        framebuffer = self.camera.get_pending_frame_or_null()
-        self.frame = framebuffer.image_buffer
-        self.logger.debug("Frame:"+str(self.frame.shape))
-        return self.frame 
+        return self.lastFrame
+        
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
         
     def getLastChunk(self):
-        return
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
-        self.flushBuffer()
+        #self.flushBuffer()
         self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
     
@@ -202,11 +195,11 @@ class CameraThorCamSci:
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
         if property_name == "gain":
-            self.set_gain(property_value)
+            self.set_gain(int(property_value))
         elif property_name == "exposure":
-            self.set_exposure_time(property_value)
+            self.set_exposure_time(int(property_value))
         elif property_name == "blacklevel":
-            self.set_blacklevel(property_value)
+            self.set_blacklevel(int(property_value))
         elif property_name == "roi_size":
             self.roi_size = property_value
         elif property_name == "frame_rate":
@@ -253,27 +246,17 @@ class CameraThorCamSci:
     def openPropertiesGUI(self):
         return
     
-    def set_frame(self, user_param, frame):
-        return
-        if frame is None:
-            self.__logger.error("Getting image failed.")
-            return
-        if frame.get_status() != 0:
-            self.__logger.error("Got an incomplete frame")
-            return
-        numpy_image = frame.get_numpy_array()
-        if numpy_image is None:
-            return
-        self.frame = numpy_image
-        self.frameNumber = frame.get_frame_id()
-        self.timestamp = time.time()
-        
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
-        self.frame_buffer.append(numpy_image)
-        self.frameid_buffer.append(self.frameNumber)
-    
+    def frameGrabber(self):
+        self.is_streaming=True
+        while self.is_streaming:
+            rawFrameBuffer = self.camera.get_pending_frame_or_null()
+            if rawFrameBuffer is not None:
+                # store frame
+                self.lastFrameId+=1
+                self.lastFrame=rawFrameBuffer.image_buffer
+                self.frame_buffer.append(self.lastFrame)
+                self.frameid_buffer.append(self.lastFrameId)
+
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

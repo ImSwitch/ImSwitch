@@ -18,6 +18,9 @@ class ESP32StageManager(PositionerManager):
         self.__logger = initLogger(self, instanceName=name)
 
 
+        # grab motor object
+        self._motor = self._rs232manager._esp32.motor
+        self._homeModule = self._rs232manager._esp32.home
 
 
         # calibrated stepsize in steps/µm
@@ -155,19 +158,11 @@ class ESP32StageManager(PositionerManager):
             self.enableauto = True
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
-
-
-            
-        # grab motor object
-        self._motor = self._rs232manager._esp32.motor
-        self._homeModule = self._rs232manager._esp32.home
-
         # swap axes eventually
         self.setAxisOrder(order=self.axisOrder)
 
         # choose if we have a coreXY geometry or not
         self._motor.setIsCoreXY(isCoreXY = self.isCoreXY)
-
 
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")

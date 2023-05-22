@@ -179,9 +179,55 @@ class SIMInfo:
     isSimulation: bool
 
     isHamamatsuSLM: bool
+    
+    fastAPISIM_host: str
+    
+    fastAPISIM_port: str
+    
+    isFastAPISIM: bool
+    
+    nRotations: int
+    
+    nPhases: int
+    
+    simMagnefication: float
+    
+    simPixelsize: float
+    
+    simNA: float
+    
+    simETA: float
+    
+    simN: float
+    
 
 @dataclass(frozen=True)
+class DPCInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelsize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    magnefication: float
+    
+    NA: float
+    
+    NAi: float
+    
+    n: float
+    
+    rotations: List[int]
+@dataclass(frozen=True)
 class MCTInfo:
+    pass
+
+@dataclass(frozen=True)
+class MockXXInfo:
+    pass
+
+@dataclass(frozen=True)
+class JetsonNanoInfo:
     pass
 
 @dataclass(frozen=True)
@@ -381,8 +427,17 @@ class SetupInfo:
     sim: Optional[SIMInfo] = field(default_factory=lambda: None)
     """ SIM settings. Required to be defined to use SIM functionality. """
 
+    dpc: Optional[DPCInfo] = field(default_factory=lambda: None)
+    """ DPC settings. Required to be defined to use DPC functionality. """
+
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
+    """ MockXX settings. Required to be defined to use MockXX functionality."""
+
+    jetsonnano: Optional[JetsonNanoInfo] = field(default_factory=lambda: None)
+    """ Jetson Nano settings for jetson nano. Required to be defined to use jetson nano functionality. """
 
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
@@ -391,7 +446,7 @@ class SetupInfo:
     """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
 
     uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
-    """ MCT settings. Required to be defined to use MCT functionality. """
+    """ UC2Config settings. Required to be defined to use UC2Config functionality. """
 
     ism: Optional[ISMInfo] = field(default_factory=lambda: None)
     """ ISM settings. Required to be defined to use ISM functionality. """

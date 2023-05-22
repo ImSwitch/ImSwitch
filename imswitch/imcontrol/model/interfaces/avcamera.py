@@ -290,6 +290,8 @@ class CameraAV:
             self.frame = np.zeros(self.shape)
         self.frame_buffer.append(self.frame)
     
+    def flushBuffer(self):
+        self.frame_buffer.clear()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

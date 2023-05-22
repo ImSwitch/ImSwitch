@@ -20,11 +20,11 @@ class CameraGXIPY:
         # many to be purged
         self.model = "CameraGXIPY"
         self.shape = (0, 0)
-        
+
         self.is_connected = False
         self.is_streaming = False
 
-        # unload CPU? 
+        # unload CPU?
         self.downsamplepreview = 1
 
         # camera parameters
@@ -33,36 +33,38 @@ class CameraGXIPY:
         self.gain = gain
         self.preview_width = 600
         self.preview_height = 600
-        self.frame_rate = frame_rate 
+        self.frame_rate = frame_rate
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.NBuffer = 200
+        self.NBuffer = 10
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.lastFrameId = -1
-                
+
         #%% starting the camera thread
         self.camera = None
 
-        # binning 
+        # binning
         self.binning = binning
 
         self.device_manager = gx.DeviceManager()
         dev_num, dev_info_list = self.device_manager.update_device_list()
 
         if dev_num  != 0:
-            self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
-        else:
+            self.__logger.debug("Trying to connect to camera: ")
+            self.__logger.debug(dev_info_list)
+            self._init_cam(cameraNo=self.cameraNo, binning=self.binning, callback_fct=self.set_frame)
+        else :
             raise Exception("No camera GXIPY connected")
 
 
-        
 
-    def _init_cam(self, cameraNo=1, callback_fct=None):
+
+    def _init_cam(self, cameraNo=1, binning = 1, callback_fct=None):
         # start camera
         self.is_connected = True
-        
+
         # open the first device
         self.camera = self.device_manager.open_device_by_index(cameraNo)
 
@@ -71,7 +73,11 @@ class CameraGXIPY:
             print("This sample does not support color camera.")
             self.camera.close_device()
             return
-            
+
+        # reduce pixel number
+        self.setBinning(binning)
+
+        # set triggermode
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
 
         # set exposure
@@ -79,16 +85,16 @@ class CameraGXIPY:
 
         # set gain
         self.camera.Gain.set(self.gain)
-        
+
         # set framerate
         self.set_frame_rate(self.frame_rate)
-        
+
         # set blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
 
         # set the acq buffer count
         self.camera.data_stream[0].set_acquisition_buffer_number(1)
-        
+
         # set camera to mono12 mode
         try:
             self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO10)
@@ -96,10 +102,10 @@ class CameraGXIPY:
         except:
             self.camera.PixelFormat.set(gx.GxPixelFormatEntry.MONO8)
 
-        # get framesize 
+        # get framesize
         self.SensorHeight = self.camera.HeightMax.get()//self.binning
         self.SensorWidth = self.camera.WidthMax.get()//self.binning
-        
+
         # register the frame callback
         user_param = None
         self.camera.register_capture_callback(user_param, callback_fct)
@@ -122,19 +128,19 @@ class CameraGXIPY:
             try:
                 self.camera.stream_off()
             except:
-                # camera was disconnected? 
+                # camera was disconnected?
                 self.camera.unregister_capture_callback()
                 self.camera.close_device()
-                self._init_cam(cameraNo=self.cameraNo, callback_fct=self.set_frame)
+                self._init_cam(cameraNo=self.cameraNo, binning=self.binning, callback_fct=self.set_frame)
 
             self.is_streaming = False
-        
+
     def prepare_live(self):
         pass
 
     def close(self):
         self.camera.close_device()
-        
+
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.ExposureTime.set(self.exposure_time*1000)
@@ -147,13 +153,11 @@ class CameraGXIPY:
         if frame_rate == -1:
             frame_rate = 10000 # go as fast as you can
         self.frame_rate = frame_rate
-        
+
         # temporary
         self.camera.AcquisitionFrameRate.set(self.frame_rate)
         self.camera.AcquisitionFrameRateMode.set(gx.GxSwitchEntry.ON)
 
-
-        
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.BlackLevel.set(self.blacklevel)
@@ -177,38 +181,34 @@ class CameraGXIPY:
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
-        # self.camera.BinningHorizontal.set(binning)
-        # self.camera.BinningVertical.set(binning)
+        self.camera.BinningHorizontal.set(binning)
+        self.camera.BinningVertical.set(binning)
         self.binning = binning
 
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
-        
         # only return fresh frames
-        if not self.lastFrameId == self.frameNumber:    
-            self.lastFrameId = self.frameNumber 
-            return self.frame
-
-
+        while(self.lastFrameId == self.frameNumber and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        self.lastFrameId = self.frameNumber
+        return self.frame
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
         self.frame_buffer.clear()
-        
+
     def getLastChunk(self):
         chunk = np.array(self.frame_buffer)
         frameids = np.array(self.frameid_buffer)
         self.flushBuffer()
         self.__logger.debug("Buffer: "+str(chunk.shape)+" IDs: " + str(frameids))
         return chunk
-    
+
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         #hsize = max(hsize, 25)*10  # minimum ROI size
         #vsize = max(vsize, 3)*10  # minimum ROI size
         hpos = self.camera.OffsetX.get_range()["inc"]*((hpos)//self.camera.OffsetX.get_range()["inc"])
-        vpos = self.camera.OffsetY.get_range()["inc"]*((vpos)//self.camera.OffsetY.get_range()["inc"])  
+        vpos = self.camera.OffsetY.get_range()["inc"]*((vpos)//self.camera.OffsetY.get_range()["inc"])
         hsize = int(np.min((self.camera.Width.get_range()["inc"]*((hsize*self.binning)//self.camera.Width.get_range()["inc"]),self.camera.WidthMax.get())))
         vsize = int(np.min((self.camera.Height.get_range()["inc"]*((vsize*self.binning)//self.camera.Height.get_range()["inc"]),self.camera.HeightMax.get())))
 
@@ -277,15 +277,15 @@ class CameraGXIPY:
         elif property_name == "exposure":
             property_value = self.camera.ExposureTime.get()
         elif property_name == "blacklevel":
-            property_value = self.camera.BlackLevel.get()            
+            property_value = self.camera.BlackLevel.get()
         elif property_name == "image_width":
-            property_value = self.camera.Width.get()//self.binning         
+            property_value = self.camera.Width.get()//self.binning
         elif property_name == "image_height":
             property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
-            property_value = self.roi_size 
+            property_value = self.roi_size
         elif property_name == "frame_Rate":
-            property_value = self.frame_rate 
+            property_value = self.frame_rate
         elif property_name == "trigger_source":
             property_value = self.trigger_source
         else:
@@ -300,7 +300,7 @@ class CameraGXIPY:
             self.set_software_triggered_acquisition()
         elif trigger_source =='External trigger':
             self.set_hardware_triggered_acquisition()
-            
+
     def set_continuous_acquisition(self):
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
         self.trigger_mode = TriggerMode.CONTINUOU
@@ -322,7 +322,7 @@ class CameraGXIPY:
 
         # set line mode input
         self.camera.LineMode.set(0)
-        
+
         # set line source
         #cam.LineSource.set(2)
 
@@ -333,18 +333,18 @@ class CameraGXIPY:
         self.camera.UserSetSelector.set(1)
         # User Set Save
         self.camera.UserSetSave.send_command()
-        
+
         '''
         self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
         self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
         #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
         '''
         self.trigger_mode = TriggerMode.HARDWARE
-        
+
         self.flushBuffer()
 
     def getFrameNumber(self):
-        return self.frameNumber 
+        return self.frameNumber
 
     def send_trigger(self):
         if self.is_streaming:
@@ -354,7 +354,7 @@ class CameraGXIPY:
 
     def openPropertiesGUI(self):
         pass
-    
+
     def set_frame(self, user_param, frame):
         if frame is None:
             self.__logger.error("Getting image failed.")
@@ -364,17 +364,18 @@ class CameraGXIPY:
             return
         numpy_image = frame.get_numpy_array()
         if numpy_image is None:
+            self.__logger.error("Got a None frame")
             return
         self.frame = numpy_image
         self.frameNumber = frame.get_frame_id()
         self.timestamp = time.time()
-        
-        if self.binning > 1:
-            numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
-    
+
+        #if self.binning > 1:
+        #    numpy_image = cv2.resize(numpy_image, dsize=None, fx=1/self.binning, fy=1/self.binning, interpolation=cv2.INTER_AREA)
+
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)
-    
+
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.
@@ -390,4 +391,4 @@ class CameraGXIPY:
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.    
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.

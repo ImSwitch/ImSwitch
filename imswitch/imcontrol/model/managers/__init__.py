@@ -15,7 +15,10 @@ from .StandManager import StandManager
 from .RotatorsManager import RotatorsManager
 from .UC2ConfigManager import UC2ConfigManager
 from .SIMManager import SIMManager
+from .DPCManager import DPCManager
 from .MCTManager import MCTManager
+from .MockXXManager import MockXXManager
+from .JetsonNanoManager import JetsonNanoManager
 from .HistoScanManager import HistoScanManager
 from .PixelCalibrationManager import PixelCalibrationManager
 from .ISMManager import ISMManager

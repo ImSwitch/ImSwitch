@@ -9,6 +9,7 @@ from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import LiveUpdatedController
 
+from imswitch.imcommon.model import APIExport
 
 import numpy as np
 try:
@@ -42,6 +43,11 @@ class STORMReconController(LiveUpdatedController):
         self.imageComputationWorker = self.STORMReconImageComputationWorker()
         self.imageComputationWorker.sigSTORMReconImageComputed.connect(self.displayImage)
             
+        # get the detector
+        allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
+        self.detector = self._master.detectorsManager[allDetectorNames[0]]
+
+
         if isMicroEye:
             self.imageComputationThread = Thread()
             self.imageComputationWorker.moveToThread(self.imageComputationThread)
@@ -127,6 +133,14 @@ class STORMReconController(LiveUpdatedController):
         """ Change update rate. """
         self.updateRate = updateRate
         self.it = 0
+        
+    @APIExport()
+    def triggerSTORMReconstruction(self, frame=None):
+        """ Trigger reconstruction. """
+        if frame is None:
+            frame = self.detector.getLatestFrame()
+        self.imageComputationWorker.reconSTORMFrame(frame=frame)
+                
 
     class STORMReconImageComputationWorker(Worker):
         sigSTORMReconImageComputed = Signal(np.ndarray)
@@ -148,12 +162,17 @@ class STORMReconController(LiveUpdatedController):
             self.active = False
 
 
-        def reconSTORMFrame(self, frame, preFilter, peakDetector,
+        def reconSTORMFrame(self, frame, preFilter=None, peakDetector=None,
                             rel_threshold=0.4, PSFparam=np.array([1.5]), 
                             roiSize=13, method=None):
             # tune parameters
             if method is None: # avoid error when microeye is not installed..
-                FittingMethod._2D_Phasor_CPU
+                method = FittingMethod._2D_Phasor_CPU
+            if preFilter is None:
+                preFilter = self.preFilter
+            if peakDetector is None:
+                peakDetector = self.peakDetector
+                
             # parameters are read only once the SMLM reconstruction is initiated
             # cannot be altered during recroding
             index = 1

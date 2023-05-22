@@ -9,57 +9,75 @@ class ThorCamSciManager(DetectorManager):
     parameters for frame extraction from them.
 
     Manager properties:
+
+    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
+      indexing starts at 0); set this string to an invalid value, e.g. the
+      string "mock" to load a mocker
+    - ``av`` -- dictionary of Allied Vision camera properties
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
-        
-        # containing all the information from the json file
         self.detectorInfo = detectorInfo
 
-        # cast the json-parsed values to the correct type
-        binning = 1 #detectorInfo.managerProperties['thorcamscicam']["binning"]
-        cameraId = detectorInfo.managerProperties['cameraListIndex']
+        try:
+            self.binningValue = detectorInfo.managerProperties['thorcamsci']["binning"]
+        except:
+            self.binningValue = 1
+
+        try:
+            self.cameraId = detectorInfo.managerProperties['cameraListIndex']
+        except:
+            self.cameraId = 1
+
         try:
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
             # returning back to default pixelsize
             pixelSize = 1
-        
-        # Get camera object (either mock or real)
-        self._camera = self._getThorcamObj(cameraId, binning)
-        
-        # set the shape (important for the recording manager)
-        fullShape = (self._camera.SensorWidth, 
-                     self._camera.SensorHeight)
-        
-        # set the model
+
+
+        self._camera = self._getThorCamSci(self.cameraId, self.binningValue)
+
+        fullShape = (self._camera.SensorWidth,
+                self._camera.SensorHeight)
+
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
 
-
-
-        # Prepare parameters for the GUI
+        # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=1, valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+            'gain': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
                                             editable=True),
-            'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+            'blacklevel': DetectorNumberParameter(group='Misc', value=0, valueUnits='arb.u.',
                                             editable=True),
+            'binning': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                               editable=True),
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
+            'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
+                                    editable=True),
+            'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
+            'trigger_source': DetectorListParameter(group='Acquisition mode',
+                            value='Continous',
+                            options=['Continous',
+                                        'Internal trigger',
+                                        'External trigger'],
+                            editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
-            }            
+            }
 
         # reading parameters from disk and write them to camrea
         for propertyName, propertyValue in detectorInfo.managerProperties['thorcamsci'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
             parameters[propertyName].value = propertyValue
+
 
 
         # TODO: Not implemented yet
@@ -79,6 +97,7 @@ class ThorCamSciManager(DetectorManager):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
+        self.setParameter('Binning', self._camera.getPropertyValue('binning')[0])
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -93,14 +112,9 @@ class ThorCamSciManager(DetectorManager):
             elif triggerSource == 2 and triggerMode == 1:
                 self.setParameter('Trigger source', 'External "frame-trigger"')
 
-    
-    
     def getLatestFrame(self, is_save=False):
-        """this function waits for the latest frame from the camera and returns it"""
-        frame = self._camera.getLast()        
-        if frame is not None: self.__logger.debug("Frame : "+str(frame.shape))
+        frame = self._camera.getLast()
         return frame
-
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -130,7 +144,6 @@ class ThorCamSciManager(DetectorManager):
 
 
     def setTriggerSource(self, source):
-        """Sets the trigger source and returns the value."""
         if source == 'Continous':
             self._performSafeCameraAction(
                 lambda: self._camera.setPropertyValue('trigger_source', 0)
@@ -146,66 +159,106 @@ class ThorCamSciManager(DetectorManager):
         else:
             raise ValueError(f'Invalid trigger source "{source}"')
 
-        
+
     def getChunk(self):
-        """Get the latest chunk/buffer from the camera. Can be software-based queue or hardware-based buffer."""
         try:
             return self._camera.getLastChunk()
         except:
             return None
 
     def flushBuffers(self):
-        """Remove all the buffers from the camera's buffer queue."""
         self._camera.flushBuffer()
 
-    def startAcquisition(self):
-        """Starts the acquisition process."""
+    def startAcquisition(self, liveView=False):
         if self._camera.model == "mock":
-            self.__logger.debug('We could attempt to reconnect the camera')
-            pass
-            
+
+            # reconnect? Not sure if this is smart..
+            del self._camera
+            self._camera = self._getThorCamSci(self.cameraId, self.binningValue)
+
+            for propertyName, propertyValue in self.detectorInfo.managerProperties['thorcamsci'].items():
+                self._camera.setPropertyValue(propertyName, propertyValue)
+
+            fullShape = (self._camera.SensorWidth,
+                        self._camera.SensorHeight)
+
+            model = self._camera.model
+            self._running = False
+            self._adjustingParameters = False
+
+            # TODO: Not implemented yet
+            self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
+
+
+            # Prepare parameters
+            parameters = {
+                'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+                                                    editable=True),
+                'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                                editable=True),
+                'blacklevel': DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+                                                editable=True),
+                'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
+                            editable=False),
+                'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
+                            editable=False),
+                'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
+                                        editable=True),
+                'trigger_source': DetectorListParameter(group='Acquisition mode',
+                                value='Continous',
+                                options=['Continous',
+                                            'Internal trigger',
+                                            'External trigger'],
+                                editable=True),
+                'pixelSize': DetectorNumberParameter(group='Miscellaneous', value=1,
+                                                    valueUnits='µm', editable=True)
+                }
+
+            # Prepare actions
+            actions = {
+                'More properties': DetectorAction(group='Misc',
+                                                func=self._camera.openPropertiesGUI)
+            }
+
+            #super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
+            #               model=model, parameters=parameters, actions=actions, croppable=True)
+
         if not self._running:
             self._camera.start_live()
             self._running = True
             self.__logger.debug('startlive')
 
     def stopAcquisition(self):
-        """Stop the acquisition process."""
         if self._running:
             self._running = False
             self._camera.suspend_live()
             self.__logger.debug('suspendlive')
 
     def stopAcquisitionForROIChange(self):
-        """Pause the acquisition process for ROI change."""
         self._running = False
         self._camera.stop_live()
         self.__logger.debug('stoplive')
 
     def finalize(self) -> None:
-        """Safe disconnect of the camera."""
         super().finalize()
         self.__logger.debug('Safely disconnecting the camera...')
         self._camera.close()
 
     @property
     def pixelSizeUm(self):
-        """set the camera pixel size in um"""
         umxpx = self.parameters['Camera pixel size'].value
         return [1, umxpx, umxpx]
 
     def setPixelSizeUm(self, pixelSizeUm):
-        """Set the camera pixel size in um"""
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-        """Crop the camera frame to the specified size and position. This is a parameter carried on the camera"""
-        pass
-        return
+
         def cropAction():
             self.__logger.debug(
                 f'{self._camera.model}: crop frame to {hsize}x{vsize} at {hpos},{vpos}.'
             )
+        '''
             self._camera.setROI(hpos, vpos, hsize, vsize)
             # TOdO: weird hackaround
             self._shape = (self._camera.camera.Width.get()//self._camera.binning, self._camera.camera.Height.get()//self._camera.binning)
@@ -217,10 +270,10 @@ class ThorCamSciManager(DetectorManager):
             self.__logger.error(e)
             # TODO: unsure if frameStart is needed? Try without.
         # This should be the only place where self.frameStart is changed
-        
+
         # Only place self.shapes is changed
-        
-         
+        '''
+        pass
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -237,27 +290,25 @@ class ThorCamSciManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getThorcamObj(self, cameraId, binning=1):
-        """Load the camera object from the cameraId and if it fails, load the MOCK"""
+    def _getThorCamSci(self, cameraId, binning=1):
         try:
             from imswitch.imcontrol.model.interfaces.thorcamscicamera import CameraThorCamSci
             self.__logger.debug(f'Trying to initialize Thorlabs Scientific camera {cameraId}')
             camera = CameraThorCamSci(cameraNo=cameraId, binning=binning)
+       
         except Exception as e:
             self.__logger.debug(e)
-            self.__logger.warning(f'Failed to initialize CameraThorCamSci {cameraId}, loading TIS mocker')
+            self.__logger.warning(f'Failed to initialize ThorCamSci {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
 
         self.__logger.info(f'Initialized camera, model: {camera.model}')
         return camera
-    
+
     def getFrameNumber(self):
-        """Get the frame number of the camera"""
         return self._camera.getFrameNumber()
 
     def closeEvent(self):
-        """Close and disconnect the camera safely"""
         self._camera.close()
 
 # Copyright (C) ImSwitch developers 2021

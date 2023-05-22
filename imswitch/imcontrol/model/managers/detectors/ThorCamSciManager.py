@@ -27,25 +27,17 @@ class ThorCamSciManager(DetectorManager):
             pixelSize = 1
         
         # Get camera object (either mock or real)
-        self._camera = self._getGXObj(cameraId, binning)
+        self._camera = self._getThorcamObj(cameraId, binning)
         
-        # assign the properties from the json file to the camera
-        for propertyName, propertyValue in detectorInfo.managerProperties['thorcamsci'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
-
         # set the shape (important for the recording manager)
         fullShape = (self._camera.SensorWidth, 
                      self._camera.SensorHeight)
         
         # set the model
         model = self._camera.model
-        
-        # prepare the parameters
         self._running = False
         self._adjustingParameters = False
 
-        # eventually crop the image using stored values (most likely needs the acqusition process to pause)
-        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
 
         # Prepare parameters for the GUI
@@ -60,17 +52,18 @@ class ThorCamSciManager(DetectorManager):
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
-            'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
-                                    editable=True),
-            'trigger_source': DetectorListParameter(group='Acquisition mode',
-                            value='Continous',
-                            options=['Continous',
-                                        'Internal trigger',
-                                        'External trigger'],
-                            editable=True), 
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
             }            
+
+        # reading parameters from disk and write them to camrea
+        for propertyName, propertyValue in detectorInfo.managerProperties['thorcamsci'].items():
+            self._camera.setPropertyValue(propertyName, propertyValue)
+            parameters[propertyName].value = propertyValue
+
+
+        # TODO: Not implemented yet
+        self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
         # Prepare actions
         actions = {
@@ -78,11 +71,9 @@ class ThorCamSciManager(DetectorManager):
                                               func=self._camera.openPropertiesGUI)
         }
 
-
-        # Initialize DetectorManager
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-        
+
 
     def _updatePropertiesFromCamera(self):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
@@ -209,6 +200,7 @@ class ThorCamSciManager(DetectorManager):
 
     def crop(self, hpos, vpos, hsize, vsize):
         """Crop the camera frame to the specified size and position. This is a parameter carried on the camera"""
+        pass
         return
         def cropAction():
             self.__logger.debug(
@@ -228,7 +220,7 @@ class ThorCamSciManager(DetectorManager):
         
         # Only place self.shapes is changed
         
-        pass 
+         
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need
@@ -245,7 +237,7 @@ class ThorCamSciManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getGXObj(self, cameraId, binning=1):
+    def _getThorcamObj(self, cameraId, binning=1):
         """Load the camera object from the cameraId and if it fails, load the MOCK"""
         try:
             from imswitch.imcontrol.model.interfaces.thorcamscicamera import CameraThorCamSci

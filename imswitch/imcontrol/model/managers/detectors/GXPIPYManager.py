@@ -291,9 +291,13 @@ class GXPIPYManager(DetectorManager):
 
     def _getGXObj(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-            camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
+            from imswitch.imcontrol.model.interfaces.thorcamscicamera import CameraThorCamSci
+            self.__logger.debug(f'Trying to initialize Thorlabs Scientific camera {cameraId}')
+            camera = CameraThorCamSci(cameraNo=cameraId, binning=binning)
+       
+            #from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
+            #self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+            #camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')

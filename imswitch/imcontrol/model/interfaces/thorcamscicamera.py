@@ -56,7 +56,7 @@ class CameraThorCamSci:
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.lastFrameId = -1
         self.lastFrame = None
-                
+    
         #%% starting the camera thread
         self.camera = None
 
@@ -65,7 +65,8 @@ class CameraThorCamSci:
 
         try:
             self._init_cam(cameraNo=self.cameraNo)
-        except:
+        except Exception as e:
+            self.__logger.error(e)
             raise Exception("No camera ThorCamSci connected")
 
     def _init_cam(self, cameraNo=1):
@@ -122,7 +123,7 @@ class CameraThorCamSci:
         self.__logger.debug("Starting Live Thorcam")  
         if not self.is_streaming:
             # start data acquisition
-            self.frameGrabberThread = threading.Thread(target=self.frameGrabber(), daemon=True)
+            self.frameGrabberThread = threading.Thread(target=self.frameGrabber, daemon=True)
             self.frameGrabberThread.start()
 
     def stop_live(self):
@@ -206,6 +207,10 @@ class CameraThorCamSci:
             self.set_frame_rate(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
+        elif property_name == "image_width":
+            property_value = 0        
+        elif property_name == "image_height":
+            property_value = 0
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

@@ -29,6 +29,7 @@ from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .DPCWidget import DPCWidget
 from .MCTWidget import MCTWidget
+from .WebRTCWidget import WebRTCWidget
 from .MockXXWidget import MockXXWidget
 from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget

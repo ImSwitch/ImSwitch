@@ -223,6 +223,10 @@ class MCTInfo:
     pass
 
 @dataclass(frozen=True)
+class WebRTCInfo:
+    pass
+
+@dataclass(frozen=True)
 class MockXXInfo:
     pass
 
@@ -432,6 +436,9 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
+    """ WebRTC settings. Required to be defined to use WebRTC functionality. """
     
     mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
     """ MockXX settings. Required to be defined to use MockXX functionality."""

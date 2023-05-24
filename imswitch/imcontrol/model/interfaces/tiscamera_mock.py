@@ -94,7 +94,7 @@ class MockCameraTIS:
             img = self.tifr.pages[self.iFrame%len(self.tifr.pages)].asarray()
             self.iFrame+=1
         elif self.mocktype=="default":
-            img = np.random.randint(0, 255, (self.SensorHeight, self.SensorWidth, 3)).astype('uint8')
+            img = np.random.randint(0, 255, (self.SensorHeight, self.SensorWidth)).astype('uint8')
         else:
             img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]

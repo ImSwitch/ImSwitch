@@ -11,7 +11,8 @@ import tifffile as tif
 import serial
 import time
 import serial.tools.list_ports
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import base64
 import io
 import serial.tools.list_ports
@@ -397,9 +398,10 @@ class ESP32CameraThread(threading.Thread):
     def connect_to_usb_device(self):
         ports = serial.tools.list_ports.comports()
         for port in ports:
-            if port.manufacturer == self.manufacturer:
+            if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":
                 try:
                     ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
+                    ser.write_timeout=.01
                     print(f"Connected to device: {port.description}")
                     return ser
                 except serial.SerialException:
@@ -409,26 +411,30 @@ class ESP32CameraThread(threading.Thread):
 
     def run(self):
         self.serialdevice = self.connect_to_usb_device()
-        if self.serialdevice:
-            message = ""
-            imageString = ""
-            while True:
+        nFrame = 0
+        while True:
+            try:
+                # request new image
                 try:
-                    # read image and decode
-                    imageB64 = self.serialdevice.readline()
-                    # imageB64 = str(imageB64).split("+++++")[-1].split("----")[0]
-                    self.frame = np.uint8(np.mean(np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode())))),-1))
+                    self.serialdevice.write((' ').encode())
+                except:
+                    pass
+                # read image and decode
+                imageB64 = self.serialdevice.readline()
 
-
-                    # plt.imshow(image), plt.show()
-                    # tif.imsave("test_stack_esp32.tif", image, append=True)
-                except Exception as e:
-                    # try to reconnect 
-                    print(e)
-                    self.serialdevice.close()
-                    self.serialdevice = self.connect_to_usb_device()
-                    
-                    
+                image = np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode()))))
+                self.frame = np.mean(image,-1)
+                nFrame += 1
+                print(nFrame)
+                
+            except Exception as e:
+                # try to reconnect 
+                print(e)
+                nFrame = 0
+                self.serialdevice.close()
+                self.serialdevice = self.connect_to_usb_device()
+                
+                
     def grabLatestFrame(self):
         return self.frame
 

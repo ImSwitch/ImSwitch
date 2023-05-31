@@ -27,7 +27,9 @@ from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
 from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
+from .DPCController import DPCController
 from .MCTController import MCTController
+from .WebRTCController import WebRTCController
 from .MockXXController import MockXXController
 from .JetsonNanoController import JetsonNanoController
 from .HistoScanController import HistoScanController

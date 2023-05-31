@@ -18,6 +18,9 @@ class ESP32StageManager(PositionerManager):
         self.__logger = initLogger(self, instanceName=name)
 
 
+        # grab motor object
+        self._motor = self._rs232manager._esp32.motor
+        self._homeModule = self._rs232manager._esp32.home
 
 
         # calibrated stepsize in steps/µm
@@ -139,20 +142,27 @@ class ESP32StageManager(PositionerManager):
         else:
             self.axisOrder = [0,1,2,3]
 
+        if positionerInfo.managerProperties.get("isCoreXY") is not None:
+            self.isCoreXY = positionerInfo.managerProperties["isCoreXY"]
+        else:
+            self.isCoreXY = False
         # setting for setting motors under current yes/no after performing steps
         if positionerInfo.managerProperties.get('isEnable') is not None:
             self.is_enabled = positionerInfo.managerProperties['isEnable']
         else:
             self.is_enabled = True
-
-
-            
-        # grab motor object
-        self._motor = self._rs232manager._esp32.motor
-        self._homeModule = self._rs232manager._esp32.home
+        # setup auto-enable according to json settings
+        if positionerInfo.managerProperties.get('enableauto') is not None:
+            self.enableauto = positionerInfo.managerProperties['enableauto']
+        else:
+            self.enableauto = True
+        self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
         # swap axes eventually
         self.setAxisOrder(order=self.axisOrder)
+
+        # choose if we have a coreXY geometry or not
+        self._motor.setIsCoreXY(isCoreXY = self.isCoreXY)
 
         # setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
@@ -169,12 +179,6 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(self._position['Z'],"Z")
         self.setPosition(self._position['T'],"T")
 
-        # setup auto-enable according to json settings
-        if positionerInfo.managerProperties.get('enableauto') is not None:
-            self.enableauto = positionerInfo.managerProperties['enableauto']
-        else:
-            self.enableauto = True
-        self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)

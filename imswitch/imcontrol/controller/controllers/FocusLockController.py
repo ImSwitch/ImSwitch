@@ -50,7 +50,7 @@ class FocusLockController(ImConWidgetController):
             self.ESP32Camera = ESP32CameraThread('Espressif')
 
             # Start the thread
-            self.ESP32Camera.start()
+            self.ESP32Camera.startStreaming()
         else:
             self._master.detectorsManager[self.camera].crop(*self.cropFrame)
         self._widget.setKp(self._setupInfo.focusLock.piKp)
@@ -99,6 +99,7 @@ class FocusLockController(ImConWidgetController):
         self.__processDataThread.wait()
         self.__focusCalibThread.quit()
         self.__focusCalibThread.wait()
+        self.ESP32Camera.stopStreaming()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -387,12 +388,11 @@ class PI:
 
 
 
-class ESP32CameraThread(threading.Thread):
+class ESP32CameraThread(object):
     def __init__(self, manufacturer):
-        super().__init__()
         self.manufacturer = manufacturer
         self.serialdevice = None
-        self.Nx, self.Ny = 640,480
+        self.Nx, self.Ny = 320,240
         self.frame = np.zeros((self.Ny,self.Nx))
 
     def connect_to_usb_device(self):
@@ -401,7 +401,7 @@ class ESP32CameraThread(threading.Thread):
             if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":
                 try:
                     ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
-                    ser.write_timeout=.01
+                    #ser.write_timeout=.01
                     print(f"Connected to device: {port.description}")
                     return ser
                 except serial.SerialException:
@@ -409,21 +409,35 @@ class ESP32CameraThread(threading.Thread):
         print("No matching USB device found.")
         return None
 
-    def run(self):
+    def startStreaming(self):
+        self.isRunning = True
+        self.mThread = threading.Thread(target=self.startStreamingThread) 
+        self.mThread.start()
+ 
+    def stopStreaming(self):
+        self.isRunning = False
+        self.mThread.join()
+        try:self.serialdevice.close()
+        except:pass
+
+    def startStreamingThread(self):
         self.serialdevice = self.connect_to_usb_device()
         nFrame = 0
-        while True:
+        nTrial = 0
+        while self.isRunning:
             try:
                 # request new image
-                try:
-                    self.serialdevice.write((' ').encode())
-                except:
-                    pass
-                # read image and decode
+                
+                self.serialdevice.write((' ').encode())
+                #serialdevice.flushInput()
+                #serialdevice.flushOutput()
+
                 imageB64 = self.serialdevice.readline()
 
+                #imageB64 = str(imageB64).split("+++++")[-1].split("----")[0]
                 image = np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode()))))
                 self.frame = np.mean(image,-1)
+
                 nFrame += 1
                 print(nFrame)
                 
@@ -431,8 +445,10 @@ class ESP32CameraThread(threading.Thread):
                 # try to reconnect 
                 print(e)
                 nFrame = 0
-                self.serialdevice.close()
-                self.serialdevice = self.connect_to_usb_device()
+                nTrial+=1
+                if nTrial > 20:
+                    self.serialdevice.close()
+                    self.serialdevice = self.connect_to_usb_device()
                 
                 
     def grabLatestFrame(self):

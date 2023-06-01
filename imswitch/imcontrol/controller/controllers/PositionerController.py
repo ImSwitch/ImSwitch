@@ -26,6 +26,7 @@ class PositionerController(ImConWidgetController):
 
             if pManager.joystick:
                 self._widget.addJoystick(pName)
+                self._PreviousJoystickState = True
 
             speed = hasattr(pManager, 'speed')
             self._widget.addPositioner(pName, pManager.axes, speed, pManager.joystick)
@@ -43,7 +44,7 @@ class PositionerController(ImConWidgetController):
                 self._widget.sigJoystick.connect(self.setJoystickStatus)
                 self._widget.sigSetJoystickCheck.connect(self.setJoystickCheckStatus)
                 self._commChannel.sigRecordingStarted.connect(lambda: self.setJoystickStatus(False, pName))
-                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatus(True, pName))
+                self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
                 self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
 
 
@@ -58,7 +59,14 @@ class PositionerController(ImConWidgetController):
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
 
 
+    def setJoystickStatusAfterRec(self):
+        if self._PreviousJoystickState:
+            # if the joystick was enabled before the scan, enable it again after rec
+            self.setJoystickStatus(self, True)
+
+
     def setJoystickStatus(self, enabled, pName):
+        self._PreviousJoystickState = self._master.positionersManager['Stage'].joystickStatus
         if enabled:
             self._master.positionersManager['Stage'].activate_joystick()
         else:

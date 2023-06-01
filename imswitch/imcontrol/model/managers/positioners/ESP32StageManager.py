@@ -301,6 +301,8 @@ class ESP32StageManager(PositionerManager):
     def stopAll(self):
         self._motor.stop()
 
+    def get_abs(self, axis):
+        return self._position[axis]
 
     def doHome(self, axis):
         if axis=="X":

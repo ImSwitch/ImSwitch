@@ -241,48 +241,57 @@ class ProcessDataThread(Thread):
         return self.latestimg
 
     def update(self, twoFociVar):
-        # Gaussian filter the image, to remove noise and so on, to get a better center estimate
-        imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)
 
-        # Update the focus signal
-        if twoFociVar:
-            allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
-            size = allmaxcoords.shape
-            maxvals = np.zeros(size[0])
-            maxvalpos = np.zeros(2)
-            for n in range(0, size[0]):
-                if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[0]:
-                    if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[1]:
-                        tempval = maxvals[1]
-                        maxvals[0] = tempval
-                        maxvals[1] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
-                        tempval = maxvalpos[1]
-                        maxvalpos[0] = tempval
-                        maxvalpos[1] = n
-                    else:
-                        maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
-                        maxvalpos[0] = n
-            xcenter = allmaxcoords[maxvalpos[0]][0]
-            ycenter = allmaxcoords[maxvalpos[0]][1]
-            if allmaxcoords[maxvalpos[1]][1] < ycenter:
-                xcenter = allmaxcoords[maxvalpos[1]][0]
-                ycenter = allmaxcoords[maxvalpos[1]][1]
-            centercoords2 = np.array([xcenter, ycenter])
+        if self._controller.isESP32:
+            imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 5)
+            # mBackground = np.mean(mStack, (0)) #np.ones(mStack.shape[1:])# 
+            mBackground = ndi.filters.gaussian_filter(self.latestimg,15)
+            mFrame = imagearraygf/mBackground # mStack/mBackground
+            massCenterGlobal=np.max(np.mean(mFrame**2, 1))/np.max(np.mean(mFrame**2, 0))
+            
         else:
-            centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
-            centercoords2 = np.array([centercoords[0][0], centercoords[1][0]])
+            # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+            imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)
 
-        subsizey = 50
-        subsizex = 50
-        xlow = max(0, (centercoords2[0] - subsizex))
-        xhigh = min(1024, (centercoords2[0] + subsizex))
-        ylow = max(0, (centercoords2[1] - subsizey))
-        yhigh = min(1280, (centercoords2[1] + subsizey))
+            # Update the focus signal
+            if twoFociVar:
+                allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
+                size = allmaxcoords.shape
+                maxvals = np.zeros(size[0])
+                maxvalpos = np.zeros(2)
+                for n in range(0, size[0]):
+                    if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[0]:
+                        if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[1]:
+                            tempval = maxvals[1]
+                            maxvals[0] = tempval
+                            maxvals[1] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
+                            tempval = maxvalpos[1]
+                            maxvalpos[0] = tempval
+                            maxvalpos[1] = n
+                        else:
+                            maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
+                            maxvalpos[0] = n
+                xcenter = allmaxcoords[maxvalpos[0]][0]
+                ycenter = allmaxcoords[maxvalpos[0]][1]
+                if allmaxcoords[maxvalpos[1]][1] < ycenter:
+                    xcenter = allmaxcoords[maxvalpos[1]][0]
+                    ycenter = allmaxcoords[maxvalpos[1]][1]
+                centercoords2 = np.array([xcenter, ycenter])
+            else:
+                centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
+                centercoords2 = np.array([centercoords[0][0], centercoords[1][0]])
 
-        imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
-        massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
-        # add the information about where the center of the subarray is
-        massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
+            subsizey = 50
+            subsizex = 50
+            xlow = max(0, (centercoords2[0] - subsizex))
+            xhigh = min(1024, (centercoords2[0] + subsizex))
+            ylow = max(0, (centercoords2[1] - subsizey))
+            yhigh = min(1280, (centercoords2[1] + subsizey))
+
+            imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
+            massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
+            # add the information about where the center of the subarray is
+            massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
         return massCenterGlobal
 
 
@@ -389,6 +398,7 @@ class PI:
 
 
 class ESP32CameraThread(object):
+    # attention a threading class won't work in windows!!! #FIXME:
     def __init__(self, manufacturer):
         self.manufacturer = manufacturer
         self.serialdevice = None
@@ -439,7 +449,6 @@ class ESP32CameraThread(object):
                 self.frame = np.mean(image,-1)
 
                 nFrame += 1
-                print(nFrame)
                 
             except Exception as e:
                 # try to reconnect 
@@ -447,7 +456,9 @@ class ESP32CameraThread(object):
                 nFrame = 0
                 nTrial+=1
                 if nTrial > 20:
-                    self.serialdevice.close()
+                    try:
+                        self.serialdevice.close()
+                    except: pass
                     self.serialdevice = self.connect_to_usb_device()
                 
                 

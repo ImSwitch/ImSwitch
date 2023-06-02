@@ -70,7 +70,7 @@ class PositionerManager(ABC):
     @property
     def liveUpdate(self) -> bool:
         """ Whether the positioner position should be updated live. """
-        return self.__joystick
+        return self.__liveUpdate
 
     @abstractmethod
     def move(self, dist: float, axis: str):

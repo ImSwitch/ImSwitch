@@ -28,6 +28,7 @@ class PositionerManager(ABC):
         self.__forScanning = positionerInfo.forScanning
         self.__resetOnClose = positionerInfo.resetOnClose
         self.__joystick = positionerInfo.joystick
+        self.__liveUpdate = positionerInfo.liveUpdate
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -65,6 +66,10 @@ class PositionerManager(ABC):
     @property
     def joystick(self) -> bool:
         """ Whether the positioner is connected to a joystick. """
+        return self.__joystick
+    @property
+    def liveUpdate(self) -> bool:
+        """ Whether the positioner position should be updated live. """
         return self.__joystick
 
     @abstractmethod

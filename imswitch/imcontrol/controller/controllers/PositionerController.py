@@ -4,7 +4,6 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 
-
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -47,6 +46,12 @@ class PositionerController(ImConWidgetController):
                 self._commChannel.sigRecordingEnded.connect(lambda: self.setJoystickStatusAfterRec())
                 self._commChannel.sigInitiateEtMonalisa.connect(lambda state: self.setJoystickStatus(not state, pName))
 
+            if pName=='Stage':
+                if pManager.liveUpdate:
+                    #TODO: for now live update connected to live detector view, should be made as an independant live worker
+                    self._commChannel.sigUpdateImage.connect(lambda: self.updatePosition('Stage', 'all'))
+                    print('liveupdate activated')
+
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
@@ -57,6 +62,8 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
+
+
 
 
     def setJoystickStatusAfterRec(self):
@@ -118,6 +125,9 @@ class PositionerController(ImConWidgetController):
         self._master.positionersManager[positionerName].setSpeed(speed)
         
     def updatePosition(self, positionerName, axis):
+        if positionerName == 'Stage':
+            self._master.positionersManager['Stage'].updatePosition()
+
         if axis == 'all':
             for axisName in self._master.positionersManager[positionerName].axes:
                 newPos = self._master.positionersManager[positionerName].position[axisName]

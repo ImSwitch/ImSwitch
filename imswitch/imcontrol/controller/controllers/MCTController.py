@@ -81,7 +81,7 @@ class MCTController(ImConWidgetController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        self.detector.startAcquisition()
+        
 
         # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
@@ -428,11 +428,13 @@ class MCTController(ImConWidgetController):
         # iterate over all xy coordinates iteratively
 
         # if we only have one light-source, keep it on during scanning
+        '''
         if (self.Laser1Value>0 + self.Laser2Value>0 + self.LEDValue>0)>1:
             turnOffIlluInBetween = True
         else:
             turnOffIlluInBetween = False
-
+        '''
+        turnOffIlluInBetween=True
         for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
             if not self.isMCTrunning:
                 break

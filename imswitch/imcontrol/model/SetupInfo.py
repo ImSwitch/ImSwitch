@@ -199,9 +199,31 @@ class SIMInfo:
     simETA: float
     
     simN: float
+    
 
 @dataclass(frozen=True)
+class DPCInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelsize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    magnefication: float
+    
+    NA: float
+    
+    NAi: float
+    
+    n: float
+    
+    rotations: List[int]
+@dataclass(frozen=True)
 class MCTInfo:
+    pass
+
+@dataclass(frozen=True)
+class WebRTCInfo:
     pass
 
 @dataclass(frozen=True)
@@ -409,8 +431,14 @@ class SetupInfo:
     sim: Optional[SIMInfo] = field(default_factory=lambda: None)
     """ SIM settings. Required to be defined to use SIM functionality. """
 
+    dpc: Optional[DPCInfo] = field(default_factory=lambda: None)
+    """ DPC settings. Required to be defined to use DPC functionality. """
+
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
+    """ WebRTC settings. Required to be defined to use WebRTC functionality. """
     
     mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
     """ MockXX settings. Required to be defined to use MockXX functionality."""

@@ -72,7 +72,7 @@ class ImSwitchServer(Worker):
 
         except:
             self.__loger.error("Couldn't start server.")
-        self.__logger.debug("Loop Finished")
+        #self.__logger.debug("Loop Finished")
 
     def stop(self):
         self._daemon.shutdown()
@@ -132,8 +132,8 @@ class ImSwitchServer(Worker):
 
 
         def includeAPI(str, func):
-            self.__logger.debug(str)
-            self.__logger.debug(func)
+            #self.__logger.debug(str)
+            #self.__logger.debug(func)
             @app.get(str)
             @wraps(func)
             async def wrapper(*args, **kwargs):
@@ -223,7 +223,7 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
-            self.__logger.debug("/"+module+"/"+f)
+            #DEBUGGING: self.__logger.debug("/"+module+"/"+f)
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

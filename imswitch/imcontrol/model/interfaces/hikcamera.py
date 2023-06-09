@@ -28,7 +28,7 @@ elif platform == "win32":
 class CameraHIK:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
         super().__init__()
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
 
         # many to be purged
         self.model = "CameraHIK"

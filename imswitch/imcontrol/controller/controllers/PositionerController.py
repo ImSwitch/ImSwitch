@@ -146,11 +146,11 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False) -> None:
+    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False, isBlocking: bool=False) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         try: # uc2 only
-            self.move(positionerName, axis, dist, isAbsolute=isAbsolute)
+            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking)
         except:
             self.move(positionerName, axis, dist)
 

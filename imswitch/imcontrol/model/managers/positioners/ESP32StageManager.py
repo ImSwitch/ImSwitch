@@ -232,9 +232,6 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
 
-
-
-
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
@@ -281,10 +278,13 @@ class ESP32StageManager(PositionerManager):
             self.stop_y()
         elif axis=="Z":
             self.stop_z()
-        elif aixs=="T":
+        elif axis=="T":
             self.stop_t()
         else:
             self.stopAll()
+
+    def get_abs(self, axis):
+        return self._position[axis]
 
     def stop_x(self):
         self._motor.stop(axis = "X")
@@ -300,7 +300,6 @@ class ESP32StageManager(PositionerManager):
 
     def stopAll(self):
         self._motor.stop()
-
 
     def doHome(self, axis):
         if axis=="X":

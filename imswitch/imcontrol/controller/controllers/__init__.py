@@ -2,6 +2,7 @@ from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController
 from .AufofocusController import AutofocusController
+from. FocusLockController import FocusLockController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController

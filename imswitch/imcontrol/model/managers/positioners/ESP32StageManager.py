@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 PHYS_FACTOR = 1
-gTIMEOUT = 10
+gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
 
 
@@ -158,6 +158,11 @@ class ESP32StageManager(PositionerManager):
             self.enableauto = True
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
+        # acceleration 
+        self.acceleration = {"X": 40000,
+                            "Y": 40000,
+                            "Z": 40000,
+                            "T": 40000}
         # swap axes eventually
         self.setAxisOrder(order=self.axisOrder)
 
@@ -193,7 +198,7 @@ class ESP32StageManager(PositionerManager):
     def setupMotor(self, minPos, maxPos, stepSize, backlash, axis):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
-    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, speed=None, isEnable=None, timeout=gTIMEOUT):
+    def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
         if isEnable is None:
             isEnable = self.is_enabled
         if speed is None:
@@ -203,29 +208,37 @@ class ESP32StageManager(PositionerManager):
             if axis == "T": speed = self.speed["T"]
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
+        if acceleration is None:
+            if axis == "X": acceleration = self.acceleration["X"]
+            if axis == "Y": acceleration = self.acceleration["Y"]
+            if axis == "Z": acceleration = self.acceleration["Z"]
+            if axis == "T": acceleration = self.acceleration["T"]
+            if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
+            if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
+
         if axis == 'X':
-            self._motor.move_x(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Y':
-            self._motor.move_y(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Z':
-            self._motor.move_z(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'T':
-            self._motor.move_t(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_t(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'XY':
-            self._motor.move_xy(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         elif axis == 'XYZ':
-            self._motor.move_xyz(value, speed, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]

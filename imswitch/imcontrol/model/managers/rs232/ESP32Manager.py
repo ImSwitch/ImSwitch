@@ -1,6 +1,6 @@
 import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
-
+from imswitch.imcommon.model import APIExport
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -26,8 +26,12 @@ class ESP32Manager:
             self._identity = "UC2_Feather"
 
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport,
-                                    baudrate=115200)
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200)
+        self._esp32.serial.DEBUG = False
+
+        # disable the WifiModule
+        #self._esp32.modules.set_modules("{'wifi':0}")
+        #self._esp32.serial.DEBUG = True
 
     def finalize(self):
         pass

@@ -1,5 +1,11 @@
 from .ConsoleController import ConsoleController
-from .EditorController import EditorController
+try:
+    from PyQt5 import Qsci
+    from .EditorController import EditorController
+    isQsciAvailable = True
+except:
+    isQsciAvailable = False
+    
 from .FilesController import FilesController
 from .OutputController import OutputController
 from .basecontrollers import ImScrWidgetController
@@ -10,8 +16,12 @@ class ImScrMainViewController(ImScrWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not isQsciAvailable:
+            return
+        
         self.filesController = self._factory.createController(FilesController,
                                                               self._widget.files)
+        
         self.editorController = self._factory.createController(EditorController,
                                                                self._widget.editor)
         self.consoleController = self._factory.createController(ConsoleController,

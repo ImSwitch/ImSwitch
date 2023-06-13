@@ -1,3 +1,4 @@
+import asyncio
 from typing import Mapping
 
 import numpy as np
@@ -5,6 +6,12 @@ from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
 
+import numpy as np
+from PIL import Image      
+from io import BytesIO          
+from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Response
+import cv2
 
 class CommunicationChannel(SignalInterface):
     """
@@ -61,6 +68,7 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+    sigSIMMaskUpdated = Signal(object) # (mask)
 
     sigToggleBlockScanWidget = Signal(bool)
 
@@ -77,12 +85,17 @@ class CommunicationChannel(SignalInterface):
     sigStartRecordingExternal = Signal()
 
     sigRequestScanFreq = Signal()
-    
+
     sigSendScanFreq = Signal(float)  # (scanPeriod)
 
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
+
+    sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
+    sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
+
+    sigBroadcast = Signal(str, str, object)
 
     sigSaveFocus = Signal()
 
@@ -111,6 +124,9 @@ class CommunicationChannel(SignalInterface):
         self.__logger = initLogger(self)
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
+        self.output = []
+        
+        self.streamstarted = False
 
     def getCenterViewbox(self):
         """ Returns the center point of the viewbox, as an (x, y) tuple. """
@@ -134,10 +150,52 @@ class CommunicationChannel(SignalInterface):
     def get_image(self, detectorName=None):
         return self.__main.controllers['View'].get_image(detectorName)
 
+
+    def move(self, positionerName, axis="X", dist=0):
+        return self.__main.controllers['Positioner'].move(positionerName, axis=axis, dist=dist)
+
+
+    @APIExport(runOnUIThread=False)
+    def get_image(self) -> StreamingResponse:
+        # Generate a NumPy array representing an image
+
+        img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
+        img_arr[:, :, 0] = 255  # set red channel to max value
+        
+        # Convert NumPy array to PIL Image
+        img = Image.fromarray(img_arr)
+        
+        # Save PIL Image to BytesIO buffer
+        img_bytes = BytesIO()
+        img.save(img_bytes, format="png")
+        
+        # Return image as StreamingResponse
+        img_bytes.seek(0)
+        return StreamingResponse(img_bytes, media_type="image/png")
+    
+    @APIExport(runOnUIThread=False)
+    def video_feed(response: Response):
+        # Set headers for video streaming
+        
+        frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) for _ in range(100)]
+
+        response.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
+        while True:
+            # Encode frame as jpg
+            frame = cv2.imencode('.jpg', frames.pop(0))[1].tobytes()
+            # Write encoded frame to response
+            response.body = (b'--frame\r\n'
+                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            # Wait for a short time to simulate real-time streaming
+            asyncio.sleep(0.1)
+        
+
+
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:
         image = self.get_image()
         self.output.append(image)
+        return image
 
     def runScript(self, text):
         self.output = []
@@ -151,7 +209,7 @@ class CommunicationChannel(SignalInterface):
     def isExecuting(self):
         return self._scriptExecution
 
-    @APIExport()
+    #@APIExport()
     def signals(self) -> Mapping[str, Signal]:
         """ Returns signals that can be used with e.g. the getWaitForSignal
         action. Currently available signals are:

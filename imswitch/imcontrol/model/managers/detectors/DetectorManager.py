@@ -71,7 +71,8 @@ class DetectorManager(SignalInterface):
                  supportedBinnings: List[int], model: str, *,
                  parameters: Optional[Dict[str, DetectorParameter]] = None,
                  actions: Optional[Dict[str, DetectorAction]] = None,
-                 croppable: bool = True) -> None:
+                 croppable: bool = True, 
+                 isRGB: bool = False) -> None:
         """
         Args:
             detectorInfo: See setup file documentation.
@@ -83,6 +84,7 @@ class DetectorManager(SignalInterface):
             parameters: Parameters to make available to the user to view/edit.
             actions: Actions to make available to the user to execute.
             croppable: Whether the detector image can be cropped.
+            isRGB: color non monochromatic camera
         """
 
         super().__init__()
@@ -108,6 +110,13 @@ class DetectorManager(SignalInterface):
         if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
             raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
                              ' DetectorInfo.')
+    
+        # set RGB if information is available 
+        try:
+            isRGB = parameters['isRGB'].value
+        except:
+            isRGB = False
+        self.setRGB(isRGB)
 
         self.setBinning(supportedBinnings[0])
 
@@ -132,6 +141,10 @@ class DetectorManager(SignalInterface):
         self.__parameters[name].value = value
         return self.parameters
 
+    def setRGB(self, isRGB: bool) -> None:
+        """ Sets the sensortype of the camera """
+        self._isRGB = isRGB
+
     def setBinning(self, binning: int) -> None:
         """ Sets the detector's binning. """
 
@@ -144,6 +157,10 @@ class DetectorManager(SignalInterface):
     def name(self) -> str:
         """ Unique detector name, defined in the detector's setup info. """
         return self.__name
+
+    @property
+    def isRGB(self) -> bool:
+        return self.isRGB
 
     @property
     def model(self) -> str:

@@ -15,7 +15,13 @@ class SQUIDManager:
             self._serialport = None
 
         # initialize the SQUID board 
-        self._squid = SQUID(port=self._serialport)
+        try:
+            self._squid = SQUID(port=self._serialport)
+        except Exception as e:
+            self.__logger.error(e)
+            self.__logger.debug("No Arduino found, switching back to Simulation")
+            from imswitch.imcontrol.model.interfaces.squid import Microcontroller_Simulation
+            self._squid = Microcontroller_Simulation()
         
     def send(self, arg: str) -> str:
         """ Sends the specified command to the RS232 device and returns a

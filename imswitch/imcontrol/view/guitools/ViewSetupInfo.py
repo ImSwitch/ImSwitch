@@ -24,6 +24,10 @@ class LaserPresetInfo:
     value: float
     """ Laser value. """
 
+@dataclass(frozen=True)
+class PositionerPresetInfo:
+    value: float
+    """ Laser value. """
 
 @dataclass
 class ViewSetupInfo(SetupInfo):
@@ -38,6 +42,8 @@ class ViewSetupInfo(SetupInfo):
     laserPresets: Dict[str, Dict[str, 'LaserPresetInfo']] = field(default_factory=dict)
     """ Laser presets available to select (map preset name -> laser name ->
     LaserPresetInfo). """
+
+    positionerPresets: Dict[str, Dict[str, 'PositionerPresetInfo']] = field(default_factory=dict)
 
     defaultLaserPresetForScan: Optional[str] = field(default_factory=lambda: None)
     """ Default laser preset for scanning. """
@@ -55,6 +61,7 @@ class ViewSetupInfo(SetupInfo):
     - ``Autofocus`` (autofocus widget; requires ``focusLock`` field to be
       defined)      
     - ``SLM`` (SLM widget; requires ``slm`` field to be defined)
+    - ``SIM`` (SIM widget; requires ``sim`` field to be defined)    
     - ``Laser`` (laser control widget)
     - ``Positioner`` (positioners widget)
     - ``Scan`` (scan widget; requires ``scan`` field to be defined)
@@ -90,6 +97,11 @@ class ViewSetupInfo(SetupInfo):
     def setLaserPreset(self, name, laserPresetInfos):
         """ :meta private: """
         self.laserPresets[name] = laserPresetInfos
+
+    def setPositionerPreset(self, name, positionerPresetInfos):
+        """ :meta private: """
+        self.laserPresets[name] = positionerPresetInfos
+
 
     def removeLaserPreset(self, name):
         """ :meta private: """

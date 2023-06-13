@@ -71,8 +71,23 @@ class LaserInfo(DeviceInfo):
     valueRangeStep: float = 1.0
     """ The default step size of the value range that the laser can be set to.
     """
+@dataclass(frozen=True)
+class LEDInfo(DeviceInfo):
+    valueRangeMin: Optional[Union[int, float]]
+    """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
+    """
 
+    valueRangeMax: Optional[Union[int, float]]
+    """ maximum value of the laser. ``null`` if laser doesn't setting a value.
+    """
 
+    valueRangeStep: float = 1.0
+    """ The default step size of the value range that the laser can be set to.
+    """
+
+@dataclass(frozen=True)
+class LEDMatrixInfo(DeviceInfo):
+    pass
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
@@ -129,6 +144,118 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
+@dataclass(frozen=True)
+class UC2ConfigInfo:
+    pass
+
+@dataclass(frozen=True)
+class SIMInfo:
+    monitorIdx: int
+    """ Index of the monitor in the system list of monitors (indexing starts at
+    0). """
+
+    width: int
+    """ Width of SLM, in pixels. """
+
+    height: int
+    """ Height of SLM, in pixels. """
+
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelSize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
+
+    isSimulation: bool
+
+    isHamamatsuSLM: bool
+    
+    fastAPISIM_host: str
+    
+    fastAPISIM_port: str
+    
+    isFastAPISIM: bool
+    
+    nRotations: int
+    
+    nPhases: int
+    
+    simMagnefication: float
+    
+    simPixelsize: float
+    
+    simNA: float
+    
+    simETA: float
+    
+    simN: float
+    
+
+@dataclass(frozen=True)
+class DPCInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelsize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    magnefication: float
+    
+    NA: float
+    
+    NAi: float
+    
+    n: float
+    
+    rotations: List[int]
+@dataclass(frozen=True)
+class MCTInfo:
+    pass
+
+@dataclass(frozen=True)
+class WebRTCInfo:
+    pass
+
+@dataclass(frozen=True)
+class MockXXInfo:
+    pass
+
+@dataclass(frozen=True)
+class JetsonNanoInfo:
+    pass
+
+@dataclass(frozen=True)
+class HistoScanInfo:
+    pass
+
+@dataclass(frozen=True)
+class PixelCalibrationInfo:
+    pass
+
+@dataclass(frozen=True)
+class ISMInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
 
 @dataclass(frozen=True)
 class FocusLockInfo:
@@ -227,7 +354,6 @@ class EtSTEDInfo:
     laserFast: str
     """ Name of the widefield laser to use. """
 
-
 @dataclass(frozen=True)
 class MicroscopeStandInfo:
     managerName: str
@@ -243,27 +369,22 @@ class NidaqInfo:
     """ Output for Counter for timing purposes. If an integer is specified, it
     will be translated to "Dev1/ctr{timerCounterChannel}". """
 
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
+class OpentronsDeckInfo:
+    deck_name: str
+    """ Name of the deck file to use. """
 
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
+    deck_path: Optional[str]
+    """ Name of the deck definition file to use. Needed when using non-standard decks. """
 
-
-@dataclass(frozen=True)
-class PulseStreamerInfo:
-    ipAddress: Optional[str] = None
-    """ IP address of Pulse Streamer hardware. """
+    labwares: Optional[Dict[str, Any]]
+    """ Params to be read by the labware loader. Corresponds to standard and custom
+    labware definition dictionaries, containing the slot number and labware name."""
 
 
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
-    host: Optional[str] = '127.0.0.1'
+    host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
@@ -273,6 +394,10 @@ class PyroServerInfo:
 class SetupInfo:
     # default_factory seems to be required for the field to show up in autodocs for deriving classes
 
+    deck: Dict[str, OpentronsDeckInfo] = field(default_factory=dict)
+    """ Deck in this setup. This is a map from unique deck names to
+    DeckInfo objects. """
+
     detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
     """ Detectors in this setup. This is a map from unique detector names to
     DetectorInfo objects. """
@@ -280,6 +405,14 @@ class SetupInfo:
     lasers: Dict[str, LaserInfo] = field(default_factory=dict)
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
+
+    LEDs: Dict[str, LEDInfo] = field(default_factory=dict)
+    """ LEDs in this setup. This is a map from unique laser names to
+    LEDInfo objects. """
+
+    LEDMatrixs: Dict[str, LEDMatrixInfo] = field(default_factory=dict)
+    """ LEDMatrixs in this setup. This is a map from unique LEDMatrix names to
+    LEDMatrixInfo objects. """
 
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
@@ -295,12 +428,42 @@ class SetupInfo:
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
 
+    sim: Optional[SIMInfo] = field(default_factory=lambda: None)
+    """ SIM settings. Required to be defined to use SIM functionality. """
+
+    dpc: Optional[DPCInfo] = field(default_factory=lambda: None)
+    """ DPC settings. Required to be defined to use DPC functionality. """
+
+    mct: Optional[MCTInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use MCT functionality. """
+    
+    webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
+    """ WebRTC settings. Required to be defined to use WebRTC functionality. """
+    
+    mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
+    """ MockXX settings. Required to be defined to use MockXX functionality."""
+
+    jetsonnano: Optional[JetsonNanoInfo] = field(default_factory=lambda: None)
+    """ Jetson Nano settings for jetson nano. Required to be defined to use jetson nano functionality. """
+
+    HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
+    """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+
+    PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
+    """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
+
+    uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
+    """ UC2Config settings. Required to be defined to use UC2Config functionality. """
+
+    ism: Optional[ISMInfo] = field(default_factory=lambda: None)
+    """ ISM settings. Required to be defined to use ISM functionality. """
+
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
-    
+
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
-    """ Autofocus settings. Required to be defined to use autofocus 
+    """ Autofocus settings. Required to be defined to use autofocus
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
@@ -314,12 +477,6 @@ class SetupInfo:
 
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
-
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
-
-    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
-    """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

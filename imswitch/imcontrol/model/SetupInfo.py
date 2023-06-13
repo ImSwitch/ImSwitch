@@ -71,6 +71,8 @@ class LaserInfo(DeviceInfo):
     valueRangeStep: float = 1.0
     """ The default step size of the value range that the laser can be set to.
     """
+
+
 @dataclass(frozen=True)
 class LEDInfo(DeviceInfo):
     valueRangeMin: Optional[Union[int, float]]
@@ -85,9 +87,11 @@ class LEDInfo(DeviceInfo):
     """ The default step size of the value range that the laser can be set to.
     """
 
+
 @dataclass(frozen=True)
 class LEDMatrixInfo(DeviceInfo):
     pass
+
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
@@ -144,9 +148,11 @@ class SLMInfo:
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
 
+
 @dataclass(frozen=True)
 class UC2ConfigInfo:
     pass
+
 
 @dataclass(frozen=True)
 class SIMInfo:
@@ -179,27 +185,27 @@ class SIMInfo:
     isSimulation: bool
 
     isHamamatsuSLM: bool
-    
+
     fastAPISIM_host: str
-    
+
     fastAPISIM_port: str
-    
+
     isFastAPISIM: bool
-    
+
     nRotations: int
-    
+
     nPhases: int
-    
+
     simMagnefication: float
-    
+
     simPixelsize: float
-    
+
     simNA: float
-    
+
     simETA: float
-    
+
     simN: float
-    
+
 
 @dataclass(frozen=True)
 class DPCInfo:
@@ -210,17 +216,18 @@ class DPCInfo:
     """ Pixel size or pixel pitch of the SLM, in millimetres. """
 
     magnefication: float
-    
+
     NA: float
-    
+
     NAi: float
-    
+
     n: float
-    
+
     rotations: List[int]
 @dataclass(frozen=True)
 class MCTInfo:
     pass
+
 
 @dataclass(frozen=True)
 class WebRTCInfo:
@@ -238,9 +245,11 @@ class JetsonNanoInfo:
 class HistoScanInfo:
     pass
 
+
 @dataclass(frozen=True)
 class PixelCalibrationInfo:
     pass
+
 
 @dataclass(frozen=True)
 class ISMInfo:
@@ -256,6 +265,7 @@ class ISMInfo:
     """ Directory of .bmp images provided by Hamamatsu for flatness correction
     at various wavelengths. A combination will be chosen based on the
     wavelength. """
+
 
 @dataclass(frozen=True)
 class FocusLockInfo:
@@ -288,6 +298,7 @@ class FocusLockInfo:
 
     piKi: float
     """ Default ki value of feedback loop. """
+
 
 @dataclass(frozen=True)
 class AutofocusInfo:
@@ -354,6 +365,7 @@ class EtSTEDInfo:
     laserFast: str
     """ Name of the widefield laser to use. """
 
+
 @dataclass(frozen=True)
 class MicroscopeStandInfo:
     managerName: str
@@ -370,21 +382,31 @@ class NidaqInfo:
     will be translated to "Dev1/ctr{timerCounterChannel}". """
 
 class OpentronsDeckInfo:
-    deck_name: str
-    """ Name of the deck file to use. """
+    translate_units: Optional[str]
+    """ Translates units of deck to units used by positioner:
+        'mm2um': translates deck units in milimeters to micrometers.
+        'um2mm': translates deck units in micrometers to milimeters.
+        """
 
-    deck_path: Optional[str]
-    """ Name of the deck definition file to use. Needed when using non-standard decks. """
+    deck_file: Optional[str]
+    """ File of the deck to use. """
+
+    deck_name: Optional[str]
+    """ Name of the deck file to use if using a default OT deck. """
 
     labwares: Optional[Dict[str, Any]]
     """ Params to be read by the labware loader. Corresponds to standard and custom
     labware definition dictionaries, containing the slot number and labware name."""
 
+    default_positions: Optional[Dict[str, Any]]
+    """ Default positions to be adopted when selecting amount of positions to observe in well."""
+
 
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
-    host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
+    host: Optional[
+        str] = '::'  # - listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
@@ -436,10 +458,10 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
-    
+
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """
-    
+
     mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
     """ MockXX settings. Required to be defined to use MockXX functionality."""
 
@@ -521,7 +543,6 @@ class SetupInfo:
             devices.update(deviceInfos)
 
         return devices
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

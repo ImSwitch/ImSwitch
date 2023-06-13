@@ -40,8 +40,7 @@ class UC2ConfigWidget(Widget):
         self.UC2ConfigParameterTree._writable = True
 
         self.pinDefParameterTree = pg.parametertree.ParameterTree()
-        pinDeflim = 64
-        
+        pinDeflim = 39
         self.pinDefparams = [{
             'name': 'left', 'type': 'group', 'children': [
             {'name': 'motXstp', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
@@ -66,13 +65,11 @@ class UC2ConfigWidget(Widget):
             {'name': 'laserPin3', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
             {'name': 'dacFake1', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1},
             {'name': 'dacFake2', 'type': 'int', 'value': 0, 'limits': (0, pinDeflim), 'step': 1}]}]
-        
-            #{'name': 'identifier', 'type': 'str', 'value': "TEST"},
-            #{'name': 'ssid', 'type': 'str', 'value': "UC2"},
-            #{'name': 'PW', 'type': 'str', 'value': "PASSWORD"}
-
-
-        
+        '''
+            {'name': 'identifier', 'type': 'str', 'value': "TEST"},
+            {'name': 'ssid', 'type': 'str', 'value': "UC2"},
+            {'name': 'PW', 'type': 'str', 'value': "PASSWORD"}
+        '''                   
         self.pinDefParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -98,7 +95,6 @@ class UC2ConfigWidget(Widget):
 
         # Button to apply changes
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
-        self.reconnectButton = guitools.BetterPushButton('Reconnect ESP32')
 
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
@@ -145,7 +141,6 @@ class UC2ConfigWidget(Widget):
 
         self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
         self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
-        self.grid.addWidget(self.reconnectButton, 3, 1, 1, 1)
         self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
 
     

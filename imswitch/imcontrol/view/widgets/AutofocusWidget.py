@@ -19,16 +19,16 @@ class AutofocusWidget(Widget):
                                       QtWidgets.QSizePolicy.Expanding)
 
         self.zStepRangeEdit = QtWidgets.QLineEdit('100')
-        self.zStepRangeLabel = QtWidgets.QLabel('Focus search range (nm)')
+        self.zStepRangeLabel = QtWidgets.QLabel('Focus search range (mm)')
         self.zStepSizeEdit = QtWidgets.QLineEdit('10')
-        self.zStepSizeLabel = QtWidgets.QLabel('Stepsize (nm)')
+        self.zStepSizeLabel = QtWidgets.QLabel('Stepsize (mm)')
 
         # self.focusDataBox = QtWidgets.QCheckBox('Save data')  # Connect to exportData
         #self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
 
         # Piezo absolute positioning
         self.positionLabel = QtWidgets.QLabel(
-            'Position (µm)')  # Potentially disregard this and only use in the positioning widget?
+            'Position (mm)')  # Potentially disregard this and only use in the positioning widget?
         self.positionEdit = QtWidgets.QLineEdit('50')
         #self.positionSetButton = guitools.BetterPushButton('Set')
 
@@ -36,7 +36,7 @@ class AutofocusWidget(Widget):
         self.AutofocusGraph = pg.GraphicsLayoutWidget()
         self.AutofocusGraph.setAntialiasing(True)
         self.focusPlot = self.AutofocusGraph.addPlot(row=1, col=0)
-        self.focusPlot.setLabels(bottom=('Motion', 'µm'), left=('Contrast', 'A.U.'))
+        self.focusPlot.setLabels(bottom=('Motion', 'mm'), left=('Contrast', 'A.U.'))
         self.focusPlot.showGrid(x=True, y=True)
         # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
         self.focusPlotCurve = self.focusPlot.plot(pen='y')

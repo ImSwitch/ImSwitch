@@ -1,12 +1,12 @@
-from .basecontrollers import ImScrWidgetController
+from .MultiManager import MultiManager
 
 
-class ConsoleController(ImScrWidgetController):
-    """ Connected to ConsoleView. """
+class LEDsManager(MultiManager):
+    """ LasersManager is an interface for dealing with LaserManagers. It is a
+    MultiManager for lasers. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._widget.setScriptScope(self._scriptScope)
+    def __init__(self, ledInfos, **lowLevelManagers):
+        super().__init__(ledInfos, 'LEDs', **lowLevelManagers)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

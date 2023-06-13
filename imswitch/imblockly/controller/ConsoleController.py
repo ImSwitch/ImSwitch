@@ -1,10 +1,13 @@
-import glob
-__version__ = "__version__develop" # used to be, but actions will replace this with the current release TAG ->1.2.9
+from .basecontrollers import ImScrWidgetController
 
-# add dlls to pypi package
-__dll_files__ = glob.glob('./imcontrol/model/interfaces/gxipy/dll/*.dll')
-print("starting imswitch")
-print(__dll_files__)
+
+class ConsoleController(ImScrWidgetController):
+    """ Connected to ConsoleView. """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._widget.setScriptScope(self._scriptScope)
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

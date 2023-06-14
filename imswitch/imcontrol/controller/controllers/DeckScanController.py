@@ -60,9 +60,9 @@ class DeckScanController(LiveUpdatedController):
         self.__logger = initLogger(self, instanceName="DeckScanController")
         self.objective_radius = _objectiveRadius
         ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]
-        deck_layout = json.load(open(ot_info.deck_file, "r"))
-        self.deck_definition = DeckConfig(deck_layout, ot_info.labwares)
-        self.translate_units = self._setupInfo.deck["OpentronsDeck"].translate_units
+        deck_layout = json.load(open(ot_info["deck_file"], "r"))
+        self.deck_definition = DeckConfig(deck_layout, ot_info["labwares"])
+        self.translate_units = self._setupInfo.deck["OpentronsDeck"]["translate_units"]
 
         # Init desk and labware
         self.initialize_positioners()
@@ -513,14 +513,15 @@ class DeckScanController(LiveUpdatedController):
                     self.setSharedAttr(pName, axis, _speedAttr, pManager.speed[axis])
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-
-        time.sleep(1)
-        self.positioner.move(value=0, axis="Z")
-        time.sleep(0.1)
-        self.positioner.doHome("X")
-        time.sleep(0.1)
-        self.positioner.doHome("Y")
-        time.sleep(0.1)
+        if 0:
+            time.sleep(1)
+            self.positioner.move(value=0, axis="Z")
+            time.sleep(0.1)
+            self.positioner.doHome("X")
+            time.sleep(0.1)
+            self.positioner.doHome("Y")
+            time.sleep(0.1)
+        else: self.__logger.info("Not homing positioner")
 
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:
         """ Moves the specified positioner axis to the specified position. """

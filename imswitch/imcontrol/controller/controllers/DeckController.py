@@ -33,11 +33,11 @@ class DeckController(LiveUpdatedController):
         # Deck and Labwares definitions:
         self.objective_radius = _objectiveRadius
         ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]
-        deck_layout = json.load(open(ot_info.deck_file, "r"))
+        deck_layout = json.load(open(ot_info["deck_file"], "r"))
 
-        self.deck_definition = DeckConfig(deck_layout, ot_info.labwares)
-        self.default_positions_in_well = {key: tuple(value) for key,value in self._setupInfo.deck["OpentronsDeck"].default_positions.items()}
-        self.translate_units = self._setupInfo.deck["OpentronsDeck"].translate_units
+        self.deck_definition = DeckConfig(deck_layout, ot_info["labwares"])
+        self.default_positions_in_well = {key: tuple(value) for key,value in self._setupInfo.deck["OpentronsDeck"]["default_positions"].items()}
+        self.translate_units = self._setupInfo.deck["OpentronsDeck"]["translate_units"]
         # Has control over positioner
         self.initialize_positioners()
         #

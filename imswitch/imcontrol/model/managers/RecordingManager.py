@@ -20,6 +20,12 @@ from imswitch.imcontrol.model.managers.DetectorsManager import DetectorsManager
 
 logger = logging.getLogger(__name__)
 
+class RecMode(enum.Enum):
+    SpecFrames = 1
+    SpecTime = 2
+    ScanOnce = 3
+    ScanLapse = 4
+    UntilStop = 5
 
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """
@@ -34,7 +40,6 @@ class AsTemporayFile(object):
 
     def __exit__(self, *args, **kwargs):
         os.rename(self.tmp_path, self.path)
-
 
 class Storer(abc.ABC):
     """ Base class for storing data"""
@@ -615,14 +620,6 @@ class RecordingWorker(Worker):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()
         newFrames = np.array(newFrames)
         return newFrames
-
-
-class RecMode(enum.Enum):
-    SpecFrames = 1
-    SpecTime = 2
-    ScanOnce = 3
-    ScanLapse = 4
-    UntilStop = 5
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

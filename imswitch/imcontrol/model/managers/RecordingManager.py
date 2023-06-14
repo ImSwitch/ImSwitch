@@ -27,6 +27,18 @@ class RecMode(enum.Enum):
     ScanLapse = 4
     UntilStop = 5
 
+class SaveMode(enum.Enum):
+    Disk = 1
+    RAM = 2
+    DiskAndRAM = 3
+    Numpy = 4
+
+
+class SaveFormat(enum.Enum):
+    HDF5 = 1
+    TIFF = 2
+    ZARR = 3
+
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """
     def __init__(self, filepath, tmp_extension='.tmp'):
@@ -112,20 +124,6 @@ class TiffStorer(Storer):
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
                 logger.info(f"Saved image to tiff file {path}")
-
-
-class SaveMode(enum.Enum):
-    Disk = 1
-    RAM = 2
-    DiskAndRAM = 3
-    Numpy = 4
-
-
-class SaveFormat(enum.Enum):
-    HDF5 = 1
-    TIFF = 2
-    ZARR = 3
-
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,

@@ -253,6 +253,7 @@ class ScanControllerMoNaLISA(SuperScanController):
         self.setParameters()
 
 
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

@@ -22,7 +22,7 @@ class LEDMatrixWidget(Widget):
         self.__logger = initLogger(self, instanceName="LEDMatrixWidget")
 
 
-    def add_matrix_view(self, nLedsX = 8, nLedsY=8):
+    def add_matrix_view(self, nLedsX = 4, nLedsY=6):
         """Create matrix Layout Interface"""
 
         # Create dictionary to hold buttons
@@ -32,10 +32,10 @@ class LEDMatrixWidget(Widget):
 
         # Create dictionary to store well names (button texts)
         buttons = {}
-        for ix in range(nLedsX): 
+        for ix in range(nLedsX):
             for iy in range(nLedsY):
-                buttons[str(nLedsX*ix+iy)]=(ix,iy)
-        
+                buttons[str(nLedsX*iy+ix)]=(ix,iy)
+
         # Create leds (buttons) and add them to the grid layout
         for corrds, pos in buttons.items():
             self.leds[corrds] = guitools.BetterPushButton(corrds)
@@ -44,33 +44,44 @@ class LEDMatrixWidget(Widget):
             self.leds[corrds].setCheckable(True)
             self.leds[corrds].setStyleSheet("""background-color: grey;
                                             font-size: 15px""")
-
+            self.leds[corrds].setMaximumSize(25,25)
             # Add button/label to layout
             gridLayout.addWidget(self.leds[corrds], pos[0], pos[1])
-        
+
         self.ButtonAllOn = guitools.BetterPushButton("All On")
-        gridLayout.addWidget(self.ButtonAllOn, 0, 8, 1, 1)
-        
+        self.ButtonAllOn.setMaximumSize(25, 50)
+        gridLayout.addWidget(self.ButtonAllOn, 0, nLedsX, 1, 1)
+
         self.ButtonAllOff = guitools.BetterPushButton("All Off")
-        gridLayout.addWidget(self.ButtonAllOff, 1, 8, 1, 1)
-                
+        self.ButtonAllOff.setMaximumSize(25, 50)
+        gridLayout.addWidget(self.ButtonAllOff, 1, nLedsX, 1, 1)
+
+        self.ButtonSubmit = guitools.BetterPushButton("Submit")
+        self.ButtonSubmit.setMaximumSize(25, 50)
+        gridLayout.addWidget(self.ButtonSubmit, 2, nLedsX, 1, 1)
+
+        self.ButtonToggle = guitools.BetterPushButton("Toggle")
+        self.ButtonToggle.setMaximumSize(25, 50)
+        gridLayout.addWidget(self.ButtonToggle, 3, nLedsX, 1, 1)
+
+
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=1)
         self.slider.setFocusPolicy(QtCore.Qt.NoFocus)
-                    
+
         self.slider.setMinimum(0)
         self.slider.setMaximum(255)
         self.slider.setTickInterval(5)
         self.slider.setSingleStep(5)
         self.slider.setValue(255)
         gridLayout.addWidget(self.slider, 9, 0, 1, 8)
-         
+        self.setMaximumSize(400, 500)
         # Add button layout to base well layout
         self.setLayout(gridLayout)
-  
+
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
-  
+
 
     # Copyright (C) 2020-2021 ImSwitch developers
     # This file is part of ImSwitch.

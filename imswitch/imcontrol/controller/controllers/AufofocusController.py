@@ -18,6 +18,8 @@ except:
 # global axis for Z-positioning - should be Z
 gAxis = "Z"
 T_DEBOUNCE = .2
+
+
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
 
@@ -33,7 +35,7 @@ class AutofocusController(ImConWidgetController):
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
-        #self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        # self._master.detectorsManager[self.camera].crop(*self.cropFrame)
 
         # Connect AutofocusWidget buttons
         self._widget.focusButton.clicked.connect(self.focusButton)
@@ -41,7 +43,6 @@ class AutofocusController(ImConWidgetController):
 
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-
 
     def __del__(self):
         self._AutofocusThead.quit()
@@ -54,10 +55,9 @@ class AutofocusController(ImConWidgetController):
             rangez = float(self._widget.zStepRangeEdit.text())
             resolutionz = float(self._widget.zStepSizeEdit.text())
             self._widget.focusButton.setText('Stop')
-            self.autoFocus(rangez,resolutionz)
+            self.autoFocus(rangez, resolutionz)
         else:
             self.isAutofusRunning = False
-
 
     @APIExport(runOnUIThread=True)
     # Update focus lock
@@ -70,7 +70,8 @@ class AutofocusController(ImConWidgetController):
         '''
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         self.isAutofusRunning = True
-        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz), daemon=True)
+        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz),
+                                                daemon=True)
         self._AutofocusThead.start()
 
     def grabCameraFrame(self):
@@ -78,7 +79,7 @@ class AutofocusController(ImConWidgetController):
         return detectorManager.getLatestFrame()
 
     def doAutofocusBackground(self, rangez=100, resolutionz=10):
-        self._commChannel.sigAutoFocusRunning.emit(True) # inidicate that we are running the autofocus
+        self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
 
         allfocusvals = []
         allfocuspositions = []
@@ -89,9 +90,9 @@ class AutofocusController(ImConWidgetController):
 
 
         # precompute values for Z-scan
-        Nz = int(2*rangez//resolutionz)
+        Nz = int(2 * rangez // resolutionz)
         allfocusvals = np.zeros(Nz)
-        allfocuspositions  = np.linspace(-abs(rangez),abs(rangez),Nz)+initialPosition
+        allfocuspositions = np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition
         allfocusimages = []
 
         # 0 move focus to initial position
@@ -122,32 +123,32 @@ class AutofocusController(ImConWidgetController):
 
             # 2 Gaussian filter the image, to remove noise
             self._logger.debug("Processing Frame")
-            #img_norm = img-np.min(img)
-            #img_norm = img_norm/np.mean(img_norm)
+            # img_norm = img-np.min(img)
+            # img_norm = img_norm/np.mean(img_norm)
             imagearraygf = ndi.filters.gaussian_filter(img, 3)
 
             # 3 compute focus metric
             focusquality = np.mean(ndi.filters.laplace(imagearraygf))
-            allfocusvals[iz]=focusquality
+            allfocusvals[iz] = focusquality
 
         if self.isAutofusRunning:
             # display the curve
-            self._widget.focusPlotCurve.setData(allfocuspositions,allfocusvals)
+            self._widget.focusPlotCurve.setData(allfocuspositions, allfocusvals)
 
             # 4 find maximum focus value and move stage to this position
-            allfocusvals=np.array(allfocusvals)
-            zindex=np.where(np.max(allfocusvals)==allfocusvals)[0]
+            allfocusvals = np.array(allfocusvals)
+            zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
             bestzpos = allfocuspositions[np.squeeze(zindex)]
 
             # 5 move focus back to initial position (reduce backlash)
             self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
             # 6 Move stage to the position with max focus value
-            self._logger.debug(f'Moving focus to {zindex*resolutionz}')
+            self._logger.debug(f'Moving focus to {zindex * resolutionz}')
             self.stages.move(value=bestzpos, axis="Z", is_absolute=True, is_blocking=True)
 
             if False:
-                allfocusimages=np.array(allfocusimages)
+                allfocusimages = np.array(allfocusimages)
                 np.save('allfocusimages.npy', allfocusimages)
                 import tifffile as tif
                 tif.imsave("llfocusimages.tif", allfocusimages)
@@ -157,8 +158,10 @@ class AutofocusController(ImConWidgetController):
         else:
             self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
 
+        # DEBUG
+
         # We are done!
-        self._commChannel.sigAutoFocusRunning.emit(False) # inidicate that we are running the autofocus
+        self._commChannel.sigAutoFocusRunning.emit(False)  # inidicate that we are running the autofocus
         self.isAutofusRunning = False
 
         self._widget.focusButton.setText('Autofocus')

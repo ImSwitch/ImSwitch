@@ -1,6 +1,7 @@
 from .AutofocusManager import AutofocusManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
+from .LEDsManager import LEDsManager
 from .LEDMatrixsManager import LEDMatrixsManager
 from .MultiManager import MultiManager
 from .PositionersManager import PositionersManager

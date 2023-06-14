@@ -16,9 +16,16 @@ from .FocusLockController import FocusLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
 from .MotCorrController import MotCorrController
+from .LEDController import LEDController
 from .PositionerController import PositionerController
+from .StandaPositionerController import StandaPositionerController
+from .StandaStageController import StandaStageController
 from .RecordingController import RecordingController
 from .WellPlateController import WellPlateController
+from .DeckController import DeckController
+from .DeckScanController import DeckScanController
+from .OpentronsDeckController import OpentronsDeckController
+from .OpentronsDeckScanController import OpentronsDeckScanController
 from .LEDMatrixController import LEDMatrixController
 from .SLMController import SLMController
 from .ScanControllerBase import ScanControllerBase

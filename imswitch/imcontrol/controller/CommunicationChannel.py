@@ -7,8 +7,8 @@ from imswitch.imcommon.model import pythontools, APIExport, SharedAttributes
 from imswitch.imcommon.model import initLogger
 
 import numpy as np
-from PIL import Image      
-from io import BytesIO          
+from PIL import Image
+from io import BytesIO
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Response
 import cv2
@@ -92,15 +92,17 @@ class CommunicationChannel(SignalInterface):
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
 
-    sigAutoFocus =  Signal(float, float) # scanrange and stepsize 
+    sigAutoFocus =  Signal(float, float, float) # scanrange and stepsize and initialz
     sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
+
+    sigInitialFocalPlane = Signal(float) # initial focal plane for DeckScanController
 
     sigBroadcast = Signal(str, str, object)
 
     sigSaveFocus = Signal()
 
     sigScanFrameFinished = Signal()  # TODO: emit this signal when a scanning frame finished, maybe in scanController if possible? Otherwise in APDManager for now, even if that is not general if you want to do camera-based experiments. Could also create a signal specifically for this from the scan curve generator perhaps, specifically for the rotation experiments, would that be smarter?
-    
+
     sigUpdateRotatorPosition = Signal(str)  # (rotatorName)
 
     sigSetSyncInMovementSettings = Signal(str, float)  # (rotatorName, position)
@@ -125,7 +127,7 @@ class CommunicationChannel(SignalInterface):
         self._scriptExecution = False
         self.__main._moduleCommChannel.sigExecutionFinished.connect(self.executionFinished)
         self.output = []
-        
+
         self.streamstarted = False
 
     def getCenterViewbox(self):
@@ -161,22 +163,22 @@ class CommunicationChannel(SignalInterface):
 
         img_arr = np.zeros((100, 100, 3), dtype=np.uint8)
         img_arr[:, :, 0] = 255  # set red channel to max value
-        
+
         # Convert NumPy array to PIL Image
         img = Image.fromarray(img_arr)
-        
+
         # Save PIL Image to BytesIO buffer
         img_bytes = BytesIO()
         img.save(img_bytes, format="png")
-        
+
         # Return image as StreamingResponse
         img_bytes.seek(0)
         return StreamingResponse(img_bytes, media_type="image/png")
-    
+
     @APIExport(runOnUIThread=False)
     def video_feed(response: Response):
         # Set headers for video streaming
-        
+
         frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) for _ in range(100)]
 
         response.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
@@ -188,14 +190,13 @@ class CommunicationChannel(SignalInterface):
                             b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             # Wait for a short time to simulate real-time streaming
             asyncio.sleep(0.1)
-        
+
 
 
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:
         image = self.get_image()
         self.output.append(image)
-        return image
 
     def runScript(self, text):
         self.output = []

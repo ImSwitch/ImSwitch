@@ -7,7 +7,6 @@ PHYS_FACTOR = 1
 gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
 
-
     def __init__(self, positionerInfo, name, **lowLevelManagers):
         super().__init__(positionerInfo, name, initialPosition={
             axis: 0 for axis in positionerInfo.axes
@@ -47,7 +46,7 @@ class ESP32StageManager(PositionerManager):
         else:
             self.stepsizeT = 1
 
-        # miniumum/maximum steps in X
+            # miniumum/maximum steps in X
         if positionerInfo.managerProperties.get('minX') is not None:
             self.minX = positionerInfo.managerProperties['minX']
         else:
@@ -61,29 +60,29 @@ class ESP32StageManager(PositionerManager):
         if positionerInfo.managerProperties.get('minY') is not None:
             self.minY = positionerInfo.managerProperties['minY']
         else:
-           self.minY = -np.inf
+            self.minY = -np.inf
         if positionerInfo.managerProperties.get('maxY') is not None:
             self.maxY = positionerInfo.managerProperties['maxY']
         else:
-           self.maxY = np.inf
+            self.maxY = np.inf
         # minimum/maximum steps in Z
         if positionerInfo.managerProperties.get('minZ') is not None:
             self.minZ = positionerInfo.managerProperties['minZ']
         else:
-           self.minZ = -np.inf
+            self.minZ = -np.inf
         if positionerInfo.managerProperties.get('maxZ') is not None:
             self.maxZ = positionerInfo.managerProperties['maxZ']
         else:
-           self.maxZ = np.inf
+            self.maxZ = np.inf
         # minimum/maximum steps in T
         if positionerInfo.managerProperties.get('minT') is not None:
             self.minT = positionerInfo.managerProperties['minT']
         else:
-           self.minT = -np.inf
+            self.minT = -np.inf
         if positionerInfo.managerProperties.get('maxT') is not None:
             self.maxT = positionerInfo.managerProperties['maxT']
         else:
-           self.maxT = np.inf
+            self.maxT = np.inf
 
         # calibrated backlash
         if positionerInfo.managerProperties.get('backlashX') is not None:
@@ -98,41 +97,41 @@ class ESP32StageManager(PositionerManager):
             self.backlashY = 1
 
         # calibrated backlash
-        if positionerInfo.managerProperties.get ('backlashZ') is not None:
+        if positionerInfo.managerProperties.get('backlashZ') is not None:
             self.backlashZ = positionerInfo.managerProperties['backlashZ']
         else:
             self.backlashZ = 1
 
         # calibrated backlash
-        if positionerInfo.managerProperties.get ('backlashT') is not None:
+        if positionerInfo.managerProperties.get('backlashT') is not None:
             self.backlashT = positionerInfo.managerProperties['backlashT']
         else:
             self.backlashT = 1
 
         # setup homing coordinates and speed
-        if positionerInfo.managerProperties.get ('homeSpeedX') is not None:
+        if positionerInfo.managerProperties.get('homeSpeedX') is not None:
             self.homeSpeedX = positionerInfo.managerProperties['homeSpeedX']
         else:
             self.homeSpeedX = 15000
-        if positionerInfo.managerProperties.get ('homeDirectionX') is not None:
+        if positionerInfo.managerProperties.get('homeDirectionX') is not None:
             self.homeDirectionX = positionerInfo.managerProperties['homeDirectionX']
         else:
             self.homeDirectionX = -1
 
-        if positionerInfo.managerProperties.get ('homeSpeedY') is not None:
+        if positionerInfo.managerProperties.get('homeSpeedY') is not None:
             self.homeSpeedY = positionerInfo.managerProperties['homeSpeedY']
         else:
             self.homeSpeedY = 15000
-        if positionerInfo.managerProperties.get ('homeDirectionY') is not None:
+        if positionerInfo.managerProperties.get('homeDirectionY') is not None:
             self.homeDirectionY = positionerInfo.managerProperties['homeDirectionY']
         else:
             self.homeDirectionY = -1
 
-        if positionerInfo.managerProperties.get ('homeSpeedZ') is not None:
+        if positionerInfo.managerProperties.get('homeSpeedZ') is not None:
             self.homeSpeedZ = positionerInfo.managerProperties['homeSpeedZ']
         else:
             self.homeSpeedZ = 15000
-        if positionerInfo.managerProperties.get ('homeDirectionZ') is not None:
+        if positionerInfo.managerProperties.get('homeDirectionZ') is not None:
             self.homeDirectionZ = positionerInfo.managerProperties['homeDirectionZ']
         else:
             self.homeDirectionZ = -1
@@ -158,7 +157,7 @@ class ESP32StageManager(PositionerManager):
             self.enableauto = True
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
-        # acceleration 
+        # acceleration
         self.acceleration = {"X": 40000,
                             "Y": 40000,
                             "Z": 40000,
@@ -235,8 +234,10 @@ class ESP32StageManager(PositionerManager):
         elif axis == 'XY':
             self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
-                if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
-                else: self._position[iaxis] = value[i]
+                if not is_absolute:
+                    self._position[iaxis] = self._position[iaxis] + value[i]
+                else:
+                    self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             for i, iaxis in enumerate(("X", "Y")):
@@ -249,17 +250,18 @@ class ESP32StageManager(PositionerManager):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
     def setupPIDcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
-        return self._motor.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target, PID_updaterate=PID_updaterate)
+        return self._motor.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target,
+                                             PID_updaterate=PID_updaterate)
 
-    def moveForever(self, speed=(0,0,0), is_stop=False):
+    def moveForever(self, speed=(0, 0, 0), is_stop=False):
         self._motor.move_forever(speed=speed, is_stop=is_stop)
 
     def setEnabled(self, is_enabled):
         self.is_enabled = is_enabled
 
     def setSpeed(self, speed, axis=None):
-        #TODO: Map that to the JSON!
-        if type(speed)==int and axis == None:
+        # TODO: Map that to the JSON!
+        if type(speed) == int and axis == None:
             self._speed["X"] = speed
             self._speed["Y"] = speed
             self._speed["Z"] = speed
@@ -268,16 +270,18 @@ class ESP32StageManager(PositionerManager):
             self._speed[axis] = speed
 
     def setPosition(self, value, axis):
-        if value: value+=1 # TODO: Firmware weirdness
-        self._motor.set_position(axis=axis, position=value)
+        # if value: value += 1  # TODO: Firmware weirdness
+        # self._motor.set_position(axis=axis, position=value) # TODO: this line does nothing
+        # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
+        # print(f"setPosition - Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
     def closeEvent(self):
         pass
 
-
     def getPosition(self):
         try:
+            time.sleep(0.5)
             allPositions = self._motor.get_position()
         except:
             allPositions = [0,0,0,0]
@@ -315,33 +319,29 @@ class ESP32StageManager(PositionerManager):
         self._motor.stop()
 
     def doHome(self, axis):
-        if axis=="X":
+        if axis == "X":
             self.home_x()
-        if axis=="Y":
+        if axis == "Y":
             self.home_y()
-        if axis=="Z":
+        if axis == "Z":
             self.home_z()
 
     def home_x(self):
-        self._homeModule.home_x(speed = self.homeSpeedX, direction = self.homeDirectionX )
-        self._position["X"] = 0
+        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX)
+        self.setPosition(axis="X", value=0)
+        # self._position["X"] = 0
 
     def home_y(self):
-        self._homeModule.home_y(speed = self.homeSpeedY, direction = self.homeDirectionY)
-        self._position["Y"] = 0
+        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY)
+        self.setPosition(axis="Y", value=0)
+        # self._position["Y"] = 0
 
     def home_z(self):
-        self._homeModule.home_z(speed = self.homeSpeedZ, direction = self.homeDirectionZ)
-        self._position["Z"] = 0
-
+        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ)
+        self.setPosition(axis="Z", value=0)
     def home_xyz(self):
         self._motor.home_xyz()
-        self._position["X"] = 0
-        self._position["Y"] = 0
-        self._position["Z"] = 0
-
-
-
+        [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
 
 
 # Copyright (C) 2020, 2021 The imswitch developers

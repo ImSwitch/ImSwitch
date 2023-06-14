@@ -106,3 +106,5 @@ pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
 
 *.hdf5
 *.tiff
+
+locai*

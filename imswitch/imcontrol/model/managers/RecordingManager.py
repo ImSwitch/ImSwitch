@@ -1,6 +1,8 @@
 import enum
 import os
 import time
+from math import ceil
+from imswitch.imcontrol.model.configfiletools import _debugLogDir
 from io import BytesIO
 from typing import Dict, Optional, Type, List, Tuple
 from types import DynamicClassAttribute
@@ -156,6 +158,113 @@ class HDF5Storer(Storer):
             
                 file.close()
                 logger.info(f"Saved image to hdf5 file {path}")
+
+    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+        """ Stores data in a streaming fashion. """
+
+        detector : DetectorManager = self.detectorsManager[channel]
+        pixelSize = detector.pixelSizeUm
+        self.record = True
+        frameNumberWindow = []
+        
+        def create_dataset(file: h5py.File, shape: tuple, name: str = "data", dtype = detector.dtype, compression: str = None) -> Tuple[h5py.Dataset, h5py.Dataset]:
+            """ Create a frame dataset and a frame ID dataset to store recordings.
+
+            Args:
+                file (h5py.File): file handler
+                shape (tuple): size of the video to record
+
+            Returns:
+                h5py.Dataset: the created dataset
+            """
+            dataset = file.create_dataset(name, shape=shape, maxshape=(None, *shape[1:]), dtype=dtype, compression=compression)
+            for key, value in attrs.items():
+                try:
+                    dataset.attrs[key] = value
+                except:
+                    logger.debug(f'Could not put key:value pair {key}:{value} in hdf5 metadata.')
+            dataset.attrs["detector_name"] = channel
+            dataset.attrs["element_size_um"] = pixelSize
+            return dataset
+                
+        with h5py.File(self.filepath, mode="w") as file:
+            if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:
+                totalFrames = kwargs["totalFrames"]
+                self.frameCount = 0
+                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+                while self.frameCount < totalFrames and self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    if self.frameCount + len(frames) > totalFrames:
+                        # we only collect the remaining frames required,
+                        # and discard the remaining
+                        frames = frames[0: totalFrames - self.frameCount]
+                        frameIDs = frameIDs[0: totalFrames - self.frameCount]
+                    dataset[self.frameCount : self.frameCount + len(frames)] = frames
+                    frameNumberWindow.extend(frameIDs)
+                    self.frameCount += len(frames)
+                    self.frameNumberUpdate.emit(channel, self.frameCount)
+            elif recMode == RecMode.SpecTime:
+                timeUnit = detector.frameInterval # us
+                totalTime = kwargs["totalTime"] # s
+                totalFrames = int(ceil(totalTime * 1e6 / timeUnit))
+                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+                currentRecTime = 0
+                start = time.time()
+                index = 0
+                while index < totalFrames and self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    nframes = len(frames)
+                    dataset[index: index + nframes] = frames
+                    frameNumberWindow.extend(frameIDs)
+                    self.timeCount = np.around(currentRecTime, decimals=2)
+                    self.timeUpdate.emit(channel, min(self.timeCount, totalTime))
+                    index += nframes
+                    currentRecTime = time.time() - start
+                # we may have not used up the entirety of the HDF5 size,
+                # so we resize the dataset to the value of "index"
+                # in case this is lower than totalFrames
+                if index < totalFrames:
+                    dataset.resize(index, axis=0)
+            elif recMode == RecMode.UntilStop:
+                # with HDF5 it's hard to make an estimation of an infinite recording
+                # and set the correct data size... the best thing we can do is to 
+                # create the dataset big enough to store 1 second worth of data recording
+                # and keep extending it whenever we're going out of boundaries
+                # but a better solution should be found
+                timeUnit = detector.frameInterval # us
+                totalTime = 1e6 # us
+                totalFrames = int(ceil(totalTime / timeUnit))
+                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+                index = 0
+                while self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    nframes = len(frames)
+                    if nframes > index:
+                        dataset.resize(index + totalFrames, axis=0)                    
+                    dataset[index: nframes] = frames
+                    frameNumberWindow.extend(frameIDs)
+                    index += nframes            
+            # we write the ids to a separate dataset;
+            # after testing, for large recordings we go 
+            # over the maximum attribute size of 64k,
+            # so we just write the data separately
+            file.create_dataset("data_id", data=frameNumberWindow)
+            if detector.dtype == np.int16:
+                new_dset = create_dataset(file, file["data"].shape, "data1", dtype=np.float32)
+                new_dset[:] = dataset[:]
+                del file["data"]
+            if len(detector.imageProcessing) > 0:
+                for key, value in detector.imageProcessing.items():
+                    file.create_dataset(key, data=value["content"])
+        
+        # we check that all frame IDs are equidistant
+        if np.all(frameNumberWindow == 0):
+            logger.warning(f"[REC:{detector.name}] No frame IDs were provided for {detector.name}.")
+        elif not np.all(np.ediff1d(frameNumberWindow) == 1):
+            dbgPath = os.path.join(_debugLogDir, f"frame_id_differences_{detector.name}.txt")
+            logger.error(f"[REC:{detector.name}] Frames lost. Frame interval: {detector.frameInterval} μs")
+            logger.error(f"[REC:{detector.name}] You can find the frame ID list in {dbgPath}")
+            np.savetxt(os.path.join(_debugLogDir, f"frame_id_differences_{detector.name}.txt"), np.ediff1d(frameNumberWindow), fmt="%d")
         
 
 class TiffStorer(Storer):

@@ -2,7 +2,7 @@ import enum
 import os
 import time
 from io import BytesIO
-from typing import Dict, Optional, Type, List
+from typing import Dict, Optional, Type, List, Tuple
 from types import DynamicClassAttribute
 
 import h5py
@@ -17,6 +17,7 @@ from ome_zarr.format import format_from_version
 import abc
 import logging
 
+from imswitch.imcontrol.model.managers.detectors import DetectorManager
 from imswitch.imcontrol.model.managers.DetectorsManager import DetectorsManager
 
 logger = logging.getLogger(__name__)
@@ -61,20 +62,52 @@ class AsTemporayFile(object):
     def __exit__(self, *args, **kwargs):
         os.rename(self.tmp_path, self.path)
 
-class Storer(abc.ABC):
-    """ Base class for storing data"""
-    def __init__(self, filepath, detectorManager):
+class Storer(SignalInterface):
+    """ Base class for storing data """
+    frameNumberUpdate = Signal(str, int) # channel, frameNumber
+    timeUpdate = Signal(str, float) # channel, timeCount
+
+    def __init__(self, filepath: str, detectorsManager: DetectorsManager):
+        super().__init__()
         self.filepath = filepath
-        self.detectorManager: DetectorsManager = detectorManager
+        self.detectorsManager = detectorsManager
+        self.frameCount : int = 0
+        self.timeCount : float = 0.0
+        self._record = False
+    
+    @property
+    def record(self) -> bool:
+        return self._record
+
+    @record.setter
+    def record(self, record: bool):
+        self._record = record
 
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         """ Stores images and attributes according to the spec of the storer """
         raise NotImplementedError
 
-    def stream(self, data = None, **kwargs):
+    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
         """ Stores data in a streaming fashion. """
         raise NotImplementedError
+    
+    def unpackChunk(self, channel: str) -> Tuple[np.ndarray, np.ndarray]:
+        """ Checks if the value returned by getChunk is a tuple (packing the recorded chunk and the associated time points).
+        If the return type is only the recorded stack, a zero array is generated with the same length of 
+        the recorded chunk.
 
+        Args:
+            channel (str): detector's channel to read chunk from
+
+        Returns:
+            tuple: a 2-element tuple with the recorded chunk and the single data points associated with each frame.
+        """
+        chunk = self.detectorsManager[channel].getChunk()
+        if type(chunk) == tuple:
+            return chunk
+        else: # type is np.ndarray
+            chunk = (chunk, np.zeros(len(chunk)))
+        return chunk
 
 class ZarrStorer(Storer):
     """ A storer that stores the images in a zarr file store """

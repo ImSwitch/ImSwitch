@@ -111,6 +111,10 @@ class DetectorManager(SignalInterface):
 
         self.setBinning(supportedBinnings[0])
 
+        self._imageProcessing = {}
+        self._dtype = np.uint16
+        self._frameInterval = 1000.0 # us
+
     def updateLatestFrame(self, init):
         """ :meta private: """
         try:
@@ -205,6 +209,22 @@ class DetectorManager(SignalInterface):
     def forFocusLock(self) -> bool:
         """ Whether the detector is used for focus lock. """
         return self.__forFocusLock
+
+    @property
+    def imageProcessing(self) -> dict:
+        """ Returns the dictionary of image processing objects in the detector. """
+        return self._imageProcessing
+    
+    @property
+    def dtype(self) -> Any:
+        """ Returns the image numpy data type for correct recording storage. """
+        return self._dtype
+    
+    @property
+    def frameInterval(self) -> Tuple[float]:
+        """ The time interval between each frame, specified in microseconds.
+        """
+        return self._frameInterval
 
     @property
     def scale(self) -> List[int]:

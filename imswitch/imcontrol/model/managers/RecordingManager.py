@@ -91,7 +91,7 @@ class Storer(SignalInterface):
         """ Stores data in a streaming fashion. """
         raise NotImplementedError
     
-    def unpackChunk(self, channel: str) -> Tuple[np.ndarray, np.ndarray]:
+    def unpackChunk(self, detectorManager: DetectorManager) -> Tuple[np.ndarray, np.ndarray]:
         """ Checks if the value returned by getChunk is a tuple (packing the recorded chunk and the associated time points).
         If the return type is only the recorded stack, a zero array is generated with the same length of 
         the recorded chunk.
@@ -102,7 +102,7 @@ class Storer(SignalInterface):
         Returns:
             tuple: a 2-element tuple with the recorded chunk and the single data points associated with each frame.
         """
-        chunk = self.detectorsManager[channel].getChunk()
+        chunk = detectorManager.getChunk()
         if type(chunk) == tuple:
             return chunk
         else: # type is np.ndarray

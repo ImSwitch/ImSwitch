@@ -1,7 +1,7 @@
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -233,11 +233,13 @@ class DetectorManager(SignalInterface):
         pass
 
     @abstractmethod
-    def getChunk(self) -> np.ndarray:
+    def getChunk(self) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """ Returns the frames captured by the detector since getChunk was last
         called, or since the buffers were last flushed (whichever happened
-        last). The returned object is a numpy array of shape
-        (numFrames, height, width). """
+        last). Depending on the detector, the returned object can be:
+        - a numpy array of shape (numFrames, height, width); 
+        - a tuple of two numpy arrays: the first of shape (numFrames, height, width),
+            and the second of shape (numFrames,). The second array contains the frame IDs"""
         pass
 
     @abstractmethod

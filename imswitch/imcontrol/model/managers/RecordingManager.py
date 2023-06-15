@@ -3,6 +3,7 @@ import os
 import time
 from io import BytesIO
 from typing import Dict, Optional, Type, List
+from types import DynamicClassAttribute
 
 import h5py
 import zarr
@@ -38,6 +39,13 @@ class SaveFormat(enum.Enum):
     HDF5 = 1
     TIFF = 2
     ZARR = 3
+
+    @DynamicClassAttribute
+    def name(self):
+        name = super(SaveFormat, self).name
+        if name == "TIFF":
+            name = "OME-TIFF"
+        return name
 
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """

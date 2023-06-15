@@ -355,6 +355,45 @@ class TiffStorer(Storer):
             description = omexml.tostring(declaration=True)
             file.overwrite_description(description.encode())
 
+class BytesIOStorer(Storer):
+    """Storer class for local RAM data. Uses BytesIO to stream images from detectors
+    to local memory buffer.
+    """    
+    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+        # TODO: parse metadata... does it make sense?
+        # TODO: add storage of frame ID
+        memRecording: BytesIO = kwargs["fileDests"][channel]
+        detector: DetectorManager = self.detectorsManager[channel]
+        
+        self.record = True
+        if recMode == RecMode.SpecFrames:
+            if recMode == RecMode.SpecFrames:
+                totalFrames = kwargs["totalFrames"]
+                while self.frameCount < totalFrames and self.record:
+                    frames, _ = self.unpackChunk(detector)
+                    if self.frameCount + len(frames) >= totalFrames:
+                        # we only collect the remaining frames required,
+                        # and discard the remaining
+                        frames = frames[0: totalFrames - self.frameCount]
+                    memRecording.write(frames)
+                    self.frameCount += len(frames)
+                    self.frameNumberUpdate.emit(channel, self.frameCount)
+                return
+            elif recMode == RecMode.SpecTime:
+                totalTime = kwargs["totalTime"]
+                currentRecTime = 0
+                start = time.time()
+                while currentRecTime < totalTime and self.record:
+                    frames, _ = self.unpackChunk(detector)
+                    memRecording.write(frames)
+                    self.timeCount = np.around(currentRecTime, decimals=2)
+                    self.timeUpdate.emit(channel, self.timeCount)
+                    currentRecTime = time.time() - start
+            elif recMode == RecMode.UntilStop:
+                while self.record:
+                    frames, _ = self.unpackChunk(detector)
+                    memRecording.write(frames)
+
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,

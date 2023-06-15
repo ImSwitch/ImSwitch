@@ -1,6 +1,7 @@
 import enum
 import os
 import time
+from datetime import datetime
 from math import ceil
 from imswitch.imcontrol.model.configfiletools import _debugLogDir
 from io import BytesIO
@@ -274,6 +275,85 @@ class TiffStorer(Storer):
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
                 logger.info(f"Saved image to tiff file {path}")
+    
+    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+        # TODO: Parse metadata to tiff meta data
+        detector: DetectorManager = self.detectorsManager[channel]
+        _, physicalYSize, physicalXSize = self.detectorsManager[channel].pixelSizeUm
+        frameNumberWindow = []
+        
+        self.record = True
+        date = datetime.now()
+        
+        imageMetadata = dict(
+            Name = detector.name,
+            AcquisitionDate = date.strftime("%d-%m-%Y %H:%M:%S"),
+            TimeIncrement = detector.frameInterval,
+            TimeIncrementUnit = 'µs',
+            PhysicalSizeX = physicalXSize,
+            PhysicalSizeXUnit = 'µm',
+            PhysicalSizeY = physicalYSize,
+            PhysicalSizeYUnit = 'µm'
+        )
+        metadata = dict(
+            Image = imageMetadata
+        )
+        
+        with tiff.TiffWriter(self.filepath, ome=False, bigtiff=True) as file:
+            if recMode == RecMode.SpecFrames:
+                totalFrames = kwargs["totalFrames"]
+                while self.frameCount < totalFrames and self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    if self.frameCount + len(frames) >= totalFrames:
+                        # we only collect the remaining frames required,
+                        # and discard the remaining
+                        frames = frames[0: totalFrames - self.frameCount]
+                        frameIDs = frameIDs[0: totalFrames - self.frameCount]
+                    file.write(frames,  photometric="minisblack", description="", metadata=None)
+                    frameNumberWindow.extend(frameIDs)
+                    self.frameCount += len(frames)
+                    self.frameNumberUpdate.emit(channel, self.frameCount)
+            elif recMode == RecMode.SpecTime:
+                timeUnit = detector.frameInterval # us
+                totalTime = kwargs["totalTime"] # s
+                totalFrames = int(ceil(totalTime * 1e6 / timeUnit))
+                logger.info(f"Recording time: {totalTime} s @{timeUnit} μs -> {totalFrames} frames")
+                currentRecTime = 0
+                start = time.time()
+                index = 0
+                while index < totalFrames and self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    file.write(frames, description='', metadata=None)
+                    frameNumberWindow.extend(frameIDs)
+                    self.timeCount = np.around(currentRecTime, decimals=2)
+                    self.timeUpdate.emit(channel, min(self.timeCount, totalTime))
+                    currentRecTime = time.time() - start
+                    index += len(frames)
+                self.frameCount = totalFrames
+            elif recMode == RecMode.UntilStop:
+                while self.record:
+                    frames, frameIDs = self.unpackChunk(detector)
+                    file.write(frames, description='', metadata=None)
+                    frameNumberWindow.extend(frameIDs)
+                    self.frameCount += len(frames)
+        
+            # we check that all frame IDs are equidistant
+            if np.all(frameNumberWindow == 0):
+                logger.error(f"[REC:{detector.name}] No frame IDs were provided for {detector.name}.")
+            elif not np.all(np.ediff1d(frameNumberWindow) == 1):
+                logger.error(f"[REC:{detector.name}] Frames lost. Frame interval: {detector.frameInterval} μs")
+            omexml = tiff.OmeXml(
+                Creator = "ImSwitch"
+            )
+            omexml.addimage(
+                dtype=detector.dtype,
+                shape=(self.frameCount, *reversed(detector.shape)),
+                storedshape=(self.frameCount, 1, 1, *reversed(detector.shape), 1),
+                axes='TYX',
+                metadata=metadata
+            )
+            description = omexml.tostring(declaration=True)
+            file.overwrite_description(description.encode())
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,

@@ -555,43 +555,28 @@ class RecordingManager(SignalInterface):
         In SpecFrames mode, recFrames (the number of frames) must be specified,
         and in SpecTime mode, recTime (the recording time in seconds) must be
         specified. """
+
+        self.__logger.info(f'Starting recording. Mode: {recMode.name}, save mode: {saveMode.name}, save format: {saveFormat.name}')
         
         self.__totalThreads = len(detectorNames)
         self.__threadCount = 0
 
         fileDests, filePaths = self.getFiles(savename, detectorNames, recMode, saveMode, saveFormat)
-        recOptions = dict(totalFrames=recFrames, totalTime=recTime)
+        recOptions = dict(totalFrames=recFrames, totalTime=recTime, saveMode=saveMode)
         
-        if saveMode in [SaveMode.Disk, SaveMode.DiskAndRAM]:            
-            self.__storersList = [self.__storerMap[saveFormat](path, self.detectorsManager) for path in list(filePaths.values())]
-            self.__storerThreads = [create_worker(storer.stream,
-                                        channel,
-                                        recMode, 
-                                        attrs[channel], 
-                                        **recOptions,
-                                        _worker_class=StreamingWorker,
-                                        _start_thread=False) for (channel, storer) in zip(detectorNames, self.__storersList)]            
-            if saveMode == SaveMode.DiskAndRAM:
-                for storer, thread in zip(self.__storersList, self.__storerThreads):
-                    thread.returned.connect(
-                        lambda: self._updateMemoryRecordingListings(storer)
-                    )                    
-        elif saveMode == SaveMode.RAM:
-            recOptions["fileDests"] = fileDests
-            
-            self.__storersList = [BytesIOStorer(fileDest, self.detectorsManager) for fileDest in list(fileDests.values())]
-            self.__storerThreads = [create_worker(storer.stream,
-                                           channel,
-                                           recMode,
-                                           attrs[channel],
-                                           **recOptions,
-                                           _worker_class=StreamingWorker,
-                                           _start_thread=False) for (channel, storer) in zip(detectorNames, self.__storersList)]
-            for storer, thread in zip(self.__storersList, self.__storerThreads):
-                thread.returned.connect(
-                    lambda: self._updateMemoryRecordingListings(storer)
-                )
-            
+        self.__storersList = [self.__storerMap[saveFormat](path, dest, self.detectorsManager) for path, dest in zip(list(filePaths.values()), list(fileDests.values()))]
+        self.__storerThreads = [create_worker(storer.stream,
+                                    channel,
+                                    recMode, 
+                                    attrs[channel], 
+                                    **recOptions,
+                                    _worker_class=StreamingWorker,
+                                    _start_thread=False) for (channel, storer) in zip(detectorNames, self.__storersList)]
+        for storer, thread in zip(self.__storersList, self.__storerThreads):
+            thread.returned.connect(
+                lambda: self._updateMemoryRecordingListings(storer)
+            )
+
         if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:            
             for storer in self.__storersList:
                 storer.frameNumberUpdate.connect(self._updateFramesCounter)
@@ -607,8 +592,7 @@ class RecordingManager(SignalInterface):
             thread.finished.connect(
                 lambda: self._closeThread(storer, thread)
             )
-        
-        self.__logger.info('Starting recording')
+
         self.__record = True
         self.__wasLiveActive = len(self.__detectorsManager._activeAcqLVHandles) == 1
         

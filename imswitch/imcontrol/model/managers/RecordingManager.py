@@ -446,7 +446,7 @@ class RecordingManager(SignalInterface):
 
     @property
     def record(self):
-        """ Whether a recording is currently being recorded. """
+        """ Whether a recording is currently started. """
         return self.__record
 
     @property

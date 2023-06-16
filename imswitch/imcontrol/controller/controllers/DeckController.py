@@ -9,7 +9,13 @@ from imswitch.imcommon.model import initLogger, APIExport
 from imswitch.imcontrol.view import guitools as guitools
 from opentrons.types import Point
 
-from locai.deck.deck_config import DeckConfig
+try:
+    asdf
+    from locai.deck.deck_config import DeckConfig
+    IS_LOCAI = True
+except Exception as e:
+    IS_LOCAI = False
+    
 from ..basecontrollers import LiveUpdatedController
 from ...model.SetupInfo import OpentronsDeckInfo
 
@@ -32,19 +38,24 @@ class DeckController(LiveUpdatedController):
 
         # Deck and Labwares definitions:
         self.objective_radius = _objectiveRadius
-        ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]
-        deck_layout = json.load(open(ot_info["deck_file"], "r"))
 
-        self.deck_definition = DeckConfig(deck_layout, ot_info["labwares"])
-        self.default_positions_in_well = {key: tuple(value) for key,value in self._setupInfo.deck["OpentronsDeck"]["default_positions"].items()}
-        self.translate_units = self._setupInfo.deck["OpentronsDeck"]["translate_units"]
+        if IS_LOCAI:
+            ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]
+            deck_layout = json.load(open(ot_info["deck_file"], "r"))
+
+            self.deck_definition = DeckConfig(deck_layout, ot_info["labwares"])
+            self.default_positions_in_well = {key: tuple(value) for key,value in self._setupInfo.deck["OpentronsDeck"]["default_positions"].items()}
+            self.translate_units = self._setupInfo.deck["OpentronsDeck"]["translate_units"]
+            self._widget.initialize_deck(self.deck_definition.deck, self.deck_definition.labwares)
+        else:
+            self._widget.initialize_deck(None, None)
         # Has control over positioner
         self.initialize_positioners()
         #
         self.selected_slot = None
         self.selected_well = None
         # self.scanner = LabwareScanner(self.positioner, self.deck, self.labwares, _objectiveRadius)
-        self._widget.initialize_deck(self.deck_definition.deck, self.deck_definition.labwares)
+        
         self._widget.init_scan_list()
         self.connect_all_buttons()
         self._widget.scan_list.sigGoToTableClicked.connect(self.go_to_position_in_table)
@@ -69,9 +80,9 @@ class DeckController(LiveUpdatedController):
         self._selected_slot = slot
 
     def connect_all_buttons(self):
-        self.connect_home()
-        self.connect_zero()
         self.connect_deck_slots()
+        self.connect_home()
+        self.connect_zero()            
         self.connect_add_current_position()
         self.connect_line_edit()
 
@@ -138,7 +149,7 @@ class DeckController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def zero(self):
         # TODO: zero z-axis when first position focal plane found.
-        _,_,self._widget.first_z_focus = self.positioner.get_position()
+        _,_,self._widget.first_z_focus = self.positioner.getPosition()
         try:
             self._commChannel.sigInitialFocalPlane.emit(self._widget.first_z_focus)
             print(f"Updated initial focus {self._widget.first_z_focus}")
@@ -284,30 +295,42 @@ class DeckController(LiveUpdatedController):
         self._widget.pos_in_well_lined.textChanged.connect(self.connect_add_position)
 
     def current_slot(self):
-        return self.deck_definition.get_slot(self.positioner.get_position())
+        return self.deck_definition.get_slot(self.positioner.getPosition())
 
     def get_position_in_deck(self):
-        return Point(*self.positioner.get_position()) + self.deck_definition.corner_offset
+        return Point(*self.positioner.getPosition()) + self.deck_definition.corner_offset
 
     def update_values(self):
-        current_position = Point(*self.positioner.get_position())
+        # read value and convert dictionary to list
+        pos_xyz = self.positioner.getPosition()
+        pos_xyz = pos_xyz["X"], pos_xyz["Y"], pos_xyz["Z"] 
+                                                 
+        # convert dictionay to list
+        current_position = Point(*pos_xyz)
         try:
-            current_position_deck = self.retranslate_position(current_position)
-            current_slot = self.deck_definition.get_slot(current_position_deck)
-            current_well = self.deck_definition.get_closest_well(current_position_deck)
-            self._widget.current_slot = current_slot
-            self._widget.current_well = current_well
-            self._widget.current_absolute_position = current_position
-            self._widget.current_z_focus = current_position.z
-            well_position = self.deck_definition.get_well_position(current_slot, current_well)  # Deck measurement
-            well_position = self.translate_position(well_position)  # Posioner value
-            if self._widget.current_slot is not None and self._widget.current_well is not None:
-                # Offset gets defined positively: when shifting an offset it should be shift = offset - current_position
-                zero = self.translate_position(10e-4)  # Positioner value
-                offset = tuple([a - b if np.abs(a - b) > zero else 0.00 for (a, b) in
-                                zip(well_position,
-                                    current_position)][:2])
-                self._widget.current_offset = offset  # Positioner Values
+            if IS_LOCAI:
+                current_position_deck = self.retranslate_position(current_position)
+                current_slot = self.deck_definition.get_slot(current_position_deck)
+                current_well = self.deck_definition.get_closest_well(current_position_deck)
+                self._widget.current_slot = current_slot
+                self._widget.current_well = current_well
+                self._widget.current_absolute_position = current_position
+                self._widget.current_z_focus = current_position.z
+                well_position = self.deck_definition.get_well_position(current_slot, current_well)  # Deck measurement
+                well_position = self.translate_position(well_position)  # Posioner value
+                if self._widget.current_slot is not None and self._widget.current_well is not None:
+                    # Offset gets defined positively: when shifting an offset it should be shift = offset - current_position
+                    zero = self.translate_position(10e-4)  # Positioner value
+                    offset = tuple([a - b if np.abs(a - b) > zero else 0.00 for (a, b) in
+                                    zip(well_position,
+                                        current_position)][:2])
+                    self._widget.current_offset = offset  # Positioner Values
+            else:
+                self._widget.current_slot = 0
+                self._widget.current_well = 0
+                self._widget.current_absolute_position = current_position
+                self._widget.current_z_focus = current_position.z
+                self._widget.current_offset = 0 # Positioner Values
         except Exception as e:
             self.__logger.debug(f"Error when updating values. {e}")
 
@@ -375,7 +398,7 @@ class DeckController(LiveUpdatedController):
                     partial(self._widget.add_position_to_scan, self.selected_slot, self.selected_well,
                             self.default_positions_in_well["down"], self._widget.current_z_focus, (x, y, z)))
 
-            # offset = well.geometry.position - self.positioner.get_position()
+            # offset = well.geometry.position - self.positioner.getPosition()
 
     def connect_deck_slots(self):
         """Connect Deck Slots (Buttons) to the Sample Pop-Up Method"""
@@ -385,9 +408,10 @@ class DeckController(LiveUpdatedController):
             # self.pars['UpButton' + parNameSuffix].clicked.connect(
             #    lambda *args, axis=axis: self.sigStepUpClicked.emit(positionerName, axis)
             # )
+            
             if isinstance(btn, guitools.BetterPushButton):
                 btn.clicked.connect(partial(self.select_labware, slot))
-
+    
     def connect_go_to(self):
         """Connect Wells (Buttons) to the Sample Pop-Up Method"""
         if isinstance(self._widget.goto_btn, guitools.BetterPushButton):
@@ -439,7 +463,7 @@ class DeckController(LiveUpdatedController):
 #         :return: Well
 #         """
 #         if loc is None:
-#             xo, yo, _ = self.positioner.get_position()
+#             xo, yo, _ = self.positioner.getPosition()
 #         elif isinstance(loc, Point):
 #             xo, yo, _ = loc
 #         else:
@@ -471,7 +495,7 @@ class DeckController(LiveUpdatedController):
 #         :return: Slot number
 #         """
 #         if loc is None:
-#             xo, yo, _ = self.positioner.get_position()
+#             xo, yo, _ = self.positioner.getPosition()
 #         elif isinstance(loc, Point):
 #             xo, yo, _ = loc
 #         else:
@@ -515,7 +539,7 @@ class DeckController(LiveUpdatedController):
 #     #     x1, y1, _ = slot_origin
 #     #     x2, y2, _ = [a + b for a, b in zip(slot_origin, slot_size)]
 #     #
-#     #     xo, yo, _ = self.positioner.get_position()  # Avoided using positionerName
+#     #     xo, yo, _ = self.positioner.getPosition()  # Avoided using positionerName
 #     #     if axis == "X":
 #     #         xo = xo + shift
 #     #     elif axis == "Y":
@@ -534,7 +558,7 @@ class DeckController(LiveUpdatedController):
 #             raise ValueError("Position outside well.")
 #
 #     def objective_collision_avoidance(self, axis, new_pos=None, slot=None, shift=None):
-#         xo, yo, z = self.positioner.get_position()
+#         xo, yo, z = self.positioner.getPosition()
 #         if axis == "Z":
 #             if slot is not None:
 #                 if slot == self.get_slot():  # Moving objective within a slot
@@ -617,13 +641,13 @@ class DeckController(LiveUpdatedController):
 #             y_offset = xy_offset[1]
 #         else:
 #             raise ValueError
-#         x, y, z = self.positioner.get_position()
+#         x, y, z = self.positioner.getPosition()
 #         self.positioner.move(axis="XY", dist=(x_offset + x, y_offset + y))
 #         # is_blocking=False)  # , speed=5, is_blocking=True, is_absolute=True)
 #         self.is_moving = False
 #
 #     def moveToXY(self, pos_X, pos_Y):
-#         x, y, z = self.positioner.get_position()
+#         x, y, z = self.positioner.getPosition()
 #         self.positioner.move(axis="XY", dist=(pos_X - x, pos_Y - y))
 #         # is_blocking=False)  # , speed=5, is_blocking=True, is_absolute=True)
 #         self.is_moving = False

@@ -10,7 +10,7 @@ PropertyValue = Union[bool, float, int, str]
 
 class PyMMCoreManager(SignalInterface):
     """ For interaction with Micro-Manager C++ core. 
-        Using pymmcore package (a Python-API wrapper).
+        Using pymmcore-plus package (a Python-API wrapper).
 
         Setup fields:
         - ``MMPath``: MM absolute path in the system

@@ -37,6 +37,17 @@ class PositionerController(ImConWidgetController):
         self._widget.sigsetSpeedClicked.connect(self.setSpeedGUI)
 
     def closeEvent(self):
+
+        def setOriginOnClose(p, axis):
+            try:
+                p.setOrigin(axis)
+            except NotImplementedError:
+                pass
+        
+        self._master.positionersManager.execOnAll(
+            lambda p: [setOriginOnClose(p, axis) for axis in p.axes if p.setOriginOnClose],
+        )
+
         self._master.positionersManager.execOnAll(
             lambda p: [p.setPosition(0, axis) for axis in p.axes],
             condition = lambda p: p.resetOnClose

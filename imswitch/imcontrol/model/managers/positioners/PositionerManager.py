@@ -27,6 +27,7 @@ class PositionerManager(ABC):
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         self.__resetOnClose = positionerInfo.resetOnClose
+        self.__setOriginOnClose = positionerInfo.setOriginOnClose
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -61,6 +62,12 @@ class PositionerManager(ABC):
     def resetOnClose(self) -> bool:
         """ Whether the positioner should be reset to 0-position upon closing. """
         return self.__resetOnClose
+    
+    @property
+    def setOriginOnClose(self) -> bool:
+        """ Wether to set the positioner's origin to the last recorded position upon shutdown. """
+        return self.__setOriginOnClose
+
 
     @abstractmethod
     def move(self, dist: float, axis: str):

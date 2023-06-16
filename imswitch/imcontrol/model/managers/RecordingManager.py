@@ -5,7 +5,7 @@ from datetime import datetime
 from math import ceil
 from imswitch.imcontrol.model.configfiletools import _debugLogDir
 from io import BytesIO
-from typing import Dict, Optional, Type, List, Tuple
+from typing import Dict, Optional, Type, List, Tuple, Union
 from types import DynamicClassAttribute
 
 import h5py
@@ -74,13 +74,21 @@ class AsTemporayFile(object):
         os.rename(self.tmp_path, self.path)
 
 class Storer(SignalInterface):
-    """ Base class for storing data """
     frameNumberUpdate = Signal(str, int) # channel, frameNumber
     timeUpdate = Signal(str, float) # channel, timeCount
 
-    def __init__(self, filepath: str, detectorsManager: DetectorsManager):
+    def __init__(self, filepath: str, filedest: Union[h5py.File, np.memmap, zarr.storage.DirectoryStore], detectorsManager: DetectorsManager):
+        """ Storer base class.
+
+        Args:
+            filepath (str): filepath to save the data to disk.
+            filedest (Union[h5py.File, np.memmap, zarr.storage.DirectoryStore]): file-like object to save the data to RAM
+            detectorsManager (DetectorsManager): detectors manager to read data from.
+        """
+
         super().__init__()
         self.filepath = filepath
+        self.filedest = filedest
         self.detectorsManager = detectorsManager
         self.frameCount : int = 0
         self.timeCount : float = 0.0
@@ -451,16 +459,16 @@ class RecordingManager(SignalInterface):
     def _updateMemoryRecordingListings(self, storer: Storer) -> None:
         # method is called only when recording is finished (a.k.a. when the thread closes)
         # as it is triggered by the "finished" signal
-        filePath = storer.filepath
+        filedest = storer.filedest
         if type(storer) == TiffStorer:
-            file = tiff.memmap(filePath)
+            file = tiff.memmap(filedest)
         elif type(storer) == HDF5Storer:
-            file = h5py.File(filePath, "a")
+            file = h5py.File(filedest, "a")
         else:
-            raise NotImplementedError("RAM storage mode is currently limited to TIFF and HDF5, other formats not supported!")
-        name = os.path.basename(storer.filepath)
+            raise NotImplementedError("RAM storage currently not supported in Zarr!")
+        name = os.path.basename(filedest)
         self.sigMemoryRecordingAvailable.emit(
-            name, file, filePath, True
+            name, file, filedest, True
         )
 
     def _updateFramesCounter(self, channel: str, frameNumber: int) -> None:

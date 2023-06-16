@@ -41,7 +41,8 @@ class PositionerController(ImConWidgetController):
         def setOriginOnClose(p, axis):
             try:
                 p.setOrigin(axis)
-            except NotImplementedError:
+            except NotImplementedError as e:
+                self.__logger.warning(e)
                 pass
         
         self._master.positionersManager.execOnAll(

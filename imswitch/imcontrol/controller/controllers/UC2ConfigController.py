@@ -114,6 +114,14 @@ class UC2ConfigController(ImConWidgetController):
         self.setParamTree(state_general=state_general, state_pinDef=state_pinDef)
         #self._master.UC2ConfigManager.setGeneral(state_general)
 
+    def reconnect(self):
+        self._logger.debug('Reconnecting to ESP32 device.')
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Reconnecting to ESP32 device.")
+        mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
+        mThread.start()
+        mThread.join()
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
+
     def updateFirmware(self, filename=None):
         if not(self.isFirmwareUpdating):
             self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(False)

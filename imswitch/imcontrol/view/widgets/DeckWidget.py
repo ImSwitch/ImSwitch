@@ -155,7 +155,7 @@ class DeckWidget(Widget):
         self._deck_dict = deck_dict
         self._labware_dict = labwares_dict
 
-        self._deck_group_box = QtWidgets.QGroupBox("Deck layout")
+        
         layout = QtWidgets.QHBoxLayout()
 
         # Add home and zero buttons
@@ -163,35 +163,56 @@ class DeckWidget(Widget):
         self.add_zero(layout)
 
         # Create dictionary to hold buttons
-        slots = [slot["id"] for slot in deck_dict["locations"]["orderedSlots"]]
-        used_slots = list(labwares_dict.keys())
-        self.deck_slots = {}
+        if deck_dict is not None:
+            self._deck_group_box = QtWidgets.QGroupBox("Deck layout")
+            slots = [slot["id"] for slot in deck_dict["locations"]["orderedSlots"]]
+            used_slots = list(labwares_dict.keys())
+            self.deck_slots = {}
 
-        # Create dictionary to store deck slots names (button texts)
-        slots_buttons = {s: (0, i + 2) for i, s in enumerate(slots)}
-        for corrds, pos in slots_buttons.items():
-            if corrds in used_slots:
-                # Do button if slot contains labware
-                self.deck_slots[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
-                self.deck_slots[corrds].setFixedSize(30, 30)
-                self.deck_slots[corrds].setStyleSheet("QPushButton"
-                                                      "{"
-                                                      "background-color : grey; font-size: 14px"
-                                                      "}"
-                                                      "QPushButton::pressed"
-                                                      "{"
-                                                      "background-color : red; font-size: 14px"
-                                                      "}"
-                                                      )
-            else:
-                self.deck_slots[corrds] = QtWidgets.QLabel(corrds)  # QtWidgets.QPushButton(corrds)
-                self.deck_slots[corrds].setFixedSize(30, 30)
-                self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
-            layout.addWidget(self.deck_slots[corrds])
-        self._deck_group_box.setMaximumHeight(70)
-        self._deck_group_box.setLayout(layout)
-        self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
-        self.setLayout(self.main_grid_layout)
+            # Create dictionary to store deck slots names (button texts)
+            slots_buttons = {s: (0, i + 2) for i, s in enumerate(slots)}
+            for corrds, pos in slots_buttons.items():
+                if corrds in used_slots:
+                    # Do button if slot contains labware
+                    self.deck_slots[corrds] = guitools.BetterPushButton(corrds)  # QtWidgets.QPushButton(corrds)
+                    self.deck_slots[corrds].setFixedSize(30, 30)
+                    self.deck_slots[corrds].setStyleSheet("QPushButton"
+                                                            "{"
+                                                            "background-color : grey; font-size: 14px"
+                                                            "}"
+                                                            "QPushButton::pressed"
+                                                            "{"
+                                                            "background-color : red; font-size: 14px"
+                                                            "}"
+                                                            )
+                else:
+                    self.deck_slots[corrds] = QtWidgets.QLabel(corrds)  # QtWidgets.QPushButton(corrds)
+                    self.deck_slots[corrds].setFixedSize(30, 30)
+                    self.deck_slots[corrds].setStyleSheet("background-color: None; font-size: 14px")
+                layout.addWidget(self.deck_slots[corrds])
+            self._deck_group_box.setMaximumHeight(70)
+            self._deck_group_box.setLayout(layout)
+            self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
+            self.setLayout(self.main_grid_layout)
+        else:
+            self._deck_group_box = QtWidgets.QGroupBox("Sampel Layout")
+            self.deck_slots = {}
+            self.deck_slots[0] =  guitools.BetterPushButton('0')  # QtWidgets.QPushButton(corrds)
+            self.deck_slots[0].setFixedSize(30, 30)
+            self.deck_slots[0].setStyleSheet("QPushButton"
+                                                            "{"
+                                                            "background-color : grey; font-size: 14px"
+                                                            "}"
+                                                            "QPushButton::pressed"
+                                                            "{"
+                                                            "background-color : red; font-size: 14px"
+                                                            "}"
+                                                            )
+            layout.addWidget(self.deck_slots[0])
+            self._deck_group_box.setMaximumHeight(70)
+            self._deck_group_box.setLayout(layout)
+            self.main_grid_layout.addWidget(self._deck_group_box, 2, 0, 1, 3)
+            self.setLayout(self.main_grid_layout)
 
     def init_scan_list(
             self):  # , detectorName, detectorModel, detectorParameters, detectorActions,supportedBinnings, roiInfos):

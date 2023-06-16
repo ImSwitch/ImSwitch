@@ -267,6 +267,10 @@ class PyroServerInfo:
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
+@dataclass(frozen=True)
+class PyMMCoreInfo:
+    MMPath: Optional[str] = "C:/Program Files/Micro-Manager-2.0"
+    MMDevSearchPath: Optional[str] = None
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -320,6 +324,9 @@ class SetupInfo:
 
     pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
     """ Pulse Streamer settings. """
+
+    pymmcore: PyMMCoreInfo = field(default_factory=PyMMCoreInfo)
+    """ PyMMCore settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

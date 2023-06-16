@@ -84,6 +84,12 @@ class PositionerManager(ABC):
         """
         pass
 
+    def setOrigin(self, axis: str):
+        """ Zeroes the positioner's current axis. This needs to be implemented 
+        on the child class of PositionerManager.
+        """
+        raise NotImplementedError(f"Requested setOrigin for {self.name}, but method must be implemented!")
+
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass

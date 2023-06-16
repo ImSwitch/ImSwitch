@@ -144,7 +144,7 @@ class MockHamamatsu:
             hc_data = HMockCamData(frame_x * frame_y, self.mock_data_max_value)
             frames.append(np.reshape(hc_data.getData(), (frame_y, frame_x)))
 
-        return frames, (frame_x, frame_y)
+        return np.array(frames), (frame_x, frame_y)
 
     def getLast(self):
         frame_x, frame_y = self.frame_x, self.frame_y

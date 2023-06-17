@@ -113,7 +113,7 @@ class PositionerWidget(Widget):
         """ Sets the step size of the specified positioner axis to the
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['SpeedEdit' + parNameSuffix].setText(speedSize)
+        self.pars['SpeedEdit' + parNameSuffix].setText(str(speedSize))
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)

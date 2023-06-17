@@ -2,6 +2,7 @@ from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 import time
 import numpy as np
+from imswitch.imcommon.model import APIExport, generateAPI, initLogger
 
 PHYS_FACTOR = 1
 gTIMEOUT = 100

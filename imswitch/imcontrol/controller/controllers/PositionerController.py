@@ -88,12 +88,15 @@ class PositionerController(ImConWidgetController):
 
     def setSpeed(self, positionerName, axis, speed=(1000, 1000, 1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
-
+        self.setSharedAttr(positionerName, axis, _speedAttr, speed)
+        self._widget.setSpeedSize(positionerName, axis, speed)
+        
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
+    @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis)
@@ -132,6 +135,14 @@ class PositionerController(ImConWidgetController):
         positionerZ = self.getPositionerNames()[2]
         self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
         # self.move(self.getPositionerNames[2], 'Z', z)
+
+    @APIExport(runOnUIThread=True)
+    def enalbeMotors(self, enable=None, enableauto=None):
+        try: 
+            return self._master.positionersManager.enalbeMotors(enable=None, enableauto=None)
+        except:
+            pass
+
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:

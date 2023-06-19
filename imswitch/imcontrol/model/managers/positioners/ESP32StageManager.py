@@ -319,27 +319,28 @@ class ESP32StageManager(PositionerManager):
     def stopAll(self):
         self._motor.stop()
 
-    def doHome(self, axis):
+    def doHome(self, axis, isBlocking=False):
         if axis == "X":
-            self.home_x()
+            self.home_x(isBlocking)
         if axis == "Y":
-            self.home_y()
+            self.home_y(isBlocking)
         if axis == "Z":
-            self.home_z()
+            self.home_z(isBlocking)
 
-    def home_x(self):
-        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX)
+    def home_x(self, isBlocking):
+        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
         # self._position["X"] = 0
 
-    def home_y(self):
-        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY)
+    def home_y(self,isBlocking):
+        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
         # self._position["Y"] = 0
 
-    def home_z(self):
-        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ)
+    def home_z(self,isBlocking):
+        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, isBlocking=isBlocking)
         self.setPosition(axis="Z", value=0)
+        
     def home_xyz(self):
         self._motor.home_xyz()
         [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]

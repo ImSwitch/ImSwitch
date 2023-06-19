@@ -97,7 +97,7 @@ class PositionerController(ImConWidgetController):
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     @APIExport(runOnUIThread=True)
-    def homeAxis(self, positionerName, axis):
+    def homeAxis(self, positionerName, axis, isBlocking=False):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis)
         self.updatePosition(positionerName, axis)

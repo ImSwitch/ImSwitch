@@ -214,12 +214,12 @@ class DetectorManager(SignalInterface):
     def imageProcessing(self) -> dict:
         """ Returns the dictionary of image processing objects in the detector. """
         return self._imageProcessing
-    
+
     @property
     def dtype(self) -> Any:
         """ Returns the image numpy data type for correct recording storage. """
         return self._dtype
-    
+
     @property
     def frameInterval(self) -> Tuple[float]:
         """ The time interval between each frame, specified in microseconds.

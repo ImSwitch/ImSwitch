@@ -187,7 +187,7 @@ class HDF5Storer(Storer):
         self.record = True
         frameNumberWindow = []
         
-        def create_dataset(file: h5py.File, shape: tuple, name: str = "data", dtype = detector.dtype, compression: str = None) -> Tuple[h5py.Dataset, h5py.Dataset]:
+        def create_dataset(file: h5py.File, shape: tuple, name: str = detector.name, dtype = detector.dtype, compression: str = None) -> Tuple[h5py.Dataset, h5py.Dataset]:
             """ Create a frame dataset and a frame ID dataset to store recordings.
 
             Args:

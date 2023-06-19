@@ -76,6 +76,9 @@ class AsTemporayFile(object):
 class Storer(SignalInterface):
     frameNumberUpdate = Signal(str, int) # channel, frameNumber
     timeUpdate = Signal(str, float) # channel, timeCount
+    sigMemRecAvailable = Signal(
+        str, object, object, bool
+    )  # (name, file, filePath, savedToDisk)
 
     def __init__(self, filepath: str, filedest: Union[h5py.File, np.memmap, zarr.storage.DirectoryStore], detectorsManager: DetectorsManager):
         """ Storer base class.
@@ -106,7 +109,7 @@ class Storer(SignalInterface):
         """ Stores images and attributes according to the spec of the storer """
         raise NotImplementedError
 
-    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+    def stream(self, channel: str, recMode: RecMode, saveMode: SaveMode, attrs: Dict[str, str], **kwargs) -> None:
         """ Stores data in a streaming fashion. """
         raise NotImplementedError
     
@@ -176,7 +179,7 @@ class HDF5Storer(Storer):
                 file.close()
                 logger.info(f"Saved image to hdf5 file {path}")
 
-    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+    def stream(self, channel: str, recMode: RecMode, saveMode: SaveMode, attrs: Dict[str, str], **kwargs) -> None:
         """ Stores data in a streaming fashion. """
 
         detector : DetectorManager = self.detectorsManager[channel]
@@ -203,76 +206,80 @@ class HDF5Storer(Storer):
             dataset.attrs["detector_name"] = channel
             dataset.attrs["element_size_um"] = pixelSize
             return dataset
-                
-        with h5py.File(self.filepath, mode="w") as file:
-            if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:
-                totalFrames = kwargs["totalFrames"]
-                self.frameCount = 0
-                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
-                while self.frameCount < totalFrames and self.record:
-                    frames, frameIDs = self.unpackChunk(detector)
-                    if self.frameCount + len(frames) > totalFrames:
-                        # we only collect the remaining frames required,
-                        # and discard the remaining
-                        frames = frames[0: totalFrames - self.frameCount]
-                        frameIDs = frameIDs[0: totalFrames - self.frameCount]
-                    dataset[self.frameCount : self.frameCount + len(frames)] = frames
-                    frameNumberWindow.extend(frameIDs)
-                    self.frameCount += len(frames)
-                    self.frameNumberUpdate.emit(channel, self.frameCount)
-            elif recMode == RecMode.SpecTime:
-                timeUnit = detector.frameInterval # us
-                totalTime = kwargs["totalTime"] # s
-                totalFrames = int(ceil(totalTime * 1e6 / timeUnit))
-                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
-                currentRecTime = 0
-                start = time.time()
-                index = 0
-                while index < totalFrames and self.record:
-                    frames, frameIDs = self.unpackChunk(detector)
-                    nframes = len(frames)
-                    dataset[index: index + nframes] = frames
-                    frameNumberWindow.extend(frameIDs)
-                    self.timeCount = np.around(currentRecTime, decimals=2)
-                    self.timeUpdate.emit(channel, min(self.timeCount, totalTime))
-                    index += nframes
-                    currentRecTime = time.time() - start
-                # we may have not used up the entirety of the HDF5 size,
-                # so we resize the dataset to the value of "index"
-                # in case this is lower than totalFrames
-                if index < totalFrames:
-                    dataset.resize(index, axis=0)
-            elif recMode == RecMode.UntilStop:
-                # with HDF5 it's hard to make an estimation of an infinite recording
-                # and set the correct data size... the best thing we can do is to 
-                # create the dataset big enough to store 1 second worth of data recording
-                # and keep extending it whenever we're going out of boundaries
-                # but a better solution should be found
-                timeUnit = detector.frameInterval # us
-                totalTime = 1e6 # us
-                totalFrames = int(ceil(totalTime / timeUnit))
-                dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
-                index = 0
-                while self.record:
-                    frames, frameIDs = self.unpackChunk(detector)
-                    nframes = len(frames)
-                    if nframes > index:
-                        dataset.resize(index + totalFrames, axis=0)                    
-                    dataset[index: nframes] = frames
-                    frameNumberWindow.extend(frameIDs)
-                    index += nframes            
-            # we write the ids to a separate dataset;
-            # after testing, for large recordings we go 
-            # over the maximum attribute size of 64k,
-            # so we just write the data separately
-            file.create_dataset("data_id", data=frameNumberWindow)
-            if detector.dtype == np.int16:
-                new_dset = create_dataset(file, file["data"].shape, "data1", dtype=np.float32)
-                new_dset[:] = dataset[:]
-                del file["data"]
-            if len(detector.imageProcessing) > 0:
-                for key, value in detector.imageProcessing.items():
-                    file.create_dataset(key, data=value["content"])
+        
+        if saveMode == SaveMode.RAM:
+            file = h5py.File(self.filedest, mode="a")
+        else:
+            file = h5py.File(self.filepath, mode="a")
+        
+        if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:
+            totalFrames = kwargs["totalFrames"]
+            self.frameCount = 0
+            dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+            while self.frameCount < totalFrames and self.record:
+                frames, frameIDs = self.unpackChunk(detector)
+                if self.frameCount + len(frames) > totalFrames:
+                    # we only collect the remaining frames required,
+                    # and discard the remaining
+                    frames = frames[0: totalFrames - self.frameCount]
+                    frameIDs = frameIDs[0: totalFrames - self.frameCount]
+                dataset[self.frameCount : self.frameCount + len(frames)] = frames
+                frameNumberWindow.extend(frameIDs)
+                self.frameCount += len(frames)
+                self.frameNumberUpdate.emit(channel, self.frameCount)
+        elif recMode == RecMode.SpecTime:
+            timeUnit = detector.frameInterval # us
+            totalTime = kwargs["totalTime"] # s
+            totalFrames = int(ceil(totalTime * 1e6 / timeUnit))
+            dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+            currentRecTime = 0
+            start = time.time()
+            index = 0
+            while index < totalFrames and self.record:
+                frames, frameIDs = self.unpackChunk(detector)
+                nframes = len(frames)
+                dataset[index: index + nframes] = frames
+                frameNumberWindow.extend(frameIDs)
+                self.timeCount = np.around(currentRecTime, decimals=2)
+                self.timeUpdate.emit(channel, min(self.timeCount, totalTime))
+                index += nframes
+                currentRecTime = time.time() - start
+            # we may have not used up the entirety of the HDF5 size,
+            # so we resize the dataset to the value of "index"
+            # in case this is lower than totalFrames
+            if index < totalFrames:
+                dataset.resize(index, axis=0)
+        elif recMode == RecMode.UntilStop:
+            # with HDF5 it's hard to make an estimation of an infinite recording
+            # and set the correct data size... the best thing we can do is to 
+            # create the dataset big enough to store 1 second worth of data recording
+            # and keep extending it whenever we're going out of boundaries
+            # but a better solution should be found
+            timeUnit = detector.frameInterval # us
+            totalTime = 1e6 # us
+            totalFrames = int(ceil(totalTime / timeUnit))
+            dataset = create_dataset(file, (totalFrames, *reversed(detector.shape)))
+            index = 0
+            while self.record:
+                frames, frameIDs = self.unpackChunk(detector)
+                nframes = len(frames)
+                if nframes > index:
+                    dataset.resize(index + totalFrames, axis=0)
+                dataset[index: nframes] = frames
+                frameNumberWindow.extend(frameIDs)
+                index += nframes
+        # we write the ids to a separate dataset;
+        # after testing, for large recordings we go 
+        # over the maximum attribute size of 64k,
+        # so we just write the data separately
+        file.create_dataset("data_id", data=frameNumberWindow)
+        if detector.dtype == np.int16:
+            new_dset = create_dataset(file, file["data"].shape, "data1", dtype=np.float32)
+            new_dset[:] = dataset[:]
+            del file["data"]
+        if len(detector.imageProcessing) > 0:
+            for key, value in detector.imageProcessing.items():
+                file.create_dataset(key, data=value["content"])
         
         # we check that all frame IDs are equidistant
         if np.all(frameNumberWindow == 0):
@@ -283,6 +290,15 @@ class HDF5Storer(Storer):
             logger.error(f"[REC:{detector.name}] You can find the frame ID list in {dbgPath}")
             np.savetxt(os.path.join(_debugLogDir, f"frame_id_differences_{detector.name}.txt"), np.ediff1d(frameNumberWindow), fmt="%d")
         
+        if saveMode in [SaveMode.DiskAndRAM, SaveMode.RAM]:
+            if saveMode == SaveMode.DiskAndRAM:
+                file.flush()
+                self.sigMemRecAvailable.emit(channel, file, self.filepath, True)
+            else:
+                file.close()
+                self.sigMemRecAvailable.emit(channel, self.filedest, self.filepath, False)
+        else:
+            file.close()        
 
 class TiffStorer(Storer):
     """ A storer that stores the images in a series of tiff files """
@@ -292,7 +308,7 @@ class TiffStorer(Storer):
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
                 logger.info(f"Saved image to tiff file {path}")
     
-    def stream(self, channel: str, recMode: RecMode, attrs: Dict[str, str], **kwargs) -> None:
+    def stream(self, channel: str, recMode: RecMode, saveMode: SaveMode, attrs: Dict[str, str], **kwargs) -> None:
         # TODO: Parse metadata to tiff meta data
         detector: DetectorManager = self.detectorsManager[channel]
         _, physicalYSize, physicalXSize = self.detectorsManager[channel].pixelSizeUm
@@ -455,21 +471,6 @@ class RecordingManager(SignalInterface):
                 fileDests[detectorName] = filePaths[detectorName]
         
         return fileDests, filePaths
-    
-    def _updateMemoryRecordingListings(self, storer: Storer) -> None:
-        # method is called only when recording is finished (a.k.a. when the thread closes)
-        # as it is triggered by the "finished" signal
-        filedest = storer.filedest
-        if type(storer) == TiffStorer:
-            file = tiff.memmap(filedest)
-        elif type(storer) == HDF5Storer:
-            file = h5py.File(filedest, "a")
-        else:
-            raise NotImplementedError("RAM storage currently not supported in Zarr!")
-        name = os.path.basename(filedest)
-        self.sigMemoryRecordingAvailable.emit(
-            name, file, filedest, True
-        )
 
     def _updateFramesCounter(self, channel: str, frameNumber: int) -> None:
         self.__signalBuffer[channel] = frameNumber
@@ -532,22 +533,21 @@ class RecordingManager(SignalInterface):
         self.__threadCount = 0
 
         fileDests, filePaths = self.getFiles(savename, detectorNames, recMode, saveMode, saveFormat)
-        recOptions = dict(totalFrames=recFrames, totalTime=recTime, saveMode=saveMode)
-        
+        recOptions = dict(totalFrames=recFrames, totalTime=recTime)
         self.__storersList = [self.__storerMap[saveFormat](path, dest, self.detectorsManager) for path, dest in zip(list(filePaths.values()), list(fileDests.values()))]
         self.__storerThreads = [create_worker(storer.stream,
                                     channel,
-                                    recMode, 
+                                    recMode,
+                                    saveMode,
                                     attrs[channel], 
                                     **recOptions,
                                     _worker_class=StreamingWorker,
                                     _start_thread=False) for (channel, storer) in zip(detectorNames, self.__storersList)]
-        for storer, thread in zip(self.__storersList, self.__storerThreads):
-            thread.returned.connect(
-                lambda: self._updateMemoryRecordingListings(storer)
-            )
 
-        if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:            
+        for storer in self.__storersList:
+            storer.sigMemRecAvailable.connect(self.sigMemoryRecordingAvailable.emit)
+        
+        if recMode in [RecMode.SpecFrames, RecMode.ScanLapse]:
             for storer in self.__storersList:
                 storer.frameNumberUpdate.connect(self._updateFramesCounter)
         elif recMode == RecMode.SpecTime:
@@ -555,10 +555,6 @@ class RecordingManager(SignalInterface):
                 storer.timeUpdate.connect(self._updateSecondsCounter)
         
         for storer, thread in zip(self.__storersList, self.__storerThreads):
-            thread.returned.connect(
-                lambda: self._closeThread(storer, thread)
-            )
-            # connecting to handle possible exceptions at run time
             thread.finished.connect(
                 lambda: self._closeThread(storer, thread)
             )

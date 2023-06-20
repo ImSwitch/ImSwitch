@@ -14,8 +14,13 @@ from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.model import initLogger, APIExport
 
-from locai.deck.deck_config import DeckConfig
-from locai.utils.utils import strfdelta
+try:
+    from locai.deck.deck_config import DeckConfig
+    from locai.utils.utils import strfdelta
+    IS_LOCAI = True
+except:
+    IS_LOCAI = False
+    
 from ..basecontrollers import LiveUpdatedController
 from ...model.SetupInfo import OpentronsDeckInfo
 from opentrons.types import Point
@@ -57,6 +62,8 @@ class DeckScanController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not IS_LOCAI:
+            return
         self.__logger = initLogger(self, instanceName="DeckScanController")
         self.objective_radius = _objectiveRadius
         ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]

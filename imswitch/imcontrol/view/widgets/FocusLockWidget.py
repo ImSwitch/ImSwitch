@@ -118,7 +118,7 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.camDialogButton, 1, 6, 1, 2)
 
         grid.addWidget(self.sliderExpT, 4, 0, 1, 9)
-        grid.addWidget(self.sliderGain, 5, 0, 1, 9f)
+        grid.addWidget(self.sliderGain, 5, 0, 1, 9)
 
         # Connect signals
         self.sliderGain.valueChanged.connect(

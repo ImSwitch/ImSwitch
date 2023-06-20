@@ -16,7 +16,11 @@ from datetime import datetime
 import numpy as np
 import tifffile as tif
 from queue import Queue
-from locai.utils.utils import strfdelta
+try:
+    from locai.utils.utils import strfdelta
+    IS_LOCAI = True
+except:
+    IS_LOCAI = False
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController, LiveUpdatedController
@@ -39,6 +43,9 @@ class OpentronsDeckScanController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self, instanceName="OpentronsScanController")
 
+        if not IS_LOCAI:
+            self.__logger.warning("Locai not installed, cannot use OpentronsScanController")
+            return
         # Init desk and labware
         self.load_deck(self._setupInfo.deck["OpentronsDeck"])
         self.load_labwares(self._setupInfo.deck["OpentronsDeck"].labwares)

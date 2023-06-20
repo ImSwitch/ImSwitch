@@ -1,6 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -8,6 +9,9 @@ from .basewidgets import Widget
 
 class FocusLockWidget(Widget):
     """ Widget containing focus lock interface. """
+    sigSliderExpTValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderGainValueChanged = QtCore.Signal(float)  # (value)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -59,6 +63,37 @@ class FocusLockWidget(Widget):
         self.vb.setAspectLocked(True)
         self.vb.addItem(self.camImg)
 
+        # camera settings
+        valueDecimals = 1
+        valueRangeExpT = (1,1200)
+        valueRangeGain = (0,30)
+        tickInterval = 5
+        singleStep = 1
+        
+        # exposure slider
+        self.sliderExpT = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
+        self.sliderExpT.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMin, valueRangeMax = valueRangeExpT
+
+        self.sliderExpT.setMinimum(valueRangeMin)
+        self.sliderExpT.setMaximum(valueRangeMax)
+        self.sliderExpT.setTickInterval(50)
+        self.sliderExpT.setSingleStep(singleStep)
+        self.sliderExpT.setValue(10)
+
+        # exposure slider
+        self.sliderGain = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
+        self.sliderGain.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMin, valueRangeMax = valueRangeGain
+
+        self.sliderGain.setMinimum(valueRangeMin)
+        self.sliderGain.setMaximum(valueRangeMax)
+        self.sliderGain.setTickInterval(5)
+        self.sliderGain.setSingleStep(singleStep)
+        self.sliderGain.setValue(10)
+
         # GUI layout below
         grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
@@ -81,6 +116,18 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.calibToEdit, 2, 1)
         grid.addWidget(self.calibCurveButton, 3, 2)
         grid.addWidget(self.camDialogButton, 1, 6, 1, 2)
+
+        grid.addWidget(self.sliderExpT, 4, 0, 1, 9)
+        grid.addWidget(self.sliderGain, 5, 0, 1, 9f)
+
+        # Connect signals
+        self.sliderGain.valueChanged.connect(
+            lambda value: self.sigSliderGainValueChanged.emit(value)
+        )
+        self.sliderExpT.valueChanged.connect(
+            lambda value: self.sigSliderExpTValueChanged.emit(value)
+        )
+        self.layer = None
 
     def setKp(self, kp):
         self.kpEdit.setText(str(kp))

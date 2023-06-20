@@ -67,6 +67,10 @@ class FocusLockController(ImConWidgetController):
 
         self._widget.zStackBox.stateChanged.connect(self.zStackVarChange)
         self._widget.twoFociBox.stateChanged.connect(self.twoFociVarChange)
+        
+        self._widget.sigSliderExpTValueChanged.connect(self.setExposureTime)
+        self._widget.sigSliderGainValueChanged.connect(self.setGain)
+
 
         self.setPointSignal = 0
         self.locked = False
@@ -122,6 +126,12 @@ class FocusLockController(ImConWidgetController):
     def cameraDialog(self):
         if not self.isESP32: self._master.detectorsManager[self.camera].openPropertiesDialog()
 
+    def setGain(self, gain):
+        self.ESP32Camera.setGain(gain)
+
+    def setExposureTime(self, exposureTime):
+        self.ESP32Camera.setExposureTime(exposureTime)
+        
     def focusCalibrationStart(self):
         self.__focusCalibThread.start()
 
@@ -405,13 +415,26 @@ class ESP32CameraThread(object):
         self.Nx, self.Ny = 320,240
         self.frame = np.zeros((self.Ny,self.Nx))
 
+        # string to send data to camera
+        self.newCommand = ""
+        self.exposureTime = -1
+        self.gain = -1
+
+    def setExposureTime(self, exposureTime):
+        self.newCommand = "t"+str(exposureTime)
+        self.exposureTime = exposureTime
+
+    def setGain(self, gain):
+        self.newCommand = "g"+str(gain)
+        self.gain = gain
+
     def connect_to_usb_device(self):
         ports = serial.tools.list_ports.comports()
         for port in ports:
             if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":
                 try:
                     ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
-                    #ser.write_timeout=.01
+                    ser.write_timeout=.5
                     print(f"Connected to device: {port.description}")
                     return ser
                 except serial.SerialException:
@@ -436,15 +459,21 @@ class ESP32CameraThread(object):
         nTrial = 0
         while self.isRunning:
             try:
-                # request new image
-                
-                self.serialdevice.write((' ').encode())
-                #serialdevice.flushInput()
-                #serialdevice.flushOutput()
 
+                # send new comamand to change camera settings, reset command    
+                if not self.newCommand == "":
+                    self.serialdevice.write((self.newCommand+' \n').encode())
+                    self.newCommand = ""
+
+                # request new image
+                self.serialdevice.write((' \n').encode())
+                    
+                # don't read to early
+                time.sleep(.05)
+                # readline of camera
                 imageB64 = self.serialdevice.readline()
 
-                #imageB64 = str(imageB64).split("+++++")[-1].split("----")[0]
+                # decode byte stream
                 image = np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode()))))
                 self.frame = np.mean(image,-1)
 
@@ -452,14 +481,27 @@ class ESP32CameraThread(object):
                 
             except Exception as e:
                 # try to reconnect 
-                print(e)
+                #print(e) # most of the time "incorrect padding of the bytes "
                 nFrame = 0
                 nTrial+=1
-                if nTrial > 20:
+                try:
+                    self.serialdevice.flushInput()
+                    self.serialdevice.flushOutput()
+                except:
+                    pass
+                if nTrial > 10 and type(e)==serial.serialutil.SerialException:
                     try:
-                        self.serialdevice.close()
+                        # close the device - similar to hard reset
+                        self.serialdevice.setDTR(False)
+                        self.serialdevice.setRTS(True)
+                        time.sleep(.1)
+                        self.serialdevice.setDTR(False)
+                        self.serialdevice.setRTS(False)
+                        time.sleep(.5)
+                        #self.serialdevice.close()
                     except: pass
                     self.serialdevice = self.connect_to_usb_device()
+                    nTrial = 0
                 
                 
     def grabLatestFrame(self):

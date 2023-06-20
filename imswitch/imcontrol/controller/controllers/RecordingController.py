@@ -427,13 +427,36 @@ class RecordingController(ImConWidgetController):
         self.snap(name)
     '''
     @APIExport(runOnUIThread=True)
-    def snapImage(self, output: bool = False) -> np.ndarray:
+    def snapImageToPath(self, fileName: str = "."):
+        """ Take a snap and save it to a .tiff file at the given fileName. """
+        self.snap(name = fileName)
+    
+    @APIExport(runOnUIThread=True)
+    def snapImage(self, output: bool = False):# -> np.ndarray:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
             return self.snapNumpy()
         else:
             self.snap()
 
+    @APIExport(runOnUIThread=False)
+    def snapNumpyToFastAPI(self) -> Response:
+        # Create a 2D NumPy array representing the image
+        image = np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
+        
+        # using an in-memory image
+        from PIL import Image
+        import io
+        im = Image.fromarray(image)
+        
+        # save image to an in-memory bytes buffer
+        with io.BytesIO() as buf:
+            im.save(buf, format='PNG')
+            im_bytes = buf.getvalue()
+            
+        headers = {'Content-Disposition': 'inline; filename="test.png"'}
+        return Response(im_bytes, headers=headers, media_type='image/png')
+        
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:

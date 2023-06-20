@@ -1,0 +1,127 @@
+{
+    "detectors": {
+        "CameraGXIPY": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "GXPIPYManager",
+            "managerProperties": {
+                "cameraListIndex": 1,
+                "gxipycam": {
+                    "binning": 1,
+                    "exposure": 10,
+                    "gain": 10,
+                    "brightness": 0,
+                    "blacklevel": 1,
+                    "image_width": 4024,
+                    "image_height": 3036
+                }
+            },
+            "forAcquisition": true,
+            "forFocusLock": false
+        }
+    },
+    "lasers": {},
+    "LEDs": {
+        "TLUP": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "TLUPLedManager",
+            "managerProperties": {
+                "device_index": 0
+            },
+            "valueRangeMin": 0.01,
+            "valueRangeMax": 1.1,
+            "valueRangeStep": 1
+        }
+    },
+    "LEDMatrixs": {},
+    "deck": {
+        "OpentronsDeck": {
+            "deck_path": "C:\\Users\\matia_n97ktw5\\Documents\\LABMaiTE\\BMBF-LOCai\\locai-hw\\locai\\deck",
+            "deck_name": "ot2_locai",
+            "labwares": {
+                "custom_labwares_path": "C:\\Users\\matia_n97ktw5\\Documents\\LABMaiTE\\BMBF-LOCai\\locai-hw\\locai\\custom_labware",
+                "standard": {
+                    "2": "corning_96_wellplate_360ul_flat"
+                },
+                "custom": {
+                    "3": "lm_8_wellplate_100ul"
+                }
+            }
+        }
+    },
+    "positioners": {
+        "MockStandaStage": {
+            "analogChannel": null,
+            "digitalLine": null,
+            "managerName": "MockPositionerManager",
+            "managerProperties": {
+                "initialSpeed": [
+                    12
+                ]
+            },
+            "axes": [
+                "X",
+                "Y",
+                "Z"
+            ],
+            "isPositiveDirection": true,
+            "forPositioning": true,
+            "forScanning": true
+        }
+    },
+    "rs232devices": {},
+    "slm": null,
+    "sim": null,
+    "mct": null,
+    "HistoScan": null,
+    "PixelCalibration": null,
+    "uc2Config": null,
+    "ism": null,
+    "focusLock": null,
+    "autofocus": {
+        "camera": "CameraGXIPY",
+        "positioner": "MockStandaStage",
+        "updateFreq": 10,
+        "frameCropx": 780,
+        "frameCropy": 400,
+        "frameCropw": 500,
+        "frameCroph": 100
+    },
+    "scan": {
+        "scanDesigner": "BetaScanDesigner",
+        "scanDesignerParams": {
+            "target_device": [
+                "X",
+                "Y",
+                "Z"
+            ],
+            "axis_length": null,
+            "axis_step_size": null,
+            "axis_startpos": null,
+            "return_time": 0.01
+        },
+        "TTLCycleDesigner": "BetaTTLCycleDesigner",
+        "TTLCycleDesignerParams": {},
+        "sampleRate": 1
+    },
+    "etSTED": null,
+    "pyroServerInfo": {
+        "name": "ImSwitchServer",
+        "host": "::",
+        "port": 54333,
+        "active": true
+    },
+    "rois": {},
+    "ledPresets": {},
+    "defaultLEDPresetForScan": null,
+    "laserPresets": {},
+    "defaultLaserPresetForScan": null,
+    "availableWidgets": [
+        "OpentronsDeckScan",
+        "Settings",
+        "View",
+        "Recording",
+        "Image"
+    ]
+}

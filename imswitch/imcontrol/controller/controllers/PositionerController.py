@@ -35,14 +35,14 @@ class PositionerController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
-       
+
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
         self._widget.sigStepDownClicked.connect(self.stepDown)
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
         self._widget.sigHomeAxisClicked.connect(self.homeAxis)
         self._widget.sigStopAxisClicked.connect(self.stopAxis)
-        
+
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
             lambda p: [p.setPosition(0, axis) for axis in p.axes],
@@ -60,7 +60,7 @@ class PositionerController(ImConWidgetController):
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
 
-        # get all speed values from the GUI        
+        # get all speed values from the GUI
         speed = self._widget.getSpeed(positionerName, axis)
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
@@ -75,25 +75,33 @@ class PositionerController(ImConWidgetController):
         self.updatePosition(positionerName, axis)
 
     def moveAbsolute(self, positionerName, axis):
-        self.move(positionerName, axis, self._widget.getAbsPosition(positionerName, axis), isAbsolute=True, isBlocking=False)
-        
+        self.move(positionerName, axis, self._widget.getAbsPosition(positionerName, axis), isAbsolute=True,
+                  isBlocking=False)
+
     def stepUp(self, positionerName, axis):
-        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=False)
+        self.move(positionerName, axis, self._widget.getStepSize(positionerName, axis), isAbsolute=False,
+                  isBlocking=False)
 
     def stepDown(self, positionerName, axis):
-        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis), isAbsolute=False, isBlocking=False)
+        self.move(positionerName, axis, -self._widget.getStepSize(positionerName, axis), isAbsolute=False,
+                  isBlocking=False)
 
-    def setSpeed(self, positionerName, axis, speed=(1000,1000,1000)):
+    def setSpeed(self, positionerName, axis, speed=(1000, 1000, 1000)):
         self._master.positionersManager[positionerName].setSpeed(speed, axis)
-
+        self.setSharedAttr(positionerName, axis, _speedAttr, speed)
+        self._widget.setSpeedSize(positionerName, axis, speed)
+        
     def updatePosition(self, positionerName, axis):
         newPos = self._master.positionersManager[positionerName].position[axis]
         self._widget.updatePosition(positionerName, axis, newPos)
         self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
-    def homeAxis(self, positionerName, axis):
+    @APIExport(runOnUIThread=True)
+    def homeAxis(self, positionerName, axis, isBlocking=False):
         self.__logger.debug(f"Homing axis {axis}")
         self._master.positionersManager[positionerName].doHome(axis)
+        self.updatePosition(positionerName, axis)
+
 
     def stopAxis(self, positionerName, axis):
         self.__logger.debug(f"Stopping axis {axis}")
@@ -120,13 +128,21 @@ class PositionerController(ImConWidgetController):
         positionerY = self.getPositionerNames()[1]
         self.__logger.debug(f"Move {positionerX}, axis X, dist {str(x)}")
         self.__logger.debug(f"Move {positionerY}, axis Y, dist {str(y)}")
-        #self.move(positionerX, 'X', x)
-        #self.move(positionerY, 'Y', y)
+        # self.move(positionerX, 'X', x)
+        # self.move(positionerY, 'Y', y)
 
     def setZPosition(self, z):
         positionerZ = self.getPositionerNames()[2]
         self.__logger.debug(f"Move {positionerZ}, axis Z, dist {str(z)}")
-        #self.move(self.getPositionerNames[2], 'Z', z)
+        # self.move(self.getPositionerNames[2], 'Z', z)
+
+    @APIExport(runOnUIThread=True)
+    def enalbeMotors(self, enable=None, enableauto=None):
+        try: 
+            return self._master.positionersManager.enalbeMotors(enable=None, enableauto=None)
+        except:
+            pass
+
 
     @APIExport()
     def getPositionerNames(self) -> List[str]:
@@ -146,11 +162,11 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False) -> None:
+    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False, isBlocking: bool=False) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         try: # uc2 only
-            self.move(positionerName, axis, dist, isAbsolute=isAbsolute)
+            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking)
         except:
             self.move(positionerName, axis, dist)
 
@@ -182,14 +198,11 @@ class PositionerController(ImConWidgetController):
         self.stepDown(positionerName, axis)
 
 
-
-
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
 _speedAttr = "Speed"
 _homeAttr = "Home"
 _stopAttr = "Stop"
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

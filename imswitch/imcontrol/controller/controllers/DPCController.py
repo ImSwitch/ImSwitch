@@ -346,14 +346,17 @@ from scipy.ndimage import uniform_filter
 class DPCSolver:
     def __init__(self, shape, wavelength, na, NAi, pixelsize, rotation):
         self.shape = shape
+        if self.shape[0] == 0:
+            self.shape = (512, 512)
+            
         self.wavelength = wavelength
         self.na         = na
         self.NAi      = NAi
         self.pixel_size = pixelsize
         self.dpc_num    = len(rotation)
         self.rotation   = rotation
-        self.fxlin      = np.fft.ifftshift(self.genGrid(shape[-1], 1.0/shape[-1]/self.pixel_size))
-        self.fylin      = np.fft.ifftshift(self.genGrid(shape[-2], 1.0/shape[-2]/self.pixel_size))
+        self.fxlin      = np.fft.ifftshift(self.genGrid(self.shape[-1], 1.0/self.shape[-1]/self.pixel_size))
+        self.fylin      = np.fft.ifftshift(self.genGrid(self.shape[-2], 1.0/self.shape[-2]/self.pixel_size))
         self.pupil      = self.pupilGen(self.fxlin, self.fylin, self.wavelength, self.na)
         self.sourceGen()
         self.WOTFGen()

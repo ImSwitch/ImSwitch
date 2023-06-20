@@ -8,11 +8,10 @@ class PositionerWidget(Widget):
     """ Widget in control of the piezo movement. """
 
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
-    sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis) 
-    sigStepAbsoluteClicked = QtCore.Signal(str,str)
-    sigHomeAxisClicked = QtCore.Signal(str,str)
-    sigStopAxisClicked = QtCore.Signal(str,str)
-    
+    sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
+    sigStepAbsoluteClicked = QtCore.Signal(str, str)
+    sigHomeAxisClicked = QtCore.Signal(str, str)
+    sigStopAxisClicked = QtCore.Signal(str, str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,7 +33,7 @@ class PositionerWidget(Widget):
             self.pars['UpButton' + parNameSuffix] = guitools.BetterPushButton('+')
             self.pars['DownButton' + parNameSuffix] = guitools.BetterPushButton('-')
             self.pars['StepEdit' + parNameSuffix] = QtWidgets.QLineEdit('1000')
-            
+
             self.pars['AbsolutePosEdit' + parNameSuffix] = QtWidgets.QLineEdit('0')
             self.pars['AbsolutePosButton' + parNameSuffix] = guitools.BetterPushButton('Go!')
 
@@ -45,11 +44,10 @@ class PositionerWidget(Widget):
             self.grid.addWidget(QtWidgets.QLabel('Rel'), self.numPositioners, 4)
             self.grid.addWidget(self.pars['StepEdit' + parNameSuffix], self.numPositioners, 5)
             self.grid.addWidget(QtWidgets.QLabel('Abs'), self.numPositioners, 6)
-            
+
             self.grid.addWidget(self.pars['AbsolutePosEdit' + parNameSuffix], self.numPositioners, 7)
             self.grid.addWidget(self.pars['AbsolutePosButton' + parNameSuffix], self.numPositioners, 8)
-            
-           
+
             if hasSpeed:
                 self.pars['Speed' + parNameSuffix] = QtWidgets.QLabel('Speed:')
                 self.pars['Speed' + parNameSuffix].setTextFormat(QtCore.Qt.RichText)
@@ -59,7 +57,7 @@ class PositionerWidget(Widget):
                 self.grid.addWidget(self.pars['SpeedEdit' + parNameSuffix], self.numPositioners, 10)
 
             if hasHome:
-                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home '+parNameSuffix)
+                self.pars['Home' + parNameSuffix] = guitools.BetterPushButton('Home ' + parNameSuffix)
                 self.grid.addWidget(self.pars['Home' + parNameSuffix], self.numPositioners, 11)
 
                 self.pars['Home' + parNameSuffix].clicked.connect(
@@ -67,7 +65,7 @@ class PositionerWidget(Widget):
                 )
 
             if hasStop:
-                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop '+parNameSuffix)
+                self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop ' + parNameSuffix)
                 self.grid.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners, 12)
 
                 self.pars['Stop' + parNameSuffix].clicked.connect(
@@ -115,7 +113,7 @@ class PositionerWidget(Widget):
         """ Sets the step size of the specified positioner axis to the
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['SpeedEdit' + parNameSuffix].setText(speedSize)
+        self.pars['SpeedEdit' + parNameSuffix].setText(str(speedSize))
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
@@ -123,7 +121,6 @@ class PositionerWidget(Widget):
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName}--{axis}'
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

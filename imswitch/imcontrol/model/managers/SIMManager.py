@@ -48,20 +48,19 @@ class SIMManager(SignalInterface):
         self.fastAPISIMParams = {"host":fastAPISIM_host, "port":fastAPISIM_port}
         self.isFastAPISIM = self.__simInfo.isFastAPISIM
 
-    def loadPatterns(self,patternsDir, filetype="bmp"):
+    def loadPatterns(self, patternsDir, filetype="bmp"):
         # sort filenames numerically
         allPatterns = []
-        try:
-            allPatternPaths = sorted(glob.glob(os.path.join(patternsDir, "*."+filetype)))
-        except Exception as e:
-            self.__logger.error("Could not load patterns")
-            self.__logger.error(e)
-            return allPatterns
-        for iPatternPath in allPatternPaths:
-            mImage = cv2.imread(iPatternPath)
-            mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
+        allPatternsPerWavelength = []
+        for iPatternDir in patternsDir:
+            allPatternPaths = sorted(glob.glob(os.path.join(iPatternDir, "*."+filetype)))
+            for iPatternPath in allPatternPaths:
+                mImage = cv2.imread(iPatternPath)
+                mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
 
-            allPatterns.append(mImage)
+                allPatternsPerWavelength.append(mImage)
+            allPatterns.append(allPatternsPerWavelength)
+                
         return allPatterns
         
         

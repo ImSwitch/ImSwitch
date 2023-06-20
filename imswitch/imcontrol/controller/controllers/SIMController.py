@@ -71,7 +71,8 @@ class SIMController(ImConWidgetController):
         self._logger = initLogger(self)
         self.nSyncCameraSLM = 1  # 5 frames will be captured before a frame is retrieved from buffer for prcoessing 
         self.iSyncCameraSLM = 0 # counter for syncCameraSLM
-
+        self.IS_FASTAPISIM=False
+        self.IS_HAMAMATSU=False
         # switch to detect if a recording is in progress
         self.isRecording = False
 
@@ -109,7 +110,6 @@ class SIMController(ImConWidgetController):
         #self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
         #self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
 
-        #self._widget.applyChangesButton.clicked.connect(self.applyParams)
         self._widget.startSIMAcquisition.clicked.connect(self.startSIM)
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
         self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
@@ -147,7 +147,7 @@ class SIMController(ImConWidgetController):
             self.initFastAPISIM(self._master.simManager.fastAPISIMParams)
         else:
             self.IS_HAMAMATSU = False
-            initPattern = self._master.simManager.allPatterns[self.patternID]
+            initPattern = self._master.simManager.allPatterns[0][self.patternID]
             self._widget.updateSIMDisplay(initPattern)
 
             # enable display of SIM pattern by default 
@@ -201,10 +201,6 @@ class SIMController(ImConWidgetController):
 
     def loadParams(self):
         pass
-
-    def applyParams(self):
-        currentPattern = self._master.simManager.allPatterns[self.patternID]
-        self.updateDisplayImage(currentPattern)
 
     def startSIM(self):
         if self._widget.startSIMAcquisition.text() == "Start":
@@ -280,14 +276,14 @@ class SIMController(ImConWidgetController):
             return None
 
     @APIExport(runOnUIThread=True)
-    def simPatternByID(self, patternID):
+    def simPatternByID(self, patternID, wavelengthID=0):
         if self.IS_FASTAPISIM:
             host = self.fastAPISIMParams["host"]
             port = self.fastAPISIMParams["port"]
             self.updateDisplayImageImageFastAPISIM(patternID, host, port)
         else:   
             try:
-                currentPattern = self._master.simManager.allPatterns[patternID]
+                currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
                 self.updateDisplayImage(currentPattern)
                 return currentPattern
             except Exception as e:
@@ -336,8 +332,8 @@ class SIMController(ImConWidgetController):
                         break
                     
                     # 1 display the pattern
-                    self.simPatternByID(iPattern)
-                    time.sleep(0.30) #???
+                    self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
+                    time.sleep(0.30) #FIXME: ???
                     
                     # 2 grab a frame 
                     frame = self.detector.getLatestFrame()

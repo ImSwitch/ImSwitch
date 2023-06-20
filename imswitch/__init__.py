@@ -1,5 +1,5 @@
 import glob
-__version__ = "__version__develop" # used to be, but actions will replace this with the current release TAG ->1.2.9
+__version__ = "1.2.9" # used to be, but actions will replace this with the current release TAG ->1.2.9
 
 # add dlls to pypi package
 __dll_files__ = glob.glob('./imcontrol/model/interfaces/gxipy/dll/*.dll')

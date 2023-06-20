@@ -1,0 +1,40 @@
+{% set name = "ImSwitchUC2" %}
+{% set version = "0.1.0" %}  # replace this with the correct version
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv"
+  entry_points:
+    - imswitch = imswitch.__main__:main
+
+requirements:
+  build:
+    - python >=3.8
+    - setuptools
+  host:
+    - python >=3.8
+    - pip
+  run:
+    - python >=3.9
+    #- coloredlogs >= 15
+    #- colour-science >= 0.3
+    # include other dependencies here
+
+about:
+  home: https://github.com/openUC2/ImSwitch
+  license: GPL-3.0
+  license_file: LICENSE
+  summary: 'Microscopy control'
+  dev_url: https://github.com/openUC2/ImSwitch
+
+extra:
+  recipe-maintainers:
+    - openUC2  # replace with the correct maintainer's github username

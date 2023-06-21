@@ -70,13 +70,6 @@ class ImageWidget(QtWidgets.QWidget):
         return self.imgLayers[name].data
 
     def setImage(self, name, im, scale):
-        try:
-            self.imgLayers[name]
-        except:
-            #TODO: WEIRD BUG HERE
-            self.imgLayers[name] = self.napariViewer.add_image(
-                    np.zeros((1, 1)), rgb=0, name=f'Live: {name}', blending='additive',
-            colormap=None, protected=True)
         self.imgLayers[name].data = im
         self.imgLayers[name].scale = tuple(scale)
 

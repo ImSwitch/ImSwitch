@@ -289,7 +289,7 @@ class HDF5Storer(Storer):
             logger.error(f"[REC:{detector.name}] Frames lost. Frame interval: {detector.frameInterval} μs")
             logger.error(f"[REC:{detector.name}] You can find the frame ID list in {dbgPath}")
             np.savetxt(os.path.join(_debugLogDir, f"frame_id_differences_{detector.name}.txt"), np.ediff1d(frameNumberWindow), fmt="%d")
-        
+
         if saveMode in [SaveMode.DiskAndRAM, SaveMode.RAM]:
             if saveMode == SaveMode.DiskAndRAM:
                 file.flush()

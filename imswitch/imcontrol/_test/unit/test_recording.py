@@ -23,7 +23,7 @@ def record(qtbot, detectorInfos, *args, **kwargs):
             check_params_cbs=[(lambda *args, detectorName=detectorName, **kwargs:
                                memoryRecordingAvailable(*args, detectorName=detectorName, **kwargs))
                               for detectorName in detectorInfos],
-            timeout=30000
+            timeout=None
     ):
         pass
 

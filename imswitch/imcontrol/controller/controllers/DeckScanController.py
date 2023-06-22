@@ -17,13 +17,16 @@ from imswitch.imcommon.model import initLogger, APIExport
 try:
     from locai.deck.deck_config import DeckConfig
     from locai.utils.utils import strfdelta
-    IS_LOCAI = True
-except:
+    from opentrons.types import Point
+
+except Exception as e:
     IS_LOCAI = False
+    class Point:
+        __point__ = ()
+    
     
 from ..basecontrollers import LiveUpdatedController
 from ...model.SetupInfo import OpentronsDeckInfo
-from opentrons.types import Point
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
@@ -37,7 +40,8 @@ class ImageI(pydantic.BaseModel):
     well: str
     offset: Tuple[float, float]
     z_focus: float
-    pos_abs: Point
+    if IS_LOCAI:
+        pos_abs: Point
 
 
 @dataclasses.dataclass
@@ -46,13 +50,15 @@ class ImageInfo:
     well: str
     offset: Tuple[float, float]
     z_focus: float
-    pos_abs: Point
+    if IS_LOCAI: pos_abs: Point
     position_idx: int  # TODO: depends on the amount of positions per well
     illu_mode: str
     timestamp: str
 
     def get_filename(self):
         # TODO: fix hardcode in self.position_idx
+        if not IS_LOCAI:
+            return ""
         return f"{self.slot}_{self.well}_{self.position_idx}_{self.illu_mode}_{round(self.z_focus)}_{self.timestamp}"
 
 

@@ -1,10 +1,15 @@
 import os
 import numpy as np
-from opentrons.types import Point
-from opentrons.protocol_api.labware import Labware, Well
-from opentrons.simulate import get_protocol_api
-from opentrons.util.entrypoint_util import labware_from_paths
-from opentrons_shared_data.deck import load
+try:
+    from opentrons.types import Point
+    from opentrons.protocol_api.labware import Labware, Well
+    from opentrons.simulate import get_protocol_api
+    from opentrons.util.entrypoint_util import labware_from_paths
+    from opentrons_shared_data.deck import load
+    IS_LOCAI = True
+except:
+    IS_LOCAI = False
+
 
 from typing import Dict, List
 from functools import partial
@@ -30,6 +35,8 @@ class OpentronsDeckController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not IS_LOCAI:
+            return
         self.__logger = initLogger(self, instanceName="OpentronsController")
 
         # Has control over positioner

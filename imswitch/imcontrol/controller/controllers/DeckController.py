@@ -7,14 +7,16 @@ import numpy as np
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.model import initLogger, APIExport
 from imswitch.imcontrol.view import guitools as guitools
-from opentrons.types import Point
 
 try:
     asdf
     from locai.deck.deck_config import DeckConfig
+    from opentrons.types import Point
     IS_LOCAI = True
 except Exception as e:
     IS_LOCAI = False
+    class Point:
+        __point__ = ()
     
 from ..basecontrollers import LiveUpdatedController
 from ...model.SetupInfo import OpentronsDeckInfo

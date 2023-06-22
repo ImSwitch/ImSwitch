@@ -164,7 +164,7 @@ class EditorController(ImScrWidgetController):
         self.scriptExecutor.execute(r'C:\Users\xavie\OneDrive\Documents\ImSwitchConfig\scripts', code)
 
 _untitledFileName = '(untitled)'
-_scriptsFolderPath = os.path.join(dirtools.UserFileDirs.Root, 'scripts')
+_scriptsFolderPath = dirtools.UserDataFileDirs.Root / 'scripts'
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

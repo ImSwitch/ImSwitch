@@ -1,5 +1,5 @@
 import json
-import os
+from pathlib import Path
 
 import numpy as np
 
@@ -15,9 +15,9 @@ class SLMController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        self.slmDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_slm')
-        if not os.path.exists(self.slmDir):
-            os.makedirs(self.slmDir)
+        self.slmDir = dirtools.UserConfigFileDirs.Root /'imcontrol_slm'
+        if not self.slmDir.exists():
+            self.slmDir.mkdir(parents=True)
 
         if self._setupInfo.slm is None:
             self._widget.replaceWithError('SLM is not configured in your setup file.')
@@ -115,7 +115,7 @@ class SLMController(ImConWidgetController):
         slm_info_dict = self.getInfoDict(self._widget.slmParameterTree.p,
                                          self._widget.aberParameterTree.p,
                                          self._master.slmManager.getCenters())
-        with open(os.path.join(self.slmDir, filename), 'w') as f:
+        with open(self.slmDir / filename, 'w') as f:
             json.dump(slm_info_dict, f, indent=4)
         self.__logger.info(f'Saved SLM parameters for {obj} objective.')
 
@@ -170,7 +170,7 @@ class SLMController(ImConWidgetController):
         else:
             raise ValueError(f'Unsupported objective "{obj}"')
 
-        with open(os.path.join(self.slmDir, filename), 'rb') as f:
+        with open(self.slmDir / filename, 'rb') as f:
             slm_info_dict = json.load(f)
             state_general = slm_info_dict["general"]
             state_pos = slm_info_dict["position"]

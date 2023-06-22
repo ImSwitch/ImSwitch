@@ -59,8 +59,8 @@ class MultiModuleWindowController(WidgetController):
         ostools.restartSoftware()
 
     def openUserDir(self):
-        """ Shows the user files directory in system file explorer. """
-        ostools.openFolderInOS(dirtools.UserFileDirs.Root)
+        """ Shows the user config files directory in system file explorer. """
+        ostools.openFolderInOS(dirtools.UserConfigFileDirs.Root)
 
     def showDocs(self):
         """ Opens the ImSwitch documentation in a web browser. """

@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from qtpy import QtTest
 
@@ -13,12 +11,12 @@ mainView = None
 
 
 setups = {}
-exampleSetupsDir = os.path.join(DataFileDirs.UserDefaults, 'imcontrol_setups')
-for fileName in os.listdir(exampleSetupsDir):
-    if not fileName.endswith('.json'):
+exampleSetupsDir = DataFileDirs.Configs / 'imcontrol_setups'
+for fileName in exampleSetupsDir.iterdir():
+    if not fileName.suffix == '.json':
         continue
 
-    filePath = os.path.join(exampleSetupsDir, fileName)
+    filePath = exampleSetupsDir / fileName
     with open(filePath) as file:
         setups[fileName] = ViewSetupInfo.from_json(file.read())
 

@@ -1,3 +1,7 @@
+import configparser
+import functools
+from logging import exception
+from pathlib import Path
 import traceback
 import configparser
 
@@ -19,6 +23,11 @@ class ScanControllerMoNaLISA(SuperScanController):
             self._master.scanManager.TTLTimeUnits
         )
 
+        self.scanDir = dirtools.UserConfigFileDirs.Root / 'imcontrol_scans'
+        if not self.scanDir.exists:
+            self.scanDir.mkdir(parents=True)
+
+        self.getParameters()
         self.updatePixels()
         self.plotSignalGraph()
         self.updateScanStageAttrs()
@@ -251,6 +260,18 @@ class ScanControllerMoNaLISA(SuperScanController):
             self._widget.setContLaserMode()
 
         self.setParameters()
+
+    def toggleBlockWidget(self, block):
+        """ Blocks/unblocks scan widget if scans are run from elsewhere. """
+        self._widget.setEnabled(block)
+
+    def sendScanParameters(self):
+        self.getParameters()
+        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
+
+
+_attrCategoryStage = 'ScanStage'
+_attrCategoryTTL = 'ScanTTL'
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -48,9 +48,9 @@ def saveOptions(options):
 
 
 dirtools.initUserFilesIfNeeded()
-_setupFilesDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_setups')
-os.makedirs(_setupFilesDir, exist_ok=True)
-_optionsFilePath = os.path.join(dirtools.UserFileDirs.Config, 'imcontrol_options.json')
+_setupFilesDir = dirtools.UserDataFileDirs.Root / 'imcontrol_setups'
+_setupFilesDir.mkdir(parents=True, exist_ok=True)
+_optionsFilePath = dirtools.UserConfigFileDirs.Config / 'imcontrol_options.json'
 
 _options = None
 

@@ -1,11 +1,16 @@
 import os
 import time
 
-from opentrons.types import Point
-from opentrons.protocol_api.labware import Labware, Well
-from opentrons.simulate import get_protocol_api
-from opentrons.util.entrypoint_util import labware_from_paths
-from opentrons_shared_data.deck import load
+try:
+    from opentrons.types import Point
+    from opentrons.protocol_api.labware import Labware, Well
+    from opentrons.simulate import get_protocol_api
+    from opentrons.util.entrypoint_util import labware_from_paths
+    from opentrons_shared_data.deck import load
+    from locai.utils.utils import strfdelta
+    IS_LOCAI = True
+except:
+    IS_LOCAI = False
 
 from typing import Dict, List
 from functools import partial
@@ -16,11 +21,7 @@ from datetime import datetime
 import numpy as np
 import tifffile as tif
 from queue import Queue
-try:
-    from locai.utils.utils import strfdelta
-    IS_LOCAI = True
-except:
-    IS_LOCAI = False
+
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController, LiveUpdatedController

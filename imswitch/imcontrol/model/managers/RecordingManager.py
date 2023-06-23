@@ -22,7 +22,6 @@ from imswitch.imcommon.framework import (
 from imswitch.imcommon.model import initLogger
 from ome_zarr.writer import write_multiscales_metadata
 from ome_zarr.format import format_from_version
-import abc
 import logging
 
 from imswitch.imcontrol.model.managers.detectors import DetectorManager

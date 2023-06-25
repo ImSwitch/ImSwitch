@@ -40,6 +40,8 @@ class SIMManager(SignalInterface):
         self.isHamamatsuSLM = self.__simInfo.isHamamatsuSLM
 
         # Load all patterns
+        if type(self.__patternsDir) is not list:
+            self.__patternsDir = [self.__patternsDir]
         self.allPatterns = self.loadPatterns(self.__patternsDir)
 
         # define paramerters for fastAPI (optional)

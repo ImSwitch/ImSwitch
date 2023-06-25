@@ -39,7 +39,7 @@ class PixelCalibrationWidget(NapariHybridWidget):
 
         # editable for entering pixelvalues
         self.PixelCalibrationLabelKnownDistance = QtWidgets.QLabel('Known Distance: (µm)')
-        self.PixelCalibrationEditFileName = QtWidgets.QLineEdit('100')
+        self.PixelCalibrationEditKnownDistance = QtWidgets.QLineEdit('100')
 
         self.PixelCalibrationPixelSizeLabel = QtWidgets.QLabel('Pixel Size: (nm)')
         self.PixelCalibrationPixelSizeEdit = QtWidgets.QLineEdit('500')

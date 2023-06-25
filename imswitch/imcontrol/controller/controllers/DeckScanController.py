@@ -18,7 +18,8 @@ try:
     from locai.deck.deck_config import DeckConfig
     from locai.utils.utils import strfdelta
     from opentrons.types import Point
-
+    IS_LOCAI = True
+    
 except Exception as e:
     IS_LOCAI = False
     class Point:

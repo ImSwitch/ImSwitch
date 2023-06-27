@@ -73,6 +73,25 @@ class LaserInfo(DeviceInfo):
     """
 
 
+@dataclass(frozen=True)
+class LEDInfo(DeviceInfo):
+    valueRangeMin: Optional[Union[int, float]]
+    """ Minimum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    valueRangeMax: Optional[Union[int, float]]
+    """ maximum value of the laser. ``null`` if laser doesn't setting a value.
+    """
+
+    valueRangeStep: float = 1.0
+    """ The default step size of the value range that the laser can be set to.
+    """
+
+
+@dataclass(frozen=True)
+class LEDMatrixInfo(DeviceInfo):
+    pass
+
 
 @dataclass(frozen=True)
 class PositionerInfo(DeviceInfo):
@@ -284,6 +303,7 @@ class FocusLockInfo:
     piKi: float
     """ Default ki value of feedback loop. """
 
+
 @dataclass(frozen=True)
 class AutofocusInfo:
     camera: str
@@ -365,27 +385,32 @@ class NidaqInfo:
     """ Output for Counter for timing purposes. If an integer is specified, it
     will be translated to "Dev1/ctr{timerCounterChannel}". """
 
-    startTrigger: bool = False
-    """ Boolean for start triggering for sync. """
+class OpentronsDeckInfo:
+    translate_units: Optional[str]
+    """ Translates units of deck to units used by positioner:
+        'mm2um': translates deck units in milimeters to micrometers.
+        'um2mm': translates deck units in micrometers to milimeters.
+        """
 
-    def getTimerCounterChannel(self):
-        """ :meta private: """
-        if isinstance(self.timerCounterChannel, int):
-            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
-        else:
-            return self.timerCounterChannel
+    deck_file: Optional[str]
+    """ File of the deck to use. """
 
+    deck_name: Optional[str]
+    """ Name of the deck file to use if using a default OT deck. """
 
-@dataclass(frozen=True)
-class PulseStreamerInfo:
-    ipAddress: Optional[str] = None
-    """ IP address of Pulse Streamer hardware. """
+    labwares: Optional[Dict[str, Any]]
+    """ Params to be read by the labware loader. Corresponds to standard and custom
+    labware definition dictionaries, containing the slot number and labware name."""
+
+    default_positions: Optional[Dict[str, Any]]
+    """ Default positions to be adopted when selecting amount of positions to observe in well."""
 
 
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
-    host: Optional[str] = '127.0.0.1'
+    host: Optional[
+        str] = '::'  # - listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
@@ -395,6 +420,10 @@ class PyroServerInfo:
 class SetupInfo:
     # default_factory seems to be required for the field to show up in autodocs for deriving classes
 
+    deck: Dict[str, OpentronsDeckInfo] = field(default_factory=dict)
+    """ Deck in this setup. This is a map from unique deck names to
+    DeckInfo objects. """
+
     detectors: Dict[str, DetectorInfo] = field(default_factory=dict)
     """ Detectors in this setup. This is a map from unique detector names to
     DetectorInfo objects. """
@@ -402,6 +431,14 @@ class SetupInfo:
     lasers: Dict[str, LaserInfo] = field(default_factory=dict)
     """ Lasers in this setup. This is a map from unique laser names to
     LaserInfo objects. """
+
+    LEDs: Dict[str, LEDInfo] = field(default_factory=dict)
+    """ LEDs in this setup. This is a map from unique laser names to
+    LEDInfo objects. """
+
+    LEDMatrixs: Dict[str, LEDMatrixInfo] = field(default_factory=dict)
+    """ LEDMatrixs in this setup. This is a map from unique LEDMatrix names to
+    LEDMatrixInfo objects. """
 
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
@@ -470,12 +507,6 @@ class SetupInfo:
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
 
-    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
-    """ NI-DAQ settings. """
-
-    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
-    """ Pulse Streamer settings. """
-
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 
     _catchAll: CatchAll = None
@@ -519,7 +550,6 @@ class SetupInfo:
             devices.update(deviceInfos)
 
         return devices
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

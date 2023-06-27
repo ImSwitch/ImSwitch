@@ -32,23 +32,33 @@ class ImageWidget(QtWidgets.QWidget):
         self.crosshair.hide()
         self.addItem(self.crosshair)
 
-    def setLiveViewLayers(self, names):
+    def setLiveViewLayers(self, names, isRGB = [False]):
         for name, img in self.imgLayers.items():
             if name not in names:
                 self.napariViewer.layers.remove(img, force=True)
 
-        def addImage(name, colormap=None):
-            self.imgLayers[name] = self.napariViewer.add_image(
-                np.zeros((1, 1)), rgb=False, name=f'Live: {name}', blending='additive',
-                colormap=colormap, protected=True
+        def addImage(name, rgb, colormap=None):
+            if rgb:
+                    inputDummy = np.zeros((3, 3, 3))
+                    self.imgLayers[name] = self.napariViewer.add_image(
+                        inputDummy, rgb=rgb, name=f'Live: {name}', blending='additive',  protected=True)
+            else:
+                inputDummy = np.zeros((1, 1))
+                self.imgLayers[name] = self.napariViewer.add_image(
+                    inputDummy, rgb=rgb, name=f'Live: {name}', blending='additive',
+                    colormap=colormap, protected=True
             )
 
-        for name in names:
+        if type(names) is not list:
+            names = [names]
+
+        for i, name in enumerate(names):
+            rgb = isRGB[i]
             if name not in self.napariViewer.layers:
                 try:
-                    addImage(name, name.lower())
+                    addImage(name, rgb, name.lower())
                 except KeyError:
-                    addImage(name, 'grayclip')
+                    addImage(name, rgb, 'grayclip')
 
     def addStaticLayer(self, name, im):
         self.napariViewer.add_image(im, rgb=False, name=name, blending='additive')

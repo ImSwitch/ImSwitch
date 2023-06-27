@@ -1,0 +1,181 @@
+{
+  "positioners": {
+    "ESP32Stage": {
+      "managerName": "ESP32StageManager",
+      "managerProperties": {
+        "rs232device": "ESP32"
+      },
+      "axes": [
+        "X",
+        "Y",
+        "Z"
+      ],
+      "forScanning": true,
+      "forPositioning": true
+    }
+  },
+  "rs232devices": {
+    "ESP32": {
+      "managerName": "ESP32Manager",
+      "managerProperties": {
+        "host_": "192.168.43.129",
+        "serialport_windows": "COM5",
+        "serialport": "/dev/cu./dev/cu.SLAB_USBtoUART"
+      }
+    }
+  },
+  "lasers": {
+    "488 Laser": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32LEDLaserManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "channel_index": 1,
+        "filter_change": false,
+        "laser_despeckle_period": 10,
+        "laser_despeckle_amplitude": 0
+      },
+      "wavelength": 488,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1024
+    },
+    "635 Laser": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32LEDLaserManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "channel_index": 2,
+        "filter_change": false,
+        "laser_despeckle_period": 10,
+        "laser_despeckle_amplitude": 0
+      },
+      "wavelength": 635,
+      "valueRangeMin": 0,
+      "valueRangeMax": 1024
+    },
+    "LED": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32LEDLaserManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "channel_index": "LED",
+        "filter_change": false,
+        "filter_axis": 3,
+        "filter_position": 32000,
+        "filter_position_init": -0
+      },
+      "wavelength": 635,
+      "valueRangeMin": 0,
+      "valueRangeMax": 255
+    }
+  },
+  "detectors": {
+    "WidefieldCamera": {
+      "ExtPackage": "imswitch_det_webcam",
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "GXPIPYManager",
+      "managerProperties": {
+        "cameraListIndex": 1,
+        "gxipycam": {
+          "exposure": 0,
+          "gain": 0,
+          "blacklevel": 100,
+          "image_width": 1000,
+          "image_height": 1000
+        }
+      },
+      "forAcquisition": true,
+      "forFocusLock": true
+    }
+  },
+  "rois": {
+    "Full chip": {
+      "x": 600,
+      "y": 600,
+      "w": 1200,
+      "h": 1200
+    }
+  },
+  "LEDMatrixs": {
+    "ESP32 LEDMatrix": {
+      "analogChannel": null,
+      "digitalLine": null,
+      "managerName": "ESP32LEDMatrixManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "Nx": 4,
+        "Ny": 4
+      },
+      "wavelength": 488,
+      "valueRangeMin": 0,
+      "valueRangeMax": 32768
+    }
+  },
+  "autofocus": {
+    "camera": "WidefieldCamera",
+    "positioner": "ESP32Stage",
+    "updateFreq": 10,
+    "frameCropx": 780,
+    "frameCropy": 400,
+    "frameCropw": 500,
+    "frameCroph": 100
+  },
+  "uc2Config": {
+    "defaultConfig": "pindefWemos.json",
+    "defaultConfig2": "pindefUC2Standalon2.json",
+    "defaultConfig1": "pindefUC2Standalon.json"
+  },
+  "mct": {
+    "monitorIdx": 2,
+    "width": 1080,
+    "height": 1920,
+    "wavelength": 0,
+    "pixelSize": 0,
+    "angleMount": 0,
+    "patternsDirWin": "C:\\Users\\wanghaoran\\Documents\\ImSwitchConfig\\imcontrol_slm\\488\\",
+    "patternsDir": "/users/bene/ImSwitchConfig/imcontrol_sim/488"
+  },
+  "dpc": {
+    "wavelength": 0.53,
+    "pixelsize": 0.2,
+    "NA":0.3,
+    "NAi": 0.3,
+    "n": 1.0, 
+    "rotations": [0, 180, 90, 270]
+  },
+  "webrtc":{},
+  "PixelCalibration": {},
+  "focusLock": {
+    "camera": "ESP32",
+    "port": "COM5",  
+    "positioner": "ESP32StageManager",
+    "updateFreq": 4,
+    "frameCropx": 0,
+    "frameCropy": 0,
+    "frameCropw": 0,
+    "frameCroph": 0
+  },
+  "availableWidgets": [
+    "Settings",
+    "View",
+    "Recording",
+    "Image",
+    "Laser",
+    "LEDMatrix",
+    "Positioner",
+    "Autofocus",
+    "MCT",
+    "UC2Config",
+    "DPC",
+    "ImSwitchServer",
+    "PixelCalibration",
+    "WebRTC"
+  ], 
+  "nonAvailableWidgets":[
+    "STORMRecon",
+    "FocusLock"]
+}

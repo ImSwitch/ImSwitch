@@ -20,25 +20,25 @@ class MasterController:
         self.__moduleCommChannel = moduleCommChannel
 
         # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
         lowLevelManagers = {
-            'nidaqManager': self.nidaqManager,
-            #'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
         self.positionersManager = PositionersManager(self.__setupInfo.positioners,
                                                      **lowLevelManagers)
+        self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
+                                           **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                               **lowLevelManagers)
+                                            **lowLevelManagers)
 
+        self.LEDsManager = LEDsManager(self.__setupInfo.LEDs)
+        #self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
@@ -90,6 +90,7 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
+        self.simManager.sigSIMMaskUpdated.connect(cc.sigSIMMaskUpdated)
 
     def memoryRecordingAvailable(self, name, file, filePath, savedToDisk):
         self.__moduleCommChannel.memoryRecordings[name] = VFileItem(

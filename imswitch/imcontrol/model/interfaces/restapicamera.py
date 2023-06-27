@@ -7,7 +7,7 @@ import socket
 
 
 class RestPiCamera():
-    def __init__(self, host, port=80):
+    def __init__(self, host, port=80, is_debug=False):
         self. base_uri = f"{host}:{port}"
         self.host = host
         self.port = port 

@@ -7,20 +7,23 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.view import PickDatasetsDialog
 from . import widgets
 from .PickSetupDialog import PickSetupDialog
+from .PickUC2BoardConfigDialog import PickUC2BoardConfigDialog
 
 
 class ImConMainView(QtWidgets.QMainWindow):
     sigLoadParamsFromHDF5 = QtCore.Signal()
     sigPickSetup = QtCore.Signal()
+    sigPickConfig = QtCore.Signal()
     sigClosing = QtCore.Signal()
 
     def __init__(self, options, viewSetupInfo, *args, **kwargs):
         self.__logger = initLogger(self)
         self.__logger.debug('Initializing')
-        
+
         super().__init__(*args, **kwargs)
 
         self.pickSetupDialog = PickSetupDialog(self)
+        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
         self.viewSetupInfo = viewSetupInfo
@@ -45,6 +48,10 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
         self.pickSetupAction.triggered.connect(self.sigPickSetup)
         tools.addAction(self.pickSetupAction)
+
+        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+        self.pickConfigAction.triggered.connect(self.sigPickConfig)
+        tools.addAction(self.pickConfigAction)
 
         # Window
         self.setWindowTitle('ImSwitch')
@@ -71,10 +78,13 @@ class ImConMainView(QtWidgets.QMainWindow):
             'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
             'ISM': _DockInfo(name='ISM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'LED': _DockInfo(name='LED Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
+            'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
+            'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
             'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
@@ -84,6 +94,17 @@ class ImConMainView(QtWidgets.QMainWindow):
             'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+            'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+            'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
+            'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
+            'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
+            'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
+            'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+            'Deck': _DockInfo(name="Deck Tool", yPosition=1),
+            'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
+            'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
+            'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
+            'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3)
         }
@@ -126,7 +147,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
@@ -137,6 +157,11 @@ class ImConMainView(QtWidgets.QMainWindow):
             rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
+
+        # self.showMaximized()
+
+        # self.setMaximumSize(1720,900)
+
 
     def addShortcuts(self, shortcuts):
         for s in shortcuts.values():
@@ -151,6 +176,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
     def showPickDatasetsDialogBlocking(self):
         result = self.pickDatasetsDialog.exec_()
+        return result == QtWidgets.QDialog.Accepted
+
+    def showConfigSetupDialogBlocking(self):
+        result = self.PickUC2BoardConfigDialog.exec_()
         return result == QtWidgets.QDialog.Accepted
 
     def closeEvent(self, event):

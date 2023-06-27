@@ -131,6 +131,128 @@ class SLMInfo:
 
 
 @dataclass(frozen=True)
+class UC2ConfigInfo:
+    pass
+
+
+@dataclass(frozen=True)
+class SIMInfo:
+    monitorIdx: int
+    """ Index of the monitor in the system list of monitors (indexing starts at
+    0). """
+
+    width: int
+    """ Width of SLM, in pixels. """
+
+    height: int
+    """ Height of SLM, in pixels. """
+
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelSize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
+
+    isSimulation: bool
+
+    isHamamatsuSLM: bool
+
+    fastAPISIM_host: str
+
+    fastAPISIM_port: str
+
+    isFastAPISIM: bool
+
+    nRotations: int
+
+    nPhases: int
+
+    simMagnefication: float
+
+    simPixelsize: float
+
+    simNA: float
+
+    simETA: float
+
+    simN: float
+
+
+@dataclass(frozen=True)
+class DPCInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    pixelsize: float
+    """ Pixel size or pixel pitch of the SLM, in millimetres. """
+
+    magnefication: float
+
+    NA: float
+
+    NAi: float
+
+    n: float
+
+    rotations: List[int]
+@dataclass(frozen=True)
+class MCTInfo:
+    pass
+
+
+@dataclass(frozen=True)
+class WebRTCInfo:
+    pass
+
+@dataclass(frozen=True)
+class HyphaInfo:
+    pass
+
+@dataclass(frozen=True)
+class MockXXInfo:
+    pass
+
+@dataclass(frozen=True)
+class JetsonNanoInfo:
+    pass
+
+@dataclass(frozen=True)
+class HistoScanInfo:
+    pass
+
+
+@dataclass(frozen=True)
+class PixelCalibrationInfo:
+    pass
+
+
+@dataclass(frozen=True)
+class ISMInfo:
+    wavelength: int
+    """ Wavelength of the laser line used with the SLM. """
+
+    angleMount: float
+    """ The angle of incidence and reflection of the laser line that is shaped
+    by the SLM, in radians. For adding a blazed grating to create off-axis
+    holography. """
+
+    patternsDir: str
+    """ Directory of .bmp images provided by Hamamatsu for flatness correction
+    at various wavelengths. A combination will be chosen based on the
+    wavelength. """
+
+
+@dataclass(frozen=True)
 class FocusLockInfo:
     camera: str
     """ Detector name. """
@@ -295,12 +417,45 @@ class SetupInfo:
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
 
+    sim: Optional[SIMInfo] = field(default_factory=lambda: None)
+    """ SIM settings. Required to be defined to use SIM functionality. """
+
+    dpc: Optional[DPCInfo] = field(default_factory=lambda: None)
+    """ DPC settings. Required to be defined to use DPC functionality. """
+
+    mct: Optional[MCTInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use MCT functionality. """
+
+    webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
+    """ WebRTC settings. Required to be defined to use WebRTC functionality. """
+
+    hypha: Optional[HyphaInfo] = field(default_factory=lambda: None)
+    """ Hypha settings. Required to be defined to use Hypha functionality. """
+
+    mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
+    """ MockXX settings. Required to be defined to use MockXX functionality."""
+
+    jetsonnano: Optional[JetsonNanoInfo] = field(default_factory=lambda: None)
+    """ Jetson Nano settings for jetson nano. Required to be defined to use jetson nano functionality. """
+
+    HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
+    """ HistoScan settings. Required to be defined to use HistoScan functionality. """
+
+    PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
+    """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
+
+    uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
+    """ UC2Config settings. Required to be defined to use UC2Config functionality. """
+
+    ism: Optional[ISMInfo] = field(default_factory=lambda: None)
+    """ ISM settings. Required to be defined to use ISM functionality. """
+
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
-    
+
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
-    """ Autofocus settings. Required to be defined to use autofocus 
+    """ Autofocus settings. Required to be defined to use autofocus
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)

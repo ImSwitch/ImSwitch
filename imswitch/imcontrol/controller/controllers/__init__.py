@@ -18,6 +18,17 @@ from .ScanControllerMoNaLISA import ScanControllerMoNaLISA
 from .ScanControllerPointScan import ScanControllerPointScan
 from .RotationScanController import RotationScanController
 from .RotatorController import RotatorController
+from .UC2ConfigController import UC2ConfigController
+from .SIMController import SIMController
+from .DPCController import DPCController
+from .MCTController import MCTController
+from .WebRTCController import WebRTCController
+from .HyphaController import HyphaController
+from .MockXXController import MockXXController
+from .JetsonNanoController import JetsonNanoController
+from .HistoScanController import HistoScanController
+from .PixelCalibrationController import PixelCalibrationController
+from .ISMController import ISMController
 from .SettingsController import SettingsController
 from .SLMController import SLMController
 from .TilingController import TilingController

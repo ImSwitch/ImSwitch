@@ -81,3 +81,6 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
+locai/*
+conda/*
+conda-out/*

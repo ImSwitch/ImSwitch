@@ -84,7 +84,7 @@ def test_recording_spec_time(qtbot, detectorInfos):
             'testAttr1': 2,
             'testAttr2': 'value'
         } for detectorName in detectorInfos.keys()},
-        recTime=1
+        recTime=2
     )
 
     assert filePerDetector.keys() == detectorInfos.keys()

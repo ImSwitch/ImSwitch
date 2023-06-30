@@ -1,12 +1,13 @@
 import pytest
-
+import logging
 import h5py
-
+from pytestqt.qtbot import QtBot
 from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode, SaveMode
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
+logger = logging.getLogger(__name__)
 
-def record(qtbot, detectorInfos, *args, **kwargs):
+def record(qtbot: QtBot, detectorInfos, *args, **kwargs):
     detectorsManager = DetectorsManager(detectorInfos, updatePeriod=100)
     recordingManager = RecordingManager(detectorsManager)
 
@@ -17,13 +18,22 @@ def record(qtbot, detectorInfos, *args, **kwargs):
         filePerDetector[detectorName], savedToDiskPerDetector[detectorName] = file, savedToDisk
         return True
 
+    # expected detector signals
+    expectedSignals = [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos]
+    expectedCallBacks = [(lambda *args, detectorName=detectorName, **kwargs: 
+                        memoryRecordingAvailable(*args, detectorName=detectorName, **kwargs))
+                        for detectorName in detectorInfos]
+    
+    # expected manager signals
+    expectedSignals.append(recordingManager.sigRecordingEnded)
+    expectedCallBacks.append(None) # signal is emitted with no value
+
     recordingManager.startRecording(*args, **kwargs)
     with qtbot.waitSignals(
-            [recordingManager.sigMemoryRecordingAvailable for _ in detectorInfos],
-            check_params_cbs=[(lambda *args, detectorName=detectorName, **kwargs:
-                               memoryRecordingAvailable(*args, detectorName=detectorName, **kwargs))
-                              for detectorName in detectorInfos],
-            timeout=None
+            expectedSignals,
+            check_params_cbs=expectedCallBacks,
+            order = 'strict',
+            timeout=30000
     ):
         pass
 
@@ -74,7 +84,7 @@ def test_recording_spec_time(qtbot, detectorInfos):
             'testAttr1': 2,
             'testAttr2': 'value'
         } for detectorName in detectorInfos.keys()},
-        recTime=5
+        recTime=1
     )
 
     assert filePerDetector.keys() == detectorInfos.keys()

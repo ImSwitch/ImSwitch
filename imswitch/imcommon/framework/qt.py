@@ -38,6 +38,12 @@ class Thread(QtCore.QThread, base.Thread, metaclass=QObjectMeta):
         except RuntimeError:
             return True
         return False
+    
+class Runnable(QtCore.QRunnable, base.Runnable, metaclass=QObjectMeta):
+    pass
+
+class RunnablePool(QtCore.QThreadPool, base.RunnablePool, metaclass=QObjectMeta):
+    pass
 
 
 class Timer(QtCore.QTimer, base.Timer, metaclass=QObjectMeta):

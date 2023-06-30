@@ -1,7 +1,7 @@
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -111,6 +111,10 @@ class DetectorManager(SignalInterface):
 
         self.setBinning(supportedBinnings[0])
 
+        self._imageProcessing = {}
+        self._dtype = np.uint16
+        self._frameInterval = 1000.0 # us
+
     def updateLatestFrame(self, init):
         """ :meta private: """
         try:
@@ -207,6 +211,22 @@ class DetectorManager(SignalInterface):
         return self.__forFocusLock
 
     @property
+    def imageProcessing(self) -> dict:
+        """ Returns the dictionary of image processing objects in the detector. """
+        return self._imageProcessing
+
+    @property
+    def dtype(self) -> Any:
+        """ Returns the image numpy data type for correct recording storage. """
+        return self._dtype
+
+    @property
+    def frameInterval(self) -> Tuple[float]:
+        """ The time interval between each frame, specified in microseconds.
+        """
+        return self._frameInterval
+
+    @property
     def scale(self) -> List[int]:
         """ The pixel sizes in micrometers, all axes, in the format high dim
         to low dim (ex. [..., 'Z', 'Y', 'X']). Override in managers handling
@@ -233,11 +253,13 @@ class DetectorManager(SignalInterface):
         pass
 
     @abstractmethod
-    def getChunk(self) -> np.ndarray:
+    def getChunk(self) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """ Returns the frames captured by the detector since getChunk was last
         called, or since the buffers were last flushed (whichever happened
-        last). The returned object is a numpy array of shape
-        (numFrames, height, width). """
+        last). Depending on the detector, the returned object can be:
+        - a numpy array of shape (numFrames, height, width); 
+        - a tuple of two numpy arrays: the first of shape (numFrames, height, width),
+            and the second of shape (numFrames,). The second array contains the frame IDs"""
         pass
 
     @abstractmethod

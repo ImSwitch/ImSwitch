@@ -56,6 +56,7 @@ class HamamatsuManager(DetectorManager):
                          model=model, parameters=parameters, croppable=True)
         self._updatePropertiesFromCamera()
         super().setParameter('Set exposure time', self.parameters['Real exposure time'].value)
+        self._frameInterval = self.parameters['Internal frame interval'].value * 1e3
 
     @property
     def pixelSizeUm(self):
@@ -162,6 +163,7 @@ class HamamatsuManager(DetectorManager):
         self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
         self.setParameter('Internal frame interval',
                           self._camera.getPropertyValue('internal_frame_interval')[0])
+        self._frameInterval = self.parameters['Internal frame interval'].value * 1e3
         self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
         self.setParameter('Internal frame rate',
                           self._camera.getPropertyValue('internal_frame_rate')[0])
@@ -187,7 +189,7 @@ class HamamatsuManager(DetectorManager):
             from imswitch.imcontrol.model.interfaces import MockHamamatsu
             camera = MockHamamatsu()
 
-        self.__logger.info(f'Initialized camera, model: {camera.camera_model}')
+        self.__logger.info(f'Initialized camera, model: {camera.camera_model.decode()}')
         return camera
 
 

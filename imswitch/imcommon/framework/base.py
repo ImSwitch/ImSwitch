@@ -67,6 +67,31 @@ class Thread(SignalInterface, ABC):
     def wait(self) -> None:
         pass
 
+class Runnable(SignalInterface, ABC):
+    @abstractmethod
+    def __init__(self) -> None:
+        super().__init__()
+
+    @abstractmethod
+    def run(self) -> None:
+        pass
+
+    @abstractmethod
+    def autoDelete(self) -> None:
+        pass
+    
+    @abstractmethod
+    def setAutoDelete(autoDelete: bool) -> None:
+        pass
+
+class RunnablePool(SignalInterface, ABC):
+    @abstractmethod
+    def __init__(self) -> None:
+        super().__init__()
+    
+    @abstractmethod
+    def start(self, runnable: Runnable) -> None:
+        pass
 
 class Timer(SignalInterface, ABC):
     @abstractmethod

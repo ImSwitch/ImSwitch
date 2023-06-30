@@ -48,7 +48,6 @@ class HDF5StorerManager(StorerManager):
 
     def stream(self, recMode: RecMode, saveMode: SaveMode, attrs: Dict[str, str], **kwargs) -> None:
 
-        self.logger.info("Storer {}. Detector name: {}".format(self.streamInfo.storeID, self.streamInfo.detector.name))
         self.record = True
         frameNumberWindow = []
         pixelSize = self.streamInfo.detector.pixelSizeUm

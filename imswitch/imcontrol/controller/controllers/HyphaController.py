@@ -15,13 +15,14 @@ import fractions
 
 import numpy as np
 from av import VideoFrame
-from imjoy_rpc.hypha import connect_to_server
+from imjoy_rpc.hypha import connect_to_server_sync
 
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription  
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
 from ..basecontrollers import LiveUpdatedController
+from PyQt5.QtCore import QThread, pyqtSignal
 
 import asyncio
 import logging
@@ -47,6 +48,18 @@ relay = None
 webcam = None
 
 
+class AsyncioThread(QThread):
+    started = pyqtSignal()
+
+    def __init__(self, loop):
+        super().__init__()
+        self.loop = loop
+
+    def run(self):
+        asyncio.set_event_loop(self.loop)
+        self.started.emit()
+        self.loop.run_forever()
+
 class HyphaController(LiveUpdatedController):
     """ Linked to HyphaWidget."""
 
@@ -56,10 +69,8 @@ class HyphaController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         self.frame = np.zeros((150, 300, 3)).astype('uint8')
-        self.updateRate = 10
-        self.it = 0
-        self.init = False
-        self.showPos = False
+        
+        self.asyncio_thread = None
 
         # rtc-related
         self.pcs = set()
@@ -73,30 +84,21 @@ class HyphaController(LiveUpdatedController):
         server_url = "http://localhost:9000"
         server_url = "https://ai.imjoy.io/"
         
-        async def start_service_task():
-            asyncio.ensure_future(self.start_service(
-                service_id,
-                server_url=server_url,
-                workspace=None,
-                token=None,
-            ))
-    
-
-        # Creating and starting a new Event Loop
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(start_service_task())
+        # start the service
+        self.start_asyncio_thread(server_url, service_id)
         
-        '''
+    def start_asyncio_thread(self, server_url, service_id):
         loop = asyncio.get_event_loop()
-        loop.create_task(self.start_service(
-            service_id,
-            server_url="http://localhost:9000",
-            workspace=None,
-            token=None,
-        ))
-        loop.run_forever()
-        '''
+        self.asyncio_thread = AsyncioThread(loop)
+        self.asyncio_thread.started.connect(self.on_asyncio_thread_started)
+        self.asyncio_thread.start()
 
+    def on_asyncio_thread_started(self):
+        # Perform any necessary setup after the asyncio thread has started
+        # Connect to the server and start the service
+        service_id="aiortc-demo"
+        logging.basicConfig(level=logging.DEBUG)
+        self.start_service(service_id)
 
     async def on_shutdown(self, app):
         # close peer connections
@@ -163,10 +165,10 @@ class HyphaController(LiveUpdatedController):
 
 
 
-    async def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
+    def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
         client_id = service_id + "-client"
         print(f"Starting service...")
-        server = await connect_to_server(
+        server = connect_to_server_sync(
             {
                 "client_id": client_id,
                 "server_url": server_url,
@@ -175,7 +177,7 @@ class HyphaController(LiveUpdatedController):
             }
         )
         # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))
-        await server.register_service(
+        server.register_service(
             {
                 "id": service_id,
                 "config": {

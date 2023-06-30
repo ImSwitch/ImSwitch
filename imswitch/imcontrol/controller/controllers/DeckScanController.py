@@ -344,6 +344,8 @@ class DeckScanController(LiveUpdatedController):
 
     def take_single_image_at_position(self, current_position: Point, intensity):
         self.__logger.info(f"Moving to {current_position}.")
+        if type(current_position) is  Point:
+            current_position = (current_position.x, current_position.y, current_position.z)
         self.positioner.move(value=current_position, axis="XYZ", is_absolute=True, is_blocking=True)
         time.sleep(self.tUnshake)
 

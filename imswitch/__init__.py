@@ -1,10 +1,6 @@
 import glob
 __version__ = "1.2.9" # used to be, but actions will replace this with the current release TAG ->1.2.9
 
-# add dlls to pypi package
-__dll_files__ = glob.glob('./imcontrol/model/interfaces/gxipy/dll/*.dll')
-print("starting imswitch")
-print(__dll_files__)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

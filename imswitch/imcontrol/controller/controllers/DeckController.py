@@ -9,7 +9,6 @@ from imswitch.imcommon.model import initLogger, APIExport
 from imswitch.imcontrol.view import guitools as guitools
 
 try:
-    asdf
     from locai.deck.deck_config import DeckConfig
     from opentrons.types import Point
     IS_LOCAI = True

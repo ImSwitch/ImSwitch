@@ -58,7 +58,7 @@ class RecordingManager(SignalInterface):
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
-    sigRecordingTimeUpdated = Signal(float)  # (recTime)
+    sigRecordingTimeUpdated = Signal(int)  # (recTime)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
@@ -136,7 +136,7 @@ class RecordingManager(SignalInterface):
     
     def _updateSecondsCounter(self, channel: str, seconds: float) -> None:
         self.__signalBuffer[channel] = seconds
-        self.sigRecordingTimeUpdated.emit(min(list(self.__signalBuffer.values())))
+        self.sigRecordingTimeUpdated.emit(int(min(list(self.__signalBuffer.values()))))
     
     def _updateFinishedThreadCount(self) -> None:
         self.__threadCount += 1

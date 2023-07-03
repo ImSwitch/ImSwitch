@@ -27,7 +27,6 @@ class NidaqLaserManager(LaserManager):
         if for_scanning and not enabled:
             voltage = 0
         try:
-            self.lastVoltage = voltage
             self._nidaqManager.setAnalog(
                 target=self.name, voltage=voltage,
                 min_val=self.valueRangeMin, max_val=self.valueRangeMax

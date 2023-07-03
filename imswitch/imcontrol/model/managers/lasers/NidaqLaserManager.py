@@ -1,6 +1,6 @@
 from .LaserManager import LaserManager
 from imswitch.imcommon.model import initLogger
-
+from imswitch.imcontrol.controller import CommunicationChannel
 
 class NidaqLaserManager(LaserManager):
     """ LaserManager for analog-value NI-DAQ-controlled lasers.
@@ -9,6 +9,7 @@ class NidaqLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
+
         self._nidaqManager = lowLevelManagers['nidaqManager']
         self.__logger = initLogger(self, tryInheritParent=True)
         super().__init__(laserInfo, name, isBinary=laserInfo.getAnalogChannel() is None,
@@ -20,10 +21,13 @@ class NidaqLaserManager(LaserManager):
         except:
             self.__logger.error("Error trying to enable laser.")
 
-    def setValue(self, voltage):
+    def setValue(self, voltage, enabled=True, for_scanning=False):
         if self.isBinary:
             return
+        if for_scanning and not enabled:
+            voltage = 0
         try:
+            self.lastVoltage = voltage
             self._nidaqManager.setAnalog(
                 target=self.name, voltage=voltage,
                 min_val=self.valueRangeMin, max_val=self.valueRangeMax
@@ -31,9 +35,17 @@ class NidaqLaserManager(LaserManager):
         except:
             self.__logger.error("Error trying to set value to laser.")
 
-    def setScanModeActive(self, active):
+    def setScanModeActive(self, active, enabled=True):
         if active:
             self.setEnabled(False)
+        # if laser was enable before the scan, it is enabled again. Value set to 0 first so that it does not get enabled
+        # before laser preset is applied
+        elif enabled:
+            self.setValue(0, True)
+            self.setEnabled(True)
+
+
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

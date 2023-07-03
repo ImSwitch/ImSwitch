@@ -28,14 +28,14 @@ class Cobolt0601LaserManager(LantzLaserManager):
     def setEnabled(self, enabled):
         self._laser.enabled = enabled
 
-    def setValue(self, power):
+    def setValue(self, power, enabled=True, for_scanning=False):
         power = int(power)
         if self._digitalMod:
             self._setModPower(power * Q_(1, 'mW'))
         else:
             self._setBasicPower(power * Q_(1, 'mW'))
 
-    def setScanModeActive(self, active):
+    def setScanModeActive(self, active, enabled=True):
         if active:
             powerQ = self._laser.power_sp * self._numLasers
             self._laser.enter_mod_mode()
@@ -44,8 +44,11 @@ class Cobolt0601LaserManager(LantzLaserManager):
             #self.__logger.debug(f'Modulation mode is: {self._laser.mod_mode}')
         else:
             self._laser.digital_mod = False
-            self._laser.query('ci')
-            self._laser.mode = 'ACC'
+            # we go back to the mode before the scan
+            if self._laser.mode == 'ACC':
+                self._laser.query('ci')
+            else:
+                self._laser.query('cp')
             #self.__logger.debug('Exited digital modulation mode')
 
         self._digitalMod = active
@@ -57,6 +60,7 @@ class Cobolt0601LaserManager(LantzLaserManager):
             self._laser.query('slc {:.1f}'.format(0))
         else:
             if self._laser.mode == 'ACC':
+                self._laser.power_sp = 0
                 self._laser.query('cp')
                 self._laser.mode = 'APC'
             self._laser.power_sp = power / self._numLasers

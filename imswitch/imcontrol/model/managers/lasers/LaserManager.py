@@ -108,7 +108,7 @@ class LaserManager(ABC):
         pass
 
     @abstractmethod
-    def setValue(self, value: Union[int, float]) -> None:
+    def setValue(self, value: Union[int, float], enabled=True, for_scanning=False) -> None:
         """ Sets the value of the laser. """
         pass
 
@@ -123,7 +123,7 @@ class LaserManager(ABC):
     def setModulationDutyCycle(self, dutyCycle: int) -> None:
         """ Sets the laser modulation duty cycle. """
 
-    def setScanModeActive(self, active: bool) -> None:
+    def setScanModeActive(self, active: bool, enabled=True) -> None:
         """ Sets whether the laser should be in scan mode (if the laser
         supports it). """
         pass

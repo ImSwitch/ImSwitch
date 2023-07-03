@@ -38,7 +38,7 @@ class CoolLEDLaserManager(LaserManager):
         cmd = "C" + self.__channel_index + value
         self._rs232manager.query(cmd)
 
-    def setValue(self, power):
+    def setValue(self, power, enabled=True, for_scanning=False):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """

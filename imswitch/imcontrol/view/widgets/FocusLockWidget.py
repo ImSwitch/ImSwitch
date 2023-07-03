@@ -58,6 +58,9 @@ class FocusLockWidget(Widget):
         self.vb = self.webcamGraph.addViewBox(invertY=True, invertX=False)
         self.vb.setAspectLocked(True)
         self.vb.addItem(self.camImg)
+        self.center = pg.InfiniteLine()
+        self.vb.addItem(self.center)
+        self.center.setVisible(True)
 
         # GUI layout below
         grid = QtWidgets.QGridLayout()

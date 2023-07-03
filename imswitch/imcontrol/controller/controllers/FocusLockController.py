@@ -86,7 +86,7 @@ class FocusLockController(ImConWidgetController):
     def toggleFocus(self):
         self.aboutToLock = False
         if self._widget.lockButton.isChecked():
-            zpos = self._master.positionersManager[self.positioner].get_abs()
+            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
             self.lockFocus(zpos)
             self._widget.lockButton.setText('Unlock')
         else:
@@ -139,7 +139,7 @@ class FocusLockController(ImConWidgetController):
         self.aboutToLockDataPoints[0] = self.setPointSignal
         averageDiff = np.std(self.aboutToLockDataPoints)
         if averageDiff < self.aboutToLockDiffMax:
-            zpos = self._master.positionersManager[self.positioner].get_abs()
+            zpos = self._master.positionersManager[self.positioner].get_abs("Z")
             self.lockFocus(zpos)
             self.aboutToLock = False
 
@@ -157,7 +157,7 @@ class FocusLockController(ImConWidgetController):
     def updatePI(self):
         if not self.noStepVar:
             self.noStepVar = True
-        self.currentPosition = self._master.positionersManager[self.positioner].get_abs()
+        self.currentPosition = self._master.positionersManager[self.positioner].get_abs("Z")
         self.stepDistance = np.abs(self.currentPosition - self.lastPosition)
         distance = self.currentPosition - self.lockPosition
         move = self.pi.update(self.setPointSignal)
@@ -246,7 +246,9 @@ class ProcessDataThread(Thread):
         imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
         massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
         # add the information about where the center of the subarray is
-        massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
+        massCenterGlobal = massCenter[0] + centercoords2[0]  # - subsizey - self.sensorSize[1] / 2
+        self._controller._widget.center.setValue(massCenterGlobal)
+        #print(massCenterGlobal)
         return massCenterGlobal
 
 
@@ -267,7 +269,7 @@ class FocusCalibThread(Thread):
             time.sleep(0.5)
             self.focusCalibSignal = self._controller.setPointSignal
             self.signalData.append(self.focusCalibSignal)
-            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs())
+            self.positionData.append(self._controller._master.positionersManager[self._controller.positioner].get_abs("Z"))
         self.poly = np.polyfit(self.positionData, self.signalData, 1)
         self.calibrationResult = np.around(self.poly, 4)
         self.show()

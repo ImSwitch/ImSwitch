@@ -23,7 +23,7 @@ class PositionerWidget(Widget):
     def addPositioner(self, positionerName, axes, hasSpeed, hasHome=True, hasStop=True):
         for i in range(len(axes)):
             axis = axes[i]
-            parNameSuffix = axis #self._getParNameSuffix(positionerName, axis)
+            parNameSuffix = self._getParNameSuffix(positionerName, axis)
             label = f'{axis}' if positionerName != axis else positionerName #f'{positionerName} -- {axis}' if positionerName != axis else positionerName
 
             self.pars['Label' + parNameSuffix] = QtWidgets.QLabel(f'<strong>{label}</strong>')
@@ -121,7 +121,7 @@ class PositionerWidget(Widget):
         self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
 
     def _getParNameSuffix(self, positionerName, axis):
-        return f'{positionerName}--{axis}'
+        return f'{positionerName[0]}--{axis}'
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

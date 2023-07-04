@@ -84,9 +84,17 @@ class HyphaController(LiveUpdatedController):
         server_url = "http://localhost:9000"
         server_url = "https://ai.imjoy.io/"
         
+        # get the first detector to stream data
+        self.detector_names = self._master.detectorsManager.getAllDeviceNames()
+        self.detector = self._master.detectorsManager[self.detector_names[0]]
+        
         # start the service
         self.start_asyncio_thread(server_url, service_id)
         
+    def update(self, detectorName, im, init, isCurrentDetector):
+        """ Update with new detector frame. """
+        pass
+    
     def start_asyncio_thread(self, server_url, service_id):
         loop = asyncio.get_event_loop()
         self.asyncio_thread = AsyncioThread(loop)
@@ -107,10 +115,6 @@ class HyphaController(LiveUpdatedController):
         self.pcs.clear()
 
 
-    def update(self, detectorName, im, init, isCurrentDetector):
-        """ Update with new detector frame. """
-        pass
-
     async def offer(self, params, context=None):
         offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
@@ -125,13 +129,25 @@ class HyphaController(LiveUpdatedController):
 
         @pc.on("datachannel")
         def on_datachannel(channel):
+            #self = None  # declare the self variable as None
+
             @channel.on("message")
             def on_message(message):
+                #nonlocal self  # declare self as nonlocal
                 if isinstance(message, str):
                     if message.startswith("ping"):
                         channel.send("pong" + message[4:])
                     elif message in ["right", "left", "up", "down"]:
                         print(f"===> command received: {message}")
+                        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+                        if message == "right":
+                            self.stages.move(value=100, axis="X", is_absolute=True, is_blocking=True)
+                        if message == "left":
+                            self.stages.move(value=-100, axis="X", is_absolute=True, is_blocking=True)
+                        if message == "up":
+                            self.stages.move(value=100, axis="Y", is_absolute=True, is_blocking=True)
+                        if message == "down":
+                            self.stages.move(value=-100, axis="Y", is_absolute=True, is_blocking=True)                        
                         # pc.transport.send(message.encode())
                         channel.send("completed")
 
@@ -147,7 +163,8 @@ class HyphaController(LiveUpdatedController):
         def on_track(track):
             log_info("Track %s received", track.kind)
             pc.addTrack(
-                VideoTransformTrack(transform=params["video_transform"]
+                VideoTransformTrack(transform=params["video_transform"], 
+                                    detector=self.detector
                 )
             )
             @track.on("ended")
@@ -202,11 +219,10 @@ class VideoTransformTrack(MediaStreamTrack):
 
     kind = "video"
 
-    def __init__(self):
+    def __init__(self, transform, detector):
         super().__init__()  # don't forget this!
+        self.transform = transform
         self.count = 0
-    
-    def setDetector(self, detector):
         self.detector = detector
 
     async def recv(self):

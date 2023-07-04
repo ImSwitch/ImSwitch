@@ -42,6 +42,7 @@ well as for developers (scripting and API modules, and hardware control and JSON
     Hdf5datafile
     imcontrol-setups
     adding-device-support
+    low-level-managers
 
 .. toctree::
     :glob:

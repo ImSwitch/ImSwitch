@@ -123,7 +123,7 @@ For this, a new object in the setup configuration was implemented, called ``slm`
 
 Additionally, a new class needs to be defined in SetupInfo, here named ``SLMInfo``, where all of these parameters are defined with the expected data types.
 
-.. code-block:: 
+.. code-block:: python
    @dataclass(frozen=True)
    class SLMInfo:
       monitorIdx: int
@@ -156,7 +156,7 @@ Finally, the expected ``slm`` setup configuration object needs to be connected t
 Here, the ``Optional`` tag defines that this does not generally have to be configured in the setup configuration JSON file, only if you want to use an SLM it needs to be defined, which should be the standard way of implementing a new SetupInfo field.
 Instead, ``detectors``, ``lasers``, ``positioners``, and ``rs232devices`` are all required SetupInfo fields, however they can in the configuration file be left empty if no such devices are used in that configuration.
 
-.. code-block:: 
+.. code-block:: python
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """

@@ -16,6 +16,8 @@ class CameraESP32CamSerial:
         self.model = "ESP32Camera"
         self.shape = (0, 0)
 
+        self.isConnected = False
+
         # camera parameters
         self.framesize = 100
         self.exposure_time = 0
@@ -25,14 +27,16 @@ class CameraESP32CamSerial:
         self.SensorHeight = 240
         
         self.manufacturer = 'Espressif'
-        self.serialdevice = None
-        self.frame = np.zeros((self.SensorHeight,self.SensorWidth))
+        
+        self.frame = np.ones((self.SensorHeight,self.SensorWidth))
         self.isRunning = False
         
         # string to send data to camera
         self.newCommand = ""
         self.exposureTime = -1
         self.gain = -1
+
+        self.serialdevice = self.connect_to_usb_device()
 
     def connect_to_usb_device(self):
         ports = serial.tools.list_ports.comports()
@@ -107,7 +111,9 @@ class CameraESP32CamSerial:
         return self.frame
 
     def startStreamingThread(self):
-        self.serialdevice = self.connect_to_usb_device()
+        # if we have never connected anything we should return and not always try to reconnecnt
+        if self.serialdevice is None:
+            return
         nFrame = 0
         nTrial = 0
         while self.isRunning:

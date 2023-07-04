@@ -3,7 +3,9 @@ from .PositionerManager import PositionerManager
 import time
 import numpy as np
 from imswitch.imcommon.model import APIExport, generateAPI, initLogger
-
+import threading
+        
+        
 PHYS_FACTOR = 1
 gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
@@ -218,34 +220,22 @@ class ESP32StageManager(PositionerManager):
 
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'Y':
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'Z':
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'T':
             self._motor.move_t(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'XY':
             self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
-                if not is_absolute:
-                    self._position[iaxis] = self._position[iaxis] + value[i]
-                else:
-                    self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
-                if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
-                else: self._position[iaxis] = value[i]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
+
+        # finally update positions 
+        threading.Thread(target=self.getPosition).start()
+        
 
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
@@ -271,9 +261,6 @@ class ESP32StageManager(PositionerManager):
             self._speed[axis] = speed
 
     def setPosition(self, value, axis):
-        # if value: value += 1  # TODO: Firmware weirdness
-        # self._motor.set_position(axis=axis, position=value) # TODO: this line does nothing
-        # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
         # print(f"setPosition - Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
@@ -281,13 +268,17 @@ class ESP32StageManager(PositionerManager):
         pass
 
     def getPosition(self):
+        # load position from device
+        # t,x,y,z
         try:
             time.sleep(0.5)
             allPositions = self._motor.get_position()
         except:
             allPositions = [0,0,0,0]
-
-        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
+        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
+        for iPosAxis, iPosVal in allPositionsDict.items():
+            self.setPosition(iPosVal,iPosAxis)
+        return allPositionsDict
 
     def forceStop(self, axis):
         if axis=="X":
@@ -330,12 +321,10 @@ class ESP32StageManager(PositionerManager):
     def home_x(self, isBlocking):
         self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
-        # self._position["X"] = 0
 
     def home_y(self,isBlocking):
         self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
-        # self._position["Y"] = 0
 
     def home_z(self,isBlocking):
         self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, isBlocking=isBlocking)

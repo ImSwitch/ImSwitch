@@ -317,7 +317,7 @@ class MCTController(ImConWidgetController):
                 self.stages.setSpeed(speed=1000, axis="Z")
                 
                 # ensure motors are enabled
-                self.stages.enalbeMotors(enable=True)
+                #self.stages.enalbeMotors(enable=True)
 
                 try:
                     # want to do autofocus?
@@ -413,10 +413,10 @@ class MCTController(ImConWidgetController):
 
         # in case something is not connected we want to reconnect!
         # TODO: This should go into some function outside the MCT!!!
-        if not ("IDENTIFIER_NAME" in self._master.UC2ConfigManager.ESP32.state.get_state() and self._master.UC2ConfigManager.ESP32.state.get_state()["IDENTIFIER_NAME"] == "uc2-esp"):
-            mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
-            mThread.start()
-            mThread.join()
+        #if not ("IDENTIFIER_NAME" in self._master.UC2ConfigManager.ESP32.state.get_state() and self._master.UC2ConfigManager.ESP32.state.get_state()["IDENTIFIER_NAME"] == "uc2-esp"):
+        #    mThread = threading.Thread(target=self._master.UC2ConfigManager.initSerial)
+        #    mThread.start()
+        #    mThread.join()
 
         # initialize xyz coordinates
         if self.xyScanEnabled:

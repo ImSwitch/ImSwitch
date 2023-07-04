@@ -69,7 +69,7 @@ class ESP32SerialCamManager(DetectorManager):
     
         
     def getChunk(self):
-        pass
+        return np.expand_dims(self._camera.getLastChunk(),0)
 
     def flushBuffers(self):
         pass

@@ -52,3 +52,7 @@ class MockLeicaDMIManager:
     def setILshutter(self, value):
         cmd = str(value)
         self._rs232Manager.query(cmd)
+        
+    def setTLshutter(self, value):
+        cmd = str(value)
+        self._rs232Manager.query(cmd)

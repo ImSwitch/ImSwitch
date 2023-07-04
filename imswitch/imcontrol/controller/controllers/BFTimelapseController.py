@@ -1,18 +1,5 @@
-import os
 import time
-import importlib
-import enum
-import h5py
-import csv
 
-from collections import deque
-from datetime import datetime
-from inspect import signature
-import pyqtgraph as pg
-import numpy as np
-from tkinter.filedialog import askopenfilename
-
-from imswitch.imcommon.model import dirtools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 from imswitch.imcommon.framework import Thread, Timer
@@ -23,6 +10,8 @@ class BFTimelapseController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+ 
+        self._standManager = self._master.standManager
 
         self._widget.setDetectorList(
             self._master.detectorsManager.execOnAll(lambda c: c.name,
@@ -44,7 +33,7 @@ class BFTimelapseController(ImConWidgetController):
             super().__del__()
 
     def initiate(self):
-        """ Initiate or stop an bftimelapse experiment. """
+        """ Initiate or stop a bftimelapse experiment. """
         if not self.__running:
             #detectorIdx = self._widget.detectorsPar.currentIndex()
             #self.detector = self._widget.detectors[detectorIdx]
@@ -73,12 +62,11 @@ class TimerThread(Thread):
 
     def timerLoopEnded(self):
         """ Snap a BFTimelapse image through communication channel -> recordingWidget, after turning on WF lamp in Leica stand. Turn off lamp after. """
-        #TODO START WF LAMP
-        #time.sleep(0.1)
+        self._controller._standManager.setTLshutter(True)
+        time.sleep(0.1)  # TODO: don't know if some delay here is needed, needs to be tested
         self._controller._commChannel.sigSnapImg.emit()
-        #time.sleep(0.1)
-        #TODO STOP WF LAMP
-
+        time.sleep(0.1)  # TODO: don't know if some delay here is needed, needs to be tested
+        self._controller._standManager.setTLshutter(False)
 
 
 

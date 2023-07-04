@@ -63,7 +63,7 @@ class StandaMotor():
         x_sync_in_settings = pyximc.sync_in_settings_t()
         x_sync_in_settings.Position = pos_steps
         x_sync_in_settings.uPosition = pos_usteps
-        x_sync_in_settings.Speed = 2000
+        x_sync_in_settings.Speed = 200  # changed from 2000, which it was before, to limit the speed and be more conservative
         x_sync_in_settings.SyncInFlags = enabled  # (0x01 (enabled) + 0x02 (trigger on falling edge) + 0x04 (go to position, not relative shift))
         _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)
 
@@ -80,7 +80,7 @@ class StandaMotor():
         x_sync_in_settings = pyximc.sync_in_settings_t()
         x_sync_in_settings.Position = pos_steps
         x_sync_in_settings.uPosition = pos_usteps
-        x_sync_in_settings.Speed = 2000
+        x_sync_in_settings.Speed = 200  # changed from 2000, which it was before, to limit the speed and be more conservative
         x_sync_in_settings.ClutterTime = 1
         x_sync_in_settings.SyncInFlags = enabled + rel_shift  # (0x01 (enabled) + 0x04 (True: go to position, False: relative shift))
         _ = pyximc.lib.set_sync_in_settings(self._device_id, x_sync_in_settings)

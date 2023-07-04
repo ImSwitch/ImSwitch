@@ -60,6 +60,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
+            'BFTimelapse': _DockInfo(name='BFTimelapse', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
             'Rotator': _DockInfo(name='Rotator', yPosition=1),
             'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),

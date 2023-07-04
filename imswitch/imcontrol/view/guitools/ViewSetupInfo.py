@@ -69,6 +69,7 @@ class ViewSetupInfo(SetupInfo):
     - ``Rotator`` (Rotator widget; requires "Rotator" field to be defined)
     - ``RotationScan`` (Rotation scan widget; requires "Rotator" field to be defined)
     - ``MotCorr`` (Leica motorized correction collar widget; requires rs232 stand device to be defined)
+    - ``BFTimelapse`` (BFTimelapse widget)
 
     You can also set this to ``true`` to enable all widgets, or ``false`` to
     disable all widgets.

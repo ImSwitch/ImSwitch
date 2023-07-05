@@ -5,7 +5,7 @@ import numpy as np
 from imswitch.imcommon.model import APIExport, generateAPI, initLogger
 import threading
         
-        
+
 PHYS_FACTOR = 1
 gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
@@ -178,14 +178,7 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minT, self.maxT, self.stepsizeT, self.backlashT, "T")
 
         # get bootup position and write to GUI
-        self._position  = self.getPosition()
-
-        # force setting the position
-        self.setPosition(self._position['X'],"X")
-        self.setPosition(self._position['Y'],"X")
-        self.setPosition(self._position['Z'],"Z")
-        self.setPosition(self._position['T'],"T")
-
+        self._position = self.getPosition()
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
@@ -231,11 +224,7 @@ class ESP32StageManager(PositionerManager):
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
         else:
-            print('Wrong axis, has to be "X" "Y" or "Z".')
-
-        # finally update positions 
-        threading.Thread(target=self.getPosition).start()
-        
+            print('Wrong axis, has to be "X" "Y" or "Z".')        
 
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
@@ -271,7 +260,6 @@ class ESP32StageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         try:
-            time.sleep(0.5)
             allPositions = self._motor.get_position()
         except:
             allPositions = [0,0,0,0]

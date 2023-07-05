@@ -313,8 +313,7 @@ class DeckScanController(LiveUpdatedController):
         self._widget.setNImages("Autofocusing...")
         slot, well, first_position_offset, first_z_focus, first_pos = self.get_first_row()
         self.positioner.move(value=first_pos, axis="XYZ", is_absolute=True, is_blocking=True)
-        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]),
-                                            float(params["valueInitial"]))
+        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]))#FIXME: float(params["valueInitial"]))
         self.isAutofocusRunning = True
         while self.isAutofocusRunning:
             time.sleep(0.1)

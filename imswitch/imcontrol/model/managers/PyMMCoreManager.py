@@ -11,10 +11,6 @@ PropertyValue = Union[bool, float, int, str]
 class PyMMCoreManager(SignalInterface):
     """ For interaction with Micro-Manager C++ core. 
         Using pymmcore-plus package (a Python-API wrapper).
-
-        Setup fields:
-        - ``MMPath``: MM absolute path in the system
-        - ``MMDevSearchPath`` (optional): list of MM device search paths. If not set, ``MMPath`` is taken as reference.
     """
 
     def __init__(self, setupInfo) -> None:
@@ -212,3 +208,12 @@ class PyMMCoreManager(SignalInterface):
             - `vsize (int)`: vertical size of the ROI (height).
         """
         self.__core.setROI(hpos, vpos, hsize, vsize)
+    
+    def setShutterStatus(self, label: str, status: bool) -> None:
+        """Sets the shutter status of the selected device.
+
+        Args:
+            label (str): name of the device.
+            status (bool): ``True`` if the shutter is open, ``False`` otherwise.
+        """
+        self.__core.setShutterOpen(label, status)

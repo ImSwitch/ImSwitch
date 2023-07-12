@@ -45,13 +45,12 @@ except:
 
 
 try:
-    from napari_sim_processor.processors.convSimProcessor import ConvSimProcessor
-    from napari_sim_processor.processors.hexSimProcessor import HexSimProcessor
+    from napari_sim_processor.convSimProcessor import ConvSimProcessor
+    from napari_sim_processor.hexSimProcessor import HexSimProcessor
     isSIM = True
-    isGPU = False
+    
 except:
     isSIM = False
-    isGPU = False
 
 try:
     import torch
@@ -178,8 +177,9 @@ class SIMController(ImConWidgetController):
             self.hamamatsuslm.send_dat(im, im_number)
 
     def __del__(self):
-        self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
+        pass
+        #self.imageComputationThread.quit()
+        #self.imageComputationThread.wait()
 
     def toggleSIMDisplay(self, enabled=True):
         self._widget.setSIMDisplayVisible(enabled)
@@ -280,13 +280,15 @@ class SIMController(ImConWidgetController):
             return None
 
     @APIExport(runOnUIThread=True)
-    def simPatternByID(self, patternID, wavelengthID=0):
+    def simPatternByID(self, patternID: int, wavelengthID: int):
         if self.IS_FASTAPISIM:
             host = self.fastAPISIMParams["host"]
             port = self.fastAPISIMParams["port"]
             self.updateDisplayImageImageFastAPISIM(patternID, host, port)
         else:   
             try:
+                patternID = int(patternID)
+                wavelengthID = int(wavelengthID)
                 currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
                 self.updateDisplayImage(currentPattern)
                 return currentPattern

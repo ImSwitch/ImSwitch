@@ -3,8 +3,8 @@ from typing import Dict, List
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
-
-
+import threading
+import time 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -67,7 +67,8 @@ class PositionerController(ImConWidgetController):
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
         except:
             self._master.positionersManager[positionerName].move(dist, axis)
-        self.updatePosition(positionerName, axis)
+        self.updatePosition()
+        
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
@@ -92,9 +93,14 @@ class PositionerController(ImConWidgetController):
         self._widget.setSpeedSize(positionerName, axis, speed)
         
     def updatePosition(self, positionerName, axis):
-        newPos = self._master.positionersManager[positionerName].position[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        #newPos = self._master.positionersManager[positionerName].position[axis]#FIXME: Is this always pulling the latest position from the device?
+        def grabPos():
+            for i in range(10):
+                newPos = self._master.positionersManager[positionerName].getPosition()[axis]
+                self._widget.updatePosition(positionerName, axis, newPos)
+                self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+                time.sleep(.3)
+        threading.Thread(target=grabPos).start()
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):

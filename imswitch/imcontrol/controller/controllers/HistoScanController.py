@@ -220,9 +220,8 @@ class HistoScanController(LiveUpdatedController):
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
-        isRunInBackground = False
-        self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"], isRunInBackground))
-        
+        self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
+
     def doScanThread(self, coordinateList):
         # store initial stage position
         initialPosition = (self.stages.get_abs(axis=1),self.stages.get_abs(axis=2))

@@ -9,7 +9,7 @@ def getImage(qtbot, detectorsManager):
     receivedImage = None
     numImagesReceived = 0
 
-    def imageUpdated(_, img, __, isCurrentDetector):
+    def imageUpdated(_, img, __, ___, isCurrentDetector):
         nonlocal receivedImage, numImagesReceived
         if isCurrentDetector:
             receivedImage = img

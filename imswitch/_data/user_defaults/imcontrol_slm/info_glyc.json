@@ -2,7 +2,8 @@
     "general": {
         "radius": 80.0,
         "sigma": 65.0,
-        "rotationAngle": 0.0
+        "rotationAngle": 0.0,
+        "tiltAngle": 0.15
     },
     "position": {
         "left": {

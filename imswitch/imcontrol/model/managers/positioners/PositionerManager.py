@@ -20,11 +20,22 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
-
-        initialSpeed={
-            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
-        }   
-        self._speed = initialSpeed
+        self.__axes = positionerInfo.axes
+        if positionerInfo.managerProperties.get("initialSpeed") is not None:
+            self._speed = positionerInfo.managerProperties["initialSpeed"]
+        else:
+            self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        if positionerInfo.managerProperties.get("initialIsHomed") is not None:
+        # if hasattr(positionerInfo.managerProperties, "initialIsHomed"):
+            self._home = positionerInfo.managerProperties["initialIsHomed"]
+        else:
+            self._home = {axis: True for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        self._home["Z"] = False
+        # settings for stopping the axis
+        initialStop={
+            axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }
+        self._stop = initialStop # is stopped?
 
         # seetings for homign the axis
         initialHome={
@@ -40,9 +51,9 @@ class PositionerManager(ABC):
 
         self.__name = name
 
-        self.__axes = positionerInfo.axes
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
+        self.__resetOnClose = positionerInfo.resetOnClose
         if not positionerInfo.forPositioning and not positionerInfo.forScanning:
             raise ValueError('At least one of forPositioning and forScanning must be set in'
                              ' PositionerInfo.')
@@ -91,6 +102,11 @@ class PositionerManager(ABC):
         """ Whether the positioner is used for scanning. """
         return self.__forScanning
 
+    @property
+    def resetOnClose(self) -> bool:
+        """ Whether the positioner should be reset to 0-position upon closing. """
+        return self.__resetOnClose
+
     @abstractmethod
     def move(self, dist: float, axis: str):
         """ Moves the positioner by the specified distance and returns the new
@@ -98,12 +114,18 @@ class PositionerManager(ABC):
         the positioner controls multiple axes, the axis must be specified. """
         pass
 
-    @abstractmethod
+    # @abstractmethod
+    # def _set_position(self, pos, axis):
+    #     pass
+
     def setPosition(self, position: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
         """
+        # result_pos = self._set_position(position, axis)
+        # self._position[axis] = result_pos
+
         pass
 
     def finalize(self) -> None:

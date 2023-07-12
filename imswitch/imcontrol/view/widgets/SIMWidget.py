@@ -65,19 +65,64 @@ class SIMWidget(NapariHybridWidget):
         # parameter tree for SIM reconstruction paramters
         self.SIMParameterTree = ParameterTree()
         self.generalparams = [{'name': 'general', 'type': 'group', 'children': [
-            {'name': 'wavelength (p1)', 'type': 'int', 'value': 488, 'limits': (400, 700), 'step': 1,
-             'suffix': 'nm'},
-            {'name': 'wavelength (p2)', 'type': 'int', 'value': 635, 'limits': (400, 700), 'step': 1,
-             'suffix': 'nm'},
-            {'name': 'NA', 'type': 'float', 'value': 0.85, 'limits': (0, 1.6), 'step': 0.05,
-             'suffix': 'A.U.'},
-            {'name': 'n', 'type': 'float', 'value': 1.0, 'limits': (1.0, 1.6),
-             'step': 0.1,
-             'suffix': 'A.U.'},
-            {'name': 'pixelsize', 'type': 'float', 'value': 6.5, 'limits': (0.1, 20),
-             'step': 0.1,
-             'suffix': 'µm'}
-        ]}]
+            {
+                'name': 'wavelength (p1)',
+                'type': 'int',
+                'value': 488,
+                'limits': (400, 700),
+                'step': 1,
+                'suffix': 'nm',
+                },
+            {
+                'name': 'wavelength (p2)',
+                'type': 'int',
+                'value': 635,
+                'limits': (400, 700),
+                'step': 1,
+                'suffix': 'nm',
+                },
+            {
+                'name': 'NA',
+                'type': 'float',
+                'value': 0.85,
+                'limits': (0, 1.6),
+                'step': 0.05,
+                'suffix': 'A.U.',
+                },
+            {
+                'name': 'n',
+                'type': 'float',
+                'value': 1.0,
+                'limits': (1.0, 1.6),
+                'step': 0.1,
+                'suffix': 'A.U.',
+                },
+            {
+                'name': 'pixelsize',
+                'type': 'float',
+                'value': 2.3,
+                'limits': (0.1, 20),
+                'step': 0.1,
+                'suffix': '\xc2\xb5m',
+                },
+            {
+                'name': 'magnefication',
+                'type': 'float',
+                'value': 15,
+                'limits': (0.1, 2000),
+                'step': 0.1,
+                'suffix': 'A.U.',
+                },
+            {
+                'name': 'eta',
+                'type': 'float',
+                'value': 0.6,
+                'limits': (0.0, 1),
+                'step': 0.1,
+                'suffix': 'A.U.',
+                },
+            ]}]
+
         self.SIMParameterTree.setStyleSheet("""
         QTreeView::item, QAbstractSpinBox, QComboBox {
             padding-top: 0;
@@ -114,7 +159,6 @@ class SIMWidget(NapariHybridWidget):
         self.grid.addWidget(self.simFrame, 0, 0, 1, 2)
         self.grid.addWidget(self.startSIMAcquisition, 1, 0, 1, 1)
         self.grid.addWidget(self.isRecordingButton, 1, 1, 1, 1)
-        
         
         # Laser control
         self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)

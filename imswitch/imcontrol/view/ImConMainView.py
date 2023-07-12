@@ -26,6 +26,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
         self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
+        self.viewSetupInfo = viewSetupInfo
+
         # Widget factory
         self.factory = widgets.WidgetFactory(options)
         self.docks = {}
@@ -66,15 +68,26 @@ class ImConMainView(QtWidgets.QMainWindow):
             'SLM': _DockInfo(name='SLM', yPosition=0),
             'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),
+            'DPC': _DockInfo(name='DPC', yPosition=0),
             'MCT': _DockInfo(name='MCT', yPosition=0),
+            'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
+            'Hypha': _DockInfo(name='Hypha', yPosition=0),
+            'MockXX': _DockInfo(name='MockXX', yPosition=0),
+            'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
             'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
             'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
             'ISM': _DockInfo(name='ISM', yPosition=0),
             'Laser': _DockInfo(name='Laser Control', yPosition=0),
+            'LED': _DockInfo(name='LED Control', yPosition=0),
             'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
             'Positioner': _DockInfo(name='Positioner', yPosition=1),
+            'Rotator': _DockInfo(name='Rotator', yPosition=1),
+            'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
+            'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
+            'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
             'SLM': _DockInfo(name='SLM', yPosition=2),
             'Scan': _DockInfo(name='Scan', yPosition=2),
+            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
@@ -87,6 +100,10 @@ class ImConMainView(QtWidgets.QMainWindow):
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+            'Deck': _DockInfo(name="Deck Tool", yPosition=1),
+            'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
+            'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
+            'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
             'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
             'Watcher': _DockInfo(name='File Watcher', yPosition=3),
             'Tiling': _DockInfo(name='Tiling', yPosition=3)
@@ -101,7 +118,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 
         dockArea = DockArea()
-        enabledDockKeys = viewSetupInfo.availableWidgets
+        enabledDockKeys = self.viewSetupInfo.availableWidgets
         if enabledDockKeys is False:
             enabledDockKeys = []
         elif enabledDockKeys is True:
@@ -130,7 +147,6 @@ class ImConMainView(QtWidgets.QMainWindow):
         layout.addWidget(dockArea)
 
         # Maximize window
-        #self.showMaximized()
         self.hide()  # Minimize time the window is displayed while loading multi module window
 
         # Adjust dock sizes (the window has to be maximized first for this to work properly)
@@ -141,6 +157,11 @@ class ImConMainView(QtWidgets.QMainWindow):
             rightDocks[-1].setStretch(1, 5)
         if 'Image' in self.docks:
             self.docks['Image'].setStretch(10, 1)
+
+        # self.showMaximized()
+
+        # self.setMaximumSize(1720,900)
+
 
     def addShortcuts(self, shortcuts):
         for s in shortcuts.values():
@@ -173,6 +194,8 @@ class ImConMainView(QtWidgets.QMainWindow):
         for widgetKey, dockInfo in dockInfoDict.items():
             self.widgets[widgetKey] = self.factory.createWidget(
                 getattr(widgets, f'{widgetKey}Widget')
+                if widgetKey != 'Scan' else
+                getattr(widgets, f'{widgetKey}Widget{self.viewSetupInfo.scan.scanWidgetType}')
             )
             self.docks[widgetKey] = Dock(dockInfo.name, size=(1, 1))
             self.docks[widgetKey].addWidget(self.widgets[widgetKey])

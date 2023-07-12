@@ -2,18 +2,23 @@ import enum
 import os
 import time
 from io import BytesIO
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Type, List
 
-import debugpy 
+import debugpy
 
 import h5py
-import zarr
+try:
+    import zarr
+except:
+    pass
 import numpy as np
 import tifffile as tiff
 import cv2
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.model import initLogger
+from ome_zarr.writer import write_multiscales_metadata
+from ome_zarr.format import format_from_version
 import abc
 import logging
 
@@ -24,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 class AsTemporayFile(object):
     """ A temporary file that when exiting the context manager is renamed to its original name. """
-
     def __init__(self, filepath, tmp_extension='.tmp'):
         if os.path.exists(filepath):
             raise FileExistsError(f'File {filepath} already exists.')
@@ -36,13 +40,10 @@ class AsTemporayFile(object):
 
     def __exit__(self, *args, **kwargs):
         os.rename(self.tmp_path, self.path)
-        logger.info("Renamed file from %s to %s", self.tmp_path, self.path)
-
 
 
 class Storer(abc.ABC):
     """ Base class for storing data"""
-
     def __init__(self, filepath, detectorManager):
         self.filepath = filepath
         self.detectorManager: DetectorsManager = detectorManager
@@ -56,40 +57,34 @@ class Storer(abc.ABC):
         raise NotImplementedError
 
 
-
-
 class ZarrStorer(Storer):
     """ A storer that stores the images in a zarr file store """
 
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
-
         with AsTemporayFile(f'{self.filepath}.zarr') as path:
+            datasets: List[dict] = []
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)
 
             for channel, image in images.items():
                 shape = self.detectorManager[channel].shape
-
-                d = root.create_dataset(channel, data=image, shape=tuple(reversed(shape)),
+                root.create_dataset(channel, data=image, shape=tuple(reversed(shape)),
                                         chunks=(512, 512), dtype='i2') #TODO: why not dynamic chunking?
-                d.attrs["ImSwitchData"] = attrs[channel]
-                logger.info(f"Saved image to zarr file {path}")
+
+                datasets.append({"path": channel, "transformation": None})
+            write_multiscales_metadata(root, datasets, format_from_version("0.2"), shape, **attrs)
+            logger.info(f"Saved image to zarr file {path}")
 
 
 class HDF5Storer(Storer):
     """ A storer that stores the images in a series of hd5 files """
-
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
-
         for channel, image in images.items():
 
             with AsTemporayFile(f'{self.filepath}_{channel}.h5') as path:
                 file = h5py.File(path, 'w')
-
                 shape = self.detectorManager[channel].shape
-
                 dataset = file.create_dataset('data', tuple(reversed(shape)), dtype='i2')
-
                 for key, value in attrs[channel].items():
                     try:
                         dataset.attrs[key] = value
@@ -102,27 +97,33 @@ class HDF5Storer(Storer):
                 dataset.attrs['element_size_um'] = \
                     self.detectorManager[channel].pixelSizeUm
 
-                dataset[:, ...] = np.moveaxis(image, 0, -1)
+                if image.ndim == 3:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2], [2, 1, 0])
+                elif image.ndim == 4:
+                    dataset[:, ...] = np.moveaxis(image, [0, 1, 2, 3], [3, 2, 1, 0])
+                else:
+                    dataset[:, ...] = np.moveaxis(image, 0, -1)
 
                 file.close()
+                logger.info(f"Saved image to hdf5 file {path}")
 
 
 class TiffStorer(Storer):
     """ A storer that stores the images in a series of tiff files """
-
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
+                logger.info(f"Saved image to tiff file {path}")
 
 class MP4Storer(Storer):
     """ A storer that writes the frames to an MP4 file """
 
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         # not yet implemented
-        pass 
-        
-        
+        pass
+
+
 class SaveMode(enum.Enum):
     Disk = 1
     RAM = 2
@@ -145,12 +146,9 @@ DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
 }
 
 
-
-
 class RecordingManager(SignalInterface):
     """ RecordingManager handles single frame captures as well as continuous
     recordings of detector data. """
-
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
@@ -236,13 +234,13 @@ class RecordingManager(SignalInterface):
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
 
-
         try:
             images = {}
 
             # Acquire data
             for detectorName in detectorNames:
                 images[detectorName] = self.__detectorsManager[detectorName].getLatestFrame(is_save=True)
+                image = images[detectorName]
 
             if saveFormat:
                 storer = self.__storerMap[saveFormat]
@@ -251,7 +249,6 @@ class RecordingManager(SignalInterface):
                     # Save images to disk
                     store = storer(savename, self.__detectorsManager)
                     store.snap(images, attrs)
-
 
                 if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
                     for channel, image in images.items():
@@ -292,14 +289,15 @@ class RecordingManager(SignalInterface):
             file.close()
         elif saveFormat == SaveFormat.TIFF:
             tiff.imwrite(filePath, image)
-        if saveFormat == SaveFormat.ZARR:
+        elif saveFormat == SaveFormat.ZARR:
             path = self.getSaveFilePath(f'{savename}.{fileExtension}')
             store = zarr.storage.DirectoryStore(path)
             root = zarr.group(store=store)
             shape = self.__detectorsManager[detectorName].shape
             d = root.create_dataset(detectorName, data=image, shape=tuple(reversed(shape)), chunks=(512, 512),
                                     dtype='i2')
-            d.attrs["ImSwitchData"] = attrs[detectorName]
+            datasets = {"path": detectorName, "transformation": None}
+            write_multiscales_metadata(root, datasets, format_from_version("0.2"), shape, **attrs)
             store.close()
         else:
             raise ValueError(f'Unsupported save format "{saveFormat}"')
@@ -343,10 +341,11 @@ class RecordingWorker(Worker):
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
-        
+
         currentFrame = {}
         datasets = {}
         filenames = {}
+
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
 
@@ -388,6 +387,7 @@ class RecordingWorker(Worker):
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
+                datasets[detectorName].attrs['writing'] = True
 
                 for key, value in self.attrs[detectorName].items():
                     try:
@@ -401,7 +401,7 @@ class RecordingWorker(Worker):
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 fileExtension = str(self.saveFormat.name).lower()
                 filePath = self.__recordingManager.getSaveFilePath(f'{self.savename}_{detectorName}.{fileExtension}')
-                filenames[detectorName] = filePath 
+                filenames[detectorName] = filePath
                 datasets[detectorName] = cv2.VideoWriter(filePath, fourcc, 20.0, shapes[detectorName])
                 #datasets[detectorName] = cv2.VideoWriter(filePath, cv2.VideoWriter_fourcc(*'MJPG'), 10, shapes[detectorName])
 
@@ -415,13 +415,13 @@ class RecordingWorker(Worker):
                 datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
                                                                             dtype='i2', chunks=(1, 512, 512)
                                                                             )
-
-                datasets[detectorName].attrs['ImSwitchData'] = self.attrs[detectorName]
                 datasets[detectorName].attrs['detector_name'] = detectorName
                 # For ImageJ compatibility
                 datasets[detectorName].attrs['element_size_um'] \
                     = self.__recordingManager.detectorsManager[detectorName].pixelSizeUm
                 datasets[detectorName].attrs['writing'] = True
+                info: List[dict] = [{"path": datasetName, "transformation": None}]
+                write_multiscales_metadata(files[detectorName], info, format_from_version("0.2"), shape, **self.attrs[detectorName])
 
 
         self.__recordingManager.sigRecordingStarted.emit()
@@ -484,7 +484,7 @@ class RecordingWorker(Worker):
                                     self.__logger.debug(type(frame))
 
                                     datasets[detectorName].write(frame)
-                                    
+
 
                             # Things get a bit weird if we have multiple detectors when we report
                             # the current frame number, since the detectors may not be synchronized.
@@ -531,7 +531,7 @@ class RecordingWorker(Worker):
                                     self.__logger.debug(type(frame))
 
                                     datasets[detectorName].write(frame)
-                                    
+
                             currentFrame[detectorName] += n
                             self.__recordingManager.sigRecordingTimeUpdated.emit(
                                 np.around(currentRecTime, decimals=2)
@@ -587,7 +587,7 @@ class RecordingWorker(Worker):
                                     frame = cv2.cvtColor(cv2.convertScaleAbs(frame), cv2.COLOR_GRAY2BGR)
 
                                     datasets[detectorName].write(frame)
-                                    
+
 
                             currentFrame[detectorName] += n
 
@@ -624,16 +624,18 @@ class RecordingWorker(Worker):
                                 name, file, filePath, True
                             )
                     else:
+                        datasets[detectorName].attrs['writing'] = False
                         if self.saveFormat == SaveFormat.HDF5:
                             file.close()
                         elif self.saveFormat == SaveFormat.MP4:
                             for detectorName, file in files.items():
                                 datasets[detectorName].release()
                         else:
-                            datasets[detectorName].attrs['writing'] = False
                             self.store.close()
-
-            self.__recordingManager.endRecording(wait=False)
+            emitSignal = True
+            if self.recMode in [RecMode.SpecFrames, RecMode.ScanOnce, RecMode.ScanLapse]:
+                emitSignal = False
+            self.__recordingManager.endRecording(emitSignal=emitSignal, wait=False)
 
     def _getFiles(self):
         singleMultiDetectorFile = self.singleMultiDetectorFile
@@ -690,8 +692,6 @@ class RecMode(enum.Enum):
     ScanOnce = 3
     ScanLapse = 4
     UntilStop = 5
-
-
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

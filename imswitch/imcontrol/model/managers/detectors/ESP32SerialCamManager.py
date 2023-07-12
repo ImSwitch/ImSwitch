@@ -2,49 +2,44 @@ import numpy as np
 
 from imswitch.imcommon.model import APIExport
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
 
 class ESP32SerialCamManager(DetectorManager):
-    """ DetectorManager that deals with TheImagingSource cameras and the
-    parameters for frame extraction from them.
-
-    Manager properties:
-
-    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
-      indexing starts at 0); set this string to an invalid value, e.g. the
-      string "mock" to load a mocker
-    - ``picamera`` -- dictionary of Allied Vision camera properties
+    """ DetectorManager that deals with the ESP32 Serial Cam 
     """
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        
-        self._rs232manager = _lowLevelManagers['rs232sManager'][
-            detectorInfo.managerProperties['esp32cam']["rs232device"]
-        ]
+
         model = "ESP32SerialCamera"
         self._running = False
         self._adjustingParameters = False
-        fullShape = (640,480) # TODO: get from camera
+        fullShape = (320,240)
 
         # Prepare actions
         actions = {}
 
         # Prepare parameters
         parameters = {
-            }            
+            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+                                                editable=True),
+            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+                                            editable=True)
+            }          
+        # initialize camera
+
+        self._camera = self._getESP32CamObj()
 
         # init super-class
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
             model=model, parameters=parameters, actions=actions, croppable=True)
 
         # assign camera object
-        self._camera = self._rs232manager._esp32.camera
 
 
     def getLatestFrame(self, is_save=False):
-        return self._camera.get_frame() 
+        return self._camera.getLast() 
 
     def setParameter(self, name, value):
         """Sets a parameter value and returns the value.
@@ -72,24 +67,28 @@ class ESP32SerialCamManager(DetectorManager):
         value = self._camera.getPropertyValue(name)
         return value
     
-    @APIExport(runOnUIThread=True)
-    def setCameraLED(self, value):
-        self._camera.set_led(value)
-
-    def setBinning(self, binning):
-        super().setBinning(binning) 
         
     def getChunk(self):
-        pass
+        return np.expand_dims(self._camera.getLastChunk(),0)
 
     def flushBuffers(self):
         pass
 
     def startAcquisition(self):
-        pass
+        if self._camera.model == "mock":
+            self.__logger.debug('We could attempt to reconnect the camera')
+            pass
+            
+        if not self._running:
+            self._camera.start_live()
+            self._running = True
+            self.__logger.debug('startlive')
 
     def stopAcquisition(self):
-        pass
+        if self._running:
+            self._running = False
+            self._camera.stop_live()
+            self.__logger.debug('stoplive')
 
     def stopAcquisitionForROIChange(self):
         pass
@@ -112,8 +111,22 @@ class ESP32SerialCamManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
+
+    def _getESP32CamObj(self):
+        try:
+            from imswitch.imcontrol.model.interfaces.CameraESP32CamSerial import CameraESP32CamSerial
+            self.__logger.debug(f'Trying to initialize ESP32Camera')
+            camera = CameraESP32CamSerial()
+        except Exception as e:
+            self.__logger.warning(f'Failed to initialize PiCamera {e}, loading TIS mocker')
+            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
+            camera = MockCameraTIS()
+
+        self.__logger.info(f'Initialized camera, model: {camera.model}')
+        return camera
+
     def closeEvent(self):
-        pass
+        self._camera.close()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

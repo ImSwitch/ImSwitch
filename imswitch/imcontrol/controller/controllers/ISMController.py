@@ -2,7 +2,7 @@ import json
 import os
 
 import numpy as np
-import time 
+import time
 import tifffile as tif
 import threading
 from datetime import datetime
@@ -11,7 +11,7 @@ from datetime import datetime
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-import time
+
 
 from ..basecontrollers import LiveUpdatedController
 
@@ -19,39 +19,39 @@ from ..basecontrollers import LiveUpdatedController
 
 class ISMController(LiveUpdatedController):
     """Linked to ISMWidget."""
-    
+
     sigImageReceived = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
-        
+
         # ISM parameters
         self.nImages = 0
 
         # store old values
-        self.Laser1ValueOld = 0        
+        self.Laser1ValueOld = 0
         self.Laser1Value = 0
-        
+
         self.ISMFilename = ""
-        
+
         self.updateRate=2
 
         self.tUnshake = .1
-        
+
         if self._setupInfo.ism is None:
             self._widget.replaceWithError('ISM is not configured in your setup file.')
             return
 
-        
-        # Connect ISMWidget signals      
+
+        # Connect ISMWidget signals
         self._widget.ISMStartButton.clicked.connect(self.startISM)
         self._widget.ISMStopButton.clicked.connect(self.stopISM)
         self._widget.ISMShowLastButton.clicked.connect(self.showLast)
         self._widget.ISMShowSinglePatternButton.clicked.connect(self.initFilter)
 
         self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
-        
+
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
@@ -64,7 +64,7 @@ class ISMController(LiveUpdatedController):
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
         self.isISMrunning = False
-        
+
         self._widget.ISMShowLastButton.setEnabled(False)
 
 
@@ -79,19 +79,19 @@ class ISMController(LiveUpdatedController):
         ismPattern = np.matlib.repmat(unitCell, int(nPixels//nUnitCell), int(nPixels//nUnitCell))
         ismPatternIndex =  np.where(ismPattern.flatten()>0)[0]
         return ismPatternIndex
-        
+
     def initFilter(self):
         ismPatternIndex = self.getISMFrame(nFrame=0)
         self.laser.sendScannerPattern(ismPatternIndex, scannernFrames=1,
             scannerLaserVal=32000,
             scannerExposure=500, scannerDelay=500)
         self._widget.setText("Displaying standard pattern")
-        
+
     def startISM(self):
         # initilaze setup
         # this is not a thread!
         self._widget.ISMStartButton.setEnabled(False)
-            
+
         if not self.isISMrunning and self.Laser1Value>0:
             self.nImages = 0
             self._widget.setText("Starting ISM...")
@@ -104,31 +104,31 @@ class ISMController(LiveUpdatedController):
             self.ISMDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
             # store old values for later
-            self.Laser1ValueOld = self.lasers[0].power            
-            
+            self.Laser1ValueOld = self.lasers[0].power
+
             # reserve space for the stack
             self._widget.ISMShowLastButton.setEnabled(False)
 
             # Initiate ISM Imaging
-        
+
             try:
-                # make sure there is no exisiting thrad 
+                # make sure there is no exisiting thrad
                 del self.ISMThread
             except:
                 pass
-                
-            # this should decouple the hardware-related actions from the GUI - but it doesn't 
+
+            # this should decouple the hardware-related actions from the GUI - but it doesn't
             self.isISMrunning = True
             self.ISMThread = threading.Thread(target=self.takeISMImageThread, args=(), daemon=True)
             self.ISMThread.start()
-        else:            
+        else:
             self.isISMrunning = False
             self._widget.ISMStartButton.setEnabled(True)
 
 
     def stopISM(self):
         self.isISMrunning = False
-        
+
         self._widget.setText("Stopping timelapse...")
 
         self._widget.ISMStartButton.setEnabled(True)
@@ -141,11 +141,11 @@ class ISMController(LiveUpdatedController):
             del self.ISMThread
         except:
             pass
-        
+
         self._widget.setText("Done wit timelapse...")
-    
+
         # store old values for later
-        self.lasers[0].setValue(self.Laser1ValueOld)            
+        self.lasers[0].setValue(self.Laser1ValueOld)
 
 
     def showLast(self):
@@ -158,7 +158,7 @@ class ISMController(LiveUpdatedController):
             self._widget.setImage(self.LastStackLaser2ArrayLast, colormap="red", name="Red")
         except Exception as e:
             self._logger.error(e)
-            
+
         try:
             self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield")
         except  Exception as e:
@@ -169,15 +169,15 @@ class ISMController(LiveUpdatedController):
         self._widget.setImage(im)
 
 
-            
-        
+
+
     def takeISMImageThread(self):
         # this wil run i nthe background
         self._logger.debug("Take ISM images")
-        
+
         # reserve and free space for displayed stacks
         self.LastStackLaser1 = []
-        
+
         for iISMimage in range(16*16):
             # 1: Display ISM Frame
             ismPatternIndex = self.getISMFrame(nFrame=iISMimage)
@@ -199,7 +199,7 @@ class ISMController(LiveUpdatedController):
         self.LastStackLaser1ArrayLast = np.array(self.LastStackLaser1)
         self._widget.ISMShowLastButton.setEnabled(True)
         self._widget.ISMStartButton.setEnabled(True)
-        
+
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -212,7 +212,7 @@ class ISMController(LiveUpdatedController):
         except:
             pass
 
-        
+
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
         #self.lasers[0].setEnabled(True)
@@ -225,7 +225,7 @@ class ISMController(LiveUpdatedController):
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self.lasers[1].setValue(self.LEDValue)
-                
+
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
@@ -233,7 +233,7 @@ class ISMController(LiveUpdatedController):
     def getSaveFilePath(self, date, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"
         dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
-        
+
         newPath = os.path.join(dirPath,mFilename)
 
         if not os.path.exists(dirPath):

@@ -33,6 +33,8 @@ class SIMDisplay(QtWidgets.QLabel):
         return self.frameID
 
     def setMonitor(self, monitor, updateImage=False):
+        if monitor is None:
+            monitor = 0
         app = QtWidgets.QApplication.instance()
         screens = app.screens()
 

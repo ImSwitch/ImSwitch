@@ -55,7 +55,7 @@ class FFTController(LiveUpdatedController):
         self.showPos = enabled
         self.changePos(self._widget.getPos())
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update with new detector frame. """
         if not isCurrentDetector or not self.active:
             return

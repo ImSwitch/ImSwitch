@@ -1,7 +1,9 @@
-from imswitch.imcommon.model import VFileItem
+from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
-    RecordingManager, RS232sManager, ScanManager, SLMManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager
+    RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, MockXXManager, WebRTCManager, HyphaManager,
+    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager,
+    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager#, ScanManager
 )
 
 
@@ -12,6 +14,7 @@ class MasterController:
     """
 
     def __init__(self, setupInfo, commChannel, moduleCommChannel):
+        self.__logger = initLogger(self)
         self.__setupInfo = setupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
@@ -31,18 +34,44 @@ class MasterController:
                                                      **lowLevelManagers)
         self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
                                            **lowLevelManagers)
+        self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
+                                            **lowLevelManagers)
 
-
-        self.scanManager = ScanManager(self.__setupInfo)
+        self.LEDsManager = LEDsManager(self.__setupInfo.LEDs)
+        #self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
+        self.dpcManager = DPCManager(self.__setupInfo.dpc)
         self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.webrtcManager = WebRTCManager(self.__setupInfo.webrtc)
+        self.hyphaManager = HyphaManager(self.__setupInfo.hypha)
+        self.MockXXManager = MockXXManager(self.__setupInfo.mockxx)
+        self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)
         self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
         self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
         self.ismManager = ISMManager(self.__setupInfo.ism)
+
+        if self.__setupInfo.microscopeStand:
+            self.standManager = StandManager(self.__setupInfo.microscopeStand,
+                                             **lowLevelManagers)
+
+        # Generate scanManager type according to setupInfo
+        if self.__setupInfo.scan:
+            if self.__setupInfo.scan.scanWidgetType == "PointScan":
+                self.scanManager = ScanManagerPointScan(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "Base":
+                self.scanManager = ScanManagerBase(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "MoNaLISA":
+                self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
+            else:
+                self.__logger.error(
+                    'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'
+                    ' ["Base", "PointScan", "MoNaLISA"].'
+                )
+                return
 
         # Connect signals
         cc = self.__commChannel
@@ -51,6 +80,7 @@ class MasterController:
         self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
         self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
+        self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
 
         self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
         self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)

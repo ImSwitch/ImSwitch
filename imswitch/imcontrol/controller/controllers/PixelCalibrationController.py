@@ -50,19 +50,29 @@ class PixelCalibrationController(LiveUpdatedController):
         
     def snapPreview(self):
         self._logger.info("Snap preview...")
-        self.previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
-        self._widget.canvas.setImage(self.previewImage)
+        previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
+        self._widget.setImage(previewImage)
+        self._widget.addPointLayer()
         
     def startPixelCalibration(self):
         # initilaze setup
         # this is not a thread!
-        self.pixelSize = self._widget.getPixelSize()
-        self._widget.setInformationLabel(str(self.pixelSize)+" µm")
+        knownDistance = self._widget.getKnownDistance()
+        try:
+            self.lastTwoPoints = self._widget.viewer.layers["Pixelcalibration Points"].data[-2:,]
+            dx = self.lastTwoPoints[1,0]-self.lastTwoPoints[0,0]
+            dy = self.lastTwoPoints[1,1]-self.lastTwoPoints[0,1]
+            dr = np.sqrt(dx**2+dy**2)
+            pixelSize = knownDistance/dr
+            self._widget.setInformationLabel(str(pixelSize)+" µm")
+            self.detector.setPixelSizeUm(pixelSize*1e-3) # convert from nm to um
+        except:
+            pass 
 
     def setPixelSize(self):
         # returns nm from textedit
         self.pixelSize = self._widget.getPixelSizeTextEdit()
-
+        self._widget.setInformationLabel(str(self.pixelSize)+" µm")
         #try setting it in the camera parameters
         try:
             self.detector.setPixelSizeUm(self.pixelSize*1e-3) # convert from nm to um

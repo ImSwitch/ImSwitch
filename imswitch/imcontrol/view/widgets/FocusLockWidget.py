@@ -1,6 +1,7 @@
 import numpy as np
 import pyqtgraph as pg
 from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
@@ -8,14 +9,16 @@ from .basewidgets import Widget
 
 class FocusLockWidget(Widget):
     """ Widget containing focus lock interface. """
-
+    sigSliderExpTValueChanged = QtCore.Signal(float)  # (value)
+    sigSliderGainValueChanged = QtCore.Signal(float)  # (value)
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Focus lock
-        self.kpEdit = QtWidgets.QLineEdit('5')
+        self.kpEdit = QtWidgets.QLineEdit('0')
         self.kpLabel = QtWidgets.QLabel('kp')
-        self.kiEdit = QtWidgets.QLineEdit('0.1')
+        self.kiEdit = QtWidgets.QLineEdit('0')
         self.kiLabel = QtWidgets.QLabel('ki')
 
         self.lockButton = guitools.BetterPushButton('Lock')
@@ -27,18 +30,9 @@ class FocusLockWidget(Widget):
         self.twoFociBox = QtWidgets.QCheckBox('Two foci')
 
         self.zStepFromEdit = QtWidgets.QLineEdit('40')
-        self.zStepFromLabel = QtWidgets.QLabel('Min step (nm)')
-        self.zStepToEdit = QtWidgets.QLineEdit('100')
-        self.zStepToLabel = QtWidgets.QLabel('Max step (nm)')
+        self.zStepFromLabel = QtWidgets.QLabel('Min z-stack step (nm)')
 
-        # self.focusDataBox = QtWidgets.QCheckBox('Save data')  # Connect to exportData
         self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
-
-        # Piezo absolute positioning
-        self.positionLabel = QtWidgets.QLabel(
-            'Position (µm)')  # Potentially disregard this and only use in the positioning widget?
-        self.positionEdit = QtWidgets.QLineEdit('50')
-        self.positionSetButton = guitools.BetterPushButton('Set')
 
         # Focus lock calibration
         self.calibFromLabel = QtWidgets.QLabel('From (µm)')
@@ -49,10 +43,9 @@ class FocusLockWidget(Widget):
         self.focusCalibButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                             QtWidgets.QSizePolicy.Expanding)
         self.calibCurveButton = guitools.BetterPushButton('See calib')
-        self.calibrationDisplay = QtWidgets.QLineEdit(
-            'Previous calib: none')  # Edit this from the controller with calibration values
+        self.calibrationDisplay = QtWidgets.QLineEdit('No calibration')
         self.calibrationDisplay.setReadOnly(True)
-        # CREATE CALIBRATION CURVE WINDOW AND FOCUS CALIBRATION GRAPH SOMEHOW
+        self.focusCalibrationWindow = FocusCalibrationWindow()
 
         # Focus lock graph
         self.focusLockGraph = pg.GraphicsLayoutWidget()
@@ -60,8 +53,7 @@ class FocusLockWidget(Widget):
         self.focusPlot = self.focusLockGraph.addPlot(row=1, col=0)
         self.focusPlot.setLabels(bottom=('Time', 's'), left=('Laser position', 'px'))
         self.focusPlot.showGrid(x=True, y=True)
-        # update this (self.focusPlotCurve.setData(X,Y)) with update(focusSignal) function
-        self.focusPlotCurve = self.focusPlot.plot(pen='y')
+        self.focusPlotCurve = self.focusPlot.plot(pen='y') # update from FocusLockController
 
         # Webcam graph
         self.webcamGraph = pg.GraphicsLayoutWidget()
@@ -71,7 +63,36 @@ class FocusLockWidget(Widget):
         self.vb.setAspectLocked(True)
         self.vb.addItem(self.camImg)
 
-        # PROCESS DATA THREAD - ADD SOMEWHERE ELSE, NOT HERE, AS IT HAS NO GRAPHICAL ELEMENTS!
+        # camera settings
+        valueDecimals = 1
+        valueRangeExpT = (1,1200)
+        valueRangeGain = (0,30)
+        tickInterval = 5
+        singleStep = 1
+        
+        # exposure slider
+        self.sliderExpT = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
+        self.sliderExpT.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMin, valueRangeMax = valueRangeExpT
+
+        self.sliderExpT.setMinimum(valueRangeMin)
+        self.sliderExpT.setMaximum(valueRangeMax)
+        self.sliderExpT.setTickInterval(50)
+        self.sliderExpT.setSingleStep(singleStep)
+        self.sliderExpT.setValue(10)
+
+        # exposure slider
+        self.sliderGain = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
+                                           decimals=valueDecimals)
+        self.sliderGain.setFocusPolicy(QtCore.Qt.NoFocus)
+        valueRangeMin, valueRangeMax = valueRangeGain
+
+        self.sliderGain.setMinimum(valueRangeMin)
+        self.sliderGain.setMaximum(valueRangeMax)
+        self.sliderGain.setTickInterval(5)
+        self.sliderGain.setSingleStep(singleStep)
+        self.sliderGain.setValue(10)
 
         # GUI layout below
         grid = QtWidgets.QGridLayout()
@@ -85,22 +106,69 @@ class FocusLockWidget(Widget):
         grid.addWidget(self.kiLabel, 2, 3)
         grid.addWidget(self.kiEdit, 2, 4)
         grid.addWidget(self.lockButton, 1, 5, 2, 1)
-        grid.addWidget(self.zStackBox, 4, 2)
-        grid.addWidget(self.twoFociBox, 4, 6)
+        grid.addWidget(self.zStackBox, 3, 6)
+        grid.addWidget(self.twoFociBox, 2, 6)
         grid.addWidget(self.zStepFromLabel, 3, 4)
-        grid.addWidget(self.zStepFromEdit, 4, 4)
-        grid.addWidget(self.zStepToLabel, 3, 5)
-        grid.addWidget(self.zStepToEdit, 4, 5)
-        # grid.addWidget(self.focusDataBox, 4, 0, 1, 2)
+        grid.addWidget(self.zStepFromEdit, 3, 5)
         grid.addWidget(self.calibFromLabel, 1, 0)
         grid.addWidget(self.calibFromEdit, 1, 1)
         grid.addWidget(self.calibToLabel, 2, 0)
         grid.addWidget(self.calibToEdit, 2, 1)
         grid.addWidget(self.calibCurveButton, 3, 2)
-        grid.addWidget(self.positionLabel, 1, 6)
-        grid.addWidget(self.positionEdit, 1, 7)
-        grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
-        grid.addWidget(self.camDialogButton, 3, 6, 1, 2)
+        grid.addWidget(self.camDialogButton, 1, 6, 1, 2)
+
+        grid.addWidget(self.sliderExpT, 4, 0, 1, 9)
+        grid.addWidget(self.sliderGain, 5, 0, 1, 9)
+
+        # Connect signals
+        self.sliderGain.valueChanged.connect(
+            lambda value: self.sigSliderGainValueChanged.emit(value)
+        )
+        self.sliderExpT.valueChanged.connect(
+            lambda value: self.sigSliderExpTValueChanged.emit(value)
+        )
+        self.layer = None
+
+    def setKp(self, kp):
+        self.kpEdit.setText(str(kp))
+
+    def setKi(self, ki):
+        self.kiEdit.setText(str(ki))
+
+    def showCalibrationCurve(self, data):
+        self.focusCalibrationWindow.run(data)
+        self.focusCalibrationWindow.show()
+
+
+class FocusCalibrationWindow(QtWidgets.QFrame):
+    def __init__(self):
+        super().__init__()
+        self.__focusCalibGraph = FocusCalibrationGraph()
+        grid = QtWidgets.QGridLayout()
+        self.setLayout(grid)
+        grid.addWidget(self.__focusCalibGraph, 0, 0)
+
+    def run(self, data):
+        self.__focusCalibGraph.draw(data)
+
+
+class FocusCalibrationGraph(pg.GraphicsLayoutWidget):
+    def __init__(self):
+        super().__init__()
+        self.plot = self.addPlot(row=1, col=0)
+        self.plot.setLabels(bottom=('Set z position', 'µm'),
+                            left=('Laser spot position', 'px'))
+        self.plot.showGrid(x=True, y=True)
+
+    def draw(self, data):
+        self.plot.clear()
+        self.positionData = data['positionData']
+        self.signalData = data['signalData']
+        self.poly = data['poly']
+        self.plot.plot(self.positionData,
+                       self.signalData, pen=None, symbol='o')
+        self.plot.plot(self.positionData,
+                       np.polyval(self.poly, self.positionData), pen='r')
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -90,7 +90,8 @@ In the above code-snipped we suggest to use [mamba](https://github.com/mamba-org
 
 ##### 2) Working on arm64 chipset (e.g. Mac M1, M2 and on)
 
-If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or Jetson Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
+If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or 
+Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
 
 On example of the [QtScintilla package](https://pypi.org/project/QScintilla/) for PyQt5 we will demonstrate how to build the existing conda-recipe on your machine. First, try to install as many packages as possible along the [installation description above](#option-c-install-from-github-UC2-version).
 
@@ -173,13 +174,26 @@ sudo rm /etc/apt/sources.list.d/cuda*local /etc/apt/sources.list.d/visionworks*r
 sudo rm -rf /usr/src/linux-headers-*
 ```
 
+Use light-weight x server
+
+```
+cd ~/Downloads
+git clone https://github.com/jetsonhacks/installLXDE/
+cd installLXDE
+./installLXDE.sh
+sudo reboot
+```
+
+
 Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
-./anaconda3/bin/conda init
-conda create -n imswitch  python=3.8
+#./anaconda3/bin/conda init
+#restart
+conda create -n imswitch  python=3.9 -y
+conda activate imswitch
 ```
 
 Now lets add pyqt5 via conda
@@ -193,6 +207,99 @@ Make sure you install this repo without `pyqt` in `setup.cfg`
 install imswitch without pyqt
 sudo apt-get install python3-pyqt5.qsci
 
+sudo date -s "8 MAR 2023"
+
+```
+conda create -n imswitch python=3.9 -y
+conda activate imswitch
+conda install pyqt5==5.12.3
+cd ~
+git clone https://github.com/openUC2/ImSwitch
+conda install pyqt5==5.12.3
+cd ~/ImSwitch
+pip install -e .
+cd ~
+git clone https://github.com/openUC2/ImSwitchConfig
+
+```
+
+rotate the screen
+```
+export DISPLAY=:0
+xrandr -o inverted
+```
+
+sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf 
+```
+
+
+# Match on all types of devices but joysticks
+Section "InputClass"
+        Identifier "libinput pointer catchall"
+        Option "CalibrationMatrix" "0 1 0 -1 0 1 0 0 1"        
+        MatchIsPointer "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+EndSection
+```
+
+cd ~
+git clone https://github.com/openUC2/ImSwitchConfig
+
+
+### install drivers for daheng
+
+```
+cd ~/Downlodas
+git clone https://github.com/hongquanli/octopi-research
+cd octopi-research/software/drivers and libraries/daheng camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271
+chmod +x Galaxy_camera.run
+sudo ./Galaxy_camera.run
+```
+
+### install drivers for hik (jetson)
+
+Download the Linux zip (MVS2.1)
+https://www.hikrobotics.com/cn/machinevision/service/download
+        
+```
+sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb 
+source ~/.bashrc
+```
+
+### Permissions for the serial driver
+
+```
+sudo usermod -a -G dialout $USER
+```
+
+### Run Jetson Headless
+
+turn off x server 
+
+https://forums.developer.nvidia.com/t/how-to-boot-jetson-nano-in-text-mode/73636/8
+
+```
+# To disable GUI on boot, run:
+sudo systemctl set-default multi-user.target
+
+# To enable GUI again issue the command:
+sudo systemctl set-default graphical.target
+
+# to start Gui session on a system without a current GUI just execute:
+sudo systemctl start gdm3.service
+```
+
+install screen
+
+```
+sudo apt-get install xvfb -y
+xvfb-run -s "-screen 0 1024x768x24" python ~/ImSwitch/main.py
+```
+
+### Reduce memory consumption 
+
+reduce `nFramebuffer from 200 to 10!!!!
 
 
 ## Configure the System

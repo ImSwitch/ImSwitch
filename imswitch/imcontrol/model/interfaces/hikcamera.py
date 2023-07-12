@@ -12,7 +12,7 @@ import collections
 from sys import platform
 if platform == "linux" or platform == "linux2":
     # linux
-    pass
+    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
 elif platform == "darwin":
     # OS X
     from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
@@ -28,7 +28,7 @@ elif platform == "win32":
 class CameraHIK:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
         super().__init__()
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
 
         # many to be purged
         self.model = "CameraHIK"
@@ -360,7 +360,7 @@ class CameraHIK:
                     pass 
                 if self.g_bExit == True:
                     break
-        if platform == "darwin":
+        if platform in ("darwin", "linux2", "linux"):
             
             # en:Get payload size
             stParam =  MVCC_INTVALUE()

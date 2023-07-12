@@ -2,6 +2,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import LiveUpdatedController
 from imswitch.imcommon.model import initLogger
 import numpy as np
+import re
 
 class ImageController(LiveUpdatedController):
     """ Linked to ImageWidget."""
@@ -16,15 +17,20 @@ class ImageController(LiveUpdatedController):
         self._lastShape = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         self._shouldResetView = False
 
-        detectorName = self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)[0]
-        # check if RGB 
-        try:
-            isRGB = self._master.detectorsManager[detectorName]._isRGB
-        except: 
-            isRGB = False        
+        names =  self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
+        if type(names) is not list:
+            names = [names]
+        
+        isRGB = []
+        for name in names:
+            try:
+                isRGB.append(self._master.detectorsManager[name]._isRGB)
+            except:
+                isRGB.append(False)
 
-        self._widget.setLiveViewLayers(detectorName, isRGB)
-
+        self._widget.setLiveViewLayers(
+            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition), isRGB
+        )
 
         # Connect CommunicationChannel signals
         self._commChannel.sigUpdateImage.connect(self.update)
@@ -35,6 +41,10 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
+
+
+
+
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -59,14 +69,14 @@ class ImageController(LiveUpdatedController):
         """ Remove item from communication channel to viewbox."""
         self._widget.removeItem(item)
 
-    def update(self, detectorName, im, init, isCurrentDetector):
+    def update(self, detectorName, im, init, scale, isCurrentDetector):
         """ Update new image in the viewbox. """
         if np.prod(im.shape)>1: # TODO: This seems weird!
 
             if not init:
                 self.autoLevels([detectorName], im)
 
-            self._widget.setImage(detectorName, im)
+            self._widget.setImage(detectorName, im, scale)
 
             if not init or self._shouldResetView:
                 self.adjustFrame(instantResetView=True)
@@ -108,6 +118,7 @@ class ImageController(LiveUpdatedController):
         detectorName = self._master.detectorsManager.getAllDeviceNames()[0]
         self.__logger.debug(f"Change exposure of {detectorName}, to {str(exp)}")
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

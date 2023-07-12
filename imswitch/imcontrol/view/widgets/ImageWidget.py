@@ -16,6 +16,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.updateLevelsWidget = naparitools.NapariUpdateLevelsWidget.addToViewer(
             self.napariViewer
         )
+        self.NapariResetViewWidget = naparitools.NapariResetViewWidget.addToViewer(self.napariViewer, 'right')
         self.NapariShiftWidget = naparitools.NapariShiftWidget.addToViewer(self.napariViewer)
         self.imgLayers = {}
 
@@ -31,7 +32,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.crosshair.hide()
         self.addItem(self.crosshair)
 
-    def setLiveViewLayers(self, names, rgb=False):
+    def setLiveViewLayers(self, names, isRGB = [False]):
         for name, img in self.imgLayers.items():
             if name not in names:
                 self.napariViewer.layers.remove(img, force=True)
@@ -51,7 +52,8 @@ class ImageWidget(QtWidgets.QWidget):
         if type(names) is not list:
             names = [names]
 
-        for name in names:
+        for i, name in enumerate(names):
+            rgb = isRGB[i]
             if name not in self.napariViewer.layers:
                 try:
                     addImage(name, rgb, name.lower())
@@ -67,8 +69,9 @@ class ImageWidget(QtWidgets.QWidget):
     def getImage(self, name):
         return self.imgLayers[name].data
 
-    def setImage(self, name, im):
+    def setImage(self, name, im, scale):
         self.imgLayers[name].data = im
+        self.imgLayers[name].scale = tuple(scale)
 
     def clearImage(self, name):
         self.setImage(name, np.zeros((1, 1)))

@@ -3,15 +3,42 @@ import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
 from imswitch.imcontrol.view import guitools
-from .basewidgets import NapariHybridWidget
+from .basewidgets import Widget
 
 
-class HyphaWidget(NapariHybridWidget):
-    """ Widget containing mct interface. """
-
-
-    def __post_init__(self):
-        pass        
+class HyphaWidget(Widget):
+    """ Widget containing Hypha interface. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._webrtcURL = ""
+        # have a simple text field that determines the webrtc name address
+        self._webrtc_name_label = QtWidgets.QLabel('WebRTC name')
+        self._webrtc_name = QtWidgets.QLineEdit()
+        
+        # have a simple link that on click opens the browser with the URL provided by the controller
+        self._webrtc_link = QtWidgets.QPushButton('Open WebRTC link')
+        
+        # connect the gui ellements to functions 
+        self._webrtc_link.clicked.connect(self._open_webrtc_link)
+        
+        # add all gui elements to a simple grid layout
+        self._layout = QtWidgets.QGridLayout()
+        self._layout.addWidget(self._webrtc_name_label, 0, 0)
+        self._layout.addWidget(self._webrtc_name, 0, 1)
+        self._layout.addWidget(self._webrtc_link, 1, 0, 1, 2)
+        
+    def setHyphaURL(self, url):
+        """ Set the URL of the Hypha server. """
+        self._webrtcURL = url
+        
+    def _open_webrtc_link(self):
+        """ Open the browser with the URL self._webrtcURL. """
+        pass
+        
+        
+    
+        
+        
         
     
     

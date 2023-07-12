@@ -67,6 +67,7 @@ class DPCController(ImConWidgetController):
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
+        
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
         # select detectors

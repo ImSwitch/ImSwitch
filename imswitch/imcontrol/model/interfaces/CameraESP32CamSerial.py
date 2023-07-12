@@ -130,11 +130,19 @@ class CameraESP32CamSerial:
                 # don't read to early
                 time.sleep(.05)
                 # readline of camera
-                imageB64 = self.serialdevice.readline()
-
-                # decode byte stream
-                image = np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode()))))
-                self.frame = np.mean(image,-1)
+                frame_size = 320 * 240
+                frame_bytes = self.serialdevice.read(frame_size)
+                frame_flat = np.frombuffer(frame_bytes, dtype=np.uint8)
+                self.frame = frame_flat.reshape((240, 320))
+                
+                # find 0,1,0,1... pattern to sync
+                pattern = (0,1,0,1,0,1,0,1,0,1)
+                window_size = len(pattern)
+                for i in range(len(frame_flat) - window_size + 1):
+                    # Check if the elements in the current window match the pattern
+                    if np.array_equal(frame_flat[i:i+window_size], pattern):
+                        break
+                
 
                 nFrame += 1
                 
@@ -172,10 +180,7 @@ class CameraESP32CamSerial:
         
         
         
-
-'''
-Code for the ESP32 XIAO
-
+''' ESP CODE
 #include "esp_camera.h"
 #include <base64.h>
 
@@ -204,15 +209,13 @@ Code for the ESP32 XIAO
 void grabImage();
 void cameraInit();
 
-
 void setup()
 {
   Serial.begin(BAUD_RATE);
-
+  Serial.setTimeout(20);
   cameraInit();
 }
 
-bool isCROP = false;
 int Nx = 320;
 int Ny = 240;
 int Nroi = 50;
@@ -220,85 +223,61 @@ int x = 320 / 2;
 int y = 240 / 2;
 bool isStreaming = true;
 
-void crop_image(camera_fb_t *fb, unsigned short cropLeft, unsigned short cropRight, unsigned short cropTop, unsigned short cropBottom)
-{
-  unsigned int maxTopIndex = cropTop * fb->width * 2;
-  unsigned int minBottomIndex = ((fb->width * fb->height) - (cropBottom * fb->width)) * 2;
-  unsigned short maxX = fb->width - cropRight; // In pixels
-  unsigned short newWidth = fb->width - cropLeft - cropRight;
-  unsigned short newHeight = fb->height - cropTop - cropBottom;
-  size_t newJpgSize = newWidth * newHeight * 2;
-
-  unsigned int writeIndex = 0;
-  // Loop over all bytes
-  for (int i = 0; i < fb->len; i += 2)
-  {
-    // Calculate current X, Y pixel position
-    int x = (i / 2) % fb->width;
-
-    // Crop from the top
-    if (i < maxTopIndex)
-    {
-      continue;
-    }
-
-    // Crop from the bottom
-    if (i > minBottomIndex)
-    {
-      continue;
-    }
-
-    // Crop from the left
-    if (x <= cropLeft)
-    {
-      continue;
-    }
-
-    // Crop from the right
-    if (x > maxX)
-    {
-      continue;
-    }
-
-    // If we get here, keep the pixels
-    fb->buf[writeIndex++] = fb->buf[i];
-    fb->buf[writeIndex++] = fb->buf[i + 1];
-  }
-
-  // Set the new dimensions of the framebuffer for further use.
-  fb->width = newWidth;
-  fb->height = newHeight;
-  fb->len = newJpgSize;
-}
-
+/* setting expsorue time: t1000
+setting gain: g1
+getting frame: \n
+restarting: r0 */
 void loop()
 {
   // Check for incoming serial commands
   if (Serial.available() > 0)
   {
-    String command = Serial.readStringUntil('\n'); // Read the incoming command until a newline character is encountered
-
-    // Parse the received command into x and y coordinates
-    int delimiterIndex = command.indexOf(','); // Find the index of the comma delimiter
-    if (delimiterIndex != -1)
+    String command = Serial.readString(); // Read the command until a newline character is received
+    if (command.length() > 1 && command.charAt(0) == 't')
     {
-      String xString = command.substring(0, delimiterIndex);  // Extract the x coordinate substring
-      String yString = command.substring(delimiterIndex + 1); // Extract the y coordinate substring
-
-      x = xString.toInt(); // Convert the x coordinate string to an integer
-      y = yString.toInt(); // Convert the y coordinate string to an integer
-
-      // Do something with the x and y coordinates
-      // For example, you can print them:
-      Serial.print("Received coordinates: ");
-      Serial.print("x = ");
-      Serial.print(x);
-      Serial.print(", y = ");
-      Serial.println(y);
+      // exposure time
+      int value = command.substring(1).toInt(); // Extract the numeric part of the command and convert it to an integer
+      // Use the value as needed
+      // Apply manual settings for the camera
+      sensor_t *s = esp_camera_sensor_get();
+      s->set_gain_ctrl(s, 0);     // auto gain off (1 or 0)
+      s->set_exposure_ctrl(s, 0); // auto exposure off (1 or 0)
+      s->set_aec_value(s, value); // set exposure manually (0-1200)
     }
+    else if (command.length() > 1 && command.charAt(0) == 'g')
+    {
+      // gain
+      int value = command.substring(1).toInt(); // Extract the numeric part of the command and convert it to an integer
+
+      // Apply manual settings for the camera
+      sensor_t *s = esp_camera_sensor_get();
+      s->set_gain_ctrl(s, 0);     // auto gain off (1 or 0)
+      s->set_exposure_ctrl(s, 0); // auto exposure off (1 or 0)
+      s->set_agc_gain(s, value);  // set gain manually (0 - 30)
+    }
+    else if (command.length() > 0 && command.charAt(0) == 'r')
+    {
+      // restart
+      ESP.restart();
+    }
+    else
+    {
+      flushSerial();
+      // capture image and return
+      grabImage();
+    }
+
+    flushSerial();
   }
-  if (isStreaming)
-    grabImage();
+}
+
+void flushSerial()
+{
+  // flush serial
+  while (Serial.available() > 0)
+  {
+    char c = Serial.read();
+  }
 }
 
 void cameraInit()
@@ -330,19 +309,11 @@ void cameraInit()
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.jpeg_quality = 12;
-  if (isCROP)
-  {
-    config.pixel_format = PIXFORMAT_RGB565;
-    config.frame_size = FRAMESIZE_SXGA;
-    config.fb_count = 2;
-  }
-  else
-  {
-    config.pixel_format = PIXFORMAT_JPEG;
-    config.frame_size = FRAMESIZE_VGA; // for streaming}
 
-    config.fb_count = 1;
-  }
+  config.pixel_format = PIXFORMAT_GRAYSCALE; // PIXFORMAT_JPEG;
+  config.frame_size = FRAMESIZE_QVGA;        // for streaming}
+
+  config.fb_count = 1;
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK)
@@ -353,60 +324,42 @@ void cameraInit()
   sensor_t *s = esp_camera_sensor_get();
   s->set_hmirror(s, 1);
   s->set_vflip(s, 1);
+
+  // enable manual camera settings
+  s->set_gain_ctrl(s, 0);     // auto gain off (1 or 0)
+  s->set_exposure_ctrl(s, 0); // auto exposure off (1 or 0)
+  s->set_aec_value(s, 100);   // set exposure manually (0-1200)
+  s->set_agc_gain(s, 0);      // set gain manually (0 - 30)
 }
 void grabImage()
 {
+  camera_fb_t *fb = NULL;
+  fb = esp_camera_fb_get();
 
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (isCROP)
+  if (!fb || fb->format != PIXFORMAT_GRAYSCALE) // PIXFORMAT_JPEG)
   {
-
-    // Crop image (frame buffer, cropLeft, cropRight, cropTop, cropBottom)
-    unsigned short cropLeft = x - Nroi / 2;
-    unsigned short cropRight = x + Nroi / 2;
-    unsigned short cropTop = y - Nroi / 2;
-    unsigned short cropBottom = y + Nroi / 2;
-
-    crop_image(fb, 550, 450, 100, 190);
-    // crop_image(fb, cropLeft, cropRight, cropTop, cropBottom);
-    //  Create a buffer for the JPG in psram
-    uint8_t *jpg_buf = (uint8_t *)heap_caps_malloc(200000, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-
-    if (jpg_buf == NULL)
-    {
-      printf("Malloc failed to allocate buffer for JPG.\n");
-    }
-    else
-    {
-      size_t jpg_size = 0;
-
-      // Convert the RAW image into JPG
-      // The parameter "31" is the JPG quality. Higher is better.
-      fmt2jpg(fb->buf, fb->len, fb->width, fb->height, fb->format, 31, &jpg_buf, &jpg_size);
-      printf("Converted JPG size: %d bytes \n", jpg_size);
-      String encoded = base64::encode(jpg_buf, jpg_size);
-      Serial.write(encoded.c_str(), encoded.length());
-      Serial.println();
-    }
+    Serial.println("Failed to capture image");
+    ESP.restart();
   }
   else
   {
-
-    if (!fb || fb->format != PIXFORMAT_JPEG)
-    {
-      Serial.println("Failed to capture image");
+    // Modify the first 10 pixels of the buffer to indicate framesync 
+    // PRoblem: The reference frame will move over time at random places 
+    // It'S not clear if this is an issue on the client or server side
+    // Solution: To align for it we intoduce a known pattern that we can search for
+    // in order to align for this on the client side
+    // (actually something funky goes on here: We don't even need to align for that on the client side if we introduce these pixels..)
+    for(int i = 0; i < 10; i++){
+    fb->buf[i] = i % 2;  // Alternates between 0 and 1
     }
-    else
-    {
-      delay(40);
+    // delay(40);
 
-      String encoded = base64::encode(fb->buf, fb->len);
-      Serial.write(encoded.c_str(), encoded.length());
-      Serial.println();
-    }
-
-    esp_camera_fb_return(fb);
+    // String encoded = base64::encode(fb->buf, fb->len);
+    // Serial.write(encoded.c_str(), encoded.length());
+    Serial.write(fb->buf, fb->len);
+    //Serial.println();
   }
-}
 
+  esp_camera_fb_return(fb);
+}
 '''

@@ -247,6 +247,7 @@ class JetsonNanoInfo:
 
 @dataclass(frozen=True)
 class HistoScanInfo:
+    PreviewCamera: str = None
     pass
 
 

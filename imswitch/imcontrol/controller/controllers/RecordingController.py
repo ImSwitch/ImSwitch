@@ -440,7 +440,7 @@ class RecordingController(ImConWidgetController):
             self.snap()
 
     @APIExport(runOnUIThread=False)
-    def snapNumpyToFastAPI(self) -> Response:
+    def snapNumpyToFastAPI(self, ) -> Response:
         # Create a 2D NumPy array representing the image
         image = np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
         

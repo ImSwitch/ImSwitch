@@ -16,8 +16,8 @@ import fractions
 import numpy as np
 from av import VideoFrame
 from imjoy_rpc.hypha import connect_to_server_sync
-
-from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription  
+import aiortc
+from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
@@ -117,16 +117,18 @@ class HyphaController(LiveUpdatedController):
 
     async def offer(self, params, context=None):
         offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-
-        pc = RTCPeerConnection()
+        # Create an instance of RTCConfiguration
+        configuration = RTCConfiguration(iceServers=self.rtc_servers)
+        # Create a new PeerConnection
+        pc = RTCPeerConnection(configuration=configuration)
         pc_id = "PeerConnection(%s)" % uuid.uuid4()
         pcs.add(pc)
-
+        # Add the tracks from the remote description
         def log_info(msg, *args):
             logger.info(pc_id + " " + msg, *args)
 
         log_info("Created for offer")
-
+        # prepare local media
         @pc.on("datachannel")
         def on_datachannel(channel):
             #self = None  # declare the self variable as None
@@ -163,7 +165,7 @@ class HyphaController(LiveUpdatedController):
         def on_track(track):
             log_info("Track %s received", track.kind)
             pc.addTrack(
-                VideoTransformTrack(transform=params["video_transform"], 
+                VideoTransformTrack(transform=params, 
                                     detector=self.detector
                 )
             )
@@ -204,6 +206,8 @@ class HyphaController(LiveUpdatedController):
                 "offer": self.offer,
             }
         )
+        coturn = server.get_service("coturn")
+        self.rtc_servers = coturn.get_rtc_ice_servers()
         print(
             f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
         )

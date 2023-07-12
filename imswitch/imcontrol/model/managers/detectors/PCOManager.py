@@ -36,7 +36,7 @@ class PCOManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=50, valueUnits='ms',
                                                 editable=True),
             'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
                                             editable=True),
@@ -202,6 +202,8 @@ class PCOManager(DetectorManager):
     def closeEvent(self):
         self._camera.close()
 
+    def getFrameId(self):
+        return self._camera.getLastFrameId()
 
     # for simulation only
     def setIlluPatternByID(self, iRot, iPhi):

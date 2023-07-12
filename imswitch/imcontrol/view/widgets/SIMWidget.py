@@ -52,7 +52,7 @@ class SIMWidget(NapariHybridWidget):
 
         #Enter the frames to wait for frame-sync
         self.simFrameSyncLabel  = QtWidgets.QLabel('N-Framesync (e.g. 1):')        
-        self.simFrameSyncVal = QtWidgets.QLineEdit('1')
+        self.simFrameSyncVal = QtWidgets.QLineEdit('5')
         
         # Display patterns
         self.patternIDLabel = QtWidgets.QLabel('Pattern ID:')
@@ -120,13 +120,16 @@ class SIMWidget(NapariHybridWidget):
         self.grid.addWidget(self.is488LaserButton, 2, 0, 1, 1)
         self.grid.addWidget(self.is635LaserButton, 2, 1, 1, 1)
         self.grid.addWidget(self.useGPUCheckbox, 2,2,1,1)
+        
+        self.grid.addWidget(self.simFrameSyncLabel, 3,0,1,1)
+        self.grid.addWidget(self.simFrameSyncVal, 3,1,1,1)
 
         # Reconstructor
-        self.grid.addWidget(self.SIMReconstructorLabel, 3, 0, 1, 1)
-        self.grid.addWidget(self.SIMReconstructorList, 3, 1, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorLabel, 4, 0, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorList, 4, 1, 1, 1)
             
         # SIM parameters 
-        self.grid.addWidget(self.paramtreeDockArea, 4, 0, 3, 2)
+        self.grid.addWidget(self.paramtreeDockArea, 5, 0, 3, 2)
         
         self.layer = None
 

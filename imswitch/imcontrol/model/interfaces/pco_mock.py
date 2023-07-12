@@ -27,6 +27,7 @@ class MockCameraPCO:
         self.model = 'mock'
         self.SensorHeight = 500
         self.SensorWidth = 500
+        self.frameId = 0
         self.shape = (self.SensorHeight,self.SensorWidth)
         
         self.IIllu = np.ones((self.SensorHeight, self.SensorWidth))
@@ -83,6 +84,10 @@ class MockCameraPCO:
             return self.properties[property_name]
         except Exception as e:
             return 0
+    
+    def getLastFrameId(self):
+        self.frameId += 1
+        return self.frameId
 
     def openPropertiesGUI(self):
         pass

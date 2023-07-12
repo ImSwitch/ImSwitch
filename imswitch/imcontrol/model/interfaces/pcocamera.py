@@ -43,8 +43,8 @@ class CameraPCO:
         self.NBuffer = 10
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-
-
+        self.frameID = -1
+        self.frame_id_last = -1
 
         #%% starting the camera thread
         self.camera = None
@@ -69,7 +69,8 @@ class CameraPCO:
         # self.camera.set_exposure_time(self.exposure_time*1e-6)
 
         # get dummy frame
-        self.camera.record()
+        self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
+        self.camera.wait_for_first_image()
         frame = self.camera.image()[0]
         # get framesize 
         self.SensorHeight = frame.shape[0] #self.camera._Camera__roi['x1']//self.binning
@@ -113,14 +114,18 @@ class CameraPCO:
 
     def getLast(self, is_resize=True):
         # Display in the liveview
-        # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
-        #images, metadatas = self.camera.images()
-        #self.frame = images[-1]
-        self.frame = self.camera.image(image_number=0)[0]
-        
+        # ensure that only fresh frames are being returned
+        while self.frame_id_last >= self.frameID:
+            self.frame_raw_metadata = self.camera.image(image_number=-1)
+
+            self.frame = self.frame_raw_metadata[0]
+            self.frameID = self.frame_raw_metadata[1]["recorder image number"]
+            #self.__logger.debug("Waiting for frame..."+str(self.frame_id_last))
+        self.frame_id_last = self.frameID
         return self.frame
+    
+    def getLastFrameId(self):
+        return self.frameID
 
     def flushBuffer(self):
         self.frameid_buffer.clear()
@@ -135,7 +140,6 @@ class CameraPCO:
     
     def setROI(self,hpos=None,vpos=None,hsize=None,vsize=None):
         return hpos,vpos,hsize,vsize
-
 
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.

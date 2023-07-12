@@ -14,7 +14,10 @@ class ESP32Manager:
             self._host = rs232Info.managerProperties['host']
         except:
             self._host = None
-
+        try:
+            self._port = rs232Info.managerProperties['port']
+        except:
+            self._port = None
         try:
             self._serialport = rs232Info.managerProperties['serialport']
         except:
@@ -26,7 +29,7 @@ class ESP32Manager:
             self._identity = "UC2_Feather"
             
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200)
+        self._esp32 = uc2.UC2Client(host=self._host, port=self._port, identity=self._identity, serialport=self._serialport, baudrate=115200)
         self._esp32.serial.DEBUG = False
         #self._esp32.serial.DEBUG = True
 

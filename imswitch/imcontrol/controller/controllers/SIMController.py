@@ -76,10 +76,14 @@ class SIMController(ImConWidgetController):
 
         # Laser flag
         self.LaserWL = 0
+ 
+        self.simFrameVal = 0
+        self.nsimFrameSyncVal = 1 
 
         # Choose which laser will be recorded
         self.is488 = True
         self.is635 = True
+
         
         # we can switch between mcSIM and napari
         self.reconstructionMethod = "napari" # or "mcSIM"
@@ -116,7 +120,7 @@ class SIMController(ImConWidgetController):
         self.nRotations = 3
         self.nPhases = 3
 
-        # se    ect lasers
+        # select lasers
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self.lasers = []
         for iDevice in allLaserNames:
@@ -129,7 +133,8 @@ class SIMController(ImConWidgetController):
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # show placeholder pattern
-        initPattern = self._master.simManager.allPatterns[self.patternID]
+        initPattern = 255*np.ones((1024,768))
+        #initPattern = self._master.simManager.allPatterns[self.patternID]
         self._widget.updateSIMDisplay(initPattern)
 
         # activate hamamatsu slm if necessary
@@ -197,7 +202,7 @@ class SIMController(ImConWidgetController):
             # start live processing => every frame is captured by the update() function. It also handles the pattern addressing
             self.iReconstructed = 0
             #  Start acquisition if not started already
-            self._master.detectorsManager.startAcquisition(liveView=False)
+            #self._master.detectorsManager.startAcquisition(liveView=False)
             
             # reset the pattern iterator
             self.nSyncCameraSLM = self._widget.getFrameSyncVal()
@@ -213,7 +218,6 @@ class SIMController(ImConWidgetController):
         else:
             # stop live processing 
             self.active = False
-            self._master.detectorsManager.startAcquisition(liveView=True)
             self.simThread.join()
             self.lasers[0].setEnabled(False)
             self.lasers[1].setEnabled(False)
@@ -225,6 +229,7 @@ class SIMController(ImConWidgetController):
             self._widget.isRecordingButton.setText("Stop Recording")
         else:
             self._widget.isRecordingButton.setText("Start Recording")
+            self.active = False
     
     def toggle488Laser(self):
         self.is488 = not self.is488
@@ -247,14 +252,6 @@ class SIMController(ImConWidgetController):
         self._widget.updateSIMDisplay(image)
         # self._logger.debug("Updated displayed image")
 
-    @APIExport(runOnUIThread=True)
-    def simPatternByID(self, patternID):
-        try:
-            currentPattern = self._master.simManager.allPatterns[patternID]
-            self.updateDisplayImage(currentPattern)
-            return currentPattern
-        except Exception as e:
-            self._logger.error(e)
             
     def performSIMExperimentThread(self, sim_info_dict):
         """ 
@@ -263,6 +260,7 @@ class SIMController(ImConWidgetController):
         self.patternID = 0
         self.isReconstructing = False
         nColour = 2
+        self.nsimFrameSyncVal = self._widget.getFrameSyncVal()
 
         while self.active:
             
@@ -278,18 +276,24 @@ class SIMController(ImConWidgetController):
                     processor = self.SimProcessorLaser1
                     sim_info_dict_1 = sim_info_dict
                     sim_info_dict_1["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_1)
+                    sim_info_dict_1["patternPath (p1)"]= "C:\\Users\\wanghaoran\\Documents\\ImSwitchConfig\\imcontrol_sim\\488\\"    #TODO: Hardcoded :(                 
+                    #processor.setParameters(sim_info_dict_1 )
+                    processor.loadPattern(path=sim_info_dict_1["patternPath (p1)"])
                     self.LaserWL = 488
+                    time.sleep(.1)
                     # set the pattern-path for laser wl 1
                 if iColour == 1 and self.is635:
                     self.lasers[0].setEnabled(False)
                     self.lasers[1].setEnabled(True)
                     processor = self.SimProcessorLaser2
                     sim_info_dict_2 = sim_info_dict
-                    sim_info_dict_2["wavelength"]=sim_info_dict_1["wavelength (p1)"]
-                    processor.setParameters(sim_info_dict_2)                    
+                    sim_info_dict_2["wavelength"]=sim_info_dict_2["wavelength (p2)"]
+                    sim_info_dict_2["patternPath (p2)"]= 'C:\\Users\\wanghaoran\\Documents\\ImSwitchConfig\\imcontrol_sim\\635\\'    #TODO: Hardcoded :(
+                    processor.setParameters(sim_info_dict_2)    
+                    processor.loadPattern(path=sim_info_dict_2["patternPath (p2)"])                
                     self._logger.debug("Switching to pattern"+self.lasers[1].name)
                     self.LaserWL = 635
+                    time.sleep(.1)
                     # set the pattern-path for laser wl 1
                 elif not self.is488 and not self.is635:
                     self.lasers[0].setEnabled(False)
@@ -300,17 +304,30 @@ class SIMController(ImConWidgetController):
                 if processor is None:
                     return
                 
+                # iterate over all patterns
                 for iPattern in range(self.nRotations*self.nPhases):
                     if not self.active:
                         break
                     
-                    # 1 display the pattern
-                    self.simPatternByID(iPattern)
-                    time.sleep(0.30) #???
+                    # load wavelength-specific image and display
+                    iImage = processor.getPattern(iPattern)
+
+                    self.updateDisplayImage(iImage)
+                    self.updateDisplayImage(iImage) # FIXME: in case a frame gets dropped?!
+                    #time.sleep(0.1)   #try to wait the image updated
+                    frameIdLast = self.detector.getFrameId()
                     
-                    # 2 grab a frame 
+                    # grab a frame 
+                    while (self.detector.getFrameId()-frameIdLast)<self.nsimFrameSyncVal:
+                        time.sleep(0.01) # keep CPU happy
+                    
+                    # grab frame after updated SIM display
                     frame = self.detector.getLatestFrame()
+
+                    # add frame to stack for processing 
                     processor.addFrameToStack(nip.extract(frame, (512,512)))
+
+          
                     
             
                 # We will collect N*M images and process them with the SIM processor
@@ -324,7 +341,9 @@ class SIMController(ImConWidgetController):
                     # reconstruct and save the stack in background to not block the main thread
                     self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
                     self.mReconstructionThread.start()
-
+                    SIMStack = None
+                    
+                
                 # reset the per-colour stack to add new frames in the next imaging series
                 processor.clearStack()
         
@@ -336,9 +355,12 @@ class SIMController(ImConWidgetController):
 
         # compute image
         # initialize the model
+        
         self._logger.debug("Processing frames")
         if not processor.getIsCalibrated():
             processor.setReconstructor()
+            #from skimage import io
+            #im = io.imread('2023_04_03-10-28-17_PM_SIM_Stack_488nm.tif')
             processor.calibrate(SIMStack)
         SIMReconstruction = processor.reconstruct(SIMStack)
         
@@ -387,20 +409,21 @@ class SIMProcessor(object):
         '''
         setup parameters
         '''
+        #current parameters is setting for 20x objective 488nm illumination
         self.parent = parent
         self.mFile = "/Users/bene/Dropbox/Dokumente/Promotion/PROJECTS/MicronController/PYTHON/NAPARI-SIM-PROCESSOR/DATA/SIMdata_2019-11-05_15-21-42.tiff"
         self.phases_number = 3
         self.angles_number = 3
-        self.magnification = 60
-        self.NA = 1.05
-        self.n = 1.33
-        self.wavelength = 0.57
+        self.magnification = 30
+        self.NA = 0.75
+        self.n = 1.0
+        self.wavelength = 0.50
         self.pixelsize = 6.5
         self.dz= 0.55
         self.alpha = 0.5
         self.beta = 0.98
         self.w = 0.2
-        self.eta = 0.65
+        self.eta = 0.3
         self.group = 30
         self.use_phases = True
         self.find_carrier = True
@@ -409,6 +432,10 @@ class SIMProcessor(object):
         self.use_phases =  True
         self.use_gpu = isPytorch
         self.stack = []
+
+        #
+        self.allPatterns = []
+        
         
         # initialize logger
         self._logger = initLogger(self, tryInheritParent=False)
@@ -448,6 +475,25 @@ class SIMProcessor(object):
             pinned_mempool = cp.get_default_pinned_memory_pool()
             memory_start = mempool.used_bytes()
 
+    def loadPattern(self, path=None, filetype="bmp"):
+        # sort filenames numerically
+        import glob
+        import cv2
+
+        if path is None:
+            path = sim_info_dict["patternPath"]
+        allPatternPaths = sorted(glob.glob(os.path.join(path, "*."+filetype)))
+        self.allPatterns = []
+        for iPatternPath in allPatternPaths:
+            mImage = cv2.imread(iPatternPath)
+            mImage = cv2.cvtColor(mImage, cv2.COLOR_BGR2GRAY)
+            self.allPatterns.append(mImage)
+        return self.allPatterns
+
+    def getPattern(self, iPattern):
+        # return ith sim pattern
+        return self.allPatterns[iPattern]
+
     def setParameters(self, sim_info_dict):
         # uses parameters from GUI
         self.wavelength = sim_info_dict["wavelength"]
@@ -485,7 +531,7 @@ class SIMProcessor(object):
         # display the BF image
         if len(self.stack) % 3 == 0 and len(self.stack)>0:
             bfFrame = np.sum(np.array(self.stack[-3:]), 0)
-            self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" nm") 
+            #self.parent.sigSIMProcessorImageComputed.emit(bfFrame, "Widefield SUM "+str(self.wavelength)+" um") 
 
 
     def getSIMStack(self):
@@ -520,7 +566,7 @@ class SIMProcessor(object):
         '''
         calibration
         '''
-        self._logger.debug("Starting to calibrate the stack")
+        #self._logger.debug("Starting to calibrate the stack")
         if self.reconstructionMethod == "napari":
             #imRaw = get_current_stack_for_calibration(mImages)
             if self.use_gpu:

@@ -15,7 +15,7 @@ import fractions
 
 import numpy as np
 from av import VideoFrame
-from imjoy_rpc.hypha import connect_to_server_sync
+from imjoy_rpc.hypha.sync import connect_to_server, register_rtc_service
 import aiortc
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription, RTCConfiguration
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex
@@ -84,6 +84,8 @@ class HyphaController(LiveUpdatedController):
         server_url = "http://localhost:9000"
         server_url = "https://ai.imjoy.io/"
         
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        
         # get the first detector to stream data
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
@@ -114,80 +116,45 @@ class HyphaController(LiveUpdatedController):
         await asyncio.gather(*coros)
         self.pcs.clear()
 
-
-    async def offer(self, params, context=None):
-        offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-        # Create an instance of RTCConfiguration
-        configuration = RTCConfiguration(iceServers=self.rtc_servers)
-        # Create a new PeerConnection
-        pc = RTCPeerConnection(configuration=configuration)
-        pc_id = "PeerConnection(%s)" % uuid.uuid4()
-        pcs.add(pc)
-        # Add the tracks from the remote description
-        def log_info(msg, *args):
-            logger.info(pc_id + " " + msg, *args)
-
-        log_info("Created for offer")
-        # prepare local media
-        @pc.on("datachannel")
-        def on_datachannel(channel):
-            #self = None  # declare the self variable as None
-
-            @channel.on("message")
-            def on_message(message):
-                #nonlocal self  # declare self as nonlocal
-                if isinstance(message, str):
-                    if message.startswith("ping"):
-                        channel.send("pong" + message[4:])
-                    elif message in ["right", "left", "up", "down"]:
-                        print(f"===> command received: {message}")
-                        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-                        if message == "right":
-                            self.stages.move(value=100, axis="X", is_absolute=True, is_blocking=True)
-                        if message == "left":
-                            self.stages.move(value=-100, axis="X", is_absolute=True, is_blocking=True)
-                        if message == "up":
-                            self.stages.move(value=100, axis="Y", is_absolute=True, is_blocking=True)
-                        if message == "down":
-                            self.stages.move(value=-100, axis="Y", is_absolute=True, is_blocking=True)                        
-                        # pc.transport.send(message.encode())
-                        channel.send("completed")
-
-
-        @pc.on("connectionstatechange")
-        async def on_connectionstatechange():
-            log_info("Connection state is %s", pc.connectionState)
-            if pc.connectionState == "failed":
-                await pc.close()
-                pcs.discard(pc)
-
-        @pc.on("track")
+    def on_init(self, peer_connection):
+        @peer_connection.on("track")
         def on_track(track):
-            log_info("Track %s received", track.kind)
-            pc.addTrack(
-                VideoTransformTrack(transform=params, 
-                                    detector=self.detector
-                )
+            print(f"Track {track.kind} received")
+            peer_connection.addTrack(
+                VideoTransformTrack(detector=self.detector)
             )
             @track.on("ended")
-            async def on_ended():
-                log_info("Track %s ended", track.kind)
+            def on_ended():
+                print(f"Track {track.kind} ended")
 
-        # handle offer
-        await pc.setRemoteDescription(offer)
+    # def move(self, direction, context=None):
+        
+    #     if message == "right":
+    #         self.stages.move(value=100, axis="X", is_absolute=True, is_blocking=True)
+    #     if message == "left":
+    #         self.stages.move(value=-100, axis="X", is_absolute=True, is_blocking=True)
+    #     if message == "up":
+    #         self.stages.move(value=100, axis="Y", is_absolute=True, is_blocking=True)
+    #     if message == "down":
+    #         self.stages.move(value=-100, axis="Y", is_absolute=True, is_blocking=True)                        
+    #     # pc.transport.send(message.encode())
+    #     channel.send("completed")
 
-        # send answer
-        answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-
-        return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
-
-
-
+    def move(self, value, axis, is_absolute=True, is_blocking=True):
+        """A fuction to move the microscope stage, .... <------------change this
+        # <--------- the limit of the stage are ...
+        Args:
+            value (number): the distance to move, ..
+            axis (str): _description_
+            is_absolute (bool, optional): ...
+            is_blocking (bool, optional): ...
+        """
+        self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
+        
     def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
         client_id = service_id + "-client"
         print(f"Starting service...")
-        server = connect_to_server_sync(
+        server = connect_to_server(
             {
                 "client_id": client_id,
                 "server_url": server_url,
@@ -195,19 +162,33 @@ class HyphaController(LiveUpdatedController):
                 "token": token,
             }
         )
-        # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))
         server.register_service(
             {
-                "id": service_id,
-                "config": {
-                    "visibility": "public",
-                    "require_context": True,
+                "id": "microscope-control",
+                "name": "Microscope Control", # <------------change this
+                "description": "Control the microscope stage", # <------------change this
+                "config":{
+                    "visibility": "protected",
+                    "run_in_executor": True,
+                    "require_context": True,   
                 },
-                "offer": self.offer,
+                "type": "microscope",
+                "move": self.move,
+                # <------------add more functions here
             }
         )
+        # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))
         coturn = server.get_service("coturn")
-        self.rtc_servers = coturn.get_rtc_ice_servers()
+        ice_servers = coturn.get_rtc_ice_servers()
+        register_rtc_service(
+            server,
+            service_id=service_id,
+            config={
+                "visibility": "public",
+                "ice_servers": ice_servers,
+                "on_init": self.on_init,
+            },
+        )
         print(
             f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
         )
@@ -223,9 +204,8 @@ class VideoTransformTrack(MediaStreamTrack):
 
     kind = "video"
 
-    def __init__(self, transform, detector):
+    def __init__(self, detector):
         super().__init__()  # don't forget this!
-        self.transform = transform
         self.count = 0
         self.detector = detector
 

@@ -493,8 +493,6 @@ class MCTController(ImConWidgetController):
                                 filename=f'{self.MCTFilename}_LED_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
                                 extension=fileExtension)
                     try:
-                        if self.LEDValue > 255: self.LEDValue=255
-                        if self.LEDValue < 0: self.LEDValue=0
                         if len(self.leds)>0:
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)

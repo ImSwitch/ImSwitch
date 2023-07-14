@@ -1,22 +1,20 @@
-import json
 import os
-
-import numpy as np
-import time
-import tifffile as tif
 import threading
 from datetime import datetime
+import time
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+import scipy.ndimage as ndi
+import scipy.signal as signal
+import skimage.transform as transform
+import tifffile as tif
 
-
-from imswitch.imcommon.model import dirtools, initLogger, APIExport
-from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-
-
+from imswitch.imcommon.model import dirtools, initLogger, APIExport
+from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
-
-#import NanoImagingPack as nip
 
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
@@ -341,12 +339,10 @@ class MCTController(ImConWidgetController):
 
                         self.doAutofocus(autofocusParams)
 
-                    #increase iterator in case something fails during frame acquisition => avoid forever loop
-                    self.nImagesTaken += 1
-
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
 
+                    # update GUI
                     self._widget.setnImagesTaken(self.nImagesTaken)
 
                     # sneak images into arrays for displaying stack
@@ -356,6 +352,75 @@ class MCTController(ImConWidgetController):
                         self.LastStackLEDArrayLast = np.array(self.LastStackLED)
 
                         self._widget.mctShowLastButton.setEnabled(True)
+                    
+                        ''' here we can try to compute the drift '''
+                        
+                    if True and not self.xyScanEnabled:
+                        # treat images
+                        imageStack = self.LastStackLaser2 # FIXME: Hardcoded
+                        imageStack = self.LastStackLED # FIXME: Hardcoded
+                        
+                        driftCorrectionDownScaleFactor = 5
+                        driftCorrectionCropSize = 800
+                        iShift = [0,0]
+                        imageList = []
+                        
+                        # convert to list if necessary
+                        if type(imageStack)!=list or len(imageStack)<2:
+                            imageStack = list(imageStack)
+                            
+                        # image processing 
+                        for iImage in imageStack:
+                            image = self.crop_center(iImage, driftCorrectionCropSize)
+                            image = self.downscale_image(image, driftCorrectionDownScaleFactor)
+                            imageList.append(image)
+                        
+                        # remove background 
+                        imageList = np.array(imageList)
+                        if len(imageList.shape)<3:
+                            imageList = np.expand_dims(imageList,0)
+                        imageList = imageList/ndi.filters.gaussian_filter(np.mean(imageList,0), 10)
+                            
+                        # Find max focus 
+                        bestFocus = 0
+                        bestFocusIndex = 0
+                        for index, image in enumerate(imageList):
+                            # remove high frequencies
+                            imagearraygf = ndi.filters.gaussian_filter(image, 3)
+
+                            # compute focus metric
+                            focusValue = np.mean(ndi.filters.laplace(imagearraygf))
+                            if focusValue > bestFocus:
+                                bestFocus = focusValue
+                                bestFocusIndex = index
+
+                        # Align the images
+                        image2 = np.std(imageList, (0))
+                        
+                        #image2 = scipy.ndimage.gaussian_filter(image2, sigma=10)
+                        if self.nImagesTaken > 0:
+                            shift, error, diffphase = phase_cross_correlation(image1, image2)
+                            iShift += (shift)
+                            
+                            # Shift image2 to align with image1
+                            image = imageList[bestFocusIndex]
+                            aligned_image = np.roll(image, int(iShift[1]), axis=1)
+                            aligned_image = np.roll(aligned_image,int(iShift[0]), axis=0)
+                            self.stages.move(value=(self.initialPosition[0]+shift[1], self.initialPosition[1]+shift[0]), axis="XY", is_absolute=True, is_blocking=True)
+                            
+                            # Display the aligned image
+                            plt.imshow(aligned_image)
+                            plt.axis('off')
+                            plt.show()
+                    
+                        image1 = image2.copy()
+                         
+                        
+                        
+                    #increase iterator
+                    self.nImagesTaken += 1
+
+
 
                 except Exception as e:
                     self._logger.error("Thread closes with Error: "+str(e))
@@ -443,11 +508,12 @@ class MCTController(ImConWidgetController):
                 self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
             # measure framenumber and check if it has been renewed after stage has stopped => avoid motion blur!
             nFrameSyncWait = 5
+            '''
             if hasattr(self.detector, "getFrameNumber"):
                 frameNumber = self.detector.getFrameNumber()
             else:
                 frameNumber = -nFrameSyncWait
-
+            '''
 
 
             # perform a z-stack
@@ -600,6 +666,27 @@ class MCTController(ImConWidgetController):
         name = "tilescanning"
         self._widget.setImage(np.uint16(self.tiledImage), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
+
+    # helper functions
+    def downscale_image(self, image, factor):
+        # Downscale the image
+        downscaled_image = transform.downscale_local_mean(image, (factor, factor))
+        return downscaled_image
+
+    def crop_center(self, image, size):
+        # Get the dimensions of the image
+        height, width = image.shape[:2]
+
+        # Calculate the coordinates for cropping
+        start_x = max(0, int((width - size) / 2))
+        start_y = max(0, int((height - size) / 2))
+        end_x = min(width, start_x + size)
+        end_y = min(height, start_y + size)
+
+        # Crop the image
+        cropped_image = image[start_y:end_y, start_x:end_x]
+
+        return cropped_image
 
 
 

@@ -80,7 +80,7 @@ class UC2ConfigManager(SignalInterface):
         return self.ESP32.closeSerial()
 
     def isConnected(self):
-        self.ESP32.serial.is_connected
+        return self.ESP32.serial.is_connected
 
     def initSerial(self):
         self.ESP32.serial.open()

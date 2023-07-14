@@ -6,7 +6,7 @@ from imswitch.imcontrol.view import guitools
 from qtpy import QtCore, QtWidgets
 
 from .basewidgets import Widget
-from imjoy.hypha.sync import login
+from imjoy_rpc.hypha.sync import login
 
 
 class HyphaWidget(Widget):

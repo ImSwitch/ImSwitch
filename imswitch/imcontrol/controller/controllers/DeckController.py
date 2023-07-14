@@ -308,9 +308,9 @@ class DeckController(LiveUpdatedController):
         pos_xyz = pos_xyz["X"], pos_xyz["Y"], pos_xyz["Z"] 
                                                  
         # convert dictionay to list
-        current_position = Point(*pos_xyz)
         try:
             if IS_LOCAI:
+                current_position = Point(*pos_xyz)
                 current_position_deck = self.retranslate_position(current_position)
                 current_slot = self.deck_definition.get_slot(current_position_deck)
                 current_well = self.deck_definition.get_closest_well(current_position_deck)
@@ -330,8 +330,8 @@ class DeckController(LiveUpdatedController):
             else:
                 self._widget.current_slot = 0
                 self._widget.current_well = 0
-                self._widget.current_absolute_position = current_position
-                self._widget.current_z_focus = current_position.z
+                self._widget.current_absolute_position = pos_xyz
+                self._widget.current_z_focus = pos_xyz[-1]
                 self._widget.current_offset = 0 # Positioner Values
         except Exception as e:
             self.__logger.debug(f"Error when updating values. {e}")

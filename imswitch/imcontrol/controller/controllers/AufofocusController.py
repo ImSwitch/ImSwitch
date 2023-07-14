@@ -92,7 +92,7 @@ class AutofocusController(ImConWidgetController):
         # precompute values for Z-scan
         Nz = int(2 * rangez // resolutionz)
         allfocusvals = np.zeros(Nz)
-        allfocuspositions = np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition
+        allfocuspositions = np.int32(np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition)
         allfocusimages = []
 
         # 0 move focus to initial position

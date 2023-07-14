@@ -34,10 +34,6 @@ class FocusLockController(ImConWidgetController):
             return
 
         self.camera = self._setupInfo.focusLock.camera
-        if self.camera == "ESP32":
-            self.isESP32 = True
-        else:
-            self.isESP32 = False
         self.positioner = self._setupInfo.focusLock.positioner
         self.updateFreq = self._setupInfo.focusLock.updateFreq
         self.cropFrame = (self._setupInfo.focusLock.frameCropx,
@@ -45,14 +41,8 @@ class FocusLockController(ImConWidgetController):
                           self._setupInfo.focusLock.frameCropw,
                           self._setupInfo.focusLock.frameCroph)
         
-        if self.isESP32:
-            # Create an instance of the ESP32CameraThread class
-            self.ESP32Camera = ESP32CameraThread('Espressif')
 
-            # Start the thread
-            self.ESP32Camera.startStreaming()
-        else:
-            self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        self._master.detectorsManager[self.camera].crop(*self.cropFrame)
         self._widget.setKp(self._setupInfo.focusLock.piKp)
         self._widget.setKi(self._setupInfo.focusLock.piKi)
 
@@ -89,7 +79,7 @@ class FocusLockController(ImConWidgetController):
         self.setPointData = np.zeros(self.buffer)
         self.timeData = np.zeros(self.buffer)
 
-        if not self.isESP32: self._master.detectorsManager[self.camera].startAcquisition()
+        self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
         self.__focusCalibThread = FocusCalibThread(self)
 
@@ -234,16 +224,8 @@ class ProcessDataThread(Thread):
         
 
     def grabCameraFrame(self):
-        if not self._controller.isESP32:
-            detectorManager = self._controller._master.detectorsManager[self._controller.camera]
-            self.latestimg = detectorManager.getLatestFrame()
-        else: 
-            try:
-                self.latestimg = self._controller.ESP32Camera.grabLatestFrame()
-            except:
-                self.latestimg = np.zeros((self._controller.ESP32Camera.Ny,self._controller.ESP32Camera.Nx))
-            
-            
+        detectorManager = self._controller._master.detectorsManager[self._controller.camera]
+        self.latestimg = detectorManager.getLatestFrame()
             
         # 1.5 swap axes of frame (depending on setup, make this a variable in the json)
         if self._controller._setupInfo.focusLock.swapImageAxes:
@@ -252,7 +234,7 @@ class ProcessDataThread(Thread):
 
     def update(self, twoFociVar):
 
-        if self._controller.isESP32:
+        if self._controller._master.detectorsManager[self._controller.camera].model == "ESP32SerialCamera":
             imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 5)
             # mBackground = np.mean(mStack, (0)) #np.ones(mStack.shape[1:])# 
             mBackground = ndi.filters.gaussian_filter(self.latestimg,15)
@@ -404,108 +386,6 @@ class PI:
         
 
 
-
-
-
-class ESP32CameraThread(object):
-    # attention a threading class won't work in windows!!! #FIXME:
-    def __init__(self, manufacturer):
-        self.manufacturer = manufacturer
-        self.serialdevice = None
-        self.Nx, self.Ny = 320,240
-        self.frame = np.zeros((self.Ny,self.Nx))
-
-        # string to send data to camera
-        self.newCommand = ""
-        self.exposureTime = -1
-        self.gain = -1
-
-    def setExposureTime(self, exposureTime):
-        self.newCommand = "t"+str(exposureTime)
-        self.exposureTime = exposureTime
-
-    def setGain(self, gain):
-        self.newCommand = "g"+str(gain)
-        self.gain = gain
-
-    def connect_to_usb_device(self):
-        ports = serial.tools.list_ports.comports()
-        for port in ports:
-            if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":
-                try:
-                    ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
-                    ser.write_timeout=.5
-                    print(f"Connected to device: {port.description}")
-                    return ser
-                except serial.SerialException:
-                    print(f"Failed to connect to device: {port.description}")
-        print("No matching USB device found.")
-        return None
-
-    def startStreaming(self):
-        self.isRunning = True
-        self.mThread = threading.Thread(target=self.startStreamingThread) 
-        self.mThread.start()
- 
-    def stopStreaming(self):
-        self.isRunning = False
-        self.mThread.join()
-        try:self.serialdevice.close()
-        except:pass
-
-    def startStreamingThread(self):
-        self.serialdevice = self.connect_to_usb_device()
-        nFrame = 0
-        nTrial = 0
-        while self.isRunning:
-            try:
-
-                # send new comamand to change camera settings, reset command    
-                if not self.newCommand == "":
-                    self.serialdevice.write((self.newCommand+' \n').encode())
-                    self.newCommand = ""
-
-                # request new image
-                self.serialdevice.write((' \n').encode())
-                    
-                # don't read to early
-                time.sleep(.05)
-                # readline of camera
-                imageB64 = self.serialdevice.readline()
-
-                # decode byte stream
-                image = np.array(Image.open(io.BytesIO(base64.b64decode(imageB64.decode()))))
-                self.frame = np.mean(image,-1)
-
-                nFrame += 1
-                
-            except Exception as e:
-                # try to reconnect 
-                #print(e) # most of the time "incorrect padding of the bytes "
-                nFrame = 0
-                nTrial+=1
-                try:
-                    self.serialdevice.flushInput()
-                    self.serialdevice.flushOutput()
-                except:
-                    pass
-                if nTrial > 10 and type(e)==serial.serialutil.SerialException:
-                    try:
-                        # close the device - similar to hard reset
-                        self.serialdevice.setDTR(False)
-                        self.serialdevice.setRTS(True)
-                        time.sleep(.1)
-                        self.serialdevice.setDTR(False)
-                        self.serialdevice.setRTS(False)
-                        time.sleep(.5)
-                        #self.serialdevice.close()
-                    except: pass
-                    self.serialdevice = self.connect_to_usb_device()
-                    nTrial = 0
-                
-                
-    def grabLatestFrame(self):
-        return self.frame
 
 
 

@@ -47,8 +47,7 @@ class HistoScanController(LiveUpdatedController):
         self.updateRate=2
         self.pixelsizeZ=10
         self.tUnshake = .1
-        
-        
+
         
         # physical coordinates (temporarily)
         self.stepsizeX = 1
@@ -68,11 +67,7 @@ class HistoScanController(LiveUpdatedController):
         self.camPreviewPixelsize = 100
         self.camPreviewPixNumX = self._widget.canvas.height()
         self.camPreviewPixNumY = self._widget.canvas.width()
-        
 
-        if self._setupInfo.HistoScan is None:
-            self._widget.replaceWithError('HistoScan is not configured in your setup file.')
-            return
 
         # Connect HistoScanWidget signals
         self._widget.HistoScanStartButton.clicked.connect(self.startHistoScan)
@@ -112,11 +107,12 @@ class HistoScanController(LiveUpdatedController):
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
         # get the camera object
-        self._camera = self._master.detectorsManager["PreviewCamera"]
+        if self._setupInfo.HistoScan is not None:
+            self._camera = self._master.detectorsManager[self._setupInfo.HistoScan.PreviewCamera]
+        else:
+            self._camera = self._master.detectorsManager.getCurrentDetector()
         
-    
-    
-        # Steps for the Histoscanner 
+        
         
 
         
@@ -220,8 +216,7 @@ class HistoScanController(LiveUpdatedController):
 
     def doAutofocus(self, params):
         self._logger.info("Autofocusing...")
-        isRunInBackground = False
-        self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"], isRunInBackground))
+        self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
 
     def doScanThread(self, coordinateList):
         # store initial stage position
@@ -310,7 +305,6 @@ class HistoScanController(LiveUpdatedController):
             # store frames for displaying
             self.LastStackLED.append(lastFrame.copy())
             self.leds[0].setEnabled(False)
-
 
     def valueLEDChanged(self, value):
         self.LEDValue = value

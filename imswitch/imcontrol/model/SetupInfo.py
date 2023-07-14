@@ -234,6 +234,10 @@ class WebRTCInfo:
     pass
 
 @dataclass(frozen=True)
+class HyphaInfo:
+    pass
+
+@dataclass(frozen=True)
 class MockXXInfo:
     pass
 
@@ -243,6 +247,7 @@ class JetsonNanoInfo:
 
 @dataclass(frozen=True)
 class HistoScanInfo:
+    PreviewCamera: str = None
     pass
 
 
@@ -461,6 +466,9 @@ class SetupInfo:
 
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """
+
+    hypha: Optional[HyphaInfo] = field(default_factory=lambda: None)
+    """ Hypha settings. Required to be defined to use Hypha functionality. """
 
     mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
     """ MockXX settings. Required to be defined to use MockXX functionality."""

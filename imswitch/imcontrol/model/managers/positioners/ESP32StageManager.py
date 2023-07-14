@@ -3,187 +3,90 @@ from .PositionerManager import PositionerManager
 import time
 import numpy as np
 from imswitch.imcommon.model import APIExport, generateAPI, initLogger
+import threading
+
 
 PHYS_FACTOR = 1
 gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
-
     def __init__(self, positionerInfo, name, **lowLevelManagers):
-        super().__init__(positionerInfo, name, initialPosition={
-            axis: 0 for axis in positionerInfo.axes
-        })
-        self._rs232manager = lowLevelManagers['rs232sManager'][
-            positionerInfo.managerProperties['rs232device']
-        ]
+        super().__init__(positionerInfo, name, initialPosition={axis: 0 for axis in positionerInfo.axes})
+        self._rs232manager = lowLevelManagers['rs232sManager'][positionerInfo.managerProperties['rs232device']]
         self.__logger = initLogger(self, instanceName=name)
 
-
-        # grab motor object
+        # Grab motor object
         self._motor = self._rs232manager._esp32.motor
         self._homeModule = self._rs232manager._esp32.home
 
+        # Calibrated stepsizes in steps/µm
+        self.stepsizeX = positionerInfo.managerProperties.get('stepsizeX', 1)
+        self.stepsizeY = positionerInfo.managerProperties.get('stepsizeY', 1)
+        self.stepsizeZ = positionerInfo.managerProperties.get('stepsizeZ', 1)
+        self.stepsizeT = positionerInfo.managerProperties.get('stepsizeT', 1)
 
-        # calibrated stepsize in steps/µm
-        if positionerInfo.managerProperties.get('stepsizeX') is not None:
-            self.stepsizeX = positionerInfo.managerProperties['stepsizeX']
-        else:
-            self.stepsizeX = 1
+        # Minimum/maximum steps in X
+        self.minX = positionerInfo.managerProperties.get('minX', -np.inf)
+        self.maxX = positionerInfo.managerProperties.get('maxX', np.inf)
 
-        # calibrated stepsize
-        if positionerInfo.managerProperties.get('stepsizeY') is not None:
-            self.stepsizeY = positionerInfo.managerProperties['stepsizeY']
-        else:
-            self.stepsizeY = 1
+        # Minimum/maximum steps in Y
+        self.minY = positionerInfo.managerProperties.get('minY', -np.inf)
+        self.maxY = positionerInfo.managerProperties.get('maxY', np.inf)
 
-        # calibrated stepsize
-        if positionerInfo.managerProperties.get('stepsizeZ') is not None:
-            self.stepsizeZ = positionerInfo.managerProperties['stepsizeZ']
-        else:
-            self.stepsizeZ = 1
+        # Minimum/maximum steps in Z
+        self.minZ = positionerInfo.managerProperties.get('minZ', -np.inf)
+        self.maxZ = positionerInfo.managerProperties.get('maxZ', np.inf)
 
-        # calibrated stepsize
-        if positionerInfo.managerProperties.get('stepsizeT') is not None:
-            self.stepsizeT = positionerInfo.managerProperties['stepsizeT']
-        else:
-            self.stepsizeT = 1
+        # Minimum/maximum steps in T
+        self.minT = positionerInfo.managerProperties.get('minT', -np.inf)
+        self.maxT = positionerInfo.managerProperties.get('maxT', np.inf)
 
-            # miniumum/maximum steps in X
-        if positionerInfo.managerProperties.get('minX') is not None:
-            self.minX = positionerInfo.managerProperties['minX']
-        else:
-            self.minX = -np.inf
-        if positionerInfo.managerProperties.get('maxX') is not None:
-            self.maxX = positionerInfo.managerProperties['maxX']
-        else:
-            self.maxX = np.inf
+        # Calibrated backlash
+        self.backlashX = positionerInfo.managerProperties.get('backlashX', 1)
+        self.backlashY = positionerInfo.managerProperties.get('backlashY', 1)
+        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 1)
+        self.backlashT = positionerInfo.managerProperties.get('backlashT', 1)
 
-        # minimum/maximum steps in Y
-        if positionerInfo.managerProperties.get('minY') is not None:
-            self.minY = positionerInfo.managerProperties['minY']
-        else:
-            self.minY = -np.inf
-        if positionerInfo.managerProperties.get('maxY') is not None:
-            self.maxY = positionerInfo.managerProperties['maxY']
-        else:
-            self.maxY = np.inf
-        # minimum/maximum steps in Z
-        if positionerInfo.managerProperties.get('minZ') is not None:
-            self.minZ = positionerInfo.managerProperties['minZ']
-        else:
-            self.minZ = -np.inf
-        if positionerInfo.managerProperties.get('maxZ') is not None:
-            self.maxZ = positionerInfo.managerProperties['maxZ']
-        else:
-            self.maxZ = np.inf
-        # minimum/maximum steps in T
-        if positionerInfo.managerProperties.get('minT') is not None:
-            self.minT = positionerInfo.managerProperties['minT']
-        else:
-            self.minT = -np.inf
-        if positionerInfo.managerProperties.get('maxT') is not None:
-            self.maxT = positionerInfo.managerProperties['maxT']
-        else:
-            self.maxT = np.inf
+        # Setup homing coordinates and speed
+        self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)
+        self.homeDirectionX = positionerInfo.managerProperties.get('homeDirectionX', -1)
+        self.homeSpeedY = positionerInfo.managerProperties.get('homeSpeedY', 15000)
+        self.homeDirectionY = positionerInfo.managerProperties.get('homeDirectionY', -1)
+        self.homeSpeedZ = positionerInfo.managerProperties.get('homeSpeedZ', 15000)
+        self.homeDirectionZ = positionerInfo.managerProperties.get('homeDirectionZ', -1)
 
-        # calibrated backlash
-        if positionerInfo.managerProperties.get('backlashX') is not None:
-            self.backlashX = positionerInfo.managerProperties['backlashX']
-        else:
-            self.backlashX = 1
+        # Setup homing endstop polarities
+        self.homeEndstoppolarityX = positionerInfo.managerProperties.get('homeEndstoppolarityX', 1)
+        self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
+        self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
 
-        # calibrated backlash
-        if positionerInfo.managerProperties.get('backlashY') is not None:
-            self.backlashY = positionerInfo.managerProperties['backlashY']
-        else:
-            self.backlashY = 1
+        # Axis order
+        self.axisOrder = positionerInfo.managerProperties.get('axisOrder', [0, 1, 2, 3])
 
-        # calibrated backlash
-        if positionerInfo.managerProperties.get('backlashZ') is not None:
-            self.backlashZ = positionerInfo.managerProperties['backlashZ']
-        else:
-            self.backlashZ = 1
+        # CoreXY geometry(cont'd)
+        self.isCoreXY = positionerInfo.managerProperties.get('isCoreXY', False)
 
-        # calibrated backlash
-        if positionerInfo.managerProperties.get('backlashT') is not None:
-            self.backlashT = positionerInfo.managerProperties['backlashT']
-        else:
-            self.backlashT = 1
-
-        # setup homing coordinates and speed
-        if positionerInfo.managerProperties.get('homeSpeedX') is not None:
-            self.homeSpeedX = positionerInfo.managerProperties['homeSpeedX']
-        else:
-            self.homeSpeedX = 15000
-        if positionerInfo.managerProperties.get('homeDirectionX') is not None:
-            self.homeDirectionX = positionerInfo.managerProperties['homeDirectionX']
-        else:
-            self.homeDirectionX = -1
-
-        if positionerInfo.managerProperties.get('homeSpeedY') is not None:
-            self.homeSpeedY = positionerInfo.managerProperties['homeSpeedY']
-        else:
-            self.homeSpeedY = 15000
-        if positionerInfo.managerProperties.get('homeDirectionY') is not None:
-            self.homeDirectionY = positionerInfo.managerProperties['homeDirectionY']
-        else:
-            self.homeDirectionY = -1
-
-        if positionerInfo.managerProperties.get('homeSpeedZ') is not None:
-            self.homeSpeedZ = positionerInfo.managerProperties['homeSpeedZ']
-        else:
-            self.homeSpeedZ = 15000
-        if positionerInfo.managerProperties.get('homeDirectionZ') is not None:
-            self.homeDirectionZ = positionerInfo.managerProperties['homeDirectionZ']
-        else:
-            self.homeDirectionZ = -1
-
-        if positionerInfo.managerProperties.get ('axisOrder') is not None:
-            self.axisOrder = positionerInfo.managerProperties['axisOrder']
-        else:
-            self.axisOrder = [0,1,2,3]
-
-        if positionerInfo.managerProperties.get("isCoreXY") is not None:
-            self.isCoreXY = positionerInfo.managerProperties["isCoreXY"]
-        else:
-            self.isCoreXY = False
-        # setting for setting motors under current yes/no after performing steps
-        if positionerInfo.managerProperties.get('isEnable') is not None:
-            self.is_enabled = positionerInfo.managerProperties['isEnable']
-        else:
-            self.is_enabled = True
-        # setup auto-enable according to json settings
-        if positionerInfo.managerProperties.get('enableauto') is not None:
-            self.enableauto = positionerInfo.managerProperties['enableauto']
-        else:
-            self.enableauto = True
+        # Enable motors
+        self.is_enabled = positionerInfo.managerProperties.get('isEnable', True)
+        self.enableauto = positionerInfo.managerProperties.get('enableauto', True)
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
-        # acceleration
-        self.acceleration = {"X": 40000,
-                            "Y": 40000,
-                            "Z": 40000,
-                            "T": 40000}
-        # swap axes eventually
+        # Acceleration
+        self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "T": 40000}
+
+        # Set axis order
         self.setAxisOrder(order=self.axisOrder)
 
-        # choose if we have a coreXY geometry or not
-        self._motor.setIsCoreXY(isCoreXY = self.isCoreXY)
+        # Set IsCoreXY
+        self._motor.setIsCoreXY(isCoreXY=self.isCoreXY)
 
-        # setup motors
+        # Setup motors
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
         self.setupMotor(self.minY, self.maxY, self.stepsizeY, self.backlashY, "Y")
         self.setupMotor(self.minZ, self.maxZ, self.stepsizeZ, self.backlashZ, "Z")
         self.setupMotor(self.minT, self.maxT, self.stepsizeT, self.backlashT, "T")
 
         # get bootup position and write to GUI
-        self._position  = self.getPosition()
-
-        # force setting the position
-        self.setPosition(self._position['X'],"X")
-        self.setPosition(self._position['Y'],"X")
-        self.setPosition(self._position['Z'],"Z")
-        self.setPosition(self._position['T'],"T")
-
+        self._position = self.getPosition()
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
@@ -218,32 +121,16 @@ class ESP32StageManager(PositionerManager):
 
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'Y':
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'Z':
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'T':
             self._motor.move_t(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            if not is_absolute: self._position[axis] = self._position[axis] + value
-            else: self._position[axis] = value
         elif axis == 'XY':
             self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
-                if not is_absolute:
-                    self._position[iaxis] = self._position[iaxis] + value[i]
-                else:
-                    self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
-                if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
-                else: self._position[iaxis] = value[i]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
 
@@ -271,9 +158,6 @@ class ESP32StageManager(PositionerManager):
             self._speed[axis] = speed
 
     def setPosition(self, value, axis):
-        # if value: value += 1  # TODO: Firmware weirdness
-        # self._motor.set_position(axis=axis, position=value) # TODO: this line does nothing
-        # self._motor.set_motor_currentPosition(axis=axis, currentPosition=value) # axis, currentPosition
         # print(f"setPosition - Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
@@ -281,13 +165,16 @@ class ESP32StageManager(PositionerManager):
         pass
 
     def getPosition(self):
+        # load position from device
+        # t,x,y,z
         try:
-            time.sleep(0.5)
             allPositions = self._motor.get_position()
         except:
             allPositions = [0,0,0,0]
-
-        return {"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
+        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
+        for iPosAxis, iPosVal in allPositionsDict.items():
+            self.setPosition(iPosVal,iPosAxis)
+        return allPositionsDict
 
     def forceStop(self, axis):
         if axis=="X":
@@ -328,19 +215,17 @@ class ESP32StageManager(PositionerManager):
             self.home_z(isBlocking)
 
     def home_x(self, isBlocking):
-        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, isBlocking=isBlocking)
+        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
-        # self._position["X"] = 0
 
     def home_y(self,isBlocking):
-        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, isBlocking=isBlocking)
+        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
-        # self._position["Y"] = 0
 
     def home_z(self,isBlocking):
-        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, isBlocking=isBlocking)
+        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, isBlocking=isBlocking)
         self.setPosition(axis="Z", value=0)
-        
+
     def home_xyz(self):
         self._motor.home_xyz()
         [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]

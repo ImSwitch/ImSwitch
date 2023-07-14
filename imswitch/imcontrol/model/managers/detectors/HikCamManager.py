@@ -26,8 +26,15 @@ class HikCamManager(DetectorManager):
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
             pixelSize = 1
+            
+        try: # FIXME: get that form the real camera
+            isRGB = detectorInfo.managerProperties['isRGB']  
+        except:
+            isRGB = False
+
+
         
-        self._camera = self._getHikObj(cameraId, binning)
+        self._camera = self._getHikObj(cameraId, isRGB, binning)
         
         for propertyName, propertyValue in detectorInfo.managerProperties['hikcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
@@ -170,11 +177,11 @@ class HikCamManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getHikObj(self, cameraId, binning=1):
+    def _getHikObj(self, cameraId, isRGB = False, binning=1):
         try:
             from imswitch.imcontrol.model.interfaces.hikcamera import CameraHIK
             self.__logger.debug(f'Trying to initialize Hik camera {cameraId}')
-            camera = CameraHIK(cameraNo=cameraId, binning=binning)
+            camera = CameraHIK(cameraNo=cameraId, isRGB=isRGB, binning=binning)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')

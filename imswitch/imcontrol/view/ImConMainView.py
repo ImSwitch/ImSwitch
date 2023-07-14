@@ -71,6 +71,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'DPC': _DockInfo(name='DPC', yPosition=0),
             'MCT': _DockInfo(name='MCT', yPosition=0),
             'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
+            'Hypha': _DockInfo(name='Hypha', yPosition=0),
             'MockXX': _DockInfo(name='MockXX', yPosition=0),
             'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
             'HistoScan': _DockInfo(name='HistoScan', yPosition=1),

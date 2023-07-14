@@ -19,6 +19,7 @@ from .SIMManager import SIMManager
 from .DPCManager import DPCManager
 from .MCTManager import MCTManager
 from .WebRTCManager import WebRTCManager
+from .HyphaManager import HyphaManager
 from .MockXXManager import MockXXManager
 from .JetsonNanoManager import JetsonNanoManager
 from .HistoScanManager import HistoScanManager

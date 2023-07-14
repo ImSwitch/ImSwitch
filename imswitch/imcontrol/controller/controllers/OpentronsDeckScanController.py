@@ -247,7 +247,7 @@ class OpentronsDeckScanController(LiveUpdatedController):
         slot, well, offset = self.get_first_position()
         self.scanner.moveToWell(well=well, slot=slot, is_blocking=True)
         self.scanner.shiftXY(xy_shift=offset, is_blocking=True)
-        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]), float(params["valueInitial"]))
+        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"])) #FIXME:, float(params["valueInitial"]))
         self.isAutofocusRunning = True
         while self.isAutofocusRunning:
             time.sleep(0.1)

@@ -407,7 +407,7 @@ class CameraHIK:
                             stConvertParam.nDstBufferSize = nRGBSize
                             
                             ret = cam.MV_CC_ConvertPixelType(stConvertParam)
-                            print(ret)
+
                             if ret != 0:
                                 print ("convert pixel fail! ret[0x%x]" % ret)
                                 del data_buf

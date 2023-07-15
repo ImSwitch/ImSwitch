@@ -28,14 +28,15 @@ class HyphaWidget(Widget):
         # connect the gui ellements to functions 
         self._webrtc_link.clicked.connect(self._open_webrtc_link)
         
- 
-        
         # add all gui elements to a simple grid layout
         self._layout = QtWidgets.QGridLayout()
         self._layout.addWidget(self._hypha_login, 0, 0)
-        self._layout.addWidget(self._webrtc_service_name_label, 0, 0)
-        self._layout.addWidget(self._webrtc_service_name, 0, 1)
+        self._layout.addWidget(self._webrtc_service_name_label, 0, 1)
+        self._layout.addWidget(self._webrtc_service_name, 0, 2)
         self._layout.addWidget(self._webrtc_link, 1, 0, 1, 2)
+        
+        # set layout 
+        self.setLayout(self._layout)
         
         
         

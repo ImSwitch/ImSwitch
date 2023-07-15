@@ -17,6 +17,7 @@ from ..basecontrollers import LiveUpdatedController
 
 #import NanoImagingPack as nip
 
+
 class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
 
@@ -37,7 +38,7 @@ class HistoScanController(LiveUpdatedController):
         # store old values
         self.LEDValueOld = 0
         self.LEDValue = 0
-        
+
         # stage-related variables
         self.speed = 10000
         self.positionMoveManual = 1000
@@ -48,7 +49,7 @@ class HistoScanController(LiveUpdatedController):
         self.pixelsizeZ=10
         self.tUnshake = .1
 
-        
+
         # physical coordinates (temporarily)
         self.stepsizeX = 1
         self.stepsizeY = 1
@@ -56,36 +57,35 @@ class HistoScanController(LiveUpdatedController):
         self.offsetY = 100  # distance between center of the brightfield and the ESP32 preview camera (Y)
         self.currentPositionX = 0
         self.currentPositionY = 0
-        
+
         # brightfield camera parameters
         self.camPixelsize = 1 # µm
         self.camPixNumX = 1000
         self.camPixNumY = 1000
         self.camOverlap = 0.3 # 30% overlap of tiles
-        
+
         # preview camera parameters
         self.camPreviewPixelsize = 100
         self.camPreviewPixNumX = self._widget.canvas.height()
         self.camPreviewPixNumY = self._widget.canvas.width()
 
-
         # Connect HistoScanWidget signals
         self._widget.HistoScanStartButton.clicked.connect(self.startHistoScan)
         self._widget.HistoScanStopButton.clicked.connect(self.stopHistoScan)
         self._widget.HistoScanShowLastButton.clicked.connect(self.showLast)
-        
+
         self._widget.HistoScanMoveUpButton.clicked.connect(self.moveUp)
         self._widget.HistoScanMoveDownButton.clicked.connect(self.moveDown)
         self._widget.HistoScanMoveLeftButton.clicked.connect(self.moveLeft)
         self._widget.HistoScanMoveRightButton.clicked.connect(self.moveRight)
-        
-        self._widget.HistoCamLEDButton.clicked.connect(self.toggleLED)
+
+        # self._widget.HistoCamLEDButton.clicked.connect(self.toggleLED)
         self._widget.HistoSnapPreviewButton.clicked.connect(self.snapPreview)
         self._widget.HistoFillHolesButton.clicked.connect(self.fillHoles)
         self._widget.HistoUndoButton.clicked.connect(self.undoSelection)
-                
+
         self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
-        
+
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
@@ -94,7 +94,7 @@ class HistoScanController(LiveUpdatedController):
         self.leds = []
         allIlluNames = self._master.lasersManager.getAllDeviceNames()
         for iDevice in allIlluNames:
-            if iDevice.find("LED")>=0:
+            if iDevice.find("LED") >= 0:
                 self.leds.append(self._master.lasersManager[iDevice])
 
         # select stage
@@ -102,7 +102,7 @@ class HistoScanController(LiveUpdatedController):
 
         self.isHistoScanrunning = False
         self._widget.HistoScanShowLastButton.setEnabled(False)
-        
+
         # setup gui limits
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
@@ -111,11 +111,7 @@ class HistoScanController(LiveUpdatedController):
             self._camera = self._master.detectorsManager[self._setupInfo.HistoScan.PreviewCamera]
         else:
             self._camera = self._master.detectorsManager.getCurrentDetector()
-        
-        
-        
 
-        
     def fillHoles(self):
         # fill holes in the selection
         self._widget.canvas.fillHoles()
@@ -123,13 +119,12 @@ class HistoScanController(LiveUpdatedController):
     def undoSelection(self):
         # recover the previous selection
         self._widget.canvas.undoSelection()
-        
 
     def startHistoScan(self):
         # initilaze setup
         # this is not a thread!
         self._widget.HistoScanStartButton.setEnabled(False)
-        
+
         self._widget.setInformationLabel("Starting HistoScan...")
 
         # get parameters from GUI
@@ -138,9 +133,8 @@ class HistoScanController(LiveUpdatedController):
         self.HistoScanDate = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
 
         self.doScan()
-            
 
-    
+
     def stopHistoScan(self):
         self.isHistoScanrunning = False
 
@@ -156,51 +150,81 @@ class HistoScanController(LiveUpdatedController):
     def showLast(self):
         try:
             self._widget.setImage(self.LastStackLEDArrayLast, colormap="gray", name="Brightfield",pixelsizeZ=self.pixelsizeZ)
-        except  Exception as e:
+        except Exception as e:
             self._logger.error(e)
 
     def displayStack(self, im):
         """ Displays the image in the view. """
         self._widget.setImage(im)
 
+    def doSnakeScan(self, overlap):
+        initPos = (14764,8743,-307)
+        nPixels = (3072,2048)
+        pixelSize = 0.225
+
+        nX = 5
+        nY = 5
+        coordinates = np.array([])
+
+        # TODO: ACTUALLY DO IT IN SNAKE PATTERN
+
+        for ix in range(nX):
+            for iy in range(nY):
+                posX = ix * pixelSize*nPixels[0]*overlap+initPos[0]
+                posY = iy * pixelSize*nPixels[1]*overlap+initPos[1]
+                coordinates.append((posX,posY))
+                self.movePositioner(self.positioner, "X", (posX), True, True)
+                self.movePositioner(self.positioner, "Y", (posY), True, True)
+                #        api.imcontrol.movePositioner(positionerName, "XY", (posX,posY), True, True)
+                self.snapImageToPath(str((posX, posY)))
+
+        return coordinates
+
+
     def doScan(self):
-        # 0. initailize pixelsize (low-res and highres) and stage stepsize 
+        # 0. initailize pixelsize (low-res and highres) and stage stepsize
         # TODO: RETRIEVE PROPER COORDINATES THROUGH GUI AND SETTINGS
-        
+
+        # mock_coordinates = np.array([[0,0],[0,1],[1,0],[1,1]])
+        # self._logger.debug("Mock coordinates: {}".format(mock_coordinates))
+
         # 1. Move to initial position on sample
-        
+        coordinates = self.doSnakeScan(0.1)
+
         # 2. Take low-res, arge FOv image
         if len(self._widget.canvas.getCoordinateList()) <= 0:
             self._logger.debug("No selection was made..")
             return
-        
+
         # 3. Get Annotaitons from sample selection and bring them to real world coordinates
         allPreviewCoordinatesToScan = np.array(self._widget.canvas.getCoordinateList())
-        
+
+        self._logger.info(f"Found coordinates {allPreviewCoordinatesToScan}")
+
         # translate coordinates into bitmap coordinates
         scanRegion = np.zeros((self.camPreviewPixNumX, self.camPreviewPixNumY))
         scanRegion[allPreviewCoordinatesToScan[:,0], allPreviewCoordinatesToScan[:,1]] = 1
-        
-        # compute FOV ratios between two cameras 
+
+        # compute FOV ratios between two cameras
         scanRatioX = (self.camPreviewPixNumX*self.camPreviewPixelsize)/(self.camPixNumX*self.camPixelsize*(1-self.camOverlap))
         scanRatioY = (self.camPreviewPixNumY*self.camPreviewPixelsize)/(self.camPixNumY*self.camPixelsize*(1-self.camOverlap))
-        
+
         # compute necessary tiles for the large FOV to scan - a bit hacky
         nKernel = self._widget.canvas.penwidth
-        kernel =  np.ones((nKernel,nKernel)) 
+        kernel =  np.ones((nKernel,nKernel))
         # binary coordinates (without physical units ) of the scan region
         scanRegionMicroscsope = cv2.resize(cv2.filter2D(np.uint8(scanRegion*1), -1, kernel), None, fx = 1/scanRatioX, fy = 1/scanRatioY, interpolation = cv2.INTER_CUBIC)>1
-        
+
         # overlay the scan region on the low-res image
         lowResCoordinatesMap = cv2.resize(1.*scanRegionMicroscsope, None, fx = scanRatioX, fy = scanRatioY, interpolation = cv2.INTER_CUBIC)
         # TODO: NOT WORKING self._widget.canvas.overlayImage(lowResCoordinatesMap, alpha=0.5)
-        
+
         # => each pixel in the scan region is now a square of size scanRatioX*scanRatioY pixels in the large FOV
         # compute cordinates of the miroscope stage and export list of coordinates
-        
-        # 4. Compute coordinates for high-res image / tiles 
+
+        # 4. Compute coordinates for high-res image / tiles
         coordinateList = np.array(np.where(scanRegionMicroscsope==1)).T*(self.camPixNumX*self.camPixelsize,self.camPixNumY*self.camPixelsize) # each row is one FOV
-        
+
         if len(coordinateList) <= 0:
             self._logger.debug("No selection was made..")
             self._widget.HistoScanStartButton.setEnabled(True)
@@ -208,7 +232,7 @@ class HistoScanController(LiveUpdatedController):
             return
 
         # 6. TODO: Sort list for faster acquisition
-        
+
         # this should decouple the hardware-related actions from the GUI
         self.isHistoScanrunning = True
         self.HistoScanThread = threading.Thread(target=self.doScanThread, args=(coordinateList,), daemon=True)
@@ -218,27 +242,29 @@ class HistoScanController(LiveUpdatedController):
         self._logger.info("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
 
+
     def doScanThread(self, coordinateList):
-        # store initial stage position
+        overlap = 0.8# store initial stage position
         initialPosition = (self.stages.get_abs(axis=1),self.stages.get_abs(axis=2))
 
         # reserve and free space for displayed stacks
         self.LastStackLED = []
-            
+
         for iPos in range(len(coordinateList)):
+            # move to location
             # move to location
             self._widget.setInformationLabel("Moving to : " + str(coordinateList[iPos,:]) + " µm ")
             self.stages.move(value=coordinateList[iPos,:], axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True, timeout=5)
             #self.stages.move(value=coordinateList[iPos,0], axis="X", speed=(self.speed), is_absolute=True, is_blocking=True)
             #self.stages.move(value=coordinateList[iPos,1], axis="Y", speed=(self.speed), is_absolute=True, is_blocking=True)
-            
+
             # want to do autofocus?
             autofocusParams = self._widget.getAutofocusValues()
             if self._widget.isAutofocus() and np.mod(self.nImages, int(autofocusParams['valuePeriod'])) == 0:
                 self._widget.setInformationLabel("Autofocusing...")
                 self.doAutofocus(autofocusParams)
-            
-            # turn on illumination # TODO: ensure it's the right light source!    
+
+            # turn on illumination # TODO: ensure it's the right light source!
             zstackParams = self._widget.getZStackValues()
             self._logger.debug("Take image")
             time.sleep(0.2) # antishake
@@ -246,7 +272,7 @@ class HistoScanController(LiveUpdatedController):
 
         # move stage back to origine
         self.stages.move(value=initialPosition, axis="XY", speed=(self.speed,self.speed), is_absolute=True, is_blocking=True, timeout=5)
-        
+
         # done with scan
         self._widget.setInformationLabel("Done")
         self._widget.HistoScanStartButton.setEnabled(True)
@@ -262,6 +288,10 @@ class HistoScanController(LiveUpdatedController):
         # sync with camera frame
         time.sleep(.15)
 
+        # take image
+        metadata = self._widget.getMetadata()
+        self._logger.debug("Metadata: " + str(metadata))
+
         if zstackParams[-1]:
             # perform a z-stack
             stepsCounter = 0
@@ -276,14 +306,14 @@ class HistoScanController(LiveUpdatedController):
                 stepsCounter += zstackParams[2]
                 self.stages.move(value=zstackParams[2], axis="Z", is_absolute=False, is_blocking=True)
                 filePath = self.getSaveFilePath(date=self.HistoScanDate, filename=f'{self.HistoScanFilename}_X{xycoords[0]}_Y{xycoords[1]}_Z_{stepsCounter}', extension=fileExtension)
-                
+
                 # turn on illuminationn
                 self.leds[0].setValue(intensity)
                 self.leds[0].setEnabled(True)
                 time.sleep(self.tUnshake) # unshake
                 lastFrame = self.detector.getLatestFrame()
                 self.leds[0].setEnabled(False)
-                
+
                 # write out filepath
                 self._logger.debug(filePath)
                 tif.imwrite(filePath, lastFrame, append=True)
@@ -306,13 +336,16 @@ class HistoScanController(LiveUpdatedController):
             self.LastStackLED.append(lastFrame.copy())
             self.leds[0].setEnabled(False)
 
+
+
     def valueLEDChanged(self, value):
         self.LEDValue = value
         self._widget.HistoScanLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds):
             self.leds[0].setEnabled(True)
             self.leds[0].setValue(self.LEDValue)
-            
+
+
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()
@@ -326,28 +359,27 @@ class HistoScanController(LiveUpdatedController):
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
 
-
         return newPath
 
-    
+
     def moveUp(self):
         # move stage in Y direction
         self.stages.move(value=self.positionMoveManual, axis="Y", is_absolute=False, is_blocking=True)
-        
+
     def moveDown(self):
         self.stages.move(value=-self.positionMoveManual, axis="Y", is_absolute=False, is_blocking=True)
-        
+
     def moveLeft(self):
         self.stages.move(value=self.positionMoveManual, axis="X", is_absolute=False, is_blocking=True)
 
     def moveRight(self):
         self.stages.move(value=-self.positionMoveManual, axis="X", is_absolute=False, is_blocking=True)
-        
+
     def snapPreview(self):
         self._logger.info("Snap preview...")
         self.previewImage = self._camera.getLatestFrame()
         self._widget.canvas.setImage(self.previewImage)
-        
+
     def toggleLED(self):
         if self._widget.HistoCamLEDButton.isChecked():
             self._logger.info("LED on")
@@ -355,12 +387,12 @@ class HistoScanController(LiveUpdatedController):
         else:
             self._logger.info("LED off")
             self._camera.setCameraLED(0)
-            
+
     def setLED(self, value):
         self._logger.info("Setting LED...")
         self._camera.setLED(value)
-        
-        
+
+
     def openFolder(self):
         """ Opens current folder in File Explorer. """
         folder = self._widget.getRecFolder()
@@ -368,8 +400,7 @@ class HistoScanController(LiveUpdatedController):
             os.makedirs(folder)
         ostools.openFolderInOS(folder)
 
-    
-    
+
 class mTimer(object):
     def __init__(self, waittime, mFunc) -> None:
         self.waittime = waittime
@@ -377,21 +408,25 @@ class mTimer(object):
         self.running = False
         self.isStop = False
         self.mFunc = mFunc
-        
+
     def start(self):
         self.starttime = time.time()
         self.running = True
-        
+
         ticker = threading.Event( daemon=True)
         self.waittimeLoop=0 # make sure first run runs immediately
         while not ticker.wait(self.waittimeLoop) and self.isStop==False:
             self.waittimeLoop = self.waittime
             self.mFunc()
         self.running = False
-        
+
     def stop(self):
         self.running = False
         self.isStop = True
+
+
+
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

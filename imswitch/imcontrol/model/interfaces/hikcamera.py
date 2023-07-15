@@ -119,6 +119,8 @@ class CameraHIK:
         memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
         self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
         self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
+        #if self.isRGB:
+        #    self.camera.MV_CC_SetEnumValue("PixelFormat", PixelType_Gvsp_BayerGB8) 
 
         '''
         # set exposure
@@ -364,6 +366,8 @@ class CameraHIK:
                 if self.g_bExit == True:
                     break
         if platform in ("darwin", "linux2", "linux"):
+
+
             
             # en:Get payload size
             stParam =  MVCC_INTVALUE()
@@ -377,30 +381,43 @@ class CameraHIK:
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
             memset(byref(stDeviceList), 0, sizeof(stDeviceList))
-            
+            data_buf = (c_ubyte * nPayloadSize)()
+
+            ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+            if self.isRGB:
+                nRGBSize = stDeviceList.nWidth * stDeviceList.nHeight*3
+                stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+                memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                stConvertParam.nWidth = stDeviceList.nWidth
+                stConvertParam.nHeight = stDeviceList.nHeight
+                stConvertParam.pSrcData = data_buf
+                stConvertParam.nSrcDataLen = stDeviceList.nFrameLen
+                stConvertParam.enSrcPixelType = stDeviceList.enPixelType  
+                stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed 
+                stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                stConvertParam.nDstBufferSize = nRGBSize
+                ret = cam.MV_CC_ConvertPixelType(stConvertParam)
             while True:
-                data_buf = (c_ubyte * nPayloadSize)()
-                ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
-                #print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
-                data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
-                self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
+                
+                if self.isRGB:
+                    img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    memmove(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+                    data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                    self.frame = np.transpose(data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1)), (2,0,1))
+                else:
+                    img_buff = (c_ubyte * nPayloadSize)()
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    #print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
+                    data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
+                    self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
                 self.frame_id = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.frame_id)
-                    
-                    
-                '''
-                ret = cam.MV_CC_GetOneFrameTimeout(pData, nDataSize, stFrameInfo, 1000)
-                if ret == 0:
-                    print ("get one frame: Width[%d], Height[%d], PixelType[0x%x], nFrameNum[%d]"  % (stFrameInfo.nWidth, stFrameInfo.nHeight, stFrameInfo.enPixelType,stFrameInfo.nFrameNum))
-                else:
-                    print ("no data[0x%x]" % ret)
-                if self.g_bExit == True:
-                        break
-                '''
+                
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

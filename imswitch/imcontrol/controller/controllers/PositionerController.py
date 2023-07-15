@@ -61,14 +61,17 @@ class PositionerController(ImConWidgetController):
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
 
         # get all speed values from the GUI
-        speed = self._widget.getSpeed(positionerName, axis)
+        if axis =="XY":
+            speed = self._widget.getSpeed(positionerName, "X")
+        else:
+            speed = self._widget.getSpeed(positionerName, axis)
+        
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
         except:
             self._master.positionersManager[positionerName].move(dist, axis)
-        self.updatePosition()
-        
+        self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
@@ -93,14 +96,16 @@ class PositionerController(ImConWidgetController):
         self._widget.setSpeedSize(positionerName, axis, speed)
         
     def updatePosition(self, positionerName, axis):
-        #newPos = self._master.positionersManager[positionerName].position[axis]#FIXME: Is this always pulling the latest position from the device?
-        def grabPos():
-            for i in range(10):
-                newPos = self._master.positionersManager[positionerName].getPosition()[axis]
+        if axis == "XY":
+            for axis in (("X", "Y")):
+                newPos = self._master.positionersManager[positionerName].position[axis]
                 self._widget.updatePosition(positionerName, axis, newPos)
                 self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-                time.sleep(.3)
-        threading.Thread(target=grabPos).start()
+
+        else:
+            newPos = self._master.positionersManager[positionerName].position[axis]
+            self._widget.updatePosition(positionerName, axis, newPos)
+            self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):

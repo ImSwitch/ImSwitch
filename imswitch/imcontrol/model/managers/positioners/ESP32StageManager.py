@@ -121,16 +121,32 @@ class ESP32StageManager(PositionerManager):
 
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            if not is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'Y':
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            if not is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'Z':
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            if not is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'T':
             self._motor.move_t(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            if not is_absolute: self._position[axis] = self._position[axis] + value
+            else: self._position[axis] = value
         elif axis == 'XY':
             self._motor.move_xy(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            for i, iaxis in enumerate(("X", "Y")):
+                if not is_absolute:
+                    self._position[iaxis] = self._position[iaxis] + value[i]
+                else:
+                    self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            for i, iaxis in enumerate(("X", "Y")):
+                if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
+                else: self._position[iaxis] = value[i]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
 

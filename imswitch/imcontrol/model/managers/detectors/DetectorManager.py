@@ -113,7 +113,7 @@ class DetectorManager(SignalInterface):
     
         # set RGB if information is available 
         try:
-            isRGB = parameters['isRGB'].value
+            isRGB = self._detectorInfo.managerProperties["isRGB"] #parameters['isRGB'].value
         except:
             isRGB = False
         self.setRGB(isRGB)

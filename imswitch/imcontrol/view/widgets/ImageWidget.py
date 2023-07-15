@@ -41,7 +41,7 @@ class ImageWidget(QtWidgets.QWidget):
             if rgb:
                     inputDummy = np.zeros((3, 3, 3))
                     self.imgLayers[name] = self.napariViewer.add_image(
-                        inputDummy, rgb=rgb, name=f'Live: {name}', blending='additive',  protected=True)
+                        inputDummy, rgb=True, name=f'Live: {name}', blending='additive',  protected=True)
             else:
                 inputDummy = np.zeros((1, 1))
                 self.imgLayers[name] = self.napariViewer.add_image(

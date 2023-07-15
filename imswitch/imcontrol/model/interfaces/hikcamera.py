@@ -151,7 +151,7 @@ class CameraHIK:
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
-            
+            self.g_bExit = False
             # Start grab image
             ret = self.camera.MV_CC_StartGrabbing()
             self.__logger.debug("start grabbing")
@@ -170,7 +170,7 @@ class CameraHIK:
     def stop_live(self):
         if self.is_streaming:
             # stop data acquisition
-            self.g_bExit = False
+            self.g_bExit = True
             self.hThreadHandle.join()
             self.is_streaming = False
 
@@ -366,8 +366,6 @@ class CameraHIK:
                 if self.g_bExit == True:
                     break
         if platform in ("darwin", "linux2", "linux"):
-
-
             
             # en:Get payload size
             stParam =  MVCC_INTVALUE()
@@ -384,27 +382,45 @@ class CameraHIK:
             data_buf = (c_ubyte * nPayloadSize)()
 
             ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
-            if self.isRGB:
-                nRGBSize = stDeviceList.nWidth * stDeviceList.nHeight*3
-                stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
-                memset(byref(stConvertParam), 0, sizeof(stConvertParam))
-                stConvertParam.nWidth = stDeviceList.nWidth
-                stConvertParam.nHeight = stDeviceList.nHeight
-                stConvertParam.pSrcData = data_buf
-                stConvertParam.nSrcDataLen = stDeviceList.nFrameLen
-                stConvertParam.enSrcPixelType = stDeviceList.enPixelType  
-                stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed 
-                stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
-                stConvertParam.nDstBufferSize = nRGBSize
-                ret = cam.MV_CC_ConvertPixelType(stConvertParam)
             while True:
                 
                 if self.isRGB:
-                    img_buff = (c_ubyte * stConvertParam.nDstLen)()
-                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
-                    memmove(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
-                    data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
-                    self.frame = np.transpose(data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1)), (2,0,1))
+                    try:
+                        stDeviceList = MV_FRAME_OUT_INFO_EX()
+                        memset(byref(stDeviceList), 0, sizeof(stDeviceList))
+                        data_buf = (c_ubyte * nPayloadSize)()
+
+                        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                        if ret == 0:
+                            
+                            nRGBSize = stDeviceList.nWidth * stDeviceList.nHeight*3
+                            
+                            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+                            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                            stConvertParam.nWidth = stDeviceList.nWidth
+                            stConvertParam.nHeight = stDeviceList.nHeight
+                            stConvertParam.pSrcData = data_buf
+                            stConvertParam.nSrcDataLen = stDeviceList.nFrameLen
+                            stConvertParam.enSrcPixelType = stDeviceList.enPixelType  
+                            stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed 
+                            stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                            stConvertParam.nDstBufferSize = nRGBSize
+                            
+                            ret = cam.MV_CC_ConvertPixelType(stConvertParam)
+                            print(ret)
+                            if ret != 0:
+                                print ("convert pixel fail! ret[0x%x]" % ret)
+                                del data_buf
+                                sys.exit()
+                                
+                            img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                            memmove(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+
+                            data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                            self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1))
+
+                    except:
+                        pass
                 else:
                     img_buff = (c_ubyte * nPayloadSize)()
                     ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
@@ -418,6 +434,8 @@ class CameraHIK:
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.frame_id)
                 
+                if self.g_bExit == True:
+                    break
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

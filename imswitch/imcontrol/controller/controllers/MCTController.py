@@ -404,18 +404,14 @@ class MCTController(ImConWidgetController):
                             
                             # Shift image2 to align with image1
                             image = imageList[bestFocusIndex]
-                            aligned_image = np.roll(image, int(iShift[1]), axis=1)
-                            aligned_image = np.roll(aligned_image,int(iShift[0]), axis=0)
+                            #aligned_image = np.roll(image, int(iShift[1]), axis=1)
+                            #aligned_image = np.roll(aligned_image,int(iShift[0]), axis=0)
                             self.stages.move(value=(self.initialPosition[0]+shift[1], self.initialPosition[1]+shift[0]), axis="XY", is_absolute=True, is_blocking=True)
-                            
-                            # Display the aligned image
-                            plt.imshow(aligned_image)
-                            plt.axis('off')
-                            plt.show()
-                    
+
                         image1 = image2.copy()
                          
-                        
+save values 
+make sure not to have too large travelrange after last (e.g. initial position + 2*shift))                        
                         
                     #increase iterator
                     self.nImagesTaken += 1

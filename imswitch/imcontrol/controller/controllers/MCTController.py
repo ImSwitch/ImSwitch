@@ -410,8 +410,8 @@ class MCTController(ImConWidgetController):
 
                         image1 = image2.copy()
                          
-save values 
-make sure not to have too large travelrange after last (e.g. initial position + 2*shift))                        
+                    #save values 
+                    #make sure not to have too large travelrange after last (e.g. initial position + 2*shift))                        
                         
                     #increase iterator
                     self.nImagesTaken += 1

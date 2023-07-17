@@ -16,6 +16,10 @@ class ESP32SerialCamManager(DetectorManager):
         self._running = False
         self._adjustingParameters = False
         fullShape = (320,240)
+        try:
+            self.port = detectorInfo.managerProperties['port']
+        except: 
+            self.port = None 
 
         # Prepare actions
         actions = {}
@@ -29,7 +33,7 @@ class ESP32SerialCamManager(DetectorManager):
             }          
         # initialize camera
 
-        self._camera = self._getESP32CamObj()
+        self._camera = self._getESP32CamObj(self.port)
 
         # init super-class
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
@@ -112,11 +116,11 @@ class ESP32SerialCamManager(DetectorManager):
         self._camera.openPropertiesGUI()
 
 
-    def _getESP32CamObj(self):
+    def _getESP32CamObj(self, port ):
         try:
             from imswitch.imcontrol.model.interfaces.CameraESP32CamSerial import CameraESP32CamSerial
             self.__logger.debug(f'Trying to initialize ESP32Camera')
-            camera = CameraESP32CamSerial()
+            camera = CameraESP32CamSerial(port)
         except Exception as e:
             self.__logger.warning(f'Failed to initialize PiCamera {e}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS

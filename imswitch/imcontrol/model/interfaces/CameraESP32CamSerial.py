@@ -8,11 +8,12 @@ from PIL import Image
 import io
 
 class CameraESP32CamSerial:
-    def __init__(self):
+    def __init__(self, port=None):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
         # many to be purged
+        self.port = port
         self.model = "ESP32Camera"
         self.shape = (0, 0)
 
@@ -39,6 +40,15 @@ class CameraESP32CamSerial:
         self.serialdevice = self.connect_to_usb_device()
 
     def connect_to_usb_device(self):
+        if self.port is not None:
+            try:
+                ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
+                print("Succesfully connected to previously set port")
+                return ser
+            except:
+                pass
+
+
         ports = serial.tools.list_ports.comports()
         for port in ports:
             if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":

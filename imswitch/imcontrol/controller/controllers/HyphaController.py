@@ -88,7 +88,8 @@ class HyphaController(LiveUpdatedController):
         # grab all necessary hardware elements
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         self.lasers = self._master.lasersManager[self._master.lasersManager.getAllDeviceNames()[0]]
-        self.ledMatrix = self._master.ledMatricesManager[self._master.ledMatricesManager.getAllDeviceNames()[0]]
+        try: self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
+        except: self.ledMatrix = None
         
         # get the first detector to stream data
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()

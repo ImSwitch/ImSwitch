@@ -130,6 +130,7 @@ class PCOManager(DetectorManager):
     def stopAcquisition(self):
         if self._running:
             self._running = False
+            #self._camera.suspend_live()
             self._camera.suspend_live()
             self.__logger.debug('suspendlive')
 

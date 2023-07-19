@@ -62,6 +62,7 @@ class SIMManager(SignalInterface):
 
                 allPatternsPerWavelength.append(mImage)
             allPatterns.append(allPatternsPerWavelength)
+            allPatternsPerWavelength = []
                 
         return allPatterns
         

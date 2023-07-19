@@ -20,6 +20,8 @@ import numpy as np
 from pathlib import Path
 import tifffile
 
+from datetime import datetime
+
 try:
     import mcsim
     ismcSIM=True
@@ -323,6 +325,7 @@ class SIMController(ImConWidgetController):
                 patternID = int(patternID)
                 wavelengthID = int(wavelengthID)
                 currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
+                print(patternID)
                 self.updateDisplayImage(currentPattern)
                 #print('new pattern shown')
                 return currentPattern
@@ -368,13 +371,15 @@ class SIMController(ImConWidgetController):
                     return
                 
                 # iterate over all patterns
+                # self.detector.wait_for_first_image()
                 for iPattern in range(self.nRotations*self.nPhases):
                     if not self.active:
                         break
                     
                     # 1 display the pattern
+                    #tick = datetime.now()
                     self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
-                    #time.sleep(0.1) #FIXME: ???
+                    time.sleep(0.25) #FIXME: ??? it works with 100ms exp
                     
                     # grab a frame 
                     # while (self.detector.getFrameId()-frameIdLast)<self.nsimFrameSyncVal:
@@ -382,16 +387,19 @@ class SIMController(ImConWidgetController):
                     
                     # grab frame after updated SIM display
                     frame = self.detector.getLatestFrame()
-
+                    #tock = datetime.now()
+                    #print('Frame %d was saved', str(self.detector.getFrameId()))
+                    #print('takes time of ',str(tock-tick))
                     # add frame to stack for processing 
                     processor.addFrameToStack(frame)
                     # processor.addFrameToStack(nip.extract(frame, (512,512)))
 
+                self.simPatternByID(patternID=0, wavelengthID=iColour)
                 SIMStack = processor.getSIMStack()
                 date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
                 mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
                 threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
-            
+                # self.detector.stopAcquisition()
                 # We will collect N*M images and process them with the SIM processor
                 # process the frames and display
                 if self.isReconstructing:  # not
@@ -408,6 +416,11 @@ class SIMController(ImConWidgetController):
                 
                 # reset the per-colour stack to add new frames in the next imaging series
                 processor.clearStack()
+
+    @APIExport(runOnUIThread=True)
+    def sim_getSnapAPI(self, mystack):
+        mystack.append(self.detector.getLatestFrame())
+        #print('stacked image')
         
     def reconstructSIMStack(self, SIMStack, processor):
         '''

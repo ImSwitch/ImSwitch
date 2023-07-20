@@ -60,6 +60,8 @@ class SIMWidget(NapariHybridWidget):
 
         self.patternIDBox = QtWidgets.QSpinBox()
         self.patternIDBox.valueChanged.connect(self.sigPatternID)
+        self.patternWavelengthList = QtWidgets.QComboBox()
+        self.patternWavelengthList.addItems(['488nm', '635nm'])
         #self.simDisplayLayout.addWidget(self.patternIDBox)
 
         # parameter tree for SIM reconstruction paramters
@@ -168,12 +170,16 @@ class SIMWidget(NapariHybridWidget):
         self.grid.addWidget(self.simFrameSyncLabel, 3,0,1,1)
         self.grid.addWidget(self.simFrameSyncVal, 3,1,1,1)
 
+        self.grid.addWidget(self.patternIDLabel, 4,0,1,1)
+        self.grid.addWidget(self.patternIDBox, 4,1,1,1)
+        self.grid.addWidget(self.patternWavelengthList, 4, 3, 1, 1)
+
         # Reconstructor
-        self.grid.addWidget(self.SIMReconstructorLabel, 4, 0, 1, 1)
-        self.grid.addWidget(self.SIMReconstructorList, 4, 1, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorLabel, 5, 0, 1, 1)
+        self.grid.addWidget(self.SIMReconstructorList, 5, 1, 1, 1)
             
         # SIM parameters 
-        self.grid.addWidget(self.paramtreeDockArea, 5, 0, 3, 2)
+        self.grid.addWidget(self.paramtreeDockArea, 6, 0, 3, 2)
         
         self.layer = None
 

@@ -40,7 +40,7 @@ class CameraPCO:
         self.preview_height = 600
 
         # reserve some space for the framebuffer
-        self.NBuffer = 10
+        self.NBuffer = 20
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameID = -1

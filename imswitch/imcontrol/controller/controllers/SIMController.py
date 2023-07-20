@@ -119,6 +119,7 @@ class SIMController(ImConWidgetController):
         self._widget.isRecordingButton.clicked.connect(self.toggleRecording)
         self._widget.is488LaserButton.clicked.connect(self.toggle488Laser)
         self._widget.is635LaserButton.clicked.connect(self.toggle635Laser)
+        self._widget.sigPatternID.connect(self.patternIDChanged)
         
         # sim parameters
         self.patternID = 0
@@ -190,7 +191,19 @@ class SIMController(ImConWidgetController):
         self._widget.setSIMDisplayMonitor(monitor)
 
     def patternIDChanged(self, patternID):
-        self.patternID = patternID
+        wl = self.getpatternWavelength()
+        if wl == '488nm':
+            laserTag = 0
+        elif wl == '635nm':
+            laserTag = 1
+        else:
+            laserTag = 0
+            self._logger.error("The laser wavelenth is not implemented")
+        
+        self.simPatternByID(patternID,laserTag)
+
+    def getpatternWavelength(self):
+        return self._widget.patternWavelengthList.currentText()
 
     def displayMask(self, image):
         self._widget.updateSIMDisplay(image)
@@ -259,11 +272,6 @@ class SIMController(ImConWidgetController):
         self.simThread = threading.Thread(target=self.performSIMExperimentThread, args=(sim_info_dict,), daemon=True)
         self.simThread.start()
         self._widget.startSIMAcquisition.setText("Stop")
-
-        #self.active = False
-        #self.simThread.join()
-        #self.lasers[0].setEnabled(False)
-        #self.lasers[1].setEnabled(False)
         #self._widget.startSIMAcquisition.setText("Start")
 
 
@@ -288,7 +296,6 @@ class SIMController(ImConWidgetController):
             self._widget.is635LaserButton.setText("635 on")
         else:
             self._widget.is635LaserButton.setText("635 off")
-
         
     def updateDisplayImage(self, image):
         image = np.fliplr(image.transpose())
@@ -404,7 +411,6 @@ class SIMController(ImConWidgetController):
                 # process the frames and display
                 if self.isReconstructing:  # not
                     self.isReconstructing=True
-
                     # load the per-colour SIM Stack for further processing
                     SIMStack = processor.getSIMStack()
                     
@@ -420,7 +426,7 @@ class SIMController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def sim_getSnapAPI(self, mystack):
         mystack.append(self.detector.getLatestFrame())
-        #print('stacked image')
+        print(np.shape(mystack))
         
     def reconstructSIMStack(self, SIMStack, processor):
         '''

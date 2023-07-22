@@ -241,49 +241,29 @@ class HyphaController(LiveUpdatedController):
         Args:
             value (float): The physical distance to move the stage by.
             axis (str): The axis along which the stage should be moved. Valid values are 'X', 'Y', 'Z', and 'A'.
-            is_absolute (bool, optional): Specifies whether the movement should be relative or absolute.
-                                        If True (default), the movement is performed in absolute coordinates.
-                                        If False, the movement is performed in relative coordinates.
-            is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination.
-                                        If True (default), the function will wait until the stage has arrived.
-                                        If False, the function will not wait and return immediately after initiating the movement.
+            is_absolute (bool, optional): Specifies whether the movement should be relative or absolute. Default is True (absolute).
+            is_blocking (bool, optional): Specifies whether the function should block until the stage has arrived at the destination. Default is True.
 
         Returns:
             None
 
-        Raises:
-            ValueError: If an invalid axis is provided.
+        Example Use:
+            # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
+            self.move(value=10000, axis="X", is_absolute=True, is_blocking=True)
+            
+            # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
+            self.move(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
 
         Notes:
-            - The stage must support the specified axis for the movement to be successful.
-            - The value represents the physical distance to move the stage by. Positive values move the stage in the positive direction
-            along the specified axis, while negative values move the stage in the negative direction.
-            - If is_absolute is True, the value represents the absolute position to move the stage to along the specified axis.
-            If is_absolute is False, the value represents the relative distance to move the stage from its current position.
-            - If is_blocking is True, the function will wait until the stage has arrived at the destination before returning.
-            If is_blocking is False, the function will initiate the movement and return immediately.
+            - Successful movement requires supported axis.
+            - Positive values move stage forward, negative values move it backward.
+            - `is_absolute=True` for absolute position, `is_absolute=False` for relative distance.
+            - `is_blocking=True` waits until stage arrives, `is_blocking=False` initiates and returns.
 
         Explanation:
-            This function allows you to move a microscope stage in the specified axis by a certain distance. The stage can be moved
-            along the 'x', 'y', 'z', or 'a' axis. The distance is specified by the 'value' parameter, which represents the physical
-            distance to move the stage by. Positive values move the stage in the positive direction along the specified axis,
-            while negative values move the stage in the negative direction.
-
-            By default, the movement is performed in absolute coordinates. This means that if 'is_absolute' is set to True (default),
-            the value represents the absolute position to move the stage to along the specified axis. However, you can also choose
-            to perform the movement in relative coordinates by setting 'is_absolute' to False. In this case, the value represents
-            the relative distance to move the stage from its current position.
-
-            Additionally, you can control whether the function blocks until the stage has arrived at the destination. If 'is_blocking'
-            is set to True (default), the function will wait until the stage has arrived at the destination before returning. This
-            can be useful if you want to ensure that the stage has completed the movement before executing further instructions.
-            On the other hand, if 'is_blocking' is set to False, the function will initiate the movement and return immediately
-            without waiting for the stage to arrive.
-
-            Please note that if an invalid axis is provided, a ValueError will be raised. Make sure to use one of the valid axis
-            values: 'X', 'Y', 'Z', or 'A'. Also, ensure that the microscope stage supports the specified axis for the movement
-            to be successful.
-
+            This function allows moving the microscope stage along the 'x', 'y', 'z', or 'a' axis by a certain distance. "\
+            "Use 'value' for the distance, 'is_absolute' for absolute or relative coordinates, and 'is_blocking' to control waiting behavior. "\
+            "Ensure valid axis values and stage support.
         """
         print(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
@@ -302,8 +282,13 @@ class HyphaController(LiveUpdatedController):
         server.register_service(
             {
                 "id": "microscope-control",
-                "name": "Microscope Control", # <------------change this
-                "description": "Control the microscope stage", # <------------change this
+                "name": "openUC2 Microscope", 
+                "description": "The OpenUC2 Microscope Digital Interface grants precise control over an openuc2 microscope,"\
+                    "featuring essential components like a monochrome camera, laser, LED matrix, focusing stage, and XY stage. "\
+                    "Standout features include easy manipulation of transparent samples with the XY stage, autofocus for accurate "\
+                    "long-distance movements, and fluorescence microscopy capabilities with the laser. The LED matrix enhances phase "\
+                    "contrast, while the monochrome camera captures high-quality grayscale images, facilitating diverse research"\
+                    "applications. Researchers enjoy unparalleled precision and control over their experiments with this powerful tool.",
                 "config":{
                     "visibility": "protected",
                     "run_in_executor": True,
@@ -314,8 +299,7 @@ class HyphaController(LiveUpdatedController):
                 "laserActivate": self.laserActivate,
                 "laserValue": self.laserValue,
                 "ledValue": self.ledValue,
-                "snapImage": self.snapImage,
-                # <------------add more functions here
+                "snapImage": self.snapImage
             }
         )
         # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))

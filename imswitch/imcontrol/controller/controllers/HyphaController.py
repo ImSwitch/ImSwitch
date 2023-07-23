@@ -5,7 +5,7 @@ try:
     isNIP = True
 except:
     isNIP = False
-    
+
 import argparse
 import asyncio
 import logging
@@ -70,7 +70,7 @@ class HyphaController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         self.frame = np.zeros((150, 300, 3)).astype('uint8')
-        
+
         self.asyncio_thread = None
 
         # rtc-related
@@ -79,29 +79,29 @@ class HyphaController(LiveUpdatedController):
         port = 8080
 
         self.ssl_context = None
-        
-        # TODO: Create ID based on user input 
+
+        # TODO: Create ID based on user input
         service_id = "UC2ImSwitch"
         server_url = "http://localhost:9000"
         server_url = "https://ai.imjoy.io/"
-        
+
         # grab all necessary hardware elements
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         self.lasers = self._master.lasersManager[self._master.lasersManager.getAllDeviceNames()[0]]
         try: self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         except: self.ledMatrix = None
-        
+
         # get the first detector to stream data
         self.detector_names = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[self.detector_names[0]]
-        
+
         # start the service
         self.start_asyncio_thread(server_url, service_id)
-        
+
     def update(self, detectorName, im, init, isCurrentDetector):
         """ Update with new detector frame. """
         pass
-    
+
     def start_asyncio_thread(self, server_url, service_id):
         loop = asyncio.get_event_loop()
         self.asyncio_thread = AsyncioThread(loop)
@@ -146,7 +146,7 @@ class HyphaController(LiveUpdatedController):
 
         Explanation:
             This function allows you to activate or deactivate a laser for fluorescence imaging by setting its enabled state.
-            The laser to be controlled is specified by its laserId. By default, if no laserId is provided, 
+            The laser to be controlled is specified by its laserId. By default, if no laserId is provided,
             the function operates on the laser with ID 0.
 
             The enabled state of the laser is determined by the value parameter. If value is set to 1, the laser is activated,
@@ -155,7 +155,7 @@ class HyphaController(LiveUpdatedController):
             Please note that this function does not return any value.
         """
         self.lasers[laserId].setEnabled(value)
-        
+
     def laserValue(self, laserId=0, value=0):
         """
         Sets the value of a laser.
@@ -176,9 +176,9 @@ class HyphaController(LiveUpdatedController):
             the laser system and should be consulted in the system's documentation.
 
             Please note that this function does not return any value.
-        """    
+        """
         self.lasers[laserId].setValue(value)
-        
+
     def ledValue(self, ledId=0, value=0):
         """
         Sets the value of an LED in an LED matrix.
@@ -200,7 +200,7 @@ class HyphaController(LiveUpdatedController):
             Please note that this function does not return any value.
         """
         self.ledMatrix[ledId].setValue(value)
-    
+
     def snapImage(self, path="Default.tif"):
         """
         Captures a single microscopic image and saves it to a specified path.
@@ -234,7 +234,7 @@ class HyphaController(LiveUpdatedController):
         mImage = self.detector.getLatestFrame()
         tif.imsave(path,mImage)
         return mImage
-        
+
     def move(self, value, axis, is_absolute=True, is_blocking=True):
         """
         Moves the microscope stage in the specified axis by a certain distance.
@@ -288,7 +288,7 @@ class HyphaController(LiveUpdatedController):
         """
         print(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
-        
+
     def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
         client_id = service_id + "-client"
         print(f"Starting service...")
@@ -308,7 +308,7 @@ class HyphaController(LiveUpdatedController):
                 "config":{
                     "visibility": "protected",
                     "run_in_executor": True,
-                    "require_context": True,   
+                    "require_context": True,
                 },
                 "type": "microscope",
                 "move": self.move,

@@ -283,12 +283,7 @@ class HyphaController(LiveUpdatedController):
             {
                 "id": "microscope-control",
                 "name": "openUC2 Microscope", 
-                "description": "The OpenUC2 Microscope Digital Interface grants precise control over an openuc2 microscope,"\
-                    "featuring essential components like a monochrome camera, laser, LED matrix, focusing stage, and XY stage. "\
-                    "Standout features include easy manipulation of transparent samples with the XY stage, autofocus for accurate "\
-                    "long-distance movements, and fluorescence microscopy capabilities with the laser. The LED matrix enhances phase "\
-                    "contrast, while the monochrome camera captures high-quality grayscale images, facilitating diverse research"\
-                    "applications. Researchers enjoy unparalleled precision and control over their experiments with this powerful tool.",
+                "description": "OpenUC2 Microscope Interface: Precise control over openuc2 microscope.",# Monochrome camera, laser, LED matrix, focusing stage, XY stage. Easy sample manipulation, accurate autofocus, fluorescence microscopy. LED matrix enhances phase contrast. High-quality grayscale imaging. Unparalleled precision.",
                 "config":{
                     "visibility": "protected",
                     "run_in_executor": True,
@@ -341,6 +336,9 @@ class VideoTransformTrack(MediaStreamTrack):
             if len(img.shape)<3:
                 img = np.array((img,img,img))
                 img = np.transpose(img, (1,2,0))
+            img = img/np.max(img)
+            img = img*255
+            img = np.uint8(img)
             #img = np.random.randint(0, 155, (150, 300, 3)).astype('uint8')
         else:
             img = np.random.randint(0, 155, (150, 300, 3)).astype('uint8')

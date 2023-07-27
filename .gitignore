@@ -85,3 +85,7 @@ locai/*
 conda/*
 conda-out/*
 imswitch/ImSwitch/ImSwitch/recordings/*
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt

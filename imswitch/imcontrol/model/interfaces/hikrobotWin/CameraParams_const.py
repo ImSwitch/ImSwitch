@@ -61,3 +61,6 @@ MV_EXCEPTION_VERSION_CHECK                   = 0x00008002  # < \~chinese SDK与�
 
 MAX_EVENT_NAME_SIZE                          = 128         # < \~chinese 设备Event事件名称最大长度 \~english Max length of event name
 MV_MAX_XML_SYMBOLIC_NUM                      = 64          # \~chinese 最大XML符号数               \~english Max XML Symbolic Number
+MV_MAX_SYMBOLIC_LEN                          = 64          # \~chinese 最大枚举条目对应的符号长度     \~english Max Enum Entry Symbolic Number
+
+MV_MAX_SPLIT_NUM                             = 8           # \~chinese 分时曝光时最多将源图像拆分的个数 \~english The maximum number of source image to be split in time-division exposure

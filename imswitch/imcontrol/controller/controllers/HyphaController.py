@@ -132,7 +132,7 @@ class HyphaController(LiveUpdatedController):
                 print(f"Track {track.kind} ended")
 
 
-    def laserActivate(self, laserId=0, value=0):
+    def setLaserActive(self, laserId=0, value=0):
         """
         Activates or deactivates a laser by setting its enabled state.
 
@@ -155,7 +155,7 @@ class HyphaController(LiveUpdatedController):
         """
         self.lasers[laserId].setEnabled(value)
         
-    def laserValue(self, laserId=0, value=0):
+    def setLaserValue(self, laserId=0, value=0):
         """
         Sets the value of a laser.
 
@@ -178,7 +178,7 @@ class HyphaController(LiveUpdatedController):
         """    
         self.lasers[laserId].setValue(value)
         
-    def ledValue(self, ledId=0, value=0):
+    def setLEDValue(self, ledId=0, value=0):
         """
         Sets the value of an LED in an LED matrix.
 
@@ -200,7 +200,7 @@ class HyphaController(LiveUpdatedController):
         """
         self.ledMatrix[ledId].setValue(value)
     
-    def snapImage(self, path="Default.tif"):
+    def getImage(self, path="Default.tif"):
         """
         Captures a single microscopic image and saves it to a specified path.
 
@@ -234,7 +234,7 @@ class HyphaController(LiveUpdatedController):
         tif.imsave(path,mImage)
         return mImage
         
-    def move(self, value, axis, is_absolute=True, is_blocking=True):
+    def setPosition(self, value, axis, is_absolute=True, is_blocking=True):
         """
         Moves the microscope stage in the specified axis by a certain distance.
 
@@ -249,10 +249,10 @@ class HyphaController(LiveUpdatedController):
 
         Example Use:
             # Move the stage 10000 µm in the positive X direction in absolute coordinates and wait for the stage to arrive.
-            self.move(value=10000, axis="X", is_absolute=True, is_blocking=True)
+            self.setPosition(value=10000, axis="X", is_absolute=True, is_blocking=True)
             
             # move the stage 10000 µm in the negative Y direction in relative coordinates and return immediately.
-            self.move(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
+            self.setPosition(value=-10000, axis="Y", is_absolute=False, is_blocking=False)
 
         Notes:
             - Successful movement requires supported axis.
@@ -295,11 +295,11 @@ class HyphaController(LiveUpdatedController):
                     "require_context": True,   
                 },
                 "type": "microscope",
-                "move": self.move,
-                "laserActivate": self.laserActivate,
-                "laserValue": self.laserValue,
-                "ledValue": self.ledValue,
-                "snapImage": self.snapImage
+                "move": self.setPosition,
+                "setLaserActive": self.setLaserActive,
+                "setLaserValue": self.setLaserValue,
+                "setLEDValue": self.setLEDValue,
+                "getImage": self.getImage
             }
         )
         # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))

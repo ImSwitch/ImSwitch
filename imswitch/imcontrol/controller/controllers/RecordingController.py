@@ -6,6 +6,8 @@ import numpy as np
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Response
 import cv2
+from PIL import Image
+import io
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
@@ -380,8 +382,6 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
-    
-
     def start_stream(self):
         '''
         return a generator that converts frames into jpeg's reads to stream
@@ -421,7 +421,6 @@ class RecordingController(ImConWidgetController):
     def video_feeder(self):
         return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
 
-    
     '''
     def snapImage(self, name=None) -> None:
         self.snap(name)
@@ -431,7 +430,7 @@ class RecordingController(ImConWidgetController):
         """ Take a snap and save it to a .tiff file at the given fileName. """
         self.snap(name = fileName)
     
-    @APIExport(runOnUIThread=True)
+    @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False):# -> np.ndarray:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
@@ -440,14 +439,18 @@ class RecordingController(ImConWidgetController):
             self.snap()
 
     @APIExport(runOnUIThread=False)
-    def snapNumpyToFastAPI(self, ) -> Response:
+    def snapNumpyToFastAPI(self, detectorName=None) -> Response:
         # Create a 2D NumPy array representing the image
-        image = self.snap()
-        image = np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
+        images = self.snapNumpy()
+        
+        # get the image from the first detector if detectorName is not specified
+        if detectorName is None:
+            detectorName = self.getDetectorNamesToCapture()[0]
+        
+        # get the image from the specified detector    
+        image = images[detectorName]
         
         # using an in-memory image
-        from PIL import Image
-        import io
         im = Image.fromarray(image)
         
         # save image to an in-memory bytes buffer
@@ -457,7 +460,6 @@ class RecordingController(ImConWidgetController):
             
         headers = {'Content-Disposition': 'inline; filename="test.png"'}
         return Response(im_bytes, headers=headers, media_type='image/png')
-        
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:

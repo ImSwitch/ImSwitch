@@ -91,7 +91,7 @@ List of available signals
 
 .. attribute:: CommunicationChannel.sigGridToggled(bool)
     
-- Origin: ``ViewWidget``
+- Origin: ``ViewWidget`` through ``ViewController``
 - Connections: \\
 - Content: ``True`` if grid activated, ``False`` otherwise
 - Explanation: emitted when the grid is toggled on or off in the image viewer

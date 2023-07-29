@@ -84,17 +84,17 @@ List of available signals
 
 .. attribute:: CommunicationChannel.sigDetectorSwitched(str, str)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``SettingsController``
+- Connections: ``DetectorsManager`` through ``MasterController``
+- Content: ``newDetectorName``, ``oldDetectorName``
+- Explanation: emitted when a different detector is selected from the GUI list of available detectors
 
 .. attribute:: CommunicationChannel.sigGridToggled(bool)
     
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``ViewWidget``
+- Connections: \\
+- Content: ``True`` if grid activated, ``False`` otherwise
+- Explanation: emitted when the grid is toggled on or off in the image viewer
 
 .. attribute:: CommunicationChannel.sigCrosshairToggled(bool)
     

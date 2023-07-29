@@ -14,8 +14,8 @@ Parallelized confocal and RESOLFT (MoNaLISA)
 Here we explain how we implemented ImSwitch for `MoNaLISA <https://www.nature.com/articles/s41467-018-05799-w>`_. In the article, you will find more information
 about the setup and how the data is reconstructed.
 
-Configuration file and hardware specifications
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+MoNaLISA configuration file and hardware specifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For this microscope use case, we created the JSON file ``example_monalisa.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_monalisa.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices.
@@ -67,8 +67,8 @@ Point-scanning confocal and STED
 ----------------------------------
 Here we explain how we implemented ImSwitch for a `custom-built STED setup <https://doi.org/10.1088/1361-6463/ab4c13>`_ in the lab, previously controlled by a combination of closed-source software (image acquisition) and purpose-built software (hardware control). In the article, you will find more information about the setup, what hardware it contains, and the type of image acquisition we want to perform.
 
-Configuration file and hardware specifications
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+STED Configuration file and hardware specifications
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For this microscope use case, we created the JSON file ``example_sted.json``, located at ``/imswitch/_data/user_defaults/imcontrol_setups/example_sted.json``
 
 We chose a National Instruments Data Acquisition (NIDAQ) card for managing the synchronization of the devices and image acquisition.

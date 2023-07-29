@@ -222,6 +222,10 @@ Example of implemented item types that may be included
    :members:
    :inherited-members:
 
+Available managers
+==================
+
+- TODO: fill content
 
 Available signal designers
 ==========================

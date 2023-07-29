@@ -43,6 +43,7 @@ well as for developers (scripting and API modules, and hardware control and JSON
     imcontrol-setups
     adding-device-support
     low-level-managers
+    signals
 
 .. toctree::
     :glob:

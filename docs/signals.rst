@@ -12,6 +12,7 @@ extended if need be, if there is a function of a newly implemented widget that r
 The signals additionally can take any objects to be sent through with the signal, defined in the signal definition
 with the required object type. 
 In order to implement a new signal connection, three steps have to be followed.
+
 1. Create signal in the CommunicationChannel, with any object tpyes that should be sent with the signal emission.
 2. Create an emission of the signal in the controller where the signal should originate.
 3. Create a reading of the signal in the controller where the signal should be read, and connect it to a function.
@@ -20,241 +21,288 @@ An example of this implementation is ``sigSendScanParameters``, that can send al
 ScanController to the EtSTEDController:
 
 In communication channel:
+
 .. code-block:: python
+
    sigSendScanParameters = Signal(dict, dict, object)
 
 Emission of signal:
+
 .. code-block:: python
+
    self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self._digitalParameterDict, self._positionersScan)
 
 Connection of signal:
+
 .. code-block:: python
-   self._commChannel.sigSendScanParameters.connect(lambda analogParams, digitalParams, positionersScan: self.assignScanParameters(analogParams, digitalParams, positionersScan))
+
+   self._commChannel.sigSendScanParameters.connect(
+      lambda analogParams, digitalParams, positionersScan: self.assignScanParameters(analogParams, digitalParams, positionersScan)
+   )
+
 
 See below for a list of all available signals in the CommunicationChannel currently, with their emission points.
 
 List of available signals
 ==============================
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigUpdateImage(str, np.ndarray, bool, list, bool)
-Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
-Connections: ``ImageController``, ``EtSTEDController``, ``AlignXYController``, ``AlignAverageController``
-Content: (detectorName, image, init, scale, isCurrentDetector)
-Explanation: Emitted when the image of a detector is update (camera frame pulled, point-detector image updated etc.), and is used to e.g. update the live view.
+.. currentmodule:: imswitch.imcontrol.controller.CommunicationChannel
+.. attribute:: CommunicationChannel.sigUpdateImage(str, np.ndarray, bool, list, bool)
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigAcquisitionStarted()
-Origin: 
-Connections: -
-Content: 
-Explanation: 
+- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
+- Connections: ``ImageController``, ``EtSTEDController``, ``AlignXYController``, ``AlignAverageController``
+- Content: (``detectorName``, ``image``, ``init``, ``scale``, ``isCurrentDetector``)
+- Explanation: emitted when the image of a detector is update (camera frame pulled, point-detector image updated etc.), and is used to e.g. update the live view.
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigAcquisitionStopped()
-Origin: 
-Connections: -
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigAcquisitionStarted()
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScriptExecutionFinished()
-Origin: 
-Connections: -
-Content: 
-Explanation: 
+- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
+- Connections: \\
+- Content: \\
+- Explanation: emitted all detectors start acquiring
+
+.. attribute:: CommunicationChannel.sigAcquisitionStopped()
+
+- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
+- Connections: \\
+- Content: \\
+- Explanation: emitted all detectors stop acquiring
+
+.. attribute:: CommunicationChannel.sigScriptExecutionFinished()
+
+- Origin: ``CommunicationChannel``
+- Connections: ``WatcherController``
+- Content: \\
+- Explanation: emitted when script from the ``ImScripting`` module has finished execution
+
+.. attribute:: CommunicationChannel.sigAdjustFrame(object)
     
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigAdjustFrame(object)
-Origin: 
-Connections: -
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigDetectorSwitched(str, str)
-Origin: 
-Connections: -
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigGridToggled(bool)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigCrosshairToggled(bool)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigAddItemToVb(object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRemoveItemFromVb(object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRecordingStarted()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRecordingEnded()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigUpdateRecFrameNum(int)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigUpdateRecTime(int)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigMemorySnapAvailable(str, np.ndarray, object, bool)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRunScan(bool, bool)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigAbortScan()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanStarting()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanBuilt(object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanStarted()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
-    
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanDone()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: ``SettingsController``
+- Connections: ``ImageController``
+- Content: ``tuple(int, int, int, int)`` with new detector shape (``x``, ``y``, ``width``, ``height``)
+- Explanation: emitted when a detector has changed the current ROI
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanEnded()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigDetectorSwitched(str, str)
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSLMMaskUpdated(object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigToggleBlockScanWidget(bool)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigGridToggled(bool)
+    
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSnapImg()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigCrosshairToggled(bool)
+    
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSnapImgPrev(str, np.ndarray, str)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigAddItemToVb(object)
+    
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRequestScanParameters()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigRemoveItemFromVb(object)
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSendScanParameters(dict, dict, object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: 
+- Connections: TBD
+- Content:
+- Explanation:
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSetAxisCenters(object, object)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigRecordingStarted()
+    
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigStartRecordingExternal()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigRecordingEnded()
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigRequestScanFreq()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSendScanFreq(float)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigUpdateRecFrameNum(int)
+    
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSaveFocus()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigUpdateRecTime(int)
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigScanFrameFinished()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigUpdateRotatorPosition(str)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigMemorySnapAvailable(str, np.ndarray, object, bool)
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigSetSyncInMovementSettings(str, float)
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 
-.. autoclassconheader:: imswitch.imcontrol.controller.CommunicationChannel.sigNewFrame()
-Origin: 
-Connections: 
-Content: 
-Explanation: 
+.. attribute:: CommunicationChannel.sigRunScan(bool, bool)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigAbortScan()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanStarting()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanBuilt(object)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanStarted()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanDone()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanEnded()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSLMMaskUpdated(object)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigToggleBlockScanWidget(bool)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSnapImg()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSnapImgPrev(str, np.ndarray, str)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigRequestScanParameters()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSendScanParameters(dict, dict, object)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSetAxisCenters(object, object)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigStartRecordingExternal()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigRequestScanFreq()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSendScanFreq(float)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSaveFocus()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigScanFrameFinished()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigUpdateRotatorPosition(str)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigSetSyncInMovementSettings(str, float)
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
+
+.. attribute:: CommunicationChannel.sigNewFrame()
+
+- Origin: 
+- Connections: TBD
+- Content: 
+- Explanation: 
 

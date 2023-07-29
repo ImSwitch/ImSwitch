@@ -47,7 +47,7 @@ def _getImSwitchDir(config: bool = False) -> str:
             basepath = _getWindowsDir()
         else:
             # TODO make case for macOS and return recommended paths
-            basepath = os.path.expanduser('~')
+            basepath = Path('~').expanduser()
 
         if config:
             return basepath / 'ImSwitch/config'

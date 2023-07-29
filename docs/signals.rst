@@ -92,58 +92,65 @@ List of available signals
 .. attribute:: CommunicationChannel.sigGridToggled(bool)
     
 - Origin: ``ViewWidget`` through ``ViewController``
-- Connections: \\
+- Connections: ``ImageController``
 - Content: ``True`` if grid activated, ``False`` otherwise
 - Explanation: emitted when the grid is toggled on or off in the image viewer
 
 .. attribute:: CommunicationChannel.sigCrosshairToggled(bool)
     
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``ViewWidget`` through ``ViewController``
+- Connections: ``ImageController``
+- Content: ``True`` if crosshair activated, ``False`` otherwise
+- Explanation: emitted when the crosshair is toggled on or off in the image viewer
 
 .. attribute:: CommunicationChannel.sigAddItemToVb(object)
     
 - Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+
+  - ``SettingsController``
+  - ``EtSTEDController``
+  - ``BeadRecController``
+  - ``AlignXYController``
+  - ``AlignmentLineController``
+  - ``AlignAverageController``
+- Connections: ``ImageController``
+- Content: ``item`` dependent on specific controller implementation
+- Explanation: adds a new item to the image viewer
 
 .. attribute:: CommunicationChannel.sigRemoveItemFromVb(object)
 
-- Origin: 
-- Connections: TBD
-- Content:
-- Explanation:
+- Origin: \\
+- Connections: ``ImageController``
+- Content: ``item`` dependent on specific controller implementation
+- Explanation: removes an item from the image viewer
 
 .. attribute:: CommunicationChannel.sigRecordingStarted()
     
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``RecordingManager``, passing first by ``RecordingController`` and then ``MasterController``
+- Connections: \\
+- Content: \\
+- Explanation: emitted when a new recording is started
 
 .. attribute:: CommunicationChannel.sigRecordingEnded()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``RecordingManager``, passing first by ``RecordingController`` and then ``MasterController``
+- Connections: ``EtSTEDController``
+- Content: \\
+- Explanation: emitted when a recording is ended
 
 .. attribute:: CommunicationChannel.sigUpdateRecFrameNum(int)
     
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``RecordingController`` through ``MasterController``
+- Connections: \\
+- Content: ``frameNum`` of the current recording
+- Explanation: emitted when the frame number of the current recording is updated (in case of a stack recording)
 
 .. attribute:: CommunicationChannel.sigUpdateRecTime(int)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+- Origin: ``RecordingController`` through ``MasterController``
+- Connections: \\
+- Content: ``recTime`` of the current recording
+- Explanation: emitted when the recording time of the current recording is updated (in case of a time recording)
 
 .. attribute:: CommunicationChannel.sigMemorySnapAvailable(str, np.ndarray, object, bool)
 

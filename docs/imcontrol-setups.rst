@@ -1,6 +1,6 @@
-*******************************
+************************************************************
 Setup configuration JSON and hardware control configurations
-*******************************
+************************************************************
 
 The hardware control module of ImSwitch is designed to be flexible and usable in a wide variety of microscopy setups.
 In order to provide this flexibility,
@@ -124,6 +124,7 @@ For this, a new object in the setup configuration was implemented, called ``slm`
 Additionally, a new class needs to be defined in SetupInfo, here named ``SLMInfo``, where all of these parameters are defined with the expected data types.
 
 .. code-block:: python
+
    @dataclass(frozen=True)
    class SLMInfo:
       monitorIdx: int
@@ -175,7 +176,7 @@ Configuration file specification
 
 
 Example of implemented item types that may be included
-=================================================
+======================================================
 
 .. autoclassconheader:: imswitch.imcontrol.model.SetupInfo.DetectorInfo
    :members:

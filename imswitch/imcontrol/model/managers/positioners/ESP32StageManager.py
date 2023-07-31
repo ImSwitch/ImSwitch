@@ -157,7 +157,7 @@ class ESP32StageManager(PositionerManager):
         return self._motor.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target,
                                              PID_updaterate=PID_updaterate)
 
-    def moveForever(self, speed=(0, 0, 0), is_stop=False):
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
         self._motor.move_forever(speed=speed, is_stop=is_stop)
 
     def setEnabled(self, is_enabled):

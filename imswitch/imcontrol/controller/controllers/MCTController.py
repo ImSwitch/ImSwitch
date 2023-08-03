@@ -371,6 +371,9 @@ class MCTController(ImConWidgetController):
                             
                         # image processing 
                         for iImage in imageStack:
+                            if len(iImage.shape)>2:
+                                # if RGB => make mono
+                                iImage = np.mean(iImage, -1)
                             image = self.crop_center(iImage, driftCorrectionCropSize)
                             image = self.downscale_image(image, driftCorrectionDownScaleFactor)
                             imageList.append(image)

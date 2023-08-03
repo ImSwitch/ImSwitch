@@ -22,6 +22,7 @@ class JoystickController(LiveUpdatedController):
         self._widget.sigJoystickZA.connect(self.moveZA)
         
     def moveXY(self, x, y):
+        print(x)
         if abs(x)>0 or abs(y) >0:
             self.positioner.moveForever(speed=(0, x, y, 0), is_stop=False)
         else:
@@ -30,6 +31,7 @@ class JoystickController(LiveUpdatedController):
         return x, y
     
     def moveZA(self, a, z):
+        print(z)
         if abs(a)>0 or abs(z) >0:
             self.positioner.moveForever(speed=(a, 0, 0, z), is_stop=False)
         else:

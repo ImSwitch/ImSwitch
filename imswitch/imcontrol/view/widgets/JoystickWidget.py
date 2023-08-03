@@ -25,9 +25,9 @@ class JoystickWidget(NapariHybridWidget):
         self.textEditJoystickXY = QtWidgets.QLabel("Joystick X/Y")
         self.joystickXY = joystick.Joystick(callbackFct=self.getValueJoyStickAZ)        
         
-        self.grid.addWidget(self.textEditJoystickZA, 0, 0)
+        self.grid.addWidget(self.textEditJoystickZA, 0, 1)
         self.grid.addWidget(self.joystickZA, 1, 0)
-        self.grid.addWidget(self.textEditJoystickXY, 0, 1)
+        self.grid.addWidget(self.textEditJoystickXY, 0, 0)
         self.grid.addWidget(self.joystickXY, 1, 1)
         
     def getValueJoyStickXY(self, x, y):

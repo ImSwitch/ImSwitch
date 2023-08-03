@@ -184,9 +184,9 @@ class ESP32StageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         try:
-            allPositions = self._motor.get_position()
+            allPositions = np.float(self._motor.get_position())
         except:
-            allPositions = [0,0,0,0]
+            allPositions = [0.,0.,0.,0.]
         allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
         for iPosAxis, iPosVal in allPositionsDict.items():
             self.setPosition(iPosVal,iPosAxis)

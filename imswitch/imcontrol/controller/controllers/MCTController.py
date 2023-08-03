@@ -312,7 +312,7 @@ class MCTController(ImConWidgetController):
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
-                self.stages.setSpeed(speed=1000, axis="Z")
+                self.stages.setSpeed(speed=10000, axis="Z")
                 
                 # ensure motors are enabled
                 #self.stages.enalbeMotors(enable=True)

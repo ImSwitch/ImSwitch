@@ -67,7 +67,7 @@ class PositionerController(ImConWidgetController):
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
         except:
             self._master.positionersManager[positionerName].move(dist, axis)
-        self.updatePosition()
+        #self.updatePosition()
         
 
     def setPos(self, positionerName, axis, position):

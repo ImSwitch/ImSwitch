@@ -20,7 +20,7 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraPCO:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=10, blacklevel=100, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -40,7 +40,7 @@ class CameraPCO:
         self.preview_height = 600
 
         # reserve some space for the framebuffer
-        self.NBuffer = 20
+        self.NBuffer = 30
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameID = -1

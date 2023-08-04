@@ -198,8 +198,7 @@ class SIMController(ImConWidgetController):
             laserTag = 1
         else:
             laserTag = 0
-            self._logger.error("The laser wavelenth is not implemented")
-        
+            self._logger.error("The laser wavelenth is not implemented")    
         self.simPatternByID(patternID,laserTag)
 
     def getpatternWavelength(self):
@@ -332,7 +331,7 @@ class SIMController(ImConWidgetController):
                 patternID = int(patternID)
                 wavelengthID = int(wavelengthID)
                 currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
-                print(patternID)
+                print(str(wavelengthID) + str(patternID))
                 self.updateDisplayImage(currentPattern)
                 #print('new pattern shown')
                 return currentPattern
@@ -348,80 +347,84 @@ class SIMController(ImConWidgetController):
         self.isReconstructing = False
         nColour = 2
 
-        while self.active:
+        #while self.active:
             
-            for iColour in range(nColour):
-                # toggle laser
+        for iColour in range(nColour):
+            # toggle laser
+            if not self.active:
+                break
+
+            if iColour == 0 and self.is488:
+                self.lasers[0].setEnabled(True)
+                self.lasers[1].setEnabled(False)
+                self._logger.debug("Switching to pattern"+self.lasers[0].name)
+                processor = self.SimProcessorLaser1
+                processor.setParameters(sim_info_dict)
+                self.LaserWL = processor.wavelength
+                # set the pattern-path for laser wl 1
+            elif iColour == 1 and self.is635:
+                self.lasers[0].setEnabled(False)
+                self.lasers[1].setEnabled(True)
+                self._logger.debug("Switching to pattern"+self.lasers[1].name)
+                processor = self.SimProcessorLaser2
+                processor.setParameters(sim_info_dict)                    
+                self.LaserWL = processor.wavelength
+                # set the pattern-path for laser wl 1
+            elif self.is488 or self.is635:
+                continue
+            else:
+                self.lasers[0].setEnabled(False)
+                self.lasers[1].setEnabled(False)
+                processor = None
+                self.active = False
+                # disable both laser
+                break
+            
+            # iterate over all patterns
+            #self.detector.wait_for_first_image()
+            for iPattern in range(self.nRotations*self.nPhases):
                 if not self.active:
                     break
-
-                if iColour == 0 and self.is488:
-                    self.lasers[0].setEnabled(True)
-                    self.lasers[1].setEnabled(False)
-                    self._logger.debug("Switching to pattern"+self.lasers[0].name)
-                    processor = self.SimProcessorLaser1
-                    processor.setParameters(sim_info_dict)
-                    self.LaserWL = processor.wavelength
-                    # set the pattern-path for laser wl 1
-                elif iColour == 1 and self.is635:
-                    self.lasers[0].setEnabled(False)
-                    self.lasers[1].setEnabled(True)
-                    processor = self.SimProcessorLaser2
-                    processor.setParameters(sim_info_dict)                    
-                    self.LaserWL = processor.wavelength
-                    # set the pattern-path for laser wl 1
-                else:
-                    self.lasers[0].setEnabled(False)
-                    self.lasers[1].setEnabled(False)
-                    processor = None
-                    # disable both laser
-                    return
                 
-                # iterate over all patterns
-                # self.detector.wait_for_first_image()
-                for iPattern in range(self.nRotations*self.nPhases):
-                    if not self.active:
-                        break
-                    
-                    # 1 display the pattern
-                    #tick = datetime.now()
-                    self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
-                    time.sleep(0.25) #FIXME: ??? it works with 100ms exp
-                    
-                    # grab a frame 
-                    # while (self.detector.getFrameId()-frameIdLast)<self.nsimFrameSyncVal:
-                    #    time.sleep(0.01) # keep CPU happy
-                    
-                    # grab frame after updated SIM display
-                    frame = self.detector.getLatestFrame()
-                    #tock = datetime.now()
-                    #print('Frame %d was saved', str(self.detector.getFrameId()))
-                    #print('takes time of ',str(tock-tick))
-                    # add frame to stack for processing 
-                    processor.addFrameToStack(frame)
-                    # processor.addFrameToStack(nip.extract(frame, (512,512)))
+                # 1 display the pattern
+                #tick = datetime.now()
+                self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
+                time.sleep(0.25) #FIXME: ??? it works with 100ms exp
+                
+                # grab a frame 
+                # while (self.detector.getFrameId()-frameIdLast)<self.nsimFrameSyncVal:
+                #    time.sleep(0.01) # keep CPU happy
+                
+                # grab frame after updated SIM display
+                frame = self.detector.getLatestFrame()
+                #tock = datetime.now()
+                #print('Frame %d was saved', str(self.detector.getFrameId()))
+                #print('takes time of ',str(tock-tick))
+                # add frame to stack for processing 
+                processor.addFrameToStack(frame)
+                # processor.addFrameToStack(nip.extract(frame, (512,512)))
 
-                self.simPatternByID(patternID=0, wavelengthID=iColour)
+            self.simPatternByID(patternID=0, wavelengthID=iColour)
+            SIMStack = processor.getSIMStack()
+            date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
+            mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
+            threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
+            # self.detector.stopAcquisition()
+            # We will collect N*M images and process them with the SIM processor
+            # process the frames and display
+            if self.isReconstructing:  # not
+                self.isReconstructing=True
+                # load the per-colour SIM Stack for further processing
                 SIMStack = processor.getSIMStack()
-                date = datetime. now(). strftime("%Y_%m_%d-%I-%M-%S_%p")
-                mFilenameStack = f"{date}_SIM_Stack_{self.LaserWL}nm.tif"
-                threading.Thread(target=self.saveImageInBackground, args=(SIMStack, mFilenameStack,), daemon=True).start()
-                # self.detector.stopAcquisition()
-                # We will collect N*M images and process them with the SIM processor
-                # process the frames and display
-                if self.isReconstructing:  # not
-                    self.isReconstructing=True
-                    # load the per-colour SIM Stack for further processing
-                    SIMStack = processor.getSIMStack()
-                    
-                    # reconstruct and save the stack in background to not block the main thread
-                    self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
-                    self.mReconstructionThread.start()
-                    SIMStack = None
-                    
                 
-                # reset the per-colour stack to add new frames in the next imaging series
-                processor.clearStack()
+                # reconstruct and save the stack in background to not block the main thread
+                self.mReconstructionThread = threading.Thread(target=self.reconstructSIMStack, args=(SIMStack, processor,), daemon=True)
+                self.mReconstructionThread.start()
+                SIMStack = None
+                
+            
+            # reset the per-colour stack to add new frames in the next imaging series
+            processor.clearStack()
 
     @APIExport(runOnUIThread=True)
     def sim_getSnapAPI(self, mystack):

@@ -172,7 +172,7 @@ class SIMWidget(NapariHybridWidget):
 
         self.grid.addWidget(self.patternIDLabel, 4,0,1,1)
         self.grid.addWidget(self.patternIDBox, 4,1,1,1)
-        self.grid.addWidget(self.patternWavelengthList, 4, 3, 1, 1)
+        self.grid.addWidget(self.patternWavelengthList, 4, 2, 1, 1)
 
         # Reconstructor
         self.grid.addWidget(self.SIMReconstructorLabel, 5, 0, 1, 1)

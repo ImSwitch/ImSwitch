@@ -84,6 +84,9 @@ class UC2ConfigManager(SignalInterface):
 
     def initSerial(self):
         self.ESP32.serial.open()
+        
+    def pairBT(self):
+        self.ESP32.state.pairBT()
 
     def downloadFirmware(self, firmwarePath=None):
         return self.firmwareUpdater.downloadFirmware()

@@ -38,6 +38,7 @@ from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .DPCController import DPCController
 from .MCTController import MCTController
+from .LightsheetController import LightsheetController
 from .WebRTCController import WebRTCController
 from .HyphaController import HyphaController
 from .MockXXController import MockXXController

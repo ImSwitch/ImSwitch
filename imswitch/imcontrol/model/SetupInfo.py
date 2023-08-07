@@ -228,6 +228,10 @@ class DPCInfo:
 class MCTInfo:
     pass
 
+@dataclass(frozen=True)
+class LightsheetInfo:
+    pass
+
 
 @dataclass(frozen=True)
 class WebRTCInfo:
@@ -463,6 +467,9 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+
+    lightsheet: Optional[LightsheetInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use Lightsheet functionality. """
 
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """

@@ -97,6 +97,8 @@ class UC2ConfigWidget(Widget):
         self.applyChangesButton = guitools.BetterPushButton('Apply changes')
 
         self.reconnectButton = guitools.BetterPushButton('Reconnect ESP32')
+        self.btpairingButton = guitools.BetterPushButton('Pair PS controller')
+        
         # Control panel with most buttons
         self.controlPanel = QtWidgets.QFrame()
         self.controlPanel.choiceInterfaceLayout = QtWidgets.QGridLayout()
@@ -140,11 +142,14 @@ class UC2ConfigWidget(Widget):
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
-        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
-        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
-        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
-        self.grid.addWidget(self.reconnectButton, 3, 1, 1, 1)
-    
+        #        self.grid.addWidget(self.paramtreeDockArea, 1, 0, 2, 1)
+        #        self.grid.addWidget(self.applyChangesButton, 3, 0, 1, 1)
+        #        self.grid.addWidget(self.controlPanel, 1, 1, 2, 1)
+        #self.grid.addWidget(self.reconnectButton, 3, 1, 1, 1)
+        #self.grid.addWidget(self.btpairingButton, 4, 1, 1, 1)
+        self.grid.addWidget(self.reconnectButton, 0, 1, 1, 1)
+        self.grid.addWidget(self.btpairingButton, 1, 1, 1, 1)
+            
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

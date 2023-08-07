@@ -16,8 +16,8 @@ def _getWindowsDir():
         SHGFP_TYPE_CURRENT = 0  # Current value
 
         buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-        ctypes.windll.shell32.SHGetFolderPathW(
-            0, CSIDL_PERSONAL, 0, SHGFP_TYPE_CURRENT, buf)
+        ctypes.windll.shell32.SHGetFolderPathW(0, CSIDL_PERSONAL, 0,
+                                               SHGFP_TYPE_CURRENT, buf)
 
         return Path(buf.value)
     except ImportError:
@@ -41,7 +41,8 @@ def _getImSwitchDir(config: bool = False) -> str:
 
     else:
         # on any other OS put data and configs into same folder
-        if platform.system() == 'Windows':  # Windows system, try to return documents directory
+        if platform.system(
+        ) == 'Windows':  # Windows system, try to return documents directory
             # TODO why would these files not go into .AppData\Roaming?
             # (or whatever the right windows location is)
             basepath = _getWindowsDir()
@@ -92,8 +93,10 @@ class FileDirs(ABC):
     @classmethod
     def list(cls):
         """ Returns all directories in the catalog. """
-        return [cls.__dict__.get(name) for name in dir(cls)
-                if not callable(getattr(cls, name)) and not name.startswith('_')]
+        return [
+            cls.__dict__.get(name) for name in dir(cls)
+            if not callable(getattr(cls, name)) and not name.startswith('_')
+        ]
 
     @classmethod
     def copyDefaults(cls):

@@ -1,3 +1,7 @@
+import configparser
+import functools
+from logging import exception
+from pathlib import Path
 import traceback
 import configparser
 
@@ -7,18 +11,23 @@ from ast import literal_eval
 
 from ..basecontrollers import SuperScanController
 from imswitch.imcommon.view.guitools import colorutils
+from imswitch.imcommon.model import dirtools
 
 
 class ScanControllerMoNaLISA(SuperScanController):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._widget.initControls(
-            self.positioners.keys(),
-            self.TTLDevices.keys(),
-            self._master.scanManager.TTLTimeUnits
-        )
+        self._widget.initControls(self.positioners.keys(),
+                                  self.TTLDevices.keys(),
+                                  self._master.scanManager.TTLTimeUnits)
 
+        self.scanDir = dirtools.UserConfigFileDirs.Root / 'imcontrol_scans'
+        if not self.scanDir.exists:
+            self.scanDir.mkdir(parents=True)
+
+        self.getParameters()
         self.updatePixels()
         self.plotSignalGraph()
         self.updateScanStageAttrs()
@@ -28,7 +37,6 @@ class ScanControllerMoNaLISA(SuperScanController):
         self._widget.sigContLaserPulsesToggled.connect(self.setContLaserPulses)
         self._widget.sigSeqTimeParChanged.connect(self.plotSignalGraph)
         self._widget.sigSignalParChanged.connect(self.plotSignalGraph)
-
 
     def getDimsScan(self):
         # TODO: Make sure this works as intended
@@ -49,30 +57,39 @@ class ScanControllerMoNaLISA(SuperScanController):
             for i in range(len(self._analogParameterDict['target_device'])):
                 positionerName = self._analogParameterDict['target_device'][i]
                 self._widget.setScanDim(i, positionerName)
-                self._widget.setScanSize(positionerName,
-                                         self._analogParameterDict['axis_length'][i])
-                self._widget.setScanStepSize(positionerName,
-                                             self._analogParameterDict['axis_step_size'][i])
-                self._widget.setScanCenterPos(positionerName,
-                                              self._analogParameterDict['axis_centerpos'][i])
+                self._widget.setScanSize(
+                    positionerName,
+                    self._analogParameterDict['axis_length'][i])
+                self._widget.setScanStepSize(
+                    positionerName,
+                    self._analogParameterDict['axis_step_size'][i])
+                self._widget.setScanCenterPos(
+                    positionerName,
+                    self._analogParameterDict['axis_centerpos'][i])
 
             setTTLDevices = []
             for i in range(len(self._digitalParameterDict['target_device'])):
                 deviceName = self._digitalParameterDict['target_device'][i]
-                self._widget.setTTLStarts(deviceName, self._digitalParameterDict['TTL_start'][i])
-                self._widget.setTTLEnds(deviceName, self._digitalParameterDict['TTL_end'][i])
+                self._widget.setTTLStarts(
+                    deviceName, self._digitalParameterDict['TTL_start'][i])
+                self._widget.setTTLEnds(
+                    deviceName, self._digitalParameterDict['TTL_end'][i])
                 setTTLDevices.append(deviceName)
 
             for deviceName in self.TTLDevices:
                 if deviceName not in setTTLDevices:
                     self._widget.unsetTTL(deviceName)
 
-            self._widget.setSeqTimePar(self._digitalParameterDict['sequence_time'])
+            self._widget.setSeqTimePar(
+                self._digitalParameterDict['sequence_time'])
         finally:
             self.settingParameters = False
             self.plotSignalGraph()
 
-    def runScanAdvanced(self, *, recalculateSignals=True, isNonFinalPartOfSequence=False,
+    def runScanAdvanced(self,
+                        *,
+                        recalculateSignals=True,
+                        isNonFinalPartOfSequence=False,
                         sigScanStartingEmitted):
         """ Runs a scan with the set scanning parameters. """
         try:
@@ -83,9 +100,9 @@ class ScanControllerMoNaLISA(SuperScanController):
                 self.getParameters()
                 try:
                     self.signalDict, self.scanInfoDict = self._master.scanManager.makeFullScan(
-                        self._analogParameterDict, self._digitalParameterDict,
-                        staticPositioner=self._widget.isContLaserMode()
-                    )
+                        self._analogParameterDict,
+                        self._digitalParameterDict,
+                        staticPositioner=self._widget.isContLaserMode())
                 except TypeError:
                     self._logger.error(traceback.format_exc())
                     self.isRunning = False
@@ -96,13 +113,19 @@ class ScanControllerMoNaLISA(SuperScanController):
             if not sigScanStartingEmitted:
                 self.emitScanSignal(self._commChannel.sigScanStarting)
             # set positions of scanners not in scan from centerpos
-            for index, positionerName in enumerate(self._analogParameterDict['target_device']):
+            for index, positionerName in enumerate(
+                    self._analogParameterDict['target_device']):
                 if positionerName not in self._positionersScan:
-                    position = self._analogParameterDict['axis_centerpos'][index]
-                    self._master.positionersManager[positionerName].setPosition(position, 0)
-                    self._logger.debug(f'set {positionerName} center to {position} before scan')
+                    position = self._analogParameterDict['axis_centerpos'][
+                        index]
+                    self._master.positionersManager[
+                        positionerName].setPosition(position, 0)
+                    self._logger.debug(
+                        f'set {positionerName} center to {position} before scan'
+                    )
             # run scan
-            self._master.nidaqManager.runScan(self.signalDict, self.scanInfoDict)
+            self._master.nidaqManager.runScan(self.signalDict,
+                                              self.scanInfoDict)
         except Exception:
             self._logger.error(traceback.format_exc())
             self.isRunning = False
@@ -110,7 +133,8 @@ class ScanControllerMoNaLISA(SuperScanController):
     def scanDone(self):
         self.isRunning = False
 
-        if not self._widget.isContLaserMode() and not self._widget.repeatEnabled():
+        if not self._widget.isContLaserMode(
+        ) and not self._widget.repeatEnabled():
             self.emitScanSignal(self._commChannel.sigScanDone)
             if not self.doingNonFinalPartOfSequence:
                 self._widget.setScanButtonChecked(False)
@@ -134,8 +158,10 @@ class ScanControllerMoNaLISA(SuperScanController):
                 size = self._widget.getScanSize(positionerName)
                 stepSize = self._widget.getScanStepSize(positionerName)
                 center = self._widget.getScanCenterPos(positionerName)
-                start = list(self._master.positionersManager[positionerName].position.values())
-                self._analogParameterDict['target_device'].append(positionerName)
+                start = list(self._master.positionersManager[positionerName].
+                             position.values())
+                self._analogParameterDict['target_device'].append(
+                    positionerName)
                 self._analogParameterDict['axis_length'].append(size)
                 self._analogParameterDict['axis_step_size'].append(stepSize)
                 self._analogParameterDict['axis_centerpos'].append(center)
@@ -146,7 +172,8 @@ class ScanControllerMoNaLISA(SuperScanController):
                 stepSize = 1.0
                 center = self._widget.getScanCenterPos(positionerName)
                 start = [0]
-                self._analogParameterDict['target_device'].append(positionerName)
+                self._analogParameterDict['target_device'].append(
+                    positionerName)
                 self._analogParameterDict['axis_length'].append(size)
                 self._analogParameterDict['axis_step_size'].append(stepSize)
                 self._analogParameterDict['axis_centerpos'].append(center)
@@ -160,26 +187,35 @@ class ScanControllerMoNaLISA(SuperScanController):
                 continue
 
             self._digitalParameterDict['target_device'].append(deviceName)
-            self._digitalParameterDict['TTL_start'].append(self._widget.getTTLStarts(deviceName))
-            self._digitalParameterDict['TTL_end'].append(self._widget.getTTLEnds(deviceName))
+            self._digitalParameterDict['TTL_start'].append(
+                self._widget.getTTLStarts(deviceName))
+            self._digitalParameterDict['TTL_end'].append(
+                self._widget.getTTLEnds(deviceName))
 
-        self._digitalParameterDict['sequence_time'] = self._widget.getSeqTimePar()
-        self._analogParameterDict['sequence_time'] = self._widget.getSeqTimePar()
+        self._digitalParameterDict[
+            'sequence_time'] = self._widget.getSeqTimePar()
+        self._analogParameterDict[
+            'sequence_time'] = self._widget.getSeqTimePar()
 
     def setContLaserPulses(self, isContLaserPulses):
         for i in range(len(self.positioners)):
-            positionerName = self._widget.scanPar['scanDim' + str(i)].currentText()
+            positionerName = self._widget.scanPar['scanDim' +
+                                                  str(i)].currentText()
             self._widget.setScanDimEnabled(i, not isContLaserPulses)
-            self._widget.setScanSizeEnabled(positionerName, not isContLaserPulses)
-            self._widget.setScanStepSizeEnabled(positionerName, not isContLaserPulses)
-            self._widget.setScanCenterPosEnabled(positionerName, not isContLaserPulses)
+            self._widget.setScanSizeEnabled(positionerName,
+                                            not isContLaserPulses)
+            self._widget.setScanStepSizeEnabled(positionerName,
+                                                not isContLaserPulses)
+            self._widget.setScanCenterPosEnabled(positionerName,
+                                                 not isContLaserPulses)
 
     def updatePixels(self):
         self.getParameters()
         for index, positionerName in enumerate(self.positioners):
             if float(self._analogParameterDict['axis_step_size'][index]) != 0:
-                pixels = round(float(self._analogParameterDict['axis_length'][index]) /
-                               float(self._analogParameterDict['axis_step_size'][index]))
+                pixels = round(
+                    float(self._analogParameterDict['axis_length'][index]) /
+                    float(self._analogParameterDict['axis_step_size'][index]))
                 self._widget.setScanPixels(positionerName, pixels)
 
     def plotSignalGraph(self):
@@ -188,8 +224,7 @@ class ScanControllerMoNaLISA(SuperScanController):
 
         self.getParameters()
         TTLCycleSignalsDict = self._master.scanManager.getTTLCycleSignalsDict(
-            self._digitalParameterDict
-        )
+            self._digitalParameterDict)
 
         sampleRate = self._master.scanManager.sampleRate
 
@@ -200,19 +235,19 @@ class ScanControllerMoNaLISA(SuperScanController):
             isLaser = deviceName in self._setupInfo.lasers
             areas.append(
                 np.linspace(
-                    0, self._digitalParameterDict['sequence_time'] * sampleRate, len(signal)
-                )
-            )
+                    0,
+                    self._digitalParameterDict['sequence_time'] * sampleRate,
+                    len(signal)))
             signals.append(signal.astype(np.uint8))
             colors.append(
-                colorutils.wavelengthToHex(
-                    self._setupInfo.lasers[deviceName].wavelength
-                ) if isLaser else '#ffffff'
-            )
+                colorutils.
+                wavelengthToHex(self._setupInfo.lasers[deviceName].wavelength
+                                ) if isLaser else '#ffffff')
         self._widget.plotSignalGraph(areas, signals, colors, sampleRate)
 
     def emitScanSignal(self, signal, *args):
-        if not self._widget.isContLaserMode():  # Cont. laser pulses mode is not a real scan
+        if not self._widget.isContLaserMode(
+        ):  # Cont. laser pulses mode is not a real scan
             signal.emit(*args)
 
     def saveScanParamsToFile(self, filePath: str) -> None:
@@ -236,13 +271,11 @@ class ScanControllerMoNaLISA(SuperScanController):
 
         for key in self._analogParameterDict:
             self._analogParameterDict[key] = literal_eval(
-                config._sections['analogParameterDict'][key]
-            )
+                config._sections['analogParameterDict'][key])
 
         for key in self._digitalParameterDict:
             self._digitalParameterDict[key] = literal_eval(
-                config._sections['digitalParameterDict'][key]
-            )
+                config._sections['digitalParameterDict'][key])
 
         scanOrNot = (config._sections['Modes']['scan_or_not'] == 'True')
         if scanOrNot:
@@ -252,6 +285,19 @@ class ScanControllerMoNaLISA(SuperScanController):
 
         self.setParameters()
 
+    def toggleBlockWidget(self, block):
+        """ Blocks/unblocks scan widget if scans are run from elsewhere. """
+        self._widget.setEnabled(block)
+
+    def sendScanParameters(self):
+        self.getParameters()
+        self._commChannel.sigSendScanParameters.emit(
+            self._analogParameterDict, self._digitalParameterDict,
+            self._positionersScan)
+
+
+_attrCategoryStage = 'ScanStage'
+_attrCategoryTTL = 'ScanTTL'
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

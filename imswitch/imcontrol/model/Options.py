@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from dataclasses import dataclass, field
 
 from dataclasses_json import dataclass_json, Undefined, CatchAll
@@ -8,13 +8,13 @@ from imswitch.imcommon.model import dirtools
 
 @dataclass(frozen=True)
 class RecordingOptions:
-    outputFolder: str = os.path.join(dirtools.UserFileDirs.Root, 'recordings')
+    outputFolder: Path = dirtools.UserDataFileDirs.Root /'recordings'
     includeDateInOutputFolder: bool = True
 
 
 @dataclass(frozen=True)
 class WatcherOptions:
-    outputFolder: str = os.path.join(dirtools.UserFileDirs.Root, 'scripts')
+    outputFolder: Path = dirtools.UserDataFileDirs.Root / 'scripts'
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)

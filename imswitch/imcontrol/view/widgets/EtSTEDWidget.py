@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from inspect import signature
 from imswitch.imcommon.model import initLogger
 
@@ -10,7 +10,7 @@ from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.view.guitools import naparitools
 from .basewidgets import Widget, NapariHybridWidget
 
-_etstedDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_etsted')
+_etstedDir: Path = dirtools.UserConfigFileDirs.Root / 'imcontrol_etsted'
 
 
 class EtSTEDWidget(Widget):
@@ -20,41 +20,41 @@ class EtSTEDWidget(Widget):
         self.__logger = initLogger(self, instanceName='EtSTEDWidget')
         super().__init__(*args, **kwargs)
 
-        self.analysisDir = os.path.join(_etstedDir, 'analysis_pipelines')
-        self.transformDir = os.path.join(_etstedDir, 'transform_pipelines')
-        
-        if not os.path.exists(self.analysisDir):
-            os.makedirs(self.analysisDir)
+        self.analysisDir = _etstedDir / 'analysis_pipelines'
+        self.transformDir = _etstedDir / 'transform_pipelines'
 
-        if not os.path.exists(self.transformDir):
-            os.makedirs(self.transformDir)
+        if not self.analysisDir.exists():
+            self.analysisDir.mkdir(parents=True)
 
-        # add scatterplot to napari imageviewer to plot the detected coordinates 
+        if not self.transformDir.exists():
+            self.transformDir.mkdir(parents=True)
+
+        # add scatterplot to napari imageviewer to plot the detected coordinates
         self.eventScatterPlot = naparitools.VispyScatterVisual(color='red', symbol='x')
         self.eventScatterPlot.hide()
-        
+
         # add all available analysis pipelines to the dropdown list
         self.analysisPipelines = list()
         self.analysisPipelinePar = QtGui.QComboBox()
-        for pipeline in os.listdir(self.analysisDir):
-            if os.path.isfile(os.path.join(self.analysisDir, pipeline)):
-                pipeline = pipeline.split('.')[0]
+        for pipeline in self.analysisDir.iterdir():
+            if (self.analysisDir / pipeline).is_file():
+                pipeline = str(pipeline).split('.')[0]
                 self.analysisPipelines.append(pipeline)
-        
+
         self.analysisPipelinePar.addItems(self.analysisPipelines)
         self.analysisPipelinePar.setCurrentIndex(0)
 
         self.__paramsExclude = ['img', 'prev_frames', 'binary_mask', 'exinfo', 'testmode']
-        
+
         #TODO: add way to save current coordinate transform as a file that can be loaded from the list
         # add all available coordinate transformations to the dropdown list
         self.transformPipelines = list()
         self.transformPipelinePar = QtGui.QComboBox()
-        for transform in os.listdir(self.transformDir):
-            if os.path.isfile(os.path.join(self.transformDir, transform)):
-                transform = transform.split('.')[0]
+        for transform in self.transformDir.iterdir():
+            if (self.transformDir / transform).is_file():
+                transform = str(transform).split('.')[0]
                 self.transformPipelines.append(transform)
-        
+
         self.transformPipelinePar.addItems(self.transformPipelines)
         self.transformPipelinePar.setCurrentIndex(0)
 
@@ -87,7 +87,7 @@ class EtSTEDWidget(Widget):
         self.initiateButton = guitools.BetterPushButton('Initiate etSTED')
         self.initiateButton.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.loadPipelineButton = guitools.BetterPushButton('Load pipeline')
-        
+
         self.coordTransfCalibButton = guitools.BetterPushButton('Transform calibration')
         self.recordBinaryMaskButton = guitools.BetterPushButton('Record binary mask')
         self.loadScanParametersButton = guitools.BetterPushButton('Load scan parameters')
@@ -164,7 +164,7 @@ class EtSTEDWidget(Widget):
         self.grid.addWidget(self.scanInitiationPar_label, currentRow, 2)
         self.grid.addWidget(self.scanInitiationPar, currentRow, 3)
 
-        currentRow +=1 
+        currentRow +=1
 
         self.grid.addWidget(self.loadScanParametersButton, currentRow, 2)
         self.grid.addWidget(self.setBusyFalseButton, currentRow, 3)
@@ -182,7 +182,7 @@ class EtSTEDWidget(Widget):
 
         # initiate parameter fields for all the parameters in the pipeline chosen
         currentRow = 4
-        
+
         self.param_names = list()
         self.param_edits = list()
         for pipeline_param_name, pipeline_param_val in parameters.items():
@@ -224,7 +224,7 @@ class EtSTEDWidget(Widget):
     def setEventScatterData(self, x, y):
         """ Updates scatter plot of detected coordinates with new data. """
         self.eventScatterPlot.setData(x=x, y=y)
-        
+
     def setEventScatterVisible(self, visible):
         """ Updates visibility of scatter plot. """
         pass
@@ -259,7 +259,7 @@ class AnalysisWidget(Widget):
         self.imgVb.addItem(self.scatter)
 
         self.info_label = QtGui.QLabel('<image info>')
-        
+
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
         self.grid.addWidget(self.info_label, 0, 0)
@@ -286,12 +286,12 @@ class CoordTransformWidget(Widget):
 
         self.grid = QtGui.QGridLayout()
         self.setLayout(self.grid)
-    
+
         # initialize the controls for the coordinate transform help widget
         currentRow = 0
         self.grid.addWidget(self.loadLoResButton, currentRow, 0)
         self.grid.addWidget(self.loadHiResButton, currentRow, 1)
-        
+
         currentRow += 1
         self.grid.addWidget(self.napariViewerLo.get_widget(), currentRow, 0)
         self.grid.addWidget(self.napariViewerHi.get_widget(), currentRow, 1)
@@ -299,4 +299,3 @@ class CoordTransformWidget(Widget):
         currentRow += 1
         self.grid.addWidget(self.saveCalibButton, currentRow, 0)
         self.grid.addWidget(self.resetCoordsButton, currentRow, 1)
-

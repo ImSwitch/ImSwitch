@@ -71,9 +71,9 @@ def getAvailableModules():
 
 
 dirtools.initUserFilesIfNeeded()
-_modulesFilePath = os.path.join(dirtools.UserFileDirs.Config, 'modules.json')
+_modulesFilePath = dirtools.UserConfigFileDirs.Root / 'modules.json'
 
-if not os.path.isfile(_modulesFilePath):
+if not _modulesFilePath.is_file():
     # Modules file doesn't exist, create it.
     _modules = _Modules(enabled=['imcontrol', 'imscripting'])
 else:

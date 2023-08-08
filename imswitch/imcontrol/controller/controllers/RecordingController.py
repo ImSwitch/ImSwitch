@@ -89,9 +89,13 @@ class RecordingController(ImConWidgetController):
         if saveMode == SaveMode.RAM:
             self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self, name=None):
+    def snap(self, name=None, mSaveFormat=None):
         """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
+
+        # by default save as it's noted in the widget
+        if mSaveFormat is None:
+            mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
 
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
@@ -109,7 +113,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getsaveFormat()),
+                                           mSaveFormat,
                                            attrs)
 
     def snapNumpy(self):
@@ -428,7 +432,7 @@ class RecordingController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def snapImageToPath(self, fileName: str = "."):
         """ Take a snap and save it to a .tiff file at the given fileName. """
-        self.snap(name = fileName)
+        self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
     @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False):# -> np.ndarray:

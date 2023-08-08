@@ -12,7 +12,7 @@ class JoystickController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         
         # scaler
-        self.scaler = 10
+        self.scaler = 100
         
         # initialize the positioner
         self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
@@ -30,7 +30,6 @@ class JoystickController(LiveUpdatedController):
         return x, y
     
     def moveZA(self, a, z):
-        print(z)
         if abs(a)>0 or abs(z) >0:
             self.positioner.moveForever(speed=(a*self.scaler, 0, 0, z*self.scaler), is_stop=False)
         else:

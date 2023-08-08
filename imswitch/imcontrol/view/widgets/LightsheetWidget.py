@@ -8,8 +8,8 @@ from .basewidgets import NapariHybridWidget
 
 class LightsheetWidget(NapariHybridWidget):
     """ Widget containing mct interface. """
-
-
+    sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
+    
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
 
@@ -26,6 +26,10 @@ class LightsheetWidget(NapariHybridWidget):
         self.illuminationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.illuminationSlider.setMinimum(0)
         self.illuminationSlider.setMaximum(100)
+        self.illuminationSlider.valueChanged.connect(
+            lambda value: self.sigSliderIlluValueChanged.emit(value)
+        )
+        
         self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
 
         # Pull-down menu for the stage axis

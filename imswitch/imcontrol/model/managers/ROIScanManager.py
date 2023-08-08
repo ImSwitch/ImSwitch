@@ -11,19 +11,20 @@ from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
 
 
-class LightsheetManager(SignalInterface):
+class ROIScanManager(SignalInterface):
+    sigROIScanMaskUpdated = Signal(object)  # (maskCombined)
 
-    def __init__(self, lightsheetInfo, *args, **kwargs):
+    def __init__(self, mctInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if lightsheetInfo is None:
+        if mctInfo is None:
             return
 
         self.update()
 
     def update(self):
-        return None  # returnmask.image()
+        return None  
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

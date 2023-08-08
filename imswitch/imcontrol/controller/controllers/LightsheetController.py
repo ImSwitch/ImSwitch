@@ -26,10 +26,8 @@ class LightsheetController(ImConWidgetController):
 
         self.lightsheetTask = None
         self.lightsheetStack = np.ones((1,1,1))
-        # Connect MCTWidget signals
         self._widget.startButton.clicked.connect(self.startLightsheet)
         self._widget.stopButton.clicked.connect(self.stopLightsheet)
-        #self._widget.mctShowLastButton.clicked.connect(self.showLast)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()

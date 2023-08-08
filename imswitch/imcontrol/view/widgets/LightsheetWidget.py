@@ -7,7 +7,7 @@ from .basewidgets import NapariHybridWidget
 
 
 class LightsheetWidget(NapariHybridWidget):
-    """ Widget containing mct interface. """
+    """ Widget containing lightsheet interface. """
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
     
     def __post_init__(self):

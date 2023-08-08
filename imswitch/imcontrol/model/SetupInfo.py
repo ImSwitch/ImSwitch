@@ -228,6 +228,9 @@ class DPCInfo:
 class MCTInfo:
     pass
 
+class ROIScanInfo:
+    pass
+
 @dataclass(frozen=True)
 class LightsheetInfo:
     pass
@@ -468,6 +471,9 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
 
+    roiscan: Optional[ROIScanInfo] = field(default_factory=lambda: None)
+    """ ROIScan settings. Required to be defined to use ROIScan functionality. """
+    
     lightsheet: Optional[LightsheetInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use Lightsheet functionality. """
 

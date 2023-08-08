@@ -3,8 +3,8 @@ from typing import Dict, List
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
-
-
+import threading
+import time 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
 
@@ -61,7 +61,11 @@ class PositionerController(ImConWidgetController):
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
 
         # get all speed values from the GUI
-        speed = self._widget.getSpeed(positionerName, axis)
+        if axis =="XY":
+            speed = self._widget.getSpeed(positionerName, "X")
+        else:
+            speed = self._widget.getSpeed(positionerName, axis)
+        
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
@@ -92,9 +96,16 @@ class PositionerController(ImConWidgetController):
         self._widget.setSpeedSize(positionerName, axis, speed)
         
     def updatePosition(self, positionerName, axis):
-        newPos = self._master.positionersManager[positionerName].position[axis]
-        self._widget.updatePosition(positionerName, axis, newPos)
-        self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+        if axis == "XY":
+            for axis in (("X", "Y")):
+                newPos = self._master.positionersManager[positionerName].position[axis]
+                self._widget.updatePosition(positionerName, axis, newPos)
+                self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+        else:
+            newPos = self._master.positionersManager[positionerName].position[axis]
+            self._widget.updatePosition(positionerName, axis, newPos)
+            self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):

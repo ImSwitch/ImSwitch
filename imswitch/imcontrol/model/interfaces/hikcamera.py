@@ -26,7 +26,7 @@ elif platform == "win32":
 
 
 class CameraHIK:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=False)
 
@@ -66,6 +66,9 @@ class CameraHIK:
         
         # thread switch
         self.g_bExit = False
+
+        self.isRGB = isRGB
+
         self._init_cam(cameraNo=self.cameraNo, callback_fct=None)
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
@@ -87,9 +90,9 @@ class CameraHIK:
         self.camera = MvCamera()
 
         # Select device and create handle
-        stDeviceList = cast(deviceList.pDeviceInfo[int(cameraNo)], POINTER(MV_CC_DEVICE_INFO)).contents
-
-        ret = self.camera.MV_CC_CreateHandle(stDeviceList)
+        self.stDeviceList = cast(deviceList.pDeviceInfo[int(cameraNo)], POINTER(MV_CC_DEVICE_INFO)).contents
+                            
+        ret = self.camera.MV_CC_CreateHandle(self.stDeviceList)
         if ret != 0:
             raise Exception("create handle fail! ret[0x%x]", ret)
                 
@@ -116,6 +119,8 @@ class CameraHIK:
         memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
         self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
         self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
+        #if self.isRGB:
+        #    self.camera.MV_CC_SetEnumValue("PixelFormat", PixelType_Gvsp_BayerGB8) 
 
         '''
         # set exposure
@@ -146,7 +151,7 @@ class CameraHIK:
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
-            
+            self.g_bExit = False
             # Start grab image
             ret = self.camera.MV_CC_StartGrabbing()
             self.__logger.debug("start grabbing")
@@ -165,7 +170,7 @@ class CameraHIK:
     def stop_live(self):
         if self.is_streaming:
             # stop data acquisition
-            self.g_bExit = False
+            self.g_bExit = True
             self.hThreadHandle.join()
             self.is_streaming = False
 
@@ -336,30 +341,82 @@ class CameraHIK:
     
     def work_thread(self, cam=0, pData=0, nDataSize=0):
         if platform == "win32":
-            stOutFrame = MV_FRAME_OUT()  
-            memset(byref(stOutFrame), 0, sizeof(stOutFrame))
-            while True:
-                ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
-                if None != stOutFrame.pBufAddr and 0 == ret:
-                    #print ("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum))
-                    nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
 
-                    pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
-                    cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
-                            stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
-                    data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
-                                dtype=np.uint8)
-                    self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+            if self.isRGB:
+                stOutFrame = MV_FRAME_OUT()  
+                memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+                memset(byref(self.stDeviceList), 0, sizeof(self.stDeviceList))
+                
 
-                    self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                    self.frame_id = stOutFrame.stFrameInfo.nFrameNum
-                    self.timestamp = time.time()
-                    self.frame_buffer.append(self.frame)
-                    self.frameid_buffer.append(self.frame_id)
-                else:
-                    pass 
-                if self.g_bExit == True:
-                    break
+                while True:
+                    if self.g_bExit == True:
+                        break
+
+                    ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                    if None != stOutFrame.pBufAddr and 0 == ret :
+                        
+                        nRGBSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 3
+                        stConvertParam = MV_CC_PIXEL_CONVERT_PARAM_EX()
+                        memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                        stConvertParam.nWidth = stOutFrame.stFrameInfo.nWidth
+                        stConvertParam.nHeight = stOutFrame.stFrameInfo.nHeight
+                        stConvertParam.pSrcData = stOutFrame.pBufAddr
+                        stConvertParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen
+                        stConvertParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType  
+                        stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed
+                        stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                        stConvertParam.nDstBufferSize = nRGBSize
+
+                        ret = cam.MV_CC_ConvertPixelTypeEx(stConvertParam)
+                        if ret != 0:
+                            print ("convert pixel fail! ret[0x%x]" % ret)
+                            sys.exit()
+
+                        cam.MV_CC_FreeImageBuffer(stOutFrame)
+
+                        try:
+                            img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                            cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+                            
+                            data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                            self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, -1))
+                            self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                            self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                            self.timestamp = time.time()
+                            self.frame_buffer.append(self.frame)
+                            self.frameid_buffer.append(self.frame_id)
+                            
+                        except Exception as e:
+                            raise Exception("save file executed failed:%s" % e)
+                        finally:
+                            pass
+                    
+
+            else:
+                stOutFrame = MV_FRAME_OUT()  
+                memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+                while True:
+                    ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                    if None != stOutFrame.pBufAddr and 0 == ret:
+                        nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
+
+                        pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
+                        cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
+                                stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
+                        data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
+                                    dtype=np.uint8)
+                        self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+
+                        self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                        self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                        self.timestamp = time.time()
+                        self.frame_buffer.append(self.frame)
+                        self.frameid_buffer.append(self.frame_id)
+                    else:
+                        pass 
+                    if self.g_bExit == True:
+                        break
+
         if platform in ("darwin", "linux2", "linux"):
             
             # en:Get payload size
@@ -374,30 +431,62 @@ class CameraHIK:
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
             memset(byref(stDeviceList), 0, sizeof(stDeviceList))
-            
+            data_buf = (c_ubyte * nPayloadSize)()
+
+            ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
             while True:
-                data_buf = (c_ubyte * nPayloadSize)()
-                ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
-                #print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
-                data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
-                self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
+                
+                if self.isRGB:
+                    try:
+                        stDeviceList = MV_FRAME_OUT_INFO_EX()
+                        memset(byref(stDeviceList), 0, sizeof(stDeviceList))
+                        data_buf = (c_ubyte * nPayloadSize)()
+
+                        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                        if ret == 0:
+                            
+                            nRGBSize = stDeviceList.nWidth * stDeviceList.nHeight*3
+                            
+                            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+                            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                            stConvertParam.nWidth = stDeviceList.nWidth
+                            stConvertParam.nHeight = stDeviceList.nHeight
+                            stConvertParam.pSrcData = data_buf
+                            stConvertParam.nSrcDataLen = stDeviceList.nFrameLen
+                            stConvertParam.enSrcPixelType = stDeviceList.enPixelType  
+                            stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed 
+                            stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                            stConvertParam.nDstBufferSize = nRGBSize
+                            
+                            ret = cam.MV_CC_ConvertPixelType(stConvertParam)
+
+                            if ret != 0:
+                                print ("convert pixel fail! ret[0x%x]" % ret)
+                                del data_buf
+                                sys.exit()
+                                
+                            img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                            memmove(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+
+                            data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                            self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1))
+
+                    except:
+                        pass
+                else:
+                    img_buff = (c_ubyte * nPayloadSize)()
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
+                    self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
                 self.frame_id = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
                 self.frameid_buffer.append(self.frame_id)
-                    
-                    
-                '''
-                ret = cam.MV_CC_GetOneFrameTimeout(pData, nDataSize, stFrameInfo, 1000)
-                if ret == 0:
-                    print ("get one frame: Width[%d], Height[%d], PixelType[0x%x], nFrameNum[%d]"  % (stFrameInfo.nWidth, stFrameInfo.nHeight, stFrameInfo.enPixelType,stFrameInfo.nFrameNum))
-                else:
-                    print ("no data[0x%x]" % ret)
+                
                 if self.g_bExit == True:
-                        break
-                '''
+                    break
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

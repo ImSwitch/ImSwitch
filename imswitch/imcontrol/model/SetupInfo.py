@@ -228,9 +228,17 @@ class DPCInfo:
 class MCTInfo:
     pass
 
+@dataclass(frozen=True)
+class LightsheetInfo:
+    pass
+
 
 @dataclass(frozen=True)
 class WebRTCInfo:
+    pass
+
+@dataclass(frozen=True)
+class HyphaInfo:
     pass
 
 @dataclass(frozen=True)
@@ -243,6 +251,7 @@ class JetsonNanoInfo:
 
 @dataclass(frozen=True)
 class HistoScanInfo:
+    PreviewCamera: str = None
     pass
 
 
@@ -459,8 +468,14 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
 
+    lightsheet: Optional[LightsheetInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use Lightsheet functionality. """
+
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """
+
+    hypha: Optional[HyphaInfo] = field(default_factory=lambda: None)
+    """ Hypha settings. Required to be defined to use Hypha functionality. """
 
     mockxx: Optional[MockXXInfo] = field(default_factory=lambda: None)
     """ MockXX settings. Required to be defined to use MockXX functionality."""

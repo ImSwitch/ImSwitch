@@ -1,11 +1,16 @@
 import os
 import time
 
-from opentrons.types import Point
-from opentrons.protocol_api.labware import Labware, Well
-from opentrons.simulate import get_protocol_api
-from opentrons.util.entrypoint_util import labware_from_paths
-from opentrons_shared_data.deck import load
+try:
+    from opentrons.types import Point
+    from opentrons.protocol_api.labware import Labware, Well
+    from opentrons.simulate import get_protocol_api
+    from opentrons.util.entrypoint_util import labware_from_paths
+    from opentrons_shared_data.deck import load
+    from locai.utils.utils import strfdelta
+    IS_LOCAI = True
+except:
+    IS_LOCAI = False
 
 from typing import Dict, List
 from functools import partial
@@ -16,7 +21,7 @@ from datetime import datetime
 import numpy as np
 import tifffile as tif
 from queue import Queue
-from locai.utils.utils import strfdelta
+
 
 from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController, LiveUpdatedController
@@ -39,6 +44,9 @@ class OpentronsDeckScanController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self, instanceName="OpentronsScanController")
 
+        if not IS_LOCAI:
+            self.__logger.warning("Locai not installed, cannot use OpentronsScanController")
+            return
         # Init desk and labware
         self.load_deck(self._setupInfo.deck["OpentronsDeck"])
         self.load_labwares(self._setupInfo.deck["OpentronsDeck"].labwares)
@@ -239,7 +247,7 @@ class OpentronsDeckScanController(LiveUpdatedController):
         slot, well, offset = self.get_first_position()
         self.scanner.moveToWell(well=well, slot=slot, is_blocking=True)
         self.scanner.shiftXY(xy_shift=offset, is_blocking=True)
-        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]), float(params["valueInitial"]))
+        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"])) #FIXME:, float(params["valueInitial"]))
         self.isAutofocusRunning = True
         while self.isAutofocusRunning:
             time.sleep(0.1)

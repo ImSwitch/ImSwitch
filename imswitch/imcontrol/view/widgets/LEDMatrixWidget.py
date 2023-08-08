@@ -74,7 +74,7 @@ class LEDMatrixWidget(Widget):
         self.slider.setTickInterval(5)
         self.slider.setSingleStep(5)
         self.slider.setValue(255)
-        gridLayout.addWidget(self.slider, 9, 0, 1, 8)
+        gridLayout.addWidget(self.slider, 9, 0, 1, 4)
         self.setMaximumSize(400, 500)
         # Add button layout to base well layout
         self.setLayout(gridLayout)

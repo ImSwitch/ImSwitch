@@ -14,11 +14,20 @@ from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.model import initLogger, APIExport
 
-from locai.deck.deck_config import DeckConfig
-from locai.utils.utils import strfdelta
+try:
+    from locai.deck.deck_config import DeckConfig
+    from locai.utils.utils import strfdelta
+    from opentrons.types import Point
+    IS_LOCAI = True
+    
+except Exception as e:
+    IS_LOCAI = False
+    class Point:
+        __point__ = ()
+    
+    
 from ..basecontrollers import LiveUpdatedController
 from ...model.SetupInfo import OpentronsDeckInfo
-from opentrons.types import Point
 
 _attrCategory = 'Positioner'
 _positionAttr = 'Position'
@@ -32,7 +41,8 @@ class ImageI(pydantic.BaseModel):
     well: str
     offset: Tuple[float, float]
     z_focus: float
-    pos_abs: Point
+    if IS_LOCAI:
+        pos_abs: Point
 
 
 @dataclasses.dataclass
@@ -41,13 +51,15 @@ class ImageInfo:
     well: str
     offset: Tuple[float, float]
     z_focus: float
-    pos_abs: Point
+    if IS_LOCAI: pos_abs: Point
     position_idx: int  # TODO: depends on the amount of positions per well
     illu_mode: str
     timestamp: str
 
     def get_filename(self):
         # TODO: fix hardcode in self.position_idx
+        if not IS_LOCAI:
+            return ""
         return f"{self.slot}_{self.well}_{self.position_idx}_{self.illu_mode}_{round(self.z_focus)}_{self.timestamp}"
 
 
@@ -57,6 +69,8 @@ class DeckScanController(LiveUpdatedController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not IS_LOCAI:
+            return
         self.__logger = initLogger(self, instanceName="DeckScanController")
         self.objective_radius = _objectiveRadius
         ot_info: OpentronsDeckInfo = self._setupInfo.deck["OpentronsDeck"]
@@ -299,8 +313,7 @@ class DeckScanController(LiveUpdatedController):
         self._widget.setNImages("Autofocusing...")
         slot, well, first_position_offset, first_z_focus, first_pos = self.get_first_row()
         self.positioner.move(value=first_pos, axis="XYZ", is_absolute=True, is_blocking=True)
-        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]),
-                                            float(params["valueInitial"]))
+        self._commChannel.sigAutoFocus.emit(float(params["valueRange"]), float(params["valueSteps"]))#FIXME: float(params["valueInitial"]))
         self.isAutofocusRunning = True
         while self.isAutofocusRunning:
             time.sleep(0.1)
@@ -330,6 +343,8 @@ class DeckScanController(LiveUpdatedController):
 
     def take_single_image_at_position(self, current_position: Point, intensity):
         self.__logger.info(f"Moving to {current_position}.")
+        if type(current_position) is  Point:
+            current_position = (current_position.x, current_position.y, current_position.z)
         self.positioner.move(value=current_position, axis="XYZ", is_absolute=True, is_blocking=True)
         time.sleep(self.tUnshake)
 

@@ -8,6 +8,7 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
+from .JoystickWidget import JoystickWidget
 from .HistogrammWidget import HistogrammWidget
 from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
@@ -36,7 +37,9 @@ from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .DPCWidget import DPCWidget
 from .MCTWidget import MCTWidget
+from .LightsheetWidget import LightsheetWidget
 from .WebRTCWidget import WebRTCWidget
+from .HyphaWidget import HyphaWidget
 from .MockXXWidget import MockXXWidget
 from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget

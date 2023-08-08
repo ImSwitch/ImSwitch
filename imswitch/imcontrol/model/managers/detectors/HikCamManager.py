@@ -26,20 +26,25 @@ class HikCamManager(DetectorManager):
             pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
         except:
             pixelSize = 1
-        
-        self._camera = self._getHikObj(cameraId, binning)
-        
+            
+        try: # FIXME: get that form the real camera
+            isRGB = detectorInfo.managerProperties['isRGB']  
+        except:
+            isRGB = False
+
+        self._camera = self._getHikObj(cameraId, isRGB, binning)
+
         for propertyName, propertyValue in detectorInfo.managerProperties['hikcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
-        fullShape = (self._camera.SensorWidth, 
+        fullShape = (self._camera.SensorWidth,
                      self._camera.SensorHeight)
-        
+
         model = self._camera.model
         self._running = False
         self._adjustingParameters = False
 
-        # TODO: Not implemented yet 
+        # TODO: Not implemented yet
         self.crop(hpos=0, vpos=0, hsize=fullShape[0], vsize=fullShape[1])
 
         # Prepare parameters
@@ -61,10 +66,10 @@ class HikCamManager(DetectorManager):
                             options=['Continous',
                                         'Internal trigger',
                                         'External trigger'],
-                            editable=True), 
+                            editable=True),
             'Camera pixel size': DetectorNumberParameter(group='Miscellaneous', value=pixelSize,
                                                 valueUnits='µm', editable=True)
-            }            
+            }
 
         # Prepare actions
         actions = {
@@ -74,7 +79,7 @@ class HikCamManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
-        
+
 
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
@@ -108,7 +113,7 @@ class HikCamManager(DetectorManager):
 
     def setTriggerSource(self, source):
         pass
-        
+
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
@@ -122,7 +127,7 @@ class HikCamManager(DetectorManager):
         if self._camera.model == "mock":
             self.__logger.debug('We could attempt to reconnect the camera')
             pass
-            
+
         if not self._running:
             self._camera.start_live()
             self._running = True
@@ -170,11 +175,11 @@ class HikCamManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getHikObj(self, cameraId, binning=1):
+    def _getHikObj(self, cameraId, isRGB = False, binning=1):
         try:
             from imswitch.imcontrol.model.interfaces.hikcamera import CameraHIK
             self.__logger.debug(f'Trying to initialize Hik camera {cameraId}')
-            camera = CameraHIK(cameraNo=cameraId, binning=binning)
+            camera = CameraHIK(cameraNo=cameraId, isRGB=isRGB, binning=binning)#, pixeltype=PixelType_Gvsp_BayerRG8)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')

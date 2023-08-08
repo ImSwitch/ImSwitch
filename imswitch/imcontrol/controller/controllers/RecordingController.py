@@ -6,6 +6,8 @@ import numpy as np
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, Response
 import cv2
+from PIL import Image
+import io
 
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
@@ -384,8 +386,6 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
-    
-
     def start_stream(self):
         '''
         return a generator that converts frames into jpeg's reads to stream
@@ -425,7 +425,6 @@ class RecordingController(ImConWidgetController):
     def video_feeder(self):
         return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
 
-    
     '''
     def snapImage(self, name=None) -> None:
         self.snap(name)
@@ -435,7 +434,7 @@ class RecordingController(ImConWidgetController):
         """ Take a snap and save it to a .tiff file at the given fileName. """
         self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
-    @APIExport(runOnUIThread=True)
+    @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False):# -> np.ndarray:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
@@ -444,13 +443,24 @@ class RecordingController(ImConWidgetController):
             self.snap()
 
     @APIExport(runOnUIThread=False)
-    def snapNumpyToFastAPI(self) -> Response:
+    def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
         # Create a 2D NumPy array representing the image
-        image = np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
+        images = self.snapNumpy()
+
+        # get the image from the first detector if detectorName is not specified
+        if detectorName is None:
+            detectorName = self.getDetectorNamesToCapture()[0]
+
+        # get the image from the specified detector    
+        image = images[detectorName]
+
+        if resizeFactor <1:
+            image = self.resizeImage(image, resizeFactor)
+                
+        # eventually resize image to save bandwidth
+        resizeFactor
         
         # using an in-memory image
-        from PIL import Image
-        import io
         im = Image.fromarray(image)
         
         # save image to an in-memory bytes buffer
@@ -460,7 +470,6 @@ class RecordingController(ImConWidgetController):
             
         headers = {'Content-Disposition': 'inline; filename="test.png"'}
         return Response(im_bytes, headers=headers, media_type='image/png')
-        
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:
@@ -534,6 +543,33 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
+
+    def resizeImage(self, image, scale_factor):
+        """
+        Resize the input image by a given scale factor using nearest neighbor interpolation.
+
+        Parameters:
+            image (numpy.ndarray): The input image. For RGB, shape should be (height, width, 3),
+                                for monochrome/grayscale, shape should be (height, width).
+            scale_factor (float): The scaling factor by which to resize the image.
+
+        Returns:
+            numpy.ndarray: The resized image.
+        """
+        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB image
+            height, width, _ = image.shape
+        elif len(image.shape) == 2:  # Monochrome/grayscale image
+            height, width = image.shape
+        else:
+            raise ValueError("Invalid image shape. Supported shapes are (height, width, 3) for RGB and (height, width) for monochrome.")
+
+        new_height, new_width = int(height * scale_factor), int(width * scale_factor)
+
+        # Use OpenCV's resize function with nearest neighbor interpolation
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+
+        return resized_image
+
 
 
 _attrCategory = 'Rec'

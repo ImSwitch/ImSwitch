@@ -32,7 +32,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.crosshair.hide()
         self.addItem(self.crosshair)
 
-    def setLiveViewLayers(self, names, rgb=False):
+    def setLiveViewLayers(self, names, isRGB = [False]):
         for name, img in self.imgLayers.items():
             if name not in names:
                 self.napariViewer.layers.remove(img, force=True)
@@ -41,7 +41,7 @@ class ImageWidget(QtWidgets.QWidget):
             if rgb:
                     inputDummy = np.zeros((3, 3, 3))
                     self.imgLayers[name] = self.napariViewer.add_image(
-                        inputDummy, rgb=rgb, name=f'Live: {name}', blending='additive',  protected=True)
+                        inputDummy, rgb=True, name=f'Live: {name}', blending='additive',  protected=True)
             else:
                 inputDummy = np.zeros((1, 1))
                 self.imgLayers[name] = self.napariViewer.add_image(
@@ -52,7 +52,8 @@ class ImageWidget(QtWidgets.QWidget):
         if type(names) is not list:
             names = [names]
 
-        for name in names:
+        for i, name in enumerate(names):
+            rgb = isRGB[i]
             if name not in self.napariViewer.layers:
                 try:
                     addImage(name, rgb, name.lower())

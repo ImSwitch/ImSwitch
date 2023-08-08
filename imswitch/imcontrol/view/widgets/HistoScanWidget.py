@@ -283,6 +283,8 @@ class Canvas(QtWidgets.QLabel):
         
         if npImage is None:
             npImage = np.array(cv2.imread(pathImage))
+            if npImage.max() is None:
+                npImage = np.random.randint(0,255,(self.dimensions[0],self.dimensions[1],3))
             npImage = cv2.resize(npImage, self.dimensions)
         if len(npImage.shape) == 2:
             npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)

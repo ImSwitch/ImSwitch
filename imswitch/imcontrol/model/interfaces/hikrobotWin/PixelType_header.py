@@ -86,6 +86,46 @@ PixelType_Gvsp_BayerBG12 = 17825811
 PixelType_Gvsp_Coord3D_A32 = -2128596987
 PixelType_Gvsp_Mono10 = 17825795
 PixelType_Gvsp_BayerRG10_Packed = 17563687
+PixelType_Gvsp_YUV420SP_NV12 = 34373633
+PixelType_Gvsp_YUV420SP_NV21 = 34373634
+PixelType_Gvsp_Coord3D_C16 = 17825976
+PixelType_Gvsp_HB_Mono8 = -2130182143
+PixelType_Gvsp_HB_Mono10 = -2129657853
+PixelType_Gvsp_HB_Mono10_Packed = -2129919996
+PixelType_Gvsp_HB_Mono12 = -2129657851
+PixelType_Gvsp_HB_Mono12_Packed = -2129919994
+PixelType_Gvsp_HB_Mono16 = -2129657849
+PixelType_Gvsp_HB_BayerGR8 = -2130182136
+PixelType_Gvsp_HB_BayerRG8 = -2130182135
+PixelType_Gvsp_HB_BayerGB8 = -2130182134
+PixelType_Gvsp_HB_BayerBG8 = -2130182133
+PixelType_Gvsp_HB_BayerRBGG8 = -2130182074
+PixelType_Gvsp_HB_BayerGR10 = -2129657844
+PixelType_Gvsp_HB_BayerRG10 = -2129657843
+PixelType_Gvsp_HB_BayerGB10 = -2129657842
+PixelType_Gvsp_HB_BayerBG10 = -2129657841
+PixelType_Gvsp_HB_BayerGR12 = -2129657840
+PixelType_Gvsp_HB_BayerRG12 = -2129657839
+PixelType_Gvsp_HB_BayerGB12 = -2129657838
+PixelType_Gvsp_HB_BayerBG12 = -2129657837
+PixelType_Gvsp_HB_BayerGR10_Packed = -2129919962
+PixelType_Gvsp_HB_BayerRG10_Packed = -2129919961
+PixelType_Gvsp_HB_BayerGB10_Packed = -2129919960
+PixelType_Gvsp_HB_BayerBG10_Packed = -2129919959
+PixelType_Gvsp_HB_BayerGR12_Packed = -2129919958
+PixelType_Gvsp_HB_BayerRG12_Packed = -2129919957
+PixelType_Gvsp_HB_BayerGB12_Packed = -2129919956
+PixelType_Gvsp_HB_BayerBG12_Packed = -2129919955
+PixelType_Gvsp_HB_YUV422_Packed = -2112880609
+PixelType_Gvsp_HB_YUV422_YUYV_Packed = -2112880590
+PixelType_Gvsp_HB_RGB8_Packed = -2112356332
+PixelType_Gvsp_HB_BGR8_Packed = -2112356331
+PixelType_Gvsp_HB_RGBA8_Packed = -2111832042
+PixelType_Gvsp_HB_BGRA8_Packed = -2111832041
+PixelType_Gvsp_HB_RGB16_Packed = -2110783437
+PixelType_Gvsp_HB_BGR16_Packed = -2110783413
+PixelType_Gvsp_HB_RGBA16_Packed = -2109734812
+PixelType_Gvsp_HB_BGRA16_Packed = -2109734831
 
 __all__ = ['PixelType_Gvsp_BayerRG8',
            'PixelType_Gvsp_YCBCR422_8',
@@ -172,4 +212,44 @@ __all__ = ['PixelType_Gvsp_BayerRG8',
            'PixelType_Gvsp_BayerGB8',
            'PixelType_Gvsp_YCBCR8_CBYCR',
            'PixelType_Gvsp_RGB565_Packed',
-           'PixelType_Gvsp_YCBCR601_422_8_CBYCRY']
+           'PixelType_Gvsp_YCBCR601_422_8_CBYCRY',
+           'PixelType_Gvsp_YUV420SP_NV12',
+           'PixelType_Gvsp_YUV420SP_NV21',
+           'PixelType_Gvsp_Coord3D_C16',
+           'PixelType_Gvsp_HB_Mono8',
+           'PixelType_Gvsp_HB_Mono10',
+           'PixelType_Gvsp_HB_Mono10_Packed',
+           'PixelType_Gvsp_HB_Mono12',
+           'PixelType_Gvsp_HB_Mono12_Packed',
+           'PixelType_Gvsp_HB_Mono16',
+           'PixelType_Gvsp_HB_BayerGR8',
+           'PixelType_Gvsp_HB_BayerRG8',
+           'PixelType_Gvsp_HB_BayerGB8',
+           'PixelType_Gvsp_HB_BayerBG8',
+           'PixelType_Gvsp_HB_BayerRBGG8',
+           'PixelType_Gvsp_HB_BayerGR10',
+           'PixelType_Gvsp_HB_BayerRG10',
+           'PixelType_Gvsp_HB_BayerGB10',
+           'PixelType_Gvsp_HB_BayerBG10',
+           'PixelType_Gvsp_HB_BayerGR12',
+           'PixelType_Gvsp_HB_BayerRG12',
+           'PixelType_Gvsp_HB_BayerGB12',
+           'PixelType_Gvsp_HB_BayerBG12',
+           'PixelType_Gvsp_HB_BayerGR10_Packed',
+           'PixelType_Gvsp_HB_BayerRG10_Packed',
+           'PixelType_Gvsp_HB_BayerGB10_Packed',
+           'PixelType_Gvsp_HB_BayerBG10_Packed',
+           'PixelType_Gvsp_HB_BayerGR12_Packed',
+           'PixelType_Gvsp_HB_BayerRG12_Packed',
+           'PixelType_Gvsp_HB_BayerGB12_Packed',
+           'PixelType_Gvsp_HB_BayerBG12_Packed',
+           'PixelType_Gvsp_HB_YUV422_Packed',
+           'PixelType_Gvsp_HB_YUV422_YUYV_Packed',
+           'PixelType_Gvsp_HB_RGB8_Packed',
+           'PixelType_Gvsp_HB_BGR8_Packed',
+           'PixelType_Gvsp_HB_RGBA8_Packed',
+           'PixelType_Gvsp_HB_BGRA8_Packed',
+           'PixelType_Gvsp_HB_RGB16_Packed',
+           'PixelType_Gvsp_HB_BGR16_Packed',
+           'PixelType_Gvsp_HB_RGBA16_Packed',
+           'PixelType_Gvsp_HB_BGRA16_Packed']

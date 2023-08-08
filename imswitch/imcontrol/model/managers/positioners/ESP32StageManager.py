@@ -59,6 +59,10 @@ class ESP32StageManager(PositionerManager):
         self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
         self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
 
+        self.homeXenabled = positionerInfo.managerProperties.get('homeXenabled', False)
+        self.homeYenabled = positionerInfo.managerProperties.get('homeYenabled', False)
+        self.homeZenabled = positionerInfo.managerProperties.get('homeZenabled', False)
+        
         # Axis order
         self.axisOrder = positionerInfo.managerProperties.get('axisOrder', [0, 1, 2, 3])
 
@@ -223,11 +227,11 @@ class ESP32StageManager(PositionerManager):
         self._motor.stop()
 
     def doHome(self, axis, isBlocking=False):
-        if axis == "X":
+        if axis == "X" and self.homeXenabled:
             self.home_x(isBlocking)
-        if axis == "Y":
+        if axis == "Y" and self.homeYenabled:
             self.home_y(isBlocking)
-        if axis == "Z":
+        if axis == "Z" and self.homeZenabled:
             self.home_z(isBlocking)
 
     def home_x(self, isBlocking):
@@ -243,8 +247,9 @@ class ESP32StageManager(PositionerManager):
         self.setPosition(axis="Z", value=0)
 
     def home_xyz(self):
-        self._motor.home_xyz()
-        [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
+        if self.homeXenabled and self.homeYenabled and self.homeZenabled:
+            self._motor.home_xyz()
+            [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
 
 
 # Copyright (C) 2020, 2021 The imswitch developers

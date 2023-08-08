@@ -24,6 +24,7 @@ class LightsheetController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
 
+        self.lightsheetTask = None
         self.lightsheetStack = np.ones((1,1,1))
         # Connect MCTWidget signals
         self._widget.startButton.clicked.connect(self.startLightsheet)
@@ -81,16 +82,19 @@ class LightsheetController(ImConWidgetController):
     def performScanningRecording(self, minPos, maxPos, speed, axis, illusource, illuvalue):
         if not self.isLightsheetRunning:
             self.isLightsheetRunning = True
-            self.lightsheetThread = threading.Thread(target=self.lightsheetThread, args=(minPos, maxPos, speed, axis, illusource, illuvalue))
-            self.lightsheetThread.start()
+            if self.lightsheetTask is not None:
+                self.lightsheetTask.join()
+                del self.lightsheetTask
+            self.lightsheetTask = threading.Thread(target=self.lightsheetThread, args=(minPos, maxPos, speed, axis, illusource, illuvalue))
+            self.lightsheetTask.start()
         
         
     def lightsheetThread(self, minPos, maxPos, speed, axis, illusource, illuvalue):
         self._logger.debug("Lightsheet thread started.")
         
         initialPosition = self.stages.getPosition()[axis]
-        
-        self.stages.setSpeed(speed=speed, axis=axis)
+        initialSpeed =  self.stages.speed[axis]
+        self.stages.setSpeed(speed=initialSpeed, axis=axis)
         
         # move to minPos
         minPosAbsolute = initialPosition+minPos
@@ -98,6 +102,7 @@ class LightsheetController(ImConWidgetController):
         self.stages.move(value=minPosAbsolute, axis=axis, is_absolute=True, is_blocking=True)
         
         # now start acquiring images and move the stage in Background
+        self.stages.setSpeed(speed=speed, axis=axis)
         self.moveInBackground = self.MoveInBackground(self.stages, maxPosAbsolute, axis, is_absolute=True)
         self.moveInBackground.start()
         
@@ -108,6 +113,7 @@ class LightsheetController(ImConWidgetController):
                 break
         
         # move back to initial position
+        self.stages.setSpeed(speed=initialSpeed, axis=axis)
         self.stages.move(value=initialPosition, axis=axis, is_absolute=True, is_blocking=True)
         
         # do something with the frames 

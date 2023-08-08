@@ -25,16 +25,19 @@ class JoystickController(LiveUpdatedController):
         if abs(x)>0 or abs(y) >0:
             self.positioner.moveForever(speed=(0, x*self.scaler, y*self.scaler, 0), is_stop=False)
         else:
-            self.stop("X")
-            self.stop("Y")
+            for i in range(3):
+                self.stop("X")
+                self.stop("Y")
         return x, y
     
     def moveZA(self, a, z):
         if abs(a)>0 or abs(z) >0:
             self.positioner.moveForever(speed=(a*self.scaler, 0, 0, z*self.scaler), is_stop=False)
         else:
-            self.stop("A")
-            self.stop("Z")
+            for i in range(3):
+                # currently it takes a few trials to stop the stage
+                self.stop("A")
+                self.stop("Z")
         return a, z
     
     def stop(self, axis="X"):

@@ -54,6 +54,7 @@ class SIMManager(SignalInterface):
         # sort filenames numerically
         allPatterns = []
         allPatternsPerWavelength = []
+        
         for iPatternDir in patternsDir:
             allPatternPaths = sorted(glob.glob(os.path.join(iPatternDir, "*."+filetype)))
             for iPatternPath in allPatternPaths:

@@ -64,6 +64,7 @@ class CameraPCO:
         
         # open the first device
         self.camera = pco.Camera()
+        #☺pco.Camera(debuglevel='verbose', timestamp='on')
 
         # set exposure
         # self.camera.set_exposure_time(self.exposure_time*1e-6)
@@ -80,7 +81,7 @@ class CameraPCO:
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
-            self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
+            #self.camera.record(number_of_images=self.NBuffer,mode='ring buffer')
             self.camera.wait_for_first_image()
             self.is_streaming = True
 
@@ -102,7 +103,8 @@ class CameraPCO:
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         try:
-            self.camera.set_exposure_time(self.exposure_time*1e-3)
+            self.camera.exposure_time = self.exposure_time*1e-3
+            #self.camera.sdk.set_frame_rate(274, int(self.exposure_time*1e3))
         except:
             self.__logger.error("Not possible to set exposure time now...(PCO)")
 
@@ -116,11 +118,11 @@ class CameraPCO:
         # Display in the liveview
         # ensure that only fresh frames are being returned
         while self.frame_id_last >= self.frameID:
-            self.frame_raw_metadata = self.camera.image(image_number=-1)
-
+            self.frame_raw_metadata = self.camera.image(image_index=-1)
+            #time.sleep(0.001)
             self.frame = self.frame_raw_metadata[0]
             self.frameID = self.frame_raw_metadata[1]["recorder image number"]
-            #self.__logger.debug("Waiting for frame..."+str(self.frame_id_last))
+            #self.__logger.debug("Frame ID..."+str(self.frame_id_last))
         self.frame_id_last = self.frameID
         return self.frame
     

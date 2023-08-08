@@ -19,7 +19,7 @@ from ..basecontrollers import ImConWidgetController
 class LightsheetController(ImConWidgetController):
     """Linked to LightsheetWidget."""
     sigImageReceived = Signal()
-
+    sigSliderIlluValueChanged = Signal(float)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -29,7 +29,6 @@ class LightsheetController(ImConWidgetController):
         self._widget.startButton.clicked.connect(self.startLightsheet)
         self._widget.stopButton.clicked.connect(self.stopLightsheet)
         #self._widget.mctShowLastButton.clicked.connect(self.showLast)
-        #self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -44,7 +43,7 @@ class LightsheetController(ImConWidgetController):
         self._widget.setAvailableStageAxes(self.stages.axes)
         self.isLightsheetRunning = False
         
-        
+        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         self.sigImageReceived.connect(self.displayImage)
         
     def displayImage(self):
@@ -52,6 +51,15 @@ class LightsheetController(ImConWidgetController):
         name = "Lightsheet Stack"
         self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
+    def valueIlluChanged(self):
+        illuSource = self._widget.getIlluminationSource()
+        illuValue = self._widget.illuminationSlider.value()
+        self._master.lasersManager
+        if not self._master.lasersManager[illuSource].enabled:
+            self._master.lasersManager[illuSource].setEnabled(1)
+        
+        illuValue = illuValue/100*self._master.lasersManager[illuSource].valueRangeMax
+        self._master.lasersManager[illuSource].setValue(illuValue)
 
     def startLightsheet(self):
         minPos = self._widget.getMinPosition()

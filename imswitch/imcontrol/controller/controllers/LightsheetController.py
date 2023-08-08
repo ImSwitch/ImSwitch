@@ -106,6 +106,8 @@ class LightsheetController(ImConWidgetController):
         self.lightsheetStack = np.array(allFrames)
         self.sigImageReceived.emit()
         
+        self.stopLightsheet()
+        
         
         
     def stopLightsheet(self):

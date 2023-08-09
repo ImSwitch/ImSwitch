@@ -22,6 +22,7 @@ class UC2ConfigController(ImConWidgetController):
         # get Updatemanager
         self.updater = self._master.UC2ConfigManager
         self._widget.reconnectButton.clicked.connect(self.reconnect)
+        self._widget.btpairingButton.clicked.connect(self.btpairing)
 
         return
         # 1. load config from device
@@ -121,6 +122,14 @@ class UC2ConfigController(ImConWidgetController):
         mThread.start()
         mThread.join()
         self._widget.controlPanel.updateFirmwareDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
+
+    def btpairing(self):
+        self._logger.debug('Pairing BT device.')
+        mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)
+        mThread.start()
+        mThread.join()
+        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Bring the PS controller into pairing mode")
+
 
     def updateFirmware(self, filename=None):
         if not(self.isFirmwareUpdating):

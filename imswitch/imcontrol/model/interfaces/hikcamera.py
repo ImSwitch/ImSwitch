@@ -387,7 +387,7 @@ class CameraHIK:
                             self.frameid_buffer.append(self.frame_id)
                             
                         except Exception as e:
-                            raise Exception("save file executed failed:%s" % e.message)
+                            raise Exception("save file executed failed:%s" % e)
                         finally:
                             pass
                     

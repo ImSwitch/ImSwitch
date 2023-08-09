@@ -6,6 +6,7 @@ import serial.tools.list_ports
 import base64
 from PIL import Image
 import io
+import math
 
 class CameraESP32CamSerial:
     def __init__(self, port=None):
@@ -36,6 +37,9 @@ class CameraESP32CamSerial:
         self.newCommand = ""
         self.exposureTime = -1
         self.gain = -1
+        
+        self.waitForNextFrame = True
+
 
         self.serialdevice = self.connect_to_usb_device()
 
@@ -48,18 +52,33 @@ class CameraESP32CamSerial:
             except:
                 pass
 
-
         ports = serial.tools.list_ports.comports()
         for port in ports:
             if port.manufacturer == self.manufacturer or port.manufacturer=="Microsoft":
                 try:
                     ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
+                    ser.write_timeout = 1
                     print(f"Connected to device: {port.description}")
                     return ser
                 except serial.SerialException:
                     print(f"Failed to connect to device: {port.description}")
         print("No matching USB device found.")
         return None
+
+    def calculate_base64_length(self, width, height):
+        """Calculate the length of a base64 string for an image of given dimensions."""
+        num_bytes = width * height
+        base64_length = math.ceil((num_bytes * 4) / 3)
+        # ensure length is multiple of 4
+        base64_length = base64_length + (4 - base64_length % 4) % 4
+        return base64_length
+
+    def initCam(self):
+        """Initialize the camera."""
+        # adjust exposure time
+        self.serialdevice.write(('t10\n').encode())
+        while(self.serialdevice.read()):
+            pass
 
     def put_frame(self, frame):
         self.frame = frame
@@ -126,6 +145,10 @@ class CameraESP32CamSerial:
             return
         nFrame = 0
         nTrial = 0
+        # Calculate the length of the base64 string
+        base64_length = self.calculate_base64_length(self.SensorWidth, self.SensorHeight)
+        lineBreakLength = 2
+
         while self.isRunning:
             try:
 
@@ -141,10 +164,30 @@ class CameraESP32CamSerial:
                 time.sleep(.05)
                 # readline of camera
                 frame_size = 320 * 240
+        
+                # Read the base64 string from the serial port
+                lineBreakLength = 2
+                base64_image_string  = self.serialdevice.read(base64_length+lineBreakLength)
+
+                # Decode the base64 string into a 1D numpy array
+                image_bytes = base64.b64decode(base64_image_string)
+                image_1d = np.frombuffer(image_bytes, dtype=np.uint8)
+
+                # Reshape the 1D array into a 2D image
+                frame = image_1d.reshape(self.SensorHeight, self.SensorWidth)
+                                
                 frame_bytes = self.serialdevice.read(frame_size)
                 frame_flat = np.frombuffer(frame_bytes, dtype=np.uint8)
-                self.frame = frame_flat.reshape((240, 320))
                 
+                # Display the image
+                if waitForNextFrame:
+                    waitForNextFrame = False
+
+                else:
+                    # publish frame frame
+                    self.frame = frame_flat.reshape((240, 320))
+                
+                '''
                 # find 0,1,0,1... pattern to sync
                 pattern = (0,1,0,1,0,1,0,1,0,1)
                 window_size = len(pattern)
@@ -152,7 +195,7 @@ class CameraESP32CamSerial:
                     # Check if the elements in the current window match the pattern
                     if np.array_equal(frame_flat[i:i+window_size], pattern):
                         break
-                
+                '''                
 
                 nFrame += 1
                 
@@ -161,11 +204,15 @@ class CameraESP32CamSerial:
                 #print(e) # most of the time "incorrect padding of the bytes "
                 nFrame = 0
                 nTrial+=1
-                try:
-                    self.serialdevice.flushInput()
-                    self.serialdevice.flushOutput()
-                except:
+
+                # Clear the serial buffer
+                while(self.serialdevice.read()):
                     pass
+                # Re-initialize the camera
+                self.initCam()
+                waitForNextFrame = True
+                
+                # Attempt a hard reset every 20 errors
                 if nTrial > 10 and type(e)==serial.serialutil.SerialException:
                     try:
                         # close the device - similar to hard reset

@@ -8,6 +8,7 @@ from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
 from .FFTController import FFTController
 from .HoloController import HoloController
+from .JoystickController import JoystickController
 from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
@@ -37,6 +38,9 @@ from .UC2ConfigController import UC2ConfigController
 from .SIMController import SIMController
 from .DPCController import DPCController
 from .MCTController import MCTController
+from .ROIScanController import ROIScanController
+from .RotationScanController import RotationScanController
+from .LightsheetController import LightsheetController
 from .WebRTCController import WebRTCController
 from .HyphaController import HyphaController
 from .MockXXController import MockXXController

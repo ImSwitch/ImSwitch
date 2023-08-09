@@ -89,9 +89,13 @@ class RecordingController(ImConWidgetController):
         if saveMode == SaveMode.RAM:
             self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self, name=None):
+    def snap(self, name=None, mSaveFormat=None):
         """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
+
+        # by default save as it's noted in the widget
+        if mSaveFormat is None:
+            mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
 
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
@@ -109,7 +113,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getsaveFormat()),
+                                           mSaveFormat,
                                            attrs)
 
     def snapNumpy(self):
@@ -428,7 +432,7 @@ class RecordingController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def snapImageToPath(self, fileName: str = "."):
         """ Take a snap and save it to a .tiff file at the given fileName. """
-        self.snap(name = fileName)
+        self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
     @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False):# -> np.ndarray:
@@ -439,16 +443,22 @@ class RecordingController(ImConWidgetController):
             self.snap()
 
     @APIExport(runOnUIThread=False)
-    def snapNumpyToFastAPI(self, detectorName=None) -> Response:
+    def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
         # Create a 2D NumPy array representing the image
         images = self.snapNumpy()
-        
+
         # get the image from the first detector if detectorName is not specified
         if detectorName is None:
             detectorName = self.getDetectorNamesToCapture()[0]
-        
+
         # get the image from the specified detector    
         image = images[detectorName]
+
+        if resizeFactor <1:
+            image = self.resizeImage(image, resizeFactor)
+                
+        # eventually resize image to save bandwidth
+        resizeFactor
         
         # using an in-memory image
         im = Image.fromarray(image)
@@ -533,6 +543,33 @@ class RecordingController(ImConWidgetController):
     def setRecFolder(self, folderPath: str) -> None:
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
+
+    def resizeImage(self, image, scale_factor):
+        """
+        Resize the input image by a given scale factor using nearest neighbor interpolation.
+
+        Parameters:
+            image (numpy.ndarray): The input image. For RGB, shape should be (height, width, 3),
+                                for monochrome/grayscale, shape should be (height, width).
+            scale_factor (float): The scaling factor by which to resize the image.
+
+        Returns:
+            numpy.ndarray: The resized image.
+        """
+        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB image
+            height, width, _ = image.shape
+        elif len(image.shape) == 2:  # Monochrome/grayscale image
+            height, width = image.shape
+        else:
+            raise ValueError("Invalid image shape. Supported shapes are (height, width, 3) for RGB and (height, width) for monochrome.")
+
+        new_height, new_width = int(height * scale_factor), int(width * scale_factor)
+
+        # Use OpenCV's resize function with nearest neighbor interpolation
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+
+        return resized_image
+
 
 
 _attrCategory = 'Rec'

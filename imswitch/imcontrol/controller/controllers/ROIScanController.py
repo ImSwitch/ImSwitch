@@ -118,8 +118,8 @@ class ROIScanController(ImConWidgetController):
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
 
-        nTimes = self._widget.numberOfScansField.value()
-        tPeriod = self._widget.timeIntervalField.value()
+        nTimes = int(self._widget.numberOfScansField.text())
+        tPeriod = int(self._widget.timeIntervalField.text())
         self.performScanningRecording(nTimes, tPeriod)
 
     def stop_experiment(self):
@@ -148,8 +148,8 @@ class ROIScanController(ImConWidgetController):
         
         # get all coordinates from coordinatesList
         coordinates = []
-        for i in range(self.coordinatesList.count()):
-            item_text = self.coordinatesList.item(i).text()
+        for i in range(self._widget.coordinatesList.count()):
+            item_text = self._widget.coordinatesList.item(i).text()
             _, x, y, z = [float(val.split(":")[1].strip()) for val in item_text.split(",")]
             coordinates.append((x, y, z))
             

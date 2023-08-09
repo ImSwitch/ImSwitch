@@ -48,7 +48,8 @@ class LightsheetController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "Lightsheet Stack"
-        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(1,1,1), translation=(0,0,0))
+        # subsample stack 
+        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(100,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -91,30 +92,27 @@ class LightsheetController(ImConWidgetController):
         self._logger.debug("Lightsheet thread started.")
         
         initialPosition = self.stages.getPosition()[axis]
-        initialSpeed =  self.stages.speed[axis]
-        self.stages.setSpeed(speed=initialSpeed, axis=axis)
         self.detector.startAcquisition()
         # move to minPos
         self.stages.move(value=minPos, axis=axis, is_absolute=False, is_blocking=True)
         
         # now start acquiring images and move the stage in Background
-        self.stages.setSpeed(speed=speed, axis=axis)
-        self.moveInBackground = self.MoveInBackground(self.stages, maxPos+np.abs(minPos), axis, is_absolute=False)
-        self.moveInBackground.start()
+        controller = MovementController(self.stages)
+        controller.move_to_position(maxPos+np.abs(minPos), axis, speed, is_absolute=False)
+
         iFrame = 0
         allFrames = []
         while self.isLightsheetRunning:
             allFrames.append(self.detector.getLatestFrame())
-            if not self.moveInBackground.getIsMoving():
+            if controller.is_target_reached():
                 break
             iFrame += 1
             print(iFrame)
         # move back to initial position
-        self.stages.setSpeed(speed=initialSpeed, axis=axis)
         self.stages.move(value=-maxPos, axis=axis, is_absolute=False, is_blocking=True)
         
         # do something with the frames 
-        self.lightsheetStack = np.array(allFrames)
+        self.lightsheetStack = np.array(allFrames[0::30])
         self.sigImageReceived.emit()
         
         self.stopLightsheet()
@@ -132,22 +130,29 @@ class LightsheetController(ImConWidgetController):
         self._logger.debug("Lightsheet scanning stopped.")
         
 
-    class MoveInBackground(Thread):
-        def __init__(self, positioner, value, axis, is_absolute=True):
-            super().__init__()
-            self.positioner = positioner
-            self.value = value
-            self.axis = axis
-            self.is_absolute = is_absolute
-            self.is_moving = False
-        def run(self):
-            if not self.is_moving:
-                self.is_moving = True
-                self.positioner.move(value=self.value, axis=self.axis, is_absolute=self.is_absolute, is_blocking=True)
-                self.is_moving = False
 
-        def getIsMoving(self):
-            return self.is_moving
+class MovementController:
+    def __init__(self, stages):
+        self.stages = stages
+        self.target_reached = False
+        self.target_position = None
+        self.axis = None
+
+    def move_to_position(self, minPos, axis, speed, is_absolute):
+        self.target_position = minPos
+        self.speed = speed
+        self.is_absolute = is_absolute
+        self.axis = axis
+        thread = threading.Thread(target=self._move)
+        thread.start()
+
+    def _move(self):
+        self.target_reached = False
+        self.stages.move(value=self.target_position, axis=self.axis, speed=self.speed, is_absolute=self.is_absolute, is_blocking=True)
+        self.target_reached = True
+
+    def is_target_reached(self):
+        return self.target_reached
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

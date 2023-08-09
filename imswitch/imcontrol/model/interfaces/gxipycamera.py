@@ -41,6 +41,8 @@ class CameraGXIPY:
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.lastFrameId = -1
+        self.frameNumber = -1
+        self.frame = None
 
         #%% starting the camera thread
         self.camera = None

@@ -50,7 +50,7 @@ class LightsheetController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "Lightsheet Stack"
-        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
+        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(1,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -95,26 +95,25 @@ class LightsheetController(ImConWidgetController):
         initialPosition = self.stages.getPosition()[axis]
         initialSpeed =  self.stages.speed[axis]
         self.stages.setSpeed(speed=initialSpeed, axis=axis)
-        
+        self.detector.startAcquisition()
         # move to minPos
-        minPosAbsolute = initialPosition+minPos
-        maxPosAbsolute = initialPosition+maxPos
-        self.stages.move(value=minPosAbsolute, axis=axis, is_absolute=True, is_blocking=True)
+        self.stages.move(value=minPos, axis=axis, is_absolute=False, is_blocking=True)
         
         # now start acquiring images and move the stage in Background
         self.stages.setSpeed(speed=speed, axis=axis)
-        self.moveInBackground = self.MoveInBackground(self.stages, maxPosAbsolute, axis, is_absolute=True)
+        self.moveInBackground = self.MoveInBackground(self.stages, maxPos+np.abs(minPos), axis, is_absolute=False)
         self.moveInBackground.start()
-        
+        iFrame = 0
         allFrames = []
         while self.isLightsheetRunning:
             allFrames.append(self.detector.getLatestFrame())
             if not self.moveInBackground.getIsMoving():
                 break
-        
+            iFrame += 1
+            print(iFrame)
         # move back to initial position
         self.stages.setSpeed(speed=initialSpeed, axis=axis)
-        self.stages.move(value=initialPosition, axis=axis, is_absolute=True, is_blocking=True)
+        self.stages.move(value=-maxPos, axis=axis, is_absolute=False, is_blocking=True)
         
         # do something with the frames 
         self.lightsheetStack = np.array(allFrames)
@@ -143,12 +142,12 @@ class LightsheetController(ImConWidgetController):
             self.axis = axis
             self.is_absolute = is_absolute
             self.is_moving = False
-
         def run(self):
-            self.is_moving = True
-            self.positioner.move(value=self.value, axis=self.axis, is_absolute=self.is_absolute, is_blocking=True)
-            self.is_moving = False
-            
+            if not self.is_moving:
+                self.is_moving = True
+                self.positioner.move(value=self.value, axis=self.axis, is_absolute=self.is_absolute, is_blocking=True)
+                self.is_moving = False
+
         def getIsMoving(self):
             return self.is_moving
 

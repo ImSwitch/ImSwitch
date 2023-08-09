@@ -107,6 +107,11 @@ class PositionerController(ImConWidgetController):
             self._widget.updatePosition(positionerName, axis, newPos)
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
 
+    def updateSpeed(self, positionerName, axis):
+        newSpeed = self._master.positionersManager[positionerName].speed[axis]
+        self._widget.updateSpeed(positionerName, axis, newSpeed)
+        self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
+
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
         self.__logger.debug(f"Homing axis {axis}")

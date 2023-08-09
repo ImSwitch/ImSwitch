@@ -81,19 +81,33 @@ class ROIScanWidget(NapariHybridWidget):
         
         self.experimentNameField = QLineEdit()
         self.experimentNameField.setPlaceholderText("Experiment Name")
+        
+        self.infoText = QLabel("Info: ")
 
         secondSectionLayout.addWidget(self.timeIntervalField)
         secondSectionLayout.addWidget(self.numberOfScansField)
         secondSectionLayout.addWidget(self.startButton)
         secondSectionLayout.addWidget(self.stopButton)
         secondSectionLayout.addWidget(self.experimentNameField)
+        secondSectionLayout.addWidget(self.infoText)
 
         mainLayout.addLayout(firstSectionLayout)
         mainLayout.addLayout(secondSectionLayout) # Second section is added to the main horizontal layout
 
         self.setLayout(mainLayout)
 
-    
+        self.layer = None
+            
+    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1), translation=(0,0,0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+                                               scale=pixelsize,translate=translation,
+                                               name=name, blending='additive')
+        self.layer.data = im
+        
+        
     
         
 # Copyright (C) 2020-2021 ImSwitch developers

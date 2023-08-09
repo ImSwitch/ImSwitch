@@ -72,16 +72,19 @@ class ROIScanController(ImConWidgetController):
     # Additional methods for specific actions
     def save_coordinates(self):
         # Get the current XYZ coordinates (replace with actual values from the controller)
-        xyzpositions = self.stages.getPosition()
-        x = xyzpositions["X"]
-        y = xyzpositions["Y"]
-        z = xyzpositions["Z"]
+        # has to be done in background 
+        def save_coordinatesThread():
+            xyzpositions = self.stages.getPosition()
+            x = xyzpositions["X"]
+            y = xyzpositions["Y"]
+            z = xyzpositions["Z"]
+            
+            # Create a new item for the list
+            coordinate_id = self._widget.coordinatesList.count() + 1
+            item_text = f"ID: {coordinate_id}, X: {x}, Y: {y}, Z: {z}"
+            self._widget.coordinatesList.addItem(item_text)
+        threading.Thread(target=save_coordinatesThread).start()
         
-        # Create a new item for the list
-        coordinate_id = self._widget.coordinatesList.count() + 1
-        item_text = f"ID: {coordinate_id}, X: {x}, Y: {y}, Z: {z}"
-        self._widget.coordinatesList.addItem(item_text)
-
     def delete_selected_coordinates(self):
         # Get the currently selected item
         selected_item = self._widget.coordinatesList.currentItem()
@@ -111,16 +114,22 @@ class ROIScanController(ImConWidgetController):
     def start_experiment(self):
         # Retrieve and pass parameters to start the experiment
         self._logger.debug("Starting roi scanning.")
-        self._widget.startButton.setEnabled(False)
-        self._widget.stopButton.setEnabled(True)
-        self._widget.startButton.setText("Running")
-        self._widget.stopButton.setText("Stop") 
-        self._widget.stopButton.setStyleSheet("background-color: red")
-        self._widget.startButton.setStyleSheet("background-color: green")
-
-        nTimes = int(self._widget.numberOfScansField.text())
-        tPeriod = int(self._widget.timeIntervalField.text())
-        self.performScanningRecording(nTimes, tPeriod)
+        self._widget.infoText.setText("Starting roi scanning.")
+        try:
+            experimentName = self._widget.experimentNameField.text()
+            nTimes = int(self._widget.numberOfScansField.text())
+            tPeriod = int(self._widget.timeIntervalField.text())
+            self._widget.startButton.setEnabled(False)
+            self._widget.stopButton.setEnabled(True)
+            self._widget.startButton.setText("Running")
+            self._widget.stopButton.setText("Stop") 
+            self._widget.stopButton.setStyleSheet("background-color: red")
+            self._widget.startButton.setStyleSheet("background-color: green")
+            self.performScanningRecording(nTimes, tPeriod, experimentName)
+        except:
+            self._widget.infoText.setText("Error: Enter values")
+            
+        
 
     def stop_experiment(self):
         # Stop the experiment
@@ -133,16 +142,16 @@ class ROIScanController(ImConWidgetController):
         self._widget.startButton.setStyleSheet("background-color: red")
         self._logger.debug("ROI scanning stopped.")
         
-    def performScanningRecording(self, nTimes, tPeriod):
+    def performScanningRecording(self, nTimes, tPeriod, experimentName):
         if not self.isRoiscanRunning:
             self.isRoiscanRunning = True
             if self.roiscanTask is not None:
                 self.roiscanTask.join()
                 del self.roiscanTask
-            self.roiscanTask = threading.Thread(target=self.roiscanThread, args=(nTimes, tPeriod))
+            self.roiscanTask = threading.Thread(target=self.roiscanThread, args=(nTimes, tPeriod, experimentName))
             self.roiscanTask.start()
             
-    def roiscanThread(self, nTimes, tPeriod):
+    def roiscanThread(self, nTimes, tPeriod, experimentName):
         # move to all coordinates in the list and take an image 
         self._logger.debug("ROI scanning thread started.")
         
@@ -156,9 +165,11 @@ class ROIScanController(ImConWidgetController):
         # move to all coordinates and take an image
         iImage = 0
         currentTime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        while self.isRoiscanRunning:
+        t0 = time.time()
+        for i in range(nTimes):
             allFrames = []
             for coordinate in coordinates:
+                self._widget.infoText.setText("Taking image at "+str(coordinate) + " ("+str(iImage)+"/"+str(nTimes)+")")
                 # move x
                 self.stages.move(value=coordinate[0], axis="X", is_absolute=True, is_blocking=True)
                 # move y
@@ -167,19 +178,29 @@ class ROIScanController(ImConWidgetController):
                 self.stages.move(value=coordinate[2], axis="Z", is_absolute=True, is_blocking=True)
                 
                 # take an image
-                mImage = self.detector.getImage()
+                mImage = self.detector.getLatestFrame()
                 allFrames.append(mImage)
                 #self.sigImageReceived.emit()
             # save the stack as ometiff
             self.roiscanStack = np.stack(allFrames, axis=0)
             self.sigImageReceived.emit()
             # save the stack as ometiff including metadata including coordinates and time
-            tif.imsave(currentTime + "_" + str(iImage)+"_roiscan_stack_metadata.tif", self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
+            tif.imsave(currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif", self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
             iImage += 1
             
+            # if the experiment is stopped, stop the thread
+            if iImage > nTimes:
+                return
             # wait for tPeriod seconds
-            time.sleep(tPeriod)
-        
+            while 1:
+                self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
+                if time.time()-t0 > tPeriod:
+                    self.stop_experiment()
+                    break
+                if not self.isRoiscanRunning:
+                    return
+                time.sleep(1)
+                
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

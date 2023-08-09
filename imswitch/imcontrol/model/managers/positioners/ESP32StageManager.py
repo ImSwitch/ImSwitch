@@ -74,6 +74,9 @@ class ESP32StageManager(PositionerManager):
         self.enableauto = positionerInfo.managerProperties.get('enableauto', True)
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
+        # Dual Axis if we have A and Z to drive the motor
+        self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
+
         # Acceleration
         self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "A": 40000}
 
@@ -132,7 +135,7 @@ class ESP32StageManager(PositionerManager):
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Z':
-            self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, is_dualaxis=self.isDualAxis, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'A':

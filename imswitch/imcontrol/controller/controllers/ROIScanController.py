@@ -164,7 +164,7 @@ class ROIScanController(ImConWidgetController):
             
         # move to all coordinates and take an image
         iImage = 0
-        currentTime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         t0 = time.time()
         for i in range(nTimes):
             allFrames = []

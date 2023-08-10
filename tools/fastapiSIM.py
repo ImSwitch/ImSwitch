@@ -6,6 +6,12 @@ import threading
 import time
 import os
 
+'''
+import requests
+x = requests.get('http://localhost:8000/stopLoop')
+print(x.text)
+'''
+
 try:
     import RPi.GPIO as GPIO
 except:
@@ -13,6 +19,20 @@ except:
     GPIO = None
 
 pygame.init()
+
+
+import socket
+
+def get_ip_address():
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    print(f"Hostname: {hostname}")
+    print(f"IP Address: {ip_address}")
+    print(f"Port: 80")
+    return ip_address
+
+# Call the function to print the IP address
+get_ip_address()
 
 # Screen resolution
 mResolution = [1920, 1080]
@@ -118,7 +138,7 @@ def generatePattern(inputNumber):
 # Function to get image
 def get_image(inputNumber: int):
     global currentWavelength, surf, isGenerateImage
-    print(inputNumber)
+
     display.blit(surf, (0, 0))
     pygame.display.update()
 

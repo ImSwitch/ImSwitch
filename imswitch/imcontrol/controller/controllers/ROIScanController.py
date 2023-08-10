@@ -105,11 +105,11 @@ class ROIScanController(ImConWidgetController):
             _, x, y, z = [float(val.split(":")[1].strip()) for val in item_text.split(",")]
             
             # move x
-            self.stages.move(value=x, axis="X", is_absolute=True, is_blocking=True)
+            self.stages.move(value=x, axis="X", is_absolute=True, is_blocking=False)
             # move y
-            self.stages.move(value=y, axis="Y", is_absolute=True, is_blocking=True)
+            self.stages.move(value=y, axis="Y", is_absolute=True, is_blocking=False)
             # move z
-            self.stages.move(value=z, axis="Z", is_absolute=True, is_blocking=True)
+            self.stages.move(value=z, axis="Z", is_absolute=True, is_blocking=False)
 
     def start_experiment(self):
         # Retrieve and pass parameters to start the experiment
@@ -186,7 +186,6 @@ class ROIScanController(ImConWidgetController):
             self.sigImageReceived.emit()
             # save the stack as ometiff including metadata including coordinates and time
             tif.imsave(currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif", self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
-            iImage += 1
             
             # if the experiment is stopped, stop the thread
             if iImage > nTimes:
@@ -200,6 +199,7 @@ class ROIScanController(ImConWidgetController):
                 if not self.isRoiscanRunning:
                     return
                 time.sleep(1)
+            iImage += 1
                 
 
 # Copyright (C) 2020-2021 ImSwitch developers

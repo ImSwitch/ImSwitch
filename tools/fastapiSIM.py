@@ -26,6 +26,9 @@ camTriggerPin = 26
 currentWavelength = 0  # 488=0, 635=1
 nImages = 9
 camTriggerPin = 37
+iFreeze = False
+iPattern = 0
+task_lock = True
     
 if GPIO is not None:
     GPIO.setmode(GPIO.BCM)
@@ -82,7 +85,6 @@ class Viewer:
         GPIO.output(gpiopin, GPIO.HIGH)
         time.sleep(0.001)
         GPIO.output(gpiopin, GPIO.LOW)
-        print("fire!")
         time.sleep(0.001)
         
     def start(self):
@@ -92,8 +94,8 @@ class Viewer:
                 if event.type == pygame.QUIT:
                     running = False
             
-            Z = self.update_func(self.pattern_index)
-            self.pattern_index = (self.pattern_index + 1) % len(mImages488)
+            Z, inumber = self.update_func(self.pattern_index)
+            self.pattern_index = (self.pattern_index + 1) % inumber
             surf = pygame.surfarray.make_surface(Z)
             self.display.blit(surf, (0, 0))
             pygame.display.update()
@@ -105,10 +107,15 @@ class Viewer:
 
 def update(index):
     global currentWavelength
-    images = mImages488 if currentWavelength == 0 else mImages635
-    pattern = np.uint8(images[index] * 255)
-
-    return pattern
+    global iPattern
+    if iFreeze == False:
+        images = mImages488 if currentWavelength == 0 else mImages635
+        pattern = np.uint8(images[index] * 255)
+    else:
+        images = mImages488[iPattern] if currentWavelength == 0 else mImages635[iPattern]
+        images = images[np.newaxis,:,:]
+        pattern = np.uint8(images[0] * 255)
+    return pattern, np.shape(images)[0]
 
 def get_ip_address():
     hostname = socket.gethostname()
@@ -120,7 +127,6 @@ def get_ip_address():
 
 # Call the function to print the IP address
 get_ip_address()
-
     
 app = FastAPI()
 viewer = None
@@ -130,11 +136,27 @@ def run_viewer():
     viewer = Viewer(update, mResolution)
     viewer.start()
 
-
 @app.get("/start_viewer/")
 async def start_viewer(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_viewer)
+    global iFreeze, task_lock
+    if task_lock:
+        background_tasks.add_task(run_viewer)
+        task_lock = not task_lock
+
+    iFreeze = False
+
     return {"message": "Viewer started."}
+
+@app.get("/start_viewer_freeze/{i}")
+async def start_viewer_freeze(i:int):
+    global iFreeze, iPattern, task_lock
+    if task_lock:
+        background_tasks.add_task(run_viewer)
+        task_lock = not task_lock
+        
+    iFreeze = True 
+    iPattern = i
+    return {"message": "show certain pattern."}
 
 # Endpoint to set pause time
 @app.get("/set_pause/{pauseTime}")
@@ -159,7 +181,6 @@ async def toggle_fullscreen():
     else:
         pygame.display.set_mode(mResolution)
     return {"fullscreen": fullscreen}
-
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000)

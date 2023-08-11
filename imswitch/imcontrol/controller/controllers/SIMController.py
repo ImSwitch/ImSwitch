@@ -331,9 +331,8 @@ class SIMController(ImConWidgetController):
                 patternID = int(patternID)
                 wavelengthID = int(wavelengthID)
                 currentPattern = self._master.simManager.allPatterns[wavelengthID][patternID]
-                print(str(wavelengthID) + str(patternID))
+                #print(str(wavelengthID) + str(patternID))
                 self.updateDisplayImage(currentPattern)
-                #print('new pattern shown')
                 return currentPattern
             except Exception as e:
                 self._logger.error(e)
@@ -389,7 +388,7 @@ class SIMController(ImConWidgetController):
                 # 1 display the pattern
                 #tick = datetime.now()
                 self.simPatternByID(patternID=iPattern, wavelengthID=iColour)
-                time.sleep(0.25) #FIXME: ??? it works with 100ms exp
+                time.sleep(0.2) #FIXME: ??? it works with 100ms exp
                 
                 # grab a frame 
                 # while (self.detector.getFrameId()-frameIdLast)<self.nsimFrameSyncVal:
@@ -429,7 +428,7 @@ class SIMController(ImConWidgetController):
     @APIExport(runOnUIThread=True)
     def sim_getSnapAPI(self, mystack):
         mystack.append(self.detector.getLatestFrame())
-        print(np.shape(mystack))
+        #print(np.shape(mystack))
         
     def reconstructSIMStack(self, SIMStack, processor):
         '''

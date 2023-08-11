@@ -156,6 +156,9 @@ class ESP32StageManager(PositionerManager):
                 else: self._position[iaxis] = value[i]
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
+            
+        
+
 
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
@@ -184,6 +187,10 @@ class ESP32StageManager(PositionerManager):
         # print(f"setPosition - Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
+    def setPositionOnDevice(self, value, axis):
+        self.setPosition(value, axis)
+        self._motor.set_position(axis, value)
+        
     def closeEvent(self):
         pass
 

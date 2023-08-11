@@ -85,6 +85,8 @@ class PositionerWidget(Widget):
             )
 
             self.numPositioners += 1
+            
+    
 
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in

@@ -5,6 +5,8 @@ import pygame
 import time
 import os
 import socket
+from os import listdir
+from os.path import isfile, join
 
 '''
 import requests
@@ -29,6 +31,7 @@ camTriggerPin = 37
 iFreeze = False
 iPattern = 0
 task_lock = True
+
     
 if GPIO is not None:
     GPIO.setmode(GPIO.BCM)
@@ -36,8 +39,10 @@ if GPIO is not None:
     
 # Images path
 try:
-    mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
-    mypath635 = "/home/pi/Desktop/Pattern_SIMMO/635"
+    #mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
+    #mypath635 = "/home/pi/Desktop/Pattern_SIMMO/635"
+    mypath488 = "C:\\Users\\admin\\Documents\\ImSwitchConfig\\imcontrol_sim\\488"
+    mypath635 = mypath488 # for windows debugging
     myimg488 = [f for f in listdir(mypath488) if isfile(join(mypath488, f))]
     myimg635 = [f for f in listdir(mypath635) if isfile(join(mypath635, f))]
     myimg488.sort()
@@ -47,17 +52,21 @@ except:
 
 def load_images(wl: int):
     images = []
-    global isGenerateImage
+    global isGenerateImage, iNumber
     try:
         if wl == 488:    
             for i in range(nImages):
-                images.append(pygame.image.load(join(myimg488, myimg488[i])))
+                images.append(pygame.image.load(join(mypath488, myimg488[i])))
         elif wl == 635:
             for i in range(nImages):
-                images.append(pygame.image.load(join(myimg635, myimg635[i])))
+                images.append(pygame.image.load(join(mypath635, myimg635[i])))
+        iNumber = 9
     except:
-        images = list(np.random.rand(nImages, mResolution[0], mResolution[1]))
+        R_img = list(np.random.rand(nImages, mResolution[0], mResolution[1])*255)
+        for i in range(nImages):
+                images.append(pygame.surfarray.make_surface(np.int8(R_img[i])))
         isGenerateImage = True
+        iNumber = 1
     return images
 
 mImages488 = load_images(488)
@@ -72,8 +81,9 @@ class Viewer:
         self.display = pygame.display.set_mode(display_size, display=0)
         self.tWait = 0.01
         self.clock = pygame.time.Clock()
-        global camTriggerPin
+        global camTriggerPin, iNumber
         self.camPin = camTriggerPin
+        self.iNumber = iNumber
     
     def set_title(self, title):
         pygame.display.set_caption(title)
@@ -94,14 +104,14 @@ class Viewer:
                 if event.type == pygame.QUIT:
                     running = False
             
-            Z, inumber = self.update_func(self.pattern_index)
-            self.pattern_index = (self.pattern_index + 1) % inumber
-            surf = pygame.surfarray.make_surface(Z)
+            surf = self.update_func(self.pattern_index)
+            self.pattern_index = (self.pattern_index + 1) % self.iNumber
+            #surf = pygame.surfarray.make_surface(Z)
             self.display.blit(surf, (0, 0))
             pygame.display.update()
             self.clock.tick()
             print(self.clock.get_fps())
-            self.trigger(self.camPin)
+            #self.trigger(self.camPin)
             time.sleep(self.tWait)
         pygame.quit()
 
@@ -110,12 +120,12 @@ def update(index):
     global iPattern
     if iFreeze == False:
         images = mImages488 if currentWavelength == 0 else mImages635
-        pattern = np.uint8(images[index] * 255)
+        #pattern = np.uint8(images[index])
+        pattern = images[index]
     else:
         images = mImages488[iPattern] if currentWavelength == 0 else mImages635[iPattern]
-        images = images[np.newaxis,:,:]
-        pattern = np.uint8(images[0] * 255)
-    return pattern, np.shape(images)[0]
+        pattern = images[0]
+    return pattern
 
 def get_ip_address():
     hostname = socket.gethostname()

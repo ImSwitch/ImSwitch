@@ -92,6 +92,8 @@ class LightsheetWidget(NapariHybridWidget):
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im
+        #self.layer.contrast_limits_range = (range_min, range_max)
+        self.layer.contrast_limits = (np.min(im), np.max(im))
         
         
         

@@ -31,6 +31,7 @@ camTriggerPin = 37
 iFreeze = False
 iPattern = 0
 task_lock = True
+iNumber = 9
 
     
 if GPIO is not None:
@@ -39,10 +40,11 @@ if GPIO is not None:
     
 # Images path
 try:
-    #mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
-    #mypath635 = "/home/pi/Desktop/Pattern_SIMMO/635"
-    mypath488 = "C:\\Users\\admin\\Documents\\ImSwitchConfig\\imcontrol_sim\\488"
-    mypath635 = mypath488 # for windows debugging
+    mypath488 = "/home/pi/Desktop/Pattern_SIMMO/488"
+    mypath635 = "/home/pi/Desktop/Pattern_SIMMO/635"
+    # for windows debug
+    #mypath488 = "C:\\Users\\admin\\Documents\\ImSwitchConfig\\imcontrol_sim\\488"
+    #mypath635 = mypath488 # for windows debugging
     myimg488 = [f for f in listdir(mypath488) if isfile(join(mypath488, f))]
     myimg635 = [f for f in listdir(mypath635) if isfile(join(mypath635, f))]
     myimg488.sort()
@@ -60,13 +62,11 @@ def load_images(wl: int):
         elif wl == 635:
             for i in range(nImages):
                 images.append(pygame.image.load(join(mypath635, myimg635[i])))
-        iNumber = 9
     except:
         R_img = list(np.random.rand(nImages, mResolution[0], mResolution[1])*255)
         for i in range(nImages):
                 images.append(pygame.surfarray.make_surface(np.int8(R_img[i])))
         isGenerateImage = True
-        iNumber = 1
     return images
 
 mImages488 = load_images(488)
@@ -111,9 +111,15 @@ class Viewer:
             pygame.display.update()
             self.clock.tick()
             print(self.clock.get_fps())
-            #self.trigger(self.camPin)
+            self.trigger(self.camPin)
             time.sleep(self.tWait)
-        pygame.quit()
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:  # Press 'q' to quit
+                        pygame.display.quit()
+                        running = False
+                        global task_lock
+                        task_lock = True
 
 def update(index):
     global currentWavelength
@@ -124,7 +130,7 @@ def update(index):
         pattern = images[index]
     else:
         images = mImages488[iPattern] if currentWavelength == 0 else mImages635[iPattern]
-        pattern = images[0]
+        pattern = images
     return pattern
 
 def get_ip_address():
@@ -151,18 +157,18 @@ async def start_viewer(background_tasks: BackgroundTasks):
     global iFreeze, task_lock
     if task_lock:
         background_tasks.add_task(run_viewer)
-        task_lock = not task_lock
+        task_lock = False
 
     iFreeze = False
 
     return {"message": "Viewer started."}
 
 @app.get("/start_viewer_freeze/{i}")
-async def start_viewer_freeze(i:int):
+async def start_viewer_freeze(background_tasks: BackgroundTasks, i:int):
     global iFreeze, iPattern, task_lock
     if task_lock:
         background_tasks.add_task(run_viewer)
-        task_lock = not task_lock
+        task_lock = False
         
     iFreeze = True 
     iPattern = i

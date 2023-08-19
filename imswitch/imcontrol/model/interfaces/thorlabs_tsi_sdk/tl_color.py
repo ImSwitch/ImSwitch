@@ -4,7 +4,7 @@ tl_color.py
 from ctypes import cdll, POINTER, c_int, c_ushort, c_void_p, c_float, c_ubyte
 from traceback import format_exception
 import logging
-
+import os
 import numpy as np
 
 from .tl_color_enums import FORMAT, FILTER_ARRAY_PHASE, FILTER_TYPE

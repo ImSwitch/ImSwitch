@@ -299,7 +299,6 @@ sudo usermod -a -G dialout $USER
 
 ### Run ImSwitch on Ubuntu
 
-Certainly! Below is a step-by-step tutorial to install ImSwitch and related dependencies based on the provided logs.
 
 #### Step 1: Install Visual Studio Code (VS Code)
 

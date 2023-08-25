@@ -47,12 +47,13 @@ class PCOManager(DetectorManager):
             'Height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
-                                    editable=True),
+                                    editable=False),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
                             options=['Continous',
                                         'Internal trigger',
-                                        'External trigger'],
+                                        'External start',
+                                        'External control'],
                             editable=True)
             }            
 
@@ -93,24 +94,6 @@ class PCOManager(DetectorManager):
 
         value = self._camera.getPropertyValue(name)
         return value
-
-
-    def setTriggerSource(self, source):
-        if source == 'Continous':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 0)
-            )
-        elif source == 'Internal trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 1)
-            )
-        elif source == 'External trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 2)
-            )
-        else:
-            raise ValueError(f'Invalid trigger source "{source}"')
-
         
     def getChunk(self):
         try:

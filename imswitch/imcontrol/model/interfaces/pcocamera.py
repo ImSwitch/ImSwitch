@@ -15,9 +15,9 @@ except:
 
 
 class TriggerMode:
-    SOFTWARE = 'Software Trigger'
-    HARDWARE = 'Hardware Trigger'
-    CONTINUOUS = 'Continuous Acqusition'
+    SOFTWARE = 'software trigger'
+    HARDWARE = 'external exposure start & software trigger'
+    CONTINUOUS = 'auto sequence'
 
 class CameraPCO:
     def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=10, blacklevel=100, binning=1):
@@ -38,6 +38,13 @@ class CameraPCO:
         self.exposure_time = exposure_time
         self.preview_width = 600
         self.preview_height = 600
+        
+        # dict for different trigger mode
+        self.trigger_type = ['software trigger', 
+                             'auto sequence',
+                             'external exposure start & software trigger',
+                             'external exposure control'
+                             ]
 
         # reserve some space for the framebuffer
         self.NBuffer = 30
@@ -146,9 +153,11 @@ class CameraPCO:
     def setPropertyValue(self, property_name, property_value):
         # Check if the property exists.
         if property_name == "exposure":
-            self.set_exposure_time(property_value)
+            self.camera.exposure_time = property_value*1e-3
+        elif property_name == 'trigger_source':
+            self.setTriggerSource(property_value)
         elif property_name == "roi_size":
-            self.roi_size = property_value
+            self.camera.skd.set_roi(0,0,property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -156,14 +165,17 @@ class CameraPCO:
 
     def getPropertyValue(self, property_name):
         # Check if the property exists.
-        if property_name == "exposure":
-            property_value = self.camera.ExposureTime.get()
-        elif property_name == "image_width":
+        #if property_name == "exposure":
+            #property_value = self.camera.exposure_time * 1e3
+        if property_name == "image_width":
             property_value = self.camera.Width.get()//self.binning         
         elif property_name == "image_height":
             property_value = self.camera.Height.get()//self.binning
         elif property_name == "roi_size":
             property_value = self.roi_size 
+        elif property_name == "framerate":
+            property_value = format(1 / self.camera.exposure_time, '.1f')
+             #property_value = self.camera.sdk.get_frame_rate() 
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -172,6 +184,18 @@ class CameraPCO:
     def openPropertiesGUI(self):
         pass
     
+    def setTriggerSource(self, source):
+        if source == 'Continous':
+            self.camera.sdk.set_trigger_mode(self.trigger_type[0])
+        elif source == 'Internal trigger':
+            self.camera.sdk.set_trigger_mode(self.trigger_type[1])
+        elif source == 'External start':
+            self.camera.sdk.set_trigger_mode(self.trigger_type[2])
+        elif source == 'External control':
+            self.camera.sdk.set_trigger_mode(self.trigger_type[3])
+        else:
+            raise ValueError(f'Invalid trigger source "{source}"')
+
     def set_frame(self, user_param, frame):
         if frame is None:
             self.__logger.error("Getting image failed.")

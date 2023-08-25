@@ -7,6 +7,8 @@ import os
 import socket
 from os import listdir
 from os.path import isfile, join
+from threading import Event
+
 
 '''
 import requests
@@ -22,6 +24,7 @@ except:
     GPIO = None
 
 # Screen resolution
+mResolution = [1920, 1080]
 mResolution = [800, 600]
 unitCellSize = 3
 camTriggerPin = 26
@@ -31,11 +34,13 @@ camTriggerPin = 37
 iFreeze = False
 iPattern = 0
 task_lock = True
-iNumber = 9
-
+iter = True
+iLoop = True
+iCycle = 100
+TaskCompleted = False
     
 if GPIO is not None:
-    GPIO.setmode(GPIO.BCM)
+    GPIO.setmode(GPIO.BOARD)
     GPIO.setup(camTriggerPin, GPIO.OUT)
     
 # Images path
@@ -62,11 +67,13 @@ def load_images(wl: int):
         elif wl == 635:
             for i in range(nImages):
                 images.append(pygame.image.load(join(mypath635, myimg635[i])))
+        print("Found patterns")
     except:
         R_img = list(np.random.rand(nImages, mResolution[0], mResolution[1])*255)
         for i in range(nImages):
                 images.append(pygame.surfarray.make_surface(np.int8(R_img[i])))
         isGenerateImage = True
+        print("Not found the patterns, using random patterns")
     return images
 
 mImages488 = load_images(488)
@@ -78,18 +85,27 @@ class Viewer:
         self.pattern_index = 0
         pygame.init()
         pygame.mouse.set_visible(False)
-        self.display = pygame.display.set_mode(display_size, display=0)
-        self.tWait = 0.01
+        self.display = pygame.display.set_mode(display_size,  display=0) #pygame.FULLSCREEN,
+        self.tWait = 0.05
         self.clock = pygame.time.Clock()
-        global camTriggerPin, iNumber
+        global camTriggerPin, nImages, iLoop, iCycle
         self.camPin = camTriggerPin
-        self.iNumber = iNumber
+        self.iNumber = nImages
+        self.iLoop = iLoop
+        self.iCycle = iCycle
+        self.viewer_completed_event = Event()
     
     def set_title(self, title):
         pygame.display.set_caption(title)
     
     def set_twait(self, tWait):
         self.tWait = tWait
+    
+    def set_loop(self, iLoop):
+        self.iLoop = iLoop
+    
+    def set_cycle(self, iCycle):
+        self.iCycle = iCycle
         
     def trigger(self, gpiopin):
         GPIO.output(gpiopin, GPIO.HIGH)
@@ -99,19 +115,20 @@ class Viewer:
         
     def start(self):
         running = True
+        irun = 0
+        global iCycle, iLoop, TaskCompleted
         while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-            
             surf = self.update_func(self.pattern_index)
+            if not iLoop:
+                if self.pattern_index == 8:
+                    irun += 1
             self.pattern_index = (self.pattern_index + 1) % self.iNumber
             #surf = pygame.surfarray.make_surface(Z)
             self.display.blit(surf, (0, 0))
             pygame.display.update()
             self.clock.tick()
             print(self.clock.get_fps())
-            self.trigger(self.camPin)
+            #self.trigger(self.camPin)
             time.sleep(self.tWait)
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
@@ -120,6 +137,11 @@ class Viewer:
                         running = False
                         global task_lock
                         task_lock = True
+            if irun >= iCycle:
+                running = False
+                pygame.display.quit()
+                task_lock = True
+                self.viewer_completed_event.set()
 
 def update(index):
     global currentWavelength
@@ -154,25 +176,39 @@ def run_viewer():
 
 @app.get("/start_viewer/")
 async def start_viewer(background_tasks: BackgroundTasks):
-    global iFreeze, task_lock
+    global iFreeze, task_lock, iLoop, viewer
     if task_lock:
         background_tasks.add_task(run_viewer)
         task_lock = False
-
+        
     iFreeze = False
+    iLoop = True
 
     return {"message": "Viewer started."}
 
 @app.get("/start_viewer_freeze/{i}")
 async def start_viewer_freeze(background_tasks: BackgroundTasks, i:int):
-    global iFreeze, iPattern, task_lock
+    global iFreeze, iPattern, task_lock, iLoop, viewer
     if task_lock:
         background_tasks.add_task(run_viewer)
         task_lock = False
-        
+    
     iFreeze = True 
+    iLoop = True
     iPattern = i
     return {"message": "show certain pattern."}
+
+# it only works without pygame opened
+@app.get("/start_viewer_single_loop/{i_cycle}")
+async def start_viewer_single_loop(background_tasks: BackgroundTasks, i_cycle:int):
+    global iFreeze, task_lock, viewer, iCycle, iLoop
+    if task_lock:
+        background_tasks.add_task(run_viewer)
+        task_lock = False    
+    iFreeze = False
+    iLoop = False
+    iCycle = i_cycle
+    return {"message": "run certain cycle."}
 
 # Endpoint to set pause time
 @app.get("/set_pause/{pauseTime}")
@@ -186,6 +222,17 @@ async def set_wavelength(wavelength: int):
     print("Set wavelength to " + str(wavelength))
     currentWavelength = wavelength
     return {"wavelength": currentWavelength}
+
+@app.get("/run_cycle/{icycle}")
+async def run_cycle(icycle: int):
+    global iter
+    iter = not iter
+    return {"wavelength": currentWavelength}
+
+@app.get("/wait_for_viewer_completion")
+async def wait_for_viewer_completion():
+    viewer.viewer_completed_event.wait()  # Wait for viewer completion
+    return {"message": "Viewer completed"}
 
 # Endpoint to toggle fullscreen mode
 @app.get("/toggle_fullscreen")

@@ -460,6 +460,7 @@ class SIMController(ImConWidgetController):
         self.iReconstructed += 1
         self.isReconstructing = False
 
+    @APIExport(runOnUIThread=True)
     def saveImageInBackground(self, image, filename):
         filename = os.path.join('C:\\Users\\admin\\Desktop\\Timelapse\\',filename)
         tif.imsave(filename, image)

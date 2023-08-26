@@ -12,7 +12,7 @@ class JoystickController(LiveUpdatedController):
         super().__init__(*args, **kwargs)
         
         # scaler
-        self.scaler = 1
+        self.scaler = 100
         
         # initialize the positioner
         self.positioner_name = self._master.positionersManager.getAllDeviceNames()[0]
@@ -22,22 +22,27 @@ class JoystickController(LiveUpdatedController):
         self._widget.sigJoystickZA.connect(self.moveZA)
         
     def moveXY(self, x, y):
-        print(x)
         if abs(x)>0 or abs(y) >0:
-            self.positioner.moveForever(speed=(0, x, y, 0), is_stop=False)
+            self.positioner.moveForever(speed=(0, x*self.scaler, y*self.scaler, 0), is_stop=False)
         else:
-            self.stop_x()
-            self.stop_y()
+            for i in range(3):
+                self.stop("X")
+                self.stop("Y")
         return x, y
     
     def moveZA(self, a, z):
-        print(z)
         if abs(a)>0 or abs(z) >0:
-            self.positioner.moveForever(speed=(a, 0, 0, z), is_stop=False)
+            self.positioner.moveForever(speed=(a*self.scaler, 0, 0, z*self.scaler), is_stop=False)
         else:
-            self.stop_a()
-            self.stop_z()
+            for i in range(3):
+                # currently it takes a few trials to stop the stage
+                self.stop("A")
+                self.stop("Z")
         return a, z
+    
+    def stop(self, axis="X"):
+        self.positioner.forceStop(axis)
+
         
         
         

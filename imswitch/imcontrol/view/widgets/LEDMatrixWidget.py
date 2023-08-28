@@ -56,14 +56,15 @@ class LEDMatrixWidget(Widget):
         self.ButtonAllOff.setMaximumSize(25, 50)
         gridLayout.addWidget(self.ButtonAllOff, 1, nLedsX, 1, 1)
 
-        self.ButtonSubmit = guitools.BetterPushButton("Submit")
-        self.ButtonSubmit.setMaximumSize(25, 50)
-        gridLayout.addWidget(self.ButtonSubmit, 2, nLedsX, 1, 1)
+        self.ButtonSpecial1 = guitools.BetterPushButton("Special 1")
+        self.ButtonSpecial1.setMaximumSize(25, 50)
+        self.ButtonSpecial1.setCheckable(True)
+        gridLayout.addWidget(self.ButtonSpecial1, 2, nLedsX, 1, 1)
 
-        self.ButtonToggle = guitools.BetterPushButton("Toggle")
-        self.ButtonToggle.setMaximumSize(25, 50)
-        gridLayout.addWidget(self.ButtonToggle, 3, nLedsX, 1, 1)
-
+        self.ButtonSpecial2 = guitools.BetterPushButton("Special 2")
+        self.ButtonSpecial2.setMaximumSize(25, 50)
+        self.ButtonSpecial2.setCheckable(True)
+        gridLayout.addWidget(self.ButtonSpecial2, 3, nLedsX, 1, 1)
 
         self.slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                            decimals=1)

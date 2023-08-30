@@ -49,7 +49,7 @@ class LEDMatrixController(ImConWidgetController):
         isChecked = self._widget.ButtonSpecial1.isChecked()
         self._widget.ButtonSpecial1.setChecked(not isChecked)
         isActive = self._widget.ButtonSpecial1.isChecked()
-        SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1
+        SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1.copy()
         intensity = 255 * isActive
         self.setSpecial(SpecialPattern1, intensity = intensity)
         
@@ -57,7 +57,7 @@ class LEDMatrixController(ImConWidgetController):
         isChecked = self._widget.ButtonSpecial2.isChecked()
         self._widget.ButtonSpecial2.setChecked(not isChecked)
         isActive = self._widget.ButtonSpecial2.isChecked()
-        SpecialPattern2 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern2
+        SpecialPattern2 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern2.copy()
         intensity = 255 * isActive
         self.setSpecial(SpecialPattern2, intensity = intensity)
                 

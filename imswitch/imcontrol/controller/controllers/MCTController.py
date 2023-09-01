@@ -355,7 +355,7 @@ class MCTController(ImConWidgetController):
                     
                         ''' here we can try to compute the drift '''
                         
-                    if True and not self.xyScanEnabled:
+                    if False and not self.xyScanEnabled:
                         # treat images
                         imageStack = self.LastStackLaser2 # FIXME: Hardcoded
                         imageStack = self.LastStackLED # FIXME: Hardcoded

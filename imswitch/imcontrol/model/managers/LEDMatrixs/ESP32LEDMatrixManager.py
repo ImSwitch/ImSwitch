@@ -29,7 +29,15 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
         except:
             self.Nx = 8
             self.Ny = 8
-
+            
+        # extract the special patterns from the user defined file
+        try:
+            self.SpecialPattern1 = LEDMatrixInfo.managerProperties['SpecialPattern1']
+            self.SpecialPattern2 = LEDMatrixInfo.managerProperties['SpecialPattern2']
+        except:
+            self.SpecialPattern1 = 0
+            self.SpecialPattern2 = 0
+            
         self.NLeds = self.Nx*self.Ny
 
         self._rs232manager = lowLevelManagers['rs232sManager'][
@@ -42,6 +50,10 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
 
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 
+    def setIndividualPattern(self, pattern, getReturn=False):
+        r = self.mLEDmatrix.send_LEDMatrix_array(pattern, getReturn = getReturn)
+        return r
+                
     def setAll(self, state=(0,0,0), intensity=None):
         # dealing with on or off,
         # intensity is adjjusting the global value

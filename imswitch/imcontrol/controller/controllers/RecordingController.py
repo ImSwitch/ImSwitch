@@ -425,20 +425,18 @@ class RecordingController(ImConWidgetController):
     def video_feeder(self):
         return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
 
-    '''
-    def snapImage(self, name=None) -> None:
-        self.snap(name)
-    '''
+
     @APIExport(runOnUIThread=True)
     def snapImageToPath(self, fileName: str = "."):
         """ Take a snap and save it to a .tiff file at the given fileName. """
         self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
     @APIExport(runOnUIThread=False)
-    def snapImage(self, output: bool = False):# -> np.ndarray:
+    def snapImage(self, output: bool = False) -> Union[None, list]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
-            return self.snapNumpy()
+            numpy_array = self.snapNumpy()
+            return numpy_array.tolist()  # Convert the numpy array to a list
         else:
             self.snap()
 

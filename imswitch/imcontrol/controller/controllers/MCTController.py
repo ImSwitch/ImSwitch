@@ -281,7 +281,7 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
-
+        image1 = None
         # get current position
         currentPositions = self.stages.getPosition()
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])

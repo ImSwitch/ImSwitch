@@ -83,7 +83,7 @@ class UC2ConfigManager(SignalInterface):
         return self.ESP32.serial.is_connected
 
     def initSerial(self):
-        self.ESP32.serial.open()
+        self.ESP32.serial.reconnect()
         
     def pairBT(self):
         self.ESP32.state.pairBT()

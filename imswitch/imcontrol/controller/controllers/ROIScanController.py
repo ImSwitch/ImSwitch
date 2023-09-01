@@ -67,6 +67,8 @@ class ROIScanController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "ROIScan Stack"
+        if len(self.roiscanStack.shape)>3: # in case we have RGB images
+            self.roiscanStack = self.roiscanStack[:,:,:,0]
         self._widget.setImage(np.uint16(self.roiscanStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     # Additional methods for specific actions
@@ -177,6 +179,8 @@ class ROIScanController(ImConWidgetController):
                 # move z
                 self.stages.move(value=coordinate[2], axis="Z", is_absolute=True, is_blocking=True)
                 
+                # settle
+                time.sleep(.2)
                 # take an image
                 mImage = self.detector.getLatestFrame()
                 allFrames.append(mImage)

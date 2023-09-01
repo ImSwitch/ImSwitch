@@ -55,6 +55,10 @@ class LEDMatrixManager(ABC):
         """ Sets the value of the LEDMatrix. """
         pass
     
+    def setIndividualPattern(self, pattern, getReturn=False) -> None:
+        """ Sets the value of the LEDMatrix. """
+        pass
+    
 
 
 

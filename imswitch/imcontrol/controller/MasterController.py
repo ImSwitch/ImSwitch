@@ -3,7 +3,7 @@ from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, PositionersManager,
     RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
     ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, 
-    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager#, ScanManager
+    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA
 )
 
 

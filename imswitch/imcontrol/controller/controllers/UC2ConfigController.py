@@ -21,6 +21,7 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
         self._widget.btpairingButton.clicked.connect(self.btpairing)
+        self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -38,6 +39,11 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.reconnectDeviceLabel.setText("Motor positions: A="+str(positions["A"])+", X="+str(positions["X"])+", \n Y="+str(positions["Y"])+", Z="+str(positions["Z"]))
         # update the GUI
         self._commChannel.sigUpdateMotorPosition.emit()
+
+    def interruptSerialCommunication(self):
+        self._master.UC2ConfigManager.interruptSerialCommunication()
+        self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
+        
 
     def set_auto_enable(self):
         # Add your logic to auto-enable the motors here.

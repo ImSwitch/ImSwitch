@@ -46,6 +46,8 @@ class ESP32StageManager(PositionerManager):
         self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
         self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
 
+
+
         # Setup homing coordinates and speed
         self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)
         self.homeDirectionX = positionerInfo.managerProperties.get('homeDirectionX', -1)
@@ -78,6 +80,7 @@ class ESP32StageManager(PositionerManager):
         self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
         if self.isDualAxis:
             self.stepsizeA = self.stepsizeZ
+            self.backlashA = self.backlashZ
 
         # Acceleration
         self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "A": 40000}

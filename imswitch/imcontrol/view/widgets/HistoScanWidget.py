@@ -17,28 +17,106 @@ class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
 
 
-    sigHistoScanInitFilterPos = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanShowLast = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanStop = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanStart = QtCore.Signal(bool)  # (enabled)
-    sigHistoSnapPreview = QtCore.Signal(bool)  # (enabled)
-
-    sigShowToggled = QtCore.Signal(bool)  # (enabled)
-    sigPIDToggled = QtCore.Signal(bool)  # (enabled)
-    sigUpdateRateChanged = QtCore.Signal(float)  # (rate)
-    
-    sigSliderLaser2ValueChanged = QtCore.Signal(float)  # (value)
-    sigSliderLaser1ValueChanged = QtCore.Signal(float)  # (value)
-    sigSliderLEDValueChanged = QtCore.Signal(float)  # (value)
-    sigHistoFillSelection = QtCore.Signal(bool)  # (enabled)
-    sigHistoUndoSelection = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanMoveRight = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanMoveLeft = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanMoveUp = QtCore.Signal(bool)  # (enabled)
-    sigHistoScanMoveDown = QtCore.Signal(bool)  # (enabled)
+    sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
     
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
+
+        self.grid = QtWidgets.QGridLayout()
+        self.setLayout(self.grid)
+
+        # Pull-down menu for the illumination source
+        self.illuminationSourceComboBox = QtWidgets.QComboBox()
+        self.illuminationSourceLabel = QtWidgets.QLabel("Illumination Source:")
+        self.illuminationSourceComboBox.addItems(["Laser 1", "Laser 2", "LED"])
+        self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
+
+        # Slider for setting the value for the illumination source
+        self.illuminationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.illuminationSlider.setMinimum(0)
+        self.illuminationSlider.setMaximum(100)
+        self.illuminationSlider.valueChanged.connect(
+            lambda value: self.sigSliderIlluValueChanged.emit(value)
+        )
+        
+        self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
+
+        # Pull-down menu for the stage axis
+        self.stageAxisComboBox = QtWidgets.QComboBox()
+        self.stageAxisLabel = QtWidgets.QLabel("Stage Axis:")
+        self.stageAxisComboBox.addItems(["X", "Y", "Z", "A"])
+        self.grid.addWidget(self.stageAxisLabel, 4, 0, 1, 1)
+        self.grid.addWidget(self.stageAxisComboBox, 4, 1, 1, 1)
+
+        # Text fields for minimum and maximum position for X
+        self.minPositionXLineEdit = QtWidgets.QLineEdit("-1000")
+        self.maxPositionXLineEdit = QtWidgets.QLineEdit("1000")
+        self.grid.addWidget(QtWidgets.QLabel("Min Position (X):"), 5, 0, 1, 1)
+        self.grid.addWidget(self.minPositionXLineEdit, 5, 1, 1, 1)
+        self.grid.addWidget(QtWidgets.QLabel("Max Position (X):"), 6, 0, 1, 1)
+        self.grid.addWidget(self.maxPositionXLineEdit, 6, 1, 1, 1)
+        
+        # Text fields for minimum and maximum position for Y
+        self.minPositionYLineEdit = QtWidgets.QLineEdit("-1000")
+        self.maxPositionYLineEdit = QtWidgets.QLineEdit("1000")
+        self.grid.addWidget(QtWidgets.QLabel("Min Position (Y):"), 7, 0, 1, 1)
+        self.grid.addWidget(self.minPositionYLineEdit, 7, 1, 1, 1)
+        self.grid.addWidget(QtWidgets.QLabel("Max Position (Y):"), 8, 0, 1, 1)
+        self.grid.addWidget(self.maxPositionYLineEdit, 8, 1, 1, 1)
+        
+        # Start and Stop buttons
+        self.startButton = QtWidgets.QPushButton('Start')
+        self.stopButton = QtWidgets.QPushButton('Stop')
+        self.speedLabel = QtWidgets.QLabel("Speed:")
+        self.speedTextedit = QtWidgets.QLineEdit("1000")
+        self.grid.addWidget(self.startButton, 9, 0, 1, 1)
+        self.grid.addWidget(self.stopButton, 9, 1, 1, 1)
+        self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
+        self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
+        
+        self.layer = None
+        
+    def setAvailableIlluSources(self, sources):
+        self.illuminationSourceComboBox.clear()
+        self.illuminationSourceComboBox.addItems(sources)
+    
+    def setAvailableStageAxes(self, axes):
+        self.stageAxisComboBox.clear()
+        self.stageAxisComboBox.addItems(axes)
+        
+    def getSpeed(self):
+        return np.float32(self.speedTextedit.text())
+    
+    def getIlluminationSource(self):
+        return self.illuminationSourceComboBox.currentText()
+    
+    def getStageAxis(self):
+        return self.stageAxisComboBox.currentText()
+    
+    def getMinPositionX(self):
+        return np.float32(self.minPositionXLineEdit.text())
+    
+    def getMaxPositionX(self):
+        return np.float32(self.maxPositionXLineEdit.text())
+    
+    def getMinPositionY(self):
+        return np.float32(self.minPositionYLineEdit.text())
+    
+    def getMaxPositionY(self):
+        return np.float32(self.maxPositionYLineEdit.text())
+    
+    
+        
+    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1), translation=(0,0,0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+                                               scale=pixelsize,translate=translation,
+                                               name=name, blending='additive')
+        self.layer.data = im
+        
+        
 
         self.HistoScanFrame = pg.GraphicsLayoutWidget()
         

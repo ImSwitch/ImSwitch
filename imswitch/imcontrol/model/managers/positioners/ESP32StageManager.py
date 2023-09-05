@@ -41,10 +41,10 @@ class ESP32StageManager(PositionerManager):
         self.maxA = positionerInfo.managerProperties.get('maxA', np.inf)
 
         # Calibrated backlash
-        self.backlashX = positionerInfo.managerProperties.get('backlashX', 1)
-        self.backlashY = positionerInfo.managerProperties.get('backlashY', 1)
-        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 1)
-        self.backlashA = positionerInfo.managerProperties.get('backlashA', 1)
+        self.backlashX = positionerInfo.managerProperties.get('backlashX', 0)
+        self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
+        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
+        self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
 
         # Setup homing coordinates and speed
         self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)

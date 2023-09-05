@@ -62,7 +62,7 @@ class HistoScanController(LiveUpdatedController):
         # a bit weird, but we cannot update outside the main thread
         name = self.histoScanStackName
         # subsample stack 
-        self._widget.setImage(np.uint16(self.histoscanStack ), colormap="gray", name=name)
+        self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -138,7 +138,7 @@ class HistoScanController(LiveUpdatedController):
                 if controller.is_target_reached():
                     break
                 iFrame += 1
-                print(iFrame)
+                
             # assign positions based on number of frames and time (assume constant speed)
             posList = np.linspace(minPosX, maxPosX, len(allFrames))
             if not direction:

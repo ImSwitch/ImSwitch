@@ -71,7 +71,8 @@ class PositionerController(ImConWidgetController):
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
-        except:
+        except Exception as e:
+            self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
         self.updatePosition(positionerName, axis)
 

@@ -62,7 +62,8 @@ class HistoScanController(LiveUpdatedController):
         # a bit weird, but we cannot update outside the main thread
         name = self.histoScanStackName
         # subsample stack 
-        self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
+        isRGB = self.histoscanStack.shape[-1]==3
+        self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -107,7 +108,7 @@ class HistoScanController(LiveUpdatedController):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
-        self.detector.startAcquisition()
+        if not self.detector._running: self.detector.startAcquisition()
         # move to minPos
         self.stages.move(value=minPosX, axis="X", is_absolute=False, is_blocking=True)
         self.stages.move(value=minPosY, axis="Y", is_absolute=False, is_blocking=True)
@@ -121,8 +122,7 @@ class HistoScanController(LiveUpdatedController):
         for yPos in np.arange(int(minPosY), int(maxPosY+1), int((maxPosY-minPosY)/4)):
             
             # move y axis
-            controller.move_to_position(yPos, "Y", speed, is_absolute=False)
-            time.sleep(.5)
+            self.stages.move(value=initialPosition["Y"]+yPos, axis="Y", is_absolute=True, is_blocking=True)
             
             # move and record for x axis
             controller.move_to_position(direction*(maxPosX+np.abs(minPosX)), "X", speed, is_absolute=False)
@@ -130,14 +130,17 @@ class HistoScanController(LiveUpdatedController):
             direction *= -1
             iFrame = 0
             allFrames = []
-            nThFrame = 30
+            nThFrame = 1
             mFrameOverlap = 0.5
+            self.detector
+            # artificially reduce framerate
             while self.ishistoscanRunning:
                 if iFrame%nThFrame == 0: # limit framerate?
                     allFrames.append(self.detector.getLatestFrame())
                 if controller.is_target_reached():
                     break
                 iFrame += 1
+                print(iFrame)
                 
             # assign positions based on number of frames and time (assume constant speed)
             posList = np.linspace(minPosX, maxPosX, len(allFrames))
@@ -159,15 +162,19 @@ class HistoScanController(LiveUpdatedController):
             # subsample stack    
             self.histoscanStack = np.array(allSelectedFrames)
             nX, nY = self.histoscanStack.shape[1], self.histoscanStack.shape[2]
+            if len(self.histoscanStack.shape) > 3:
+                nC = self.histoscanStack.shape[3]
+            else: 
+                nC = 1
             nPixelCanvasX = int(nX*len(allSelectedFrames)*mFrameOverlap)
-            xCanvas = np.zeros((nPixelCanvasX, nY))
+            xCanvas = np.zeros((nPixelCanvasX, nY, nC))
             for iFrame, frame in enumerate(self.histoscanStack):
                 # add frames to canvas according to their positions and blend them
                 try:
-                    xCanvas[int(iFrame*nX*mFrameOverlap):int(iFrame*nX*mFrameOverlap+nX), :] += frame
-                except:
+                    xCanvas[int(iFrame*nX*mFrameOverlap):int(iFrame*nX*mFrameOverlap+nX), :, :] += frame
+                except Exception as e:
                     # probably out of bounds due to last frame not fitting in
-                    pass
+                    print(e)
         
             # display result 
             self.histoScanStackName = "histoscan"+str(yPos)

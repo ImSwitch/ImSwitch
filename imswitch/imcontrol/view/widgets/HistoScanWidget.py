@@ -4,6 +4,9 @@ import cv2
 import copy
 from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5 import QtGui, QtWidgets
+import PyQt5
+
 
 
 
@@ -15,9 +18,8 @@ from .basewidgets import NapariHybridWidget
 
 class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
-
-
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
+    sigGoToPosition = QtCore.Signal(float, float)  # (posX, posY)
     
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
@@ -74,8 +76,29 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
         
-        self.layer = None
+        # for the physical dimensions of the slide holder we have
+        physDimX = 164 # mm
+        physDimY = 109 # mm
+        physOffsetX = 0
+        physOffsetY = 0
         
+        self.ScanSelectViewWidget = ScanSelectView(self, physDimX, physDimY, physOffsetX*1e3, physOffsetY*1e3)
+        self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
+        self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
+        
+
+        
+        self.layer = None
+
+
+    def setScanMinMax(self, posXmin, posYmin, posXmax, posYmax):
+        print("Setting scan min/max")
+        
+    def goToPosition(self, posX, posY):
+        print("Moving to position")
+        self.sigGoToPosition.emit(posX, posY)
+        
+                                                    
     def setAvailableIlluSources(self, sources):
         self.illuminationSourceComboBox.clear()
         self.illuminationSourceComboBox.addItems(sources)
@@ -313,7 +336,94 @@ class QPaletteButton(QtWidgets.QPushButton):
         
 COLORS = ['#000000', '#ffffff']
 
-    
+
+class ScanSelectView(QtWidgets.QGraphicsView):
+    def __init__(self, parent=None, physDimX=100, physDimY=100, physOffsetX=0, physOffsetY=0):
+        super().__init__(parent)
+        scene = QtWidgets.QGraphicsScene(self)
+        self.setScene(scene)
+
+        self._pixmap_item = QtWidgets.QGraphicsPixmapItem()
+        scene.addItem(self.pixmap_item)
+
+        self.selection_rect = None
+        self.start_point = None
+        self.parent = parent
+        
+        # real-world coordinates for the scan region that is represented by the image
+        self.physDimX = physDimX
+        self.physDimY = physDimY
+        self.physOffsetX = physOffsetX
+        self.physOffsetY = physOffsetY
+        
+    @property
+    def pixmap_item(self):
+        return self._pixmap_item
+
+    def setPixmap(self, pixmap):
+        self.pixmap_item.setPixmap(pixmap)
+
+    def resizeEvent(self, event):
+        self.fitInView(self.pixmap_item, PyQt5.QtCore.Qt.KeepAspectRatio)
+        super().resizeEvent(event)
+
+    def mousePressEvent(self, event):
+        sp = self.mapToScene(event.pos())
+        lp = self.pixmap_item.mapFromScene(sp).toPoint()
+
+        if event.button() == PyQt5.QtCore.Qt.LeftButton:
+            self.start_point = lp
+            if self.selection_rect:
+                self.scene().removeItem(self.selection_rect)
+            self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(self.start_point, lp))
+            self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
+            self.scene().addItem(self.selection_rect)
+
+    def mouseMoveEvent(self, event):
+        if self.start_point:
+            sp = self.mapToScene(event.pos())
+            lp = self.pixmap_item.mapFromScene(sp).toPoint()
+            rect = PyQt5.QtCore.QRectF(self.start_point, lp)
+            self.selection_rect.setRect(rect.normalized())
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == PyQt5.QtCore.Qt.LeftButton and self.start_point:
+            self.start_point = None
+            # Calculate the selected coordinates here based on self.selection_rect.rect()
+            selected_rect = self.selection_rect.rect()
+            left = selected_rect.left()
+            top = selected_rect.top()
+            right = selected_rect.right()
+            bottom = selected_rect.bottom()
+            print("Selected coordinates:", left, top, right, bottom)
+            # differentiate between single point and rectangle
+            if np.abs(left-right)<5 and np.abs(top-bottom)<5:
+                # single 
+                self.scene().removeItem(self.selection_rect)
+                self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
+                self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
+                self.scene().addItem(self.selection_rect)
+                
+                # calculate real-world coordinates
+                posX = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posY = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                self.parent.goToPosition(posX, posY)
+
+            else:
+                # rectangle => send min/max X/Y position to parent
+                # calculate real-world coordinates
+                posXmin = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posYmin = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                posXmax = right/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posYmax = bottom/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                self.parent.setScanMinMax(posXmin, posYmin, posXmax, posYmax)
+                
+                
+
+
+
+
+
         
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

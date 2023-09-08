@@ -46,7 +46,6 @@ class ESP32LEDMatrixManager(LEDMatrixManager):
        
         # initialize the LEDMatrix device that holds all necessary states^
         self.mLEDmatrix = self._rs232manager._esp32.led
-        self.mLEDmatrix.setLEDArrayConfig(ledArrPin=None, ledArrNum=self.NLeds)
 
         super().__init__(LEDMatrixInfo, name, isBinary=False, valueUnits='mW', valueDecimals=0)
 

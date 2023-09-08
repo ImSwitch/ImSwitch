@@ -56,7 +56,12 @@ class HistoScanController(LiveUpdatedController):
         self.ishistoscanRunning = False
         
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
+        self._widget.sigGoToPosition.connect(self.goToPosition)
         self.sigImageReceived.connect(self.displayImage)
+        
+    def goToPosition(self, posX, posY):
+        self.stages.move(value=posX, axis="X", is_absolute=True, is_blocking=False)
+        self.stages.move(value=posY, axis="Y", is_absolute=True, is_blocking=False)
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread

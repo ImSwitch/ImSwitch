@@ -10,7 +10,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
         if not self._master.detectorsManager.hasDevices():
             return
 

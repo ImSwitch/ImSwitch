@@ -260,6 +260,7 @@ class RecordingManager(SignalInterface):
             if saveMode == SaveMode.Numpy:
                 return images
 
+
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
         file format and attributes to save to the capture per detector. """

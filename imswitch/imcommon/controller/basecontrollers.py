@@ -40,7 +40,7 @@ class WidgetControllerFactory:
         self.__kwargs = kwargs
         self.__createdControllers = []
 
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
 
     def createController(self, controllerClass, widget, *args, **kwargs):
         controller = controllerClass(*self.__args, *args,

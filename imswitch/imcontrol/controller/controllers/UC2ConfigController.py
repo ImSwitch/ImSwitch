@@ -52,7 +52,7 @@ class UC2ConfigController(ImConWidgetController):
 
     def unset_auto_enable(self):
         # Add your logic to unset auto-enable for the motors here.
-        self.stages.enalbeMotors(enableauto=False)
+        self.stages.enalbeMotors(enable=True, enableauto=False)
 
     def set_positions(self):
         a = self._widget.motorAEdit.text()

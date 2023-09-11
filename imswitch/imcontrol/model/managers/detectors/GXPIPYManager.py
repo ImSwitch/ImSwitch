@@ -22,6 +22,7 @@ class GXPIPYManager(DetectorManager):
 
         try:
             self.binningValue = detectorInfo.managerProperties['gxipycam']["binning"]
+           # we want a possibility to flatfield here
         except:
             self.binningValue = 1
 

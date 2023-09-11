@@ -4,6 +4,7 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 
+from skimage.filters import gaussian, median
 import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
 
@@ -200,6 +201,9 @@ class CameraGXIPY:
         # only return fresh frames
         while(self.lastFrameId == self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
+        if self.isFlatfielding and self.flatfieldImage is not None:
+            self.frame = self.frame/self.flatfieldImage
+
         self.lastFrameId = self.frameNumber
         return self.frame
 
@@ -390,14 +394,11 @@ class CameraGXIPY:
 
     def recordFlatfieldImage(self, nFrames=10, nGauss=5, nMedian=5):
         # record a flatfield image and save it in the flatfield variable
+        flatfield = []
         for iFrame in range(nFrames):
-            frame = self.getLast()
-            if iFrame == 0:
-                flatfield = frame
-            else:
-                flatfield += frame
+            flatfield.append(self.getLast())
+        flatfield = np.mean(np.array(flatfield),0)
         # normalize and smooth using scikit image
-        flatfield = flatfield/nFrames
         flatfield = gaussian(flatfield, sigma=nGauss)
         flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
         self.flatfieldImage = flatfield

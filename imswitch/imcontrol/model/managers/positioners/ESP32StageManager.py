@@ -208,8 +208,7 @@ class ESP32StageManager(PositionerManager):
             self.__logger.error(e)
             allPositions = [0.,0.,0.,0.]
         allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
-        for iPosAxis, iPosVal in allPositionsDict.items():
-            self.setPosition(iPosVal,iPosAxis)
+
         return allPositionsDict
 
     def forceStop(self, axis):

@@ -127,7 +127,7 @@ class PositionerWidget(Widget):
 
     def updateSpeed(self, positionerName, axis, speed):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['SpeedEdit' + parNameSuffix].setText(f'<strong>{speed:.2f} </strong>')
+        self.pars['SpeedEdit' + parNameSuffix].setText(str(speed))
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName[0]}--{axis}'

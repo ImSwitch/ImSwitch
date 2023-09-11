@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+from skimage.filters import gaussian, median
 
 import sys
 import threading
@@ -442,7 +443,6 @@ class CameraHIK:
             ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
             if ret != 0:
                 print ("get payload size fail! ret[0x%x]" % ret)
-                sys.exit()
             
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
@@ -515,7 +515,6 @@ class CameraHIK:
                 flatfield += frame
         # normalize and smooth using scikit image
         flatfield = flatfield/nFrames
-        from skimage.filters import gaussian, median
         flatfield = gaussian(flatfield, sigma=nGauss)
         flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
         self.flatfieldImage = flatfield

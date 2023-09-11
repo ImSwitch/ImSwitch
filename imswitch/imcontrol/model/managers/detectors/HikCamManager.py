@@ -182,7 +182,7 @@ class HikCamManager(DetectorManager):
             self.__logger.debug(f'Trying to initialize Hik camera {cameraId}')
             camera = CameraHIK(cameraNo=cameraId, isRGB=isRGB, binning=binning)#, pixeltype=PixelType_Gvsp_BayerRG8)
         except Exception as e:
-            self.__logger.debug(e)
+            self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize CameraHik {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()

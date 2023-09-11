@@ -13,7 +13,7 @@ from .basewidgets import NapariHybridWidget
 
 
 
-class HistoScanWidget(NapariHybridWidget):
+class HistoScanWidget_(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
 
 

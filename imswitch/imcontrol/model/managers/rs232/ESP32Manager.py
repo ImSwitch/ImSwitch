@@ -37,7 +37,6 @@ class ESP32Manager:
 
         # disable the WifiModule
         #self._esp32.modules.set_modules("{'wifi':0}")
-        #self._esp32.serial.DEBUG = True
 
     def finalize(self):
         pass

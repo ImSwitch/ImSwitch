@@ -56,13 +56,20 @@ class HistoScanController(LiveUpdatedController):
         self.ishistoscanRunning = False
         
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
+        self._widget.sigGoToPosition.connect(self.goToPosition)
+        self._widget.sigCurrentOffset.connect(self.calibrateOffset)
         self.sigImageReceived.connect(self.displayImage)
+        
+    def goToPosition(self, posX, posY):
+        self.stages.move(value=posX, axis="X", is_absolute=True, is_blocking=False)
+        self.stages.move(value=posY, axis="Y", is_absolute=True, is_blocking=False)
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = self.histoScanStackName
         # subsample stack 
-        self._widget.setImage(np.uint16(self.histoscanStack ), colormap="gray", name=name)
+        isRGB = self.histoscanStack.shape[-1]==3
+        self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -74,6 +81,18 @@ class HistoScanController(LiveUpdatedController):
         illuValue = illuValue/100*self._master.lasersManager[illuSource].valueRangeMax
         self._master.lasersManager[illuSource].setValue(illuValue)
 
+    def calibrateOffset(self):
+        # move to a known position and click in the 
+        clickedCoordinates = self._widget.ScanSelectViewWidget.clickedCoordinates
+        
+        self.stageinitialPosition = self.stages.getPosition()
+        offsetX = initialPosition["X"]
+        offsetY = initialPosition["Y"]
+        offsetZ = initialPosition["Z"]
+
+        # now we need to calculate the offset here
+        self._widget.ScanSelectViewWidget.setOffset(offsetX,offsetY)
+        
     def starthistoscan(self):
         minPosX = self._widget.getMinPositionX()
         maxPosX = self._widget.getMaxPositionX()
@@ -103,77 +122,119 @@ class HistoScanController(LiveUpdatedController):
             self.histoscanTask.start()
         
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, speed, axis, illusource, illuvalue):
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, speed, axis, illusource, illuvalue, overlap=0.75):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
-        self.detector.startAcquisition()
+        initPosX = initialPosition["X"]
+        initPosY = initialPosition["Y"]
+        if not self.detector._running: self.detector.startAcquisition()
         # move to minPos
-        self.stages.move(value=minPosX, axis="X", is_absolute=False, is_blocking=True)
-        self.stages.move(value=minPosY, axis="Y", is_absolute=False, is_blocking=True)
-        
+        self.stages.move(value=(minPosX, minPosY), axis="XY", is_absolute=False, is_blocking=True)
+
+
         # now start acquiring images and move the stage in Background
         controller = MovementController(self.stages)
-        
+        mFrame = self.detector.getLatestFrame()
+
+        dimensionsFrame = mFrame.shape[1]*self.detector.pixelSizeUm[-1]
+        NpixX, NpixY = mFrame.shape[0], mFrame.shape[1]
         
         # starting the snake scan
-        direction = 1
-        for yPos in np.arange(int(minPosY), int(maxPosY+1), int((maxPosY-minPosY)/4)):
-            
-            # move y axis
-            controller.move_to_position(yPos, "Y", speed, is_absolute=False)
-            time.sleep(.5)
-            
-            # move and record for x axis
-            controller.move_to_position(direction*(maxPosX+np.abs(minPosX)), "X", speed, is_absolute=False)
-            # After each row, reverse the X direction to create the snake pattern
-            direction *= -1
-            iFrame = 0
-            allFrames = []
-            nThFrame = 30
-            mFrameOverlap = 0.5
-            while self.ishistoscanRunning:
-                if iFrame%nThFrame == 0: # limit framerate?
-                    allFrames.append(self.detector.getLatestFrame())
-                if controller.is_target_reached():
-                    break
-                iFrame += 1
-                print(iFrame)
-            # assign positions based on number of frames and time (assume constant speed)
-            posList = np.linspace(minPosX, maxPosX, len(allFrames))
-            if not direction:
-                posList = np.flip(posList)
-            # now pick frames that match the overlap
-            dimensionsFrame = allFrames[0].shape[1]*self.detector.pixelSizeUm[-1]
-            # pick frames according to their position over the x-scan
-            allSelectedFrames = []
-            selectedPosList = []
-            nSelectedFrames = int(((maxPosX+abs(minPosX))/dimensionsFrame)/mFrameOverlap)
-            for iSelectedFrame in range(0, nSelectedFrames):
-                iPosition = iSelectedFrame*dimensionsFrame*mFrameOverlap+minPosX
-                # find closest position and add to the list
-                closestPosition = np.argmin(np.abs(posList-iPosition))
-                allSelectedFrames.append(allFrames[closestPosition])
-                selectedPosList.append(posList[closestPosition])
+        # Calculate the size of the area each image covers
+        img_width = NpixX * self.detector.pixelSizeUm[-1]
+        img_height = NpixY * self.detector.pixelSizeUm[-1]
+
+        # Determine the number of steps in x and y directions
+        steps_x = int((maxPosX - minPosX) * overlap / img_width)
+        steps_y = int((maxPosY - minPosY) * overlap / img_height)
+        try:
+            import tifffile as tif
+            # Loop over the positions in a snake pattern
+            for y in range(steps_y):
+                if y % 2 == 0:  # Even rows: left to right
+                    for x in range(steps_x):
+                        cX, cY = initPosX + minPosX + x * img_width  * overlap, initPosY + minPosY + y * img_height * overlap
+                        # move y axis
+                        self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
+                        mFrame = self.detector.getLatestFrame()   
+                        tif.imsave("Test.tif", mFrame, append=True) 
+                        self._logger.debug("Moving to "+str((cX,cY)))
+                else:  # Odd rows: right to left
+                    for x in range(steps_x - 1, -1, -1):  # Starting from the last position, moving backwards
+                        cX, cY = initPosX + minPosX + x * img_width * overlap, initPosY + minPosY + y * img_height * overlap
+                        self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
+                        mFrame = self.detector.getLatestFrame()  
+                        tif.imsave("Test.tif", mFrame, append=True)  
+                        self._logger.debug("Moving to "+str((cX,cY)))                    
+        except Exception as e:
+            self._logger.error(e)
+
+
+        if 0: # weird fast-scan idea
+            direction = 1
+            for yPos in np.arange(int(minPosY), int(maxPosY+1), int((maxPosY-minPosY)/4)):
                 
-            # subsample stack    
-            self.histoscanStack = np.array(allSelectedFrames)
-            nX, nY = self.histoscanStack.shape[1], self.histoscanStack.shape[2]
-            nPixelCanvasX = int(nX*len(allSelectedFrames)*mFrameOverlap)
-            xCanvas = np.zeros((nPixelCanvasX, nY))
-            for iFrame, frame in enumerate(self.histoscanStack):
-                # add frames to canvas according to their positions and blend them
-                try:
-                    xCanvas[int(iFrame*nX*mFrameOverlap):int(iFrame*nX*mFrameOverlap+nX), :] += frame
-                except:
-                    # probably out of bounds due to last frame not fitting in
-                    pass
-        
-            # display result 
-            self.histoScanStackName = "histoscan"+str(yPos)
-            self.histoscanStack = xCanvas
-            self.sigImageReceived.emit()
-        
+                # move y axis
+                self.stages.move(value=initialPosition["Y"]+yPos, axis="Y", is_absolute=True, is_blocking=True)
+                
+                # move and record for x axis
+                controller.move_to_position(direction*(maxPosX+np.abs(minPosX)), "X", speed, is_absolute=False)
+                # After each row, reverse the X direction to create the snake pattern
+                direction *= -1
+                iFrame = 0
+                allFrames = []
+                nThFrame = 1
+                mFrameOverlap = 0.5
+                self.detector
+                # artificially reduce framerate
+                while self.ishistoscanRunning:
+                    if iFrame%nThFrame == 0: # limit framerate?
+                        allFrames.append(self.detector.getLatestFrame())
+                    if controller.is_target_reached():
+                        break
+                    iFrame += 1
+                    print(iFrame)
+                    
+                # assign positions based on number of frames and time (assume constant speed)
+                posList = np.linspace(minPosX, maxPosX, len(allFrames))
+                if not direction:
+                    posList = np.flip(posList)
+                # now pick frames that match the overlap
+                dimensionsFrame = allFrames[0].shape[1]*self.detector.pixelSizeUm[-1]
+                # pick frames according to their position over the x-scan
+                allSelectedFrames = []
+                selectedPosList = []
+                nSelectedFrames = int(((maxPosX+abs(minPosX))/dimensionsFrame)/mFrameOverlap)
+                for iSelectedFrame in range(0, nSelectedFrames):
+                    iPosition = iSelectedFrame*dimensionsFrame*mFrameOverlap+minPosX
+                    # find closest position and add to the list
+                    closestPosition = np.argmin(np.abs(posList-iPosition))
+                    allSelectedFrames.append(allFrames[closestPosition])
+                    selectedPosList.append(posList[closestPosition])
+                    
+                # subsample stack    
+                self.histoscanStack = np.array(allSelectedFrames)
+                nX, nY = self.histoscanStack.shape[1], self.histoscanStack.shape[2]
+                if len(self.histoscanStack.shape) > 3:
+                    nC = self.histoscanStack.shape[3]
+                else: 
+                    nC = 1
+                nPixelCanvasX = int(nX*len(allSelectedFrames)*mFrameOverlap)
+                xCanvas = np.zeros((nPixelCanvasX, nY, nC))
+                for iFrame, frame in enumerate(self.histoscanStack):
+                    # add frames to canvas according to their positions and blend them
+                    try:
+                        xCanvas[int(iFrame*nX*mFrameOverlap):int(iFrame*nX*mFrameOverlap+nX), :, :] += frame
+                    except Exception as e:
+                        # probably out of bounds due to last frame not fitting in
+                        print(e)
+            
+                # display result 
+                self.histoScanStackName = "histoscan"+str(yPos)
+                self.histoscanStack = xCanvas
+                self.sigImageReceived.emit()
+            
         self.stophistoscan()
         
         # move back to initial position

@@ -49,9 +49,6 @@ class ImConMainController(MainController):
         self.pickDatasetsController = self.__factory.createController(
             PickDatasetsController, self.__mainView.pickDatasetsDialog
         )
-        self.PickUC2BoardConfigController = self.__factory.createController(
-            PickUC2BoardConfigController, self.__mainView.PickUC2BoardConfigDialog
-        )
 
         self.controllers = {}
 

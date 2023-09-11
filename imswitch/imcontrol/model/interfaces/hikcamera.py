@@ -64,6 +64,10 @@ class CameraHIK:
         self.SensorWidth = 0
         self.frame = np.zeros((self.SensorHeight, self.SensorWidth))
         
+        self.lastFrameId = -1
+        self.frameNumber = -1
+        
+        
         # thread switch
         self.g_bExit = False
 
@@ -191,25 +195,22 @@ class CameraHIK:
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
         
+
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.MV_CC_SetFloatValue("ExposureTime", self.exposure_time*1000)
-
+        
     def set_gain(self,gain):
         self.gain = gain
         self.camera.MV_CC_SetFloatValue("Gain", self.gain)
 
     def set_frame_rate(self, frame_rate):
-        pass    
-        # ret = self.cam.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
-        # if ret != 0:
-        #     print("set AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
-        #     sys.exit()
-        #
-        # ret = self.cam.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
-        # if ret != 0:
-        #     print("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
-        #     sys.exit() 
+        ret = self.camera.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
+        if ret != 0:
+            self._logger.error("set AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
+        ret = self.camera.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
+        if ret != 0:
+            self._logger.error("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
                
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
@@ -226,8 +227,10 @@ class CameraHIK:
 
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
+        # only return fresh frames
+        while(self.lastFrameId == self.frameNumber or self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        self.lastFrameId = self.frameNumber
         return self.frame
 
     def flushBuffer(self):
@@ -381,10 +384,10 @@ class CameraHIK:
                             data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
                             self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, -1))
                             self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                            self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                            self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
                             self.timestamp = time.time()
                             self.frame_buffer.append(self.frame)
-                            self.frameid_buffer.append(self.frame_id)
+                            self.frameid_buffer.append(self.frameNumber)
                             
                         except Exception as e:
                             raise Exception("save file executed failed:%s" % e)
@@ -408,10 +411,10 @@ class CameraHIK:
                         self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
                         self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                        self.frame_id = stOutFrame.stFrameInfo.nFrameNum
+                        self.lastFrameId = stOutFrame.stFrameInfo.nFrameNum
                         self.timestamp = time.time()
                         self.frame_buffer.append(self.frame)
-                        self.frameid_buffer.append(self.frame_id)
+                        self.frameid_buffer.append(self.lastFrameId)
                     else:
                         pass 
                     if self.g_bExit == True:
@@ -480,10 +483,10 @@ class CameraHIK:
                     self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
-                self.frame_id = stDeviceList.nFrameNum
+                self.lastFrameId = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
-                self.frameid_buffer.append(self.frame_id)
+                self.frameid_buffer.append(self.lastFrameId)
                 
                 if self.g_bExit == True:
                     break

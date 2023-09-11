@@ -67,8 +67,6 @@ class ROIScanController(ImConWidgetController):
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
         name = "ROIScan Stack"
-        if len(self.roiscanStack.shape)>3: # in case we have RGB images
-            self.roiscanStack = self.roiscanStack[:,:,:,0]
         self._widget.setImage(np.uint16(self.roiscanStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     # Additional methods for specific actions
@@ -179,8 +177,6 @@ class ROIScanController(ImConWidgetController):
                 # move z
                 self.stages.move(value=coordinate[2], axis="Z", is_absolute=True, is_blocking=True)
                 
-                # settle
-                time.sleep(.2)
                 # take an image
                 mImage = self.detector.getLatestFrame()
                 allFrames.append(mImage)
@@ -189,16 +185,17 @@ class ROIScanController(ImConWidgetController):
             self.roiscanStack = np.stack(allFrames, axis=0)
             self.sigImageReceived.emit()
             # save the stack as ometiff including metadata including coordinates and time
-            tif.imsave(currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif", self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
-            
+            savepath = os.getcwd()+"/"+currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif"
+            tif.imsave(savepath, self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
+            self._logger.debug("Savepath: "+savepath)
             # if the experiment is stopped, stop the thread
             if iImage > nTimes:
+                self.stop_experiment()
                 return
             # wait for tPeriod seconds
             while 1:
                 self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
                 if time.time()-t0 > tPeriod:
-                    self.stop_experiment()
                     break
                 if not self.isRoiscanRunning:
                     return

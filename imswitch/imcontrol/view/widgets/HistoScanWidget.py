@@ -4,6 +4,9 @@ import cv2
 import copy
 from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5 import QtGui, QtWidgets
+import PyQt5
+
 
 
 
@@ -15,9 +18,9 @@ from .basewidgets import NapariHybridWidget
 
 class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
-
-
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
+    sigGoToPosition = QtCore.Signal(float, float)  # (posX, posY)
+    sigCurrentOffset = QtCore.Signal(float, float)
     
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
@@ -68,14 +71,38 @@ class HistoScanWidget(NapariHybridWidget):
         self.startButton = QtWidgets.QPushButton('Start')
         self.stopButton = QtWidgets.QPushButton('Stop')
         self.speedLabel = QtWidgets.QLabel("Speed:")
+        self.calibrationButton =  QtWidgets.QPushButton('Calibrate Position')
+        self.calibrationButton.setCheckable(True)
         self.speedTextedit = QtWidgets.QLineEdit("1000")
         self.grid.addWidget(self.startButton, 9, 0, 1, 1)
         self.grid.addWidget(self.stopButton, 9, 1, 1, 1)
         self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
+        self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
+        
+        # for the physical dimensions of the slide holder we have
+        physDimX = 164 # mm
+        physDimY = 109 # mm
+        physOffsetX = 0
+        physOffsetY = 0
+        
+        self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX*1e3, physOffsetY*1e3)
+        self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
+        self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
+        
+
         
         self.layer = None
+
+
+    def setScanMinMax(self, posXmin, posYmin, posXmax, posYmax):
+        print("Setting scan min/max")
         
+    def goToPosition(self, posX, posY):
+        print("Moving to position")
+        self.sigGoToPosition.emit(posX, posY)
+        
+                                                    
     def setAvailableIlluSources(self, sources):
         self.illuminationSourceComboBox.clear()
         self.illuminationSourceComboBox.addItems(sources)
@@ -107,155 +134,17 @@ class HistoScanWidget(NapariHybridWidget):
     
     
         
-    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1), translation=(0,0,0)):
+    def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):
         if len(im.shape) == 2:
             translation = (translation[0], translation[1])
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap, 
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im
         
         
 
-        self.HistoScanFrame = pg.GraphicsLayoutWidget()
-        
-        # initialize all GUI elements
-
-        # z-stack
-        self.HistoScanLabelZStack  = QtWidgets.QLabel('Z-Stack (min,max,steps):')        
-        self.HistoScanValueZmin = QtWidgets.QLineEdit('-100')
-        self.HistoScanValueZmax = QtWidgets.QLineEdit('100')
-        self.HistoScanValueZsteps = QtWidgets.QLineEdit('10')
-        
-        # Add Histopainter
-        self.canvas = Canvas()
-
-        # Snap Preview Button
-        self.HistoSnapPreviewButton = guitools.BetterPushButton('Snap Preview')
-        self.HistoSnapPreviewButton.setCheckable(False)
-        self.HistoSnapPreviewButton.toggled.connect(self.sigHistoSnapPreview)
-
-        # Undo Button
-        self.HistoUndoButton = guitools.BetterPushButton('Undo')
-        self.HistoUndoButton.setCheckable(False)
-        self.HistoUndoButton.toggled.connect(self.sigHistoUndoSelection)
-        
-        # Fill holes Button
-        self.HistoFillHolesButton = guitools.BetterPushButton('Fill Holes')
-        self.HistoFillHolesButton.setCheckable(False)
-        self.HistoFillHolesButton.toggled.connect(self.sigHistoFillSelection)
-
-        # Camera LED Button
-        self.HistoCamLEDButton = guitools.BetterPushButton('Camera LED')
-        self.HistoCamLEDButton.setCheckable(True)
-               
-        # autofocus
-        self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')        
-        self.autofocusRange = QtWidgets.QLineEdit('200')
-        self.autofocusSteps = QtWidgets.QLineEdit('20')
-        self.autofocusPeriod = QtWidgets.QLineEdit('10')
-        self.autofocusCheckbox = QtWidgets.QCheckBox('Autofocus')
-        self.autofocusCheckbox.setCheckable(True)
-        
-        # LED
-        valueDecimalsLED = 1
-        valueRangeLED = (0,2**8)
-        tickIntervalLED = 1
-        singleStepLED = 1
-        
-        self.sliderLED, self.HistoScanLabelLED = self.setupSliderGui('Intensity (LED):', valueDecimalsLED, valueRangeLED, tickIntervalLED, singleStepLED)
-        self.sliderLED.valueChanged.connect(
-            lambda value: self.sigSliderLEDValueChanged.emit(value)
-        )
-        
-        self.HistoScanLabelFileName  = QtWidgets.QLabel('FileName:')
-        self.HistoScanEditFileName  = QtWidgets.QLineEdit('HistoScan')
-        self.HistoScanLabelInfo  = QtWidgets.QLabel('Info')
-
-        self.HistoScanStartButton = guitools.BetterPushButton('Start')
-        self.HistoScanStartButton.setCheckable(False)
-        self.HistoScanStartButton.toggled.connect(self.sigHistoScanStart)
-
-        self.HistoScanStopButton = guitools.BetterPushButton('Stop')
-        self.HistoScanStopButton.setCheckable(False)
-        self.HistoScanStopButton.toggled.connect(self.sigHistoScanStop)
-
-        self.HistoScanShowLastButton = guitools.BetterPushButton('Show Last')
-        self.HistoScanShowLastButton.setCheckable(False)
-        self.HistoScanShowLastButton.toggled.connect(self.sigHistoScanShowLast)
-
-        self.HistoScanDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
-        self.HistoScanDoZStack.setCheckable(True)
-        
-        # Joystick
-        self.HistoScanMoveUpButton = guitools.BetterPushButton('^')
-        self.HistoScanMoveUpButton.setCheckable(False)
-        self.HistoScanMoveUpButton.toggled.connect(self.sigHistoScanMoveUp)
-        
-        self.HistoScanMoveDownButton = guitools.BetterPushButton('v')
-        self.HistoScanMoveDownButton.setCheckable(False)
-        self.HistoScanMoveDownButton.toggled.connect(self.sigHistoScanMoveDown)
-
-        self.HistoScanMoveLeftButton = guitools.BetterPushButton('<')
-        self.HistoScanMoveLeftButton.setCheckable(False)
-        self.HistoScanMoveLeftButton.toggled.connect(self.sigHistoScanMoveLeft)
-        
-        self.HistoScanMoveRightButton = guitools.BetterPushButton('>')
-        self.HistoScanMoveRightButton.setCheckable(False)
-        self.HistoScanMoveRightButton.toggled.connect(self.sigHistoScanMoveRight)
-
-               
-        # Defining layout
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
-
-        #
-        self.grid.addWidget(self.HistoScanMoveLeftButton, 0, 0, 1, 1)
-        self.grid.addWidget(self.HistoScanMoveRightButton, 0, 1, 1, 1)
-        self.grid.addWidget(self.HistoScanMoveUpButton, 0, 2, 1, 1)
-        self.grid.addWidget(self.HistoScanMoveDownButton, 0, 3, 1, 1)
-        
-        #
-        self.grid.addWidget(self.HistoScanLabelZStack, 1, 0, 1, 1)
-        self.grid.addWidget(self.HistoScanValueZmin, 1, 1, 1, 1)
-        self.grid.addWidget(self.HistoScanValueZmax, 1, 2, 1, 1)
-        self.grid.addWidget(self.HistoScanValueZsteps, 1, 3, 1, 1)
-        
-        #
-        self.grid.addWidget(self.canvas, 2, 0, 3, 3)
-        
-        #
-        self.grid.addWidget(self.HistoCamLEDButton, 3, 0, 1, 1)
-        self.grid.addWidget(self.HistoSnapPreviewButton, 3, 1, 1, 1)
-        self.grid.addWidget(self.HistoUndoButton, 3, 2, 1, 1)
-        self.grid.addWidget(self.HistoFillHolesButton, 3, 3, 1, 1)
-        
-        #
-        self.grid.addWidget(self.HistoScanLabelLED, 4, 0, 1, 1)
-        self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
-        
-        #
-        self.grid.addWidget(self.HistoScanLabelFileName, 5, 0, 1, 1)
-        self.grid.addWidget(self.HistoScanEditFileName, 5, 1, 1, 1)
-        self.grid.addWidget(self.HistoScanLabelInfo, 5, 2, 1, 1)
-        self.grid.addWidget(self.HistoScanDoZStack, 5, 3, 1, 1)
-
-        #
-        self.grid.addWidget(self.autofocusLabel, 6, 0, 1, 1)
-        self.grid.addWidget(self.autofocusRange, 6, 1, 1, 1)
-        self.grid.addWidget(self.autofocusSteps, 6, 2, 1, 1)
-        self.grid.addWidget(self.autofocusPeriod, 6, 3, 1, 1)
-        
-        # 
-        self.grid.addWidget(self.HistoScanStartButton, 7, 0, 1, 1)
-        self.grid.addWidget(self.HistoScanStopButton, 7, 1, 1, 1)
-        self.grid.addWidget(self.HistoScanShowLastButton, 7, 2, 1, 1)
-        self.grid.addWidget(self.autofocusCheckbox, 7, 3, 1, 1)
-        
-        self.layer = None
-        
-        
     def isAutofocus(self):
         if self.autofocusCheckbox.isChecked():
             return True
@@ -451,7 +340,104 @@ class QPaletteButton(QtWidgets.QPushButton):
         
 COLORS = ['#000000', '#ffffff']
 
-    
+
+class ScanSelectView(QtWidgets.QGraphicsView):
+    def __init__(self, parent=None, physDimX=100, physDimY=100, physOffsetX=0, physOffsetY=0):
+        super().__init__(parent)
+        scene = QtWidgets.QGraphicsScene(self)
+        self.setScene(scene)
+
+        self._pixmap_item = QtWidgets.QGraphicsPixmapItem()
+        scene.addItem(self.pixmap_item)
+
+        self.selection_rect = None
+        self.start_point = None
+        self.parent = parent
+        
+        # real-world coordinates for the scan region that is represented by the image
+        self.physDimX = physDimX
+        self.physDimY = physDimY
+        self.physOffsetX = physOffsetX
+        self.physOffsetY = physOffsetY
+        self.clickedCoordinates = (0,0)
+        
+    def setOffset(self, offsetX, offsetY):
+        self.physOffsetX = offsetX
+        self.physOffsetY = offsetY
+
+    @property
+    def pixmap_item(self):
+        return self._pixmap_item
+
+    def setPixmap(self, pixmap):
+        self.pixmap_item.setPixmap(pixmap)
+
+    def resizeEvent(self, event):
+        self.fitInView(self.pixmap_item, PyQt5.QtCore.Qt.KeepAspectRatio)
+        super().resizeEvent(event)
+
+    def mousePressEvent(self, event):
+        sp = self.mapToScene(event.pos())
+        lp = self.pixmap_item.mapFromScene(sp).toPoint()
+
+        if event.button() == PyQt5.QtCore.Qt.LeftButton:
+            self.start_point = lp
+            if self.selection_rect:
+                self.scene().removeItem(self.selection_rect)
+            self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(self.start_point, lp))
+            self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
+            self.scene().addItem(self.selection_rect)
+
+    def mouseMoveEvent(self, event):
+        if self.start_point:
+            sp = self.mapToScene(event.pos())
+            lp = self.pixmap_item.mapFromScene(sp).toPoint()
+            rect = PyQt5.QtCore.QRectF(self.start_point, lp)
+            self.selection_rect.setRect(rect.normalized())
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == PyQt5.QtCore.Qt.LeftButton and self.start_point:
+            self.start_point = None
+            # Calculate the selected coordinates here based on self.selection_rect.rect()
+            selected_rect = self.selection_rect.rect()
+            left = selected_rect.left()
+            top = selected_rect.top()
+            right = selected_rect.right()
+            bottom = selected_rect.bottom()
+            print("Selected coordinates:", left, top, right, bottom)
+
+            if self.parent.calibrationButton.isChecked():
+                self.clickedCoordinates = (left,top)
+                self.parent.sigCurrentOffset.emit(left, top)
+                return
+            # differentiate between single point and rectangle
+            if np.abs(left-right)<5 and np.abs(top-bottom)<5:
+                # single 
+                self.scene().removeItem(self.selection_rect)
+                self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
+                self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
+                self.scene().addItem(self.selection_rect)
+                
+                # calculate real-world coordinates
+                posX = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posY = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                self.parent.goToPosition(posX, posY)
+
+            else:
+                # rectangle => send min/max X/Y position to parent
+                # calculate real-world coordinates
+                posXmin = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posYmin = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                posXmax = right/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
+                posYmax = bottom/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                self.parent.setScanMinMax(posXmin, posYmin, posXmax, posYmax)
+                
+                
+
+
+
+
+
         
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

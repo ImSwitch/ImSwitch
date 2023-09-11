@@ -195,9 +195,7 @@ class CameraHIK:
     def close(self):
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
-        
-    def set_flatfielding(self, is_flatfielding):
-        self.isFlatfielding = is_flatfielding
+    
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time

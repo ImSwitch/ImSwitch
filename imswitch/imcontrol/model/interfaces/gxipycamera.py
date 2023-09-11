@@ -40,6 +40,8 @@ class CameraGXIPY:
         self.NBuffer = 10
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
+        self.flatfieldImage = None
+        self.isFlatfielding = False
         self.lastFrameId = -1
         self.frameNumber = -1
         self.frame = None
@@ -142,6 +144,12 @@ class CameraGXIPY:
 
     def close(self):
         self.camera.close_device()
+
+    def set_flatfielding(self, is_flatfielding):
+        self.isFlatfielding = is_flatfielding
+        # record the flatfield image if needed
+        if self.isFlatfielding:
+            self.recordFlatfieldImage() 
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
@@ -261,6 +269,8 @@ class CameraGXIPY:
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
+        elif property_name == "flat_fielding":
+            self.set_flatfielding(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
         elif property_name == "frame_rate":
@@ -377,6 +387,20 @@ class CameraGXIPY:
 
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)
+
+    def recordFlatfieldImage(self, nFrames=10, nGauss=5, nMedian=5):
+        # record a flatfield image and save it in the flatfield variable
+        for iFrame in range(nFrames):
+            frame = self.getLast()
+            if iFrame == 0:
+                flatfield = frame
+            else:
+                flatfield += frame
+        # normalize and smooth using scikit image
+        flatfield = flatfield/nFrames
+        flatfield = gaussian(flatfield, sigma=nGauss)
+        flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
+        self.flatfieldImage = flatfield
 
 
 # Copyright (C) ImSwitch developers 2021

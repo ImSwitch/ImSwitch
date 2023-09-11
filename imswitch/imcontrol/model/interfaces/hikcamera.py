@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+from skimage.filters import gaussian, median
 
 import sys
 import threading
@@ -50,10 +51,10 @@ class CameraHIK:
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.NBuffer = 200
+        self.NBuffer = 50
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-        
+        self.flatfieldImage = None
         #%% starting the camera thread
         self.camera = None
 
@@ -72,7 +73,7 @@ class CameraHIK:
         self.g_bExit = False
 
         self.isRGB = isRGB
-
+        self.isFlatfielding = False
         self._init_cam(cameraNo=self.cameraNo, callback_fct=None)
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
@@ -194,7 +195,7 @@ class CameraHIK:
     def close(self):
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
-        
+    
 
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
@@ -211,7 +212,13 @@ class CameraHIK:
         ret = self.camera.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
         if ret != 0:
             self._logger.error("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
-               
+    
+    def set_flatfielding(self, is_flatfielding):
+        self.isFlatfielding = is_flatfielding
+        # record the flatfield image if needed
+        if self.isFlatfielding:
+            self.recordFlatfieldImage() 
+        
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.MV_CC_SetFloatValue("BlackLevel", self.blacklevel)
@@ -231,6 +238,9 @@ class CameraHIK:
         while(self.lastFrameId == self.frameNumber or self.frame is None):
             time.sleep(.01) # wait for fresh frame
         self.lastFrameId = self.frameNumber
+        
+        if self.isFlatfielding and self.flatfieldImage is not None:
+            self.frame = self.frame/self.flatfieldImage
         return self.frame
 
     def flushBuffer(self):
@@ -303,6 +313,8 @@ class CameraHIK:
             self.roi_size = property_value
         elif property_name == "frame_rate":
             self.set_frame_rate(property_value)
+        elif property_name == "flat_fielding":
+            self.set_flatfielding(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
         else:
@@ -429,7 +441,6 @@ class CameraHIK:
             ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
             if ret != 0:
                 print ("get payload size fail! ret[0x%x]" % ret)
-                sys.exit()
             
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
@@ -491,6 +502,22 @@ class CameraHIK:
                 if self.g_bExit == True:
                     break
 
+
+    def recordFlatfieldImage(self, nFrames=10, nGauss=5, nMedian=5):
+        # record a flatfield image and save it in the flatfield variable
+        for iFrame in range(nFrames):
+            frame = self.getLast()
+            if iFrame == 0:
+                flatfield = frame
+            else:
+                flatfield += frame
+        # normalize and smooth using scikit image
+        flatfield = flatfield/nFrames
+        flatfield = gaussian(flatfield, sigma=nGauss)
+        flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
+        self.flatfieldImage = flatfield
+        
+        
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.
 #

@@ -1,7 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter, DetectorBooleanParameter
 
 
 class GXPIPYManager(DetectorManager):
@@ -63,6 +63,7 @@ class GXPIPYManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
@@ -309,6 +310,12 @@ class GXPIPYManager(DetectorManager):
 
     def closeEvent(self):
         self._camera.close()
+        
+    def recordFlatfieldImage(self):
+        ''' 
+        record n images and average them before subtracting from the latest frame
+        '''
+        self._camera.recordFlatfieldImage()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

@@ -49,10 +49,6 @@ class HistoScanController(LiveUpdatedController):
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
         self._widget.setAvailableIlluSources(allLaserNames)
-        
-        # select stage
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
-        self._widget.setAvailableStageAxes(self.stages.axes)
         self.ishistoscanRunning = False
         
         self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)

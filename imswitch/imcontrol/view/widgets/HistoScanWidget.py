@@ -102,19 +102,12 @@ class HistoScanWidget(NapariHybridWidget):
     def setAvailableIlluSources(self, sources):
         self.illuminationSourceComboBox.clear()
         self.illuminationSourceComboBox.addItems(sources)
-    
-    def setAvailableStageAxes(self, axes):
-        self.stageAxisComboBox.clear()
-        self.stageAxisComboBox.addItems(axes)
-        
+            
     def getSpeed(self):
         return np.float32(self.speedTextedit.text())
     
     def getIlluminationSource(self):
         return self.illuminationSourceComboBox.currentText()
-    
-    def getStageAxis(self):
-        return self.stageAxisComboBox.currentText()
     
     def getMinPositionX(self):
         return np.float32(self.minPositionXLineEdit.text())
@@ -127,8 +120,6 @@ class HistoScanWidget(NapariHybridWidget):
     
     def getMaxPositionY(self):
         return np.float32(self.maxPositionYLineEdit.text())
-    
-    
         
     def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):
         if len(im.shape) == 2:
@@ -138,7 +129,6 @@ class HistoScanWidget(NapariHybridWidget):
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im
-        
         
 
     def isAutofocus(self):

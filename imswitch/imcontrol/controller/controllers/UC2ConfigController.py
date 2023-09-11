@@ -25,6 +25,9 @@ class UC2ConfigController(ImConWidgetController):
         
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
+        # update the gui elements 
+        self._commChannel.sigUpdateMotorPosition.emit()
+        
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.
         print(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")

@@ -114,6 +114,8 @@ class ESP32StageManager(PositionerManager):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
+        for i, iaxis in enumerate(("A","X","Y","Z")):
+            self._position[iaxis] = self._motor._position[i]
         if isEnable is None:
             isEnable = self.is_enabled
         if speed is None:
@@ -130,7 +132,6 @@ class ESP32StageManager(PositionerManager):
             if axis == "A": acceleration = self.acceleration["A"]
             if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
-
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value

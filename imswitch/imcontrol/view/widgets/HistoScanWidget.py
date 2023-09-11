@@ -20,6 +20,7 @@ class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
     sigGoToPosition = QtCore.Signal(float, float)  # (posX, posY)
+    sigCurrentOffset = QtCore.Signal(float, float)
     
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
@@ -70,11 +71,14 @@ class HistoScanWidget(NapariHybridWidget):
         self.startButton = QtWidgets.QPushButton('Start')
         self.stopButton = QtWidgets.QPushButton('Stop')
         self.speedLabel = QtWidgets.QLabel("Speed:")
+        self.calibrationButton =  QtWidgets.QPushButton('Calibrate Position')
+        self.calibrationButton.setCheckable(True)
         self.speedTextedit = QtWidgets.QLineEdit("1000")
         self.grid.addWidget(self.startButton, 9, 0, 1, 1)
         self.grid.addWidget(self.stopButton, 9, 1, 1, 1)
         self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
+        self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
         
         # for the physical dimensions of the slide holder we have
         physDimX = 164 # mm
@@ -82,7 +86,7 @@ class HistoScanWidget(NapariHybridWidget):
         physOffsetX = 0
         physOffsetY = 0
         
-        self.ScanSelectViewWidget = ScanSelectView(self, physDimX, physDimY, physOffsetX*1e3, physOffsetY*1e3)
+        self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX*1e3, physOffsetY*1e3)
         self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
         
@@ -345,7 +349,12 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.physDimY = physDimY
         self.physOffsetX = physOffsetX
         self.physOffsetY = physOffsetY
+        self.clickedCoordinates = (0,0)
         
+    def setOffset(self, offsetX, offsetY):
+        self.physOffsetX = offsetX
+        self.physOffsetY = offsetY
+
     @property
     def pixmap_item(self):
         return self._pixmap_item
@@ -386,6 +395,11 @@ class ScanSelectView(QtWidgets.QGraphicsView):
             right = selected_rect.right()
             bottom = selected_rect.bottom()
             print("Selected coordinates:", left, top, right, bottom)
+
+            if self.parent.calibrationButton.isChecked():
+                self.clickedCoordinates = (left,top)
+                self.parent.sigCurrentOffset.emit(left, top)
+                return
             # differentiate between single point and rectangle
             if np.abs(left-right)<5 and np.abs(top-bottom)<5:
                 # single 

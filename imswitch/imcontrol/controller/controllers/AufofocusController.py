@@ -81,25 +81,19 @@ class AutofocusController(ImConWidgetController):
     def doAutofocusBackground(self, rangez=100, resolutionz=10):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
 
-        allfocusvals = []
-        allfocuspositions = []
-
-
         # get current position
         initialPosition = self.stages.getPosition()["Z"]
-
 
         # precompute values for Z-scan
         Nz = int(2 * rangez // resolutionz)
         allfocusvals = np.zeros(Nz)
         allfocuspositions = np.int32(np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition)
-        allfocusimages = []
 
         # 0 move focus to initial position
         self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
 
-        # grab dummy frame?
-        self.grabCameraFrame()
+        # Example usage
+        mProcessor = FrameProcessor()
 
         # 1 compute focus for every z position
         for iz in range(Nz):
@@ -109,34 +103,22 @@ class AutofocusController(ImConWidgetController):
                 break
             # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
             self.stages.move(value=allfocuspositions[iz], axis="Z", is_absolute=True, is_blocking=True)
-
-            time.sleep(T_DEBOUNCE)
             self._logger.debug(f'Moving focus to {allfocuspositions[iz]}')
 
             # 1 Grab camera frame
             self._logger.debug("Grabbing Frame")
-            img = self.grabCameraFrame()
-            # crop frame, only take inner 40%
-            if isNIP:
-                img = nip.extract(img, (int(img.shape[0]*0.4),int(img.shape[1]*0.4)))
-            allfocusimages.append(img)
+            mImg = self.grabCameraFrame()
+            mProcessor.add_frame(mImg, iz)
 
-            # 2 Gaussian filter the image, to remove noise
-            self._logger.debug("Processing Frame")
-            # img_norm = img-np.min(img)
-            # img_norm = img_norm/np.mean(img_norm)
-            imagearraygf = ndi.filters.gaussian_filter(img, 3)
-
-            # 3 compute focus metric
-            focusquality = np.mean(ndi.filters.laplace(imagearraygf))
-            allfocusvals[iz] = focusquality
-
+        # collect all values once done
+        allfocusvalsList = mProcessor.getFocusValueList(nFrameExpected=Nz)
+       
         if self.isAutofusRunning:
             # display the curve
-            self._widget.focusPlotCurve.setData(allfocuspositions, allfocusvals)
+            self._widget.focusPlotCurve.setData(allfocuspositions, np.array(allfocusvalsList))
 
             # 4 find maximum focus value and move stage to this position
-            allfocusvals = np.array(allfocusvals)
+            allfocusvals = np.array(allfocusvalsList)
             zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
             bestzpos = allfocuspositions[np.squeeze(zindex)]
 
@@ -166,6 +148,55 @@ class AutofocusController(ImConWidgetController):
 
         self._widget.focusButton.setText('Autofocus')
         return bestzpos
+
+
+
+import threading
+import queue
+
+class FrameProcessor:
+    def __init__(self):
+        self.frame_queue = queue.Queue()
+        self.allfocusimages = []
+        self.allfocusvals = []
+        self.worker_thread = threading.Thread(target=self.process_frames, daemon=True)
+        self.worker_thread.start()
+
+    def add_frame(self, img, iz, isNIP=True):
+        """ Add frames to the queue """
+        print("Add frame: "+str(iz))
+        self.frame_queue.put((img, iz, isNIP))
+
+    def process_frames(self):
+        """ Continuously process frames from the queue """
+        while True:
+            img, iz, isNIP = self.frame_queue.get()
+            self.process_frame(img, iz, isNIP)
+
+    def process_frame(self, img, iz, gSigma=3, cropRegion=512, isNIP=False):
+        # crop frame, only take inner 40%
+        if isNIP:
+            img = self.extract(img, (cropRegion,cropRegion))
+
+        print("processing frame : "+str(iz))
+        # Gaussian filter the image, to remove noise
+        imagearraygf = ndi.filters.gaussian_filter(img, gSigma)
+
+        # compute focus metric
+        focusquality = np.mean(ndi.filters.laplace(imagearraygf))
+        self.allfocusvals.append(focusquality)
+
+    @staticmethod
+    def extract(img, size):
+        """ A dummy nip.extract function """
+        # Replace with actual NIP extraction logic if needed
+        return img[:size[0], :size[1]]
+
+    def getFocusValueList(self, nFrameExpected):
+        t0=time.time() # in case something goes wrong
+        while not(len(self.allfocusvals)==nFrameExpected) or not time.time()-t0>5:
+            time.sleep(.01)
+        return self.allfocusvals
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

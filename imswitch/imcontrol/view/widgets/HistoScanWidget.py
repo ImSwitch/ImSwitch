@@ -83,19 +83,21 @@ class HistoScanWidget(NapariHybridWidget):
         # for the physical dimensions of the slide holder we have
         physDimX = 164 # mm
         physDimY = 109 # mm
-        physOffsetX = 0
-        physOffsetY = 0
+        physOffsetX = -28.8758
+        physOffsetY =  -26.086
         
         self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX*1e3, physOffsetY*1e3)
         self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
         
-
-        
         self.layer = None
 
 
     def setScanMinMax(self, posXmin, posYmin, posXmax, posYmax):
+        self.minPositionXLineEdit.setText(str(np.uint64(posXmin)))
+        self.maxPositionXLineEdit.setText(str(np.uint64(posXmax)))
+        self.minPositionYLineEdit.setText(str(np.uint64(posYmin)))
+        self.maxPositionYLineEdit.setText(str(np.uint64(posYmax)))
         print("Setting scan min/max")
         
     def goToPosition(self, posX, posY):
@@ -406,10 +408,7 @@ class ScanSelectView(QtWidgets.QGraphicsView):
             bottom = selected_rect.bottom()
             print("Selected coordinates:", left, top, right, bottom)
 
-            if self.parent.calibrationButton.isChecked():
-                self.clickedCoordinates = (left,top)
-                self.parent.sigCurrentOffset.emit(left, top)
-                return
+
             # differentiate between single point and rectangle
             if np.abs(left-right)<5 and np.abs(top-bottom)<5:
                 # single 
@@ -421,7 +420,12 @@ class ScanSelectView(QtWidgets.QGraphicsView):
                 # calculate real-world coordinates
                 posX = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
                 posY = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
-                self.parent.goToPosition(posX, posY)
+                
+                if self.parent.calibrationButton.isChecked():
+                    self.clickedCoordinates = (posX,posY)
+                    self.parent.sigCurrentOffset.emit(posX, posY)
+                else:
+                    self.parent.goToPosition(posX, posY)
 
             else:
                 # rectangle => send min/max X/Y position to parent

@@ -83,12 +83,19 @@ class HistoScanController(LiveUpdatedController):
 
     def calibrateOffset(self):
         # move to a known position and click in the 
+        # 1. retreive the coordinates on the canvas
         clickedCoordinates = self._widget.ScanSelectViewWidget.clickedCoordinates
-        
+        # 2. measure the stage coordinates that relate to the clicked coordintes 
         self.stageinitialPosition = self.stages.getPosition()
-        offsetX = initialPosition["X"]
-        offsetY = initialPosition["Y"]
-        offsetZ = initialPosition["Z"]
+        # true position:
+        initX = self.stageinitialPosition["X"]
+        initY = self.stageinitialPosition["Y"]
+        initZ = self.stageinitialPosition["Z"]
+
+        # compute the differences
+        offsetX =  initX - clickedCoordinates[0]
+        offsetY =  initY - clickedCoordinates[1]
+        
 
         # now we need to calculate the offset here
         self._widget.ScanSelectViewWidget.setOffset(offsetX,offsetY)
@@ -154,7 +161,7 @@ class HistoScanController(LiveUpdatedController):
             for y in range(steps_y):
                 if y % 2 == 0:  # Even rows: left to right
                     for x in range(steps_x):
-                        cX, cY = initPosX + minPosX + x * img_width  * overlap, initPosY + minPosY + y * img_height * overlap
+                        cX, cY = minPosX + x * img_width  * overlap, minPosY + y * img_height * overlap
                         # move y axis
                         self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
                         mFrame = self.detector.getLatestFrame()   
@@ -162,7 +169,7 @@ class HistoScanController(LiveUpdatedController):
                         self._logger.debug("Moving to "+str((cX,cY)))
                 else:  # Odd rows: right to left
                     for x in range(steps_x - 1, -1, -1):  # Starting from the last position, moving backwards
-                        cX, cY = initPosX + minPosX + x * img_width * overlap, initPosY + minPosY + y * img_height * overlap
+                        cX, cY = minPosX + x * img_width * overlap, minPosY + y * img_height * overlap
                         self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
                         mFrame = self.detector.getLatestFrame()  
                         tif.imsave("Test.tif", mFrame, append=True)  

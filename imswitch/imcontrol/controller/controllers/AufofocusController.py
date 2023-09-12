@@ -4,9 +4,11 @@ import numpy as np
 import scipy.ndimage as ndi
 import threading
 
-from imswitch.imcommon.framework import Thread, Timer
 from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
+from skimage.filters import gaussian, median
+from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
+
 
 try:
     import NanoImagingPack as nip
@@ -23,6 +25,8 @@ T_DEBOUNCE = .2
 class AutofocusController(ImConWidgetController):
     """Linked to AutofocusWidget."""
 
+
+    sigImageReceived = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,6 +47,11 @@ class AutofocusController(ImConWidgetController):
 
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+
+        # for display on Napari
+        self.imageToDisplayName = ""
+        self.imageToDisplay = None
+        self.sigImageReceived.connect(self.displayImage)
 
     def __del__(self):
         self._AutofocusThead.quit()
@@ -78,76 +87,101 @@ class AutofocusController(ImConWidgetController):
         detectorManager = self._master.detectorsManager[self.camera]
         return detectorManager.getLatestFrame()
 
+    def displayImage(self):
+        # a bit weird, but we cannot update outside the main thread
+        name = self.imageToDisplayName
+        self._widget.setImageNapari(np.uint16(self.imageToDisplay), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
+
+    def recordFlatfield(self, nFrames=10, nGauss=16, defocusPosition = 200, defocusAxis="Z"):
+        ''' 
+        This method defocusses the sample and records a series of images to produce a flatfield image
+        '''
+        flatfield = []
+        posStart = self.stages.getPosition()[defocusAxis]
+        time.sleep(1) # debounce
+        self.stages.move(value=defocusPosition, axis=defocusAxis, is_absolute=False, is_blocking=True)
+        for iFrame in range(nFrames):
+            mFrame = self.grabCameraFrame()
+            flatfield.append(mFrame)
+        flatfield = np.mean(np.array(flatfield),0)
+        # normalize and smooth using scikit image
+        flatfield = gaussian(flatfield, sigma=nGauss)
+        #flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
+        self.stages.move(value=-defocusPosition, axis=defocusAxis, is_absolute=False, is_blocking=True)
+
+        time.sleep(1)  #debounce
+        return flatfield
+
     def doAutofocusBackground(self, rangez=100, resolutionz=10):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
 
-        # get current position
+       # record a flatfield Image and display
+        flatfieldImage = self.recordFlatfield()
+        self.imageToDisplay = flatfieldImage
+        self.imageToDisplayName = "FlatFieldImage"
+        #self.sigImageReceived.emit()
+
         initialPosition = self.stages.getPosition()["Z"]
 
-        # precompute values for Z-scan
         Nz = int(2 * rangez // resolutionz)
         allfocusvals = np.zeros(Nz)
-        allfocuspositions = np.int32(np.linspace(-abs(rangez), abs(rangez), Nz) + initialPosition)
+        relative_positions = np.int32(np.linspace(-abs(rangez), abs(rangez), Nz))
 
-        # 0 move focus to initial position
-        self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
+        # Move to the initial relative position
+        self.stages.move(value=relative_positions[0], axis="Z", is_absolute=False, is_blocking=True)
 
-        # Example usage
         mProcessor = FrameProcessor()
+        mProcessor.setFlatfieldFrame(flatfieldImage)
+        mAllImages = []
 
-        # 1 compute focus for every z position
         for iz in range(Nz):
-
-            # exit autofocus if necessary
             if not self.isAutofusRunning:
                 break
-            # 0 Move stage to the predefined position - remember: stage moves in relative coordinates
-            self.stages.move(value=allfocuspositions[iz], axis="Z", is_absolute=True, is_blocking=True)
-            self._logger.debug(f'Moving focus to {allfocuspositions[iz]}')
 
-            # 1 Grab camera frame
-            self._logger.debug("Grabbing Frame")
+            # Move to the next relative position
+            if iz != 0:
+                self.stages.move(value=relative_positions[iz] - relative_positions[iz-1], axis="Z", is_absolute=False, is_blocking=True)
+
             mImg = self.grabCameraFrame()
             mProcessor.add_frame(mImg, iz)
+            mAllImages.append(mImg)
 
-        # collect all values once done
         allfocusvalsList = mProcessor.getFocusValueList(nFrameExpected=Nz)
-       
-        if self.isAutofusRunning:
-            # display the curve
-            self._widget.focusPlotCurve.setData(allfocuspositions, np.array(allfocusvalsList))
 
-            # 4 find maximum focus value and move stage to this position
+        if 0: # only for debugging
+            allProcessedFrames = mProcessor.getAllProcessedSlices()
+            self.imageToDisplay = allProcessedFrames
+            self.imageToDisplayName = "ProcessedStack"
+            self.sigImageReceived.emit()
+            import tifffile as tif
+            tif.imsave("autofocus_rawimages.tif", mAllImages)
+            tif.imsave("autofocus_processed.tif", allProcessedFrames)
+            self.imageToDisplay = mAllImages
+            self.imageToDisplayName = "RAWImages"
+            self.sigImageReceived.emit()
+
+        if self.isAutofusRunning:
+            self._widget.focusPlotCurve.setData(relative_positions + initialPosition, np.array(allfocusvalsList))
+
             allfocusvals = np.array(allfocusvalsList)
             zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
-            bestzpos = allfocuspositions[np.squeeze(zindex)]
+            bestzpos_rel = relative_positions[np.squeeze(zindex)]
 
-            # 5 move focus back to initial position (reduce backlash)
-            self.stages.move(value=allfocuspositions[0], axis="Z", is_absolute=True, is_blocking=True)
+            # Move back to the initial position
+            self.stages.move(value=-2*rangez, axis="Z", is_absolute=False, is_blocking=True)
+            self.stages.move(value= rangez+bestzpos_rel, axis="Z", is_absolute=False, is_blocking=True)
 
-            # 6 Move stage to the position with max focus value
-            self._logger.debug(f'Moving focus to {zindex * resolutionz}')
-            self.stages.move(value=bestzpos, axis="Z", is_absolute=True, is_blocking=True)
-
-            if False:
-                allfocusimages = np.array(allfocusimages)
-                np.save('allfocusimages.npy', allfocusimages)
-                import tifffile as tif
-                tif.imsave("llfocusimages.tif", allfocusimages)
-                np.save('allfocuspositions.npy', allfocuspositions)
-                np.save('allfocusvals.npy', allfocusvals)
 
         else:
+            # Return to the initial absolute position
             self.stages.move(value=initialPosition, axis="Z", is_absolute=True, is_blocking=True)
-
-        # DEBUG
 
         # We are done!
         self._commChannel.sigAutoFocusRunning.emit(False)  # inidicate that we are running the autofocus
         self.isAutofusRunning = False
 
         self._widget.focusButton.setText('Autofocus')
-        return bestzpos
+        return bestzpos_rel + initialPosition
 
 
 
@@ -155,48 +189,70 @@ import threading
 import queue
 
 class FrameProcessor:
-    def __init__(self):
+    def __init__(self, nGauss=7, nCropsize=1024):
         self.frame_queue = queue.Queue()
         self.allfocusimages = []
         self.allfocusvals = []
         self.worker_thread = threading.Thread(target=self.process_frames, daemon=True)
         self.worker_thread.start()
+        self.flatFieldFrame = None
+        self.allLaplace = []
+        self.nGauss = nGauss
+        self.nCropsize = nCropsize
 
-    def add_frame(self, img, iz, isNIP=True):
+
+    def setFlatfieldFrame(self, flatfieldFrame):
+        self.flatFieldFrame = flatfieldFrame
+
+    def add_frame(self, img, iz):
         """ Add frames to the queue """
-        print("Add frame: "+str(iz))
-        self.frame_queue.put((img, iz, isNIP))
+        self.frame_queue.put((img, iz))
 
     def process_frames(self):
         """ Continuously process frames from the queue """
         while True:
-            img, iz, isNIP = self.frame_queue.get()
-            self.process_frame(img, iz, isNIP)
+            img, iz = self.frame_queue.get()
+            self.process_frame(img, iz)
 
-    def process_frame(self, img, iz, gSigma=3, cropRegion=512, isNIP=False):
+    def process_frame(self, img, iz):
         # crop frame, only take inner 40%
-        if isNIP:
-            img = self.extract(img, (cropRegion,cropRegion))
 
-        print("processing frame : "+str(iz))
+        if self.flatFieldFrame is not None:
+            img = img/self.flatFieldFrame
+        # crop region
+        img = self.extract(img, self.nCropsize)
+
+        #print("processing frame : "+str(iz))
         # Gaussian filter the image, to remove noise
-        imagearraygf = ndi.filters.gaussian_filter(img, gSigma)
+        imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
 
         # compute focus metric
-        focusquality = np.mean(ndi.filters.laplace(imagearraygf))
+        mLaplace = ndi.filters.laplace(imagearraygf)
+        self.allLaplace.append(mLaplace)
+        focusquality = np.std(mLaplace)
         self.allfocusvals.append(focusquality)
 
     @staticmethod
-    def extract(img, size):
-        """ A dummy nip.extract function """
-        # Replace with actual NIP extraction logic if needed
-        return img[:size[0], :size[1]]
+    def extract(marray, crop_size):
+        center_x, center_y = marray.shape[1] // 2, marray.shape[0] // 2
+
+        # Calculate the starting and ending indices for cropping
+        x_start = center_x - crop_size // 2
+        x_end = x_start + crop_size
+        y_start = center_y - crop_size // 2
+        y_end = y_start + crop_size
+
+        # Crop the center region
+        return marray[y_start:y_end, x_start:x_end]
 
     def getFocusValueList(self, nFrameExpected):
         t0=time.time() # in case something goes wrong
         while not(len(self.allfocusvals)==nFrameExpected) or not time.time()-t0>5:
             time.sleep(.01)
         return self.allfocusvals
+
+    def getAllProcessedSlices(self):
+        return np.array(self.allLaplace)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

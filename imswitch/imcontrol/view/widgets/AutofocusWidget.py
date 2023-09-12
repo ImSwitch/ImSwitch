@@ -4,13 +4,13 @@ from qtpy import QtWidgets
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
+from .basewidgets import NapariHybridWidget
 
-
-class AutofocusWidget(Widget):
+class AutofocusWidget(NapariHybridWidget):
     """ Widget containing focus lock interface. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __post_init__(self):
+        #super().__init__(*args, **kwargs)
 
         # Focus lock
         self.focusButton = guitools.BetterPushButton('Autofocus')
@@ -64,6 +64,16 @@ class AutofocusWidget(Widget):
         grid.addWidget(self.positionLabel, 1, 6)
         grid.addWidget(self.positionEdit, 1, 7)
         #grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
+        self.layer = None
+        
+    def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
+        if self.layer is None or name not in self.viewer.layers:
+            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap, 
+                                               scale=pixelsize,translate=translation,
+                                               name=name, blending='additive')
+        self.layer.data = im
         
 
 # Copyright (C) 2020-2021 ImSwitch developers

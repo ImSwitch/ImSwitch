@@ -163,7 +163,7 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             
-        
+    
 
 
     def measure(self, sensorID=0, NAvg=100):

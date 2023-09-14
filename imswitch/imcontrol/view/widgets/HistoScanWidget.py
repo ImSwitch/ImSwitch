@@ -86,12 +86,14 @@ class HistoScanWidget(NapariHybridWidget):
         physOffsetX = -28.8758
         physOffsetY =  -26.086
         
-        self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX*1e3, physOffsetY*1e3)
+        self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX, physOffsetY)
         self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
         
         self.layer = None
 
+    def setOffset(self, offsetX, offsetY):
+        self.ScanSelectViewWidget.setOffset(offsetX, offsetY)
 
     def setScanMinMax(self, posXmin, posYmin, posXmax, posYmax):
         self.minPositionXLineEdit.setText(str(np.uint64(posXmin)))
@@ -200,6 +202,10 @@ class HistoScanWidget(NapariHybridWidget):
     
     def setPreviewImage(self, image):
         self.canvas.setImage(image)
+
+    def updateBoxPosition(self):
+        pass
+
 
 class Canvas(QtWidgets.QLabel):
 
@@ -357,6 +363,9 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.physOffsetX = offsetX
         self.physOffsetY = offsetY
 
+    def updateBoxPosition(self):
+        pass
+
     @property
     def pixmap_item(self):
         return self._pixmap_item
@@ -405,11 +414,12 @@ class ScanSelectView(QtWidgets.QGraphicsView):
                 self.scene().removeItem(self.selection_rect)
                 self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
                 self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
-                self.scene().addItem(self.selection_rect)
-                
+                self.scene().addItem(self.selection_rect)                
                 # calculate real-world coordinates
+                if self.parent.calibrationButton.isChecked():
+                    self.physOffsetX, self.physOffsetY = 0,0 # reset offset because we estimate a new one
                 posX = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
-                posY = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                posY = (self.pixmap_item.pixmap().height()-top)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
                 
                 if self.parent.calibrationButton.isChecked():
                     self.clickedCoordinates = (posX,posY)

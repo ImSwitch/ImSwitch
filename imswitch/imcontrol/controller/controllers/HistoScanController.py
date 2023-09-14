@@ -8,6 +8,8 @@ import tifffile
 import threading
 from datetime import datetime
 import cv2
+import tifffile as tif
+            
 from itertools import product
 try:
     from ashlar import fileseries, thumbnail, reg
@@ -36,6 +38,11 @@ class HistoScanController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
+        # read default values from previously loaded config file
+        offsetX = self._master.HistoScanManager.offsetX
+        offsetY = self._master.HistoScanManager.offsetY
+        self._widget.setOffset(offsetX, offsetY)
+    
 
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
@@ -55,10 +62,17 @@ class HistoScanController(LiveUpdatedController):
         self._widget.sigGoToPosition.connect(self.goToPosition)
         self._widget.sigCurrentOffset.connect(self.calibrateOffset)
         self.sigImageReceived.connect(self.displayImage)
-        
+        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
+
+        # select stage
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+
+    
+    def updateAllPositionGUI(self):
+        self._widget.updateBoxPosition()
+
     def goToPosition(self, posX, posY):
-        self.stages.move(value=posX, axis="X", is_absolute=True, is_blocking=False)
-        self.stages.move(value=posY, axis="Y", is_absolute=True, is_blocking=False)
+        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False)
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
@@ -91,9 +105,10 @@ class HistoScanController(LiveUpdatedController):
         # compute the differences
         offsetX =  initX - clickedCoordinates[0]
         offsetY =  initY - clickedCoordinates[1]
-        
+        self._logger.debug("Offset coordinates in X/Y"+str(offsetX)+" / "+str(offsetY))
 
         # now we need to calculate the offset here
+        self._master.HistoScanManager.writeConfig({"offsetX":offsetX, "offsetY":offsetY})
         self._widget.ScanSelectViewWidget.setOffset(offsetX,offsetY)
         
     def starthistoscan(self):
@@ -101,11 +116,7 @@ class HistoScanController(LiveUpdatedController):
         maxPosX = self._widget.getMaxPositionX()
         minPosY = self._widget.getMinPositionY()
         maxPosY = self._widget.getMaxPositionY()        
-        speed = self._widget.getSpeed()
-        illuSource = self._widget.getIlluminationSource()
-        stageAxis = self._widget.getStageAxis()
-        self._logger.debug("Starting histoscan scanning with "+str(illuSource)+" on "+str(stageAxis)+" axis.")
-
+        speed = 20000
         self._widget.startButton.setEnabled(False)
         self._widget.stopButton.setEnabled(True)
         self._widget.startButton.setText("Running")
@@ -113,29 +124,44 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
 
-        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, speed, stageAxis, illuSource, 0)
+        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, speed, 0)
 
-    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, speed, axis, illusource, illuvalue):
+    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, speed, axis):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
-            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, speed, axis, illusource, illuvalue))
+            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, speed, axis))
             self.histoscanTask.start()
         
+    def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height):
+        # Calculate the number of steps in x and y directions
+        steps_x = int((posXmax - posXmin) / img_width)
+        steps_y = int((posYmax - posYmin) / img_height)
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, speed, axis, illusource, illuvalue, overlap=0.75):
+        coordinates = []
+
+        # Loop over the positions in a snake pattern
+        for y in range(steps_y):
+            if y % 2 == 0:  # Even rows: left to right
+                for x in range(steps_x):
+                    coordinates.append((posXmin + x * img_width, posYmin + y * img_height))
+            else:  # Odd rows: right to left
+                for x in range(steps_x - 1, -1, -1):  # Starting from the last position, moving backwards
+                    coordinates.append((posXmin + x * img_width, posYmin + y * img_height))
+        
+        return coordinates
+
+        
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, speed, axis, overlap=0.75):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
         if not self.detector._running: self.detector.startAcquisition()
-        # move to minPos
-        self.stages.move(value=(minPosX, minPosY), axis="XY", is_absolute=False, is_blocking=True)
-
-
+        
         # now start acquiring images and move the stage in Background
         controller = MovementController(self.stages)
         mFrame = self.detector.getLatestFrame()
@@ -148,32 +174,20 @@ class HistoScanController(LiveUpdatedController):
         img_width = NpixX * self.detector.pixelSizeUm[-1]
         img_height = NpixY * self.detector.pixelSizeUm[-1]
 
-        # Determine the number of steps in x and y directions
-        steps_x = int((maxPosX - minPosX) * overlap / img_width)
-        steps_y = int((maxPosY - minPosY) * overlap / img_height)
-        try:
-            import tifffile as tif
-            # Loop over the positions in a snake pattern
-            for y in range(steps_y):
-                if y % 2 == 0:  # Even rows: left to right
-                    for x in range(steps_x):
-                        cX, cY = minPosX + x * img_width  * overlap, minPosY + y * img_height * overlap
-                        # move y axis
-                        self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
-                        mFrame = self.detector.getLatestFrame()   
-                        tif.imsave("Test.tif", mFrame, append=True) 
-                        self._logger.debug("Moving to "+str((cX,cY)))
-                else:  # Odd rows: right to left
-                    for x in range(steps_x - 1, -1, -1):  # Starting from the last position, moving backwards
-                        cX, cY = minPosX + x * img_width * overlap, minPosY + y * img_height * overlap
-                        self.stages.move(value=(cX,cY), axis="XY", is_absolute=True, is_blocking=True)
-                        mFrame = self.detector.getLatestFrame()  
-                        tif.imsave("Test.tif", mFrame, append=True)  
-                        self._logger.debug("Moving to "+str((cX,cY)))                    
-        except Exception as e:
-            self._logger.error(e)
+        # precompute the position list in advance 
+        positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height)
+        for iPos in positionList:
+            try:
+                self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
+                print("move to:"+str(iPos))
+                mFrame = self.detector.getLatestFrame()  
+                tif.imsave("Test.tif", mFrame, append=True) 
+                if not self.ishistoscanRunning:
+                    break
+            except Exception as e:
+                self._logger.error(e)
 
-
+        self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         if 0: # weird fast-scan idea
             direction = 1
             for yPos in np.arange(int(minPosY), int(maxPosY+1), int((maxPosY-minPosY)/4)):

@@ -43,7 +43,6 @@ class PositionerController(ImConWidgetController):
         self._widget.sigStepAbsoluteClicked.connect(self.moveAbsolute)
         self._widget.sigHomeAxisClicked.connect(self.homeAxis)
         self._widget.sigStopAxisClicked.connect(self.stopAxis)
-        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
 
     def closeEvent(self):
         self._master.positionersManager.execOnAll(
@@ -74,6 +73,7 @@ class PositionerController(ImConWidgetController):
         except Exception as e:
             self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
+        self._commChannel.sigUpdateMotorPosition.emit()
         self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):

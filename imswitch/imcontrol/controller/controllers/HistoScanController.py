@@ -176,17 +176,29 @@ class HistoScanController(LiveUpdatedController):
 
         # precompute the position list in advance 
         positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height)
+        
+        # reseve space for the large image we will draw
+        stitcher = ImageStitcher(min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)))
+
         for iPos in positionList:
             try:
                 self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
                 print("move to:"+str(iPos))
                 mFrame = self.detector.getLatestFrame()  
-                tif.imsave("Test.tif", mFrame, append=True) 
+
+                stitcher.add_image(mFrame, iPos)
+
+                #tif.imsave("Test.tif", mFrame, append=True) 
                 if not self.ishistoscanRunning:
                     break
             except Exception as e:
                 self._logger.error(e)
 
+
+        # get stitched result
+        largeImage = stitcher.get_stitched_image()
+        tif.imsave("stitchedImage.tif", largeImage, append=True) 
+                
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         if 0: # weird fast-scan idea
             direction = 1
@@ -271,6 +283,69 @@ class HistoScanController(LiveUpdatedController):
         self._logger.debug("histoscan scanning stopped.")
         
 
+
+import numpy as np
+from skimage.io import imsave
+from scipy.ndimage import gaussian_filter
+from collections import deque
+
+class ImageStitcher:
+
+    def __init__(self, min_coords, max_coords):
+        # Initial min and max coordinates 
+        self.min_coords = min_coords
+        self.max_coords = max_coords
+
+        # Create a blank canvas for the final image and a canvas to track blending weights
+        self.stitched_image = np.zeros((max_coords[1] - min_coords[1], max_coords[0] - min_coords[0], 3), dtype=np.float32)
+        self.weight_image = np.zeros(self.stitched_image.shape, dtype=np.float32)
+
+        # Queue to hold incoming images
+        self.queue = deque()
+
+        # Thread lock for thread safety
+        self.lock = threading.Lock()
+
+        # Start a background thread for processing the queue
+        self.processing_thread = threading.Thread(target=self._process_queue)
+        self.processing_thread.start()
+
+    def add_image(self, img, coords):
+        with self.lock:
+            self.queue.append((img, coords))
+
+    def _process_queue(self):
+        while True:
+            with self.lock:
+                if not self.queue:
+                    continue
+                img, coords = self.queue.popleft()
+                self._place_on_canvas(img, coords)
+
+    def _place_on_canvas(self, img, coords):
+        offset_x = int(coords[0] - self.min_coords[0])
+        offset_y = int(coords[1] - self.min_coords[1])
+
+        # Calculate a feathering mask based on image intensity
+        alpha = np.mean(img, axis=-1)
+        alpha = gaussian_filter(alpha, sigma=10)
+        alpha /= np.max(alpha)
+
+        self.stitched_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += img * alpha[:, :, np.newaxis]
+        self.weight_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+
+    def get_stitched_image(self):
+        with self.lock:
+            # Normalize by the weight image to get the final result
+            stitched = self.stitched_image / np.maximum(self.weight_image, 1e-5)
+            return stitched
+
+    def save_stitched_image(self, filename):
+        stitched = self.get_stitched_image()
+        imsave(filename, stitched)
+
+    
+    
 
 class MovementController:
     def __init__(self, stages):

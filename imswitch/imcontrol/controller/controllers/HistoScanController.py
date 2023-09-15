@@ -198,7 +198,12 @@ class HistoScanController(LiveUpdatedController):
         # get stitched result
         largeImage = stitcher.get_stitched_image()
         tif.imsave("stitchedImage.tif", largeImage, append=True) 
-                
+        # display result 
+        self.histoScanStackName = "histoscanStitch"
+        self.histoscanStack = largeImage
+        self.sigImageReceived.emit()
+
+
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         if 0: # weird fast-scan idea
             direction = 1
@@ -331,9 +336,12 @@ class ImageStitcher:
         alpha = gaussian_filter(alpha, sigma=10)
         alpha /= np.max(alpha)
 
-        self.stitched_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += img * alpha[:, :, np.newaxis]
-        self.weight_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
-
+        try:
+            self.stitched_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += img * alpha[:, :, np.newaxis]
+            self.weight_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+        except Exception as e:
+            print(e)
+            
     def get_stitched_image(self):
         with self.lock:
             # Normalize by the weight image to get the final result

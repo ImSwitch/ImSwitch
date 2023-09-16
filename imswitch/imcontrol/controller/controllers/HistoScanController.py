@@ -179,25 +179,42 @@ class HistoScanController(LiveUpdatedController):
         
         # reseve space for the large image we will draw
         stitcher = ImageStitcher(min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)))
+        file_name = "test"
+        extension = ".ome.tif"
+        folder = self._master.HistoScanManager.defaultConfigPath
 
-        for iPos in positionList:
-            try:
-                self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
-                print("move to:"+str(iPos))
-                mFrame = self.detector.getLatestFrame()  
+        with tifffile.TiffWriter(os.sep.join([folder, file_name + extension]), bigtiff=True) as tifwriter:
+            for iPos in positionList:
+                try:
+                    t0 = time.time()
+                    self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
+                    print("move to:"+str(iPos))
+                    mFrame = self.detector.getLatestFrame()  
+                    print("snapping took "+str(time.time()-t0))
 
-                stitcher.add_image(mFrame, iPos)
+                    stitcher.add_image(mFrame, iPos)
+                    print("adding took "+str(time.time()-t0))
+                    metadata = {'Pixels': {
+                        'PhysicalSizeX': self.detector.pixelSizeUm[-1],
+                        'PhysicalSizeXUnit': 'µm',
+                        'PhysicalSizeY': self.detector.pixelSizeUm[-1],
+                        'PhysicalSizeYUnit': 'µm'},
 
-                #tif.imsave("Test.tif", mFrame, append=True) 
-                if not self.ishistoscanRunning:
-                    break
-            except Exception as e:
-                self._logger.error(e)
+                        'Plane': {
+                            'PositionX': iPos[0],
+                            'PositionY': iPos[1]
+                    }, }
+                    tifwriter.write(data=mFrame, metadata=metadata)
+                    print("saving took "+str(time.time()-t0))
+                    if not self.ishistoscanRunning:
+                        break
+                except Exception as e:
+                    self._logger.error(e)
 
 
         # get stitched result
         largeImage = stitcher.get_stitched_image()
-        tif.imsave("stitchedImage.tif", largeImage, append=True) 
+        tif.imsave("stitchedImage.tif", largeImage, append=False) 
         # display result 
         self.histoScanStackName = "histoscanStitch"
         self.histoscanStack = largeImage
@@ -269,11 +286,11 @@ class HistoScanController(LiveUpdatedController):
                 self.histoscanStack = xCanvas
                 self.sigImageReceived.emit()
             
+
+        # move back to initial position
+        self.stages.move(value=(initialPosition["X"],initialPosition["Y"]), axis="XY", is_absolute=True, is_blocking=False)
         self.stophistoscan()
         
-        # move back to initial position
-        self.stages.move(value=initialPosition["X"], axis="X", is_absolute=True, is_blocking=False)
-        self.stages.move(value=initialPosition["Y"], axis="Y", is_absolute=True, is_blocking=False)
         
         
         
@@ -341,7 +358,7 @@ class ImageStitcher:
             self.weight_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
         except Exception as e:
             print(e)
-            
+
     def get_stitched_image(self):
         with self.lock:
             # Normalize by the weight image to get the final result

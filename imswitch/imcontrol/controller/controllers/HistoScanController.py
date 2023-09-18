@@ -9,7 +9,7 @@ import threading
 from datetime import datetime
 import cv2
 import tifffile as tif
-            
+import datetime 
 from itertools import product
 try:
     from ashlar import fileseries, thumbnail, reg
@@ -165,7 +165,7 @@ class HistoScanController(LiveUpdatedController):
         if not self.detector._running: self.detector.startAcquisition()
         
         # now start acquiring images and move the stage in Background
-        controller = MovementController(self.stages)
+        
         mFrame = self.detector.getLatestFrame()
 
         dimensionsFrame = mFrame.shape[1]*self.detector.pixelSizeUm[-1]
@@ -180,13 +180,14 @@ class HistoScanController(LiveUpdatedController):
         positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height)
         
         # reseve space for the large image we will draw
-        stitcher = ImageStitcher(min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), pixelsize_eff=self.detector.pixelSizeUm[-1])
         file_name = "test"
         extension = ".ome.tif"
         folder = self._master.HistoScanManager.defaultConfigPath
 
-        # Example usage
-        tifSaver = ImageSaver(folder, file_name, extension)
+        #min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25)
+        stitcher = ImageStitcher(min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), 
+                                 folder=folder, file_name=file_name, extension=extension, 
+                                 pixelsize_eff=self.detector.pixelSizeUm[-1])
 
         for iPos in positionList:
             try:
@@ -197,11 +198,6 @@ class HistoScanController(LiveUpdatedController):
                 print("moving took "+str(time.time()-t0))
                 mFrame = self.detector.getLatestFrame()  
                 print("snapping took "+str(time.time()-t0))
-                def addImage(mFrame, iPos):
-                    self._commChannel.sigUpdateMotorPosition.emit()
-                    stitcher.add_image(mFrame, iPos)
-                threading.Thread(target=addImage, args=(mFrame, iPos,)).start()
-                print("adding took "+str(time.time()-t0))
                 metadata = {'Pixels': {
                     'PhysicalSizeX': self.detector.pixelSizeUm[-1],
                     'PhysicalSizeXUnit': 'µm',
@@ -212,10 +208,13 @@ class HistoScanController(LiveUpdatedController):
                         'PositionX': iPos[0],
                         'PositionY': iPos[1]
                 }, }
-                # save images in background
-                tifSaver.save_image(mFrame, metadata)    
 
-                print("saving took "+str(time.time()-t0))
+                def addImage(mFrame, iPos):
+                    self._commChannel.sigUpdateMotorPosition.emit()
+                    stitcher.add_image(mFrame, iPos, metadata)
+                threading.Thread(target=addImage, args=(mFrame, iPos,)).start()
+
+                print("adding took "+str(time.time()-t0))
 
             except Exception as e:
                 self._logger.error(e)
@@ -258,13 +257,17 @@ from collections import deque
 
 class ImageStitcher:
 
-    def __init__(self, min_coords, max_coords, pixelsize_eff=1, subsample_factor=.25):
+    def __init__(self, min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25):
         # Initial min and max coordinates 
         self.pixelsize_eff = pixelsize_eff
         self.subsample_factor = subsample_factor
         self.min_coords = np.int32(np.array(min_coords)/pixelsize_eff*self.subsample_factor)
         self.max_coords = np.int32(np.array(max_coords)/pixelsize_eff*self.subsample_factor)
         
+        # reserve space for the image writer
+        file_path = os.sep.join([folder, file_name + extension])
+        self.tifwriter = tifffile.TiffWriter(file_path, bigtiff=True)
+
         # Create a blank canvas for the final image and a canvas to track blending weights
         self.stitched_image = np.zeros((self.max_coords[1] - self.min_coords[1], self.max_coords[0] - self.min_coords[0], 3), dtype=np.float32)
         self.weight_image = np.zeros(self.stitched_image.shape, dtype=np.float32)
@@ -280,24 +283,29 @@ class ImageStitcher:
         self.isRunning = True
         self.processing_thread.start()
 
-    def add_image(self, img, coords):
+    def add_image(self, img, coords, metadata):
         with self.lock:
-            self.queue.append((img, coords))
+            self.queue.append((img, coords, metadata))
 
     def _process_queue(self):
         while self.isRunning:
             with self.lock:
                 if not self.queue:
+                    time.sleep(.1) # unload CPU
                     continue
-                img, coords = self.queue.popleft()
+                img, coords, metadata = self.queue.popleft()
                 self._place_on_canvas(img, coords)
+
+                # write image to disk
+                self.tifwriter.write(data=img, metadata=metadata)
+            
 
     def _place_on_canvas(self, img, coords):
         offset_x = int(coords[0]/self.pixelsize_eff*self.subsample_factor - self.min_coords[0])
         offset_y = int(coords[1]/self.pixelsize_eff*self.subsample_factor - self.min_coords[1])
 
         # Calculate a feathering mask based on image intensity
-        img = cv2.resize(img, None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_CUBIC) > 1
+        img = cv2.resize(img, None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) > 1
 
         alpha = np.mean(img, axis=-1)
         alpha = gaussian_filter(alpha, sigma=10)
@@ -330,6 +338,7 @@ class MovementController:
         self.target_position = None
         self.axis = None
 
+
     def move_to_position(self, minPos, axis, speed, is_absolute):
         self.target_position = minPos
         self.speed = speed
@@ -345,35 +354,6 @@ class MovementController:
 
     def is_target_reached(self):
         return self.target_reached
-
-
-import os
-import queue
-import threading
-import tifffile
-
-class ImageSaver(threading.Thread):
-    def __init__(self, folder, file_name, extension):
-        super().__init__()
-        self.queue = queue.Queue()
-        self.daemon = True  # Allow main program to exit even if thread is running
-        # Save the image
-        file_path = os.sep.join([folder, file_name + extension])
-        self.tifwriter = tifffile.TiffWriter(file_path, bigtiff=True)
-        
-        self.start()
-
-    def run(self):
-        while True:
-            # Wait for an item from the queue
-            mFrame, metadata = self.queue.get()
-            self.tifwriter.write(data=mFrame, metadata=metadata)
-            
-            # Mark the task as done
-            self.queue.task_done()
-
-    def save_image(self, mFrame, metadata):
-        self.queue.put((mFrame, metadata))
 
 
 

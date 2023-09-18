@@ -7,10 +7,6 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5 import QtGui, QtWidgets
 import PyQt5
 
-
-
-
-
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
@@ -105,7 +101,6 @@ class HistoScanWidget(NapariHybridWidget):
     def goToPosition(self, posX, posY):
         print("Moving to position")
         self.sigGoToPosition.emit(posX, posY)
-        
                                                     
     def setAvailableIlluSources(self, sources):
         self.illuminationSourceComboBox.clear()
@@ -200,132 +195,10 @@ class HistoScanWidget(NapariHybridWidget):
     def setInformationLabel(self, information):
         self.HistoScanLabelInfo.setText(information)
     
-    def setPreviewImage(self, image):
-        self.canvas.setImage(image)
-
-    def updateBoxPosition(self):
-        pass
+    def updateBoxPosition(self, posX, posY):
+        self.ScanSelectViewWidget.drawRectCurrentPoint(posX, posY)
 
 
-class Canvas(QtWidgets.QLabel):
-
-    def __init__(self):
-        super().__init__()
-        self.dimensions = (200,200)
-        self.penwidth = 4
-        self.setFixedSize(self.dimensions[0],self.dimensions[1])
-        
-        self.coordinateList = []
-        self.imageLast = None
-        self.setImage()
-        
-        self.last_x, self.last_y = None, None
-        self.pen_color = QtGui.QColor('#FF0000') # RGB=255,0,0
-        
-    def overlayImage(self, npImage, alpha=0.5):
-        """Overlay image on top of canvas image"""
-        if self.imageLast is not None:
-            self.setImage(self.imageLast)
-        else:
-            self.setImage()
-        self.imageLast = self.imageNow.toImage()
-        painter = QtGui.QPainter(self.pixmap())
-        painter.setOpacity(alpha)
-        
-        if len(npImage.shape) == 2:
-            npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
-        height, width, channel = npImage.shape
-        bytesPerLine = 3 * width
-        qImage = QImage(npImage.data, width, height, bytesPerLine, QImage.Format_RGB888)
-        
-        self.setPixmap(self.imageNow.scaled(self.dimensions[0], self.dimensions[1], QtCore.Qt.KeepAspectRatio))
-
-        painter.drawImage(0, 0, qImage)
-        painter.end()
-        self.update()
-        
-    def setImage(self, npImage=None, pathImage='histo.jpg'):
-        
-        if npImage is None:
-            npImage = np.array(cv2.imread(pathImage))
-            if npImage.max() is None:
-                npImage = np.random.randint(0,255,(self.dimensions[0],self.dimensions[1],3))
-            npImage = cv2.resize(npImage, self.dimensions)
-        if len(npImage.shape) == 2:
-            npImage = np.repeat(npImage[:,:,np.newaxis], 3, axis=2)
-        self.imageLast=copy.deepcopy(npImage) # store for undo
-        height, width, channel = npImage.shape
-        bytesPerLine = 3 * width
-        qImage = QImage(npImage.data, width, height, bytesPerLine, QImage.Format_RGB888)
-        self.imageNow = QPixmap(qImage)
-        
-        self.setPixmap(self.imageNow.scaled(self.dimensions[0], self.dimensions[1], QtCore.Qt.KeepAspectRatio))
-
-    def undoSelection(self):
-        if self.imageLast is not None:
-            self.setImage(self.imageLast)
-            self.coordinateList = []
-    
-    def fillHoles(self):
-        # fill gaps in selection 
-        image = np.uint8(self.imageLast)
-        selectionOverlay = image.copy()*0
-        # render selection
-        tmp = np.array(self.coordinateList)
-        tmp = np.clip(tmp, 0, np.min(selectionOverlay.shape[0:2])-1)
-        selectionOverlay[tmp[:,0],tmp[:,1]] = 255
-        nKernel = self.penwidth
-        kernel =  np.ones((nKernel,nKernel)) 
-        # binary coordinates (without physical units ) of the scan region
-        selectionOverlay = cv2.filter2D(selectionOverlay, -1, kernel)>1
-        
-        # filling holes in selection
-        kernelSize = 40
-        kernelClosing =  np.ones((kernelSize,kernelSize)) 
-        selectionOverlay = cv2.morphologyEx(np.uint8(selectionOverlay), cv2.MORPH_CLOSE, kernelClosing)
-        
-        # overlay selection
-        image[(selectionOverlay[:,:,0]>0),]=(255,0,0)
-        self.setImage(image)
-        
-        # update coordinate list
-        self.coordinateList = list(np.argwhere(selectionOverlay[:,:,0]>0))
-        
-    def set_pen_color(self, c):
-        self.pen_color = QtGui.QColor(c)
-
-    def mouseMoveEvent(self, e):
-        if self.last_x is None: # First event.
-            self.last_x = e.x()
-            self.last_y = e.y()
-            return # Ignore the first time.
-
-        painter = QtGui.QPainter(self.pixmap())
-        p = painter.pen()
-        p.setWidth(self.penwidth)
-        p.setColor(self.pen_color)
-        painter.setPen(p)
-        painter.drawLine(self.last_x, self.last_y, e.x(), e.y())
-        painter.end()
-        self.update()
-        if self.last_x is not None and self.last_y is not None:
-            self.last_x = e.x()
-            self.last_y = e.y()
-            self.coordinateList.append([e.y(), e.x()])
-        
-    def getCoordinateList(self):
-        return self.coordinateList
-    
-    def resetCoordinateList(self):
-        self.coordinateList = []
-        
-    def mouseReleaseEvent(self, e):
-        self.last_x = None
-        self.last_y = None
-
-
-
-COLORS = ['#000000', '#ffffff']
 
 
 class QPaletteButton(QtWidgets.QPushButton):
@@ -363,8 +236,6 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.physOffsetX = offsetX
         self.physOffsetY = offsetY
 
-    def updateBoxPosition(self):
-        pass
 
     @property
     def pixmap_item(self):
@@ -396,6 +267,20 @@ class ScanSelectView(QtWidgets.QGraphicsView):
             rect = PyQt5.QtCore.QRectF(self.start_point, lp)
             self.selection_rect.setRect(rect.normalized())
 
+    def drawRectCurrentPoint(self, posX, posY):
+        '''
+        draw the current coordinates in the map converted from real-world coordinates into pixelmaps
+        '''
+        try: self.scene().removeItem(self.selection_rect_current)
+        except: pass
+         
+        left = ((posX - self.physOffsetX)/self.physDimX)*self.pixmap_item.pixmap().width()
+        top = -((posY - self.physOffsetY)/+self.physDimY*self.pixmap_item.pixmap().height()-self.pixmap_item.pixmap().height())
+                
+        self.selection_rect_current = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
+        self.selection_rect_current.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0)))
+        self.scene().addItem(self.selection_rect_current)     
+
     def mouseReleaseEvent(self, event):
         if event.button() == PyQt5.QtCore.Qt.LeftButton and self.start_point:
             self.start_point = None
@@ -426,14 +311,15 @@ class ScanSelectView(QtWidgets.QGraphicsView):
                     self.parent.sigCurrentOffset.emit(posX, posY)
                 else:
                     self.parent.goToPosition(posX, posY)
-
+                    self.drawRectCurrentPoint(posX, posY)
             else:
                 # rectangle => send min/max X/Y position to parent
                 # calculate real-world coordinates
                 posXmin = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
-                posYmin = top/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
                 posXmax = right/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
-                posYmax = bottom/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                posYmin = (self.pixmap_item.pixmap().height()-bottom)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                posYmax = (self.pixmap_item.pixmap().height()-top)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
+                
                 self.parent.setScanMinMax(posXmin, posYmin, posXmax, posYmax)
                 
                 

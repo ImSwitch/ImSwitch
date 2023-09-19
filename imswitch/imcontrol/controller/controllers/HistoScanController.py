@@ -180,15 +180,20 @@ class HistoScanController(LiveUpdatedController):
         positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height)
         
         # reseve space for the large image we will draw
-        file_name = "test"
+        tz = datetime.timezone.utc
+        ft = "%Y-%m-%dT%H_%M_%S"
+        t = datetime.datetime.now(tz=tz).strftime(ft)
+        file_name = "test_"+t
         extension = ".ome.tif"
         folder = self._master.HistoScanManager.defaultConfigPath
 
         #min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25)
-        stitcher = ImageStitcher(min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), 
+        stitcher = ImageStitcher(self, min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), 
                                  folder=folder, file_name=file_name, extension=extension, 
                                  pixelsize_eff=self.detector.pixelSizeUm[-1])
-
+        self.stages.move(value=positionList[0][0], axis="X", is_absolute=True, is_blocking=True)
+        self.stages.move(value=positionList[0][1], axis="Y", is_absolute=True, is_blocking=True)
+                        
         for iPos in positionList:
             try:
                 if not self.ishistoscanRunning:
@@ -219,25 +224,26 @@ class HistoScanController(LiveUpdatedController):
             except Exception as e:
                 self._logger.error(e)
 
-
-        # get stitched result
-        largeImage = stitcher.get_stitched_image()
-        tif.imsave("stitchedImage.tif", largeImage, append=False) 
-        # display result 
-        self.histoScanStackName = "histoscanStitch"
-        self.histoscanStack = largeImage
-        self.sigImageReceived.emit()
-
         # return to initial position
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         self._commChannel.sigUpdateMotorPosition.emit()
-
+        
         # move back to initial position
         self.stophistoscan()
-        
-        
-        
-        
+
+        # get stitched result
+        def getStitchedResult():
+            largeImage = stitcher.get_stitched_image()
+            tif.imsave("stitchedImage.tif", largeImage, append=False) 
+            # display result 
+            self.setImageForDisplay(largeImage, "histoscanStitch")
+        threading.Thread(target=getStitchedResult).start()
+
+    def setImageForDisplay(self, image, name):
+        self.histoScanStackName = name
+        self.histoscanStack = image
+        self.sigImageReceived.emit()
+
     def stophistoscan(self):
         self.ishistoscanRunning = False
         self._widget.startButton.setEnabled(True)
@@ -257,8 +263,9 @@ from collections import deque
 
 class ImageStitcher:
 
-    def __init__(self, min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25):
+    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25):
         # Initial min and max coordinates 
+        self._parent = parent
         self.pixelsize_eff = pixelsize_eff
         self.subsample_factor = subsample_factor
         self.min_coords = np.int32(np.array(min_coords)/pixelsize_eff*self.subsample_factor)
@@ -269,7 +276,9 @@ class ImageStitcher:
         self.tifwriter = tifffile.TiffWriter(file_path, bigtiff=True)
 
         # Create a blank canvas for the final image and a canvas to track blending weights
-        self.stitched_image = np.zeros((self.max_coords[1] - self.min_coords[1], self.max_coords[0] - self.min_coords[0], 3), dtype=np.float32)
+        self.nY = self.max_coords[1] - self.min_coords[1]
+        self.nX = self.max_coords[0] - self.min_coords[0]
+        self.stitched_image = np.zeros((self.nY, self.nX, 3), dtype=np.float32)
         self.weight_image = np.zeros(self.stitched_image.shape, dtype=np.float32)
 
         # Queue to hold incoming images
@@ -301,19 +310,23 @@ class ImageStitcher:
             
 
     def _place_on_canvas(self, img, coords):
+        # min/max coordinates are already in physical world dimenions
         offset_x = int(coords[0]/self.pixelsize_eff*self.subsample_factor - self.min_coords[0])
-        offset_y = int(coords[1]/self.pixelsize_eff*self.subsample_factor - self.min_coords[1])
+        offset_y = int(self.max_coords[1]-(coords[1])/self.pixelsize_eff*self.subsample_factor)
 
         # Calculate a feathering mask based on image intensity
-        img = cv2.resize(img, None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) > 1
+        img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
 
-        alpha = np.mean(img, axis=-1)
+        alpha = np.mean(np.copy(img), axis=-1)
         alpha = gaussian_filter(alpha, sigma=10)
         alpha /= np.max(alpha)
 
         try:
             self.stitched_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += img * alpha[:, :, np.newaxis]
-            self.weight_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+            self.weight_image[offset_y:self.nY-offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+            # try to display in napari if ready
+            self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
+            time.sleep(.5)
         except Exception as e:
             print(e)
 

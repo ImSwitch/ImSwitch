@@ -79,7 +79,7 @@ class UC2ConfigController(ImConWidgetController):
         mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)
         mThread.start()
         mThread.join()
-        self._widget.reconnectDeviceLabel.updateFirmwareDeviceLabel.setText("Bring the PS controller into pairing mode")
+        self._widget.reconnectDeviceLabel.setText("Bring the PS controller into pairing mode")
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

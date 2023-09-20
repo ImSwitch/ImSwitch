@@ -2,7 +2,8 @@ import tifffile
 import os
 import xml.etree.ElementTree as ET
 
-file_path = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\test.ome.tif')
+file_name = "test_2023-09-19T20_19_04.ome.tif"
+file_path = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\', file_name)
 with tifffile.TiffFile(file_path) as tif:
     ome_metadata = tif.ome_metadata
     images = tif.series

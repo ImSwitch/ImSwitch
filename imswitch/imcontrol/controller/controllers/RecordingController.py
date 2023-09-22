@@ -463,7 +463,7 @@ class RecordingController(ImConWidgetController):
         self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
     @APIExport(runOnUIThread=False)
-    def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, np.array,np.ndarray, list]:
+    def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
             numpy_array_list = self.snapNumpy()

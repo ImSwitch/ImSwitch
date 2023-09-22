@@ -626,6 +626,7 @@ class MCTController(ImConWidgetController):
         if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
+        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
@@ -633,14 +634,16 @@ class MCTController(ImConWidgetController):
         if not self.lasers[1].enabled: self.lasers[1].setEnabled(1)
         if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
         if self.lasers[0].power: self.lasers[0].setValue(0)
+        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
-        #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
-
+        if self.lasers[0].power: self.lasers[0].setValue(0)        
+        if self.lasers[1].power: self.lasers[1].setValue(0)
+        
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()

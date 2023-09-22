@@ -8,7 +8,7 @@ import tifffile
 import threading
 from datetime import datetime
 import cv2
-import tifffile as tif
+
 import datetime 
 from itertools import product
 try:
@@ -18,7 +18,6 @@ except:
     print("Ashlar not installed")
     IS_ASHLAR = False
 import numpy as np
-from tifffile import imread, imwrite, TiffFile
 
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
@@ -118,29 +117,28 @@ class HistoScanController(LiveUpdatedController):
         maxPosX = self._widget.getMaxPositionX()
         minPosY = self._widget.getMinPositionY()
         maxPosY = self._widget.getMaxPositionY()        
-        speed = 20000
         self._widget.startButton.setEnabled(False)
         self._widget.stopButton.setEnabled(True)
         self._widget.startButton.setText("Running")
         self._widget.stopButton.setText("Stop") 
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
+        overlap = 0.75
+        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap)
 
-        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, speed, 0)
-
-    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, speed, axis):
+    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
-            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, speed, axis))
+            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap))
             self.histoscanTask.start()
         
-    def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height):
+    def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height, overlap):
         # Calculate the number of steps in x and y directions
-        steps_x = int((posXmax - posXmin) / img_width)
-        steps_y = int((posYmax - posYmin) / img_height)
+        steps_x = int((posXmax - posXmin) / (img_width*overlap))
+        steps_y = int((posYmax - posYmin) / (img_height*overlap))
         
         coordinates = []
 
@@ -148,15 +146,15 @@ class HistoScanController(LiveUpdatedController):
         for y in range(steps_y):
             if y % 2 == 0:  # Even rows: left to right
                 for x in range(steps_x):
-                    coordinates.append((posXmin + x * img_width, posYmin + y * img_height))
+                    coordinates.append((posXmin + x * img_width *overlap, posYmin + y * img_height *overlap))
             else:  # Odd rows: right to left
                 for x in range(steps_x - 1, -1, -1):  # Starting from the last position, moving backwards
-                    coordinates.append((posXmin + x * img_width, posYmin + y * img_height))
+                    coordinates.append((posXmin + x * img_width *overlap, posYmin + y * img_height *overlap))
         
         return coordinates
 
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, speed, axis, overlap=0.75):
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
@@ -169,7 +167,7 @@ class HistoScanController(LiveUpdatedController):
         mFrame = self.detector.getLatestFrame()
 
         dimensionsFrame = mFrame.shape[1]*self.detector.pixelSizeUm[-1]
-        NpixX, NpixY = mFrame.shape[0], mFrame.shape[1]
+        NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
         # starting the snake scan
         # Calculate the size of the area each image covers
@@ -177,7 +175,7 @@ class HistoScanController(LiveUpdatedController):
         img_height = NpixY * self.detector.pixelSizeUm[-1]
 
         # precompute the position list in advance 
-        positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height)
+        positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, overlap)
         
         # reseve space for the large image we will draw
         tz = datetime.timezone.utc
@@ -187,7 +185,6 @@ class HistoScanController(LiveUpdatedController):
         extension = ".ome.tif"
         folder = self._master.HistoScanManager.defaultConfigPath
 
-        #min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25)
         stitcher = ImageStitcher(self, min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), 
                                  folder=folder, file_name=file_name, extension=extension, 
                                  pixelsize_eff=self.detector.pixelSizeUm[-1])
@@ -198,11 +195,9 @@ class HistoScanController(LiveUpdatedController):
             try:
                 if not self.ishistoscanRunning:
                     break
-                t0 = time.time()
-                self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
-                print("moving took "+str(time.time()-t0))
+                self.stages.move(value=iPos[0], axis="X", is_absolute=True, is_blocking=True)
+                self.stages.move(value=iPos[1], axis="Y", is_absolute=True, is_blocking=True)
                 mFrame = self.detector.getLatestFrame()  
-                print("snapping took "+str(time.time()-t0))
                 metadata = {'Pixels': {
                     'PhysicalSizeX': self.detector.pixelSizeUm[-1],
                     'PhysicalSizeXUnit': 'µm',
@@ -219,7 +214,6 @@ class HistoScanController(LiveUpdatedController):
                     stitcher.add_image(mFrame, iPos, metadata)
                 threading.Thread(target=addImage, args=(mFrame, iPos,)).start()
 
-                print("adding took "+str(time.time()-t0))
 
             except Exception as e:
                 self._logger.error(e)
@@ -234,7 +228,7 @@ class HistoScanController(LiveUpdatedController):
         # get stitched result
         def getStitchedResult():
             largeImage = stitcher.get_stitched_image()
-            tif.imsave("stitchedImage.tif", largeImage, append=False) 
+            tifffile.imsave("stitchedImage.tif", largeImage, append=False) 
             # display result 
             self.setImageForDisplay(largeImage, "histoscanStitch")
         threading.Thread(target=getStitchedResult).start()
@@ -271,10 +265,9 @@ class ImageStitcher:
         self.min_coords = np.int32(np.array(min_coords)/pixelsize_eff*self.subsample_factor)
         self.max_coords = np.int32(np.array(max_coords)/pixelsize_eff*self.subsample_factor)
         
-        # reserve space for the image writer
-        file_path = os.sep.join([folder, file_name + extension])
-        self.tifwriter = tifffile.TiffWriter(file_path, bigtiff=True)
-
+        # determine write location
+        self.file_path = os.sep.join([folder, file_name + extension])
+        
         # Create a blank canvas for the final image and a canvas to track blending weights
         self.nY = self.max_coords[1] - self.min_coords[1]
         self.nX = self.max_coords[0] - self.min_coords[0]
@@ -297,16 +290,17 @@ class ImageStitcher:
             self.queue.append((img, coords, metadata))
 
     def _process_queue(self):
-        while self.isRunning:
-            with self.lock:
-                if not self.queue:
-                    time.sleep(.1) # unload CPU
-                    continue
-                img, coords, metadata = self.queue.popleft()
-                self._place_on_canvas(img, coords)
+        with tifffile.TiffWriter(self.file_path, bigtiff=True, append=True) as tif:
+            while self.isRunning:
+                with self.lock:
+                    if not self.queue:
+                        time.sleep(.1) # unload CPU
+                        continue
+                    img, coords, metadata = self.queue.popleft()
+                    self._place_on_canvas(img, coords)
 
-                # write image to disk
-                self.tifwriter.write(data=img, metadata=metadata)
+                    # write image to disk
+                    tif.write(data=img, metadata=metadata)
             
 
     def _place_on_canvas(self, img, coords):

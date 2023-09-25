@@ -59,19 +59,9 @@ class PixelCalibrationController(LiveUpdatedController):
         # this is not a thread!
         
         csm_extension = CSMExtension(self)
-        csm_extension.calibrate_xy()
+        if IS_CAMERA_STAGE_MAPPING_INSTALLED:
+            csm_extension.calibrate_xy()
         
-        knownDistance = self._widget.getKnownDistance()
-        try:
-            self.lastTwoPoints = self._widget.viewer.layers["Pixelcalibration Points"].data[-2:,]
-            dx = self.lastTwoPoints[1,0]-self.lastTwoPoints[0,0]
-            dy = self.lastTwoPoints[1,1]-self.lastTwoPoints[0,1]
-            dr = np.sqrt(dx**2+dy**2)
-            pixelSize = knownDistance/dr
-            self._widget.setInformationLabel(str(pixelSize)+" µm")
-            self.detector.setPixelSizeUm(pixelSize*1e-3) # convert from nm to um
-        except:
-            pass 
 
     def setPixelSize(self):
         # returns nm from textedit
@@ -205,12 +195,15 @@ import os
 import json
 from collections import namedtuple
 
-from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
+try:
+    from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
 
-from camera_stage_mapping.camera_stage_tracker import Tracker
-from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
-from camera_stage_mapping.scan_coords_times import ordered_spiral
-
+    from camera_stage_mapping.camera_stage_tracker import Tracker
+    from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
+    from camera_stage_mapping.scan_coords_times import ordered_spiral
+    IS_CAMERA_STAGE_MAPPING_INSTALLED = True
+except ImportError:
+    IS_CAMERA_STAGE_MAPPING_INSTALLED = False
 
 
 CSM_DATAFILE_NAME = "csm_calibration.json"

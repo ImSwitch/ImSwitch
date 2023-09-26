@@ -262,19 +262,9 @@ class CSMExtension(object):
     
     def update_settings(self, settings):
         """Update the stored extension settings dictionary"""
-        if 0:
-            keys = ["extensions", self.name]
-            dictionary = create_from_path(keys)
-            set_by_path(dictionary, keys, settings)
-            logging.info(f"Updating settings with {dictionary}")
-            self.microscope.update_settings(dictionary)
-            self.microscope.save_settings()
-
+        pass 
     def get_settings(self):
         """Retrieve the settings for this extension"""
-        if 0:
-            keys = ["extensions", self.name]
-            return get_by_path(self.microscope.read_settings(), keys)
         return {}
     
     def camera_stage_functions(self):
@@ -326,8 +316,6 @@ class CSMExtension(object):
             "linear_calibration_y": cal_y,
         }
 
-        with open(CSM_DATAFILE_PATH, "w") as f:
-            json.dump(data, f, cls=JSONEncoder)
 
         return data
 

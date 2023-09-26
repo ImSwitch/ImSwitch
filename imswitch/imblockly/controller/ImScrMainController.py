@@ -4,7 +4,9 @@ from imswitch.imblockly.model import getActionsScope
 from .CommunicationChannel import CommunicationChannel
 from .ImScrMainViewController import ImScrMainViewController
 from .basecontrollers import ImScrWidgetControllerFactory
-
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 class ImScrMainController(MainController):
     """ Main controller of imblockly. """

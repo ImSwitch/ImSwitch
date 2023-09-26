@@ -331,6 +331,7 @@ class ImageStitcher:
 
                 # Get the current datetime
                 now = datetime.now()
+                import matplotlib.pyplot as plt
                 plt.imsave("test"+str(now.strftime('%H_%M_%S'))+".png", np.uint8(255*mResult/np.max(mResult)))
 
             # try to display in napari if ready

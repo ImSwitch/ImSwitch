@@ -22,7 +22,7 @@ class ThorcamManager(DetectorManager):
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         self._camera = self._getGXObj(cameraId ) 
         
-        for propertyName, propertyValue in detectorInfo.managerProperties['gxipycam'].items():
+        for propertyName, propertyValue in detectorInfo.managerProperties['thorcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
         fullShape = (self._camera.SensorWidth, 

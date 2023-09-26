@@ -31,39 +31,3 @@ with tifffile.TiffWriter('test.ome.tif', bigtiff=True) as tif:
         }
         tif.write(img, metadata=metadata)
         
-        
-# Function to add new image plane to OME metadata
-def add_plane_to_ome(ome, z, c, t):
-    plane = ome.images[0].pixels.planes[-1].copy() if ome.images[0].pixels.planes else None
-    if plane:
-        plane.z, plane.c, plane.t = z, c, t
-    else:
-        # If no previous plane exists, create a new one
-        from ome_types.model.simple_types import DimensionOrder
-        plane = ome.images[0].pixels.create_plane(the_z=z, the_c=c, the_t=t)
-    ome.images[0].pixels.planes.append(plane)
-    return ome
-
-# Initial OME metadata
-ome = create_ome_image(np.zeros((512, 512), dtype=np.uint8), name="example")
-
-output_filename = 'path_to_output_ome.tif'
-
-# Example loop for processing and appending images
-for idx in range(10):
-    # Example: create a random image
-    new_image = np.random.randint(0, 256, (512, 512), dtype=np.uint8)
-
-    # Update OME metadata for new plane (set your appropriate z, c, t values)
-    ome = add_plane_to_ome(ome, z=idx, c=0, t=0)
-
-    # Save or append the new image with updated metadata to OME-TIFF
-    if idx == 0:
-        imwrite(output_filename, new_image, ome=to_xml(ome))
-    else:
-        with TiffFile(output_filename, mode='a') as tif:
-            tif.write(new_image, ome=to_xml(ome))
-
-print("OME-TIFF file saved successfully!")
-
-

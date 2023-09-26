@@ -17,10 +17,6 @@ import time
 
 from fractions import Fraction
 from uuid import UUID
-
-import numpy as np
-
-
 import logging
 import time
 import numpy as np
@@ -30,11 +26,15 @@ import os
 import json
 from collections import namedtuple
 
-from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
+try:
+    from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
 
-from camera_stage_mapping.camera_stage_tracker import Tracker
-from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
-from camera_stage_mapping.scan_coords_times import ordered_spiral
+    from camera_stage_mapping.camera_stage_tracker import Tracker
+    from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
+    from camera_stage_mapping.scan_coords_times import ordered_spiral
+    IS_CAMERA_STAGE_MAPPING_INSTALLED = True
+except ImportError:
+    IS_CAMERA_STAGE_MAPPING_INSTALLED = False
 
 
 from ..basecontrollers import LiveUpdatedController
@@ -57,7 +57,7 @@ class PixelCalibrationController(LiveUpdatedController):
         self._widget.PixelCalibrationUndoButton.clicked.connect(self.undoSelection)
         self._widget.PixelCalibrationCalibrateButton.clicked.connect(self.startPixelCalibration)
         self._widget.PixelCalibrationStageCalibrationButton.clicked.connect(self.stageCalibration)
-        
+
         self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
         self.pixelSize=500 # defaul FIXME: Load from json?
 
@@ -69,28 +69,21 @@ class PixelCalibrationController(LiveUpdatedController):
     def undoSelection(self):
         # recover the previous selection
         self._widget.canvas.undoSelection()
-        
+
     def snapPreview(self):
         self._logger.info("Snap preview...")
         previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
         self._widget.setImage(previewImage)
         self._widget.addPointLayer()
-        
+
     def startPixelCalibration(self):
         # initilaze setup
         # this is not a thread!
-       
-        knownDistance = self._widget.getKnownDistance()
-        try:
-            self.lastTwoPoints = self._widget.viewer.layers["Pixelcalibration Points"].data[-2:,]
-            dx = self.lastTwoPoints[1,0]-self.lastTwoPoints[0,0]
-            dy = self.lastTwoPoints[1,1]-self.lastTwoPoints[0,1]
-            dr = np.sqrt(dx**2+dy**2)
-            pixelSize = knownDistance/dr
-            self._widget.setInformationLabel(str(pixelSize)+" µm")
-            self.detector.setPixelSizeUm(pixelSize*1e-3) # convert from nm to um
-        except:
-            pass 
+
+        csm_extension = CSMExtension(self)
+        if IS_CAMERA_STAGE_MAPPING_INSTALLED:
+            csm_extension.calibrate_xy()
+
 
     def setPixelSize(self):
         # returns nm from textedit
@@ -104,11 +97,11 @@ class PixelCalibrationController(LiveUpdatedController):
             self._logger.error("Could not set pixel size in camera parameters")
             self._logger.error(e)
             self._widget.setInformationLabel("Could not set pixel size in camera parameters")
-        
+
     def stageCalibration(self):
         stageCalibrationT = threading.Thread(target=self.stageCalibrationThread, args=())
         stageCalibrationT.start()
-        
+
     def stageCalibrationThread(self, stageName=None, scanMax=100, scanMin=-100, scanStep = 50, rescalingFac=10.0, gridScan=True):
         # we assume we have a structured sample in focus
         # the sample is moved around and the deltas are measured
@@ -120,18 +113,17 @@ class PixelCalibrationController(LiveUpdatedController):
 
 
 
-
 CSM_DATAFILE_NAME = "csm_calibration.json"
 #CSM_DATAFILE_PATH = data_file_path(CSM_DATAFILE_NAME)
 
 MoveHistory = namedtuple("MoveHistory", ["times", "stage_positions"])
 class LoggingMoveWrapper():
     """Wrap a move function, and maintain a log position/time.
-    
+
     This class is callable, so it doesn't change the signature
     of the function it wraps - it just makes it possible to get
     a list of all the moves we've made, and how long they took.
-    
+
     Said list is intended to be useful for calibrating the stage
     so we can estimate how long moves will take.
     """
@@ -165,34 +157,37 @@ class CSMExtension(object):
     """
 
     def __init__(self, parent):
-        self._parent = parent 
-    
-    
+        self._parent = parent
+
+
     def update_settings(self, settings):
         """Update the stored extension settings dictionary"""
         if 0:
+            pass
+            '''
             keys = ["extensions", self.name]
             dictionary = create_from_path(keys)
             set_by_path(dictionary, keys, settings)
             logging.info(f"Updating settings with {dictionary}")
             self.microscope.update_settings(dictionary)
             self.microscope.save_settings()
+            '''
 
     def get_settings(self):
         """Retrieve the settings for this extension"""
         if 0:
             keys = ["extensions", self.name]
-            return get_by_path(self.microscope.read_settings(), keys)
+            #return get_by_path(self.microscope.read_settings(), keys)
         return {}
-    
+
     def camera_stage_functions(self):
         """Return functions that allow us to interface with the microscope"""
         grab_image = self._parent.detector.getLatestFrame
-        
+
         def getPositionList():
             posDict = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]].getPosition()
             return (posDict["X"], posDict["Y"], posDict["Z"])
-        
+
         def movePosition(posList):
             stage = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]]
             stepSizeX = 0.315
@@ -202,7 +197,7 @@ class CSMExtension(object):
             self._parent._logger.info("Moving to: "+str(posList))
             if len(posList)>2:
                 stage.move(value=posList[2], axis="Z", is_absolute=True, is_blocking=True)
-            
+
         get_position = getPositionList
         move = movePosition
         wait = time.sleep(0.1)
@@ -226,7 +221,7 @@ class CSMExtension(object):
         cal_x = self.calibrate_1d(np.array([1, 0, 0]))
         self._parent._logger.info("Calibrating Y axis:")
         cal_y = self.calibrate_1d(np.array([0, 1, 0]))
-        
+
         # Combine X and Y calibrations to make a 2D calibration
         cal_xy = image_to_stage_displacement_from_1d([cal_x, cal_y])
         self.update_settings(cal_xy)
@@ -236,7 +231,9 @@ class CSMExtension(object):
             "linear_calibration_x": cal_x,
             "linear_calibration_y": cal_y,
         }
-        CSM_DATAFILE_PATH = self._parent._master.HistoScanManager.defaultConfigPath+"/csm.json"
+        CSM_DATAFILE_PATH = None
+        JSONEncoder = None
+
         with open(CSM_DATAFILE_PATH, "w") as f:
             json.dump(data, f, cls=JSONEncoder)
 
@@ -271,9 +268,9 @@ class CSMExtension(object):
         This returns a generator, which will move the stage to each point in
         ``scan_path``, then yield ``i, pos`` where ``i``
         is the index of the scan point, and ``pos`` is the estimated position
-        in pixels relative to the starting point.  To use it properly, you 
+        in pixels relative to the starting point.  To use it properly, you
         should iterate over it, for example::
-        
+
             for i, pos in csm_extension.closed_loop_scan(scan_path):
                 capture_image(f"image_{i}.jpg")
 
@@ -281,7 +278,7 @@ class CSMExtension(object):
         the points to visit in pixels relative to the current position.
 
         If an exception occurs during the scan, we automatically return to the
-        starting point.  Keyword arguments are passed to 
+        starting point.  Keyword arguments are passed to
         ``closed_loop_move.closed_loop_scan``.
         """
         grab_image, get_position, move, wait = self.camera_stage_functions()

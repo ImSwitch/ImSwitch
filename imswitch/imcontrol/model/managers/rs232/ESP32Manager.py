@@ -39,7 +39,7 @@ class ESP32Manager:
         #self._esp32.modules.set_modules("{'wifi':0}")
 
     def finalize(self):
-        pass
+        self._esp32.close()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

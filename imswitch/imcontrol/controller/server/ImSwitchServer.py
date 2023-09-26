@@ -66,6 +66,7 @@ class ImSwitchServer(Worker):
         #self.__logger.debug("Loop Finished")
 
     def stop(self):
+        self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
 
 

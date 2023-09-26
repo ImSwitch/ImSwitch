@@ -8,6 +8,10 @@ import tifffile
 import threading
 from datetime import datetime
 import cv2
+import numpy as np
+from skimage.io import imsave
+from scipy.ndimage import gaussian_filter
+from collections import deque
 
 import datetime 
 from itertools import product
@@ -250,20 +254,16 @@ class HistoScanController(LiveUpdatedController):
         
 
 
-import numpy as np
-from skimage.io import imsave
-from scipy.ndimage import gaussian_filter
-from collections import deque
+
 
 class ImageStitcher:
 
-    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, pixelsize_eff=1, subsample_factor=.25):
+    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, subsample_factor=.25, backgroundimage=None):
         # Initial min and max coordinates 
         self._parent = parent
-        self.pixelsize_eff = pixelsize_eff
         self.subsample_factor = subsample_factor
-        self.min_coords = np.int32(np.array(min_coords)/pixelsize_eff*self.subsample_factor)
-        self.max_coords = np.int32(np.array(max_coords)/pixelsize_eff*self.subsample_factor)
+        self.min_coords = np.int32(np.array(min_coords)*self.subsample_factor)
+        self.max_coords = np.int32(np.array(max_coords)*self.subsample_factor)
         
         # determine write location
         self.file_path = os.sep.join([folder, file_name + extension])
@@ -273,6 +273,7 @@ class ImageStitcher:
         self.nX = self.max_coords[0] - self.min_coords[0]
         self.stitched_image = np.zeros((self.nY, self.nX, 3), dtype=np.float32)
         self.weight_image = np.zeros(self.stitched_image.shape, dtype=np.float32)
+        self.stitched_image_shape= self.stitched_image.shape
 
         # Queue to hold incoming images
         self.queue = deque()
@@ -290,7 +291,7 @@ class ImageStitcher:
             self.queue.append((img, coords, metadata))
 
     def _process_queue(self):
-        with tifffile.TiffWriter(self.file_path, bigtiff=True, append=True) as tif:
+        #with tifffile.TiffWriter(self.file_path, bigtiff=True, append=True) as tif:
             while self.isRunning:
                 with self.lock:
                     if not self.queue:
@@ -300,27 +301,40 @@ class ImageStitcher:
                     self._place_on_canvas(img, coords)
 
                     # write image to disk
-                    tif.write(data=img, metadata=metadata)
+                    #tif.write(data=img, metadata=metadata)
             
 
     def _place_on_canvas(self, img, coords):
-        # min/max coordinates are already in physical world dimenions
-        offset_x = int(coords[0]/self.pixelsize_eff*self.subsample_factor - self.min_coords[0])
-        offset_y = int(self.max_coords[1]-(coords[1])/self.pixelsize_eff*self.subsample_factor)
+        # these are pixelcoordinates (e.g. center of the imageslice)
+        offset_x = int(coords[0]*self.subsample_factor - self.min_coords[0])
+        offset_y = int(self.max_coords[1]-coords[1]*self.subsample_factor)
 
         # Calculate a feathering mask based on image intensity
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
-
+        img = np.flip(np.flip(img,1),0)
         alpha = np.mean(np.copy(img), axis=-1)
         alpha = gaussian_filter(alpha, sigma=10)
         alpha /= np.max(alpha)
 
-        try:
-            self.stitched_image[offset_y:offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += img * alpha[:, :, np.newaxis]
-            self.weight_image[offset_y:self.nY-offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+        try: 
+            stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
+            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = (img * alpha[:, :, np.newaxis])[0:stitchDim[0], 0:stitchDim[1]]
+            #self.stitched_image = self.stitched_image +  nip.extract(nip.extract(nip.image(img), ROIsize=self.stitched_image_shape, centerpos=np.int32((coords[1]+img.shape[1]//2, coords[0]+img.shape[0]//2, 1))), ROIsize=self.stitched_image_shape)
+            #self.weight_image[offset_y:self.nY-offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
+            #self.stitched_image[offset_y-img.shape[0]//2:offset_y+img.shape[0]//2, offset_x-img.shape[1]//2:offset_x+img.shape[1]//2] += img * alpha[:, :, np.newaxis]
+            
+            
+            mResult = self.stitched_image.copy()
+            
+            if 0:
+                from datetime import datetime
+
+                # Get the current datetime
+                now = datetime.now()
+                plt.imsave("test"+str(now.strftime('%H_%M_%S'))+".png", np.uint8(255*mResult/np.max(mResult)))
+
             # try to display in napari if ready
-            self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
-            time.sleep(.5)
+            #self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
         except Exception as e:
             print(e)
 
@@ -334,7 +348,6 @@ class ImageStitcher:
     def save_stitched_image(self, filename):
         stitched = self.get_stitched_image()
         imsave(filename, stitched)
-
     
     
 

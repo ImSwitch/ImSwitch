@@ -22,15 +22,11 @@ class AutofocusWidget(NapariHybridWidget):
         self.zStepRangeLabel = QtWidgets.QLabel('Focus search range (mm)')
         self.zStepSizeEdit = QtWidgets.QLineEdit('10')
         self.zStepSizeLabel = QtWidgets.QLabel('Stepsize (mm)')
-
+        self.zBackgroundDefocusEdit = QtWidgets.QLineEdit('0')
+        self.zBackgroundDefocusLabel = QtWidgets.QLabel('Defocus Move (mm)')
         # self.focusDataBox = QtWidgets.QCheckBox('Save data')  # Connect to exportData
         #self.camDialogButton = guitools.BetterPushButton('Camera Dialog')
 
-        # Piezo absolute positioning
-        self.positionLabel = QtWidgets.QLabel(
-            'Position (mm)')  # Potentially disregard this and only use in the positioning widget?
-        self.positionEdit = QtWidgets.QLineEdit('50')
-        #self.positionSetButton = guitools.BetterPushButton('Set')
 
         # Focus lock graph
         self.AutofocusGraph = pg.GraphicsLayoutWidget()
@@ -61,9 +57,8 @@ class AutofocusWidget(NapariHybridWidget):
         grid.addWidget(self.zStepRangeEdit, 4, 4)
         grid.addWidget(self.zStepSizeLabel, 3, 5)
         grid.addWidget(self.zStepSizeEdit, 4, 5)
-        grid.addWidget(self.positionLabel, 1, 6)
-        grid.addWidget(self.positionEdit, 1, 7)
-        #grid.addWidget(self.positionSetButton, 2, 6, 1, 2)
+        grid.addWidget(self.zBackgroundDefocusLabel, 1, 6)
+        grid.addWidget(self.zBackgroundDefocusEdit, 1, 7)
         self.layer = None
         
     def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):

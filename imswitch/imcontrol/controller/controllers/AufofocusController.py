@@ -63,14 +63,15 @@ class AutofocusController(ImConWidgetController):
         if not self.isAutofusRunning:
             rangez = float(self._widget.zStepRangeEdit.text())
             resolutionz = float(self._widget.zStepSizeEdit.text())
+            defocusz = float(self._widget.zBackgroundDefocusEdit.text())
             self._widget.focusButton.setText('Stop')
-            self.autoFocus(rangez, resolutionz)
+            self.autoFocus(rangez, resolutionz, defocusz)
         else:
             self.isAutofusRunning = False
 
     @APIExport(runOnUIThread=True)
     # Update focus lock
-    def autoFocus(self, rangez=100, resolutionz=10):
+    def autoFocus(self, rangez=100, resolutionz=10, defocusz=0):
 
         '''
         The stage moves from -rangez...+rangez with a resolution of resolutionz
@@ -79,7 +80,7 @@ class AutofocusController(ImConWidgetController):
         '''
         # determine optimal focus position by stepping through all z-positions and cacluate the focus metric
         self.isAutofusRunning = True
-        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz),
+        self._AutofocusThead = threading.Thread(target=self.doAutofocusBackground, args=(rangez, resolutionz, defocusz),
                                                 daemon=True)
         self._AutofocusThead.start()
 
@@ -112,11 +113,12 @@ class AutofocusController(ImConWidgetController):
         time.sleep(1)  #debounce
         return flatfield
 
-    def doAutofocusBackground(self, rangez=100, resolutionz=10):
+    def doAutofocusBackground(self, rangez=100, resolutionz=10, defocusz=0):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
 
-       # record a flatfield Image and display
-        flatfieldImage = self.recordFlatfield()
+        # record a flatfield Image and display
+        if defocusz !=0:
+            flatfieldImage = self.recordFlatfield(defocusPosition=defocusz)
         self.imageToDisplay = flatfieldImage
         self.imageToDisplayName = "FlatFieldImage"
         #self.sigImageReceived.emit()

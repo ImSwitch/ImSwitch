@@ -3,6 +3,7 @@ import os
 import xml.etree.ElementTree as ET
 
 file_name = "test_2023-09-20T20_20_15.ome.tif"
+file_name = "test_2023-09-28T20_41_19.ome.tif"
 file_path = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\', file_name)
 with tifffile.TiffFile(file_path) as tif:
     ome_metadata = tif.ome_metadata
@@ -115,12 +116,7 @@ class ImageStitcher:
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
             self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = (img * alpha[:, :, np.newaxis])[0:stitchDim[0], 0:stitchDim[1]]
-            #self.stitched_image = self.stitched_image +  nip.extract(nip.extract(nip.image(img), ROIsize=self.stitched_image_shape, centerpos=np.int32((coords[1]+img.shape[1]//2, coords[0]+img.shape[0]//2, 1))), ROIsize=self.stitched_image_shape)
-            #self.weight_image[offset_y:self.nY-offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
-            #self.stitched_image[offset_y-img.shape[0]//2:offset_y+img.shape[0]//2, offset_x-img.shape[1]//2:offset_x+img.shape[1]//2] += img * alpha[:, :, np.newaxis]
-            
-            
-            mResult = self.stitched_image.copy()
+            #self.weight_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]]+= alpha[:, :, np.newaxis]
             
             if 0:
                 from datetime import datetime

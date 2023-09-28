@@ -189,9 +189,10 @@ class HistoScanController(LiveUpdatedController):
         extension = ".ome.tif"
         folder = self._master.HistoScanManager.defaultConfigPath
 
-        stitcher = ImageStitcher(self, min_coords=(int(minPosX-img_width),int(minPosY-img_height)), max_coords=(int(maxPosX+img_width),int(maxPosY+img_height)), 
-                                 folder=folder, file_name=file_name, extension=extension, 
-                                 pixelsize_eff=self.detector.pixelSizeUm[-1])
+        maxPosPixY = int((maxPosY-minPosY)/self.detector.pixelSizeUm[-1])
+        maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
+        stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, file_name=file_name, extension=extension)
+        
         self.stages.move(value=positionList[0][0], axis="X", is_absolute=True, is_blocking=True)
         self.stages.move(value=positionList[0][1], axis="Y", is_absolute=True, is_blocking=True)
                         
@@ -213,10 +214,14 @@ class HistoScanController(LiveUpdatedController):
                         'PositionY': iPos[1]
                 }, }
 
-                def addImage(mFrame, iPos):
+                def addImage(mFrame):
                     self._commChannel.sigUpdateMotorPosition.emit()
-                    stitcher.add_image(mFrame, iPos, metadata)
-                threading.Thread(target=addImage, args=(mFrame, iPos,)).start()
+                    posY_pix_value = (float(iPos[1])-minPosY)/self.detector.pixelSizeUm[-1]
+                    posX_pix_value = (float(iPos[0])-minPosX)/self.detector.pixelSizeUm[-1]
+                    iPosPix = (posX_pix_value, posY_pix_value)
+                    
+                    stitcher.add_image(mFrame, iPosPix, metadata)
+                threading.Thread(target=addImage, args=(mFrame,)).start()
 
 
             except Exception as e:
@@ -291,7 +296,7 @@ class ImageStitcher:
             self.queue.append((img, coords, metadata))
 
     def _process_queue(self):
-        #with tifffile.TiffWriter(self.file_path, bigtiff=True, append=True) as tif:
+        with tifffile.TiffWriter(self.file_path, bigtiff=True, append=True) as tif:
             while self.isRunning:
                 with self.lock:
                     if not self.queue:
@@ -301,7 +306,7 @@ class ImageStitcher:
                     self._place_on_canvas(img, coords)
 
                     # write image to disk
-                    #tif.write(data=img, metadata=metadata)
+                    tif.write(data=img, metadata=metadata)
             
 
     def _place_on_canvas(self, img, coords):
@@ -319,14 +324,11 @@ class ImageStitcher:
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
             self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = (img * alpha[:, :, np.newaxis])[0:stitchDim[0], 0:stitchDim[1]]
-            #self.stitched_image = self.stitched_image +  nip.extract(nip.extract(nip.image(img), ROIsize=self.stitched_image_shape, centerpos=np.int32((coords[1]+img.shape[1]//2, coords[0]+img.shape[0]//2, 1))), ROIsize=self.stitched_image_shape)
-            #self.weight_image[offset_y:self.nY-offset_y+img.shape[0], offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
-            #self.stitched_image[offset_y-img.shape[0]//2:offset_y+img.shape[0]//2, offset_x-img.shape[1]//2:offset_x+img.shape[1]//2] += img * alpha[:, :, np.newaxis]
-            
-            
-            mResult = self.stitched_image.copy()
+            self.weight_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
             
             if 0:
+                mResult = self.stitched_image.copy()
+            
                 from datetime import datetime
 
                 # Get the current datetime
@@ -344,7 +346,7 @@ class ImageStitcher:
             # Normalize by the weight image to get the final result
             stitched = self.stitched_image / np.maximum(self.weight_image, 1e-5)
             self.isRunning = False
-            return stitched
+            return stitched 
 
     def save_stitched_image(self, filename):
         stitched = self.get_stitched_image()

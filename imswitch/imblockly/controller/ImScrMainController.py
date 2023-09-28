@@ -71,11 +71,7 @@ class MyServer:
 
     class StaticServer(BaseHTTPRequestHandler):
         def do_GET(self):
-            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            if self.path == '/':
-                filename = root + '/index.html'
-            else:
-                filename = root + self.path
+            root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "view", "static", "index.html")
             
             self.send_response(200)
             if filename[-4:] == '.css':

@@ -423,7 +423,7 @@ class CameraHIK:
                         self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
 
                         self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                        self.lastFrameId = stOutFrame.stFrameInfo.nFrameNum
+                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
                         self.timestamp = time.time()
                         self.frame_buffer.append(self.frame)
                         self.frameid_buffer.append(self.lastFrameId)

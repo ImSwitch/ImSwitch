@@ -193,35 +193,33 @@ class HistoScanController(LiveUpdatedController):
         maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
         stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, file_name=file_name, extension=extension)
         
-        self.stages.move(value=positionList[0][0], axis="X", is_absolute=True, is_blocking=True)
-        self.stages.move(value=positionList[0][1], axis="Y", is_absolute=True, is_blocking=True)
+        self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
                         
         for iPos in positionList:
             try:
                 if not self.ishistoscanRunning:
                     break
-                self.stages.move(value=iPos[0], axis="X", is_absolute=True, is_blocking=True)
-                self.stages.move(value=iPos[1], axis="Y", is_absolute=True, is_blocking=True)
+                self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
                 mFrame = self.detector.getLatestFrame()  
-                metadata = {'Pixels': {
-                    'PhysicalSizeX': self.detector.pixelSizeUm[-1],
-                    'PhysicalSizeXUnit': 'µm',
-                    'PhysicalSizeY': self.detector.pixelSizeUm[-1],
-                    'PhysicalSizeYUnit': 'µm'},
 
-                    'Plane': {
-                        'PositionX': iPos[0],
-                        'PositionY': iPos[1]
-                }, }
+                def addImage(mFrame, positionList):
+                    metadata = {'Pixels': {
+                        'PhysicalSizeX': self.detector.pixelSizeUm[-1],
+                        'PhysicalSizeXUnit': 'µm',
+                        'PhysicalSizeY': self.detector.pixelSizeUm[-1],
+                        'PhysicalSizeYUnit': 'µm'},
 
-                def addImage(mFrame):
+                        'Plane': {
+                            'PositionX': positionList[0],
+                            'PositionY': positionList[1]
+                    }, }
                     self._commChannel.sigUpdateMotorPosition.emit()
-                    posY_pix_value = (float(iPos[1])-minPosY)/self.detector.pixelSizeUm[-1]
-                    posX_pix_value = (float(iPos[0])-minPosX)/self.detector.pixelSizeUm[-1]
+                    posY_pix_value = (float(positionList[1])-minPosY)/self.detector.pixelSizeUm[-1]
+                    posX_pix_value = (float(positionList[0])-minPosX)/self.detector.pixelSizeUm[-1]
                     iPosPix = (posX_pix_value, posY_pix_value)
-                    
-                    stitcher.add_image(mFrame, iPosPix, metadata)
-                threading.Thread(target=addImage, args=(mFrame,)).start()
+                    #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
+                    stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
+                threading.Thread(target=addImage, args=(mFrame,iPos)).start()
 
 
             except Exception as e:
@@ -277,7 +275,6 @@ class ImageStitcher:
         self.nY = self.max_coords[1] - self.min_coords[1]
         self.nX = self.max_coords[0] - self.min_coords[0]
         self.stitched_image = np.zeros((self.nY, self.nX, 3), dtype=np.float32)
-        self.weight_image = np.zeros(self.stitched_image.shape, dtype=np.float32)
         self.stitched_image_shape= self.stitched_image.shape
 
         # Queue to hold incoming images
@@ -313,38 +310,24 @@ class ImageStitcher:
         # these are pixelcoordinates (e.g. center of the imageslice)
         offset_x = int(coords[0]*self.subsample_factor - self.min_coords[0])
         offset_y = int(self.max_coords[1]-coords[1]*self.subsample_factor)
+        self._parent._logger.debug("Coordinates: "+str((offset_x,offset_y)))
 
         # Calculate a feathering mask based on image intensity
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
         img = np.flip(np.flip(img,1),0)
-        alpha = np.mean(np.copy(img), axis=-1)
-        alpha = gaussian_filter(alpha, sigma=10)
-        alpha /= np.max(alpha)
-
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
-            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = (img * alpha[:, :, np.newaxis])[0:stitchDim[0], 0:stitchDim[1]]
-            self.weight_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] += alpha[:, :, np.newaxis]
-            
-            if 0:
-                mResult = self.stitched_image.copy()
-            
-                from datetime import datetime
-
-                # Get the current datetime
-                now = datetime.now()
-                import matplotlib.pyplot as plt
-                plt.imsave("test"+str(now.strftime('%H_%M_%S'))+".png", np.uint8(255*mResult/np.max(mResult)))
-
+            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = img[0:stitchDim[0], 0:stitchDim[1]]
+        
             # try to display in napari if ready
-            #self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
+            # self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
         except Exception as e:
             print(e)
 
     def get_stitched_image(self):
         with self.lock:
             # Normalize by the weight image to get the final result
-            stitched = self.stitched_image / np.maximum(self.weight_image, 1e-5)
+            stitched = self.stitched_image.copy()
             self.isRunning = False
             return stitched 
 

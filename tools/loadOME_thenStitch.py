@@ -3,7 +3,7 @@ import os
 import xml.etree.ElementTree as ET
 
 file_name = "test_2023-09-20T20_20_15.ome.tif"
-file_name = "test_2023-09-28T20_41_19.ome.tif"
+file_name = "test_2023-09-28T20_59_15.ome.tif"
 file_path = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\', file_name)
 with tifffile.TiffFile(file_path) as tif:
     ome_metadata = tif.ome_metadata

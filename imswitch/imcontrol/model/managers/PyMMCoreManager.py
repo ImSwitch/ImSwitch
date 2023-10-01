@@ -3,6 +3,7 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.configfiletools import _mmcoreLogDir
 from typing import Union, Tuple, Dict, List
 from pymmcore_plus import CMMCorePlus, PropertyType
+from pycromanager import Core, start_headless
 import datetime as dt
 import os
 
@@ -16,9 +17,15 @@ class PyMMCoreManager(SignalInterface):
     def __init__(self, setupInfo) -> None:
         super().__init__()
         self.__logger = initLogger(self)
-        self.__core = CMMCorePlus()
         
-        self.__logger.info(f"Micro-Manager path: {self.__core._mm_path}")
+        start_headless(
+            mm_app_path=setupInfo.pycroManager["mmPath"],
+            max_memory_mb=setupInfo.pycroManager["maxMemoryMB"],
+            buffer_size_mb=setupInfo.pycroManager["bufferSizeMB"],
+            port=setupInfo.pycroManager["port"] 
+        )
+        
+        self.__core = Core()
 
         self.__logger.info(self.__core.getAPIVersionInfo())
 

@@ -269,6 +269,14 @@ class PyroServerInfo:
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
+@dataclass(frozen=True)
+class PycroManagerInfo:
+    # TODO: this path is valid only for Windows; add support for other OSes
+    mmPath : Optional[str] = "C:/Program Files/Micro-Manager/"
+    port: Optional[int] = 4827
+    bufferSizeMB : Optional[int] = 1024
+    maxMemoryMB : Optional[int] = 2000
+
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
 class SetupInfo:
@@ -315,6 +323,9 @@ class SetupInfo:
 
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
+    
+    pycroManager: Optional[PycroManagerInfo] = field(default_factory=lambda: None)
+    """ PycroManager settings. Required to be defined to use PycroManager. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

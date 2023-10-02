@@ -32,6 +32,7 @@ class VirtualCameraManager(DetectorManager):
                 self._camera.SensorHeight)
         pixelSize = self._camera.PixelSize
         model = self._camera.model
+        self._running = True
 
         # Prepare parameters
         parameters = {

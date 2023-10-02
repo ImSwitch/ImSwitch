@@ -79,8 +79,8 @@ class HistoScanWidget(NapariHybridWidget):
         # for the physical dimensions of the slide holder we have
         physDimX = 164 # mm
         physDimY = 109 # mm
-        physOffsetX = -28.8758
-        physOffsetY =  -26.086
+        physOffsetX = 0
+        physOffsetY =  0
         
         self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX, physOffsetY)
         self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
@@ -92,10 +92,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.ScanSelectViewWidget.setOffset(offsetX, offsetY)
 
     def setScanMinMax(self, posXmin, posYmin, posXmax, posYmax):
-        self.minPositionXLineEdit.setText(str(np.uint64(posXmin)))
-        self.maxPositionXLineEdit.setText(str(np.uint64(posXmax)))
-        self.minPositionYLineEdit.setText(str(np.uint64(posYmin)))
-        self.maxPositionYLineEdit.setText(str(np.uint64(posYmax)))
+        self.minPositionXLineEdit.setText(str(np.int64(posXmin)))
+        self.maxPositionXLineEdit.setText(str(np.int64(posXmax)))
+        self.minPositionYLineEdit.setText(str(np.int64(posYmin)))
+        self.maxPositionYLineEdit.setText(str(np.int64(posYmax)))
         print("Setting scan min/max")
         
     def goToPosition(self, posX, posY):
@@ -133,6 +133,17 @@ class HistoScanWidget(NapariHybridWidget):
                                                name=name, blending='additive')
         self.layer.data = im
         
+    def updatePartialImageNapari(self, im, coords, name=""):
+        ''' update a sub roi of the already existing napari layer '''
+        if self.layer is None or name not in self.viewer.layers:
+            return
+        try: 
+            # coords are x,y,w,h
+            self.layer.data[coords[1]-coords[3]:coords[1], coords[0]:coords[0]+coords[2]] = im
+            self.layer.refresh()
+        except Exception as e:
+            print(e)
+            return
 
     def isAutofocus(self):
         if self.autofocusCheckbox.isChecked():

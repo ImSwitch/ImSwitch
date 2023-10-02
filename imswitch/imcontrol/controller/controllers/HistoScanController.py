@@ -37,6 +37,7 @@ class HistoScanController(LiveUpdatedController):
     """Linked to HistoScanWidget."""
 
     sigImageReceived = Signal()
+    sigUpdatePartialImage = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,8 +66,12 @@ class HistoScanController(LiveUpdatedController):
         self._widget.sigGoToPosition.connect(self.goToPosition)
         self._widget.sigCurrentOffset.connect(self.calibrateOffset)
         self.sigImageReceived.connect(self.displayImage)
+        self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
 
+        self.partialImageCoordinates = (0,0,0,0)
+        self.partialHistoscanStack = np.ones((1,1,3))
+        
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -85,6 +90,18 @@ class HistoScanController(LiveUpdatedController):
         # subsample stack 
         isRGB = self.histoscanStack.shape[-1]==3
         self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
+
+    def updatePartialImage(self):
+        # a bit weird, but we cannot update outside the main thread
+        name = self.histoScanStackName
+        # subsample stack 
+        isRGB = self.histoscanStack.shape[-1]==3
+        # coordinates: (x,y,w,h)
+        self._widget.updatePartialImageNapari(im=np.uint16(self.partialHistoscanStack ), 
+                                              coords=self.partialImageCoordinates,
+                                              name=name)
+
+
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -191,7 +208,14 @@ class HistoScanController(LiveUpdatedController):
 
         maxPosPixY = int((maxPosY-minPosY)/self.detector.pixelSizeUm[-1])
         maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
-        stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, file_name=file_name, extension=extension)
+        
+        # are we RGB or monochrome?
+        if len(mFrame.shape)==2:
+            nChannels = 1
+        else:
+            nChannels = mFrame.shape[-1]
+            
+        stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension)
         
         self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
                         
@@ -244,6 +268,13 @@ class HistoScanController(LiveUpdatedController):
         self.histoScanStackName = name
         self.histoscanStack = image
         self.sigImageReceived.emit()
+        
+    def setPartialImageForDisplay(self, image, coordinates, name):
+        # coordinates: (x,y,w,h)
+        self.partialImageCoordinates = coordinates
+        self.partialHistoscanStack = image
+        self.histoscanStack = image
+        self.sigUpdatePartialImage.emit()
 
     def stophistoscan(self):
         self.ishistoscanRunning = False
@@ -261,7 +292,7 @@ class HistoScanController(LiveUpdatedController):
 
 class ImageStitcher:
 
-    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, subsample_factor=.25, backgroundimage=None):
+    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, subsample_factor=.25, nChannels = 3, backgroundimage=None):
         # Initial min and max coordinates 
         self._parent = parent
         self.subsample_factor = subsample_factor
@@ -274,8 +305,9 @@ class ImageStitcher:
         # Create a blank canvas for the final image and a canvas to track blending weights
         self.nY = self.max_coords[1] - self.min_coords[1]
         self.nX = self.max_coords[0] - self.min_coords[0]
-        self.stitched_image = np.zeros((self.nY, self.nX, 3), dtype=np.float32)
+        self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
         self.stitched_image_shape= self.stitched_image.shape
+        self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
 
         # Queue to hold incoming images
         self.queue = deque()
@@ -317,10 +349,13 @@ class ImageStitcher:
         img = np.flip(np.flip(img,1),0)
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
-            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = img[0:stitchDim[0], 0:stitchDim[1]]
+            stitchImage = img[0:stitchDim[0], 0:stitchDim[1]]
+            if len(stitchImage.shape)==2:
+                stitchImage = np.expand_dims(stitchImage, axis=-1)
+            self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = stitchImage
         
             # try to display in napari if ready
-            # self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
+            self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
         except Exception as e:
             print(e)
 

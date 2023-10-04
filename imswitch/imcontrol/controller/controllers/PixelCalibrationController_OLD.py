@@ -15,28 +15,6 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.model import configfiletools
 import time
 
-from fractions import Fraction
-from uuid import UUID
-import logging
-import time
-import numpy as np
-import PIL
-import io
-import os
-import json
-from collections import namedtuple
-
-try:
-    from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
-
-    from camera_stage_mapping.camera_stage_tracker import Tracker
-    from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
-    from camera_stage_mapping.scan_coords_times import ordered_spiral
-    IS_CAMERA_STAGE_MAPPING_INSTALLED = True
-except ImportError:
-    IS_CAMERA_STAGE_MAPPING_INSTALLED = False
-
-
 from ..basecontrollers import LiveUpdatedController
 
 #import NanoImagingPack as nip
@@ -57,7 +35,7 @@ class PixelCalibrationController(LiveUpdatedController):
         self._widget.PixelCalibrationUndoButton.clicked.connect(self.undoSelection)
         self._widget.PixelCalibrationCalibrateButton.clicked.connect(self.startPixelCalibration)
         self._widget.PixelCalibrationStageCalibrationButton.clicked.connect(self.stageCalibration)
-
+        
         self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
         self.pixelSize=500 # defaul FIXME: Load from json?
 
@@ -69,21 +47,31 @@ class PixelCalibrationController(LiveUpdatedController):
     def undoSelection(self):
         # recover the previous selection
         self._widget.canvas.undoSelection()
-
+        
     def snapPreview(self):
         self._logger.info("Snap preview...")
         previewImage = self._master.detectorsManager.execOnCurrent(lambda c: c.getLatestFrame())
         self._widget.setImage(previewImage)
         self._widget.addPointLayer()
-
+        
     def startPixelCalibration(self):
         # initilaze setup
         # this is not a thread!
-
+        
         csm_extension = CSMExtension(self)
-        if IS_CAMERA_STAGE_MAPPING_INSTALLED:
-            csm_extension.calibrate_xy()
-
+        csm_extension.calibrate_xy()
+        
+        knownDistance = self._widget.getKnownDistance()
+        try:
+            self.lastTwoPoints = self._widget.viewer.layers["Pixelcalibration Points"].data[-2:,]
+            dx = self.lastTwoPoints[1,0]-self.lastTwoPoints[0,0]
+            dy = self.lastTwoPoints[1,1]-self.lastTwoPoints[0,1]
+            dr = np.sqrt(dx**2+dy**2)
+            pixelSize = knownDistance/dr
+            self._widget.setInformationLabel(str(pixelSize)+" µm")
+            self.detector.setPixelSizeUm(pixelSize*1e-3) # convert from nm to um
+        except:
+            pass 
 
     def setPixelSize(self):
         # returns nm from textedit
@@ -97,19 +85,131 @@ class PixelCalibrationController(LiveUpdatedController):
             self._logger.error("Could not set pixel size in camera parameters")
             self._logger.error(e)
             self._widget.setInformationLabel("Could not set pixel size in camera parameters")
-
+        
     def stageCalibration(self):
         stageCalibrationT = threading.Thread(target=self.stageCalibrationThread, args=())
         stageCalibrationT.start()
-
+        
     def stageCalibrationThread(self, stageName=None, scanMax=100, scanMin=-100, scanStep = 50, rescalingFac=10.0, gridScan=True):
         # we assume we have a structured sample in focus
         # the sample is moved around and the deltas are measured
         # everything has to be inside a thread
-        csm_extension = CSMExtension(self)
-        csm_extension.calibrate_xy()
+
+        # get current position
+        if stageName is None:
+            stageName = self._master.positionersManager.getAllDeviceNames()[0]
+        currentPositions = self._master.positionersManager.execOn(stageName, lambda c: c.getPosition())
+        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
+        self.initialPosiionZ = currentPositions["Z"]
+        
+        # snake scan
+        
+        if gridScan:
+            xyScanStepsAbsolute = []
+            fwdpath = np.arange(scanMin, scanMax, scanStep)
+            bwdpath = np.flip(fwdpath)
+            for indexX, ix in enumerate(np.arange(scanMin, scanMax, scanStep)): 
+                if indexX%2==0:
+                    for indexY, iy in enumerate(fwdpath):
+                        xyScanStepsAbsolute.append([ix, iy])
+                else:
+                    for indexY, iy in enumerate(bwdpath):
+                        xyScanStepsAbsolute.append([ix, iy])
+            xyScanStepsAbsolute = np.array(xyScanStepsAbsolute)    
+        else:
+            # avoid grid pattern to be detected as same locations => random positions
+            xyScanStepsAbsolute = np.random.randint(scanMin, scanMax, (10,2))
+
+        # initialize xy coordinates
+        value = xyScanStepsAbsolute[0,0] + self.initialPosition[0], xyScanStepsAbsolute[0,1] + self.initialPosition[1]
+        self._master.positionersManager.execOn(stageName, lambda c: c.move(value=value[0], axis="X", is_absolute=True, is_blocking=True))
+        self._master.positionersManager.execOn(stageName, lambda c: c.move(value=value[1], axis="Y", is_absolute=True, is_blocking=True))
+        # store images
+        allPosImages = []
+        for ipos, iXYPos in enumerate(xyScanStepsAbsolute):
+            
+            # move to xy position is necessary
+            value = iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]
+            self._master.positionersManager.execOn(stageName, lambda c: c.move(value=value, axis="XY", is_absolute=True, is_blocking=True))
+            #TODO: do we move to the correct positions?
+            # antishake
+            time.sleep(0.5)
+            lastFrame = self.detector.getLatestFrame()
+            allPosImages.append(lastFrame)
+        
+        # reinitialize xy coordinates
+        value = self.initialPosition[0], self.initialPosition[1]
+        self._master.positionersManager.execOn(stageName, lambda c: c.move(value=value[0], axis="X", is_absolute=True, is_blocking=True))
+        self._master.positionersManager.execOn(stageName, lambda c: c.move(value=value[1], axis="Y", is_absolute=True, is_blocking=True))
+        # process the slices and compute their relative distances in pixels
+        # compute shift between images relative to zeroth image
+        self._logger.info("Starting to compute relative displacements from the first image")
+        allShiftsComputed = []
+        for iImage in range(len(allPosImages)):
+            image1 = cv2.cvtColor(allPosImages[0], cv2.COLOR_BGR2GRAY)
+            image2 = cv2.cvtColor(allPosImages[iImage], cv2.COLOR_BGR2GRAY)
+            
+            # downscaling will reduce accuracy, but will speed up computation
+            image1 = cv2.resize(image1, dsize=None, dst=None, fx=1/rescalingFac, fy=1/rescalingFac)
+            image2 = cv2.resize(image2, dsize=None, dst=None, fx=1/rescalingFac, fy=1/rescalingFac)
+
+            shift, error, diffphase = phase_cross_correlation(image1, image2)
+            shift *=rescalingFac
+            self._logger.info("Shift w.r.t. 0 is:"+str(shift))
+            allShiftsComputed.append((shift[0],shift[1]))
+            
+        # compute averrage shifts according to scan grid 
+        # compare measured shift with shift given by the array of random coordinats
+        allShiftsPlanned = np.array(xyScanStepsAbsolute)
+        allShiftsPlanned -= np.min(allShiftsPlanned,0)
+        allShiftsComputed = np.array(allShiftsComputed)
+
+        # compute differencs
+        nShiftX = (self.xScanMax-self.xScanMin)//self.xScanStep
+        nShiftY = (self.yScanMax-self.yScanMin)//self.yScanStep
+
+        # determine the axis and swap if necessary (e.g. swap axis (y,x))
+        dReal = np.abs(allShiftsPlanned-np.roll(allShiftsPlanned,-1,0))
+        dMeasured = np.abs(allShiftsComputed-np.roll(allShiftsComputed,-1,0))
+        xAxisReal = np.argmin(np.mean(dReal,0))
+        xAxisMeasured = np.argmin(np.mean(dMeasured,0))
+        if xAxisReal != xAxisMeasured:
+            xAxisMeasured = np.transposes(xAxisMeasured, (1,0))
+        
+        # stepsize => real motion / stepsize 
+        stepSizeStage = (dMeasured*self.pixelSize)/dReal
+        stepSizeStage[stepSizeStage == np.inf] = 0
+        stepSizeStage = np.nan_to_num(stepSizeStage, nan=0.)
+        stepSizeStage = stepSizeStage[np.where(stepSizeStage>0)]
+        stepSizeStageDim = np.mean(stepSizeStage)
+        stepSizeStageVar = np.var(stepSizeStage)
+
+        self._logger.debug("Stage pixel size: "+str(stepSizeStageDim)+"nm/step")
+        self._widget.setInformationLabel("Stage pixel size: "+str(stepSizeStageDim)+" nm/step")
+
+        # Set in setup info
+        name="test"
+        self._setupInfo.setPositionerPreset(name, self.makePreset())
+        configfiletools.saveSetupInfo(configfiletools.loadOptions()[0], self._setupInfo)
 
 
+
+
+
+import logging
+import time
+import numpy as np
+import PIL
+import io
+import os
+import json
+from collections import namedtuple
+
+from camera_stage_mapping.camera_stage_calibration_1d import calibrate_backlash_1d, image_to_stage_displacement_from_1d
+
+from camera_stage_mapping.camera_stage_tracker import Tracker
+from camera_stage_mapping.closed_loop_move import closed_loop_move, closed_loop_scan
+from camera_stage_mapping.scan_coords_times import ordered_spiral
 
 
 
@@ -119,11 +219,11 @@ CSM_DATAFILE_NAME = "csm_calibration.json"
 MoveHistory = namedtuple("MoveHistory", ["times", "stage_positions"])
 class LoggingMoveWrapper():
     """Wrap a move function, and maintain a log position/time.
-
+    
     This class is callable, so it doesn't change the signature
     of the function it wraps - it just makes it possible to get
     a list of all the moves we've made, and how long they took.
-
+    
     Said list is intended to be useful for calibrating the stage
     so we can estimate how long moves will take.
     """
@@ -157,47 +257,31 @@ class CSMExtension(object):
     """
 
     def __init__(self, parent):
-        self._parent = parent
-
-
+        self._parent = parent 
+    
+    
     def update_settings(self, settings):
         """Update the stored extension settings dictionary"""
-        if 0:
-            pass
-            '''
-            keys = ["extensions", self.name]
-            dictionary = create_from_path(keys)
-            set_by_path(dictionary, keys, settings)
-            logging.info(f"Updating settings with {dictionary}")
-            self.microscope.update_settings(dictionary)
-            self.microscope.save_settings()
-            '''
-
+        pass 
     def get_settings(self):
         """Retrieve the settings for this extension"""
-        if 0:
-            keys = ["extensions", self.name]
-            #return get_by_path(self.microscope.read_settings(), keys)
         return {}
-
+    
     def camera_stage_functions(self):
         """Return functions that allow us to interface with the microscope"""
         grab_image = self._parent.detector.getLatestFrame
-
+        
         def getPositionList():
             posDict = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]].getPosition()
             return (posDict["X"], posDict["Y"], posDict["Z"])
-
+        
         def movePosition(posList):
             stage = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]]
-            stepSizeX = 0.315
-            stepSizeY = 0.315
-            stage.move(value=posList[0]/stepSizeX, axis="X", is_absolute=True, is_blocking=True)
-            stage.move(value=posList[1]/stepSizeY, axis="Y", is_absolute=True, is_blocking=True)
-            self._parent._logger.info("Moving to: "+str(posList))
+            stage.move(value=posList[0], axis="X", is_absolute=True, is_blocking=True)
+            stage.move(value=posList[1], axis="Y", is_absolute=True, is_blocking=True)
             if len(posList)>2:
                 stage.move(value=posList[2], axis="Z", is_absolute=True, is_blocking=True)
-
+            
         get_position = getPositionList
         move = movePosition
         wait = time.sleep(0.1)
@@ -221,7 +305,7 @@ class CSMExtension(object):
         cal_x = self.calibrate_1d(np.array([1, 0, 0]))
         self._parent._logger.info("Calibrating Y axis:")
         cal_y = self.calibrate_1d(np.array([0, 1, 0]))
-
+        
         # Combine X and Y calibrations to make a 2D calibration
         cal_xy = image_to_stage_displacement_from_1d([cal_x, cal_y])
         self.update_settings(cal_xy)
@@ -231,11 +315,7 @@ class CSMExtension(object):
             "linear_calibration_x": cal_x,
             "linear_calibration_y": cal_y,
         }
-        CSM_DATAFILE_PATH = None
-        JSONEncoder = None
 
-        with open(CSM_DATAFILE_PATH, "w") as f:
-            json.dump(data, f, cls=JSONEncoder)
 
         return data
 
@@ -268,9 +348,9 @@ class CSMExtension(object):
         This returns a generator, which will move the stage to each point in
         ``scan_path``, then yield ``i, pos`` where ``i``
         is the index of the scan point, and ``pos`` is the estimated position
-        in pixels relative to the starting point.  To use it properly, you
+        in pixels relative to the starting point.  To use it properly, you 
         should iterate over it, for example::
-
+        
             for i, pos in csm_extension.closed_loop_scan(scan_path):
                 capture_image(f"image_{i}.jpg")
 
@@ -278,7 +358,7 @@ class CSMExtension(object):
         the points to visit in pixels relative to the current position.
 
         If an exception occurs during the scan, we automatically return to the
-        starting point.  Keyword arguments are passed to
+        starting point.  Keyword arguments are passed to 
         ``closed_loop_move.closed_loop_scan``.
         """
         grab_image, get_position, move, wait = self.camera_stage_functions()
@@ -295,7 +375,6 @@ class CSMExtension(object):
 
         for i, pos in self.closed_loop_scan(np.array(scan_path), **kwargs):
             pass
-
 
 
 

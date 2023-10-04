@@ -1,7 +1,7 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
+from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter, DetectorBooleanParameter
 
 
 class GXPIPYManager(DetectorManager):
@@ -22,6 +22,7 @@ class GXPIPYManager(DetectorManager):
 
         try:
             self.binningValue = detectorInfo.managerProperties['gxipycam']["binning"]
+           # we want a possibility to flatfield here
         except:
             self.binningValue = 1
 
@@ -62,6 +63,7 @@ class GXPIPYManager(DetectorManager):
                         editable=False),
             'frame_rate': DetectorNumberParameter(group='Misc', value=-1, valueUnits='fps',
                                     editable=True),
+            'flat_fielding': DetectorBooleanParameter(group='Misc', value=True, editable=True),            
             'binning': DetectorNumberParameter(group="Misc", value=1, valueUnits="arb.u.", editable=True),
             'trigger_source': DetectorListParameter(group='Acquisition mode',
                             value='Continous',
@@ -291,9 +293,14 @@ class GXPIPYManager(DetectorManager):
 
     def _getGXObj(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
-            self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
-            camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
+            import os
+            if os.name == 'darwin':
+                from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
+                camera = MockCameraTIS()
+            else:
+                from imswitch.imcontrol.model.interfaces.gxipycamera import CameraGXIPY
+                self.__logger.debug(f'Trying to initialize Daheng Imaging camera {cameraId}')
+                camera = CameraGXIPY(cameraNo=cameraId, binning=binning)
         except Exception as e:
             self.__logger.debug(e)
             self.__logger.warning(f'Failed to initialize CameraGXIPY {cameraId}, loading TIS mocker')
@@ -308,6 +315,12 @@ class GXPIPYManager(DetectorManager):
 
     def closeEvent(self):
         self._camera.close()
+        
+    def recordFlatfieldImage(self):
+        ''' 
+        record n images and average them before subtracting from the latest frame
+        '''
+        self._camera.recordFlatfieldImage()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

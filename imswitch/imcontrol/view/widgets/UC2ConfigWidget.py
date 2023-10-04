@@ -21,6 +21,9 @@ class UC2ConfigWidget(Widget):
         reconnectLayout.addWidget(self.reconnectButton)
         reconnectLayout.addWidget(self.reconnectDeviceLabel)
 
+        self.stopCommunicationButton = QPushButton("Interrupt communication", self)
+        reconnectLayout.addWidget(self.stopCommunicationButton)
+        
         self.btpairingButton = QPushButton("Connect to PS Controller", self)
 
         # Layout for motor positions

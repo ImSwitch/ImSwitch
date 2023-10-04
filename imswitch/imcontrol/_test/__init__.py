@@ -14,19 +14,36 @@ optionsBasic = Options.from_json("""
 setupInfoBasic = ViewSetupInfo.from_json("""
 {
   "positioners": {
-    "ESP32Stage": {
+    "StageX": {
       "managerName": "ESP32StageManager",
       "managerProperties": {
         "rs232device": "ESP32",
         "enableauto": 1,
         "isEnable": 1
       },
-      "axes": [
-        "X",
-        "Y",
-        "Z",
-        "A"
-      ],
+      "axes": ["X"],
+      "forScanning": true,
+      "forPositioning": true
+    },
+    "StageY": {
+      "managerName": "ESP32StageManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "enableauto": 1,
+        "isEnable": 1
+      },
+      "axes": ["Y"],
+      "forScanning": true,
+      "forPositioning": true
+    },
+    "StageZ": {
+      "managerName": "ESP32StageManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "enableauto": 1,
+        "isEnable": 1
+      },
+      "axes": ["Z"],
       "forScanning": true,
       "forPositioning": true
     }
@@ -91,16 +108,17 @@ setupInfoBasic = ViewSetupInfo.from_json("""
   },
   "detectors": {
     "WidefieldCamera": {
-      "ExtPackage": "imswitch_det_webcam",
       "analogChannel": null,
       "digitalLine": null,
-      "managerName": "GXPIPYManager",
+      "managerName": "HikCamManager",
       "managerProperties": {
-        "cameraListIndex": 1,
-        "gxipycam": {
-          "exposure": 20,
+        "isRGB": 0,
+        "cameraListIndex": 0,
+        "cameraEffPixelsize": 0.2257,
+        "hikcam": {
+          "exposure": 0,
           "gain": 0,
-          "blacklevel": 10,
+          "blacklevel": 100,
           "image_width": 1000,
           "image_height": 1000
         }
@@ -127,6 +145,10 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       "forFocusLock": true
     }
   },
+  "nidaq": {
+    "timerCounterChannel": "Dev1/ctr2",
+    "startTrigger": true
+  },
   "rois": {
     "Full chip": {
       "x": 600,
@@ -135,7 +157,7 @@ setupInfoBasic = ViewSetupInfo.from_json("""
       "h": 1200
     }
   },
-  "HistoScan":{
+  "HistoScan": {
     "PreviewCamera": "ESP32Cam"
   },
   "LEDMatrixs": {
@@ -174,16 +196,16 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     "wavelength": 0,
     "pixelSize": 0,
     "angleMount": 0
-    },
+  },
   "dpc": {
     "wavelength": 0.53,
     "pixelsize": 0.2,
-    "NA":0.3,
+    "NA": 0.3,
     "NAi": 0.3,
     "n": 1.0,
     "rotations": [0, 180, 90, 270]
   },
-  "webrtc":{},
+  "webrtc": {},
   "PixelCalibration": {},
   "focusLock": {
     "camera": "ESP32Cam",
@@ -204,9 +226,20 @@ setupInfoBasic = ViewSetupInfo.from_json("""
     "Laser",
     "UC2Config",
     "Joystick",
-    "Lightsheet", 
-    "ROIScan"
-  ]
+    "Lightsheet",
+    "ROIScan",
+    "Scan"
+  ],
+  "scan": {
+    "scanWidgetType": "PointScan",
+    "scanDesigner": "GalvoScanDesigner",
+    "scanDesignerParams": {},
+    "TTLCycleDesigner": "PointScanTTLCycleDesigner",
+    "TTLCycleDesignerParams": {},
+    "sampleRate": 100000,
+    "lineClockLine": "Dev1/port0/line5",
+    "frameClockLine": "Dev1/port0/line6"
+  }
 }
 """, infer_missing=True)
 
@@ -262,58 +295,40 @@ setupInfoWithoutWidgets = ViewSetupInfo.from_json("""
             "wavelength": 488,
             "valueRangeMin": 0,
             "valueRangeMax": 200
-        },
-        "473": {
-            "analogChannel": 3,
-            "digitalLine": 2,
-            "managerName": "NidaqLaserManager",
-            "managerProperties": {},
-            "wavelength": 473,
-            "valueRangeMin": 0,
-            "valueRangeMax": 5
         }
     },
-    "positioners": {
-        "X": {
-            "analogChannel": 0,
-            "digitalLine": null,
-            "managerName": "NidaqPositionerManager",
-            "managerProperties": {
-                "conversionFactor": 1.587,
-                "minVolt": -10,
-                "maxVolt": 10
-            },
-            "axes": ["X"],
-            "forScanning": true,
-            "forPositioning": true
-        },
-        "Y": {
-            "analogChannel": 1,
-            "digitalLine": null,
-            "managerName": "NidaqPositionerManager",
-            "managerProperties": {
-                "conversionFactor": 1.587,
-                "minVolt": -10,
-                "maxVolt": 10
-            },
-            "axes": ["Y"],
-            "forScanning": true,
-            "forPositioning": true
-        },
-        "Z": {
-            "analogChannel": 2,
-            "digitalLine": null,
-            "managerName": "NidaqPositionerManager",
-            "managerProperties": {
-                "conversionFactor": 10.0,
-                "minVolt": 0,
-                "maxVolt": 10
-            },
-            "axes": ["Z"],
-            "forScanning": true,
-            "forPositioning": true
-        }
+      "rs232devices": {
+    "ESP32": {
+      "managerName": "ESP32Manager",
+      "managerProperties": {
+        "host_": "192.168.43.129",
+        "serialport_": "COM3",
+        "serialport": "/dev/cu.usbserial-A50285BI"
+      }
+    }
+  },
+      "nidaq": {
+    "timerCounterChannel": "Dev1/ctr2",
+    "startTrigger": true
     },
+  "positioners": {
+    "ESP32Stage": {
+      "managerName": "ESP32StageManager",
+      "managerProperties": {
+        "rs232device": "ESP32",
+        "enableauto": 1,
+        "isEnable": 1
+      },
+      "axes": [
+        "X",
+        "Y",
+        "Z",
+        "A"
+      ],
+      "forScanning": true,
+      "forPositioning": true
+    }
+  },
     "scan": {
         "scanDesigner": "BetaScanDesigner",
         "scanDesignerParams": {

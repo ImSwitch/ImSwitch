@@ -4,8 +4,7 @@ from typing import Optional, Union, List
 import numpy as np
 
 from imswitch.imcommon.framework import Timer
-from imswitch.imcommon.model import ostools, APIExport
-from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
+from imswitch.imcommon.model import ostools, APIExport, RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 

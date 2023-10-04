@@ -281,7 +281,7 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
-
+        image1 = None
         # get current position
         currentPositions = self.stages.getPosition()
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
@@ -312,7 +312,7 @@ class MCTController(ImConWidgetController):
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
-                self.stages.setSpeed(speed=1000, axis="Z")
+                self.stages.setSpeed(speed=10000, axis="Z")
                 
                 # ensure motors are enabled
                 #self.stages.enalbeMotors(enable=True)
@@ -371,6 +371,9 @@ class MCTController(ImConWidgetController):
                             
                         # image processing 
                         for iImage in imageStack:
+                            if len(iImage.shape)>2:
+                                # if RGB => make mono
+                                iImage = np.mean(iImage, -1)
                             image = self.crop_center(iImage, driftCorrectionCropSize)
                             image = self.downscale_image(image, driftCorrectionDownScaleFactor)
                             imageList.append(image)

@@ -85,6 +85,8 @@ class PositionerWidget(Widget):
             )
 
             self.numPositioners += 1
+            
+    
 
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in
@@ -122,6 +124,10 @@ class PositionerWidget(Widget):
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
+
+    def updateSpeed(self, positionerName, axis, speed):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['SpeedEdit' + parNameSuffix].setText(f'<strong>{speed:.2f}</strong>')
 
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName[0]}--{axis}'

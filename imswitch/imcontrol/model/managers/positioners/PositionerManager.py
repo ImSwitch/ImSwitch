@@ -131,6 +131,10 @@ class PositionerManager(ABC):
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass
+    
+    def enableMotors(self, enable: bool=None, autoenable:bool=None) -> None:
+        """ Enable/disable motors. """
+        pass
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

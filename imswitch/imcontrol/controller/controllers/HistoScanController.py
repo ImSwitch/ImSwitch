@@ -1,6 +1,7 @@
 import json
 import os
 
+from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
 import time
 import tifffile
@@ -115,9 +116,10 @@ class HistoScanController(LiveUpdatedController):
         if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
         # get the camera object
-        if self._setupInfo.HistoScan is not None:
+        #if self._setupInfo.HistoScan is not None:
+        try:
             self._camera = self._master.detectorsManager[self._setupInfo.HistoScan.PreviewCamera]
-        else:
+        except:
             self._camera = self._master.detectorsManager.getCurrentDetector()
 
     def fillHoles(self):

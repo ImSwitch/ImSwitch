@@ -316,8 +316,8 @@ class DPCProcessor(object):
 
         # save images eventually
         if isRecording:
-            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
             date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
             tif.imsave(mFilenameRecon, qdpc_result)         
         
         # compute gradient images

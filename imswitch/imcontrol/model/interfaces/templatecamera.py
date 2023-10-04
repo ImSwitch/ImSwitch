@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+import imswitch.imcontrol.model.interfaces.gxipy as gx
 
 #import imswitch.imcontrol.model.interfaces.template as gx
 import collections
@@ -300,12 +301,12 @@ class CameraTEMPLATE:
             
     def set_continuous_acquisition(self):
         self.camera.TriggerMode.set(gx.GxSwitchEntry.OFF)
-        self.trigger_mode = TriggerMode.CONTINUOU
+        self.trigger_mode = gx.TriggerMode.CONTINUOU
 
     def set_software_triggered_acquisition(self):
         self.camera.TriggerMode.set(gx.GxSwitchEntry.ON)
         self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.SOFTWARE)
-        self.trigger_mode = TriggerMode.SOFTWARE
+        self.trigger_mode = gx.TriggerMode.SOFTWARE
 
     def set_hardware_triggered_acquisition(self):
                 # set continuous acquisition
@@ -336,7 +337,7 @@ class CameraTEMPLATE:
         self.camera.TriggerSource.set(gx.GxTriggerSourceEntry.LINE2)
         #self.camera.TriggerSource.set(gx.GxTriggerActivationEntry.RISING_EDGE)
         '''
-        self.trigger_mode = TriggerMode.HARDWARE
+        self.trigger_mode = gx.TriggerMode.HARDWARE
         
         self.flushBuffer()
 

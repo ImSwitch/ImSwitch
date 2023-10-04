@@ -1,4 +1,5 @@
 from .BetterPushButton import BetterPushButton
+from .joystick import Joystick
 from .BetterSlider import BetterSlider
 from .CheckableComboBox import CheckableComboBox
 from .FloatSlider import FloatSlider

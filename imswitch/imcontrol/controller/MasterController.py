@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PycroManagerManager
 )
 
 
@@ -36,8 +36,6 @@ class MasterController:
                                                      **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
                                                **lowLevelManagers)
-
-        self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         if self.__setupInfo.microscopeStand:
@@ -68,12 +66,25 @@ class MasterController:
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
         self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
 
-        self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
-        self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
-        self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
-        self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
-        self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+        # RecordingManager and PycroManager are mutually exclusive
+        if "Recording" in self.__setupInfo.availableWidgets and "PycroManager" not in self.__setupInfo.availableWidgets:
+            self.recordingManager = RecordingManager(self.detectorsManager)
+            self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
+            self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
+            self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
+            self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
+            self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
+            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+        elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
+            self.pycroManager = PycroManagerManager(self.detectorsManager)
+            self.pycroManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
+            self.pycroManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
+            self.pycroManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
+            self.pycroManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
+            self.pycroManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
+            self.pycroManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+        else:
+            raise ValueError("Recording widget requires either PycroManager or Recording to be enabled.")
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 

@@ -90,19 +90,19 @@ class PyMMCoreCameraManager(DetectorManager):
         super().setBinning(binning)
     
     def getLatestFrame(self, is_save=False):
-        if self.__coreManager.core.getRemainingImageCount() > 0:
-            self.__frame = self.__coreManager.core.popNextImage()
+        if self.__coreManager.core.get_remaining_image_count() > 0:
+            self.__frame = self.__coreManager.core.pop_next_image()
         return self.__frame
     
     def getChunk(self):
         return [self.getLatestFrame()]
     
     def flushBuffers(self):
-        self.__coreManager.core.clearCircularBuffer()
+        self.__coreManager.core.clear_circular_buffer()
     
     @contextmanager
     def _camera_disabled(self):
-        if self.__coreManager.core.isSequenceRunning(self.name):
+        if self.__coreManager.core.is_sequence_running(self.name):
             try:
                 self.stopAcquisition()
                 yield
@@ -112,16 +112,16 @@ class PyMMCoreCameraManager(DetectorManager):
             yield
     
     def startAcquisition(self):
-        self.__coreManager.core.startContinuousSequenceAcquisition(self.parameters["Exposure"].value)
+        self.__coreManager.core.start_continous_sequence_acquisition(self.parameters["Exposure"].value)
 
     def stopAcquisition(self):
-        self.__coreManager.core.stopSequenceAcquisition(self.name)
+        self.__coreManager.core.stop_sequence_acquisition(self.name)
     
     def setParameter(self, name, value):
         # this may not work properly, keep an eye on it
         with self._camera_disabled():
             if name == "Exposure":
-                self.__coreManager.core.setExposure(value)
+                self.__coreManager.core.set_exposure(value)
             else:
                 self.__coreManager.setProperty(self.name, name, value) 
         # there will be still images left in the circular buffer

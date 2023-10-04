@@ -2,7 +2,7 @@ from imswitch.imcommon.framework import SignalInterface
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.configfiletools import _mmcoreLogDir
 from typing import Union, Tuple, Dict, List
-from pymmcore_plus import CMMCorePlus, PropertyType
+from pymmcore_plus import PropertyType
 from pycromanager import Core, start_headless
 import datetime as dt
 import os
@@ -27,54 +27,56 @@ class PyMMCoreManager(SignalInterface):
         
         self.__core = Core()
 
-        self.__logger.info(self.__core.getAPIVersionInfo())
+        self.__logger.info(self.__core.get_api_version_info())
 
         self.__getXYStagePosition = {
-            "X" : self.__core.getXPosition,
-            "Y" : self.__core.getYPosition
+            "X" : self.__core.get_x_position,
+            "Y" : self.__core.get_y_position
         }
         
         logpath = os.path.join(_mmcoreLogDir, dt.datetime.now().strftime("%d_%m_%Y") + ".log")
-        self.__core.setPrimaryLogFile(logpath)
-        self.__core.enableDebugLog(True)
+        self.__core.set_primary_log_file(logpath)
+        self.__core.enable_debug_log(True)
     
     @property
-    def core(self) -> CMMCorePlus:
+    def core(self) -> Core:
         return self.__core
     
     def loadProperties(self, label: str, preInitValues: dict = None) -> dict:
         properties = {}
-
-        for propName in self.__core.getDevicePropertyNames(label):
-
-            propObj = self.__core.getPropertyObject(label, propName)
-            propType = propObj.type()
-            isReadOnly = propObj.isReadOnly()
-            isPreInit = propObj.isPreInit()
-            values = list(propObj.allowedValues())
-
-            if propType in [PropertyType.Integer, PropertyType.Float]:
-                if len(values) > 0:
-                    values = [propType.to_python()(value) for value in values]
-                else:
-                    if isPreInit and preInitValues and propName in preInitValues and not isReadOnly:
-                        propObj.setValue(preInitValues[propName])
-                    values = propObj.value
-            elif propType == PropertyType.String:
-                # allowedValues() may not return nothing if the property is read-only
-                # hence we make sure we get the proper value
-                if isReadOnly:
-                    values = propObj.value
-            else:
-                raise ValueError(f"Property {propName} is of unrecognized type!")
-            
-            
-            properties[propName] = {
-                "type": type(values),
-                "values": values,
-                "read_only": isReadOnly
-            }
         return properties
+
+        # TODO: refactor from pymmcore-plus to pycromanager
+        # for propName in self.__core.get_device_property_names(label):
+
+        #     propObj = self.__core.getPropertyObject(label, propName)
+        #     propType = propObj.type()
+        #     isReadOnly = propObj.isReadOnly()
+        #     isPreInit = propObj.isPreInit()
+        #     values = list(propObj.allowedValues())
+
+        #     if propType in [PropertyType.Integer, PropertyType.Float]:
+        #         if len(values) > 0:
+        #             values = [propType.to_python()(value) for value in values]
+        #         else:
+        #             if isPreInit and preInitValues and propName in preInitValues and not isReadOnly:
+        #                 propObj.setValue(preInitValues[propName])
+        #             values = propObj.value
+        #     elif propType == PropertyType.String:
+        #         # allowedValues() may not return nothing if the property is read-only
+        #         # hence we make sure we get the proper value
+        #         if isReadOnly:
+        #             values = propObj.value
+        #     else:
+        #         raise ValueError(f"Property {propName} is of unrecognized type!")
+            
+            
+        #     properties[propName] = {
+        #         "type": type(values),
+        #         "values": values,
+        #         "read_only": isReadOnly
+        #     }
+        # return properties
     
     def loadDevice(self, devInfo: Tuple[str, str, str], isCamera: bool = False) -> None:
         """ Tries to load a device into the MMCore. If the device is a camera, it also initializes the circular buffer.
@@ -87,23 +89,23 @@ class PyMMCoreManager(SignalInterface):
             isCamera (``bool``): flag signaling wether the requested device is a camera.
         """
         try:
-            self.__core.loadDevice(
+            self.__core.load_device(
                 devInfo[0],
                 devInfo[1],
                 devInfo[2]
             )
-            self.__core.initializeDevice(devInfo[0])
+            self.__core.initialize_device(devInfo[0])
         except RuntimeError:
             raise ValueError(f"Error in loading device \"{devInfo[0]}\", check the values of \"module\" and \"device\" in the configuration file (current values: {devInfo[1]}, {devInfo[2]})")
         if isCamera:
-            self.__core.setCameraDevice(devInfo[0])
-            self.__core.initializeCircularBuffer()
+            self.__core.set_camera_device(devInfo[0])
+            self.__core.initialize_circular_buffer()
     
     def unloadDevice(self, label: str) -> None:
         """ Tries to unload from the MMCore a previously loaded device (used for finalize() call)
         """
         try:
-            self.__core.unloadDevice(label)
+            self.__core.unload_device(label)
         except RuntimeError:
             raise ValueError(f"Error in unloading device \"{label}\"")
     
@@ -115,7 +117,7 @@ class PyMMCoreManager(SignalInterface):
             property (``str``): label of the property to read            
         """
         try:
-            return self.__core.getProperty(label, property)
+            return self.__core.get_property(label, property)
         except Exception as err:
             raise RuntimeError(f"Failed to load property \"{property}\": {err.__str__()}")
     
@@ -128,7 +130,7 @@ class PyMMCoreManager(SignalInterface):
             value (``PropertyValue``): value to set the property with
         """
         try:
-            self.__core.setProperty(label, property, value)
+            self.__core.set_property(label, property, value)
         except RuntimeError as err:
             self.__logger.error(f"Failed to set \"{property}\" to {value}: {err.__str__()}")
     
@@ -158,18 +160,18 @@ class PyMMCoreManager(SignalInterface):
         """
         if stageType == "single":
             if isAbsolute:
-                self.__core.setPosition(label, positions[axis])
+                self.__core.set_position(label, positions[axis])
             else:
-                self.__core.setRelativePosition(label, positions[axis])
+                self.__core.set_relative_position(label, positions[axis])
             positions[axis] = self.getStagePosition(label, axis)
         else:
             # axis are forced by the manager constructor
             # to be "X-Y", so this call should be safe
             # just keep it under control...
             if isAbsolute:
-                self.__core.setXYPosition(label, positions["X"], positions["Y"]) 
+                self.__core.set_xy_position(label, positions["X"], positions["Y"]) 
             else:
-                self.__core.setRelativeXYPosition(label, positions["X"], positions["Y"])
+                self.__core.set_relative_xy_position(label, positions["X"], positions["Y"])
             positions = {axis : self.__getXYStagePosition[axis](label) for axis in ["X", "Y"]}
         return positions
     
@@ -186,10 +188,10 @@ class PyMMCoreManager(SignalInterface):
         """
         positions = {}
         if stageType == "single":
-            self.__core.setOrigin(label)
-            positions[axes[0]] = self.__core.getPosition(label)
+            self.__core.set_origin(label)
+            positions[axes[0]] = self.__core.get_position(label)
         else:
-            self.__core.setOriginXY(label)
+            self.__core.set_origin_xy(label)
             positions = {ax : self.__getXYStagePosition[ax](label) for ax in axes}
         return positions
     
@@ -202,7 +204,7 @@ class PyMMCoreManager(SignalInterface):
         Returns:
             tuple: a rectangle describing the captured image. The tuple is described as: `[x, y, xSize, ySize]`.
         """
-        return tuple(self.__core.getROI())
+        return tuple(self.__core.get_roi())
     
     def setROI(self, label: str, hpos: int, vpos: int, hsize: int, vsize: int) -> None:
         """Creates a new ROI for the camera device.
@@ -214,7 +216,7 @@ class PyMMCoreManager(SignalInterface):
             - `hsize (int)`: horizontal size of the ROI (width).
             - `vsize (int)`: vertical size of the ROI (height).
         """
-        self.__core.setROI(hpos, vpos, hsize, vsize)
+        self.__core.set_roi(hpos, vpos, hsize, vsize)
     
     def setShutterStatus(self, label: str, status: bool) -> None:
         """Sets the shutter status of the selected device.
@@ -223,4 +225,4 @@ class PyMMCoreManager(SignalInterface):
             label (str): name of the device.
             status (bool): ``True`` if the shutter is open, ``False`` otherwise.
         """
-        self.__core.setShutterOpen(label, status)
+        self.__core.set_shutter_open(label, status)

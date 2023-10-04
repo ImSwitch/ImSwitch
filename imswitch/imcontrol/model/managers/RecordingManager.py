@@ -10,7 +10,7 @@ import numpy as np
 import tifffile as tiff
 
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, SaveFormat, SaveMode, RecMode
 from ome_zarr.writer import write_multiscales_metadata
 from ome_zarr.format import format_from_version
 import abc
@@ -107,19 +107,6 @@ class TiffStorer(Storer):
             with AsTemporayFile(f'{self.filepath}_{channel}.tiff') as path:
                 tiff.imwrite(path, image,) # TODO: Parse metadata to tiff meta data
                 logger.info(f"Saved image to tiff file {path}")
-
-
-class SaveMode(enum.Enum):
-    Disk = 1
-    RAM = 2
-    DiskAndRAM = 3
-    Numpy = 4
-
-
-class SaveFormat(enum.Enum):
-    HDF5 = 1
-    TIFF = 2
-    ZARR = 3
 
 
 DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
@@ -615,15 +602,6 @@ class RecordingWorker(Worker):
         newFrames = self.__recordingManager.detectorsManager[detectorName].getChunk()
         newFrames = np.array(newFrames)
         return newFrames
-
-
-class RecMode(enum.Enum):
-    SpecFrames = 1
-    SpecTime = 2
-    ScanOnce = 3
-    ScanLapse = 4
-    UntilStop = 5
-
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

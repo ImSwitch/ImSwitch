@@ -11,6 +11,7 @@ from .ImageController import ImageController
 from .LaserController import LaserController
 from .MotCorrController import MotCorrController
 from .PositionerController import PositionerController
+from .PycroManagerController import PycroManagerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
 from .ScanControllerBase import ScanControllerBase

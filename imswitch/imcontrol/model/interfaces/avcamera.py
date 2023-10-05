@@ -267,7 +267,15 @@ class CameraAV:
             
             self.needs_reconnect = False
             self.is_camera_open = True
-            self.camera.arm('Continuous',callback_fct)
+            try:
+                self.camera.arm('Continuous',callback_fct)
+            except:
+                # probabyl we need to reconnect here
+                self.camera.close()
+                self.startVimba(is_restart = False)
+                self.camera = self.vimba.camera(0)
+                self.camera.open(1)
+                self.camera.arm('Continuous',callback_fct)
             self.__logger.debug("camera connected")
             self.SensorWidth = self.camera.feature("SensorWidth").value
             self.SensorHeight = self.camera.feature("SensorHeight").value

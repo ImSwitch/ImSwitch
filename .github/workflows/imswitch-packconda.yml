@@ -22,7 +22,7 @@ jobs:
 
     - name: Create and activate environment
       run: |
-        conda env create -n imswitch python=3.9
+        conda create -n imswitch python=3.9
         conda activate imswitch
         pip install . 
         

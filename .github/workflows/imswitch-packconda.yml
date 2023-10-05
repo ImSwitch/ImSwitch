@@ -1,0 +1,39 @@
+name: Pack Conda Environment
+
+on:
+  push:
+    branches:
+      - main  # adjust with your primary branch
+
+jobs:
+  conda-pack:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest"
+        activate-environment: myenv
+
+    - name: Create and activate environment
+      run: |
+        conda env create -n imswitch python=3.9
+        conda activate imswitch
+        pip install . 
+        
+    - name: Install conda-pack
+      run: conda install -c conda-forge conda-pack
+
+    - name: Conda pack environment
+      run: |
+        conda pack -n myenv -o myenv.tar.gz
+
+    - name: Upload packed environment
+      uses: actions/upload-artifact@v2
+      with:
+        name: packed-env
+        path: myenv.tar.gz

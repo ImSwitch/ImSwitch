@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PycroManagerManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PycroManagerAcquisitionManager
 )
 
 
@@ -76,13 +76,13 @@ class MasterController:
             self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
             self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
         elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
-            self.pycroManager = PycroManagerManager(self.detectorsManager)
-            self.pycroManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
-            self.pycroManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
-            self.pycroManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
-            self.pycroManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
-            self.pycroManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-            self.pycroManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+            self.pycroManagerAcquisition = PycroManagerAcquisitionManager(self.detectorsManager)
+            self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
+            self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
+            self.pycroManagerAcquisition.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
+            self.pycroManagerAcquisition.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
+            self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
+            self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
         else:
             raise ValueError("Recording widget requires either PycroManager or Recording to be enabled.")
 

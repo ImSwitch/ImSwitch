@@ -8,7 +8,7 @@ class AcquisitionWorker(Worker):
     def __init__(self):
         super().__init__()
         
-class PycroManagerManager(SignalInterface):
+class PycroManagerAcquisitionManager(SignalInterface):
     
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()

@@ -44,6 +44,43 @@ class PyMMCoreManager(SignalInterface):
     
     def loadProperties(self, label: str, preInitValues: dict = None) -> dict:
         properties = {}
+
+        propNamesStrVec = self.__core.get_device_property_names("Camera")
+        propNames = [propNamesStrVec.get(i) for i in range(propNamesStrVec.size())]
+
+        for propName in propNames:
+            propType = PropertyType(self.__core.get_property_type(label, propName).swig_value())
+            isReadOnly = self.__core.is_property_read_only(label, propName)
+            isPreInit = self.__core.is_property_pre_init(label, propName)
+            valuesStrVec = self.__core.get_property_allowed_values(label, propName)
+            values = [valuesStrVec.get(i) for i in range(valuesStrVec.size())]
+
+            propDict = {
+                "type" : None,
+                "values": None,
+                "minimum": float(self.__core.get_property_lower_limit(label, propName)), # minimum, otherwise 0
+                "maximum": float(self.__core.get_property_upper_limit(label, propName)), # maximum, otherwise 0
+                "read_only": isReadOnly,
+                "pre_init": isPreInit
+            }
+
+            if propType in [PropertyType.Integer, PropertyType.Float]:
+                if len(values) > 0:
+                    values = [propType.to_python()(value) for value in values]
+                else:
+                    if isPreInit and preInitValues and propName in preInitValues and not isReadOnly:
+                        self.__core.set_property(label, propName, preInitValues[propName])
+                    values = self.__core.get_property(label, propName)
+                pass
+            elif propType == PropertyType.String:
+                # get_allowed_property_values() may not return nothing 
+                # if the property is read-only
+                # hence we make sure we get the proper value
+                if isReadOnly:
+                    values = self.__core.get_property(label, propName)
+            else:
+                raise ValueError(f"Property {propName} is of unrecognized type!")
+
         return properties
 
         # TODO: refactor from pymmcore-plus to pycromanager

@@ -76,7 +76,7 @@ class PycroManagerController(ImConWidgetController):
         time.sleep(0.01)
         
         savename = os.path.join(folder, self.getFileName()) + '_snap'
-        self._master.pycroManager.snap(savename, SaveMode(self._widget.getSnapSaveMode()))
+        self._master.pycroManagerAcquisition.snap(savename, SaveMode(self._widget.getSnapSaveMode()))
 
     def toggleREC(self, checked):
         """ Start or end recording. """

@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main  # adjust with your primary branch
-
+  workflow_dispatch:
+  
 jobs:
   conda-pack:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Check out repository
@@ -30,10 +31,10 @@ jobs:
 
     - name: Conda pack environment
       run: |
-        conda pack -n myenv -o myenv.tar.gz
+        conda pack -n imswitch -o imswitch.tar.gz
 
     - name: Upload packed environment
       uses: actions/upload-artifact@v2
       with:
         name: packed-env
-        path: myenv.tar.gz
+        path: imswitch.tar.gz

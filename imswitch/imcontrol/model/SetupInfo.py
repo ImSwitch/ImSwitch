@@ -272,7 +272,7 @@ class PyroServerInfo:
 @dataclass(frozen=True)
 class PycroManagerInfo:
     # TODO: this path is valid only for Windows; add support for other OSes
-    mmPath : Optional[str] = "C:/Program Files/Micro-Manager/"
+    mmPath : Optional[str] = "C://Program Files//Micro-Manager-2.0"
     port: Optional[int] = 4827
     bufferSizeMB : Optional[int] = 1024
     maxMemoryMB : Optional[int] = 2000
@@ -301,6 +301,9 @@ class SetupInfo:
     their properties.
     """
 
+    pycroManager: Optional[PycroManagerInfo] = field(default_factory=dict)
+    """ PycroManager settings. Required to be defined to use PycroManager. """
+
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
 
@@ -323,9 +326,6 @@ class SetupInfo:
 
     microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
     """ Microscope stand settings. Required to be defined to use MotCorr widget. """
-    
-    pycroManager: Optional[PycroManagerInfo] = field(default_factory=lambda: None)
-    """ PycroManager settings. Required to be defined to use PycroManager. """
 
     nidaq: NidaqInfo = field(default_factory=NidaqInfo)
     """ NI-DAQ settings. """

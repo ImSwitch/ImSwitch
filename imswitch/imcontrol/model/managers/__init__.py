@@ -5,6 +5,7 @@ from .NidaqManager import NidaqManager
 from .PositionersManager import PositionersManager
 from .RS232sManager import RS232sManager
 from .PycroManagerAcquisitionManager import PycroManagerAcquisitionManager
+from .PyMMCoreManager import PyMMCoreManager
 from .RecordingManager import RecordingManager
 from .SLMManager import SLMManager
 from .ScanManagerPointScan import ScanManagerPointScan

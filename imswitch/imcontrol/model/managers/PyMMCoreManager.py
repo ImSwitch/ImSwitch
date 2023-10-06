@@ -3,7 +3,8 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.configfiletools import _mmcoreLogDir
 from typing import Union, Tuple, Dict, List
 from pymmcore_plus import PropertyType
-from pycromanager import Core, start_headless
+from pycromanager import Core, start_headless, stop_headless
+from pycromanager.headless import _create_pymmcore_instance
 import datetime as dt
 import os
 
@@ -17,15 +18,26 @@ class PyMMCoreManager(SignalInterface):
     def __init__(self, setupInfo) -> None:
         super().__init__()
         self.__logger = initLogger(self)
-        
-        start_headless(
-            mm_app_path=setupInfo.pycroManager["mmPath"],
-            max_memory_mb=setupInfo.pycroManager["maxMemoryMB"],
-            buffer_size_mb=setupInfo.pycroManager["bufferSizeMB"],
-            port=setupInfo.pycroManager["port"] 
-        )
-        
-        self.__core = Core()
+        self.__core = None
+        self.__usingPycroManager = False
+
+        if "PycroManager" in setupInfo.availableWidgets:
+            self.__usingPycroManager = True
+            self.__logger.info("Starting headless instance...")
+            start_headless(
+                mm_app_path=setupInfo.pycroManager.mmPath,
+                max_memory_mb=setupInfo.pycroManager.maxMemoryMB,
+                buffer_size_mb=setupInfo.pycroManager.bufferSizeMB,
+                port=setupInfo.pycroManager.port 
+            )
+            self.__logger.info(f"Started on port {setupInfo.pycroManager.port}")
+            self.__core = Core()
+        else:
+            self.__logger.info("Starting pymmcore instance...")
+            self.__core = _create_pymmcore_instance()
+            self.__core.set_device_adapter_search_paths([setupInfo.pycroManager.mmPath,])
+            self.__core.set_circular_buffer_memory_footprint(setupInfo.pycroManager.bufferSizeMB)
+            self.__logger.info("Using pymmcore backend")
 
         self.__logger.info(self.__core.get_api_version_info())
 
@@ -38,6 +50,14 @@ class PyMMCoreManager(SignalInterface):
         self.__core.set_primary_log_file(logpath)
         self.__core.enable_debug_log(True)
     
+    def __del__(self):
+        if self.__usingPycroManager:
+            stop_headless()
+    
+    @property
+    def usingPycroManager(self) -> bool:
+        return self.__usingPycroManager
+
     @property
     def core(self) -> Core:
         return self.__core
@@ -45,23 +65,27 @@ class PyMMCoreManager(SignalInterface):
     def loadProperties(self, label: str, preInitValues: dict = None) -> dict:
         properties = {}
 
-        propNamesStrVec = self.__core.get_device_property_names("Camera")
-        propNames = [propNamesStrVec.get(i) for i in range(propNamesStrVec.size())]
+        if self.__usingPycroManager:
+            propNamesStrVec = self.__core.get_device_property_names(label)
+            propNames = [propNamesStrVec.get(i) for i in range(propNamesStrVec.size())]
+        else:
+            propNames = self.__core.get_device_property_names(label)
 
         for propName in propNames:
-            propType = PropertyType(self.__core.get_property_type(label, propName).swig_value())
             isReadOnly = self.__core.is_property_read_only(label, propName)
             isPreInit = self.__core.is_property_pre_init(label, propName)
-            valuesStrVec = self.__core.get_property_allowed_values(label, propName)
-            values = [valuesStrVec.get(i) for i in range(valuesStrVec.size())]
+            if self.__usingPycroManager:
+                propType = PropertyType(self.__core.get_property_type(label, propName).swig_value())
+                valuesStrVec = self.__core.get_allowed_property_values(label, propName)
+                values = [valuesStrVec.get(i) for i in range(valuesStrVec.size())]
+            else:
+                propType = PropertyType(self.__core.get_property_type(label, propName))
+                values = self.__core.get_allowed_property_values(label, propName)
 
             propDict = {
-                "type" : None,
+                "type" : propType,
                 "values": None,
-                "minimum": float(self.__core.get_property_lower_limit(label, propName)), # minimum, otherwise 0
-                "maximum": float(self.__core.get_property_upper_limit(label, propName)), # maximum, otherwise 0
                 "read_only": isReadOnly,
-                "pre_init": isPreInit
             }
 
             if propType in [PropertyType.Integer, PropertyType.Float]:
@@ -77,43 +101,14 @@ class PyMMCoreManager(SignalInterface):
                 # if the property is read-only
                 # hence we make sure we get the proper value
                 if isReadOnly:
-                    values = self.__core.get_property(label, propName)
+                    values = [self.__core.get_property(label, propName)]
             else:
                 raise ValueError(f"Property {propName} is of unrecognized type!")
+            
+            propDict["values"] = values
+            properties[propName] = propDict
 
         return properties
-
-        # TODO: refactor from pymmcore-plus to pycromanager
-        # for propName in self.__core.get_device_property_names(label):
-
-        #     propObj = self.__core.getPropertyObject(label, propName)
-        #     propType = propObj.type()
-        #     isReadOnly = propObj.isReadOnly()
-        #     isPreInit = propObj.isPreInit()
-        #     values = list(propObj.allowedValues())
-
-        #     if propType in [PropertyType.Integer, PropertyType.Float]:
-        #         if len(values) > 0:
-        #             values = [propType.to_python()(value) for value in values]
-        #         else:
-        #             if isPreInit and preInitValues and propName in preInitValues and not isReadOnly:
-        #                 propObj.setValue(preInitValues[propName])
-        #             values = propObj.value
-        #     elif propType == PropertyType.String:
-        #         # allowedValues() may not return nothing if the property is read-only
-        #         # hence we make sure we get the proper value
-        #         if isReadOnly:
-        #             values = propObj.value
-        #     else:
-        #         raise ValueError(f"Property {propName} is of unrecognized type!")
-            
-            
-        #     properties[propName] = {
-        #         "type": type(values),
-        #         "values": values,
-        #         "read_only": isReadOnly
-        #     }
-        # return properties
     
     def loadDevice(self, devInfo: Tuple[str, str, str], isCamera: bool = False) -> None:
         """ Tries to load a device into the MMCore. If the device is a camera, it also initializes the circular buffer.
@@ -136,7 +131,6 @@ class PyMMCoreManager(SignalInterface):
             raise ValueError(f"Error in loading device \"{devInfo[0]}\", check the values of \"module\" and \"device\" in the configuration file (current values: {devInfo[1]}, {devInfo[2]})")
         if isCamera:
             self.__core.set_camera_device(devInfo[0])
-            self.__core.initialize_circular_buffer()
     
     def unloadDevice(self, label: str) -> None:
         """ Tries to unload from the MMCore a previously loaded device (used for finalize() call)
@@ -241,7 +235,11 @@ class PyMMCoreManager(SignalInterface):
         Returns:
             tuple: a rectangle describing the captured image. The tuple is described as: `[x, y, xSize, ySize]`.
         """
-        return tuple(self.__core.get_roi())
+        if self.__usingPycroManager:
+            roiObj = self.__core.get_roi()
+            return (roiObj.x, roiObj.y, roiObj.width, roiObj.height)
+        else:
+            return tuple(self.__core.get_roi(label))
     
     def setROI(self, label: str, hpos: int, vpos: int, hsize: int, vsize: int) -> None:
         """Creates a new ROI for the camera device.

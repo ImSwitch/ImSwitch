@@ -1,9 +1,11 @@
 from ..PyMMCoreManager import PyMMCoreManager # only for type hinting
+from pymmcore_plus import PropertyType
 from imswitch.imcommon.model import initLogger
 from contextlib import contextmanager
 from .DetectorManager import (
     DetectorManager, DetectorNumberParameter, DetectorListParameter
 )
+import numpy as np
 
 class PyMMCoreCameraManager(DetectorManager):
     """ Manager class for camera controlled via the Micro-Manager core.
@@ -12,7 +14,8 @@ class PyMMCoreCameraManager(DetectorManager):
     
     - ``module`` -- name of the MM module referenced
     - ``device`` -- name of the MM device described in the module 
-    - ``exposureName (str)`` --  name of the property related to the exposure time;
+    - ``pixelSize (float)`` -- pixel size in µm, can be changed at run time
+    - ``exposurePropertyName (str)`` --  name of the property controlling the exposure time;
     - ``preInitProperties (dict) (optional)`` -- a dictionary containing properties that need to be pre-initialized by the user, in the form
     ``{name (str): value (Any)}``
     """
@@ -24,7 +27,7 @@ class PyMMCoreCameraManager(DetectorManager):
         module = detectorInfo.managerProperties["module"]
         device = detectorInfo.managerProperties["device"]
         try:
-            self.exposureProperty = detectorInfo.managerProperties["exposureName"]
+            self.exposureProperty = detectorInfo.managerProperties["exposurePropertyName"]
         except:
             raise ValueError("No property name for exposure time has been defined!")
 
@@ -34,9 +37,10 @@ class PyMMCoreCameraManager(DetectorManager):
         
         try:
             preInit = detectorInfo.managerProperties["preInitProperties"]
-            properties = self.__coreManager.loadProperties(name, preInit)
         except KeyError:
-            properties = self.__coreManager.loadProperties(name)
+            preInit = {}
+        
+        properties = self.__coreManager.loadProperties(name, preInit)
 
         # unfortunately handling of the device properties is currently a non-standardized mess;
         # sometimes the exposure time is also a property and we want to filter it out as the properties
@@ -53,21 +57,21 @@ class PyMMCoreCameraManager(DetectorManager):
 
         # we then iterate over the read properties;
         # these are arranged in a dictionary with the following keys:
-        # "type": the type of the property,
-        # "values": the actual values of the type, to discern between a number or a list,
+        # "type": the type of the property, based on the PropertyType enum,
+        # "values": the actual values of the type,
         # "read_only": if it's a read-only parameter (hence editable or not)
         for propName, propVals in properties.items():
-            if propVals["type"] == list:
-                # apparently a property could exist and have no values set,
-                # and we have to nest this check internally to avoid falling in the
-                # other branch of the if-else...
-                if len(propVals["values"]) > 0:
-                    parameters[propName] = DetectorListParameter(group="Camera properties", value=propVals["values"][0], options=propVals["values"], editable=True)
-            else:
-                if propVals["type"] == str:
-                    parameters[propName] = DetectorListParameter(group="Camera properties", value=propVals["values"], options=[propVals["values"]], editable=False)
+            try:
+                if propVals["type"] == PropertyType.String:
+                    parameters[propName] = DetectorListParameter(group="Camera properties", value=propVals["values"][0], options=propVals["values"], editable=not propVals["read_only"])
                 else:
-                    parameters[propName] = DetectorNumberParameter(group="Camera properties", value=float(propVals["values"]), valueUnits="", editable=not propVals["read_only"])
+                    # some properties listed as integers are actually booleans and must be treated as list parameters
+                    if len(propVals["values"]) > 0:
+                        parameters[propName] = DetectorListParameter(group="Camera properties", value=propVals["values"][0], options=propVals["values"], editable=not propVals["read_only"])
+                    else:
+                        parameters[propName] = DetectorNumberParameter(group="Camera properties", value=float(propVals["values"]), valueUnits="", editable=not propVals["read_only"])
+            except Exception as e:
+                self.__logger.error(f"Found error in initializing parameter {propName} -> {propVals}: {e}")
 
         parameters["Camera pixel size"] = DetectorNumberParameter(group='Miscellaneous', value=10,  valueUnits='µm', editable=True)
 
@@ -77,10 +81,19 @@ class PyMMCoreCameraManager(DetectorManager):
                         model=device, parameters=parameters, croppable=True)
         self.setParameter("Exposure", self.parameters["Exposure"].value)
         self.__frame = None
+
+        # We need to keep track of the current value of the pixel size;
+        # it can be updated from the GUI and stored in the manager, but the back-end
+        # needs to be informed about this, so we need a new pixel size configuration field;
+        # the default measure unit is µm
+        self.__coreManager.core.define_pixel_size_config("ImSwitchPixelSize")
+        self.__coreManager.core.set_pixel_size_config("ImSwitchPixelSize")
+        self.__coreManager.core.set_pixel_size_um("ImSwitchPixelSize", self.parameters["Camera pixel size"].value)
     
     @property
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
+        self.__coreManager.core.set_pixel_size_um("ImSwitchPixelSize", self.parameters["Camera pixel size"].value)
         return [1, umxpx, umxpx]
     
     def setBinning(self, binning):
@@ -90,9 +103,14 @@ class PyMMCoreCameraManager(DetectorManager):
         super().setBinning(binning)
     
     def getLatestFrame(self, is_save=False):
-        if self.__coreManager.core.get_remaining_image_count() > 0:
-            self.__frame = self.__coreManager.core.pop_next_image()
-        return self.__frame
+        if self.__coreManager.usingPycroManager:
+            self.__coreManager.core.snap_image()
+            tagged_image = self.__coreManager.core.get_tagged_image()
+            return np.reshape(tagged_image.pix, newshape=(tagged_image.tags['Height'], tagged_image.tags['Width']))
+        else:
+            if self.__coreManager.core.get_remaining_image_count() > 0:
+                self.__frame = self.__coreManager.core.pop_next_image()
+            return self.__frame
     
     def getChunk(self):
         return [self.getLatestFrame()]
@@ -112,7 +130,7 @@ class PyMMCoreCameraManager(DetectorManager):
             yield
     
     def startAcquisition(self):
-        self.__coreManager.core.start_continous_sequence_acquisition(self.parameters["Exposure"].value)
+        self.__coreManager.core.start_continuous_sequence_acquisition(self.parameters["Exposure"].value)
 
     def stopAcquisition(self):
         self.__coreManager.core.stop_sequence_acquisition(self.name)

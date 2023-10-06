@@ -4,7 +4,7 @@ from typing import Optional, Union, List
 import numpy as np
 
 from imswitch.imcommon.model import ostools, APIExport
-from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
+from imswitch.imcommon.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 
@@ -40,7 +40,6 @@ class PycroManagerController(ImConWidgetController):
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
-        self._commChannel.sigRequestScanFreq.connect(self.sendScanFreq)
 
         # Connect PycroManagerWidget signals
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
@@ -70,13 +69,17 @@ class PycroManagerController(ImConWidgetController):
     def snap(self):
         self.updateRecAttrs(isSnapping=True)
 
+        attrs = {
+            self._master.pycroManagerAcquisition.currentDetector: self._commChannel.sharedAttrs.getHDF5Attributes()
+        }
+
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
             os.makedirs(folder)
         time.sleep(0.01)
         
-        savename = os.path.join(folder, self.getFileName()) + '_snap'
-        self._master.pycroManagerAcquisition.snap(savename, SaveMode(self._widget.getSnapSaveMode()))
+        savename =  self.getFileName() + '_snap'
+        self._master.pycroManagerAcquisition.snap(folder, savename, SaveMode(self._widget.getSnapSaveMode()), attrs)
 
     def toggleREC(self, checked):
         """ Start or end recording. """

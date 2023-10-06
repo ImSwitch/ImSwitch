@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PycroManagerAcquisitionManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager
 )
 
 
@@ -21,11 +21,14 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+        self.pymmcoreManager = PyMMCoreManager(self.__setupInfo)
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
+            # TODO: this needs to be added as a signal generator somehow
             #'pulseStreamerManager' : self.pulseStreamerManager,
-            'rs232sManager': self.rs232sManager
+            'rs232sManager': self.rs232sManager,
+            'pymmcManager': self.pymmcoreManager
         }
 
         self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
@@ -66,6 +69,9 @@ class MasterController:
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
         self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
 
+        self.recordingManager = None
+        self.pycroManagerAcquisition = None
+
         # RecordingManager and PycroManager are mutually exclusive
         if "Recording" in self.__setupInfo.availableWidgets and "PycroManager" not in self.__setupInfo.availableWidgets:
             self.recordingManager = RecordingManager(self.detectorsManager)
@@ -94,7 +100,12 @@ class MasterController:
         )
 
     def closeEvent(self):
-        self.recordingManager.endRecording(emitSignal=False, wait=True)
+        # recordingManager and pycroManagerAcquisition are mutually exclusive objects;
+        # only one can exists at a time in an ImSwitch instance
+        if self.recordingManager is not None:
+            self.recordingManager.endRecording(emitSignal=False, wait=True)
+        else:
+            self.pycroManagerAcquisition.endRecording()
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

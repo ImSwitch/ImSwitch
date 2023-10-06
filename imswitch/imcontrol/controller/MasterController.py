@@ -31,7 +31,7 @@ class MasterController:
             'pymmcManager': self.pymmcoreManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)

@@ -130,10 +130,12 @@ class PyMMCoreCameraManager(DetectorManager):
             yield
     
     def startAcquisition(self):
-        self.__coreManager.core.start_continuous_sequence_acquisition(self.parameters["Exposure"].value)
+        if not self.__coreManager.usingPycroManager:
+            self.__coreManager.core.start_continuous_sequence_acquisition(self.parameters["Exposure"].value)
 
     def stopAcquisition(self):
-        self.__coreManager.core.stop_sequence_acquisition(self.name)
+        if not self.__coreManager.usingPycroManager:
+            self.__coreManager.core.stop_sequence_acquisition(self.name)
     
     def setParameter(self, name, value):
         # this may not work properly, keep an eye on it

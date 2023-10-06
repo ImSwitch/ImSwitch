@@ -295,13 +295,11 @@ class RecordingWorker(Worker):
         super().__init__()
         self.__logger = initLogger(self)
         self.__recordingManager = recordingManager
-        self.__logger = initLogger(self)
 
     def run(self):
         acqHandle = self.__recordingManager.detectorsManager.startAcquisition()
         try:
             self._record()
-
         finally:
             self.__recordingManager.detectorsManager.stopAcquisition(acqHandle)
 

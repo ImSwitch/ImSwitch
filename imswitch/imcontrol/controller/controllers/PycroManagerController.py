@@ -45,8 +45,6 @@ class PycroManagerController(ImConWidgetController):
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
         self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
 
-        self._widget.sigSnapSaveModeChanged.connect(self.snapSaveModeChanged)
-
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
 
@@ -63,8 +61,6 @@ class PycroManagerController(ImConWidgetController):
     def snapSaveModeChanged(self):
         saveMode = SaveMode(self._widget.getSnapSaveMode())
         self._widget.setsaveFormatEnabled(saveMode != SaveMode.RAM)
-        if saveMode == SaveMode.RAM:
-            self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
     def snap(self):
         self.updateRecAttrs(isSnapping=True)
@@ -90,20 +86,21 @@ class PycroManagerController(ImConWidgetController):
             if not os.path.exists(folder):
                 os.makedirs(folder)
             time.sleep(0.01)
-            self.savename = os.path.join(folder, self.getFileName()) + '_rec'
+            savename = os.path.join(folder, self.getFileName()) + '_rec'
 
-            self.recordingArgs = {
-                # TODO: add arguments for PycroManager acquisition
+            recordingArgs = {
+                "folder" : folder,
+                "filename" : savename,
             }
 
             if self.recMode == RecMode.SpecFrames:
-                self.recordingArgs['recFrames'] = self._widget.getNumExpositions()
-                self._master.pycroManagerManager.startRecording(**self.recordingArgs)
+                recordingArgs['recFrames'] = self._widget.getNumExpositions()
+                self._master.pycroManagerManager.startRecording(**recordingArgs)
             elif self.recMode == RecMode.SpecTime:
-                self.recordingArgs['recTime'] = self._widget.getTimeToRec()
-                self._master.pycroManagerManager.startRecording(**self.recordingArgs)
+                recordingArgs['recTime'] = self._widget.getTimeToRec()
+                self._master.pycroManagerManager.startRecording(**recordingArgs)
             else:
-                self._master.pycroManagerManager.startRecording(**self.recordingArgs)
+                self._master.pycroManagerManager.startRecording(**recordingArgs)
 
             self.recording = True
             self.endedRecording = False

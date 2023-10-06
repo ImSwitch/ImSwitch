@@ -6,8 +6,12 @@ import os
 import numpy as np
 
 class AcquisitionWorker(Worker):
+    
     def __init__(self):
         super().__init__()
+    
+    def run(self, **recordingArgs) -> None:
+        pass
         
 class PycroManagerAcquisitionManager(SignalInterface):
     
@@ -70,7 +74,8 @@ class PycroManagerAcquisitionManager(SignalInterface):
         return self.__core.get_camera_device()
     
     def startRecording(self, **recordingArgs):
-        pass
+        self.__acquisitionThread.start()
+        self.sigRecordingStarted.emit()
     
     def endRecording(self):
-        pass
+        self.sigRecordingEnded.emit()

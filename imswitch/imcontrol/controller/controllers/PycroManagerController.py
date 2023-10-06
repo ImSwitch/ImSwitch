@@ -3,10 +3,14 @@ import time
 from typing import Optional, Union, List
 import numpy as np
 
-from imswitch.imcommon.model import ostools, APIExport
-from imswitch.imcommon.model import RecMode, SaveMode, SaveFormat
+from imswitch.imcommon.model import (
+    ostools,
+    APIExport,
+    PycroManagerAcquisitionMode, 
+    SaveMode,
+    initLogger
+)
 from ..basecontrollers import ImConWidgetController
-from imswitch.imcommon.model import initLogger
 
 
 class PycroManagerController(ImConWidgetController):
@@ -47,6 +51,9 @@ class PycroManagerController(ImConWidgetController):
 
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
+        self._widget.sigSpecZStackPicked.connect(self.specZStack)
+        self._widget.sigSpecXYListPicked.connect(self.specXYList)
+        self._widget.sigSpecXYZListPicked.connect(self.specXYZList)
 
         self._widget.sigSnapRequested.connect(self.snap)
         self._widget.sigRecToggled.connect(self.toggleREC)
@@ -93,10 +100,10 @@ class PycroManagerController(ImConWidgetController):
                 "filename" : savename,
             }
 
-            if self.recMode == RecMode.SpecFrames:
+            if self.recMode == PycroManagerAcquisitionMode.Frames:
                 recordingArgs['recFrames'] = self._widget.getNumExpositions()
                 self._master.pycroManagerManager.startRecording(**recordingArgs)
-            elif self.recMode == RecMode.SpecTime:
+            elif self.recMode == PycroManagerAcquisitionMode.Time:
                 recordingArgs['recTime'] = self._widget.getTimeToRec()
                 self._master.pycroManagerManager.startRecording(**recordingArgs)
             else:
@@ -122,28 +129,49 @@ class PycroManagerController(ImConWidgetController):
         self.recordingCycleEnded()
 
     def updateRecFrameNum(self, recFrameNum):
-        if self.recMode == RecMode.SpecFrames:
+        if self.recMode == PycroManagerAcquisitionMode.Frames:
             self._widget.updateRecFrameNum(recFrameNum)
 
     def updateRecTime(self, recTime):
-        if self.recMode == RecMode.SpecTime:
+        if self.recMode == PycroManagerAcquisitionMode.Time:
             self._widget.updateRecTime(recTime)
 
     def specFrames(self):
         self._widget.checkSpecFrames()
         self._widget.setEnabledParams(specFrames=True)
-        self.recMode = RecMode.SpecFrames
+        self.recMode = PycroManagerAcquisitionMode.Frames
 
     def specTime(self):
         self._widget.checkSpecTime()
         self._widget.setEnabledParams(specTime=True)
-        self.recMode = RecMode.SpecTime
+        self.recMode = PycroManagerAcquisitionMode.Time
+    
+    def specZStack(self):
+        self._widget.checkSpecZStack()
+        self._widget.setEnabledParams(specZStack=True)
+        self.recMode = PycroManagerAcquisitionMode.ZStack
+    
+    def specXYList(self):
+        self._widget.checkXYList()
+        self._widget.setEnabledParams(specXYList=True)
+        self.recMode = PycroManagerAcquisitionMode.XYList
+    
+    def specXYZList(self):
+        self._widget.checkXYZList()
+        self._widget.setEnabledParams(specXYZList=True)
+        self.recMode = PycroManagerAcquisitionMode.XYZList
 
     def setRecMode(self, recMode):
-        if recMode == RecMode.SpecFrames:
+        if recMode == PycroManagerAcquisitionMode.Frames:
             self.specFrames()
-        elif recMode == RecMode.SpecTime:
+        elif recMode == PycroManagerAcquisitionMode.Time:
             self.specTime()
+        elif recMode == PycroManagerAcquisitionMode.ZStack:
+            self.specZStack()
+        elif recMode == PycroManagerAcquisitionMode.XYList:
+            self.specXYList()
+        elif recMode == PycroManagerAcquisitionMode.XYZList:
+            self.specXYZList()
         else:
             raise ValueError(f'Invalid RecMode {recMode} specified')
 
@@ -161,7 +189,7 @@ class PycroManagerController(ImConWidgetController):
         if key[1] == _recModeAttr:
             if value == 'Snap':
                 return
-            self.setRecMode(RecMode[value])
+            self.setRecMode(PycroManagerAcquisitionMode[value])
         elif key[1] == _framesAttr:
             self._widget.setNumExpositions(value)
         elif key[1] == _timeAttr:
@@ -182,9 +210,9 @@ class PycroManagerController(ImConWidgetController):
             self.setSharedAttr(_recModeAttr, 'Snap')
         else:
             self.setSharedAttr(_recModeAttr, self.recMode.name)
-            if self.recMode == RecMode.SpecFrames:
+            if self.recMode == PycroManagerAcquisitionMode.Frames:
                 self.setSharedAttr(_framesAttr, self._widget.getNumExpositions())
-            elif self.recMode == RecMode.SpecTime:
+            elif self.recMode == PycroManagerAcquisitionMode.Time:
                 self.setSharedAttr(_timeAttr, self._widget.getTimeToRec())
 
     @APIExport(runOnUIThread=True)

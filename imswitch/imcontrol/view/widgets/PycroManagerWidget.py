@@ -16,6 +16,9 @@ class PycroManagerWidget(Widget):
 
     sigSpecFramesPicked = QtCore.Signal()
     sigSpecTimePicked = QtCore.Signal()
+    sigSpecZStackPicked = QtCore.Signal()
+    sigSpecXYListPicked = QtCore.Signal()
+    sigSpecXYZListPicked = QtCore.Signal()
     
     sigSnapSaveModeChanged = QtCore.Signal()
     sigRecSaveModeChanged = QtCore.Signal()
@@ -27,7 +30,7 @@ class PycroManagerWidget(Widget):
         super().__init__(*args, **kwargs)
         
         # Graphical elements
-        recTitle = QtWidgets.QLabel('<h2><strong>Pycro-Manager engine</strong></h2>')
+        recTitle = QtWidgets.QLabel('<h2><strong>PycroManager acquisition engine</strong></h2>')
         recTitle.setTextFormat(QtCore.Qt.RichText)
         
         # Folder and filename fields
@@ -62,6 +65,27 @@ class PycroManagerWidget(Widget):
         self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
                                         QtCore.Qt.AlignVCenter))
         self.numExpositionsEdit = QtWidgets.QLineEdit('100')
+        
+        self.specifyZStack = QtWidgets.QRadioButton('Z-stack (µm)')
+        self.startZLabel = QtWidgets.QLabel('Start: ')
+        self.startZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
+        self.startZEdit = QtWidgets.QLineEdit('0')
+        
+        self.endZLabel = QtWidgets.QLabel('End: ')
+        self.endZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
+        self.endZEdit = QtWidgets.QLineEdit('10')
+        
+        self.stepZLabel = QtWidgets.QLabel('Step: ')
+        self.stepZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
+        self.stepZEdit = QtWidgets.QLineEdit('1')
+        
+        self.specifyXYList = QtWidgets.QRadioButton('XY coordinates list')
+        self.openXYListTableButton = guitools.BetterPushButton('Make list...')
+        self.loadXYListButton = guitools.BetterPushButton('Load list...')
+        
+        self.specifyXYZList = QtWidgets.QRadioButton('XYZ coordinates list')
+        self.openXYZListTableButton = guitools.BetterPushButton('Make list...')
+        self.loadXYZListButton = guitools.BetterPushButton('Load list...')
 
         self.specifyTime = QtWidgets.QRadioButton('Time (s)')
         self.currentTime = QtWidgets.QLabel('0 / ')
@@ -100,25 +124,44 @@ class PycroManagerWidget(Widget):
         gridRow += 1
 
         recGrid.addWidget(QtWidgets.QLabel('Folder'), gridRow, 0)
-        recGrid.addWidget(self.folderEdit, gridRow, 1, 1, 3)
-        recGrid.addWidget(self.openFolderButton, gridRow, 4)
+        recGrid.addWidget(self.folderEdit, gridRow, 1, 1, 5)
+        recGrid.addWidget(self.openFolderButton, gridRow, 6)
         gridRow += 1
 
-        recGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 3)
+        recGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 5)
         recGrid.addWidget(self.specifyfile, gridRow, 0)
         gridRow += 1
 
         recGrid.addWidget(modeTitle, gridRow, 0)
         gridRow += 1
 
-        recGrid.addWidget(self.specifyFrames, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.specifyFrames, gridRow, 0, 1, 6)
         recGrid.addWidget(self.currentFrame, gridRow, 1)
-        recGrid.addWidget(self.numExpositionsEdit, gridRow, 2)
+        recGrid.addWidget(self.numExpositionsEdit, gridRow, 2, 1, 5)
         gridRow += 1
 
-        recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 5)
+        recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 6)
         recGrid.addWidget(self.currentTime, gridRow, 1)
-        recGrid.addWidget(self.timeToRec, gridRow, 2)
+        recGrid.addWidget(self.timeToRec, gridRow, 2, 1, 5)
+        gridRow += 1
+        
+        recGrid.addWidget(self.specifyZStack, gridRow, 0, 1, 6)
+        recGrid.addWidget(self.startZLabel, gridRow, 1)
+        recGrid.addWidget(self.startZEdit, gridRow, 2)
+        recGrid.addWidget(self.endZLabel, gridRow, 3)
+        recGrid.addWidget(self.endZEdit, gridRow, 4)
+        recGrid.addWidget(self.stepZLabel, gridRow, 5)
+        recGrid.addWidget(self.stepZEdit, gridRow, 6)
+        gridRow += 1
+        
+        recGrid.addWidget(self.specifyXYList, gridRow, 0, 1, 6)
+        recGrid.addWidget(self.openXYListTableButton, gridRow, 2, 1, 3)
+        recGrid.addWidget(self.loadXYListButton, gridRow, 5, 1, 2)
+        gridRow += 1
+        
+        recGrid.addWidget(self.specifyXYZList, gridRow, 0, 1, 6)
+        recGrid.addWidget(self.openXYZListTableButton, gridRow, 2, 1, 3)
+        recGrid.addWidget(self.loadXYZListButton, gridRow, 5, 1, 2)
         gridRow += 1
 
         recGrid.addWidget(self.snapSaveModeLabel, gridRow, 0)
@@ -144,6 +187,9 @@ class PycroManagerWidget(Widget):
 
         self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
         self.specifyTime.clicked.connect(self.sigSpecTimePicked)
+        self.specifyZStack.clicked.connect(self.sigSpecZStackPicked)
+        self.specifyXYList.clicked.connect(self.sigSpecXYListPicked)
+        self.specifyXYZList.clicked.connect(self.sigSpecXYZListPicked)
         
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
@@ -203,13 +249,29 @@ class PycroManagerWidget(Widget):
 
     def checkSpecTime(self):
         self.specifyTime.setChecked(True)
+    
+    def checkSpecZStack(self):
+        self.specifyZStack.setChecked(True)
+    
+    def checkXYList(self):
+        self.specifyXYList.setChecked(True)
+    
+    def checkXYZList(self):
+        self.specifyXYZList.setChecked(True)
 
     def setFieldsEnabled(self, enabled):
         self.recGridContainer.setEnabled(enabled)
 
-    def setEnabledParams(self, specFrames=False, specTime=False, scanLapse=False):
+    def setEnabledParams(self, specFrames=False, specTime=False, specZStack=False, specXYList=False, specXYZList=False):
         self.numExpositionsEdit.setEnabled(specFrames)
         self.timeToRec.setEnabled(specTime)
+        self.startZEdit.setEnabled(specZStack)
+        self.endZEdit.setEnabled(specZStack)
+        self.stepZEdit.setEnabled(specZStack)
+        self.openXYListTableButton.setEnabled(specXYList)
+        self.loadXYListButton.setEnabled(specXYList)
+        self.openXYZListTableButton.setEnabled(specXYZList)
+        self.loadXYZListButton.setEnabled(specXYZList)
 
     def setRecButtonChecked(self, checked):
         self.recButton.setChecked(checked)

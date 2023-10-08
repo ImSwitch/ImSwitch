@@ -144,7 +144,7 @@ class PositionsTableDialog(QDialog):
                 f.write(",".join(rowData) + "\n")
     
     def _saveTableAsJSON(self, filePath: str):
-        data = {}
+        data = []
         keys = self.coordinates
         if self.pointsTableWidget.labelName is not None:
             keys.append("Label")

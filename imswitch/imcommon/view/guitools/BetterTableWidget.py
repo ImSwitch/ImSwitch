@@ -53,14 +53,14 @@ class BetterTableWidget(QTableWidget):
         self.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.setDragDropMode(QTableWidget.DragDropMode.InternalMove)
     
-    def dropEvent(self, event):
+    def dropEvent(self, event: QDropEvent):
         """ Monitors a drag and drop event, and reorders rows accordingly.
         Method is reimplemented as a workaround for a bug in the QTableWidget.
         """
         if event.source() == self and (event.dropAction() == Qt.MoveAction or self.dragDropMode() == QAbstractItemView.InternalMove):
-            success, row, _, _ = self._dropOn(event)
+            success, row, _, _ = self.__dropOn(event)
             if success:             
-                selRows = self._getSelectedRowsFast()                        
+                selRows = self.__getSelectedRowsFast()                        
 
                 top = selRows[0]
                 dropRow = row
@@ -74,7 +74,7 @@ class BetterTableWidget(QTableWidget):
                         r = 0
                     self.insertRow(r)
 
-                selRows = self._getSelectedRowsFast()
+                selRows = self.__getSelectedRowsFast()
 
                 top = selRows[0]
                 offset = dropRow - top
@@ -90,14 +90,14 @@ class BetterTableWidget(QTableWidget):
         else:
             QTableView.dropEvent(event)
     
-    def _getSelectedRowsFast(self):
+    def __getSelectedRowsFast(self):
         selRows = []
         for item in self.selectedItems():
             if item.row() not in selRows:
                 selRows.append(item.row())
         return selRows
 
-    def _droppingOnItself(self, event, index):
+    def __droppingOnItself(self, event, index):
         dropAction = event.dropAction()
 
         if self.dragDropMode() == QAbstractItemView.InternalMove:
@@ -113,7 +113,7 @@ class BetterTableWidget(QTableWidget):
 
         return False
 
-    def _dropOn(self, event: QDropEvent):
+    def __dropOn(self, event: QDropEvent):
         if event.isAccepted():
             return False, None, None, None
 
@@ -128,7 +128,7 @@ class BetterTableWidget(QTableWidget):
 
         if self.model().supportedDropActions() & event.dropAction():
             if index != self.rootIndex():
-                dropIndicatorPosition = self._position(event.pos(), self.visualRect(index), index)
+                dropIndicatorPosition = self.__position(event.pos(), self.visualRect(index), index)
 
                 if dropIndicatorPosition == QAbstractItemView.AboveItem:
                     row = index.row()
@@ -140,12 +140,12 @@ class BetterTableWidget(QTableWidget):
                     row = index.row()
                     col = index.column()
 
-            if not self._droppingOnItself(event, index):
+            if not self.__droppingOnItself(event, index):
                 return True, row, col, index
 
         return False, None, None, None
 
-    def _position(self, pos, rect, index):
+    def __position(self, pos, rect, index):
         r = QAbstractItemView.OnViewport
         margin = 2
         if pos.y() - rect.top() < margin:
@@ -161,7 +161,10 @@ class BetterTableWidget(QTableWidget):
         return r
     
     def addNewRow(self):
-        '''Adds a new row in the table.'''
+        """ Add new row to the table. Automatically adds a label to the last column if labelName is not `None`.
+        Data type of the row is determined by the default value of the table, which is set as the default
+        value of the row.
+        """
         rowNumber = self.rowCount()  # Get row number.
         self.insertRow(rowNumber)  # Insert a row.
         
@@ -183,12 +186,14 @@ class BetterTableWidget(QTableWidget):
                 self.item(rowNumber, col).setTextAlignment(Qt.AlignCenter)          
 
     def removeSelectedRow(self):
-        ''' Remove the last row in the table.
-        '''
+        """ Remove currently selected row from the table. Automatically clears selection.
+        """
         self.removeRow(self.currentRow())  # Remove a row.
         self.clearSelection()
     
     def keyPressEvent(self, event):
+        """ Override key press event to clear row selection when pressing escape.
+        """
         if (event.key() == Qt.Key_Escape and
             event.modifiers() == Qt.NoModifier):
             self.selectionModel().clear()
@@ -196,6 +201,8 @@ class BetterTableWidget(QTableWidget):
             super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
+        """ Override mouse press event to clear row selection when clicking outside of a row.
+        """
         if not self.indexAt(event.pos()).isValid():
             self.selectionModel().clear()
         super().mousePressEvent(event)

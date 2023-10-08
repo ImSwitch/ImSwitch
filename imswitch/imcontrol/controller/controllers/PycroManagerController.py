@@ -21,7 +21,7 @@ from ..basecontrollers import ImConWidgetController
 class PycroManagerController(ImConWidgetController):
     """ Linked to RecordingWidget. """
     
-    sigFailedToLoadJSON = Signal(str)
+    sigFailedToLoadJSON = Signal(str, str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -222,7 +222,7 @@ class PycroManagerController(ImConWidgetController):
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"
                 self.__logger.error(errorMsg)
-                self.sigFailedToLoadJSON.emit(errorMsg)
+                self.sigFailedToLoadJSON.emit(coordinates, errorMsg)
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

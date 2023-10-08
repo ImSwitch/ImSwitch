@@ -48,15 +48,22 @@ class BetterTableWidget(QTableWidget):
         self.setDragDropOverwriteMode(False)
         self.setDropIndicatorShown(True)
         
-        sanityCheck = all([len(data) == len(columns) for data in initData])
+        sanityCheck = True
+        numColumns = self.columnCount()
+        if initData is not None:
+            for data in initData:
+                if len(data) != numColumns:
+                    sanityCheck = False
+                    break
+        else:
+            sanityCheck = False
         
-        if initData is not None and sanityCheck:
+        if sanityCheck:
             for data in initData:
                 self.addNewRow(data)
         else:
             self.addNewRow()  # Add the first row.
         
-        numColumns = self.columnCount()
         for col in range(numColumns):
             self.setColumnWidth(col, self.width() // numColumns)
         

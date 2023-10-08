@@ -7,6 +7,8 @@ from qtpy.QtWidgets import (
     QDialog,
     QGridLayout,
 )
+from imswitch.imcommon.model import dirtools
+from os.path import join
 
 def askYesNoQuestion(widget, title, question):
     """ Asks the user a yes/no question and returns whether "yes" was clicked. """
@@ -123,7 +125,11 @@ class PositionsTableDialog(QDialog):
         and the user will be asked to pick a file path.
         """
         fileFilter = "JSON (*.json);;CSV (*.csv)"
-        filePath: str = askForFilePath(self, caption="Save table", isSaving=True, nameFilter=fileFilter)
+        filePath: str = askForFilePath(self, 
+                                       caption="Save table", 
+                                       defaultFolder=join(dirtools.UserFileDirs.Root, "table_data"), 
+                                       isSaving=True, 
+                                       nameFilter=fileFilter)
         if filePath is not None:
             if filePath.endswith(".csv"):
                 self._saveTableAsCSV(filePath)

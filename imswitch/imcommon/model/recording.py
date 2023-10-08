@@ -17,14 +17,3 @@ class RecMode(enum.Enum):
     ScanOnce = 3
     ScanLapse = 4
     UntilStop = 5
-
-class PycroManagerAcquisitionEngine(enum.Enum):
-    Acquistion = 1
-    XYTiledAcquisition = 2
-
-class PycroManagerAcquisitionMode(enum.Enum):
-    Frames = 1
-    Time = 2
-    ZStack = 3
-    XYList = 4
-    XYZList = 5

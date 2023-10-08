@@ -61,9 +61,9 @@ class PycroManagerWidget(Widget):
         self.filenameEdit = QtWidgets.QLineEdit('Current time')
         
         # Snap and recording buttons
-        self.snapTIFFButton = guitools.BetterPushButton('Snap')
-        self.snapTIFFButton.setStyleSheet("font-size:16px")
-        self.snapTIFFButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+        self.snapButton = guitools.BetterPushButton('Snap')
+        self.snapButton.setStyleSheet("font-size:16px")
+        self.snapButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                           QtWidgets.QSizePolicy.Expanding)
         self.recButton = guitools.BetterPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
@@ -76,9 +76,6 @@ class PycroManagerWidget(Widget):
         modeTitle.setTextFormat(QtCore.Qt.RichText)
 
         self.specifyFrames = QtWidgets.QRadioButton('Number of frames')
-        self.currentFrame = QtWidgets.QLabel('0 /')
-        self.currentFrame.setAlignment((QtCore.Qt.AlignRight |
-                                        QtCore.Qt.AlignVCenter))
         self.numExpositionsEdit = QtWidgets.QLineEdit('100')
         
         self.specifyZStack = QtWidgets.QRadioButton('Z-stack (µm)')
@@ -103,9 +100,6 @@ class PycroManagerWidget(Widget):
         self.loadXYZListButton = guitools.BetterPushButton('Load list...')
 
         self.specifyTime = QtWidgets.QRadioButton('Time (s)')
-        self.currentTime = QtWidgets.QLabel('0 / ')
-        self.currentTime.setAlignment((QtCore.Qt.AlignRight |
-                                       QtCore.Qt.AlignVCenter))
         self.timeToRec = QtWidgets.QLineEdit('1')
 
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
@@ -119,12 +113,15 @@ class PycroManagerWidget(Widget):
         self.recSaveModeList.addItems(['Save on disk',
                                        'Save in memory for reconstruction',
                                        'Save on disk and keep in memory'])
+
+        self.acquisitionProgressBar = QtWidgets.QProgressBar()
+        self.acquisitionProgressBar.setTextVisible(False)
         
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
         buttonGrid = QtWidgets.QGridLayout()
         buttonWidget.setLayout(buttonGrid)
-        buttonGrid.addWidget(self.snapTIFFButton, 0, 0)
+        buttonGrid.addWidget(self.snapButton, 0, 0)
         buttonWidget.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                    QtWidgets.QSizePolicy.Expanding)
         buttonGrid.addWidget(self.recButton, 0, 2)
@@ -151,13 +148,11 @@ class PycroManagerWidget(Widget):
         gridRow += 1
 
         recGrid.addWidget(self.specifyFrames, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.currentFrame, gridRow, 1)
-        recGrid.addWidget(self.numExpositionsEdit, gridRow, 2, 1, 5)
+        recGrid.addWidget(self.numExpositionsEdit, gridRow, 1, 1, 5)
         gridRow += 1
 
         recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.currentTime, gridRow, 1)
-        recGrid.addWidget(self.timeToRec, gridRow, 2, 1, 5)
+        recGrid.addWidget(self.timeToRec, gridRow, 1, 1, 5)
         gridRow += 1
         
         recGrid.addWidget(self.specifyZStack, gridRow, 0, 1, 6)
@@ -186,6 +181,13 @@ class PycroManagerWidget(Widget):
         recGrid.addWidget(self.recSaveModeLabel, gridRow, 0)
         recGrid.addWidget(self.recSaveModeList, gridRow, 1, 1, -1)
         gridRow += 1
+        
+        recGrid.addWidget(self.acquisitionProgressBar, gridRow, 0, 1, -1)
+        gridRow += 1
+        
+        # keep progress bar hidden by default;
+        # will be shown when recording starts
+        self.acquisitionProgressBar.hide()
 
         self.recGridContainer = QtWidgets.QWidget()
         self.recGridContainer.setLayout(recGrid)
@@ -215,7 +217,7 @@ class PycroManagerWidget(Widget):
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
 
-        self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
+        self.snapButton.clicked.connect(self.sigSnapRequested)
         self.recButton.toggled.connect(self.sigRecToggled)
     
     def openTableWidget(self, coordinates: List[str]):
@@ -254,6 +256,11 @@ class PycroManagerWidget(Widget):
     def displayFailedJSONLoad(self, coordinates: str, errorMsg: str):
         showWarningMessage(self, "Failed to load JSON file", errorMsg)
         self.__dataCache[coordinates] = None
+    
+    def getZStackValues(self) -> dict:
+        return (float(self.startZEdit.text()),
+                float(self.endZEdit.text()),
+                float(self.stepZEdit.text()))
 
     def getSnapSaveMode(self):
         return self.snapSaveModeList.currentIndex() + 1
@@ -339,12 +346,18 @@ class PycroManagerWidget(Widget):
 
     def setTimeToRec(self, secondsToRec):
         self.numExpositionsEdit.setText(str(secondsToRec))
-
-    def updateRecFrameNum(self, recFrameNum):
-        self.currentFrame.setText(str(recFrameNum) + ' /')
-
-    def updateRecTime(self, recTime):
-        self.currentTime.setText(str(recTime) + ' /')
+        
+    def setProgressBarVisibility(self, visible: bool) -> None:
+        if visible:
+            self.acquisitionProgressBar.show()
+        else:
+            self.acquisitionProgressBar.hide()
+        
+    def setProgressBarMaximum(self, maxVal: int) -> None:
+        self.acquisitionProgressBar.setMaximum(maxVal)
+    
+    def updateProgressBar(self, timePoint: int) -> None:
+        self.acquisitionProgressBar.setValue(timePoint)
 
     @shortcut('Ctrl+R', "Record")
     def toggleRecButton(self):

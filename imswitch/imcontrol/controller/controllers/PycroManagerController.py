@@ -2,6 +2,8 @@ import os, time, json, numpy as np
 from typing import Optional, Union, List
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import (
+    PycroManagerAcquisitionMode,
+    PycroManagerZStack,
     PycroManagerXYScan,
     PycroManagerXYZScan,
     PycroManagerXYPoint,
@@ -11,7 +13,6 @@ from imswitch.imcommon.framework.pycromanager import (
 from imswitch.imcommon.model import (
     ostools,
     APIExport,
-    PycroManagerAcquisitionMode, 
     SaveMode,
     initLogger
 )
@@ -28,9 +29,6 @@ class PycroManagerController(ImConWidgetController):
         self.__logger = initLogger(self)
 
         self.settingAttr = False
-        self.recording = False
-        self.doneScan = False
-        self.endedRecording = False
         self.lapseTotal = 0
 
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
@@ -46,8 +44,7 @@ class PycroManagerController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigUpdateRecFrameNum.connect(self.updateRecFrameNum)
-        self._commChannel.sigUpdateRecTime.connect(self.updateRecTime)
+        self._commChannel.sigUpdatePycroManagerTimePoint.connect(self.updateProgressBar)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
@@ -99,9 +96,11 @@ class PycroManagerController(ImConWidgetController):
         savename =  self.getFileName() + '_snap'
         self._master.pycroManagerAcquisition.snap(folder, savename, SaveMode(self._widget.getSnapSaveMode()), attrs)
 
+    # TODO: refactor this method and call it "start recording" or something;
+    # then connect hook function callbacks to notify end recording
     def toggleREC(self, checked):
-        """ Start or end recording. """
-        if checked and not self.recording:
+        if checked:
+            """ Start or end recording. """
             self.updateRecAttrs(isSnapping=False)
 
             folder = self._widget.getRecFolder()
@@ -109,47 +108,99 @@ class PycroManagerController(ImConWidgetController):
                 os.makedirs(folder)
             time.sleep(0.01)
             savename = os.path.join(folder, self.getFileName()) + '_rec'
-
-            recordingArgs = {
-                "folder" : folder,
-                "filename" : savename,
-            }
-
+            
+            maximumValueProgressBar = 100
+            
             if self.recMode == PycroManagerAcquisitionMode.Frames:
-                recordingArgs['recFrames'] = self._widget.getNumExpositions()
-                self._master.pycroManagerManager.startRecording(**recordingArgs)
+                maximumValueProgressBar = self._widget.getNumExpositions()
             elif self.recMode == PycroManagerAcquisitionMode.Time:
-                recordingArgs['recTime'] = self._widget.getTimeToRec()
-                self._master.pycroManagerManager.startRecording(**recordingArgs)
-            else:
-                self._master.pycroManagerManager.startRecording(**recordingArgs)
-
-            self.recording = True
-            self.endedRecording = False
+                maximumValueProgressBar = self._widget.getTimeToRec() * 1000 // self._master.pycroManagerAcquisition.exposureTime
+            elif self.recMode == PycroManagerAcquisitionMode.ZStack:
+                start, stop, step = self._widget.getZStackArgs()
+                maximumValueProgressBar = len(np.linspace(start, stop, (stop - start) / step))
+            elif self.recMode == PycroManagerAcquisitionMode.XYList:
+                maximumValueProgressBar = len(self.xyScan)
+            elif self.recMode == PycroManagerAcquisitionMode.XYZList:
+                maximumValueProgressBar = len(self.xyzScan)
+            
+            self._widget.setProgressBarMaximum(maximumValueProgressBar)
+            
+            # packing arguments
+            recordingArgs = {
+                "Acquisition" : {
+                    "directory" : folder,
+                    "name" : savename,
+                    "image_process_fn": None,
+                    "event_generation_hook_fn": None,
+                    "pre_hardware_hook_fn":  None,
+                    "post_hardware_hook_fn":  None,
+                    "post_camera_hook_fn": None,
+                    "notification_callback_fn": None,
+                    "image_saved_fn":  None,
+                    "napari_viewer" : None,
+                    "debug" : False,    
+                },
+                "multi_d_acquisition_events" : {
+                    "num_time_points": self.__calculateNumTimePoints(),
+                    "time_interval_s": self.__calculateTimeIntervalS(),
+                    "z_start": self._widget.getZStackArgs()[0] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                    "z_end": self._widget.getZStackArgs()[1] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                    "z_step": self._widget.getZStackArgs()[2] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                    "channel_group": None,
+                    "channels": None,
+                    "channel_exposures_ms": None,
+                    "xy_positions": np.array(self.xyScan) if self.recMode == PycroManagerAcquisitionMode.XYList else None,
+                    "xyz_positions": np.array(self.xyzScan) if self.recMode == PycroManagerAcquisitionMode.XYZList else None,
+                    "position_labels": self.__checkLabels(),
+                    "order": "tpcz" # todo: make this a parameter in the widget
+                }
+            }
+            
+            self.__logger.info(f"Recording {maximumValueProgressBar} time points at {self._master.pycroManagerAcquisition.exposureTime} ms")
+            self._widget.setProgressBarVisibility(True)
+            self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
         else:
-            self._master.pycroManagerManager.endRecording()
+            # do nothing... for now
+            pass
+    
+    def __calculateNumTimePoints(self) -> list:
+        if self.recMode == PycroManagerAcquisitionMode.Frames:
+            return self._widget.getNumExpositions()
+        if self.recMode == PycroManagerAcquisitionMode.Time:
+            return self._widget.getTimeToRec() * 1000 // self._master.pycroManagerAcquisition.exposureTime
+        else:
+            return None
+    
+    def __calculateTimeIntervalS(self) -> int:
+        if self.recMode == PycroManagerAcquisitionMode.Time:
+            return (self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.exposureTime) * 1e-3
+        else:
+            return 0
+    
+    def __checkLabels(self) -> Union[None, list]:
+        if self.recMode == PycroManagerAcquisitionMode.XYList:
+            return self.xyScan.labels()
+        elif self.recMode == PycroManagerAcquisitionMode.XYZList:
+            return self.xyzScan.labels()
+        else:
+            return None
 
     def recordingStarted(self):
         self._widget.setFieldsEnabled(False)
 
     def recordingCycleEnded(self):
-        self.recording = False
-        self._widget.updateRecFrameNum(0)
-        self._widget.updateRecTime(0)
+        self._widget.updateProgressBar(0)
         self._widget.setRecButtonChecked(False)
         self._widget.setFieldsEnabled(True)
 
     def recordingEnded(self):
-        self.endedRecording = True
         self.recordingCycleEnded()
-
-    def updateRecFrameNum(self, recFrameNum):
-        if self.recMode == PycroManagerAcquisitionMode.Frames:
-            self._widget.updateRecFrameNum(recFrameNum)
-
-    def updateRecTime(self, recTime):
-        if self.recMode == PycroManagerAcquisitionMode.Time:
-            self._widget.updateRecTime(recTime)
+    
+    def setProgressBarMaximum(self, maximum: int):
+        self._widget.setProgressBarMaximum(maximum)
+    
+    def updateProgressBar(self, timePoint: int):
+        self._widget.updateProgressBar(timePoint)
 
     def specFrames(self):
         self._widget.checkSpecFrames()
@@ -191,6 +242,9 @@ class PycroManagerController(ImConWidgetController):
             raise ValueError(f'Invalid RecMode {recMode} specified')
     
     def parseTableData(self, coordinates: str, points: list):
+        """ Parses the table data from the widget and creates a list of points.
+        Required for sanity check of the data points.
+        """
         if coordinates == 'XY':
             self.xyScan = PycroManagerXYScan(
                 [
@@ -205,6 +259,9 @@ class PycroManagerController(ImConWidgetController):
             )
         
     def readPointsJSONData(self, coordinates: str, filePath: str):
+        """ Reads the JSON file containing the points data and creates a list of points.
+        Required for sanity check of the data points.
+        """
         with open(filePath, "r") as file:
             try:
                 if coordinates == 'XY':

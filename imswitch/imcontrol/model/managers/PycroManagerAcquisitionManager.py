@@ -1,24 +1,21 @@
-from pycromanager import Core, Acquisition
+from pycromanager import Core, Acquisition, multi_d_acquisition_events
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
+from imswitch.imcommon.framework.pycromanager import (
+    PycroManagerAcquisitionMode,
+    PycroManagerZStack,
+    PycroManagerXYScan,
+    PycroManagerXYZScan
+)
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
 import os
 import numpy as np
-
-class AcquisitionWorker(Worker):
-    
-    def __init__(self):
-        super().__init__()
-    
-    def run(self, **recordingArgs) -> None:
-        pass
         
 class PycroManagerAcquisitionManager(SignalInterface):
     
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
-    sigRecordingFrameNumUpdated = Signal(int)  # (frameNumber)
-    sigRecordingTimeUpdated = Signal(int)  # (recTime)
+    sigPycroManagerTimePointUpdated = Signal(int) # (timePoint)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
@@ -32,8 +29,10 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__detectorsManager = detectorsManager
         self.__core = Core()
         self.__acquisitionThread = Thread()
-        self.__acquisitionWorker = AcquisitionWorker()
+        self.__acquisitionWorker = PycroManagerAcquisitionWorker(self)
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
+        
     
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -73,9 +72,43 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def currentDetector(self) -> str:
         return self.__core.get_camera_device()
     
-    def startRecording(self, **recordingArgs):
+    @property
+    def exposureTime(self) -> float:
+        return float(self.__core.get_exposure())
+        
+    def startRecording(self, recMode: PycroManagerAcquisitionMode, recordingArgs: dict):
+        self.__acquisitionWorker.recMode = recMode
+        self.__acquisitionWorker.recordingArgs = recordingArgs
+        
+        self.__logger.info("Starting recording thread")
         self.__acquisitionThread.start()
         self.sigRecordingStarted.emit()
     
     def endRecording(self):
         self.sigRecordingEnded.emit()
+
+
+class PycroManagerAcquisitionWorker(Worker):    
+    def __init__(self, manager: PycroManagerAcquisitionManager):
+        super().__init__()
+        self.__logger = initLogger(self)
+        self.recMode : PycroManagerAcquisitionMode = None
+        self.recordingArgs : dict = None
+        self.acquisitionManager : PycroManagerAcquisitionManager = manager
+    
+    def __notify_new_time_point(self, msg: dict):
+        # time point is offset by 1, so we add 1 to the frame number
+        if msg["phase"] == "image_saved":
+            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg["id"]["time"] + 1)   
+    
+    def run(self) -> None:
+        
+        self.__logger.info("Generating acquisition events")
+        events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notify_new_time_point
+        
+        self.__logger.info("Starting acquisition")
+        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            acq.acquire(events)
+        self.__logger.info("Acquisition finished")
+        self.acquisitionManager.sigRecordingEnded.emit()

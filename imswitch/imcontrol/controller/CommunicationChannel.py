@@ -39,6 +39,8 @@ class CommunicationChannel(SignalInterface):
     sigRecordingEnded = Signal()
 
     sigUpdateRecFrameNum = Signal(int)  # (frameNumber)
+    
+    sigUpdatePycroManagerTimePoint = Signal(int)  # (timePoint)
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 

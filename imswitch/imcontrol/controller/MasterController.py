@@ -16,7 +16,6 @@ class MasterController:
         self.__setupInfo = setupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
-        self.__noRecording = False
 
         # Init managers
         self.nidaqManager = NidaqManager(self.__setupInfo)
@@ -86,14 +85,12 @@ class MasterController:
             self.pycroManagerAcquisition = PycroManagerAcquisitionManager(self.detectorsManager)
             self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
             self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
-            self.pycroManagerAcquisition.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
-            self.pycroManagerAcquisition.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
+            self.pycroManagerAcquisition.sigPycroManagerTimePointUpdated.connect(cc.sigUpdatePycroManagerTimePoint)
             self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
             self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
         else:
             self.__logger.warning("RecordingManager and PycroManager are mutually exclusive, only one can be used at a time.")
             self.__logger.warning("No recording backend will be used.")
-            self.__noRecording = True
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
@@ -105,11 +102,13 @@ class MasterController:
     def closeEvent(self):
         # recordingManager and pycroManagerAcquisition are mutually exclusive objects;
         # only one can exists at a time in an ImSwitch instance
-        if not self.__noRecording:
+        try:
             if self.recordingManager is not None:
                 self.recordingManager.endRecording(emitSignal=False, wait=True)
             else:
                 self.pycroManagerAcquisition.endRecording()
+        except:
+            self.__logger.error("Error while closing RecordingManager or PycroManagerAcquisitionManager.")
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

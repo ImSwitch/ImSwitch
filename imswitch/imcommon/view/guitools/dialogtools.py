@@ -42,6 +42,9 @@ def askForFolderPath(widget, caption=None, defaultFolder=None):
     return result if result else None
 
 class PositionsTableDialog(QDialog):
+    
+    sigTableDataDumped = QtCore.Signal(dict)
+    
     def __init__(self, title: str, coordinates: list, default: Union[str, int, float],  unit: str = "µm", labelName: str = "Point"):
         super(QDialog, self).__init__()
         
@@ -96,11 +99,19 @@ class PositionsTableDialog(QDialog):
         self.setWindowTitle(title)
     
     def __del__(self):
-        # TODO: if there are connected signals, disconnect them
-        pass
+        receiversCount = self.receivers(self.sigTableDataDumped)
+        if receiversCount > 0:
+            self.sigTableDataDumped.disconnect()
     
     def accept(self) -> None:
-        # TODO: add a signal to send the table data to the main caller
+        data = {}
+        keys = self.coordinates
+        if self.pointsTableWidget.labelName is not None:
+            keys.append("Label")
+        for row in range(self.pointsTableWidget.rowCount()):
+            rowData = self._parseRowElements(row)
+            data[row] = {key: value for key, value in zip(keys, rowData)}
+        self.sigTableDataDumped.emit(data)
         super().accept()
     
     def setRemoveButtonStatus(self, _):

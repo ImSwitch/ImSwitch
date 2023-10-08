@@ -16,6 +16,7 @@ class MasterController:
         self.__setupInfo = setupInfo
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
+        self.__noRecording = False
 
         # Init managers
         self.nidaqManager = NidaqManager(self.__setupInfo)
@@ -90,7 +91,9 @@ class MasterController:
             self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
             self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
         else:
-            raise ValueError("Recording widget requires either PycroManager or Recording to be enabled.")
+            self.__logger.warning("RecordingManager and PycroManager are mutually exclusive, only one can be used at a time.")
+            self.__logger.warning("No recording backend will be used.")
+            self.__noRecording = True
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
@@ -102,10 +105,11 @@ class MasterController:
     def closeEvent(self):
         # recordingManager and pycroManagerAcquisition are mutually exclusive objects;
         # only one can exists at a time in an ImSwitch instance
-        if self.recordingManager is not None:
-            self.recordingManager.endRecording(emitSignal=False, wait=True)
-        else:
-            self.pycroManagerAcquisition.endRecording()
+        if not self.__noRecording:
+            if self.recordingManager is not None:
+                self.recordingManager.endRecording(emitSignal=False, wait=True)
+            else:
+                self.pycroManagerAcquisition.endRecording()
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

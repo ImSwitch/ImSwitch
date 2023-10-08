@@ -67,7 +67,7 @@ class PositionsTableDialog(QDialog):
         gridLayout = QGridLayout(self)  # Create a grid layout.
         
         # Create the table widget
-        self.pointsTableWidget = BetterTableWidget(names=coordinates, default=default, unit=unit, labelName=labelName)
+        self.pointsTableWidget = BetterTableWidget(names=coordinates, default=default, initData=initData, unit=unit, labelName=labelName)
         
         numColumns = len(coordinates) + 1
         

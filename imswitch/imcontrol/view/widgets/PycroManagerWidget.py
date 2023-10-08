@@ -1,8 +1,8 @@
 import os
 import time
-
+import json
+from typing import List
 from qtpy import QtCore, QtWidgets
-
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.model.shortcut import shortcut
 from imswitch.imcommon.view.guitools import PositionsTableDialog, askForFilePath, showWarningMessage
@@ -36,6 +36,11 @@ class PycroManagerWidget(Widget):
         
         # Table widgets; they need to remain alive otherwise
         # the widget automatically closes.
+        self.__dataCache = {
+            "XY": None,
+            "XYZ": None
+        }
+        
         self.XYTableWidget = None
         self.XYZTableWidget = None
         
@@ -201,11 +206,11 @@ class PycroManagerWidget(Widget):
         self.specifyXYList.clicked.connect(self.sigSpecXYListPicked)
         self.specifyXYZList.clicked.connect(self.sigSpecXYZListPicked)
         
-        self.openXYListTableButton.clicked.connect(self.openXYTableWidget)
-        self.loadXYListButton.clicked.connect(self.loadXYTableData)
+        self.openXYListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y"]))
+        self.loadXYListButton.clicked.connect(lambda: self.loadTableData("XY"))
         
-        self.openXYZListTableButton.clicked.connect(self.openXYZTableWidget)
-        self.loadXYZListButton.clicked.connect(self.loadXYZTableData)
+        self.openXYZListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y", "Z"]))
+        self.loadXYZListButton.clicked.connect(lambda: self.loadTableData("XYZ"))
         
         self.snapSaveModeList.currentIndexChanged.connect(self.sigSnapSaveModeChanged)
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
@@ -213,50 +218,42 @@ class PycroManagerWidget(Widget):
         self.snapTIFFButton.clicked.connect(self.sigSnapRequested)
         self.recButton.toggled.connect(self.sigRecToggled)
     
-    def openXYTableWidget(self):
+    def openTableWidget(self, coordinates: List[str]):
         """ Opens a dialog to specify the XY coordinates list. """
+        coordStr = "".join(coordinates)
         self.XYtableWidget = PositionsTableDialog(
-            title="XY coordinates table",
-            default=0.0, 
-            coordinates=["X", "Y"]
+            title=f"{coordStr} coordinates table",
+            default=0.0,
+            initData=self.__dataCache[coordStr],
+            coordinates=coordinates
         )
+        
+        # Collected data is sent to the controller
+        # and a copy is kept for updating the table widget
+        # next time the user opens it again.
+        self.XYtableWidget.sigTableDataDumped.connect(self.__storeTableDataLocally)
         self.XYtableWidget.sigTableDataDumped.connect(lambda tableData: 
-            self.sigTableDataDumped.emit("XY", tableData)
+            self.sigTableDataDumped.emit(coordStr, tableData)
         )
         self.XYtableWidget.show()
     
-    def loadXYTableData(self):
+    def __storeTableDataLocally(self, coordinates: str, data: List[dict]):
+        self.__dataCache[coordinates] = data
+    
+    def loadTableData(self, coordinates: str):
         fileFilter = "JSON (*.json);;CSV (*.csv)"
         filePath = askForFilePath(self, 
-                                caption="Load XY coordinates table", 
+                                caption=f"Load {coordinates} coordinates table", 
                                 defaultFolder=dirtools.UserFileDirs.Root,
                                 nameFilter=fileFilter)
         if filePath is not None:
-            self.sigTableLoaded.emit("XY", filePath)
+            with open(filePath, "r") as file:
+                self.__dataCache[coordinates] = json.load(file)
+            self.sigTableLoaded.emit(coordinates, filePath)
     
-    def openXYZTableWidget(self):
-        """ Opens a dialog to specify the XYZ coordinates list. """
-        self.XYZtableWidget = PositionsTableDialog(
-            title="XYZ coordinates table",
-            default=0.0, 
-            coordinates=["X", "Y", "Z"]
-        )
-        self.XYtableWidget.sigTableDataDumped.connect(lambda tableData: 
-            self.sigTableDataDumped.emit("XYZ", tableData)
-        )
-        self.XYZtableWidget.show()
-    
-    def loadXYZTableData(self):
-        fileFilter = "JSON (*.json);;CSV (*.csv)"
-        filePath = askForFilePath(self, 
-                                caption="Load XYZ coordinates table", 
-                                defaultFolder=dirtools.UserFileDirs.Root,
-                                nameFilter=fileFilter)
-        if filePath is not None:
-            self.sigTableLoaded.emit("XYZ", filePath)
-    
-    def displayFailedJSONLoad(self, errorMsg: str):
+    def displayFailedJSONLoad(self, coordinates: str, errorMsg: str):
         showWarningMessage(self, "Failed to load JSON file", errorMsg)
+        self.__dataCache[coordinates] = None
 
     def getSnapSaveMode(self):
         return self.snapSaveModeList.currentIndex() + 1

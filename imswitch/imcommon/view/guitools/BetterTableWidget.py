@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 from qtpy.QtWidgets import (
     QTableWidget,
     QHeaderView,
@@ -15,10 +15,17 @@ from qtpy.QtGui import QDropEvent
 # https://stackoverflow.com/questions/26227885/drag-and-drop-rows-within-qtablewidget#26311179
 class BetterTableWidget(QTableWidget):
     """ A table widget that allows for drag and drop reordering of rows. 
-    It also provides methods to add new rows and remove a selected row.
+    It also provides methods to add new rows and remove a selected row, and reimplements
+    key press and mouse press events to clear row selection when pressing escape or clicking on an empty area.
     """
     
-    def __init__(self, names: list, default: Union[str, int, float], unit: str = None, labelName: str = None):
+    def __init__(self, 
+                names: list, 
+                default: Union[str, int, float],
+                initData: List[dict] = None,
+                unit: str = None,
+                labelName: str = None
+            ):
         super(QTableWidget, self).__init__()
         self.default = default
         self.labelName = labelName
@@ -41,7 +48,13 @@ class BetterTableWidget(QTableWidget):
         self.setDragDropOverwriteMode(False)
         self.setDropIndicatorShown(True)
         
-        self.addNewRow()  # Add the first row.
+        sanityCheck = all([len(data) == len(columns) for data in initData])
+        
+        if initData is not None and sanityCheck:
+            for data in initData:
+                self.addNewRow(data)
+        else:
+            self.addNewRow()  # Add the first row.
         
         numColumns = self.columnCount()
         for col in range(numColumns):
@@ -160,19 +173,22 @@ class BetterTableWidget(QTableWidget):
 
         return r
     
-    def addNewRow(self):
+    def addNewRow(self, data: list = None):
         """ Add new row to the table. Automatically adds a label to the last column if labelName is not `None`.
         Data type of the row is determined by the default value of the table, which is set as the default
-        value of the row.
+        value of the row. If `data` is provided, it is used instead of the default value.
         """
         rowNumber = self.rowCount()  # Get row number.
         self.insertRow(rowNumber)  # Insert a row.
         
-        if self.labelName is not None:
-            newRowItem = [self.default for _ in range(self.columnCount()-1)]
-            newRowItem.append(f"{self.labelName} {rowNumber}")
+        if data is not None:
+            if self.labelName is not None:
+                newRowItem = [self.default for _ in range(self.columnCount()-1)]
+                newRowItem.append(f"{self.labelName} {rowNumber}")
+            else:
+                newRowItem = [self.default for _ in range(self.columnCount())]
         else:
-            newRowItem = [self.default for _ in range(self.columnCount())]
+            newRowItem = data
         
         for col, item in zip(range(self.columnCount()), newRowItem):
             if type(item) == int:

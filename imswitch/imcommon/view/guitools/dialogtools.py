@@ -45,7 +45,7 @@ def askForFolderPath(widget, caption=None, defaultFolder=None):
 
 class PositionsTableDialog(QDialog):
     
-    sigTableDataDumped = QtCore.Signal(dict)
+    sigTableDataDumped = QtCore.Signal(list)
     
     def __init__(self, title: str, coordinates: list, default: Union[str, int, float],  unit: str = "µm", labelName: str = "Point"):
         super(QDialog, self).__init__()
@@ -62,13 +62,11 @@ class PositionsTableDialog(QDialog):
         numColumns = len(coordinates) + 1
         
         # Create the add row button
-        self.addPosButton = BetterPushButton(self)
-        self.addPosButton.setText("Add position")  # Set label of the button.
+        self.addPosButton = BetterPushButton("Add position")
         self.addPosButton.clicked.connect(self.pointsTableWidget.addNewRow)  # Connect the button to a function.
         
         # Create the remove row button
-        self.removePosButton = BetterPushButton(self)
-        self.removePosButton.setText("Remove position")  # Set label of the button.
+        self.removePosButton = BetterPushButton("Remove position")
         self.removePosButton.clicked.connect(self.pointsTableWidget.removeSelectedRow)  # Connect the button to a function.
         
         # The remove row button is active only when a row is selected
@@ -78,16 +76,13 @@ class PositionsTableDialog(QDialog):
         )
         
         # Create the save table button
-        self.saveTableButton = BetterPushButton(self)
-        self.saveTableButton.setText("Save table")  # Set label of the button.
+        self.saveTableButton = BetterPushButton("Save table")
         self.saveTableButton.clicked.connect(self.saveTable)
         
         # Create OK and Cancel buttons
-        self.okButton = BetterPushButton(self)
-        self.okButton.setText("OK")
+        self.okButton = BetterPushButton("OK")
         self.okButton.clicked.connect(self.accept)
-        self.cancelbutton = BetterPushButton(self)
-        self.cancelbutton.setText("Cancel")
+        self.cancelbutton = BetterPushButton("Cancel")
         self.cancelbutton.clicked.connect(self.reject)
         
         
@@ -106,13 +101,13 @@ class PositionsTableDialog(QDialog):
             self.sigTableDataDumped.disconnect()
     
     def accept(self) -> None:
-        data = {}
+        data = []
         keys = self.coordinates
         if self.pointsTableWidget.labelName is not None:
             keys.append("Label")
         for row in range(self.pointsTableWidget.rowCount()):
             rowData = self._parseRowElements(row)
-            data[row] = {key: value for key, value in zip(keys, rowData)}
+            data.append({key: value for key, value in zip(keys, rowData)})
         self.sigTableDataDumped.emit(data)
         super().accept()
     
@@ -155,7 +150,7 @@ class PositionsTableDialog(QDialog):
             keys.append("Label")
         for row in range(self.pointsTableWidget.rowCount()):
             rowData = self._parseRowElements(row)
-            data[row] = {key: value for key, value in zip(keys, rowData)}
+            data.append({key: value for key, value in zip(keys, rowData)})
         
         with open(filePath, "w") as f:
             dump(data, f, indent=4)

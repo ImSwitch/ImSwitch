@@ -2,7 +2,8 @@ import pytest
 
 import h5py
 
-from imswitch.imcontrol.model import DetectorsManager, RecordingManager, RecMode, SaveMode
+from imswitch.imcontrol.model import DetectorsManager, RecordingManager
+from imswitch.imcommon.model import RecMode, SaveMode
 from . import detectorInfosBasic, detectorInfosMulti, detectorInfosNonSquare
 
 

@@ -1,7 +1,12 @@
-import os
-import time
+import os, time, json, numpy as np
 from typing import Optional, Union, List
-import numpy as np
+from imswitch.imcommon.framework import Signal
+from imswitch.imcommon.framework.pycromanager import (
+    PycroManagerXYScan,
+    PycroManagerXYZScan,
+    PycroManagerXYPoint,
+    PycroManagerXYZPoint
+)
 
 from imswitch.imcommon.model import (
     ostools,
@@ -15,6 +20,8 @@ from ..basecontrollers import ImConWidgetController
 
 class PycroManagerController(ImConWidgetController):
     """ Linked to RecordingWidget. """
+    
+    sigFailedToLoadJSON = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,6 +64,14 @@ class PycroManagerController(ImConWidgetController):
 
         self._widget.sigSnapRequested.connect(self.snap)
         self._widget.sigRecToggled.connect(self.toggleREC)
+        
+        self._widget.sigTableDataDumped.connect(self.parseTableData)
+        self._widget.sigTableLoaded.connect(self.readPointsJSONData)
+        self.xyScan = None
+        self.xyzScan = None
+        
+        # Feedback signal to the widget in case of failure to load JSON file
+        self.sigFailedToLoadJSON.connect(self._widget.displayFailedJSONLoad)
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """
@@ -174,6 +189,40 @@ class PycroManagerController(ImConWidgetController):
             self.specXYZList()
         else:
             raise ValueError(f'Invalid RecMode {recMode} specified')
+    
+    def parseTableData(self, coordinates: str, points: list):
+        if coordinates == 'XY':
+            self.xyScan = PycroManagerXYScan(
+                [
+                    PycroManagerXYPoint(**point) for point in points
+                ]
+            )
+        else:
+            self.xyzScan = PycroManagerXYZScan(
+                [
+                    PycroManagerXYZPoint(**point) for point in points
+                ]
+            )
+        
+    def readPointsJSONData(self, coordinates: str, filePath: str):
+        with open(filePath, "r") as file:
+            try:
+                if coordinates == 'XY':
+                    self.xyScan = PycroManagerXYScan(
+                        [
+                            PycroManagerXYPoint(**data) for data in json.load(file)
+                        ]
+                    )
+                else:
+                    self.xyzScan = PycroManagerXYZScan(
+                        [
+                            PycroManagerXYZPoint(**data) for data in json.load(file)
+                        ]
+                    )
+            except Exception as e:
+                errorMsg = f"Error reading JSON file {filePath}: {e}"
+                self.__logger.error(errorMsg)
+                self.sigFailedToLoadJSON.emit(errorMsg)
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

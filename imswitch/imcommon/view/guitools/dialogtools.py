@@ -1,5 +1,5 @@
 from json import dump
-from typing import Union
+from typing import Union, List
 from .BetterTableWidget import BetterTableWidget
 from .BetterPushButton import BetterPushButton
 from qtpy import QtCore, QtWidgets
@@ -35,6 +35,10 @@ def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, is
     result = func(widget, caption=caption, directory=defaultFolder, filter=nameFilter)[0]
     return result if result else None
 
+def showWarningMessage(widget, title, message):
+    """ Shows a warning message to the user. """
+    _ = QtWidgets.QMessageBox.warning(widget, title, message)
+
 
 def askForFolderPath(widget, caption=None, defaultFolder=None):
     """ Asks the user to pick a folder path. Returns the folder path if "OK" is
@@ -47,7 +51,13 @@ class PositionsTableDialog(QDialog):
     
     sigTableDataDumped = QtCore.Signal(list)
     
-    def __init__(self, title: str, coordinates: list, default: Union[str, int, float],  unit: str = "µm", labelName: str = "Point"):
+    def __init__(self, 
+                title: str, 
+                coordinates: list, 
+                default: Union[str, int, float],
+                initData: List[dict] = None,
+                unit: str = "µm",
+                labelName: str = "Point"):
         super(QDialog, self).__init__()
         
         self.coordinates = coordinates

@@ -1,4 +1,4 @@
-from pycromanager import Core, Acquisition, multi_d_acquisition_events
+from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
 from imswitch.imcommon.framework.pycromanager import (
     PycroManagerAcquisitionMode,
@@ -96,10 +96,10 @@ class PycroManagerAcquisitionWorker(Worker):
         self.recordingArgs : dict = None
         self.acquisitionManager : PycroManagerAcquisitionManager = manager
     
-    def __notify_new_time_point(self, msg: dict):
+    def __notify_new_time_point(self, msg: AcqNotification):
         # time point is offset by 1, so we add 1 to the frame number
-        if msg["phase"] == "image_saved":
-            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg["id"]["time"] + 1)   
+        if msg.is_image_saved_notification():
+            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["time"] + 1)   
     
     def run(self) -> None:
         

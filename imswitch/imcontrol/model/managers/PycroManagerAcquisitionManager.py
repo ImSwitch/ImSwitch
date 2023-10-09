@@ -108,12 +108,10 @@ class PycroManagerAcquisitionWorker(Worker):
         self.__logger.info("Generating acquisition events")
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notificationDict[self.recMode]
-        self.recordingArgs["Acquisition"]["debug"] = True
         try:
             self.__logger.info("Starting acquisition")
             with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
                 acq.acquire(events)
-
             self.__logger.info("Acquisition finished")
         except Exception as e:
             self.__logger.error(f"An error occurred during acquisition. Shutting down.")

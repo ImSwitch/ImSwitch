@@ -68,7 +68,7 @@ class PycroManagerController(ImConWidgetController):
         self.xyzScan = None
         
         # Feedback signal to the widget in case of failure to load JSON file
-        self.sigErrorCondition.connect(self._widget.displayFailedJSONLoad)
+        self.sigErrorCondition.connect(self._widget.displayErrorMessage)
 
     def openFolder(self):
         """ Opens current folder in File Explorer. """

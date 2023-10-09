@@ -107,7 +107,7 @@ class PycroManagerController(ImConWidgetController):
             if not os.path.exists(folder):
                 os.makedirs(folder)
             time.sleep(0.01)
-            savename = os.path.join(folder, self.getFileName()) + '_rec'
+            savename = self.getFileName() + '_rec'
             
             maximumValueProgressBar = 100
             
@@ -138,6 +138,7 @@ class PycroManagerController(ImConWidgetController):
                     "notification_callback_fn": None,
                     "image_saved_fn":  None,
                     "napari_viewer" : None,
+                    "show_display": False,
                     "debug" : False,    
                 },
                 "multi_d_acquisition_events" : {
@@ -192,6 +193,7 @@ class PycroManagerController(ImConWidgetController):
         self._widget.updateProgressBar(0)
         self._widget.setRecButtonChecked(False)
         self._widget.setFieldsEnabled(True)
+        self._widget.setProgressBarVisibility(False)
 
     def recordingEnded(self):
         self.recordingCycleEnded()

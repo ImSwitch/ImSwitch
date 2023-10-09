@@ -292,7 +292,7 @@ class SetupInfo:
 
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
-    to DetectorInfo objects. """
+    to PositionerInfo objects. """
 
     rs232devices: Dict[str, RS232Info] = field(default_factory=dict)
     """ RS232 connections in this setup. This is a map from unique RS232

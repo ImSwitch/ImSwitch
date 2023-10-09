@@ -47,269 +47,115 @@ List of available signals
 ==============================
 
 .. currentmodule:: imswitch.imcontrol.controller.CommunicationChannel
-.. attribute:: CommunicationChannel.sigUpdateImage(str, np.ndarray, bool, list, bool)
-
-- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
-- Connections: ``ImageController``, ``EtSTEDController``, ``AlignXYController``, ``AlignAverageController``
-- Content: (``detectorName``, ``image``, ``init``, ``scale``, ``isCurrentDetector``)
-- Explanation: emitted when the image of a detector is update (camera frame pulled, point-detector image updated etc.), and is used to e.g. update the live view.
-
-.. attribute:: CommunicationChannel.sigAcquisitionStarted()
-
-- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
-- Connections: \\
-- Content: \\
-- Explanation: emitted all detectors start acquiring
-
-.. attribute:: CommunicationChannel.sigAcquisitionStopped()
-
-- Origin: each ``DetectorManager``, through ``DetectorsManager`` and ``MasterController``
-- Connections: \\
-- Content: \\
-- Explanation: emitted all detectors stop acquiring
-
-.. attribute:: CommunicationChannel.sigScriptExecutionFinished()
-
-- Origin: ``CommunicationChannel``
-- Connections: ``WatcherController``
-- Content: \\
-- Explanation: emitted when script from the ``ImScripting`` module has finished execution
-
-.. attribute:: CommunicationChannel.sigAdjustFrame(object)
-    
-- Origin: ``SettingsController``
-- Connections: ``ImageController``
-- Content: ``tuple(int, int, int, int)`` with new detector shape (``x``, ``y``, ``width``, ``height``)
-- Explanation: emitted when a detector has changed the current ROI
-
-.. attribute:: CommunicationChannel.sigDetectorSwitched(str, str)
-
-- Origin: ``SettingsController``
-- Connections: ``DetectorsManager`` through ``MasterController``
-- Content: ``newDetectorName``, ``oldDetectorName``
-- Explanation: emitted when a different detector is selected from the GUI list of available detectors
-
-.. attribute:: CommunicationChannel.sigGridToggled(bool)
-    
-- Origin: ``ViewWidget`` through ``ViewController``
-- Connections: ``ImageController``
-- Content: ``True`` if grid activated, ``False`` otherwise
-- Explanation: emitted when the grid is toggled on or off in the image viewer
-
-.. attribute:: CommunicationChannel.sigCrosshairToggled(bool)
-    
-- Origin: ``ViewWidget`` through ``ViewController``
-- Connections: ``ImageController``
-- Content: ``True`` if crosshair activated, ``False`` otherwise
-- Explanation: emitted when the crosshair is toggled on or off in the image viewer
-
-.. attribute:: CommunicationChannel.sigAddItemToVb(object)
-    
-- Origin: 
-
-  - ``SettingsController``
-  - ``EtSTEDController``
-  - ``BeadRecController``
-  - ``AlignXYController``
-  - ``AlignmentLineController``
-  - ``AlignAverageController``
-- Connections: ``ImageController``
-- Content: ``item`` dependent on specific controller implementation
-- Explanation: adds a new item to the image viewer
-
-.. attribute:: CommunicationChannel.sigRemoveItemFromVb(object)
-
-- Origin: \\
-- Connections: ``ImageController``
-- Content: ``item`` dependent on specific controller implementation
-- Explanation: removes an item from the image viewer
-
-.. attribute:: CommunicationChannel.sigRecordingStarted()
-    
-- Origin: ``RecordingManager``, passing first by ``RecordingController`` and then ``MasterController``
-- Connections: \\
-- Content: \\
-- Explanation: emitted when a new recording is started
-
-.. attribute:: CommunicationChannel.sigRecordingEnded()
-
-- Origin: ``RecordingManager``, passing first by ``RecordingController`` and then ``MasterController``
-- Connections: ``EtSTEDController``
-- Content: \\
-- Explanation: emitted when a recording is ended
-
-.. attribute:: CommunicationChannel.sigUpdateRecFrameNum(int)
-    
-- Origin: ``RecordingController`` through ``MasterController``
-- Connections: \\
-- Content: ``frameNum`` of the current recording
-- Explanation: emitted when the frame number of the current recording is updated (in case of a stack recording)
-
-.. attribute:: CommunicationChannel.sigUpdateRecTime(int)
 
-- Origin: ``RecordingController`` through ``MasterController``
-- Connections: \\
-- Content: ``recTime`` of the current recording
-- Explanation: emitted when the recording time of the current recording is updated (in case of a time recording)
+.. autoattribute:: CommunicationChannel.sigUpdateImage
+   :annotation: = Signal(detectorName, image, init, scale, isCurrentDetector)
 
-.. attribute:: CommunicationChannel.sigMemorySnapAvailable(str, np.ndarray, object, bool)
+.. autoattribute:: CommunicationChannel.sigAcquisitionStarted
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigAcquisitionStopped
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigRunScan(bool, bool)
+.. autoattribute:: CommunicationChannel.sigScriptExecutionFinished
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigAdjustFrame
+   :annotation: = Signal(shape)
 
-.. attribute:: CommunicationChannel.sigAbortScan()
+.. autoattribute:: CommunicationChannel.sigDetectorSwitched
+   :annotation: = Signal(oldDetector, newDetector)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigGridToggled
+   :annotation: = Signal(enabled)
 
-.. attribute:: CommunicationChannel.sigScanStarting()
+.. autoattribute:: CommunicationChannel.sigCrosshairToggled
+   :annotation: = Signal(enabled)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigAddItemToVb
+   :annotation: = Signal(item)
 
-.. attribute:: CommunicationChannel.sigScanBuilt(object)
+.. autoattribute:: CommunicationChannel.sigRemoveItemFromVb
+   :annotation: = Signal(item)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigRecordingStarted
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigScanStarted()
+.. autoattribute:: CommunicationChannel.sigRecordingEnded
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigUpdateRecFrameNum
+   :annotation: = Signal(frameNum)
 
-.. attribute:: CommunicationChannel.sigScanDone()
+.. autoattribute:: CommunicationChannel.sigUpdateRecTime
+   :annotation: = Signal(recTime)
+   
+.. autoattribute:: CommunicationChannel.sigMemorySnapAvailable(str, np.ndarray, object, bool)
+   :annotation: = Signal(name, image, filePath, savedToDisk)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigRunScan
+   :annotation: = Signal(recalculateSignals, isNonFinalPartOfSequence)
 
-.. attribute:: CommunicationChannel.sigScanEnded()
+.. autoattribute:: CommunicationChannel.sigAbortScan
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigScanStarting
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigSLMMaskUpdated(object)
+.. autoattribute:: CommunicationChannel.sigScanBuilt
+   :annotation: = Signal(scan)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigScanStarted
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigToggleBlockScanWidget(bool)
+.. autoattribute:: CommunicationChannel.sigScanDone
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigScanEnded
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigSnapImg()
+.. autoattribute:: CommunicationChannel.sigSLMMaskUpdated
+   :annotation: = Signal(mask)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigToggleBlockScanWidget
+   :annotation: = Signal(blocked)
 
-.. attribute:: CommunicationChannel.sigSnapImgPrev(str, np.ndarray, str)
+.. autoattribute:: CommunicationChannel.sigSnapImg
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigSnapImgPrev
+   :annotation: = Signal(detector, image, nameSuffix)
 
-.. attribute:: CommunicationChannel.sigRequestScanParameters()
+.. autoattribute:: CommunicationChannel.sigRequestScanParameters
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigSendScanParameters
+   :annotation: = Signal(analogParams, digitalParams, scannerList)
 
-.. attribute:: CommunicationChannel.sigSendScanParameters(dict, dict, object)
+.. autoattribute:: CommunicationChannel.sigSetAxisCenters
+   :annotation: = Signal(axisDeviceList, axisCenterList)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
 
-.. attribute:: CommunicationChannel.sigSetAxisCenters(object, object)
+.. autoattribute:: CommunicationChannel.sigStartRecordingExternal
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigRequestScanFreq
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigStartRecordingExternal()
+.. autoattribute:: CommunicationChannel.sigSendScanFreq
+   :annotation: = Signal(scanPeriod)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigSaveFocus
+   :annotation: = Signal()
 
-.. attribute:: CommunicationChannel.sigRequestScanFreq()
+.. autoattribute:: CommunicationChannel.sigScanFrameFinished
+   :annotation: = Signal()
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
+.. autoattribute:: CommunicationChannel.sigUpdateRotatorPosition
+   :annotation: = Signal(rotatorName)
 
-.. attribute:: CommunicationChannel.sigSendScanFreq(float)
+.. autoattribute:: CommunicationChannel.sigSetSyncInMovementSettings
+   :annotation: = Signal(rotatorName, position)
 
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
-.. attribute:: CommunicationChannel.sigSaveFocus()
-
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
-.. attribute:: CommunicationChannel.sigScanFrameFinished()
-
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
-.. attribute:: CommunicationChannel.sigUpdateRotatorPosition(str)
-
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
-.. attribute:: CommunicationChannel.sigSetSyncInMovementSettings(str, float)
-
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
-.. attribute:: CommunicationChannel.sigNewFrame()
-
-- Origin: 
-- Connections: TBD
-- Content: 
-- Explanation: 
-
+.. autoattribute:: CommunicationChannel.sigNewFrame
+   :annotation: = Signal()

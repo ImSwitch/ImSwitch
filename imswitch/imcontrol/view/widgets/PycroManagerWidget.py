@@ -36,7 +36,7 @@ class PycroManagerWidget(Widget):
         
         # Table widgets; they need to remain alive otherwise
         # the widget automatically closes.
-        self.__dataCache = {
+        self._dataCache = {
             "XY": None,
             "XYZ": None
         }
@@ -238,7 +238,7 @@ class PycroManagerWidget(Widget):
         self.XYtableWidget = PositionsTableDialog(
             title=f"{coordStr} coordinates table",
             default=0.0,
-            initData=self.__dataCache[coordStr],
+            initData=self._dataCache[coordStr],
             coordinates=coordinates
         )
         
@@ -252,7 +252,7 @@ class PycroManagerWidget(Widget):
         self.XYtableWidget.show()
     
     def __storeTableDataLocally(self, coordinates: str, data: List[dict]):
-        self.__dataCache[coordinates] = data
+        self._dataCache[coordinates] = data
     
     def loadTableData(self, coordinates: str):
         fileFilter = "JSON (*.json);;CSV (*.csv)"
@@ -262,12 +262,12 @@ class PycroManagerWidget(Widget):
                                 nameFilter=fileFilter)
         if filePath is not None:
             with open(filePath, "r") as file:
-                self.__dataCache[coordinates] = json.load(file)
+                self._dataCache[coordinates] = json.load(file)
             self.sigTableLoaded.emit(coordinates, filePath)
     
-    def displayFailedJSONLoad(self, coordinates: str, errorMsg: str):
+    def displayErrorMessage(self, coordinates: str, errorMsg: str):
         showWarningMessage(self, "Failed to load JSON file", errorMsg)
-        self.__dataCache[coordinates] = None
+        self._dataCache[coordinates] = None
     
     def getZStackValues(self) -> dict:
         return (float(self.startZEdit.text()),

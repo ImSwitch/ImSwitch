@@ -1,11 +1,7 @@
+from traceback import format_exc
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
 from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from imswitch.imcommon.framework.pycromanager import (
-    PycroManagerAcquisitionMode,
-    PycroManagerZStack,
-    PycroManagerXYScan,
-    PycroManagerXYZScan
-)
+from imswitch.imcommon.framework.pycromanager import PycroManagerAcquisitionMode
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
 import os
@@ -15,6 +11,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
+    sigRecordingError = Signal(str) # (error)
     sigPycroManagerTimePointUpdated = Signal(int) # (timePoint)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
@@ -31,8 +28,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread = Thread()
         self.__acquisitionWorker = PycroManagerAcquisitionWorker(self)
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
-        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
-        
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)    
     
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -67,18 +63,14 @@ class PycroManagerAcquisitionManager(SignalInterface):
         if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
             name = self.__core.get_camera_device()
             self.sigMemorySnapAvailable.emit(name, pixels, savename, saveMode == SaveMode.DiskAndRAM)
-    
+
     @property
-    def currentDetector(self) -> str:
-        return self.__core.get_camera_device()
-    
-    @property
-    def exposureTime(self) -> float:
-        return float(self.__core.get_exposure())
+    def core(self) -> Core:
+        return self.__core
         
     def startRecording(self, recMode: PycroManagerAcquisitionMode, recordingArgs: dict):
-        self.__acquisitionWorker.recMode = recMode
         self.__acquisitionWorker.recordingArgs = recordingArgs
+        self.__acquisitionWorker.recMode = recMode
         
         self.__logger.info("Starting recording thread")
         self.__acquisitionThread.start()
@@ -94,21 +86,38 @@ class PycroManagerAcquisitionWorker(Worker):
         self.__logger = initLogger(self)
         self.recMode : PycroManagerAcquisitionMode = None
         self.recordingArgs : dict = None
-        self.acquisitionManager : PycroManagerAcquisitionManager = manager
+        self.acquisitionManager = manager
+        self.__notificationDict = {
+            PycroManagerAcquisitionMode.Frames: self.__notify_new_time_point,
+            PycroManagerAcquisitionMode.Time: self.__notify_new_time_point,
+            PycroManagerAcquisitionMode.ZStack: self.__notify_new_z_point,
+            # TODO: add missing notifications
+        }
     
     def __notify_new_time_point(self, msg: AcqNotification):
         # time point is offset by 1, so we add 1 to the frame number
         if msg.is_image_saved_notification():
-            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["time"] + 1)   
+            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["time"] + 1)
+    
+    def __notify_new_z_point(self, msg: AcqNotification):
+        if msg.is_image_saved_notification():
+            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["z"] + 1)
     
     def run(self) -> None:
-        
+
         self.__logger.info("Generating acquisition events")
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notify_new_time_point
-        
-        self.__logger.info("Starting acquisition")
-        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
-            acq.acquire(events)
-        self.__logger.info("Acquisition finished")
-        self.acquisitionManager.sigRecordingEnded.emit()
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notificationDict[self.recMode]
+        self.recordingArgs["Acquisition"]["debug"] = True
+        try:
+            self.__logger.info("Starting acquisition")
+            with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+                acq.acquire(events)
+
+            self.__logger.info("Acquisition finished")
+        except Exception as e:
+            self.__logger.error(f"An error occurred during acquisition. Shutting down.")
+            self.__logger.exception(f"{e}")
+            self.acquisitionManager.sigRecordingError.emit(format_exc())
+        finally:
+            self.acquisitionManager.sigRecordingEnded.emit()

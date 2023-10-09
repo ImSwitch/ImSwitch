@@ -60,7 +60,7 @@ class PycroManagerController(ImConWidgetController):
         self._widget.sigSpecXYZListPicked.connect(self.specXYZList)
 
         self._widget.sigSnapRequested.connect(self.snap)
-        self._widget.sigRecToggled.connect(self.toggleREC)
+        self._widget.sigRecTriggered.connect(self.triggerRecording)
         
         self._widget.sigTableDataDumped.connect(self.parseTableData)
         self._widget.sigTableLoaded.connect(self.readPointsJSONData)
@@ -85,7 +85,7 @@ class PycroManagerController(ImConWidgetController):
         self.updateRecAttrs(isSnapping=True)
 
         attrs = {
-            self._master.pycroManagerAcquisition.currentDetector: self._commChannel.sharedAttrs.getHDF5Attributes()
+            self._master.pycroManagerAcquisition.core.get_camera_device(): self._commChannel.sharedAttrs.getHDF5Attributes()
         }
 
         folder = self._widget.getRecFolder()
@@ -96,85 +96,84 @@ class PycroManagerController(ImConWidgetController):
         savename =  self.getFileName() + '_snap'
         self._master.pycroManagerAcquisition.snap(folder, savename, SaveMode(self._widget.getSnapSaveMode()), attrs)
 
-    # TODO: refactor this method and call it "start recording" or something;
-    # then connect hook function callbacks to notify end recording
-    def toggleREC(self, checked):
-        if checked:
-            """ Start or end recording. """
-            self.updateRecAttrs(isSnapping=False)
+    def triggerRecording(self):
+        """ Trigger an acquisition from the PycroManager backend. Performs sanity checks on the requested datapoints.
+        Sends a warning to the UI if the requested datapoints are not valid.
+        """
+        if not self.performSanityCheck():
+            return
 
-            folder = self._widget.getRecFolder()
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            time.sleep(0.01)
-            savename = self.getFileName() + '_rec'
-            
-            maximumValueProgressBar = 100
-            
-            if self.recMode == PycroManagerAcquisitionMode.Frames:
-                maximumValueProgressBar = self._widget.getNumExpositions()
-            elif self.recMode == PycroManagerAcquisitionMode.Time:
-                maximumValueProgressBar = self._widget.getTimeToRec() * 1000 // self._master.pycroManagerAcquisition.exposureTime
-            elif self.recMode == PycroManagerAcquisitionMode.ZStack:
-                start, stop, step = self._widget.getZStackArgs()
-                maximumValueProgressBar = len(np.linspace(start, stop, (stop - start) / step))
-            elif self.recMode == PycroManagerAcquisitionMode.XYList:
-                maximumValueProgressBar = len(self.xyScan)
-            elif self.recMode == PycroManagerAcquisitionMode.XYZList:
-                maximumValueProgressBar = len(self.xyzScan)
-            
-            self._widget.setProgressBarMaximum(maximumValueProgressBar)
-            
-            # packing arguments
-            recordingArgs = {
-                "Acquisition" : {
-                    "directory" : folder,
-                    "name" : savename,
-                    "image_process_fn": None,
-                    "event_generation_hook_fn": None,
-                    "pre_hardware_hook_fn":  None,
-                    "post_hardware_hook_fn":  None,
-                    "post_camera_hook_fn": None,
-                    "notification_callback_fn": None,
-                    "image_saved_fn":  None,
-                    "napari_viewer" : None,
-                    "show_display": False,
-                    "debug" : False,    
-                },
-                "multi_d_acquisition_events" : {
-                    "num_time_points": self.__calculateNumTimePoints(),
-                    "time_interval_s": self.__calculateTimeIntervalS(),
-                    "z_start": self._widget.getZStackArgs()[0] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
-                    "z_end": self._widget.getZStackArgs()[1] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
-                    "z_step": self._widget.getZStackArgs()[2] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
-                    "channel_group": None,
-                    "channels": None,
-                    "channel_exposures_ms": None,
-                    "xy_positions": np.array(self.xyScan) if self.recMode == PycroManagerAcquisitionMode.XYList else None,
-                    "xyz_positions": np.array(self.xyzScan) if self.recMode == PycroManagerAcquisitionMode.XYZList else None,
-                    "position_labels": self.__checkLabels(),
-                    "order": "tpcz" # todo: make this a parameter in the widget
-                }
+        self.updateRecAttrs(isSnapping=False)
+
+        folder = self._widget.getRecFolder()
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        time.sleep(0.01)
+        savename = self.getFileName() + '_rec'
+        
+        maximumValueProgressBar = 100
+        
+        if self.recMode == PycroManagerAcquisitionMode.Frames:
+            maximumValueProgressBar = self._widget.getNumExpositions()
+        elif self.recMode == PycroManagerAcquisitionMode.Time:
+            maximumValueProgressBar = self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
+        elif self.recMode == PycroManagerAcquisitionMode.ZStack:
+            start, stop, step = self._widget.getZStackValues()
+            maximumValueProgressBar = len(np.linspace(start, stop, int((stop - start) / step)))
+        elif self.recMode == PycroManagerAcquisitionMode.XYList:
+            maximumValueProgressBar = len(self.xyScan)
+        elif self.recMode == PycroManagerAcquisitionMode.XYZList:
+            maximumValueProgressBar = len(self.xyzScan)
+        
+        self._widget.setProgressBarMaximum(maximumValueProgressBar)
+        
+        # packing arguments
+        recordingArgs = {
+            "Acquisition" : {
+                "directory" : folder,
+                "name" : savename,
+                "image_process_fn": None,
+                "event_generation_hook_fn": None,
+                "pre_hardware_hook_fn":  None,
+                "post_hardware_hook_fn":  None,
+                "post_camera_hook_fn": None,
+                "notification_callback_fn": None,
+                "image_saved_fn":  None,
+                "napari_viewer" : None,
+                "show_display": False,
+                "debug" : False,    
+            },
+            "multi_d_acquisition_events" : {
+                "num_time_points": self.__calculateNumTimePoints(),
+                "time_interval_s": self.__calculateTimeIntervalS(),
+                "z_start": self._widget.getZStackValues()[0] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                "z_end": self._widget.getZStackValues()[1] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                "z_step": self._widget.getZStackValues()[2] if self.recMode == PycroManagerAcquisitionMode.ZStack else None,
+                "channel_group": None,
+                "channels": None,
+                "channel_exposures_ms": None,
+                "xy_positions": np.array(self.xyScan) if self.recMode == PycroManagerAcquisitionMode.XYList else None,
+                "xyz_positions": np.array(self.xyzScan) if self.recMode == PycroManagerAcquisitionMode.XYZList else None,
+                "position_labels": self.__checkLabels(),
+                "order": "tpcz" # todo: make this a parameter in the widget
             }
-            
-            self.__logger.info(f"Recording {maximumValueProgressBar} time points at {self._master.pycroManagerAcquisition.exposureTime} ms")
-            self._widget.setProgressBarVisibility(True)
-            self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
-        else:
-            # do nothing... for now
-            pass
+        }
+        
+        self.__logger.info(f"Recording {maximumValueProgressBar} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
+        self._widget.setProgressBarVisibility(True)
+        self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
     
     def __calculateNumTimePoints(self) -> list:
         if self.recMode == PycroManagerAcquisitionMode.Frames:
             return self._widget.getNumExpositions()
         if self.recMode == PycroManagerAcquisitionMode.Time:
-            return self._widget.getTimeToRec() * 1000 // self._master.pycroManagerAcquisition.exposureTime
+            return self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
         else:
             return None
     
     def __calculateTimeIntervalS(self) -> int:
         if self.recMode == PycroManagerAcquisitionMode.Time:
-            return (self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.exposureTime) * 1e-3
+            return (self._widget.getTimeToRec() * 1000 / float(self._master.pycroManagerAcquisition.core.get_exposure())) * 1e-3
         else:
             return 0
     
@@ -185,13 +184,76 @@ class PycroManagerController(ImConWidgetController):
             return self.xyzScan.labels()
         else:
             return None
+    
+    def performSanityCheck(self) -> bool:
+        """ Checks the validity of the incoming recording request.
+        If a condition occurs such as the recording would fail (no stages available, missing data points),
+        a warning is sent to the UI and the recording is not triggered.
+        """
+
+        def getMMCorePositioners() -> list:
+            """ Returns a list of positioners part of the MMCore suite in the currently loaded configuration. """
+            return [dev for dev in self._master.positionersManager._subManagers.values() if dev.__class__.__name__ == "PyMMCorePositionerManager"]
+        
+        if not self.recMode in [PycroManagerAcquisitionMode.Frames, PycroManagerAcquisitionMode.Time]:
+            mmcorePositionersList = getMMCorePositioners()
+            if len(mmcorePositionersList) == 0:
+                self.__logger.warning("No MMCore positioners were found in the setupInfo. Recording aborted.")
+                return False
+            else:
+                if self.recMode == PycroManagerAcquisitionMode.XYList:
+                    if self.xyScan is None:
+                        self.__logger.warning("No XY points were specified. Recording aborted.")
+                        return False
+                    else:
+                        # TODO: what happens if we have multiple XY stages?
+                        xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
+                        if xyStage is not None:
+                            self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
+                            return True
+                        else:
+                            self.__logger.warning("No XY stages are currently configured. Recording aborted.")
+                            return False
+                elif self.recMode == PycroManagerAcquisitionMode.XYZList:
+                    if self.xyzScan is None:
+                        self.__logger.warning("No XYZ points were specified. Recording aborted.")
+                        return False
+                    else:
+                        xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
+                        zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
+                        if xyStage is not None and zStage is not None:
+                            self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
+                            self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
+                            self.__logger.debug("XY stage selected: ", self.self._master.pycroManagerAcquisition.get_xy_stage_device())
+                            self.__logger.debug("XY stage selected: ", self.self._master.pycroManagerAcquisition.get_focus_device())
+                            return True
+                        else:
+                            if xyStage is None and zStage is None:
+                                self.__logger.warning("No XY and Z stages are currently configured. Recording aborted.")
+                            elif xyStage is None:
+                                self.__logger.warning("No XY stages are currently configured. Recording aborted.")
+                            else:
+                                self.__logger.warning("No Z stages is currently configured. Recording aborted.")
+                            return False
+                            
+                elif self.recMode == PycroManagerAcquisitionMode.ZStack:
+                    # TODO: it may happen that the widgets do not hold any content;
+                    # keep an eye on this.
+                    zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
+                    if zStage is not None:
+                        self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
+                        return True
+                    else:
+                        self.__logger.warning("No Z stages is currently configured. Recording aborted.")
+                        return False
+
+        return True
 
     def recordingStarted(self):
         self._widget.setFieldsEnabled(False)
 
     def recordingCycleEnded(self):
         self._widget.updateProgressBar(0)
-        self._widget.setRecButtonChecked(False)
         self._widget.setFieldsEnabled(True)
         self._widget.setProgressBarVisibility(False)
 

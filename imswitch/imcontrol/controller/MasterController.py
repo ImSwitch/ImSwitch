@@ -1,4 +1,5 @@
 from imswitch.imcommon.model import VFileItem, initLogger
+from pprint import pformat
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
     ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager
@@ -21,7 +22,18 @@ class MasterController:
         self.nidaqManager = NidaqManager(self.__setupInfo)
         #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
         self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
-        self.pymmcoreManager = PyMMCoreManager(self.__setupInfo)
+
+        # Creating a pymmcoreManager is pointless if there are no devices defined
+        # in the setupInfo. We check beforehand to reduce the startup time.
+        mmcoreDeviceAvailable = any(device.managerName == "PyMMCoreCameraManager" 
+                                    for device in list(self.__setupInfo.detectors.values())) or \
+                                any(device.managerName == "PyMMCorePositionerManager" 
+                                    for device in list(self.__setupInfo.positioners.values()))
+        
+        if mmcoreDeviceAvailable:
+            self.pymmcoreManager = PyMMCoreManager(self.__setupInfo)
+        else:
+            self.pymmcoreManager = None
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
@@ -82,12 +94,15 @@ class MasterController:
             self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
             self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
         elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
-            self.pycroManagerAcquisition = PycroManagerAcquisitionManager(self.detectorsManager)
-            self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
-            self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
-            self.pycroManagerAcquisition.sigPycroManagerTimePointUpdated.connect(cc.sigUpdatePycroManagerTimePoint)
-            self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-            self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+            if mmcoreDeviceAvailable:
+                self.pycroManagerAcquisition = PycroManagerAcquisitionManager(self.detectorsManager)
+                self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
+                self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
+                self.pycroManagerAcquisition.sigPycroManagerTimePointUpdated.connect(cc.sigUpdatePycroManagerTimePoint)
+                self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
+                self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+            else:
+                self.__logger.warning("No PyMMCore devices were found in the setupInfo. PycroManager will not be used.")
         else:
             self.__logger.warning("RecordingManager and PycroManager are mutually exclusive, only one can be used at a time.")
             self.__logger.warning("No recording backend will be used.")

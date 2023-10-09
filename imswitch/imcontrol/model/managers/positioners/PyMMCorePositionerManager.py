@@ -25,9 +25,9 @@ class PyMMCorePositionerManager(PositionerManager):
         # only combination of double axis stages allowed is X-Y
         if self.__stageType == "double":
             if len(positionerInfo.axes) != 2:
-                raise ValueError(f"Declared axis number not correct. Must be 2 ([\"X\", \"Y\"]), instead is {len(positionerInfo.axes)}")
+                raise ValueError(f"{name}: declared axis number not correct. Must be 2 ([\"X\", \"Y\"]), instead is {len(positionerInfo.axes)} ({positionerInfo.axes})")
             elif positionerInfo.axes != ["X", "Y"]:
-                raise ValueError(f"Declared axis names incorrect. Must be [\"X\", \"Y\"], instead is {positionerInfo.axes}")
+                raise ValueError(f"{name}: declared axis names incorrect. Must be [\"X\", \"Y\"], instead is {positionerInfo.axes}")
 
         # type assignment useful for type hinting
         self.__coreManager: PyMMCoreManager = lowLevelManagers["pymmcManager"]

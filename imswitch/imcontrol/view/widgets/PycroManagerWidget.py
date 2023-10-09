@@ -91,11 +91,11 @@ class PycroManagerWidget(Widget):
         self.stepZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
         self.stepZEdit = QtWidgets.QLineEdit('1')
         
-        self.specifyXYList = QtWidgets.QRadioButton('XY coordinates list')
+        self.specifyXYList = QtWidgets.QRadioButton('XY scan')
         self.openXYListTableButton = guitools.BetterPushButton('Make list...')
         self.loadXYListButton = guitools.BetterPushButton('Load list...')
         
-        self.specifyXYZList = QtWidgets.QRadioButton('XYZ coordinates list')
+        self.specifyXYZList = QtWidgets.QRadioButton('XYZ scan')
         self.openXYZListTableButton = guitools.BetterPushButton('Make list...')
         self.loadXYZListButton = guitools.BetterPushButton('Load list...')
 
@@ -165,13 +165,13 @@ class PycroManagerWidget(Widget):
         gridRow += 1
         
         recGrid.addWidget(self.specifyXYList, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.openXYListTableButton, gridRow, 2, 1, 3)
-        recGrid.addWidget(self.loadXYListButton, gridRow, 5, 1, 2)
+        recGrid.addWidget(self.openXYListTableButton, gridRow, 1, 1, 3)
+        recGrid.addWidget(self.loadXYListButton, gridRow, 4, 1, 3)
         gridRow += 1
         
         recGrid.addWidget(self.specifyXYZList, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.openXYZListTableButton, gridRow, 2, 1, 3)
-        recGrid.addWidget(self.loadXYZListButton, gridRow, 5, 1, 2)
+        recGrid.addWidget(self.openXYZListTableButton, gridRow, 1, 1, 3)
+        recGrid.addWidget(self.loadXYZListButton, gridRow, 4, 1, 3)
         gridRow += 1
 
         recGrid.addWidget(self.snapSaveModeLabel, gridRow, 0)

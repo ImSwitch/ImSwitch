@@ -26,7 +26,7 @@ class PycroManagerWidget(Widget):
     sigRecSaveModeChanged = QtCore.Signal()
 
     sigSnapRequested = QtCore.Signal()
-    sigRecToggled = QtCore.Signal(bool)  # (enabled)
+    sigRecTriggered = QtCore.Signal(bool)  # (enabled)
     
     sigTableDataDumped = QtCore.Signal(str, list) # ("XY"/"XYZ", tableData)
     sigTableLoaded = QtCore.Signal(str, str) # ("XY"/"XYZ", filePath)
@@ -67,7 +67,6 @@ class PycroManagerWidget(Widget):
                                           QtWidgets.QSizePolicy.Expanding)
         self.recButton = guitools.BetterPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
-        self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                      QtWidgets.QSizePolicy.Expanding)
 
@@ -115,7 +114,8 @@ class PycroManagerWidget(Widget):
                                        'Save on disk and keep in memory'])
 
         self.acquisitionProgressBar = QtWidgets.QProgressBar()
-        self.acquisitionProgressBar.setTextVisible(False)
+        self.acquisitionProgressBar.setFormat("Frames")
+        self.acquisitionProgressBar.setAlignment(QtCore.Qt.AlignCenter)
         
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -126,22 +126,17 @@ class PycroManagerWidget(Widget):
                                    QtWidgets.QSizePolicy.Expanding)
         buttonGrid.addWidget(self.recButton, 0, 2)
 
+        self.tabWidget = QtWidgets.QTabWidget()
+
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
         recGrid = QtWidgets.QGridLayout()
+        storageGrid = QtWidgets.QGridLayout()
         gridRow = 0
 
+        # setting recording tab
         recGrid.addWidget(recTitle, gridRow, 0, 1, 3)
-        gridRow += 1
-
-        recGrid.addWidget(QtWidgets.QLabel('Folder'), gridRow, 0)
-        recGrid.addWidget(self.folderEdit, gridRow, 1, 1, 5)
-        recGrid.addWidget(self.openFolderButton, gridRow, 6)
-        gridRow += 1
-
-        recGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 5)
-        recGrid.addWidget(self.specifyfile, gridRow, 0)
         gridRow += 1
 
         recGrid.addWidget(modeTitle, gridRow, 0)
@@ -184,6 +179,17 @@ class PycroManagerWidget(Widget):
         
         recGrid.addWidget(self.acquisitionProgressBar, gridRow, 0, 1, -1)
         gridRow += 1
+
+        # setting storage tab
+        gridRow = 0
+        storageGrid.addWidget(QtWidgets.QLabel('Folder'), gridRow, 0)
+        storageGrid.addWidget(self.folderEdit, gridRow, 1, 1, 5)
+        storageGrid.addWidget(self.openFolderButton, gridRow, 6)
+        gridRow += 1
+
+        storageGrid.addWidget(self.filenameEdit, gridRow, 1, 1, 5)
+        storageGrid.addWidget(self.specifyfile, gridRow, 0)
+        gridRow += 1
         
         # keep progress bar hidden by default;
         # will be shown when recording starts
@@ -192,7 +198,13 @@ class PycroManagerWidget(Widget):
         self.recGridContainer = QtWidgets.QWidget()
         self.recGridContainer.setLayout(recGrid)
 
-        layout.addWidget(self.recGridContainer)
+        self.storageGridContainer = QtWidgets.QWidget()
+        self.storageGridContainer.setLayout(storageGrid)
+
+        self.tabWidget.addTab(self.recGridContainer, 'Recording')
+        self.tabWidget.addTab(self.storageGridContainer, 'Storage')
+
+        layout.addWidget(self.tabWidget)
         layout.addWidget(buttonWidget)
         
         # Initial condition of fields and checkboxes.
@@ -218,7 +230,7 @@ class PycroManagerWidget(Widget):
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
 
         self.snapButton.clicked.connect(self.sigSnapRequested)
-        self.recButton.toggled.connect(self.sigRecToggled)
+        self.recButton.clicked.connect(self.sigRecTriggered)
     
     def openTableWidget(self, coordinates: List[str]):
         """ Opens a dialog to specify the XY coordinates list. """
@@ -337,9 +349,6 @@ class PycroManagerWidget(Widget):
         self.loadXYListButton.setEnabled(specXYList)
         self.openXYZListTableButton.setEnabled(specXYZList)
         self.loadXYZListButton.setEnabled(specXYZList)
-
-    def setRecButtonChecked(self, checked):
-        self.recButton.setChecked(checked)
 
     def setNumExpositions(self, numExpositions):
         self.numExpositionsEdit.setText(str(numExpositions))

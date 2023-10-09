@@ -172,7 +172,7 @@ class PyMMCoreManager(SignalInterface):
             label (``str``): name of the positioner
             axis (``str``): axis to read
         """
-        return (self.__getXYStagePosition[axis](label) if axis in self.__getXYStagePosition.keys() else self.__core.getPosition(label))
+        return (self.__getXYStagePosition[axis](label) if axis in self.__getXYStagePosition.keys() else self.__core.get_position(label))
     
     def setStagePosition(self, label: str, stageType: str, axis: str, positions: Dict[str, float], isAbsolute: bool = True) -> Dict[str, float]:
         """ Sets the selected stage position. Stages can be of two types:

@@ -173,7 +173,7 @@ class Canvas(QtWidgets.QLabel):
                 painter.end()
                 self.lineCoordinates = [self.pos.x(), self.pos.y(), self.pressPos.x(), self.pressPos.y()]
             except Exception as e:
-                print(e)
+                pass
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

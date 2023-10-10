@@ -35,6 +35,8 @@ class MockCameraTIS:
         self.pixelSize = 1
         self.iFrame = 0
         
+        self.camera = Camera()
+        
         if self.mocktype == "STORM":
             import tifffile as tif
 
@@ -128,6 +130,13 @@ class MockCameraTIS:
     
     def flushBuffer(self):
         pass 
+    
+    
+class Camera(object):
+    def __init__(self):
+        self.Width = 100
+        self.Height = 100
+        pass
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

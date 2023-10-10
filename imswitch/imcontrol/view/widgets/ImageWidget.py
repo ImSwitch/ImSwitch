@@ -61,7 +61,11 @@ class ImageWidget(QtWidgets.QWidget):
                     addImage(name, rgb, 'grayclip')
 
     def addStaticLayer(self, name, im):
-        self.napariViewer.add_image(im, rgb=False, name=name, blending='additive')
+        if len(im.shape)==3:
+            isRGB = True
+        else:
+            isRGB = False
+        self.napariViewer.add_image(im, rgb=isRGB, name=name, blending='additive')
 
     def getCurrentImageName(self):
         return self.napariViewer.active_layer.name

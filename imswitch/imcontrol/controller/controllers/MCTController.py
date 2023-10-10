@@ -136,7 +136,7 @@ class MCTController(ImConWidgetController):
         self._widget.mctStartButton.setEnabled(False)
 
         # don't show any message
-        self._master.UC2ConfigManager.setDebug(False)
+        #self._master.UC2ConfigManager.setDebug(False)
 
         # start the timelapse
         if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
@@ -265,7 +265,7 @@ class MCTController(ImConWidgetController):
             self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
             self.MCTThread.start()
 
-    def doAutofocus(self, params):
+    def doAutofocus(self, params, timeout=10):
         self._logger.info("Autofocusing...")
         self._widget.setnImagesTaken("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
@@ -273,7 +273,8 @@ class MCTController(ImConWidgetController):
 
         while self.isAutofocusRunning:
             time.sleep(0.1)
-            if not self.isAutofocusRunning:
+            t0 = time.time()
+            if not self.isAutofocusRunning or time.time()-t0>timeout:
                 self._logger.info("Autofocusing done.")
                 return
 
@@ -281,7 +282,7 @@ class MCTController(ImConWidgetController):
     def takeTimelapseThread(self, tperiod = 1):
         # this wil run i nthe background
         self.timeLast = 0
-
+        image1 = None
         # get current position
         currentPositions = self.stages.getPosition()
         self.initialPosition = (currentPositions["X"], currentPositions["Y"])
@@ -312,7 +313,7 @@ class MCTController(ImConWidgetController):
                 # set  speed
                 self.stages.setSpeed(speed=10000, axis="X")
                 self.stages.setSpeed(speed=10000, axis="Y")
-                self.stages.setSpeed(speed=1000, axis="Z")
+                self.stages.setSpeed(speed=10000, axis="Z")
                 
                 # ensure motors are enabled
                 #self.stages.enalbeMotors(enable=True)
@@ -338,7 +339,7 @@ class MCTController(ImConWidgetController):
                             time.sleep(.05)
 
                         self.doAutofocus(autofocusParams)
-
+                        self.switchOffIllumination()
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
 
@@ -355,7 +356,7 @@ class MCTController(ImConWidgetController):
                     
                         ''' here we can try to compute the drift '''
                         
-                    if True and not self.xyScanEnabled:
+                    if False and not self.xyScanEnabled:
                         # treat images
                         imageStack = self.LastStackLaser2 # FIXME: Hardcoded
                         imageStack = self.LastStackLED # FIXME: Hardcoded
@@ -371,6 +372,9 @@ class MCTController(ImConWidgetController):
                             
                         # image processing 
                         for iImage in imageStack:
+                            if len(iImage.shape)>2:
+                                # if RGB => make mono
+                                iImage = np.mean(iImage, -1)
                             image = self.crop_center(iImage, driftCorrectionCropSize)
                             image = self.downscale_image(image, driftCorrectionDownScaleFactor)
                             imageList.append(image)
@@ -623,6 +627,7 @@ class MCTController(ImConWidgetController):
         if not self.lasers[0].enabled: self.lasers[0].setEnabled(1)
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
+        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
@@ -630,14 +635,16 @@ class MCTController(ImConWidgetController):
         if not self.lasers[1].enabled: self.lasers[1].setEnabled(1)
         if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
         if self.lasers[0].power: self.lasers[0].setValue(0)
+        if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
-        #if len(self.leds): self.illu.setAll(state=(1,1,1), intensity=(self.LEDValue,self.LEDValue,self.LEDValue))
-
+        if self.lasers[0].power: self.lasers[0].setValue(0)        
+        if self.lasers[1].power: self.lasers[1].setValue(0)
+        
     def __del__(self):
         self.imageComputationThread.quit()
         self.imageComputationThread.wait()

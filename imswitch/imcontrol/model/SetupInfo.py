@@ -228,6 +228,13 @@ class DPCInfo:
 class MCTInfo:
     pass
 
+class ROIScanInfo:
+    pass
+
+@dataclass(frozen=True)
+class LightsheetInfo:
+    pass
+
 
 @dataclass(frozen=True)
 class WebRTCInfo:
@@ -386,6 +393,16 @@ class NidaqInfo:
     """ Output for Counter for timing purposes. If an integer is specified, it
     will be translated to "Dev1/ctr{timerCounterChannel}". """
 
+    startTrigger: bool = False
+    """ Boolean for start triggering for sync. """
+
+    def getTimerCounterChannel(self):
+        """ :meta private: """
+        if isinstance(self.timerCounterChannel, int):
+            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
+        else:
+            return self.timerCounterChannel
+        
 class OpentronsDeckInfo:
     translate_units: Optional[str]
     """ Translates units of deck to units used by positioner:
@@ -463,6 +480,15 @@ class SetupInfo:
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
+
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
+    """ NI-DAQ settings. """
+        
+    roiscan: Optional[ROIScanInfo] = field(default_factory=lambda: None)
+    """ ROIScan settings. Required to be defined to use ROIScan functionality. """
+    
+    lightsheet: Optional[LightsheetInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use Lightsheet functionality. """
 
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """

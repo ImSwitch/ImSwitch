@@ -49,9 +49,6 @@ class ImConMainController(MainController):
         self.pickDatasetsController = self.__factory.createController(
             PickDatasetsController, self.__mainView.pickDatasetsDialog
         )
-        self.PickUC2BoardConfigController = self.__factory.createController(
-            PickUC2BoardConfigController, self.__mainView.PickUC2BoardConfigDialog
-        )
 
         self.controllers = {}
 
@@ -152,6 +149,12 @@ class ImConMainController(MainController):
         self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
+        
+        # seems like the imswitchserver is not closing from the closing event, need to hard kill it
+        #self._serverWorker.stop()
+        #self._thread.quit()
+        #self._thread.terminate()        
+        #del self._thread
 
     def pickUC2Config(self):
         """ Let the user change which UC2 Board config is used. """

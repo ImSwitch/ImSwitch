@@ -206,7 +206,7 @@ class CameraBasler:
             if self.camera.Width.is_implemented() and self.camera.Width.is_writable():
                 self.camera.Width.set(self.ROI_width)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
         if vsize is not None:
             self.ROI_height = vsize
@@ -214,7 +214,7 @@ class CameraBasler:
             if self.camera.Height.is_implemented() and self.camera.Height.is_writable():
                 self.camera.Height.set(self.ROI_height)
             else:
-                print("Height is not implemented or not writable")
+                self.__logger.debug("Height is not implemented or not writable")
 
         if hpos is not None:
             self.ROI_hpos = hpos
@@ -222,7 +222,7 @@ class CameraBasler:
             if self.camera.OffsetX.is_implemented() and self.camera.OffsetX.is_writable():
                 self.camera.OffsetX.set(self.ROI_hpos)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
         if vpos is not None:
             self.ROI_vpos = vpos
@@ -230,7 +230,7 @@ class CameraBasler:
             if self.camera.OffsetY.is_implemented() and self.camera.OffsetY.is_writable():
                 self.camera.OffsetY.set(self.ROI_vpos)
             else:
-                print("OffsetX is not implemented or not writable")
+                self.__logger.debug("OffsetX is not implemented or not writable")
 
 
     def setPropertyValue(self, property_name, property_value):
@@ -281,23 +281,21 @@ class CameraBasler:
     class ImageEventPrinter(pylon.ImageEventHandler):
         img  = None
         def OnImagesSkipped(self, camera, countOfSkippedImages):
-            print("OnImagesSkipped event for device ", camera.GetDeviceInfo().GetModelName())
-            print(countOfSkippedImages, " images have been skipped.")
-            print()
+            self.__logger.debug("OnImagesSkipped event for device ", camera.GetDeviceInfo().GetModelName())
+            self.__logger.debug(countOfSkippedImages, " images have been skipped.")
 
         def OnImageGrabbed(self, camera, grabResult):
-            print("OnImageGrabbed event for device ", camera.GetDeviceInfo().GetModelName())
+            self.__logger.debug("OnImageGrabbed event for device ", camera.GetDeviceInfo().GetModelName())
 
             # Image grabbed successfully?
             if grabResult.GrabSucceeded():
-                print("SizeX: ", grabResult.GetWidth())
-                print("SizeY: ", grabResult.GetHeight())
+                self.__logger.debug("SizeX: ", grabResult.GetWidth())
+                self.__logger.debug("SizeY: ", grabResult.GetHeight())
                 img = grabResult.GetArray()
                 self.img = img
-                print("Gray values of first row: ", img[0])
-                print()
+                self.__logger.debug("Gray values of first row: ", img[0])
             else:
-                print("Error: ", grabResult.GetErrorCode(), grabResult.GetErrorDescription())
+                self.__logger.debug("Error: ", grabResult.GetErrorCode(), grabResult.GetErrorDescription())
 
         def getFrame(self):
             return self.img

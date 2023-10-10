@@ -6,6 +6,10 @@ import numpy as np
 
 from imswitch.imcommon.model import dirtools, initLogger
 
+IS_WINDOWS = True
+if os.name != 'nt':
+    IS_WINDOWS = False
+    print('This module does unfortunately currently not support non-Windows operating systems.')
 
 class SignalExtractor:
     """ This class takes the raw data together with pre-set
@@ -16,19 +20,17 @@ class SignalExtractor:
     def __init__(self):
         self.__logger = initLogger(self)
 
-        if os.name != 'nt':
-            raise RuntimeError('This module does unfortunately currently not support non-Windows'
-                               ' operating systems.')
 
         # TODO: Support non-Windows OS
-        # This is needed by the DLL containing CUDA code.
-        # ctypes.cdll.LoadLibrary(os.environ['CUDA_PATH_V9_0'] + '\\bin\\cudart64_90.dll')
-        ctypes.cdll.LoadLibrary(
-            os.path.join(dirtools.DataFileDirs.Libs, 'cudart64_90.dll')
-        )
-        self.ReconstructionDLL = ctypes.cdll.LoadLibrary(
-            os.path.join(dirtools.DataFileDirs.Libs, 'GPU_acc_recon.dll')
-        )
+        if IS_WINDOWS:
+            # This is needed by the DLL containing CUDA code.
+            # ctypes.cdll.LoadLibrary(os.environ['CUDA_PATH_V9_0'] + '\\bin\\cudart64_90.dll')
+            ctypes.cdll.LoadLibrary(
+                os.path.join(dirtools.DataFileDirs.Libs, 'cudart64_90.dll')
+            )
+            self.ReconstructionDLL = ctypes.cdll.LoadLibrary(
+                os.path.join(dirtools.DataFileDirs.Libs, 'GPU_acc_recon.dll')
+            )
 
     def make3dPtrArray(self, inData):
         assert len(np.shape(inData)) == 3, \

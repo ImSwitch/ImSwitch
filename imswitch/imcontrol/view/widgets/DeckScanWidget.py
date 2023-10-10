@@ -4,7 +4,7 @@ import pyqtgraph as pg
 from imswitch.imcontrol.view import guitools as guitools
 from imswitch.imcontrol.view.widgets.DeckWidget import TableWidgetDragRows
 from qtpy import QtCore, QtWidgets
-
+from imswitch.imcommon.model import initLogger
 from .basewidgets import NapariHybridWidget
 
 
@@ -88,7 +88,7 @@ class DeckScanWidget(NapariHybridWidget):
                             rowdata.append('')
                     writer.writerow(rowdata)
         except:
-            print("Action Save cancelled.")
+            self._logger.debug("Action Save cancelled.")
 
         # else:
         #     self.__logger.debug("Empty path: handleSave")
@@ -113,11 +113,12 @@ class DeckScanWidget(NapariHybridWidget):
                             self.scan_list.setItem(self.scan_list_items, column, item)
                         self.scan_list_items += 1
         except:
-            print("Action Open cancelled.")
+            self._logger.debug("Action Open cancelled.")
 
     def __post_init__(self):
 
         # super().__init__(*args, **kwargs)
+        self._logger = initLogger(self)
 
         self.ScanFrame = pg.GraphicsLayoutWidget()
 

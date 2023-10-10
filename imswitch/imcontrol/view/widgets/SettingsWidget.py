@@ -59,6 +59,13 @@ class CamParamTree(ParameterTree):
                     'suffix': detectorParameter.valueUnits,
                     'decimals': 5
                 }
+            elif detectorParameterType == 'DetectorBooleanParameter':
+                pyqtParam = {
+                    'name': detectorParameterName,
+                    'type': 'bool',
+                    'value': detectorParameter.value,
+                    'readonly': not detectorParameter.editable
+                }
             elif detectorParameterType == 'DetectorListParameter':
                 pyqtParam = {
                     'name': detectorParameterName,

@@ -22,7 +22,7 @@ class ESP32StageManager(PositionerManager):
         self.stepsizeX = positionerInfo.managerProperties.get('stepsizeX', 1)
         self.stepsizeY = positionerInfo.managerProperties.get('stepsizeY', 1)
         self.stepsizeZ = positionerInfo.managerProperties.get('stepsizeZ', 1)
-        self.stepsizeT = positionerInfo.managerProperties.get('stepsizeT', 1)
+        self.stepsizeA = positionerInfo.managerProperties.get('stepsizeA', 1)
 
         # Minimum/maximum steps in X
         self.minX = positionerInfo.managerProperties.get('minX', -np.inf)
@@ -37,14 +37,16 @@ class ESP32StageManager(PositionerManager):
         self.maxZ = positionerInfo.managerProperties.get('maxZ', np.inf)
 
         # Minimum/maximum steps in T
-        self.minT = positionerInfo.managerProperties.get('minT', -np.inf)
-        self.maxT = positionerInfo.managerProperties.get('maxT', np.inf)
+        self.minA = positionerInfo.managerProperties.get('minA', -np.inf)
+        self.maxA = positionerInfo.managerProperties.get('maxA', np.inf)
 
         # Calibrated backlash
-        self.backlashX = positionerInfo.managerProperties.get('backlashX', 1)
-        self.backlashY = positionerInfo.managerProperties.get('backlashY', 1)
-        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 1)
-        self.backlashT = positionerInfo.managerProperties.get('backlashT', 1)
+        self.backlashX = positionerInfo.managerProperties.get('backlashX', 0)
+        self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
+        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
+        self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
+
+
 
         # Setup homing coordinates and speed
         self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)
@@ -59,6 +61,15 @@ class ESP32StageManager(PositionerManager):
         self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
         self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
 
+        self.homeOnStartX = positionerInfo.managerProperties.get('homeOnStartX', 0)
+        self.homeOnStartY = positionerInfo.managerProperties.get('homeOnStartY', 0)
+        self.homeOnStartZ = positionerInfo.managerProperties.get('homeOnStartZ', 0)
+
+
+        self.homeXenabled = positionerInfo.managerProperties.get('homeXenabled', False)
+        self.homeYenabled = positionerInfo.managerProperties.get('homeYenabled', False)
+        self.homeZenabled = positionerInfo.managerProperties.get('homeZenabled', False)
+        
         # Axis order
         self.axisOrder = positionerInfo.managerProperties.get('axisOrder', [0, 1, 2, 3])
 
@@ -70,8 +81,14 @@ class ESP32StageManager(PositionerManager):
         self.enableauto = positionerInfo.managerProperties.get('enableauto', True)
         self.enalbeMotors(enable=self.is_enabled, enableauto=self.enableauto)
 
+        # Dual Axis if we have A and Z to drive the motor
+        self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
+        if self.isDualAxis:
+            self.stepsizeA = self.stepsizeZ
+            self.backlashA = self.backlashZ
+
         # Acceleration
-        self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "T": 40000}
+        self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "A": 40000}
 
         # Set axis order
         self.setAxisOrder(order=self.axisOrder)
@@ -83,10 +100,15 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minX, self.maxX, self.stepsizeX, self.backlashX, "X")
         self.setupMotor(self.minY, self.maxY, self.stepsizeY, self.backlashY, "Y")
         self.setupMotor(self.minZ, self.maxZ, self.stepsizeZ, self.backlashZ, "Z")
-        self.setupMotor(self.minT, self.maxT, self.stepsizeT, self.backlashT, "T")
+        self.setupMotor(self.minA, self.maxA, self.stepsizeA, self.backlashA, "A")
 
+        # optional: hom on startup:
+        if self.homeOnStartX: self.home_x()
+        if self.homeOnStartY: self.home_y()
+        if self.homeOnStartZ: self.home_z()
         # get bootup position and write to GUI
         self._position = self.getPosition()
+
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
@@ -102,23 +124,24 @@ class ESP32StageManager(PositionerManager):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
+        #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
+        #    self._position[iaxis] = self._motor._position[i]
         if isEnable is None:
             isEnable = self.is_enabled
         if speed is None:
             if axis == "X": speed = self.speed["X"]
             if axis == "Y": speed = self.speed["Y"]
             if axis == "Z": speed = self.speed["Z"]
-            if axis == "T": speed = self.speed["T"]
+            if axis == "A": speed = self.speed["A"]
             if axis == "XY": speed = (self.speed["X"], self.speed["Y"])
             if axis == "XYZ": speed = (self.speed["X"], self.speed["Y"], self.speed["Z"])
         if acceleration is None:
             if axis == "X": acceleration = self.acceleration["X"]
             if axis == "Y": acceleration = self.acceleration["Y"]
             if axis == "Z": acceleration = self.acceleration["Z"]
-            if axis == "T": acceleration = self.acceleration["T"]
+            if axis == "A": acceleration = self.acceleration["A"]
             if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
-
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
@@ -128,11 +151,11 @@ class ESP32StageManager(PositionerManager):
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Z':
-            self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+            self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, is_dualaxis=self.isDualAxis, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'T':
-            self._motor.move_t(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
+        elif axis == 'A':
+            self._motor.move_a(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'XY':
@@ -144,11 +167,14 @@ class ESP32StageManager(PositionerManager):
                     self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
+            for i, iaxis in enumerate(("X", "Y", "Z")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         else:
-            print('Wrong axis, has to be "X" "Y" or "Z".')
+            self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
+            
+    
+
 
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
@@ -169,7 +195,7 @@ class ESP32StageManager(PositionerManager):
             self._speed["X"] = speed
             self._speed["Y"] = speed
             self._speed["Z"] = speed
-            self._speed["T"] = speed
+            self._speed["A"] = speed
         else:
             self._speed[axis] = speed
 
@@ -177,6 +203,10 @@ class ESP32StageManager(PositionerManager):
         # print(f"setPosition - Axis: {axis} -> New Value: {value}")
         self._position[axis] = value
 
+    def setPositionOnDevice(self, value, axis):
+        self.setPosition(value, axis)
+        self._motor.set_position(axis, value)
+        
     def closeEvent(self):
         pass
 
@@ -184,12 +214,12 @@ class ESP32StageManager(PositionerManager):
         # load position from device
         # t,x,y,z
         try:
-            allPositions = self._motor.get_position()
-        except:
-            allPositions = [0,0,0,0]
-        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "T": allPositions[0]}
-        for iPosAxis, iPosVal in allPositionsDict.items():
-            self.setPosition(iPosVal,iPosAxis)
+            allPositions = 1.*self._motor.get_position()
+        except Exception as e:
+            self.__logger.error(e)
+            allPositions = [0.,0.,0.,0.]
+        allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
+
         return allPositionsDict
 
     def forceStop(self, axis):
@@ -199,8 +229,8 @@ class ESP32StageManager(PositionerManager):
             self.stop_y()
         elif axis=="Z":
             self.stop_z()
-        elif axis=="T":
-            self.stop_t()
+        elif axis=="A":
+            self.stop_a()
         else:
             self.stopAll()
 
@@ -216,35 +246,36 @@ class ESP32StageManager(PositionerManager):
     def stop_z(self):
         self._motor.stop(axis = "Z")
 
-    def stop_t(self):
-        self._motor.stop(axis = "T")
+    def stop_a(self):
+        self._motor.stop(axis = "A")
 
     def stopAll(self):
         self._motor.stop()
 
     def doHome(self, axis, isBlocking=False):
-        if axis == "X":
+        if axis == "X" and self.homeXenabled:
             self.home_x(isBlocking)
-        if axis == "Y":
+        if axis == "Y" and self.homeYenabled:
             self.home_y(isBlocking)
-        if axis == "Z":
+        if axis == "Z" and self.homeZenabled:
             self.home_z(isBlocking)
 
-    def home_x(self, isBlocking):
+    def home_x(self, isBlocking=False):
         self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
 
-    def home_y(self,isBlocking):
+    def home_y(self,isBlocking=False):
         self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
 
-    def home_z(self,isBlocking):
+    def home_z(self,isBlocking=False):
         self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, isBlocking=isBlocking)
         self.setPosition(axis="Z", value=0)
 
     def home_xyz(self):
-        self._motor.home_xyz()
-        [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
+        if self.homeXenabled and self.homeYenabled and self.homeZenabled:
+            self._motor.home_xyz()
+            [self.setPosition(axis=axis, value=0) for axis in ["X","Y","Z"]]
 
 
 # Copyright (C) 2020, 2021 The imswitch developers

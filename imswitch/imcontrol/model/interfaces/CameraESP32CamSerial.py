@@ -46,8 +46,8 @@ class CameraESP32CamSerial:
     def connect_to_usb_device(self):
         if self.port is not None:
             try:
-                ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
-                print("Succesfully connected to previously set port")
+                ser = serial.Serial(self.port.device, baudrate=2000000, timeout=1)
+                self.__logger.debug("Succesfully connected to previously set port")
                 return ser
             except:
                 pass
@@ -58,11 +58,11 @@ class CameraESP32CamSerial:
                 try:
                     ser = serial.Serial(port.device, baudrate=2000000, timeout=1)
                     ser.write_timeout = 1
-                    print(f"Connected to device: {port.description}")
+                    self.__logger.debug(f"Connected to device: {port.description}")
                     return ser
                 except serial.SerialException:
-                    print(f"Failed to connect to device: {port.description}")
-        print("No matching USB device found.")
+                    self.__logger.debug(f"Failed to connect to device: {port.description}")
+        self.__logger.debug("No matching USB device found.")
         return None
 
     def calculate_base64_length(self, width, height):
@@ -148,7 +148,7 @@ class CameraESP32CamSerial:
         # Calculate the length of the base64 string
         base64_length = self.calculate_base64_length(self.SensorWidth, self.SensorHeight)
         lineBreakLength = 2
-
+        waitForNextFrame = True
         while self.isRunning:
             try:
 

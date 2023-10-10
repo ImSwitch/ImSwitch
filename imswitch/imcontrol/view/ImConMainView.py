@@ -63,13 +63,15 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         # Dock area
         rightDockInfos = {
-            'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
+            'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
             'SLM': _DockInfo(name='SLM', yPosition=0),
             'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),
             'DPC': _DockInfo(name='DPC', yPosition=0),
             'MCT': _DockInfo(name='MCT', yPosition=0),
+            'ROIScan': _DockInfo(name='ROIScan', yPosition=0),
+            'Lightsheet': _DockInfo(name='Lightsheet', yPosition=0),
             'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
             'Hypha': _DockInfo(name='Hypha', yPosition=0),
             'MockXX': _DockInfo(name='MockXX', yPosition=0),

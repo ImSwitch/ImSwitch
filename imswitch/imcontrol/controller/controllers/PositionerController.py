@@ -35,6 +35,7 @@ class PositionerController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -69,8 +70,10 @@ class PositionerController(ImConWidgetController):
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
-        except:
+        except Exception as e:
+            self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
+        self._commChannel.sigUpdateMotorPosition.emit()
         self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
@@ -95,6 +98,13 @@ class PositionerController(ImConWidgetController):
         self.setSharedAttr(positionerName, axis, _speedAttr, speed)
         self._widget.setSpeedSize(positionerName, axis, speed)
         
+    def updateAllPositionGUI(self):
+        # update all positions for all axes in GUI
+        for positionerName in self._master.positionersManager.getAllDeviceNames():
+            for axis in self._master.positionersManager[positionerName].axes:
+                self.updatePosition(positionerName, axis)
+                self.updateSpeed(positionerName, axis)
+                
     def updatePosition(self, positionerName, axis):
         if axis == "XY":
             for axis in (("X", "Y")):
@@ -106,6 +116,11 @@ class PositionerController(ImConWidgetController):
             newPos = self._master.positionersManager[positionerName].position[axis]
             self._widget.updatePosition(positionerName, axis, newPos)
             self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+    def updateSpeed(self, positionerName, axis):
+        newSpeed = self._master.positionersManager[positionerName].speed[axis]
+        self._widget.updateSpeed(positionerName, axis, newSpeed)
+        self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):

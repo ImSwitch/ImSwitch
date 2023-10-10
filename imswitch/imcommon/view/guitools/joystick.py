@@ -144,6 +144,9 @@ class Joystick(QWidget):
             self.is_mouse_down = False
             self.stick_pos = [0, 0]
             self.repaint()
+            if self.callbackFct is not None:
+                self.callbackFct(0,0)
+
 
     # Get Strength With Argument
     def _get_strength(self, stick_pos):

@@ -7,7 +7,8 @@ from imswitch.imcommon.model import initLogger
 try:
     isVimba = True
     from pymba import Vimba, VimbaException
-except:
+except Exception as e:
+    print(e)
     isVimba = False
     print("No pymba installed..")
     
@@ -134,7 +135,12 @@ class CameraAV:
         
     def getLast(self, is_resize=True):
         # get frame and save
-        #TODO: Napari only displays 8Bit?
+
+        # only return fresh frames
+        while(self.frame_id_last == self.frame_id and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        
+        self.frame_id_last = self.frame_id
         return self.frame
 
     def getLastChunk(self):
@@ -267,7 +273,15 @@ class CameraAV:
             
             self.needs_reconnect = False
             self.is_camera_open = True
-            self.camera.arm('Continuous',callback_fct)
+            try:
+                self.camera.arm('Continuous',callback_fct)
+            except:
+                # probabyl we need to reconnect here
+                self.camera.close()
+                self.startVimba(is_restart = False)
+                self.camera = self.vimba.camera(0)
+                self.camera.open(1)
+                self.camera.arm('Continuous',callback_fct)
             self.__logger.debug("camera connected")
             self.SensorWidth = self.camera.feature("SensorWidth").value
             self.SensorHeight = self.camera.feature("SensorHeight").value

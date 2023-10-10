@@ -13,7 +13,7 @@
     },
     "positioners" : {
         "CoreXYStage" : {
-            "managerName": "PyMMCoreXYStageManager",
+            "managerName": "PyMMCoreXYPositionerManager",
             "managerProperties": {
                 "module" : "DemoCamera",
                 "device" : "DXYStage",
@@ -23,7 +23,7 @@
             "forPositioning": true
         },
         "CoreZStage" : {
-            "managerName": "PyMMCoreXYStageManager",
+            "managerName": "PyMMCoreXYPositionerManager",
             "managerProperties": {
                 "module" : "DemoCamera",
                 "device" : "DStage",

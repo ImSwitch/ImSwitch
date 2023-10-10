@@ -17,8 +17,6 @@ class MultiManager(ABC):
         if managedDeviceInfos:
             for managedDeviceName, managedDeviceInfo in managedDeviceInfos.items():
                 # Create sub-manager
-                #self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
-                #self.__logger.debug(managedDeviceInfo)
                 package = importlib.import_module(
                     pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
                                             managedDeviceInfo.managerName)

@@ -155,6 +155,9 @@ class VirtualMicroscopy:
         self.camera = Camera(self, filePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
+        
+    def stop(self):
+        pass
 
 
 

@@ -116,11 +116,13 @@ class AutofocusController(ImConWidgetController):
     def doAutofocusBackground(self, rangez=100, resolutionz=10, defocusz=0):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
 
+        mProcessor = FrameProcessor()
         # record a flatfield Image and display
         if defocusz !=0:
             flatfieldImage = self.recordFlatfield(defocusPosition=defocusz)
-        self.imageToDisplay = flatfieldImage
-        self.imageToDisplayName = "FlatFieldImage"
+            self.imageToDisplay = flatfieldImage
+            mProcessor.setFlatfieldFrame(flatfieldImage)
+            self.imageToDisplayName = "FlatFieldImage"
         #self.sigImageReceived.emit()
 
         initialPosition = self.stages.getPosition()["Z"]
@@ -131,9 +133,6 @@ class AutofocusController(ImConWidgetController):
 
         # Move to the initial relative position
         self.stages.move(value=relative_positions[0], axis="Z", is_absolute=False, is_blocking=True)
-
-        mProcessor = FrameProcessor()
-        mProcessor.setFlatfieldFrame(flatfieldImage)
         mAllImages = []
 
         for iz in range(Nz):

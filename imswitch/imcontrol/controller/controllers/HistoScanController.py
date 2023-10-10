@@ -300,6 +300,7 @@ class ImageStitcher:
         self.max_coords = np.int32(np.array(max_coords)*self.subsample_factor)
         
         # determine write location
+        self.file_name = file_name
         self.file_path = os.sep.join([folder, file_name + extension])
         
         # Create a blank canvas for the final image and a canvas to track blending weights
@@ -307,7 +308,7 @@ class ImageStitcher:
         self.nX = self.max_coords[0] - self.min_coords[0]
         self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
         self.stitched_image_shape= self.stitched_image.shape
-        self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")
+        self._parent.setImageForDisplay(self.stitched_image, "Stitched Image"+self.file_name)
 
         # Queue to hold incoming images
         self.queue = deque()
@@ -355,7 +356,7 @@ class ImageStitcher:
             self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]] = stitchImage
         
             # try to display in napari if ready
-            self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
+            #self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
         except Exception as e:
             print(e)
 

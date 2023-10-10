@@ -1,0 +1,42 @@
+{
+    "detectors" : {
+      "CoreCamera" : {
+        "managerName": "PyMMCoreCameraManager",
+        "managerProperties": {
+          "module" : "DemoCamera",
+          "device" : "DCam",
+          "pixelSize": 0.1,
+          "exposurePropertyName": "Exposure"
+        },
+        "forAcquisition" : true
+      }
+    },
+    "positioners" : {
+        "CoreXYStage" : {
+            "managerName": "PyMMCoreXYStageManager",
+            "managerProperties": {
+                "module" : "DemoCamera",
+                "device" : "DXYStage",
+                "stageType" : "double"
+            },
+            "axes": ["X", "Y"],
+            "forPositioning": true
+        },
+        "CoreZStage" : {
+            "managerName": "PyMMCoreXYStageManager",
+            "managerProperties": {
+                "module" : "DemoCamera",
+                "device" : "DStage",
+                "stageType" : "single"
+            },
+            "axes": ["Z"],
+            "forPositioning": true
+        }
+    },
+    "availableWidgets": [
+      "Settings",
+      "View",
+      "PycroManager",
+      "Image"
+    ]
+  }

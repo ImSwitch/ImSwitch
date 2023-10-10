@@ -1,0 +1,20 @@
+{
+    "detectors" : {
+      "CoreCamera" : {
+        "managerName": "PyMMCoreCameraManager",
+        "managerProperties": {
+          "module" : "DemoCamera",
+          "device" : "DCam",
+          "pixelSize": 0.1,
+          "exposurePropertyName": "Exposure"
+        },
+        "forAcquisition" : true
+      }
+    },
+    "availableWidgets": [
+      "Settings",
+      "View",
+      "PycroManager",
+      "Image"
+    ]
+  }

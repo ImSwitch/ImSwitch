@@ -10,6 +10,12 @@ from qtpy.QtWidgets import (
 from imswitch.imcommon.model import dirtools
 from os.path import join
 
+__msgBoxMap = {
+    "information": QtWidgets.QMessageBox.information,
+    "warning": QtWidgets.QMessageBox.warning,
+    "error": QtWidgets.QMessageBox.critical,
+}
+
 def askYesNoQuestion(widget, title, question):
     """ Asks the user a yes/no question and returns whether "yes" was clicked. """
     result = QtWidgets.QMessageBox.question(widget, title, question,
@@ -35,9 +41,10 @@ def askForFilePath(widget, caption=None, defaultFolder=None, nameFilter=None, is
     result = func(widget, caption=caption, directory=defaultFolder, filter=nameFilter)[0]
     return result if result else None
 
-def showWarningMessage(widget, title, message):
-    """ Shows a warning message to the user. """
-    _ = QtWidgets.QMessageBox.warning(widget, title, message)
+def showInformationMessage(widget, title: str, type: str, message: str):
+    """ Shows a warning message to the user in the form of a dialog pop-up.
+    """
+    _ = __msgBoxMap[type](widget, title, message)
 
 
 def askForFolderPath(widget, caption=None, defaultFolder=None):

@@ -7,7 +7,7 @@ from .dialogtools import (
     askForFilePath, 
     askForFolderPath, 
     askForTextInput, 
-    showWarningMessage, 
+    showInformationMessage, 
     PositionsTableDialog
 )
 from .imagetools import bestLevels, minmaxLevels

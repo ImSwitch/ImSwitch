@@ -5,7 +5,7 @@ from typing import List
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.model.shortcut import shortcut
-from imswitch.imcommon.view.guitools import PositionsTableDialog, askForFilePath, showWarningMessage
+from imswitch.imcommon.view.guitools import PositionsTableDialog, askForFilePath, showInformationMessage
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
@@ -265,9 +265,8 @@ class PycroManagerWidget(Widget):
                 self._dataCache[coordinates] = json.load(file)
             self.sigTableLoaded.emit(coordinates, filePath)
     
-    def displayErrorMessage(self, coordinates: str, errorMsg: str):
-        showWarningMessage(self, "Failed to load JSON file", errorMsg)
-        self._dataCache[coordinates] = None
+    def displayErrorMessage(self, title: str, type: str, errorMsg: str):
+        showInformationMessage(self, title, type, errorMsg)
     
     def getZStackValues(self) -> dict:
         return (float(self.startZEdit.text()),

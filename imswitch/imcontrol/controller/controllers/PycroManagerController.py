@@ -22,7 +22,7 @@ from ..basecontrollers import ImConWidgetController
 class PycroManagerController(ImConWidgetController):
     """ Linked to RecordingWidget. """
     
-    sigErrorCondition = Signal(str, str)
+    sigErrorCondition = Signal(str, str, str) # (title, type, msg)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -190,6 +190,8 @@ class PycroManagerController(ImConWidgetController):
         If a condition occurs such as the recording would fail (no stages available, missing data points),
         a warning is sent to the UI and the recording is not triggered.
         """
+        
+        errTitle = "Recording aborted"
 
         def getMMCorePositioners() -> list:
             """ Returns a list of positioners part of the MMCore suite in the currently loaded configuration. """
@@ -198,12 +200,16 @@ class PycroManagerController(ImConWidgetController):
         if not self.recMode in [PycroManagerAcquisitionMode.Frames, PycroManagerAcquisitionMode.Time]:
             mmcorePositionersList = getMMCorePositioners()
             if len(mmcorePositionersList) == 0:
-                self.__logger.warning("No MMCore positioners were found in the setupInfo. Recording aborted.")
+                msg = "No MMCore positioners were found in the setupInfo. Recording aborted."
+                self.__logger.warning(msg)
+                self.sigErrorCondition.emit(errTitle, "warning", msg)
                 return False
             else:
                 if self.recMode == PycroManagerAcquisitionMode.XYList:
                     if self.xyScan is None:
-                        self.__logger.warning("No XY points were specified. Recording aborted.")
+                        msg = "No XY points were specified. Recording aborted."
+                        self.__logger.warning(msg)
+                        self.sigErrorCondition.emit(errTitle, "warning", msg)
                         return False
                     else:
                         # TODO: what happens if we have multiple XY stages?
@@ -212,11 +218,15 @@ class PycroManagerController(ImConWidgetController):
                             self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
                             return True
                         else:
-                            self.__logger.warning("No XY stages are currently configured. Recording aborted.")
+                            msg = "No XY stages are currently configured. Recording aborted."
+                            self.__logger.warning("msg")
+                            self.sigErrorCondition.emit(errTitle, "warning", msg)
                             return False
                 elif self.recMode == PycroManagerAcquisitionMode.XYZList:
                     if self.xyzScan is None:
-                        self.__logger.warning("No XYZ points were specified. Recording aborted.")
+                        msg = "No XYZ points were specified. Recording aborted."
+                        self.__logger.warning(msg)
+                        self.sigErrorCondition.emit(errTitle, "warning", msg)
                         return False
                     else:
                         xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
@@ -228,12 +238,16 @@ class PycroManagerController(ImConWidgetController):
                             self.__logger.debug("XY stage selected: ", self.self._master.pycroManagerAcquisition.get_focus_device())
                             return True
                         else:
+                            ax = ""
                             if xyStage is None and zStage is None:
-                                self.__logger.warning("No XY and Z stages are currently configured. Recording aborted.")
+                                ax = "XY and Z"
                             elif xyStage is None:
-                                self.__logger.warning("No XY stages are currently configured. Recording aborted.")
+                                ax = "XY"
                             else:
-                                self.__logger.warning("No Z stages is currently configured. Recording aborted.")
+                                ax = "Z"
+                            msg = f"No {ax} stages are currently configured. Recording aborted."
+                            self.__logger.warning(msg)
+                            self.sigErrorCondition.emit(errTitle, "warning", msg)
                             return False
                             
                 elif self.recMode == PycroManagerAcquisitionMode.ZStack:
@@ -244,7 +258,9 @@ class PycroManagerController(ImConWidgetController):
                         self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
                         return True
                     else:
-                        self.__logger.warning("No Z stages is currently configured. Recording aborted.")
+                        msg = "No Z stages is currently configured. Recording aborted."
+                        self.__logger.warning(msg)
+                        self.sigErrorCondition.emit(errTitle, "warning", msg)
                         return False
 
         return True
@@ -343,7 +359,8 @@ class PycroManagerController(ImConWidgetController):
             except Exception as e:
                 errorMsg = f"Error reading JSON file {filePath}: {e}"
                 self.__logger.error(errorMsg)
-                self.sigErrorCondition.emit(coordinates, errorMsg)
+                self.sigErrorCondition.emit("Failed to load JSON file", "error", errorMsg)
+                self._widget._dataCache[coordinates] = None
 
     def getFileName(self):
         """ Gets the filename of the data to save. """

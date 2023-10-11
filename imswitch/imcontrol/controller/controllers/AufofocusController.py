@@ -8,7 +8,7 @@ from imswitch.imcommon.model import initLogger, APIExport
 from ..basecontrollers import ImConWidgetController
 from skimage.filters import gaussian, median
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
-
+import cv2
 
 try:
     import NanoImagingPack as nip
@@ -162,12 +162,14 @@ class AutofocusController(ImConWidgetController):
             self.sigImageReceived.emit()
 
         if self.isAutofusRunning:
-            self._widget.focusPlotCurve.setData(relative_positions + initialPosition, np.array(allfocusvalsList))
+            oordinate = relative_positions + initialPosition
+            self._widget.focusPlotCurve.setData(oordinate[:len(allfocusvalsList)], np.array(allfocusvalsList))
 
             allfocusvals = np.array(allfocusvalsList)
             zindex = np.where(np.max(allfocusvals) == allfocusvals)[0]
             bestzpos_rel = relative_positions[np.squeeze(zindex)]
-
+            if type(bestzpos_rel)==np.ndarray and bestzpos_rel.shape>1:
+                bestzpos_rel =bestzpos_rel[0]
             # Move back to the initial position
             self.stages.move(value=-2*rangez, axis="Z", is_absolute=False, is_blocking=True)
             self.stages.move(value= rangez+bestzpos_rel, axis="Z", is_absolute=False, is_blocking=True)
@@ -223,15 +225,28 @@ class FrameProcessor:
         # crop region
         img = self.extract(img, self.nCropsize)
 
-        #print("processing frame : "+str(iz))
-        # Gaussian filter the image, to remove noise
-        imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
+        if 0:
+            #print("processing frame : "+str(iz))
+            # Gaussian filter the image, to remove noise
+            imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
 
-        # compute focus metric
-        mLaplace = ndi.filters.laplace(imagearraygf)
-        self.allLaplace.append(mLaplace)
-        focusquality = np.std(mLaplace)
-        self.allfocusvals.append(focusquality)
+            # compute focus metric
+            mLaplace = ndi.filters.laplace(imagearraygf)
+            self.allLaplace.append(mLaplace)
+            focusquality = np.std(mLaplace)
+        else:
+
+            # Encode the NumPy array to JPEG format with 80% quality
+            is_success, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+
+            # Check if encoding was successful
+            if is_success:
+                # Get the size of the JPEG image
+                size = len(buffer)
+                print(f"Size of the JPEG image at 80% quality: {size} bytes")
+            else:
+                print("Failed to encode image")
+        self.allfocusvals.append(size)
 
     @staticmethod
     def extract(marray, crop_size):
@@ -246,10 +261,12 @@ class FrameProcessor:
         # Crop the center region
         return marray[y_start:y_end, x_start:x_end]
 
-    def getFocusValueList(self, nFrameExpected):
+    def getFocusValueList(self, nFrameExpected, timeout=5):
         t0=time.time() # in case something goes wrong
-        while not(len(self.allfocusvals)==nFrameExpected) or not time.time()-t0>5:
+        while len(self.allfocusvals)<(nFrameExpected):
             time.sleep(.01)
+            if time.time()-t0>timeout:
+                break
         return self.allfocusvals
 
     def getAllProcessedSlices(self):

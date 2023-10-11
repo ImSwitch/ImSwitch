@@ -4,7 +4,9 @@ from imswitch.imblockly.model import getActionsScope
 from .CommunicationChannel import CommunicationChannel
 from .ImScrMainViewController import ImScrMainViewController
 from .basecontrollers import ImScrWidgetControllerFactory
-
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 class ImScrMainController(MainController):
     """ Main controller of imblockly. """
@@ -30,6 +32,11 @@ class ImScrMainController(MainController):
         self.mainViewController = self.__factory.createController(
             ImScrMainViewController, self.__mainView
         )
+        
+        # start serving the blockly files    
+        self.server = MyServer()
+        self.server.start()
+
 
     def _createScriptScope(self, moduleCommChannel, multiModuleWindowController,
                            moduleMainControllers):
@@ -51,7 +58,54 @@ class ImScrMainController(MainController):
         return scope
 
     def closeEvent(self):
+        self.server.stop()
         self.__factory.closeAllCreatedControllers()
+
+
+
+class MyServer:
+    def __init__(self, port=1889):
+        self.port = port
+        self.httpd = None
+        self.server_thread = None
+
+    class StaticServer(BaseHTTPRequestHandler):
+        def do_GET(self):
+            root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "view", "static", "index.html")
+            
+            self.send_response(200)
+            if filename[-4:] == '.css':
+                self.send_header('Content-type', 'text/css')
+            elif filename[-5:] == '.json':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-3:] == '.js':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-4:] == '.ico':
+                self.send_header('Content-type', 'image/x-icon')
+            else:
+                self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            with open(filename, 'rb') as fh:
+                html = fh.read()
+                self.wfile.write(html)
+
+    def start(self):
+        try:
+            self.httpd = HTTPServer(('', self.port), self.StaticServer)
+            self.server_thread = threading.Thread(target=self.httpd.serve_forever)
+            self.server_thread.start()
+            print(f'httpd started on port {self.port}')
+        except Exception as e:
+            print(f'httpd failed to start on port {self.port}')
+            print(e)
+
+    def stop(self):
+        print('Stopping httpd in Blockly')
+        if self.httpd:
+            self.httpd.shutdown()
+            self.server_thread.join()
+            print(f'httpd stopped on port {self.port}')
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

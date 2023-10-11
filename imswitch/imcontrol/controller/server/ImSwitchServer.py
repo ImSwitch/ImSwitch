@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
 from multiprocessing import Queue
@@ -28,7 +28,7 @@ class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
         super().__init__()
-
+        
         self._api = api
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
@@ -66,6 +66,7 @@ class ImSwitchServer(Worker):
         #self.__logger.debug("Loop Finished")
 
     def stop(self):
+        self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
 
 

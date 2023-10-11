@@ -21,9 +21,13 @@ class UC2ConfigController(ImConWidgetController):
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
         self._widget.btpairingButton.clicked.connect(self.btpairing)
+        self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
+        # update the gui elements 
+        self._commChannel.sigUpdateMotorPosition.emit()
+        
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.
         print(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
@@ -39,6 +43,11 @@ class UC2ConfigController(ImConWidgetController):
         # update the GUI
         self._commChannel.sigUpdateMotorPosition.emit()
 
+    def interruptSerialCommunication(self):
+        self._master.UC2ConfigManager.interruptSerialCommunication()
+        self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
+        
+
     def set_auto_enable(self):
         # Add your logic to auto-enable the motors here.
         # get motor controller
@@ -46,7 +55,7 @@ class UC2ConfigController(ImConWidgetController):
 
     def unset_auto_enable(self):
         # Add your logic to unset auto-enable for the motors here.
-        self.stages.enalbeMotors(enableauto=False)
+        self.stages.enalbeMotors(enable=True, enableauto=False)
 
     def set_positions(self):
         a = self._widget.motorAEdit.text()
@@ -70,7 +79,7 @@ class UC2ConfigController(ImConWidgetController):
         mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)
         mThread.start()
         mThread.join()
-        self._widget.reconnectDeviceLabel.updateFirmwareDeviceLabel.setText("Bring the PS controller into pairing mode")
+        self._widget.reconnectDeviceLabel.setText("Bring the PS controller into pairing mode")
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

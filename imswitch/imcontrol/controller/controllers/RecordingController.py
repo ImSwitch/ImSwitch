@@ -4,7 +4,7 @@ from typing import Optional, Union, List
 import numpy as np
 
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException
 import cv2
 from PIL import Image
 import io
@@ -26,6 +26,9 @@ class RecordingController(ImConWidgetController):
             self._master.detectorsManager.execOnAll(lambda c: c.model,
                                                     condition=lambda c: c.forAcquisition)
         )
+
+        # Define a dictionary to store variables accessible to the function
+        self.shared_variables: dict[str, any] = {}
 
         self.settingAttr = False
         self.recording = False
@@ -425,25 +428,58 @@ class RecordingController(ImConWidgetController):
     def video_feeder(self):
         return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
 
-    '''
-    def snapImage(self, name=None) -> None:
-        self.snap(name)
-    '''
+
+
+    #@app.post("/execute-function/")
+    @APIExport(runOnUIThread=False)
+    def executeFunction(self, code: str):
+        try:
+            # Create a new dictionary for local variables
+            local_variables = {'self': self}
+            global_variables = {'self': self}
+
+            # Execute the provided code within the context of the current FastAPI runtime
+            exec(code, globals(), local_variables)
+
+            # Add the local variables to the shared dictionary
+            self.shared_variables.update(local_variables)
+
+            return {"message": "Function executed successfully", "result": local_variables}
+        except Exception as e:
+            self._logger.error(e)
+            return HTTPException(detail=str(e), status_code=400)
+
+    @APIExport(runOnUIThread=False)
+    #@app.get("/get-variable/{variable_name}")
+    def getVariable(self, variable_name: str):
+        if variable_name in self.shared_variables:
+            return {"variable_value": self.shared_variables[variable_name]}
+        else:
+            return HTTPException(detail="Variable not found", status_code=404)
+
     @APIExport(runOnUIThread=True)
     def snapImageToPath(self, fileName: str = "."):
         """ Take a snap and save it to a .tiff file at the given fileName. """
         self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
     
     @APIExport(runOnUIThread=False)
-    def snapImage(self, output: bool = False):# -> np.ndarray:
+    def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
-            return self.snapNumpy()
+            numpy_array_list = self.snapNumpy()
+            mDetector = list(numpy_array_list.keys())[0]
+            numpy_array = numpy_array_list[mDetector]
+            if toList:
+                return numpy_array.tolist()  # Convert the numpy array to a list
+            else:
+                return numpy_array
         else:
             self.snap()
 
     @APIExport(runOnUIThread=False)
     def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
+        '''
+        '''
         # Create a 2D NumPy array representing the image
         images = self.snapNumpy()
 

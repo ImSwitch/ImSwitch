@@ -103,7 +103,9 @@ class LightsheetController(ImConWidgetController):
         iFrame = 0
         allFrames = []
         while self.isLightsheetRunning:
-            allFrames.append(self.detector.getLatestFrame())
+            frame = self.detector.getLatestFrame()
+            if frame.shape[0] != 0:
+                allFrames.append(frame)
             if controller.is_target_reached():
                 break
             iFrame += 1
@@ -112,7 +114,8 @@ class LightsheetController(ImConWidgetController):
         self.stages.move(value=-maxPos, axis=axis, is_absolute=False, is_blocking=True)
         
         # do something with the frames 
-        self.lightsheetStack = np.array(allFrames[0::30])
+        #allFrames = np.array(allFrames)
+        self.lightsheetStack = np.array(allFrames)
         self.sigImageReceived.emit()
         
         self.stopLightsheet()

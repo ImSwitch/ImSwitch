@@ -41,10 +41,12 @@ class ESP32StageManager(PositionerManager):
         self.maxA = positionerInfo.managerProperties.get('maxA', np.inf)
 
         # Calibrated backlash
-        self.backlashX = positionerInfo.managerProperties.get('backlashX', 1)
-        self.backlashY = positionerInfo.managerProperties.get('backlashY', 1)
-        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 1)
-        self.backlashA = positionerInfo.managerProperties.get('backlashA', 1)
+        self.backlashX = positionerInfo.managerProperties.get('backlashX', 0)
+        self.backlashY = positionerInfo.managerProperties.get('backlashY', 0)
+        self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
+        self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
+
+
 
         # Setup homing coordinates and speed
         self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)
@@ -76,6 +78,9 @@ class ESP32StageManager(PositionerManager):
 
         # Dual Axis if we have A and Z to drive the motor
         self.isDualAxis = positionerInfo.managerProperties.get("isDualaxis", False)
+        if self.isDualAxis:
+            self.stepsizeA = self.stepsizeZ
+            self.backlashA = self.backlashZ
 
         # Acceleration
         self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "A": 40000}
@@ -109,6 +114,8 @@ class ESP32StageManager(PositionerManager):
         self._motor.setup_motor(axis=axis, minPos=minPos, maxPos=maxPos, stepSize=stepSize, backlash=backlash)
 
     def move(self, value=0, axis="X", is_absolute=False, is_blocking=True, acceleration=None, speed=None, isEnable=None, timeout=gTIMEOUT):
+        #FIXME: for i, iaxis in enumerate(("A","X","Y","Z")):
+        #    self._position[iaxis] = self._motor._position[i]
         if isEnable is None:
             isEnable = self.is_enabled
         if speed is None:
@@ -125,7 +132,6 @@ class ESP32StageManager(PositionerManager):
             if axis == "A": acceleration = self.acceleration["A"]
             if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
-
         if axis == 'X':
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
@@ -157,7 +163,7 @@ class ESP32StageManager(PositionerManager):
         else:
             print('Wrong axis, has to be "X" "Y" or "Z".')
             
-        
+    
 
 
     def measure(self, sensorID=0, NAvg=100):
@@ -203,8 +209,7 @@ class ESP32StageManager(PositionerManager):
             self.__logger.error(e)
             allPositions = [0.,0.,0.,0.]
         allPositionsDict={"X": allPositions[1], "Y": allPositions[2], "Z": allPositions[3], "A": allPositions[0]}
-        for iPosAxis, iPosVal in allPositionsDict.items():
-            self.setPosition(iPosVal,iPosAxis)
+
         return allPositionsDict
 
     def forceStop(self, axis):

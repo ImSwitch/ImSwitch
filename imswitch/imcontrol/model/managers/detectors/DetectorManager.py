@@ -47,7 +47,12 @@ class DetectorNumberParameter(DetectorParameter):
     valueUnits: str
     """ Parameter value units, e.g. "nm" or "fps". """
 
+@dataclass
+class DetectorBooleanParameter(DetectorParameter):
+    """ A detector parameter with a boolean value. """
 
+    value: bool
+    """ The value of the parameter. """
 @dataclass
 class DetectorListParameter(DetectorParameter):
     """ A detector parameter with a value from a list of options. """
@@ -101,6 +106,9 @@ class DetectorManager(SignalInterface):
         self.__actions = actions if actions is not None else {}
         self.__croppable = croppable
 
+        self.__flatfieldImage = None
+        self.__isFlatfielding = False
+        
         self.__fullShape = fullShape
         self.__supportedBinnings = supportedBinnings
         self.__image = np.array([])
@@ -117,6 +125,7 @@ class DetectorManager(SignalInterface):
         except:
             isRGB = False
         self.setRGB(isRGB)
+    
 
         self.setBinning(supportedBinnings[0])
 
@@ -277,6 +286,9 @@ class DetectorManager(SignalInterface):
         """ Close/cleanup detector. """
         pass
 
+    def recordFlatfieldImage(self, image: np.ndarray) -> np.ndarray:
+        """ Performs flatfield correction on the specified image. """
+        return image
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

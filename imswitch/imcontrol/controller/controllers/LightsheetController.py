@@ -49,7 +49,7 @@ class LightsheetController(ImConWidgetController):
         # a bit weird, but we cannot update outside the main thread
         name = "Lightsheet Stack"
         # subsample stack 
-        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(100,1,1), translation=(0,0,0))
+        self._widget.setImage(np.uint16(self.lightsheetStack ), colormap="gray", name=name, pixelsize=(20,1,1), translation=(0,0,0))
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()
@@ -126,6 +126,10 @@ class LightsheetController(ImConWidgetController):
         self.isLightsheetRunning = False
         self._widget.startButton.setEnabled(True)
         self._widget.stopButton.setEnabled(False)
+        self._widget.illuminationSlider.setValue(0)
+        illuSource = self._widget.getIlluminationSource()
+        if not self._master.lasersManager[illuSource].enabled:
+            self._master.lasersManager[illuSource].setEnabled(0)
         self._widget.startButton.setText("Start")
         self._widget.stopButton.setText("Stopped")
         self._widget.stopButton.setStyleSheet("background-color: green")

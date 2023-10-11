@@ -1,7 +1,7 @@
 import os
 import time
 import json
-from typing import List
+from typing import List, Dict
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
 from imswitch.imcommon.model.shortcut import shortcut
@@ -122,11 +122,13 @@ class PycroManagerWidget(Widget):
 
         # Progress bars
         # We use a dictionary to store them
-        # for easier indicization
-        keys = ["t", "x", "y", "z"]
-        labels = ["Frames", "X-points", "Y-points", "Z-points"]
+        # for easier indicization;
+        # keys mirror the structure of
+        # pycromanager notification id
+        self.progressBarsKeys = ["time", "position", "z"]
+        labels = ["Time points", "XY-points", "Z-points"]
         self.progressBarsWidgets = {}
-        for key, label in zip(keys, labels):
+        for key, label in zip(self.progressBarsKeys, labels):
             progressBar = QtWidgets.QProgressBar()
             progressBar.setFormat(label)
             progressBar.setAlignment(QtCore.Qt.AlignCenter)
@@ -375,18 +377,19 @@ class PycroManagerWidget(Widget):
     def setTimeToRec(self, secondsToRec):
         self.numExpositionsEdit.setText(str(secondsToRec))
         
-    def setProgressBarVisibility(self, key: str, visible: bool) -> None:
-        if visible:
-            self.progressBarsWidgets[key].show()
-        else:
-            self.progressBarsWidgets[key].hide()
+    def setProgressBarsVisibility(self, visibilityDict: Dict[str, bool]) -> None:
+        for key, visible in visibilityDict.items():
+            if visible:
+                self.progressBarsWidgets[key].show()
+            else:
+                self.progressBarsWidgets[key].hide()
         
-    def setProgressBarsMaximum(self, keys: List[str], maxValues: List[int]) -> None:
-        for key, maxVal in zip(keys, maxValues):
+    def setProgressBarsMaximum(self, newMaxDict: Dict[str, int]) -> None:
+        for key, maxVal in newMaxDict.items():
             self.progressBarsWidgets[key].setMaximum(maxVal)
     
-    def updateProgressBar(self, keys: List[str], newVals: List[int]) -> None:
-        for key, value in zip(keys, newVals):
+    def updateProgressBars(self, newValsDict: Dict[str, int]) -> None:
+        for key, value in newValsDict.items():
             self.progressBarsWidgets[key].setValue(value)
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -98,7 +98,7 @@ class MasterController:
                 self.pycroManagerAcquisition = PycroManagerAcquisitionManager(self.detectorsManager)
                 self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
                 self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
-                self.pycroManagerAcquisition.sigPycroManagerTimePointUpdated.connect(cc.sigUpdatePycroManagerTimePoint)
+                self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(cc.sigUpdatePycroManagerNotification)
                 self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
                 self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
             else:

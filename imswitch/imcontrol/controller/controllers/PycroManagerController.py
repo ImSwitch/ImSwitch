@@ -1,5 +1,5 @@
 import os, time, json, numpy as np
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import (
     PycroManagerAcquisitionMode,
@@ -44,7 +44,7 @@ class PycroManagerController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
         self._commChannel.sigRecordingEnded.connect(self.recordingEnded)
-        self._commChannel.sigUpdatePycroManagerTimePoint.connect(self.updateProgressBar)
+        self._commChannel.sigUpdatePycroManagerNotification.connect(self.updateProgressBars)
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
         self._commChannel.sigSnapImg.connect(self.snap)
         self._commChannel.sigStartRecordingExternal.connect(self.startRecording)
@@ -111,24 +111,32 @@ class PycroManagerController(ImConWidgetController):
         time.sleep(0.01)
         savename = self.getFileName() + '_rec'
         
-        tMax = xMax = yMax = zMax = 100
+        maxDict = {key : 0 for key in self._widget.progressBarsKeys}
         
         if self.recMode == PycroManagerAcquisitionMode.Frames:
-            tMax = self._widget.getNumExpositions()
-            self.__logger.info(f"Recording {tMax} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
+            max = self._widget.getNumExpositions()
+            self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
+            maxDict["time"] = max
         elif self.recMode == PycroManagerAcquisitionMode.Time:
-            tMax = self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
-            self.__logger.info(f"Recording {tMax} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
+            max = int(self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.core.get_exposure())
+            self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
+            maxDict["time"] = max
         elif self.recMode == PycroManagerAcquisitionMode.ZStack:
             start, stop, step = self._widget.getZStackValues()
-            zMax = len(np.linspace(start, stop, int((stop - start) / step)))
-            self.__logger.info(f"Recording {zMax} Z points (start: {start}, stop: {stop}, step: {step})")
+            max = len(np.linspace(start, stop, int((stop - start) / step)))
+            self.__logger.info(f"Recording {max} Z points (start: {start}, stop: {stop}, step: {step})")
+            maxDict["z"] = max
         elif self.recMode == PycroManagerAcquisitionMode.XYList:
-            xMax = yMax = len(self.xyScan)
+            max = len(self.xyScan)
+            self.__logger.info(f"Recording {max} X-Y points")
+            maxDict["position"] = max
         elif self.recMode == PycroManagerAcquisitionMode.XYZList:
-            xMax = yMax = zMax = len(self.xyzScan)
+            max = len(self.xyzScan)
+            self.__logger.info(f"Recording {max} X-Y-Z points")
+            maxDict["position"] = max
+            maxDict["z"] = max
         
-        self.setProgressBarMaximum(tMax, xMax, yMax, zMax)
+        self.setProgressBarsMaximum(maxDict)
         
         # packing arguments
         recordingArgs = {
@@ -159,10 +167,14 @@ class PycroManagerController(ImConWidgetController):
                 "xyz_positions": np.array(self.xyzScan) if self.recMode == PycroManagerAcquisitionMode.XYZList else None,
                 "position_labels": self.__checkLabels(),
                 "order": "tpcz" # todo: make this a parameter in the widget
+            },
+            "tags" : {
+                # TODO: attributes should be reworked
+                self._master.pycroManagerAcquisition.core.get_camera_device(): self._commChannel.sharedAttrs.getHDF5Attributes()
             }
         }
         
-        self._widget.setProgressBarVisibility(True)
+        self._widget.setProgressBarsVisibility({key: value != 0 for key, value in maxDict.items()})
         self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
     
     def __calculateNumTimePoints(self) -> list:
@@ -271,18 +283,19 @@ class PycroManagerController(ImConWidgetController):
         self._widget.setFieldsEnabled(False)
 
     def recordingCycleEnded(self):
-        self._widget.updateProgressBar(0)
+        self._widget.updateProgressBars({key : 0 for key in self._widget.progressBarsKeys})
         self._widget.setFieldsEnabled(True)
-        self._widget.setProgressBarVisibility(False)
+        self._widget.setProgressBarsVisibility({key : False for key in self._widget.progressBarsKeys})
 
     def recordingEnded(self):
         self.recordingCycleEnded()
     
-    def setProgressBarMaximum(self, tMax: int = 0, xMax: int = 0, yMax: int = 0, zMax: int = 0):
-        self._widget.setProgressBarMaximum(tMax, xMax, yMax, zMax)
+    def setProgressBarsMaximum(self, newMaxDict: Dict[str, int]) -> None:
+        """ Sets the maximum value of the progress bars. """
+        self._widget.setProgressBarsMaximum(newMaxDict)
     
-    def updateProgressBar(self, timePoint: int):
-        self._widget.updateProgressBar(timePoint)
+    def updateProgressBars(self, newProgressDict: Dict[str, int]) -> None:
+        self._widget.updateProgressBars(newProgressDict)
 
     def specFrames(self):
         self._widget.checkSpecFrames()

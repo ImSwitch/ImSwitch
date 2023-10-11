@@ -12,7 +12,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingError = Signal(str) # (error)
-    sigPycroManagerTimePointUpdated = Signal(int) # (timePoint)
+    sigPycroManagerNotificationUpdated = Signal(dict) # (timePoint)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
@@ -28,8 +28,11 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread = Thread()
         self.__acquisitionWorker = PycroManagerAcquisitionWorker(self)
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
-        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)    
-    
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
+        
+        self.__acquisitionWorker.acqError.connect(self.sigRecordingError)
+        self.__acquisitionWorker.acqEnded.connect(self.sigRecordingEnded)
+            
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
         """
@@ -77,37 +80,33 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.sigRecordingStarted.emit()
     
     def endRecording(self):
+        self.__acquisitionThread.quit()
         self.sigRecordingEnded.emit()
 
 
-class PycroManagerAcquisitionWorker(Worker):    
+class PycroManagerAcquisitionWorker(Worker):
+    
+    acqError = Signal(str) # (error)
+    acqEnded = Signal()
+        
     def __init__(self, manager: PycroManagerAcquisitionManager):
         super().__init__()
         self.__logger = initLogger(self)
         self.recMode : PycroManagerAcquisitionMode = None
         self.recordingArgs : dict = None
         self.acquisitionManager = manager
-        self.__notificationDict = {
-            PycroManagerAcquisitionMode.Frames: self.__notify_new_time_point,
-            PycroManagerAcquisitionMode.Time: self.__notify_new_time_point,
-            PycroManagerAcquisitionMode.ZStack: self.__notify_new_z_point,
-            # TODO: add missing notifications
-        }
     
-    def __notify_new_time_point(self, msg: AcqNotification):
+    def __notify_new_point(self, msg: AcqNotification):
         # time point is offset by 1, so we add 1 to the frame number
         if msg.is_image_saved_notification():
-            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["time"] + 1)
-    
-    def __notify_new_z_point(self, msg: AcqNotification):
-        if msg.is_image_saved_notification():
-            self.acquisitionManager.sigPycroManagerTimePointUpdated.emit(msg.id["z"] + 1)
+            self.__logger.debug(msg.to_json())
+            self.acquisitionManager.sigPycroManagerNotificationUpdated.emit(msg.id)
     
     def run(self) -> None:
 
         self.__logger.info("Generating acquisition events")
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notificationDict[self.recMode]
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__notify_new_point
         try:
             self.__logger.info("Starting acquisition")
             with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
@@ -116,6 +115,6 @@ class PycroManagerAcquisitionWorker(Worker):
         except Exception as e:
             self.__logger.error(f"An error occurred during acquisition. Shutting down.")
             self.__logger.exception(f"{e}")
-            self.acquisitionManager.sigRecordingError.emit(format_exc())
+            self.acqError.emit(format_exc())
         finally:
-            self.acquisitionManager.sigRecordingEnded.emit()
+            self.acqEnded.emit()

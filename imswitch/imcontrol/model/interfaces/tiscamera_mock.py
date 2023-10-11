@@ -134,6 +134,8 @@ class MockCameraTIS:
     
 class Camera(object):
     def __init__(self):
+        self.Width = 100
+        self.Height = 100
         pass
 
 # Copyright (C) 2020-2021 ImSwitch developers

@@ -65,11 +65,13 @@ class Camera:
             image = self.image.copy()
             if defocusPSF is not None:
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
+            image = image/np.mean(image)
             image = np.random.randn(image.shape[0],image.shape[1])*.2+image
             # Adjust image based on offsets
             image = np.roll(np.roll(image, int(x_offset), axis=1), int(y_offset), axis=0)
+            
             # Adjust illumination
-            image = (image * light_intensity).clip(0, 255).astype(np.uint16)
+            image = (image * light_intensity).astype(np.uint16)
             return image
         
     def getLast(self):
@@ -86,7 +88,7 @@ class Positioner:
         self._parent = parent
         self.position = {'X': 0, 'Y': 0, 'Z': 0, 'A': 0}
         self.lock = threading.Lock()
-        self.psf = np.ones(self._parent.camera.image.shape)
+        self.psf = self.compute_psf(dz=0)
 
     def move(self, x=None, y=None, z=None, a=None, is_absolute=False):
         with self.lock:
@@ -153,6 +155,9 @@ class VirtualMicroscopy:
         self.camera = Camera(self, filePath)
         self.positioner = Positioner(self)
         self.illuminator = Illuminator(self)
+        
+    def stop(self):
+        pass
 
 
 

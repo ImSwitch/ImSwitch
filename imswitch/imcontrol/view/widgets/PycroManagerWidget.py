@@ -36,13 +36,20 @@ class PycroManagerWidget(Widget):
         
         # Table widgets; they need to remain alive otherwise
         # the widget automatically closes.
+        self.XYTableWidget = None
+        self.XYZTableWidget = None
+        
+        # Cache for table data. The controller cannot
+        # communicate information back to the viewer after
+        # sanity checks on data has been performed,
+        # so we keep a reference to the data here.
+        # TODO: it may be possible to remove these
+        # and retrieve the data from the controller directly.
+        # Needs investigation.
         self._dataCache = {
             "XY": None,
             "XYZ": None
         }
-        
-        self.XYTableWidget = None
-        self.XYZTableWidget = None
         
         # Graphical elements
         recTitle = QtWidgets.QLabel('<h2><strong>PycroManager acquisition engine</strong></h2>')
@@ -113,9 +120,21 @@ class PycroManagerWidget(Widget):
                                        'Save in memory for reconstruction',
                                        'Save on disk and keep in memory'])
 
-        self.acquisitionProgressBar = QtWidgets.QProgressBar()
-        self.acquisitionProgressBar.setFormat("Frames")
-        self.acquisitionProgressBar.setAlignment(QtCore.Qt.AlignCenter)
+        # Progress bars
+        # We use a dictionary to store them
+        # for easier indicization
+        keys = ["t", "x", "y", "z"]
+        labels = ["Frames", "X-points", "Y-points", "Z-points"]
+        self.progressBarsWidgets = {}
+        for key, label in zip(keys, labels):
+            progressBar = QtWidgets.QProgressBar()
+            progressBar.setFormat(label)
+            progressBar.setAlignment(QtCore.Qt.AlignCenter)
+            
+            # keep progress bars hidden by default;
+            # will be shown when recording starts
+            progressBar.hide()
+            self.progressBarsWidgets[key] = progressBar     
         
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -177,8 +196,9 @@ class PycroManagerWidget(Widget):
         recGrid.addWidget(self.recSaveModeList, gridRow, 1, 1, -1)
         gridRow += 1
         
-        recGrid.addWidget(self.acquisitionProgressBar, gridRow, 0, 1, -1)
-        gridRow += 1
+        for _, progressBar in self.progressBarsWidgets.items():
+            recGrid.addWidget(progressBar, gridRow, 0, 1, -1)
+            gridRow += 1
 
         # setting storage tab
         gridRow = 0
@@ -191,9 +211,9 @@ class PycroManagerWidget(Widget):
         storageGrid.addWidget(self.specifyfile, gridRow, 0)
         gridRow += 1
         
-        # keep progress bar hidden by default;
-        # will be shown when recording starts
-        self.acquisitionProgressBar.hide()
+        
+        
+        (progressBar.hide() for _, progressBar in self.progressBarsWidgets.items())
 
         self.recGridContainer = QtWidgets.QWidget()
         self.recGridContainer.setLayout(recGrid)
@@ -355,22 +375,19 @@ class PycroManagerWidget(Widget):
     def setTimeToRec(self, secondsToRec):
         self.numExpositionsEdit.setText(str(secondsToRec))
         
-    def setProgressBarVisibility(self, visible: bool) -> None:
+    def setProgressBarVisibility(self, key: str, visible: bool) -> None:
         if visible:
-            self.acquisitionProgressBar.show()
+            self.progressBarsWidgets[key].show()
         else:
-            self.acquisitionProgressBar.hide()
+            self.progressBarsWidgets[key].hide()
         
-    def setProgressBarMaximum(self, maxVal: int) -> None:
-        self.acquisitionProgressBar.setMaximum(maxVal)
+    def setProgressBarsMaximum(self, keys: List[str], maxValues: List[int]) -> None:
+        for key, maxVal in zip(keys, maxValues):
+            self.progressBarsWidgets[key].setMaximum(maxVal)
     
-    def updateProgressBar(self, timePoint: int) -> None:
-        self.acquisitionProgressBar.setValue(timePoint)
-
-    @shortcut('Ctrl+R', "Record")
-    def toggleRecButton(self):
-        self.recButton.toggle()
-
+    def updateProgressBar(self, keys: List[str], newVals: List[int]) -> None:
+        for key, value in zip(keys, newVals):
+            self.progressBarsWidgets[key].setValue(value)
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

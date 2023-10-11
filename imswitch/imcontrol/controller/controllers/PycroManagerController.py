@@ -111,21 +111,24 @@ class PycroManagerController(ImConWidgetController):
         time.sleep(0.01)
         savename = self.getFileName() + '_rec'
         
-        maximumValueProgressBar = 100
+        tMax = xMax = yMax = zMax = 100
         
         if self.recMode == PycroManagerAcquisitionMode.Frames:
-            maximumValueProgressBar = self._widget.getNumExpositions()
+            tMax = self._widget.getNumExpositions()
+            self.__logger.info(f"Recording {tMax} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
         elif self.recMode == PycroManagerAcquisitionMode.Time:
-            maximumValueProgressBar = self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
+            tMax = self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
+            self.__logger.info(f"Recording {tMax} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
         elif self.recMode == PycroManagerAcquisitionMode.ZStack:
             start, stop, step = self._widget.getZStackValues()
-            maximumValueProgressBar = len(np.linspace(start, stop, int((stop - start) / step)))
+            zMax = len(np.linspace(start, stop, int((stop - start) / step)))
+            self.__logger.info(f"Recording {zMax} Z points (start: {start}, stop: {stop}, step: {step})")
         elif self.recMode == PycroManagerAcquisitionMode.XYList:
-            maximumValueProgressBar = len(self.xyScan)
+            xMax = yMax = len(self.xyScan)
         elif self.recMode == PycroManagerAcquisitionMode.XYZList:
-            maximumValueProgressBar = len(self.xyzScan)
+            xMax = yMax = zMax = len(self.xyzScan)
         
-        self._widget.setProgressBarMaximum(maximumValueProgressBar)
+        self.setProgressBarMaximum(tMax, xMax, yMax, zMax)
         
         # packing arguments
         recordingArgs = {
@@ -159,7 +162,6 @@ class PycroManagerController(ImConWidgetController):
             }
         }
         
-        self.__logger.info(f"Recording {maximumValueProgressBar} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
         self._widget.setProgressBarVisibility(True)
         self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
     
@@ -276,8 +278,8 @@ class PycroManagerController(ImConWidgetController):
     def recordingEnded(self):
         self.recordingCycleEnded()
     
-    def setProgressBarMaximum(self, maximum: int):
-        self._widget.setProgressBarMaximum(maximum)
+    def setProgressBarMaximum(self, tMax: int = 0, xMax: int = 0, yMax: int = 0, zMax: int = 0):
+        self._widget.setProgressBarMaximum(tMax, xMax, yMax, zMax)
     
     def updateProgressBar(self, timePoint: int):
         self._widget.updateProgressBar(timePoint)

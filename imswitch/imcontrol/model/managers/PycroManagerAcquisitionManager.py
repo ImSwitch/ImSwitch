@@ -12,7 +12,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigRecordingError = Signal(str) # (error)
-    sigPycroManagerNotificationUpdated = Signal(dict) # (timePoint)
+    sigPycroManagerNotificationUpdated = Signal(dict) # (pycroManagerNotificationId)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
@@ -26,10 +26,11 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__detectorsManager = detectorsManager
         self.__core = Core()
         self.__acquisitionThread = Thread()
-        self.__acquisitionWorker = PycroManagerAcquisitionWorker(self)
+        self.__acquisitionWorker = PycroManagerAcquisitionWorker()
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
         
+        self.__acquisitionWorker.acqNotification.connect(self.sigPycroManagerNotificationUpdated)
         self.__acquisitionWorker.acqError.connect(self.sigRecordingError)
         self.__acquisitionWorker.acqEnded.connect(self.sigRecordingEnded)
             
@@ -86,21 +87,21 @@ class PycroManagerAcquisitionManager(SignalInterface):
 
 class PycroManagerAcquisitionWorker(Worker):
     
+    acqNotification = Signal(dict) # (pycroManagerNotificationId)
     acqError = Signal(str) # (error)
     acqEnded = Signal()
         
-    def __init__(self, manager: PycroManagerAcquisitionManager):
+    def __init__(self):
         super().__init__()
         self.__logger = initLogger(self)
         self.recMode : PycroManagerAcquisitionMode = None
         self.recordingArgs : dict = None
-        self.acquisitionManager = manager
     
     def __notify_new_point(self, msg: AcqNotification):
         # time point is offset by 1, so we add 1 to the frame number
         if msg.is_image_saved_notification():
             self.__logger.debug(msg.to_json())
-            self.acquisitionManager.sigPycroManagerNotificationUpdated.emit(msg.id)
+            self.acqNotification.emit(msg.id)
     
     def run(self) -> None:
 

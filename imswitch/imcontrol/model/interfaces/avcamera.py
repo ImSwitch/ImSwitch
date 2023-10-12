@@ -7,7 +7,8 @@ from imswitch.imcommon.model import initLogger
 try:
     isVimba = True
     from pymba import Vimba, VimbaException
-except:
+except Exception as e:
+    print(e)
     isVimba = False
     print("No pymba installed..")
     

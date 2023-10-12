@@ -100,7 +100,6 @@ class PycroManagerAcquisitionWorker(Worker):
     def __notify_new_point(self, msg: AcqNotification):
         # time point is offset by 1, so we add 1 to the frame number
         if msg.is_image_saved_notification():
-            self.__logger.debug(msg.to_json())
             self.acqNotification.emit(msg.id)
     
     def run(self) -> None:

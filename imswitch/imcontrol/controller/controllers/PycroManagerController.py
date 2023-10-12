@@ -113,25 +113,28 @@ class PycroManagerController(ImConWidgetController):
         
         maxDict = {key : 0 for key in self._widget.progressBarsKeys}
         
+
+        # maximum value is the specified amount - 1, as
+        # pycromanager IDs are indexed from 0 to n-1
         if self.recMode == PycroManagerAcquisitionMode.Frames:
-            max = self._widget.getNumExpositions()
+            max = self._widget.getNumExpositions() - 1
             self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
             maxDict["time"] = max
         elif self.recMode == PycroManagerAcquisitionMode.Time:
-            max = int(self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.core.get_exposure())
+            max = int(self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.core.get_exposure()) - 1
             self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
             maxDict["time"] = max
         elif self.recMode == PycroManagerAcquisitionMode.ZStack:
             start, stop, step = self._widget.getZStackValues()
-            max = len(np.linspace(start, stop, int((stop - start) / step)))
+            max = len(np.linspace(start, stop, int((stop - start) / step))) - 1
             self.__logger.info(f"Recording {max} Z points (start: {start}, stop: {stop}, step: {step})")
             maxDict["z"] = max
         elif self.recMode == PycroManagerAcquisitionMode.XYList:
-            max = len(self.xyScan)
+            max = len(self.xyScan) - 1
             self.__logger.info(f"Recording {max} X-Y points")
             maxDict["position"] = max
         elif self.recMode == PycroManagerAcquisitionMode.XYZList:
-            max = len(self.xyzScan)
+            max = len(self.xyzScan) - 1
             self.__logger.info(f"Recording {max} X-Y-Z points")
             maxDict["position"] = max
             maxDict["z"] = max

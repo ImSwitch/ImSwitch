@@ -175,7 +175,7 @@ class PycroManagerController(ImConWidgetController):
         }
         
         self._widget.setProgressBarsVisibility({key: value != 0 for key, value in maxDict.items()})
-        self._master.pycroManagerAcquisition.startRecording(self.recMode, recordingArgs)
+        self._master.pycroManagerAcquisition.startRecording(recordingArgs)
     
     def __calculateNumTimePoints(self) -> list:
         if self.recMode == PycroManagerAcquisitionMode.Frames:

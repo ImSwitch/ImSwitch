@@ -195,7 +195,7 @@ class BetterTableWidget(QTableWidget):
             else:
                 newRowItem = [self.default for _ in range(self.columnCount())]
         else:
-            newRowItem = data
+            newRowItem = [self.default for _ in range(self.columnCount())]
         
         for col, item in zip(range(self.columnCount()), newRowItem):
             if type(item) == int:

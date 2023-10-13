@@ -26,7 +26,7 @@ class PycroManagerWidget(Widget):
     sigRecSaveModeChanged = QtCore.Signal()
 
     sigSnapRequested = QtCore.Signal()
-    sigRecTriggered = QtCore.Signal(bool)  # (enabled)
+    sigRecToggled = QtCore.Signal(bool)  # (enabled)
     
     sigTableDataDumped = QtCore.Signal(str, list) # ("XY"/"XYZ", tableData)
     sigTableLoaded = QtCore.Signal(str, str) # ("XY"/"XYZ", filePath)
@@ -74,6 +74,7 @@ class PycroManagerWidget(Widget):
                                           QtWidgets.QSizePolicy.Expanding)
         self.recButton = guitools.BetterPushButton('REC')
         self.recButton.setStyleSheet("font-size:16px")
+        self.recButton.setCheckable(True)
         self.recButton.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                      QtWidgets.QSizePolicy.Expanding)
 
@@ -252,7 +253,7 @@ class PycroManagerWidget(Widget):
         self.recSaveModeList.currentIndexChanged.connect(self.sigRecSaveModeChanged)
 
         self.snapButton.clicked.connect(self.sigSnapRequested)
-        self.recButton.clicked.connect(self.sigRecTriggered)
+        self.recButton.toggled.connect(self.sigRecToggled)
     
     def openTableWidget(self, coordinates: List[str]):
         """ Opens a dialog to specify the XY coordinates list. """

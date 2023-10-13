@@ -16,6 +16,15 @@ class ViewController(ImConWidgetController):
         self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
         self._widget.sigLiveviewToggled.connect(self.liveview)
 
+        # Connect CommunicationChannel signals
+        self._commChannel.sigLiveViewUpdateRequested.connect(self.toggleLive)
+
+    def toggleLive(self, enabled):
+        """ If live acquisition is already started, stop it. Otherwise, resume.
+        """
+        if self._acqHandle is not None:
+            self.liveview(enabled)
+
     def liveview(self, enabled):
         """ Start liveview and activate detector acquisition. """
         if enabled and self._acqHandle is None:

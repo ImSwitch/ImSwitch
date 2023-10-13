@@ -11,7 +11,6 @@ class PycroManagerAcquisitionManager(SignalInterface):
     
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
-    sigRecordingError = Signal(str) # (error)
     sigPycroManagerNotificationUpdated = Signal(dict) # (pycroManagerNotificationId)
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
@@ -69,6 +68,8 @@ class PycroManagerAcquisitionManager(SignalInterface):
         if msg.is_image_saved_notification():
             self.sigPycroManagerNotificationUpdated.emit(msg.id)
         elif msg.is_acquisition_finished_notification():
+            # For some reason the Dataset reference is not closed properly;
+            # this is a workaround to avoid the error and close the reference
             d = self.__acquisition.get_dataset()
             d.close()
             self.__logger.info("Acquisition finished")
@@ -83,3 +84,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisition.acquire(events)
         self.__acquisition.mark_finished()
         self.sigRecordingStarted.emit()
+    
+    def stopRecording(self) -> None:
+        self.__acquisition.abort()
+        self.sigRecordingEnded.emit()

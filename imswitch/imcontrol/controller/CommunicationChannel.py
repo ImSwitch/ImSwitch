@@ -16,6 +16,8 @@ class CommunicationChannel(SignalInterface):
         str, np.ndarray, bool, list, bool
     )  # (detectorName, image, init, scale, isCurrentDetector)
 
+    sigLiveViewUpdateRequested = Signal(bool)  # (toggleLive)
+
     sigAcquisitionStarted = Signal()
 
     sigAcquisitionStopped = Signal()

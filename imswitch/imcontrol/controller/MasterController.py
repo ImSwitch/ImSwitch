@@ -1,5 +1,5 @@
 from imswitch.imcommon.model import VFileItem, initLogger
-from pprint import pformat
+import traceback
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
     ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager
@@ -122,8 +122,8 @@ class MasterController:
                 self.recordingManager.endRecording(emitSignal=False, wait=True)
             else:
                 self.pycroManagerAcquisition.endRecording()
-        except:
-            self.__logger.error("Error while closing RecordingManager or PycroManagerAcquisitionManager.")
+        except Exception as e:
+            self.__logger.error("Error while closing RecordingManager or PycroManagerAcquisitionManager: ", traceback.format_exc())
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

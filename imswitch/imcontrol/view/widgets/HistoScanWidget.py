@@ -11,6 +11,16 @@ from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
 
+class ScanParameters(object):
+    def __init__(self, name="Wellplate", physDimX=164, physDimY=109, physOffsetX=0, physOffsetY=0, imagePath="imswitch/_data/images/WellplateAdapter3Slides.png"):
+        self.name = name
+        self.physDimX = physDimX # mm
+        self.physDimY = physDimY # mm
+        self.physOffsetX = physOffsetX
+        self.physOffsetY =  physOffsetY
+        self.imagePath = imagePath
+        
+        
 
 class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
@@ -37,6 +47,8 @@ class HistoScanWidget(NapariHybridWidget):
         self.illuminationSlider.valueChanged.connect(
             lambda value: self.sigSliderIlluValueChanged.emit(value)
         )
+        
+        self.samplePicker = QtWidgets.QComboBox()
         
         self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
 
@@ -75,19 +87,42 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
         self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
+        self.grid.addWidget(self.samplePicker, 10, 2, 1, 1)
         
-        # for the physical dimensions of the slide holder we have
-        physDimX = 164 # mm
-        physDimY = 109 # mm
-        physOffsetX = 0
-        physOffsetY =  0
+
+        # define scan parameter per sample
+        self.allScanParameters = []
+        self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
+        self.allScanParameters.append(ScanParameters("6 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate6.png"))
         
-        self.ScanSelectViewWidget = ScanSelectView(self, physDimX*1e3, physDimY*1e3, physOffsetX, physOffsetY)
-        self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap("imswitch/_data/images/WellplateAdapter3Slides.png"))
+        # load sample layout
+        self.ScanSelectViewWidget = None
+        self.loadSampleLayout(0)
         self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
         
+        self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
+        
+        # set combobox with all samples
+        self.setSampleLayouts(self.allScanParameters)
+        self.samplePicker.currentIndexChanged.connect(self.loadSampleLayout)
+        
         self.layer = None
+        
 
+    def loadSampleLayout(self, index):
+        if self.ScanSelectViewWidget is None:
+            self.ScanSelectViewWidget = ScanSelectView(self, self.allScanParameters[index])
+        else:
+            self.ScanSelectViewWidget.updateParams(self.allScanParameters[index])
+        self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap(self.allScanParameters[index].imagePath))
+            
+
+    def setSampleLayouts(self, sampleLayoutList):
+        self.samplePicker.clear()
+        for sample in sampleLayoutList:
+            self.samplePicker.addItem(sample.name)
+        
+        
     def setOffset(self, offsetX, offsetY):
         self.ScanSelectViewWidget.setOffset(offsetX, offsetY)
 
@@ -224,7 +259,7 @@ COLORS = ['#000000', '#ffffff']
 
 
 class ScanSelectView(QtWidgets.QGraphicsView):
-    def __init__(self, parent=None, physDimX=100, physDimY=100, physOffsetX=0, physOffsetY=0):
+    def __init__(self, parent, scanParameters):
         super().__init__(parent)
         scene = QtWidgets.QGraphicsScene(self)
         self.setScene(scene)
@@ -237,16 +272,22 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.parent = parent
         
         # real-world coordinates for the scan region that is represented by the image
-        self.physDimX = physDimX
-        self.physDimY = physDimY
-        self.physOffsetX = physOffsetX
-        self.physOffsetY = physOffsetY
+        self.physDimX = scanParameters.physDimX
+        self.physDimY = scanParameters.physDimY
+        self.physOffsetX = scanParameters.physOffsetX
+        self.physOffsetY = scanParameters.physOffsetY
         self.clickedCoordinates = (0,0)
+        
+    def updateParams(self, scanParameters):
+        # real-world coordinates for the scan region that is represented by the image
+        self.physDimX = scanParameters.physDimX
+        self.physDimY = scanParameters.physDimY
+        self.physOffsetX = scanParameters.physOffsetX
+        self.physOffsetY = scanParameters.physOffsetY
         
     def setOffset(self, offsetX, offsetY):
         self.physOffsetX = offsetX
         self.physOffsetY = offsetY
-
 
     @property
     def pixmap_item(self):

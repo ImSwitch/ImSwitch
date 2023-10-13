@@ -122,8 +122,8 @@ class MasterController:
                 self.recordingManager.endRecording(emitSignal=False, wait=True)
             else:
                 self.pycroManagerAcquisition.endRecording()
-        except Exception as e:
-            self.__logger.error("Error while closing RecordingManager or PycroManagerAcquisitionManager: ", traceback.format_exc())
+        except Exception:
+            self.__logger.error(f"Error while closing RecordingManager or PycroManagerAcquisitionManager: {traceback.format_exc()}")
 
         for attrName in dir(self):
             attr = getattr(self, attrName)

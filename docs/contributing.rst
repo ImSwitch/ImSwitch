@@ -4,8 +4,10 @@ How to contribute
 
 We want to encourage users and developers to give active feedback on their experience and feel free to contribute. 
 
-First, we feel very strongly about being inclusive and respectful to other contributors. 
+We feel very strongly about being inclusive and respectful to other contributors. 
 Please follow the `Python Community guidelines <https://www.python.org/psf/conduct/>`_ if you wish to contribute to our project.
+
+ImSwitch is a community partner of the `image.sc <https://forum.image.sc/>`_ forum. It is possible to reach us by using the @imswitch tag.
 
 There are different ways you can contribute:
 

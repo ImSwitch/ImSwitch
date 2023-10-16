@@ -79,5 +79,5 @@ You can also run it manually by executing the command ``python -m pytest --pyarg
 Discord
 =======
 
-We have a Discord server for direct comunication with community developers. You can join it [here](https://discord.gg/EguEhKG2Ng).
+We have a Discord server for direct comunication with community developers. You can join it `here <https://discord.gg/EguEhKG2Ng>`_.
 Make sure if possible to set your user profile with your real name and last name for better communication.

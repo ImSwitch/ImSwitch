@@ -14,8 +14,8 @@ from .basewidgets import NapariHybridWidget
 class ScanParameters(object):
     def __init__(self, name="Wellplate", physDimX=164, physDimY=109, physOffsetX=0, physOffsetY=0, imagePath="imswitch/_data/images/WellplateAdapter3Slides.png"):
         self.name = name
-        self.physDimX = physDimX # mm
-        self.physDimY = physDimY # mm
+        self.physDimX = physDimX*1e3 # mm
+        self.physDimY = physDimY*1e3 # mm
         self.physOffsetX = physOffsetX
         self.physOffsetY =  physOffsetY
         self.imagePath = imagePath

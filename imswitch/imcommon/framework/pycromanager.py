@@ -2,19 +2,20 @@ from numpy import ndarray, array
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from typing import Union, List
-from enum import Enum
+from enum import Enum, IntFlag, auto
 
 class PycroManagerAcquisitionEngine(Enum):
     Acquistion = 1
     # TODO: implement XY tiled acquisition
     # XYTiledAcquisition = 2 
 
-class PycroManagerAcquisitionMode(Enum):
-    Frames = 1
-    Time = 2
-    ZStack = 3
-    XYList = 4
-    XYZList = 5
+class PycroManagerAcquisitionMode(IntFlag):
+    Absent = 0
+    Frames = auto()
+    Time = auto()
+    ZStack = auto()
+    XYList = auto()
+    XYZList = auto()
 
 @dataclass(frozen=True)
 class PycroManagerZStack:

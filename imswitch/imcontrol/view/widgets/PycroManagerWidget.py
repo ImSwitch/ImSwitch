@@ -21,6 +21,9 @@ class PycroManagerWidget(Widget):
     sigSpecZStackPicked = QtCore.Signal()
     sigSpecXYListPicked = QtCore.Signal()
     sigSpecXYZListPicked = QtCore.Signal()
+
+    sigSpecTimeChanged = QtCore.Signal(bool, bool) # frames, time
+    sigSpecSpaceChanged = QtCore.Signal(bool, bool, bool) # z, xy, xyz
     
     sigSnapSaveModeChanged = QtCore.Signal()
     sigRecSaveModeChanged = QtCore.Signal()
@@ -82,13 +85,19 @@ class PycroManagerWidget(Widget):
         modeTitle = QtWidgets.QLabel('<strong>Recording mode</strong>')
         modeTitle.setTextFormat(QtCore.Qt.RichText)
 
-        self.specifyFrames = QtWidgets.QRadioButton('Number of frames')
+        self.specifyFrames = QtWidgets.QCheckBox('Number of frames')
         self.numExpositionsEdit = QtWidgets.QLineEdit('100')
+        self.specifyFrames.setToolTip("Number of frames to record at the current set exposure time.")
+
+        self.specifyTime = QtWidgets.QCheckBox('Time (s)')
+        self.timeToRec = QtWidgets.QLineEdit('1')
+        self.specifyTime.setToolTip("Recording for a specified time in seconds. Each point is acquired at the current set exposure time.")
         
-        self.specifyZStack = QtWidgets.QRadioButton('Z-stack (µm)')
+        self.specifyZStack = QtWidgets.QCheckBox('Z-stack (µm)')
         self.startZLabel = QtWidgets.QLabel('Start: ')
         self.startZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
         self.startZEdit = QtWidgets.QLineEdit('0')
+        self.specifyZStack.setToolTip("Recording a Z-stack at the current set exposure time.")
         
         self.endZLabel = QtWidgets.QLabel('End: ')
         self.endZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
@@ -98,16 +107,15 @@ class PycroManagerWidget(Widget):
         self.stepZLabel.setAlignment((QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
         self.stepZEdit = QtWidgets.QLineEdit('1')
         
-        self.specifyXYList = QtWidgets.QRadioButton('XY scan')
+        self.specifyXYList = QtWidgets.QCheckBox('XY scan')
         self.openXYListTableButton = guitools.BetterPushButton('Make list...')
         self.loadXYListButton = guitools.BetterPushButton('Load list...')
+        self.specifyXYList.setToolTip("Recording a list of XY coordinates at the current set exposure time.")
         
-        self.specifyXYZList = QtWidgets.QRadioButton('XYZ scan')
+        self.specifyXYZList = QtWidgets.QCheckBox('XYZ scan')
         self.openXYZListTableButton = guitools.BetterPushButton('Make list...')
         self.loadXYZListButton = guitools.BetterPushButton('Load list...')
-
-        self.specifyTime = QtWidgets.QRadioButton('Time (s)')
-        self.timeToRec = QtWidgets.QLineEdit('1')
+        self.specifyXYZList.setToolTip("Recording a list of XYZ coordinates at the current set exposure time.")
 
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
         self.snapSaveModeList = QtWidgets.QComboBox()
@@ -137,7 +145,23 @@ class PycroManagerWidget(Widget):
             # keep progress bars hidden by default;
             # will be shown when recording starts
             progressBar.hide()
-            self.progressBarsWidgets[key] = progressBar     
+            self.progressBarsWidgets[key] = progressBar
+
+        # Timing group button for managing 
+        # mutually exclusive checkboxes
+        self.timeGroupButton = QtWidgets.QButtonGroup()
+        self.timeGroupButton.addButton(self.specifyFrames)
+        self.timeGroupButton.addButton(self.specifyTime)
+        self.timeGroupButton.setExclusive(True)
+        self.specifyFrames.setChecked(True)
+
+        # Positions group button for managing
+        # mutually exclusive checkboxes
+        self.positionsGroupButton = QtWidgets.QButtonGroup()
+        self.positionsGroupButton.addButton(self.specifyZStack)
+        self.positionsGroupButton.addButton(self.specifyXYList)
+        self.positionsGroupButton.addButton(self.specifyXYZList)
+        self.specifyZStack.setChecked(True)
         
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
@@ -148,6 +172,7 @@ class PycroManagerWidget(Widget):
                                    QtWidgets.QSizePolicy.Expanding)
         buttonGrid.addWidget(self.recButton, 0, 2)
 
+        # Add tab widget
         self.tabWidget = QtWidgets.QTabWidget()
 
         layout = QtWidgets.QVBoxLayout()
@@ -165,11 +190,11 @@ class PycroManagerWidget(Widget):
         gridRow += 1
 
         recGrid.addWidget(self.specifyFrames, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.numExpositionsEdit, gridRow, 1, 1, 5)
+        recGrid.addWidget(self.numExpositionsEdit, gridRow, 1, 1, 6)
         gridRow += 1
 
         recGrid.addWidget(self.specifyTime, gridRow, 0, 1, 6)
-        recGrid.addWidget(self.timeToRec, gridRow, 1, 1, 5)
+        recGrid.addWidget(self.timeToRec, gridRow, 1, 1, 6)
         gridRow += 1
         
         recGrid.addWidget(self.specifyZStack, gridRow, 0, 1, 6)
@@ -214,8 +239,6 @@ class PycroManagerWidget(Widget):
         storageGrid.addWidget(self.specifyfile, gridRow, 0)
         gridRow += 1
         
-        
-        
         (progressBar.hide() for _, progressBar in self.progressBarsWidgets.items())
 
         self.recGridContainer = QtWidgets.QWidget()
@@ -237,11 +260,11 @@ class PycroManagerWidget(Widget):
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
         self.specifyfile.toggled.connect(self.sigSpecFileToggled)
 
-        self.specifyFrames.clicked.connect(self.sigSpecFramesPicked)
-        self.specifyTime.clicked.connect(self.sigSpecTimePicked)
-        self.specifyZStack.clicked.connect(self.sigSpecZStackPicked)
-        self.specifyXYList.clicked.connect(self.sigSpecXYListPicked)
-        self.specifyXYZList.clicked.connect(self.sigSpecXYZListPicked)
+        self.specifyFrames.clicked.connect(lambda checked: self.sigSpecTimeChanged.emit(checked, False))
+        self.specifyTime.clicked.connect(lambda checked: self.sigSpecTimeChanged.emit(False, checked))
+        self.specifyZStack.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(checked, False, False))
+        self.specifyXYList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(False, checked, False))
+        self.specifyXYZList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(False, False, checked))
         
         self.openXYListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y"]))
         self.loadXYListButton.clicked.connect(lambda: self.loadTableData("XY"))
@@ -343,23 +366,21 @@ class PycroManagerWidget(Widget):
     def setRecFolder(self, folderPath):
         self.folderEdit.setText(folderPath)
 
-    def checkSpecFrames(self):
-        self.specifyFrames.setChecked(True)
-
-    def checkSpecTime(self):
-        self.specifyTime.setChecked(True)
-    
-    def checkSpecZStack(self):
-        self.specifyZStack.setChecked(True)
-    
-    def checkXYList(self):
-        self.specifyXYList.setChecked(True)
-    
-    def checkXYZList(self):
-        self.specifyXYZList.setChecked(True)
-
     def setFieldsEnabled(self, enabled):
         self.recGridContainer.setEnabled(enabled)
+    
+    def setEnableTimeParams(self, specFrames=False, specTime=False):
+        self.numExpositionsEdit.setEnabled(specFrames)
+        self.timeToRec.setEnabled(specTime)
+    
+    def setEnableSpaceParams(self, specZStack=False, specXYList=False, specXYZList=False):
+        self.startZEdit.setEnabled(specZStack)
+        self.endZEdit.setEnabled(specZStack)
+        self.stepZEdit.setEnabled(specZStack)
+        self.openXYListTableButton.setEnabled(specXYList)
+        self.loadXYListButton.setEnabled(specXYList)
+        self.openXYZListTableButton.setEnabled(specXYZList)
+        self.loadXYZListButton.setEnabled(specXYZList)
 
     def setEnabledParams(self, specFrames=False, specTime=False, specZStack=False, specXYList=False, specXYZList=False):
         self.numExpositionsEdit.setEnabled(specFrames)

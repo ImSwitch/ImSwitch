@@ -29,6 +29,8 @@ class PycroManagerController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
+
+        self.recMode = self.timeRecMode = self.spaceRecMode = PycroManagerAcquisitionMode.Absent
         self.settingAttr = False
         self.lapseTotal = 0
 
@@ -56,6 +58,9 @@ class PycroManagerController(ImConWidgetController):
         # Connect PycroManagerWidget signals
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
         self._widget.sigSpecFileToggled.connect(self._widget.setCustomFilenameEnabled)
+
+        self._widget.sigSpecTimeChanged.connect(self.specTimeMode)
+        self._widget.sigSpecSpaceChanged.connect(self.specSpaceMode)
 
         self._widget.sigSpecFramesPicked.connect(self.specFrames)
         self._widget.sigSpecTimePicked.connect(self.specTime)
@@ -188,10 +193,12 @@ class PycroManagerController(ImConWidgetController):
             self.sigToggleLive.emit(False)
             self._master.pycroManagerAcquisition.startRecording(recordingArgs)
         else:
-            self._master.pycroManagerAcquisition.stopRecording()
+            self._master.pycroManagerAcquisition.endRecording()
 
             # resume live view if previously running
             self.sigToggleLive.emit(True)
+
+        self.recMode = PycroManagerAcquisitionMode.Absent
     
     def __calculateNumTimePoints(self) -> list:
         if self.recMode == PycroManagerAcquisitionMode.Frames:
@@ -313,29 +320,30 @@ class PycroManagerController(ImConWidgetController):
     
     def updateProgressBars(self, newProgressDict: Dict[str, int]) -> None:
         self._widget.updateProgressBars(newProgressDict)
+    
+    def specTimeMode(self, frames: bool, time: bool):
+        self._widget.setEnableTimeParams(frames, time)
+    
+    def specSpaceMode(self, specZStack: bool, specXYList: bool, specXYZList: bool):
+        self._widget.setEnableSpaceParams(specZStack, specXYList, specXYZList)
 
     def specFrames(self):
-        self._widget.checkSpecFrames()
         self._widget.setEnabledParams(specFrames=True)
         self.recMode = PycroManagerAcquisitionMode.Frames
 
     def specTime(self):
-        self._widget.checkSpecTime()
         self._widget.setEnabledParams(specTime=True)
         self.recMode = PycroManagerAcquisitionMode.Time
     
     def specZStack(self):
-        self._widget.checkSpecZStack()
         self._widget.setEnabledParams(specZStack=True)
         self.recMode = PycroManagerAcquisitionMode.ZStack
     
     def specXYList(self):
-        self._widget.checkXYList()
         self._widget.setEnabledParams(specXYList=True)
         self.recMode = PycroManagerAcquisitionMode.XYList
     
     def specXYZList(self):
-        self._widget.checkXYZList()
         self._widget.setEnabledParams(specXYZList=True)
         self.recMode = PycroManagerAcquisitionMode.XYZList
 

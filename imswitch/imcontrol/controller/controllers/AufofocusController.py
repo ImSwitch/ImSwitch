@@ -94,7 +94,7 @@ class AutofocusController(ImConWidgetController):
         self._widget.setImageNapari(np.uint16(self.imageToDisplay), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     def recordFlatfield(self, nFrames=10, nGauss=16, defocusPosition = 200, defocusAxis="Z"):
-        ''' 
+        '''
         This method defocusses the sample and records a series of images to produce a flatfield image
         '''
         flatfield = []
@@ -115,7 +115,7 @@ class AutofocusController(ImConWidgetController):
 
     def doAutofocusBackground(self, rangez=100, resolutionz=10, defocusz=0):
         self._commChannel.sigAutoFocusRunning.emit(True)  # inidicate that we are running the autofocus
-
+        bestzpos_rel = None
         mProcessor = FrameProcessor()
         # record a flatfield Image and display
         if defocusz !=0:
@@ -192,7 +192,7 @@ import threading
 import queue
 
 class FrameProcessor:
-    def __init__(self, nGauss=7, nCropsize=1024):
+    def __init__(self, nGauss=7, nCropsize=2048):
         self.frame_queue = queue.Queue()
         self.allfocusimages = []
         self.allfocusvals = []
@@ -236,15 +236,16 @@ class FrameProcessor:
         else:
 
             # Encode the NumPy array to JPEG format with 80% quality
-            is_success, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
+            is_success, buffer = cv2.imencode(".jpg", imagearraygf, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
             # Check if encoding was successful
             if is_success:
                 # Get the size of the JPEG image
-                size = len(buffer)
+                focusquality = len(buffer)
             else:
-                size = 0
-        self.allfocusvals.append(size)
+                focusquality = 0
+        self.allfocusvals.append(focusquality)
 
     @staticmethod
     def extract(marray, crop_size):

@@ -136,7 +136,7 @@ class MCTController(ImConWidgetController):
         self._widget.mctStartButton.setEnabled(False)
 
         # don't show any message
-        self._master.UC2ConfigManager.setDebug(False)
+        #self._master.UC2ConfigManager.setDebug(False)
 
         # start the timelapse
         if not self.isMCTrunning and (self.Laser1Value>0 or self.Laser2Value>0 or self.LEDValue>0):
@@ -265,7 +265,7 @@ class MCTController(ImConWidgetController):
             self.MCTThread = threading.Thread(target=self.takeTimelapseThread, args=(tperiod, ), daemon=True)
             self.MCTThread.start()
 
-    def doAutofocus(self, params):
+    def doAutofocus(self, params, timeout=10):
         self._logger.info("Autofocusing...")
         self._widget.setnImagesTaken("Autofocusing...")
         self._commChannel.sigAutoFocus.emit(int(params["valueRange"]), int(params["valueSteps"]))
@@ -273,7 +273,8 @@ class MCTController(ImConWidgetController):
 
         while self.isAutofocusRunning:
             time.sleep(0.1)
-            if not self.isAutofocusRunning:
+            t0 = time.time()
+            if not self.isAutofocusRunning or time.time()-t0>timeout:
                 self._logger.info("Autofocusing done.")
                 return
 

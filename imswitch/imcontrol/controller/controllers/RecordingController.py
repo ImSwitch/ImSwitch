@@ -421,7 +421,7 @@ class RecordingController(ImConWidgetController):
                 yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
                     bytearray(self.manager.get()) + b'\r\n')
         except GeneratorExit:
-            print("cancelled")
+            self.__logger.debug("cancelled")
 
 
     @APIExport(runOnUIThread=False)

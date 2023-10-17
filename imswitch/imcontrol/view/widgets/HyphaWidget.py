@@ -4,7 +4,7 @@ import numpy as np
 import pyqtgraph as pg
 from imswitch.imcontrol.view import guitools
 from qtpy import QtCore, QtWidgets
-
+from imswitch.imcommon.model import initLogger
 from .basewidgets import Widget
 from imjoy_rpc.hypha.sync import login
 
@@ -13,6 +13,7 @@ class HyphaWidget(Widget):
     """ Widget containing Hypha interface. """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
         self._webrtcURL = ""
         # add a button to login to the Hypha server
         self._hypha_login = QtWidgets.QPushButton('Login to Hypha')
@@ -60,7 +61,7 @@ class HyphaWidget(Widget):
         - report_url: the report URL
         - key: the key for the login
         """
-        print(f"Please go to the login url: {context['login_url']}")
+        self.__logger.debug(f"Please go to the login url: {context['login_url']}")
         webbrowser.open(context['login_url'])
         
     def _login_to_hypha(self):
@@ -83,7 +84,7 @@ class HyphaWidget(Widget):
         # Documentation about the login function: https://ha.amun.ai/#/
         token = login({"server_url": "https://ai.imjoy.io", "login_callback": self._login_callback})
         # show alert if login successful
-        print(f'Login successful, token: {token}')
+        self.__logger.debug(f'Login successful, token: {token}')
         # TODO: pass it to connect_to_server({....token: token})
     
         

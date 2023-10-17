@@ -124,13 +124,13 @@ class HyphaController(LiveUpdatedController):
     def on_init(self, peer_connection):
         @peer_connection.on("track")
         def on_track(track):
-            print(f"Track {track.kind} received")
+            self.__logger.debug(f"Track {track.kind} received")
             peer_connection.addTrack(
                 VideoTransformTrack(detector=self.detector)
             )
             @track.on("ended")
             def on_ended():
-                print(f"Track {track.kind} ended")
+                self.__logger.debug(f"Track {track.kind} ended")
 
 
     def setLaserActive(self, laserId=0, value=0):
@@ -266,12 +266,12 @@ class HyphaController(LiveUpdatedController):
             "Use 'value' for the distance, 'is_absolute' for absolute or relative coordinates, and 'is_blocking' to control waiting behavior. "\
             "Ensure valid axis values and stage support.
         """
-        print(f"Moving stage to {value} along {axis}")
+        self._logger.debug(f"Moving stage to {value} along {axis}")
         self.stages.move(value=value, axis=axis, is_absolute=is_absolute, is_blocking=is_blocking)
 
     def start_service(self, service_id, server_url="https://ai.imjoy.io/", workspace=None, token=None):
         client_id = service_id + "-client"
-        print(f"Starting service...")
+        self.__logger.debug(f"Starting service...")
         server = connect_to_server(
             {
                 "client_id": client_id,
@@ -310,10 +310,10 @@ class HyphaController(LiveUpdatedController):
                 "on_init": self.on_init,
             },
         )
-        print(
+        self.__logger.debug(
             f"Service (client_id={client_id}, service_id={service_id}) started successfully, available at https://ai.imjoy.io/{server.config.workspace}/services"
         )
-        print(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
+        self.__logger.debug(f"You can access the webrtc stream at https://oeway.github.io/webrtc-hypha-demo/?service_id={service_id}")
 
 
 

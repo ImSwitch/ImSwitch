@@ -123,7 +123,7 @@ class ImageStitcher:
 
                 # Get the current datetime
                 now = datetime.now()
-                plt.imsave("test"+str(now.strftime('%H_%M_%S'))+".png", np.uint8(255*mResult/np.max(mResult)))
+                #plt.imsave("test"+str(now.strftime('%H_%M_%S'))+".png", np.uint8(255*mResult/np.max(mResult)))
 
             # try to display in napari if ready
             #self._parent.setImageForDisplay(self.stitched_image, "Stitched Image")

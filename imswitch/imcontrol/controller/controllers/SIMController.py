@@ -269,7 +269,7 @@ class SIMController(ImConWidgetController):
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"Error: {response.status_code}")
+                self._logger.error(f"Error: {response.status_code}")
                 return None
         except:
             self._logger.error("couldn't display fastapi image")

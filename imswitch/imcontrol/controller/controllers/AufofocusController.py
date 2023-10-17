@@ -226,7 +226,6 @@ class FrameProcessor:
         img = self.extract(img, self.nCropsize)
 
         if 0:
-            #print("processing frame : "+str(iz))
             # Gaussian filter the image, to remove noise
             imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
 
@@ -243,9 +242,8 @@ class FrameProcessor:
             if is_success:
                 # Get the size of the JPEG image
                 size = len(buffer)
-                print(f"Size of the JPEG image at 80% quality: {size} bytes")
             else:
-                print("Failed to encode image")
+                size = 0
         self.allfocusvals.append(size)
 
     @staticmethod

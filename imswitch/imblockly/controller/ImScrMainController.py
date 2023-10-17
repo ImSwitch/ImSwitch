@@ -72,7 +72,10 @@ class MyServer:
     class StaticServer(BaseHTTPRequestHandler):
         def do_GET(self):
             root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "view", "static", "index.html")
-            
+            if self.path == '/':
+                filename = root + '/index.html'
+            else:
+                filename = root + self.path
             self.send_response(200)
             if filename[-4:] == '.css':
                 self.send_header('Content-type', 'text/css')

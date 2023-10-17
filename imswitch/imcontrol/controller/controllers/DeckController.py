@@ -153,9 +153,9 @@ class DeckController(LiveUpdatedController):
         _,_,self._widget.first_z_focus = self.positioner.getPosition()
         try:
             self._commChannel.sigInitialFocalPlane.emit(self._widget.first_z_focus)
-            print(f"Updated initial focus {self._widget.first_z_focus}")
+            self.__logger.debug(f"Updated initial focus {self._widget.first_z_focus}")
         except Exception as e:
-            print(f"Zeroing failed {e}")
+            self.__logger.error(f"Zeroing failed {e}")
         # self._commChannel.sigZeroZAxis.emit(self._widget.first_z_focus)
 
         # self.setPositioner(position=0, axis="Z")

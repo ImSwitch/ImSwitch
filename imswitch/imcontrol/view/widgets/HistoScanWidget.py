@@ -277,6 +277,7 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.physOffsetX = scanParameters.physOffsetX
         self.physOffsetY = scanParameters.physOffsetY
         self.clickedCoordinates = (0,0)
+        self._logger = initLogger(self)
         
     def updateParams(self, scanParameters):
         # real-world coordinates for the scan region that is represented by the image

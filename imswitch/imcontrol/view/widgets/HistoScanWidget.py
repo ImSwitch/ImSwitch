@@ -92,8 +92,8 @@ class HistoScanWidget(NapariHybridWidget):
 
         # define scan parameter per sample
         self.allScanParameters = []
-        self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.allScanParameters.append(ScanParameters("6 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate6.png"))
+        self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
         
         # load sample layout
         self.ScanSelectViewWidget = None

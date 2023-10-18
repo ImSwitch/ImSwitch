@@ -157,7 +157,7 @@ class ESP32StageManager(PositionerManager):
                     self._position[iaxis] = value[i]
         elif axis == 'XYZ':
             self._motor.move_xyz(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
-            for i, iaxis in enumerate(("X", "Y")):
+            for i, iaxis in enumerate(("X", "Y", "Z")):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         else:

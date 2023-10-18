@@ -6,15 +6,6 @@ from PIL import Image
 import napari 
 
 def main():
-    # print the demo information
-    print("")
-    print("-------------------------------------------------------------")
-    print("Sample to show how to acquire mono image continuously and show acquired image.")
-    print("-------------------------------------------------------------")
-    print("")
-    print("Initializing......")
-    print("")
-
     # create a device manager
     device_manager = gx.DeviceManager()
     dev_num, dev_info_list = device_manager.update_device_list()

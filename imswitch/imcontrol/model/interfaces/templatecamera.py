@@ -171,7 +171,7 @@ class CameraTEMPLATE:
             if format == 'BAYER_RG12':
                 self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
         else:
-            print("pixel format is not implemented or not writable")
+            self.__logger.debug("pixel format is not implemented or not writable")
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
@@ -348,7 +348,7 @@ class CameraTEMPLATE:
         if self.is_streaming:
             self.camera.TriggerSoftware.send_command()
         else:
-        	print('trigger not sent - camera is not streaming')
+        	self.__logger.debug('trigger not sent - camera is not streaming')
 
     def openPropertiesGUI(self):
         pass

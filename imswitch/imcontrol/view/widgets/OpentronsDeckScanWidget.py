@@ -16,6 +16,7 @@ from .basewidgets import NapariHybridWidget
 
 class OpentronsDeckScanWidget(NapariHybridWidget):
     """ Widget in control of the piezo movement. """
+
     sigStepUpClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigStepDownClicked = QtCore.Signal(str, str)  # (positionerName, axis)
     sigsetSpeedClicked = QtCore.Signal(str, str)  # (positionerName, axis)
@@ -83,7 +84,7 @@ class OpentronsDeckScanWidget(NapariHybridWidget):
                             rowdata.append('')
                     writer.writerow(rowdata)
         except:
-            print("Action Save cancelled.")
+            self.__logger.debug("Action Save cancelled.")
 
         # else:
         #     self.__logger.debug("Empty path: handleSave")
@@ -105,11 +106,11 @@ class OpentronsDeckScanWidget(NapariHybridWidget):
                             self.scan_list.setItem(self.scan_list_items, column, item)
                         self.scan_list_items += 1
         except:
-            print("Action Open cancelled.")
+            self.__logger.debug("Action Open cancelled.")
 
     # def __init__(self, *args, **kwargs):
     def __post_init__(self):
-
+        self.__logger = initLogger(self)
         # super().__init__(*args, **kwargs)
 
         self.ScanFrame = pg.GraphicsLayoutWidget()

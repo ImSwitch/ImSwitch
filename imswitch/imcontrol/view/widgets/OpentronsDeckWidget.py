@@ -417,16 +417,16 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
             action = menu.exec_(self.mapToGlobal(event.pos()))
             if action == goto_action:
                 self.gotoAction(row)
-                print(f"{row}, {column}")
+                self.__logger.debug(f"{row}, {column}")
             elif action == delete_action:
                 self.deleteSelected(row)
 
     def gotoAction(self, row):
-        print(f"Go to position in row {row}")
+        self.__logger.debug(f"Go to position in row {row}")
 
     def deleteSelected(self, row):
         self.removeRow(row)
-        print(f"Deleted row {row}")
+        self.__logger.debug(f"Deleted row {row}")
 
 
     def dropEvent(self, event):

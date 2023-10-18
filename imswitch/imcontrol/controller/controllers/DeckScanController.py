@@ -442,9 +442,9 @@ class DeckScanController(LiveUpdatedController):
             if self.ScanThread is not None:
                 self.ScanThread.join(timeout=10)  # wait 10 seconds for the thread to exit
                 self.ScanThread = None
-            print("Deleted Scan Thread")
+            self.__logger.error("Deleted Scan Thread")
         except Exception as e:
-            print(f"Error deleting existing Thread: {e}")
+            self.__logger.error(f"Error deleting existing Thread: {e}")
             pass
         self._widget.setNImages("Done wit timelapse...")
 

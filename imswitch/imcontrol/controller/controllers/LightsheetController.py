@@ -109,7 +109,7 @@ class LightsheetController(ImConWidgetController):
             if controller.is_target_reached():
                 break
             iFrame += 1
-            print(iFrame)
+            self.__logger.debug(iFrame)
         # move back to initial position
         self.stages.move(value=-maxPos, axis=axis, is_absolute=False, is_blocking=True)
         

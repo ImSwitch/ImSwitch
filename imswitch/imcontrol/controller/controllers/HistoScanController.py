@@ -358,7 +358,7 @@ class ImageStitcher:
             # try to display in napari if ready
             #self._parent.setPartialImageForDisplay(stitchImage, (offset_x, offset_y, img.shape[1], img.shape[0]), "Stitched Image")
         except Exception as e:
-            print(e)
+            self.__logger.error(e)
 
     def get_stitched_image(self):
         with self.lock:

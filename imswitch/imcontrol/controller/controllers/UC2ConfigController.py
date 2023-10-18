@@ -30,7 +30,7 @@ class UC2ConfigController(ImConWidgetController):
         
     def set_motor_positions(self, a, x, y, z):
         # Add your logic to set motor positions here.
-        print(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
+        self.__logger.debug(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
         # push the positions to the motor controller
         self.stages.setPositionOnDevice(value=float(a), axis="A")
         self.stages.setPositionOnDevice(value=float(x), axis="X")

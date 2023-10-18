@@ -384,7 +384,7 @@ class CameraHIK:
 
                         ret = cam.MV_CC_ConvertPixelTypeEx(stConvertParam)
                         if ret != 0:
-                            print ("convert pixel fail! ret[0x%x]" % ret)
+                            self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
                             sys.exit()
 
                         cam.MV_CC_FreeImageBuffer(stOutFrame)
@@ -440,7 +440,7 @@ class CameraHIK:
             
             ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
             if ret != 0:
-                print ("get payload size fail! ret[0x%x]" % ret)
+                self.__logger.error("get payload size fail! ret[0x%x]" % ret)
             
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
@@ -475,7 +475,7 @@ class CameraHIK:
                             ret = cam.MV_CC_ConvertPixelType(stConvertParam)
 
                             if ret != 0:
-                                print ("convert pixel fail! ret[0x%x]" % ret)
+                                self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
                                 del data_buf
                                 sys.exit()
                                 

@@ -66,7 +66,8 @@ class ROIScanController(ImConWidgetController):
 
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
-        name = "ROIScan Stack"
+        cTime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")#datetime.date.today().strftime("%B %d, %Y")
+        name = "ROIScan Stack"+str(cTime)
         self._widget.setImage(np.uint16(self.roiscanStack ), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     # Additional methods for specific actions
@@ -165,20 +166,16 @@ class ROIScanController(ImConWidgetController):
         # move to all coordinates and take an image
         iImage = 0
         currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        t0 = time.time()
         for i in range(nTimes):
+            t0 = time.time()
             allFrames = []
             for coordinate in coordinates:
                 self._widget.infoText.setText("Taking image at "+str(coordinate) + " ("+str(iImage)+"/"+str(nTimes)+")")
-                # move x
-                self.stages.move(value=coordinate[0], axis="X", is_absolute=True, is_blocking=True)
-                # move y
-                self.stages.move(value=coordinate[1], axis="Y", is_absolute=True, is_blocking=True)
-                # move z
-                self.stages.move(value=coordinate[2], axis="Z", is_absolute=True, is_blocking=True)
+                # move xyz
+                self.stages.move(value=(coordinate[0],coordinate[1],coordinate[2]), axis="XYZ", is_absolute=True, is_blocking=True)
                 
                 # take an image
-                mImage = self.detector.getLatestFrame()
+                mImage = self.detector.getLatestFrame().copy()
                 allFrames.append(mImage)
                 #self.sigImageReceived.emit()
             # save the stack as ometiff
@@ -186,7 +183,7 @@ class ROIScanController(ImConWidgetController):
             self.sigImageReceived.emit()
             # save the stack as ometiff including metadata including coordinates and time
             savepath = os.getcwd()+"/"+currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif"
-            tif.imsave(savepath, self.roiscanStack, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
+            tif.imsave(savepath, self.roiscanStack)#, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
             self._logger.debug("Savepath: "+savepath)
             # if the experiment is stopped, stop the thread
             if iImage > nTimes:

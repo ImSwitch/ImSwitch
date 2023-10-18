@@ -4,7 +4,7 @@ import json
 from typing import List, Dict
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
-from imswitch.imcommon.model.shortcut import shortcut
+from imswitch.imcommon.framework.pycromanager import PycroManagerAcquisitionMode
 from imswitch.imcommon.view.guitools import PositionsTableDialog, askForFilePath, showInformationMessage
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
@@ -16,14 +16,8 @@ class PycroManagerWidget(Widget):
     sigOpenRecFolderClicked = QtCore.Signal()
     sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
 
-    sigSpecFramesPicked = QtCore.Signal()
-    sigSpecTimePicked = QtCore.Signal()
-    sigSpecZStackPicked = QtCore.Signal()
-    sigSpecXYListPicked = QtCore.Signal()
-    sigSpecXYZListPicked = QtCore.Signal()
-
-    sigSpecTimeChanged = QtCore.Signal(bool, bool) # frames, time
-    sigSpecSpaceChanged = QtCore.Signal(bool, bool, bool) # z, xy, xyz
+    sigSpecTimeChanged = QtCore.Signal(PycroManagerAcquisitionMode) # (mode = Frames | Time)
+    sigSpecSpaceChanged = QtCore.Signal(PycroManagerAcquisitionMode) # (mode = ZStack | XYList | XYZList)
     
     sigSnapSaveModeChanged = QtCore.Signal()
     sigRecSaveModeChanged = QtCore.Signal()
@@ -259,12 +253,20 @@ class PycroManagerWidget(Widget):
         # Connect signals
         self.openFolderButton.clicked.connect(self.sigOpenRecFolderClicked)
         self.specifyfile.toggled.connect(self.sigSpecFileToggled)
-
-        self.specifyFrames.clicked.connect(lambda checked: self.sigSpecTimeChanged.emit(checked, False))
-        self.specifyTime.clicked.connect(lambda checked: self.sigSpecTimeChanged.emit(False, checked))
-        self.specifyZStack.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(checked, False, False))
-        self.specifyXYList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(False, checked, False))
-        self.specifyXYZList.clicked.connect(lambda checked: self.sigSpecSpaceChanged.emit(False, False, checked))
+        
+        def __evaluateTimeState(checked: bool, mode):
+            mode = mode if checked else PycroManagerAcquisitionMode.Absent
+            self.sigSpecTimeChanged.emit(mode)
+        
+        def __evaluateSpaceState(checked: bool, mode):
+            mode = mode if checked else PycroManagerAcquisitionMode.Absent
+            self.sigSpecSpaceChanged.emit(mode)
+        
+        self.specifyFrames.clicked.connect(lambda checked: __evaluateTimeState(checked, PycroManagerAcquisitionMode.Frames))
+        self.specifyTime.clicked.connect(lambda checked: __evaluateTimeState(checked, PycroManagerAcquisitionMode.Time))
+        self.specifyZStack.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.ZStack))
+        self.specifyXYList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYList))
+        self.specifyXYZList.clicked.connect(lambda checked: __evaluateSpaceState(checked, PycroManagerAcquisitionMode.XYZList))
         
         self.openXYListTableButton.clicked.connect(lambda: self.openTableWidget(["X", "Y"]))
         self.loadXYListButton.clicked.connect(lambda: self.loadTableData("XY"))
@@ -374,17 +376,6 @@ class PycroManagerWidget(Widget):
         self.timeToRec.setEnabled(specTime)
     
     def setEnableSpaceParams(self, specZStack=False, specXYList=False, specXYZList=False):
-        self.startZEdit.setEnabled(specZStack)
-        self.endZEdit.setEnabled(specZStack)
-        self.stepZEdit.setEnabled(specZStack)
-        self.openXYListTableButton.setEnabled(specXYList)
-        self.loadXYListButton.setEnabled(specXYList)
-        self.openXYZListTableButton.setEnabled(specXYZList)
-        self.loadXYZListButton.setEnabled(specXYZList)
-
-    def setEnabledParams(self, specFrames=False, specTime=False, specZStack=False, specXYList=False, specXYZList=False):
-        self.numExpositionsEdit.setEnabled(specFrames)
-        self.timeToRec.setEnabled(specTime)
         self.startZEdit.setEnabled(specZStack)
         self.endZEdit.setEnabled(specZStack)
         self.stepZEdit.setEnabled(specZStack)

@@ -1,7 +1,6 @@
-from traceback import format_exc
+from pprint import pformat
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
-from imswitch.imcommon.framework import Signal, SignalInterface, Thread, Worker
-from imswitch.imcommon.framework.pycromanager import PycroManagerAcquisitionMode
+from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
 import os
@@ -81,6 +80,8 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def startRecording(self, recordingArgs: dict):
         events = multi_d_acquisition_events(**recordingArgs["multi_d_acquisition_events"])
         recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
+
+        self.__logger.debug(pformat(recordingArgs))
 
         self.__logger.info("Starting acquisition")
         self.__acquisition = Acquisition(**recordingArgs["Acquisition"])

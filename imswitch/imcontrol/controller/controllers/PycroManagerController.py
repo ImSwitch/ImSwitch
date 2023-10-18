@@ -125,7 +125,7 @@ class PycroManagerController(ImConWidgetController):
             
             self.recMode = self.timeRecMode | self.spaceRecMode
             
-            self.__logger.info(f"Recording mode: time = {self.timeRecMode}, space: {self.spaceRecMode}")
+            self.__logger.info(f"Recording mode: time = {self.timeRecMode.name}, space = {self.spaceRecMode.name}")
 
             # maximum value is the specified amount - 1, as
             # pycromanager IDs are indexed from 0 to n-1
@@ -205,23 +205,23 @@ class PycroManagerController(ImConWidgetController):
         self.recMode = PycroManagerAcquisitionMode.Absent
     
     def __calculateNumTimePoints(self) -> list:
-        if self.recMode == PycroManagerAcquisitionMode.Frames:
+        if self.recMode & PycroManagerAcquisitionMode.Frames:
             return self._widget.getNumExpositions()
-        if self.recMode == PycroManagerAcquisitionMode.Time:
+        if self.recMode & PycroManagerAcquisitionMode.Time:
             return self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
         else:
             return None
     
     def __calculateTimeIntervalS(self) -> int:
-        if self.recMode == PycroManagerAcquisitionMode.Time:
+        if self.recMode & PycroManagerAcquisitionMode.Time:
             return (self._widget.getTimeToRec() * 1000 / float(self._master.pycroManagerAcquisition.core.get_exposure())) * 1e-3
         else:
             return 0
     
     def __checkLabels(self) -> Union[None, list]:
-        if self.recMode == PycroManagerAcquisitionMode.XYList:
+        if self.recMode & PycroManagerAcquisitionMode.XYList:
             return self.xyScan.labels()
-        elif self.recMode == PycroManagerAcquisitionMode.XYZList:
+        elif self.recMode & PycroManagerAcquisitionMode.XYZList:
             return self.xyzScan.labels()
         else:
             return None
@@ -413,10 +413,11 @@ class PycroManagerController(ImConWidgetController):
             self.setSharedAttr(_recModeAttr, 'Snap')
         else:
             self.setSharedAttr(_recModeAttr, self.recMode.name)
-            if self.recMode == PycroManagerAcquisitionMode.Frames:
+            if self.recMode | PycroManagerAcquisitionMode.Frames:
                 self.setSharedAttr(_framesAttr, self._widget.getNumExpositions())
-            elif self.recMode == PycroManagerAcquisitionMode.Time:
+            elif self.recMode | PycroManagerAcquisitionMode.Time:
                 self.setSharedAttr(_timeAttr, self._widget.getTimeToRec())
+            # TODO: add shared attributes for other modes
 
     @APIExport(runOnUIThread=True)
     def snapImage(self, output: bool = False) -> Optional[np.ndarray]:

@@ -260,15 +260,15 @@ class ESP32StageManager(PositionerManager):
         if axis == "Z" and self.homeZenabled:
             self.home_z(isBlocking)
 
-    def home_x(self, isBlocking):
+    def home_x(self, isBlocking=False):
         self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
 
-    def home_y(self,isBlocking):
+    def home_y(self,isBlocking=False):
         self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
 
-    def home_z(self,isBlocking):
+    def home_z(self,isBlocking=False):
         self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, isBlocking=isBlocking)
         self.setPosition(axis="Z", value=0)
 

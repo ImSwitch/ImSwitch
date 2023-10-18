@@ -252,18 +252,17 @@ class HistoScanController(LiveUpdatedController):
                         #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
                         stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
                     threading.Thread(target=addImage, args=(mFrame,iPos)).start()
-                    while 1:
-                        self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
-                        if time.time()-t0 > tPeriod:
-                            break
-                        if not self.ishistoscanRunning:
-                            return
-                        time.sleep(1)
-                
 
                 except Exception as e:
                     self._logger.error(e)
-
+            # wait until we go for the next timelapse
+            while 1:
+                self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
+                if time.time()-t0 > tPeriod:
+                    break
+                if not self.ishistoscanRunning:
+                    return
+                time.sleep(1)
         # return to initial position
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         self._commChannel.sigUpdateMotorPosition.emit()

@@ -43,7 +43,7 @@ class HistoScanWidget(NapariHybridWidget):
         # Slider for setting the value for the illumination source
         self.illuminationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.illuminationSlider.setMinimum(0)
-        self.illuminationSlider.setMaximum(100)
+        self.illuminationSlider.setMaximum(255)
         self.illuminationSlider.valueChanged.connect(
             lambda value: self.sigSliderIlluValueChanged.emit(value)
         )
@@ -55,8 +55,8 @@ class HistoScanWidget(NapariHybridWidget):
         self.stageAxisComboBox = QtWidgets.QComboBox()
         self.stageAxisLabel = QtWidgets.QLabel("Stage Axis:")
         self.stageAxisComboBox.addItems(["X", "Y", "Z", "A"])
-        #self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
-        #self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
+        self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
+        self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
         #self.grid.addWidget(self.stageAxisLabel, 4, 0, 1, 1)
         #self.grid.addWidget(self.stageAxisComboBox, 4, 1, 1, 1)
         self.buttonSelectPath = guitools.BetterPushButton('Select Path')
@@ -148,6 +148,7 @@ class HistoScanWidget(NapariHybridWidget):
         # check if string is a valid path
         if os.path.isdir(path):
             self.setDefaultSavePath(os.path.join(path, "histoScan"))
+            os.makedirs(os.path.join(path, "histoScan"), exist_ok=True)
 
     def loadSampleLayout(self, index):
         if self.ScanSelectViewWidget is None:

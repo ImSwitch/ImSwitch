@@ -61,6 +61,11 @@ class ESP32StageManager(PositionerManager):
         self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
         self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
 
+        self.homeOnStartX = positionerInfo.managerProperties.get('homeOnStartX', 0)
+        self.homeOnStartY = positionerInfo.managerProperties.get('homeOnStartY', 0)
+        self.homeOnStartZ = positionerInfo.managerProperties.get('homeOnStartZ', 0)
+
+
         self.homeXenabled = positionerInfo.managerProperties.get('homeXenabled', False)
         self.homeYenabled = positionerInfo.managerProperties.get('homeYenabled', False)
         self.homeZenabled = positionerInfo.managerProperties.get('homeZenabled', False)
@@ -97,8 +102,13 @@ class ESP32StageManager(PositionerManager):
         self.setupMotor(self.minZ, self.maxZ, self.stepsizeZ, self.backlashZ, "Z")
         self.setupMotor(self.minA, self.maxA, self.stepsizeA, self.backlashA, "A")
 
+        # optional: hom on startup:
+        if self.homeOnStartX: self.home_x()
+        if self.homeOnStartY: self.home_y()
+        if self.homeOnStartZ: self.home_z()
         # get bootup position and write to GUI
         self._position = self.getPosition()
+
 
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)

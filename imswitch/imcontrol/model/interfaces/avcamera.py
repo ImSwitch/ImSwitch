@@ -135,7 +135,12 @@ class CameraAV:
         
     def getLast(self, is_resize=True):
         # get frame and save
-        #TODO: Napari only displays 8Bit?
+
+        # only return fresh frames
+        while(self.frame_id_last == self.frame_id and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        
+        self.frame_id_last = self.frame_id
         return self.frame
 
     def getLastChunk(self):

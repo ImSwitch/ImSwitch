@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-import cv2 
+import cv2
 import copy
 from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
@@ -19,15 +19,15 @@ class ScanParameters(object):
         self.physOffsetX = physOffsetX
         self.physOffsetY =  physOffsetY
         self.imagePath = imagePath
-        
-        
+
+
 
 class HistoScanWidget(NapariHybridWidget):
     """ Widget containing HistoScan interface. """
     sigSliderIlluValueChanged = QtCore.Signal(float)  # (value)
     sigGoToPosition = QtCore.Signal(float, float)  # (posX, posY)
     sigCurrentOffset = QtCore.Signal(float, float)
-    
+
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
@@ -38,7 +38,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.illuminationSourceComboBox = QtWidgets.QComboBox()
         self.illuminationSourceLabel = QtWidgets.QLabel("Illumination Source:")
         self.illuminationSourceComboBox.addItems(["Laser 1", "Laser 2", "LED"])
-        
+
 
         # Slider for setting the value for the illumination source
         self.illuminationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -47,10 +47,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.illuminationSlider.valueChanged.connect(
             lambda value: self.sigSliderIlluValueChanged.emit(value)
         )
-        
+
         self.samplePicker = QtWidgets.QComboBox()
-        
-        
+
+
         # Pull-down menu for the stage axis
         self.stageAxisComboBox = QtWidgets.QComboBox()
         self.stageAxisLabel = QtWidgets.QLabel("Stage Axis:")
@@ -62,13 +62,13 @@ class HistoScanWidget(NapariHybridWidget):
         self.buttonSelectPath = guitools.BetterPushButton('Select Path')
         self.buttonSelectPath.clicked.connect(self.handleSelectPath)
         self.lineeditSelectPath = QtWidgets.QLineEdit("Default Path")
-        
+
         self.timeIntervalField = QtWidgets.QLineEdit()
         self.timeIntervalField.setPlaceholderText("Time Interval (s)")
         self.numberOfScansField = QtWidgets.QLineEdit()
         self.numberOfScansField.setPlaceholderText("Number of Scans")
 
-        
+
         # Text fields for minimum and maximum position for X
         self.minPositionXLineEdit = QtWidgets.QLineEdit("-1000")
         self.maxPositionXLineEdit = QtWidgets.QLineEdit("1000")
@@ -76,8 +76,8 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.minPositionXLineEdit, 5, 1, 1, 1)
         self.grid.addWidget(QtWidgets.QLabel("Max Position (X):"), 6, 0, 1, 1)
         self.grid.addWidget(self.maxPositionXLineEdit, 6, 1, 1, 1)
-        
-        
+
+
         # Text fields for minimum and maximum position for Y
         self.minPositionYLineEdit = QtWidgets.QLineEdit("-1000")
         self.maxPositionYLineEdit = QtWidgets.QLineEdit("1000")
@@ -85,7 +85,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.minPositionYLineEdit, 7, 1, 1, 1)
         self.grid.addWidget(QtWidgets.QLabel("Max Position (Y):"), 8, 0, 1, 1)
         self.grid.addWidget(self.maxPositionYLineEdit, 8, 1, 1, 1)
-        
+
         # Start and Stop buttons
         self.startButton = QtWidgets.QPushButton('Start')
         self.stopButton = QtWidgets.QPushButton('Stop')
@@ -95,7 +95,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.speedTextedit = QtWidgets.QLineEdit("1000")
         #self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
         #self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
-        
+
         self.grid.addWidget(self.buttonSelectPath,9, 0, 1, 1)
         self.grid.addWidget(self.lineeditSelectPath,9, 1, 1, 1)
         self.grid.addWidget(self.timeIntervalField,10, 0, 1, 1)
@@ -107,62 +107,62 @@ class HistoScanWidget(NapariHybridWidget):
 
         # define scan parameter per sample
         self.allScanParameters = []
-        self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.allScanParameters.append(ScanParameters("6 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate6.png"))
         self.allScanParameters.append(ScanParameters("24 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate24.png"))
-        
+        self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
+
         # load sample layout
         self.ScanSelectViewWidget = None
         self.loadSampleLayout(0)
         self.grid.addWidget(self.ScanSelectViewWidget, 12, 0, 2, 2)
-        
-            
+
+
         # set combobox with all samples
         self.setSampleLayouts(self.allScanParameters)
         self.samplePicker.currentIndexChanged.connect(self.loadSampleLayout)
-        
+
         self.layer = None
-        
+
     def getNTimesScan(self):
         try:
             return int(self.numberOfScansField)
         except:
             return 1
-    
+
     def getTPeriodScan(self):
         try:
             return int(self.timeIntervalField)
         except:
             return 0
-    
+
     def setDefaultSavePath(self, path):
         self.savePath = path
         self.lineeditSelectPath.setText(path)
-    
+
     def getDefaulSavePath(self):
         return self.savePath
 
     def handleSelectPath(self):
         path = QtWidgets.QFileDialog.getExistingDirectory(
             self, 'Select Folder', '')
-        # check if string is a valid path 
+        # check if string is a valid path
         if os.path.isdir(path):
             self.setDefaultSavePath(os.path.join(path, "histoScan"))
-       
+
     def loadSampleLayout(self, index):
         if self.ScanSelectViewWidget is None:
             self.ScanSelectViewWidget = ScanSelectView(self, self.allScanParameters[index])
         else:
             self.ScanSelectViewWidget.updateParams(self.allScanParameters[index])
         self.ScanSelectViewWidget.setPixmap(QtGui.QPixmap(self.allScanParameters[index].imagePath))
-            
+
 
     def setSampleLayouts(self, sampleLayoutList):
         self.samplePicker.clear()
         for sample in sampleLayoutList:
             self.samplePicker.addItem(sample.name)
-        
-        
+
+
     def setOffset(self, offsetX, offsetY):
         self.ScanSelectViewWidget.setOffset(offsetX, offsetY)
 
@@ -172,47 +172,47 @@ class HistoScanWidget(NapariHybridWidget):
         self.minPositionYLineEdit.setText(str(np.int64(posYmin)))
         self.maxPositionYLineEdit.setText(str(np.int64(posYmax)))
         self._logger.debug("Setting scan min/max")
-        
+
     def goToPosition(self, posX, posY):
         self._logger.debug("Moving to position")
         self.sigGoToPosition.emit(posX, posY)
-                                                    
+
     def setAvailableIlluSources(self, sources):
         self.illuminationSourceComboBox.clear()
         self.illuminationSourceComboBox.addItems(sources)
-            
+
     def getSpeed(self):
         return np.float32(self.speedTextedit.text())
-    
+
     def getIlluminationSource(self):
         return self.illuminationSourceComboBox.currentText()
-    
+
     def getMinPositionX(self):
         return np.float32(self.minPositionXLineEdit.text())
-    
+
     def getMaxPositionX(self):
         return np.float32(self.maxPositionXLineEdit.text())
-    
+
     def getMinPositionY(self):
         return np.float32(self.minPositionYLineEdit.text())
-    
+
     def getMaxPositionY(self):
         return np.float32(self.maxPositionYLineEdit.text())
-        
+
     def setImageNapari(self, im, colormap="gray", isRGB = False, name="", pixelsize=(1,1), translation=(0,0)):
         if len(im.shape) == 2:
             translation = (translation[0], translation[1])
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap, 
+            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap,
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im
-        
+
     def updatePartialImageNapari(self, im, coords, name=""):
         ''' update a sub roi of the already existing napari layer '''
         if self.layer is None or name not in self.viewer.layers:
             return
-        try: 
+        try:
             # coords are x,y,w,h
             self.layer.data[coords[1]-coords[3]:coords[1], coords[0]:coords[0]+coords[2]] = im
             self.layer.refresh()
@@ -225,7 +225,7 @@ class HistoScanWidget(NapariHybridWidget):
             return True
         else:
             return False
-        
+
     def getAutofocusValues(self):
         autofocusParams = {}
         autofocusParams["valueRange"] = self.autofocusRange.text()
@@ -233,10 +233,10 @@ class HistoScanWidget(NapariHybridWidget):
         autofocusParams["valuePeriod"] = self.autofocusPeriod.text()
         autofocusParams["illuMethod"] = 'LED'
         return autofocusParams
- 
- 
+
+
     def setupSliderGui(self, label, valueDecimals, valueRange, tickInterval, singleStep):
-        HistoScanLabel  = QtWidgets.QLabel(label)     
+        HistoScanLabel  = QtWidgets.QLabel(label)
         valueRangeMin, valueRangeMax = valueRange
         slider = guitools.FloatSlider(QtCore.Qt.Horizontal, self, allowScrollChanges=False,
                                         decimals=valueDecimals)
@@ -247,40 +247,40 @@ class HistoScanWidget(NapariHybridWidget):
         slider.setSingleStep(singleStep)
         slider.setValue(0)
         return slider, HistoScanLabel
-        
+
     def getImage(self):
         if self.layer is not None:
             return self.img.image
-        
+
     def setImage(self, im, colormap="gray", name="", pixelsizeZ=1):
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
+            self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap,
                                                scale=(1, 1, pixelsizeZ),
                                                name=name, blending='additive')
         self.layer.data = im
 
     def getCoordinateList(self):
         return self.canvas.getCoordinateList()
-        
+
     def resetCoodinateList(self):
         self.canvas.resetCoordinateList()
-        
+
     def getZStackValues(self):
         valueZmin = -abs(float(self.HistoScanValueZmin.text()))
         valueZmax = float(self.HistoScanValueZmax.text())
         valueZsteps = float(self.HistoScanValueZsteps.text())
         valueZenabled = bool(self.HistoScanDoZStack.isChecked())
-        
+
         return valueZmin, valueZmax, valueZsteps, valueZenabled
- 
+
 
     def getFilename(self):
         HistoScanEditFileName = self.HistoScanEditFileName.text()
         return HistoScanEditFileName
-    
+
     def setInformationLabel(self, information):
         self.HistoScanLabelInfo.setText(information)
-    
+
     def updateBoxPosition(self, posX, posY):
         self.ScanSelectViewWidget.drawRectCurrentPoint(posX, posY)
 
@@ -288,13 +288,13 @@ class HistoScanWidget(NapariHybridWidget):
 
 
 class QPaletteButton(QtWidgets.QPushButton):
-    
+
     def __init__(self, color):
         super().__init__()
         self.setFixedSize(QtCore.QSize(24,24))
         self.color = color
         self.setStyleSheet("background-color: %s;" % color)
-        
+
 COLORS = ['#000000', '#ffffff']
 
 
@@ -310,21 +310,21 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         self.selection_rect = None
         self.start_point = None
         self.parent = parent
-        
+
         # real-world coordinates for the scan region that is represented by the image
         self.physDimX = scanParameters.physDimX
         self.physDimY = scanParameters.physDimY
         self.physOffsetX = scanParameters.physOffsetX
         self.physOffsetY = scanParameters.physOffsetY
         self.clickedCoordinates = (0,0)
-        
+
     def updateParams(self, scanParameters):
         # real-world coordinates for the scan region that is represented by the image
         self.physDimX = scanParameters.physDimX
         self.physDimY = scanParameters.physDimY
         self.physOffsetX = scanParameters.physOffsetX
         self.physOffsetY = scanParameters.physOffsetY
-        
+
     def setOffset(self, offsetX, offsetY):
         self.physOffsetX = offsetX
         self.physOffsetY = offsetY
@@ -365,13 +365,13 @@ class ScanSelectView(QtWidgets.QGraphicsView):
         '''
         try: self.scene().removeItem(self.selection_rect_current)
         except: pass
-         
+
         left = ((posX - self.physOffsetX)/self.physDimX)*self.pixmap_item.pixmap().width()
         top = -((posY - self.physOffsetY)/+self.physDimY*self.pixmap_item.pixmap().height()-self.pixmap_item.pixmap().height())
-                
+
         self.selection_rect_current = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
         self.selection_rect_current.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0)))
-        self.scene().addItem(self.selection_rect_current)     
+        self.scene().addItem(self.selection_rect_current)
 
     def mouseReleaseEvent(self, event):
         if event.button() == PyQt5.QtCore.Qt.LeftButton and self.start_point:
@@ -387,17 +387,17 @@ class ScanSelectView(QtWidgets.QGraphicsView):
 
             # differentiate between single point and rectangle
             if np.abs(left-right)<5 and np.abs(top-bottom)<5:
-                # single 
+                # single
                 self.scene().removeItem(self.selection_rect)
                 self.selection_rect = QtWidgets.QGraphicsRectItem(PyQt5.QtCore.QRectF(left-5, top-5, 5, 5))
                 self.selection_rect.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0)))
-                self.scene().addItem(self.selection_rect)                
+                self.scene().addItem(self.selection_rect)
                 # calculate real-world coordinates
                 if self.parent.calibrationButton.isChecked():
                     self.physOffsetX, self.physOffsetY = 0,0 # reset offset because we estimate a new one
                 posX = left/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
                 posY = (self.pixmap_item.pixmap().height()-top)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
-                
+
                 if self.parent.calibrationButton.isChecked():
                     self.clickedCoordinates = (posX,posY)
                     self.parent.sigCurrentOffset.emit(posX, posY)
@@ -411,16 +411,16 @@ class ScanSelectView(QtWidgets.QGraphicsView):
                 posXmax = right/self.pixmap_item.pixmap().width()*self.physDimX+self.physOffsetX
                 posYmin = (self.pixmap_item.pixmap().height()-bottom)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
                 posYmax = (self.pixmap_item.pixmap().height()-top)/self.pixmap_item.pixmap().height()*self.physDimY+self.physOffsetY
-                
+
                 self.parent.setScanMinMax(posXmin, posYmin, posXmax, posYmax)
-                
-                
 
 
 
 
 
-        
+
+
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

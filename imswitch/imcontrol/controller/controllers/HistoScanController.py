@@ -83,7 +83,7 @@ class HistoScanController(LiveUpdatedController):
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
-        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False)
+        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(20000,20000))
         self._commChannel.sigUpdateMotorPosition.emit()
         
     def displayImage(self):

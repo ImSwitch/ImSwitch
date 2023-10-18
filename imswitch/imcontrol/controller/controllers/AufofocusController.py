@@ -236,6 +236,8 @@ class FrameProcessor:
         else:
 
             # Encode the NumPy array to JPEG format with 80% quality
+            if len(img.shape)>3:
+                img = np.mean(img,-1)
             imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
             is_success, buffer = cv2.imencode(".jpg", imagearraygf, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
 

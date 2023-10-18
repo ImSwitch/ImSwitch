@@ -63,7 +63,7 @@ class Camera:
         with self.lock:
             # add moise
             image = self.image.copy()
-            if defocusPSF is not None:
+            if defocusPSF is not None and not defocusPSF.shape == ():
                 image = np.array(np.real(nip.convolve(image, defocusPSF)))
             image = image/np.mean(image)
             image = np.random.randn(image.shape[0],image.shape[1])*.2+image

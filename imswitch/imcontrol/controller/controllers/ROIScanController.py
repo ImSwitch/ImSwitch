@@ -41,18 +41,18 @@ class ROIScanController(ImConWidgetController):
         self._widget.gotoButton.clicked.connect(self.go_to_selected_coordinates)
         self._widget.startButton.clicked.connect(self.start_experiment)
         self._widget.stopButton.clicked.connect(self.stop_experiment)
-        
+
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        
+
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        
+
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         self.isRoiscanRunning = False
-        
+
         self.sigImageReceived.connect(self.displayImage)
 
     def move_stage(self, x, y, z):
@@ -62,7 +62,7 @@ class ROIScanController(ImConWidgetController):
             self.stages.move(value=y*100, axis="Y", is_absolute=False, is_blocking=False)
         if z != 0:
             self.stages.move(value=z*100, axis="Z", is_absolute=False, is_blocking=False)
-            
+
 
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
@@ -73,38 +73,38 @@ class ROIScanController(ImConWidgetController):
     # Additional methods for specific actions
     def save_coordinates(self):
         # Get the current XYZ coordinates (replace with actual values from the controller)
-        # has to be done in background 
+        # has to be done in background
         def save_coordinatesThread():
             xyzpositions = self.stages.getPosition()
             x = xyzpositions["X"]
             y = xyzpositions["Y"]
             z = xyzpositions["Z"]
-            
+
             # Create a new item for the list
             coordinate_id = self._widget.coordinatesList.count() + 1
             item_text = f"ID: {coordinate_id}, X: {x}, Y: {y}, Z: {z}"
             self._widget.coordinatesList.addItem(item_text)
         threading.Thread(target=save_coordinatesThread).start()
-        
+
     def delete_selected_coordinates(self):
         # Get the currently selected item
         selected_item = self._widget.coordinatesList.currentItem()
-        
+
         # If an item is selected, delete it from the list
         if selected_item:
             row = self._widget.coordinatesList.row(selected_item)
             self._widget.coordinatesList.takeItem(row)
-            
+
 
     def go_to_selected_coordinates(self):
         # Get the currently selected item
         selected_item = self._widget.coordinatesList.currentItem()
-        
+
         # If an item is selected, parse the coordinates and move to that location
         if selected_item:
             item_text = selected_item.text()
             _, x, y, z = [float(val.split(":")[1].strip()) for val in item_text.split(",")]
-            
+
             # move x
             self.stages.move(value=x, axis="X", is_absolute=True, is_blocking=False)
             # move y
@@ -123,14 +123,14 @@ class ROIScanController(ImConWidgetController):
             self._widget.startButton.setEnabled(False)
             self._widget.stopButton.setEnabled(True)
             self._widget.startButton.setText("Running")
-            self._widget.stopButton.setText("Stop") 
+            self._widget.stopButton.setText("Stop")
             self._widget.stopButton.setStyleSheet("background-color: red")
             self._widget.startButton.setStyleSheet("background-color: green")
             self.performScanningRecording(nTimes, tPeriod, experimentName)
         except:
             self._widget.infoText.setText("Error: Enter values")
-            
-        
+
+
 
     def stop_experiment(self):
         # Stop the experiment
@@ -142,7 +142,7 @@ class ROIScanController(ImConWidgetController):
         self._widget.stopButton.setStyleSheet("background-color: green")
         self._widget.startButton.setStyleSheet("background-color: red")
         self._logger.debug("ROI scanning stopped.")
-        
+
     def performScanningRecording(self, nTimes, tPeriod, experimentName):
         if not self.isRoiscanRunning:
             self.isRoiscanRunning = True
@@ -151,29 +151,29 @@ class ROIScanController(ImConWidgetController):
                 del self.roiscanTask
             self.roiscanTask = threading.Thread(target=self.roiscanThread, args=(nTimes, tPeriod, experimentName))
             self.roiscanTask.start()
-            
+
     def roiscanThread(self, nTimes, tPeriod, experimentName):
-        # move to all coordinates in the list and take an image 
+        # move to all coordinates in the list and take an image
         self._logger.debug("ROI scanning thread started.")
-        
+
         # get all coordinates from coordinatesList
         coordinates = []
         for i in range(self._widget.coordinatesList.count()):
             item_text = self._widget.coordinatesList.item(i).text()
             _, x, y, z = [float(val.split(":")[1].strip()) for val in item_text.split(",")]
             coordinates.append((x, y, z))
-            
+
         # move to all coordinates and take an image
         iImage = 0
-        currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         for i in range(nTimes):
+            currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             t0 = time.time()
             allFrames = []
             for coordinate in coordinates:
                 self._widget.infoText.setText("Taking image at "+str(coordinate) + " ("+str(iImage)+"/"+str(nTimes)+")")
                 # move xyz
                 self.stages.move(value=(coordinate[0],coordinate[1],coordinate[2]), axis="XYZ", is_absolute=True, is_blocking=True)
-                
+
                 # take an image
                 mImage = self.detector.getLatestFrame().copy()
                 allFrames.append(mImage)
@@ -198,7 +198,7 @@ class ROIScanController(ImConWidgetController):
                     return
                 time.sleep(1)
             iImage += 1
-                
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

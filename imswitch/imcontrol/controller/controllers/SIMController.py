@@ -54,8 +54,9 @@ except:
     isGPU = False
 
 try:
-    import torch
-    isPytorch = True
+    # FIXME: This does not pass pytests!
+    #import torch
+    isPytorch = False
 except:
     isPytorch = False
 

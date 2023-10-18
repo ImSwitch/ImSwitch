@@ -302,6 +302,7 @@ class ScanSelectView(QtWidgets.QGraphicsView):
     def __init__(self, parent, scanParameters):
         super().__init__(parent)
         scene = QtWidgets.QGraphicsScene(self)
+        self._logger = initLogger(self)
         self.setScene(scene)
 
         self._pixmap_item = QtWidgets.QGraphicsPixmapItem()

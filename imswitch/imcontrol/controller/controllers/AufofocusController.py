@@ -94,7 +94,7 @@ class AutofocusController(ImConWidgetController):
         self._widget.setImageNapari(np.uint16(self.imageToDisplay), colormap="gray", name=name, pixelsize=(1,1), translation=(0,0))
 
     def recordFlatfield(self, nFrames=10, nGauss=16, defocusPosition = 200, defocusAxis="Z"):
-        ''' 
+        '''
         This method defocusses the sample and records a series of images to produce a flatfield image
         '''
         flatfield = []
@@ -226,7 +226,6 @@ class FrameProcessor:
         img = self.extract(img, self.nCropsize)
 
         if 0:
-            #print("processing frame : "+str(iz))
             # Gaussian filter the image, to remove noise
             imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
 
@@ -238,7 +237,7 @@ class FrameProcessor:
 
             # Encode the NumPy array to JPEG format with 80% quality
             imagearraygf = ndi.filters.gaussian_filter(img, self.nGauss)
-            is_success, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            is_success, buffer = cv2.imencode(".jpg", imagearraygf, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
 
             # Check if encoding was successful
             if is_success:
@@ -246,7 +245,6 @@ class FrameProcessor:
                 focusquality = len(buffer)
             else:
                 focusquality = 0
-                print("Failed to encode image")
         self.allfocusvals.append(focusquality)
 
     @staticmethod

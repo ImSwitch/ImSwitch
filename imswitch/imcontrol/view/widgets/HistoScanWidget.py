@@ -6,7 +6,7 @@ from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5 import QtGui, QtWidgets
 import PyQt5
-
+from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
@@ -14,8 +14,8 @@ from .basewidgets import NapariHybridWidget
 class ScanParameters(object):
     def __init__(self, name="Wellplate", physDimX=164, physDimY=109, physOffsetX=0, physOffsetY=0, imagePath="imswitch/_data/images/WellplateAdapter3Slides.png"):
         self.name = name
-        self.physDimX = physDimX # mm
-        self.physDimY = physDimY # mm
+        self.physDimX = physDimX*1e3 # mm
+        self.physDimY = physDimY*1e3 # mm
         self.physOffsetX = physOffsetX
         self.physOffsetY =  physOffsetY
         self.imagePath = imagePath
@@ -30,7 +30,7 @@ class HistoScanWidget(NapariHybridWidget):
     
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
-
+        self._logger = initLogger(self)
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
 
@@ -131,10 +131,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.maxPositionXLineEdit.setText(str(np.int64(posXmax)))
         self.minPositionYLineEdit.setText(str(np.int64(posYmin)))
         self.maxPositionYLineEdit.setText(str(np.int64(posYmax)))
-        print("Setting scan min/max")
+        self._logger.debug("Setting scan min/max")
         
     def goToPosition(self, posX, posY):
-        print("Moving to position")
+        self._logger.debug("Moving to position")
         self.sigGoToPosition.emit(posX, posY)
                                                     
     def setAvailableIlluSources(self, sources):
@@ -177,7 +177,7 @@ class HistoScanWidget(NapariHybridWidget):
             self.layer.data[coords[1]-coords[3]:coords[1], coords[0]:coords[0]+coords[2]] = im
             self.layer.refresh()
         except Exception as e:
-            print(e)
+            self._logger.error(e)
             return
 
     def isAutofocus(self):
@@ -342,7 +342,7 @@ class ScanSelectView(QtWidgets.QGraphicsView):
             top = selected_rect.top()
             right = selected_rect.right()
             bottom = selected_rect.bottom()
-            print("Selected coordinates:", left, top, right, bottom)
+            self._logger.debug("Selected coordinates:", left, top, right, bottom)
 
 
             # differentiate between single point and rectangle

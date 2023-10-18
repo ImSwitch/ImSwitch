@@ -161,7 +161,7 @@ class ESP32StageManager(PositionerManager):
                 if not is_absolute: self._position[iaxis] = self._position[iaxis] + value[i]
                 else: self._position[iaxis] = value[i]
         else:
-            print('Wrong axis, has to be "X" "Y" or "Z".')
+            self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
             
     
 

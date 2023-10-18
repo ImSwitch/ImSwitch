@@ -132,7 +132,7 @@ class WebRTCController(LiveUpdatedController):
 
         @pc.on("connectionstatechange")
         async def on_connectionstatechange():
-            print("Connection state is %s" % pc.connectionState)
+            self.__logger.debug("Connection state is %s" % pc.connectionState)
             if pc.connectionState == "failed":
                 await pc.close()
                 self.pcs.discard(pc)

@@ -125,13 +125,13 @@ class HistoScanWidget(NapariHybridWidget):
 
     def getNTimesScan(self):
         try:
-            return int(self.numberOfScansField)
+            return int(self.numberOfScansField.text())
         except:
             return 1
 
     def getTPeriodScan(self):
         try:
-            return int(self.timeIntervalField)
+            return int(self.timeIntervalField.text())
         except:
             return 0
 

@@ -72,6 +72,8 @@ class HistoScanController(LiveUpdatedController):
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
         
+        self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
+        
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -137,7 +139,9 @@ class HistoScanController(LiveUpdatedController):
         minPosX = self._widget.getMinPositionX()
         maxPosX = self._widget.getMaxPositionX()
         minPosY = self._widget.getMinPositionY()
-        maxPosY = self._widget.getMaxPositionY()        
+        maxPosY = self._widget.getMaxPositionY()   
+        nTimes = self._widget.getNTimesScan()
+        tPeriod = self._widget.getTPeriodScan()     
         self._widget.startButton.setEnabled(False)
         self._widget.stopButton.setEnabled(True)
         self._widget.startButton.setText("Running")
@@ -145,15 +149,15 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
         overlap = 0.75
-        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap)
+        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod)
 
-    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap):
+    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
-            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap))
+            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod))
             self.histoscanTask.start()
         
     def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height, overlap):
@@ -175,7 +179,7 @@ class HistoScanController(LiveUpdatedController):
         return coordinates
 
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75):
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, tPeriod=0):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
@@ -184,9 +188,7 @@ class HistoScanController(LiveUpdatedController):
         if not self.detector._running: self.detector.startAcquisition()
         
         # now start acquiring images and move the stage in Background
-        
         mFrame = self.detector.getLatestFrame()
-
         dimensionsFrame = mFrame.shape[1]*self.detector.pixelSizeUm[-1]
         NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
@@ -197,14 +199,6 @@ class HistoScanController(LiveUpdatedController):
 
         # precompute the position list in advance 
         positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, overlap)
-        
-        # reseve space for the large image we will draw
-        tz = datetime.timezone.utc
-        ft = "%Y-%m-%dT%H_%M_%S"
-        t = datetime.datetime.now(tz=tz).strftime(ft)
-        file_name = "test_"+t
-        extension = ".ome.tif"
-        folder = self._master.HistoScanManager.defaultConfigPath
 
         maxPosPixY = int((maxPosY-minPosY)/self.detector.pixelSizeUm[-1])
         maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
@@ -215,39 +209,60 @@ class HistoScanController(LiveUpdatedController):
         else:
             nChannels = mFrame.shape[-1]
             
-        stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension)
-        
-        self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
-                        
-        for iPos in positionList:
-            try:
-                if not self.ishistoscanRunning:
-                    break
-                self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
-                mFrame = self.detector.getLatestFrame()  
+        # perform timelapse imaging
+        for i in range(nTimes):
+            tz = datetime.timezone.utc
+            ft = "%Y-%m-%dT%H_%M_%S"
+            t = datetime.datetime.now(tz=tz).strftime(ft)
+            file_name = "test_"+t
+            extension = ".ome.tif"
+            folder = self._widget.getDefaulSavePath()
 
-                def addImage(mFrame, positionList):
-                    metadata = {'Pixels': {
-                        'PhysicalSizeX': self.detector.pixelSizeUm[-1],
-                        'PhysicalSizeXUnit': 'µm',
-                        'PhysicalSizeY': self.detector.pixelSizeUm[-1],
-                        'PhysicalSizeYUnit': 'µm'},
+            t0 = time.time()
+            
+            # create a new image stitcher            
+            stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension)
+            
+            # move to the first position
+            self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
+                      
+            # move to all coordinates and take an image      
+            for iPos in positionList:
+                try:
+                    if not self.ishistoscanRunning:
+                        break
+                    self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
+                    mFrame = self.detector.getLatestFrame()  
 
-                        'Plane': {
-                            'PositionX': positionList[0],
-                            'PositionY': positionList[1]
-                    }, }
-                    self._commChannel.sigUpdateMotorPosition.emit()
-                    posY_pix_value = (float(positionList[1])-minPosY)/self.detector.pixelSizeUm[-1]
-                    posX_pix_value = (float(positionList[0])-minPosX)/self.detector.pixelSizeUm[-1]
-                    iPosPix = (posX_pix_value, posY_pix_value)
-                    #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
-                    stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
-                threading.Thread(target=addImage, args=(mFrame,iPos)).start()
+                    def addImage(mFrame, positionList):
+                        metadata = {'Pixels': {
+                            'PhysicalSizeX': self.detector.pixelSizeUm[-1],
+                            'PhysicalSizeXUnit': 'µm',
+                            'PhysicalSizeY': self.detector.pixelSizeUm[-1],
+                            'PhysicalSizeYUnit': 'µm'},
 
+                            'Plane': {
+                                'PositionX': positionList[0],
+                                'PositionY': positionList[1]
+                        }, }
+                        self._commChannel.sigUpdateMotorPosition.emit()
+                        posY_pix_value = (float(positionList[1])-minPosY)/self.detector.pixelSizeUm[-1]
+                        posX_pix_value = (float(positionList[0])-minPosX)/self.detector.pixelSizeUm[-1]
+                        iPosPix = (posX_pix_value, posY_pix_value)
+                        #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
+                        stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
+                    threading.Thread(target=addImage, args=(mFrame,iPos)).start()
+                    while 1:
+                        self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
+                        if time.time()-t0 > tPeriod:
+                            break
+                        if not self.ishistoscanRunning:
+                            return
+                        time.sleep(1)
+                
 
-            except Exception as e:
-                self._logger.error(e)
+                except Exception as e:
+                    self._logger.error(e)
 
         # return to initial position
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)

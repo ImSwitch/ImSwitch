@@ -9,7 +9,7 @@ import PyQt5
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
-
+import os
 
 class ScanParameters(object):
     def __init__(self, name="Wellplate", physDimX=164, physDimY=109, physOffsetX=0, physOffsetY=0, imagePath="imswitch/_data/images/WellplateAdapter3Slides.png"):
@@ -38,7 +38,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.illuminationSourceComboBox = QtWidgets.QComboBox()
         self.illuminationSourceLabel = QtWidgets.QLabel("Illumination Source:")
         self.illuminationSourceComboBox.addItems(["Laser 1", "Laser 2", "LED"])
-        self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
+        
 
         # Slider for setting the value for the illumination source
         self.illuminationSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -50,15 +50,25 @@ class HistoScanWidget(NapariHybridWidget):
         
         self.samplePicker = QtWidgets.QComboBox()
         
-        self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
-
+        
         # Pull-down menu for the stage axis
         self.stageAxisComboBox = QtWidgets.QComboBox()
         self.stageAxisLabel = QtWidgets.QLabel("Stage Axis:")
         self.stageAxisComboBox.addItems(["X", "Y", "Z", "A"])
-        self.grid.addWidget(self.stageAxisLabel, 4, 0, 1, 1)
-        self.grid.addWidget(self.stageAxisComboBox, 4, 1, 1, 1)
+        #self.grid.addWidget(self.illuminationSourceComboBox, 3, 0, 1, 1)
+        #self.grid.addWidget(self.illuminationSlider, 3, 1, 1, 1)
+        #self.grid.addWidget(self.stageAxisLabel, 4, 0, 1, 1)
+        #self.grid.addWidget(self.stageAxisComboBox, 4, 1, 1, 1)
+        self.buttonSelectPath = guitools.BetterPushButton('Select Path')
+        self.buttonSelectPath.clicked.connect(self.handleSelectPath)
+        self.lineeditSelectPath = QtWidgets.QLineEdit("Default Path")
+        
+        self.timeIntervalField = QtWidgets.QLineEdit()
+        self.timeIntervalField.setPlaceholderText("Time Interval (s)")
+        self.numberOfScansField = QtWidgets.QLineEdit()
+        self.numberOfScansField.setPlaceholderText("Number of Scans")
 
+        
         # Text fields for minimum and maximum position for X
         self.minPositionXLineEdit = QtWidgets.QLineEdit("-1000")
         self.maxPositionXLineEdit = QtWidgets.QLineEdit("1000")
@@ -66,6 +76,7 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.minPositionXLineEdit, 5, 1, 1, 1)
         self.grid.addWidget(QtWidgets.QLabel("Max Position (X):"), 6, 0, 1, 1)
         self.grid.addWidget(self.maxPositionXLineEdit, 6, 1, 1, 1)
+        
         
         # Text fields for minimum and maximum position for Y
         self.minPositionYLineEdit = QtWidgets.QLineEdit("-1000")
@@ -82,33 +93,62 @@ class HistoScanWidget(NapariHybridWidget):
         self.calibrationButton =  QtWidgets.QPushButton('Calibrate Position')
         self.calibrationButton.setCheckable(True)
         self.speedTextedit = QtWidgets.QLineEdit("1000")
-        self.grid.addWidget(self.startButton, 9, 0, 1, 1)
-        self.grid.addWidget(self.stopButton, 9, 1, 1, 1)
-        self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
-        self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
-        self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
-        self.grid.addWidget(self.samplePicker, 10, 2, 1, 1)
+        #self.grid.addWidget(self.speedLabel, 10, 0, 1, 1)
+        #self.grid.addWidget(self.speedTextedit, 10, 1, 1, 1)
         
+        self.grid.addWidget(self.buttonSelectPath,9, 0, 1, 1)
+        self.grid.addWidget(self.lineeditSelectPath,9, 1, 1, 1)
+        self.grid.addWidget(self.timeIntervalField,10, 0, 1, 1)
+        self.grid.addWidget(self.numberOfScansField,10, 1, 1, 1)
+        self.grid.addWidget(self.calibrationButton, 11, 0, 1, 1)
+        self.grid.addWidget(self.samplePicker, 11, 1, 1, 1)
+        self.grid.addWidget(self.startButton, 14, 0, 1, 1)
+        self.grid.addWidget(self.stopButton, 14, 1, 1, 1)
 
         # define scan parameter per sample
         self.allScanParameters = []
         self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))
         self.allScanParameters.append(ScanParameters("6 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate6.png"))
+        self.allScanParameters.append(ScanParameters("24 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate24.png"))
         
         # load sample layout
         self.ScanSelectViewWidget = None
         self.loadSampleLayout(0)
-        self.grid.addWidget(self.ScanSelectViewWidget, 11, 1, 1, 1)
+        self.grid.addWidget(self.ScanSelectViewWidget, 12, 0, 2, 2)
         
-        self.grid.addWidget(self.calibrationButton, 9, 2, 1, 1)
-        
+            
         # set combobox with all samples
         self.setSampleLayouts(self.allScanParameters)
         self.samplePicker.currentIndexChanged.connect(self.loadSampleLayout)
         
         self.layer = None
         
+    def getNTimesScan(self):
+        try:
+            return int(self.numberOfScansField)
+        except:
+            return 1
+    
+    def getTPeriodScan(self):
+        try:
+            return int(self.timeIntervalField)
+        except:
+            return 0
+    
+    def setDefaultSavePath(self, path):
+        self.savePath = path
+        self.lineeditSelectPath.setText(path)
+    
+    def getDefaulSavePath(self):
+        return self.savePath
 
+    def handleSelectPath(self):
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, 'Select Folder', '')
+        # check if string is a valid path 
+        if os.path.isdir(path):
+            self.setDefaultSavePath(os.path.join(path, "histoScan"))
+       
     def loadSampleLayout(self, index):
         if self.ScanSelectViewWidget is None:
             self.ScanSelectViewWidget = ScanSelectView(self, self.allScanParameters[index])

@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.model.interfaces.squid import SQUID
 
+
 class SQUIDManager:
 
     def __init__(self, rs232Info, name, **_lowLevelManagers):

@@ -1,4 +1,3 @@
-from imswitch.imcommon.model import initLogger
 from .PositionerManager import PositionerManager
 
 
@@ -11,8 +10,6 @@ class MockPositionerManager(PositionerManager):
     """
 
     def __init__(self, positionerInfo, name, **lowLevelManagers):
-        self.__logger = initLogger(self, instanceName=name)
-        self.__logger.debug('Initializing')
 
         if len(positionerInfo.axes) != 1:
             raise RuntimeError(f'{self.__class__.__name__} only supports one axis,'

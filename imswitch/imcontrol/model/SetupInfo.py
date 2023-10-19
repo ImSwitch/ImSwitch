@@ -90,6 +90,9 @@ class PositionerInfo(DeviceInfo):
     forScanning: bool = False
     """ Whether the positioner is used for scanning. """
 
+    resetOnClose: bool = True
+    """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
+
 
 @dataclass(frozen=True)
 class RS232Info:
@@ -161,7 +164,7 @@ class SIMInfo:
     wavelength. """
 
     isSimulation: bool
-    
+
 
 @dataclass(frozen=True)
 class MCTInfo:
@@ -170,11 +173,11 @@ class MCTInfo:
 @dataclass(frozen=True)
 class HistoScanInfo:
     pass
-    
+
 @dataclass(frozen=True)
 class PixelCalibrationInfo:
     pass
-    
+
 @dataclass(frozen=True)
 class ISMInfo:
     wavelength: int
@@ -202,16 +205,25 @@ class FocusLockInfo:
     """ Update frequency, in milliseconds. """
 
     frameCropx: int
-    """ Starting X position of frame crop. """
+    """ Starting X position of camera frame crop. """
 
     frameCropy: int
-    """ Starting Y position of frame crop. """
+    """ Starting Y position of camera frame crop. """
 
     frameCropw: int
-    """ Width of frame crop. """
+    """ Width of camera frame crop. """
 
     frameCroph: int
-    """ Height of frame crop. """
+    """ Height of camera frame crop. """
+
+    swapImageAxes: bool
+    """ Swap camera image axes when grabbing camera frame. """
+
+    piKp: float
+    """ Default kp value of feedback loop. """
+
+    piKi: float
+    """ Default ki value of feedback loop. """
 
 @dataclass(frozen=True)
 class AutofocusInfo:
@@ -239,6 +251,9 @@ class AutofocusInfo:
 
 @dataclass(frozen=True)
 class ScanInfo:
+    scanWidgetType: str
+    """ Type of scan widget to generate: PointScan/MoNaLISA/Base/etc."""
+
     scanDesigner: str
     """ Name of the scan designer class to use. """
 
@@ -254,6 +269,15 @@ class ScanInfo:
     sampleRate: int
     """ Scan sample rate. """
 
+    lineClockLine: Optional[Union[str, int]]
+    """ Line for line clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{lineClockLine}".
+    """
+
+    frameClockLine: Optional[Union[str, int]]
+    """ Line for frame clock output. ``null`` if not wanted or NI-DAQ is not used.
+    If integer, it will be translated to "Dev1/port0/line{frameClockLine}".
+    """
 
 @dataclass(frozen=True)
 class EtSTEDInfo:
@@ -267,13 +291,44 @@ class EtSTEDInfo:
     """ Name of the widefield laser to use. """
 
 
+@dataclass(frozen=True)
+class MicroscopeStandInfo:
+    managerName: str
+    """ Name of the manager to use. """
+
+    rs232device: str
+    """ Name of the rs232 device to use. """
+
+
+@dataclass(frozen=True)
+class NidaqInfo:
+    timerCounterChannel: Optional[Union[str, int]] = None
+    """ Output for Counter for timing purposes. If an integer is specified, it
+    will be translated to "Dev1/ctr{timerCounterChannel}". """
+
+    startTrigger: bool = False
+    """ Boolean for start triggering for sync. """
+
+    def getTimerCounterChannel(self):
+        """ :meta private: """
+        if isinstance(self.timerCounterChannel, int):
+            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
+        else:
+            return self.timerCounterChannel
+
+
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: Optional[str] = None
+    """ IP address of Pulse Streamer hardware. """
+
 
 @dataclass(frozen=True)
 class PyroServerInfo:
     name: Optional[str] = 'ImSwitchServer'
     host: Optional[str] = '::'#- listen to all addresses on v6 # '0.0.0.0'- listen to all IP addresses # 127.0.0.1 - only locally
     port: Optional[int] = 54333
-    active: Optional[bool] = True
+    active: Optional[bool] = False
 
 
 @dataclass_json(undefined=Undefined.INCLUDE)
@@ -306,31 +361,31 @@ class SetupInfo:
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """
-    
+
     sim: Optional[SIMInfo] = field(default_factory=lambda: None)
     """ SIM settings. Required to be defined to use SIM functionality. """
 
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
-    
+
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
-    
+
     PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
     """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
-    
+
     uc2Config: Optional[UC2ConfigInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
-    
+
     ism: Optional[ISMInfo] = field(default_factory=lambda: None)
     """ ISM settings. Required to be defined to use ISM functionality. """
 
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
-    
+
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
-    """ Autofocus  settings. Required to be defined to use autofocus 
+    """ Autofocus settings. Required to be defined to use autofocus
     functionality. """
 
     scan: Optional[ScanInfo] = field(default_factory=lambda: None)
@@ -338,6 +393,18 @@ class SetupInfo:
 
     etSTED: Optional[EtSTEDInfo] = field(default_factory=lambda: None)
     """ EtSTED settings. Required to be defined to use etSTED functionality. """
+
+    rotators: Optional[Dict[str, DeviceInfo]] = field(default_factory=lambda: None)
+    """ Standa motorized rotator mounts settings. Required to be defined to use rotator functionality. """
+
+    microscopeStand: Optional[MicroscopeStandInfo] = field(default_factory=lambda: None)
+    """ Microscope stand settings. Required to be defined to use MotCorr widget. """
+
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
+    """ NI-DAQ settings. """
+
+    pulseStreamer: PulseStreamerInfo = field(default_factory=PulseStreamerInfo)
+    """ Pulse Streamer settings. """
 
     pyroServerInfo: PyroServerInfo = field(default_factory=PyroServerInfo)
 

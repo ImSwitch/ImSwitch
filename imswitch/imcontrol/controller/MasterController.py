@@ -2,7 +2,8 @@ from imswitch.imcommon.model import VFileItem, initLogger
 import traceback
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager,
+    PulseStreamerManager
 )
 
 
@@ -18,27 +19,36 @@ class MasterController:
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
 
-        # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
-        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
 
-        # Creating a pymmcoreManager is pointless if there are no devices defined
-        # in the setupInfo. We check beforehand to reduce the startup time.
+        # Creating a low level manager is pointless if there are no devices defined
+        # that interact with that specific manager or some setup informations are missing.
+        # We check beforehand to reduce startup time.
+        # TODO: add missing device types when new ones are implemented
+        # or alternatively find another way to check this
+        nidaqDeviceAvailable = any(device.managerName == "NidaqLaserManager"
+                                   for device in list(self.__setupInfo.lasers.values())) or \
+                                any(device.managerName == "NidaqPositionerManager"
+                                    for device in list(self.__setupInfo.positioners.values()))
+        # TODO: add missing device types when new ones are implemented
+        # or alternatively find another way to check this
         mmcoreDeviceAvailable = any(device.managerName == "PyMMCoreCameraManager" 
                                     for device in list(self.__setupInfo.detectors.values())) or \
                                 any(device.managerName == "PyMMCorePositionerManager" 
                                     for device in list(self.__setupInfo.positioners.values()))
         
-        if mmcoreDeviceAvailable:
-            self.pymmcoreManager = PyMMCoreManager(self.__setupInfo)
-        else:
-            self.pymmcoreManager = None
+        pulseStreamerDeviceAvailable = (self.__setupInfo.pulseStreamer.ipAddress is not None)
+        rs232DeviceAvailable = len(self.__setupInfo.rs232devices) > 0
+
+        
+        self.nidaqManager = NidaqManager(self.__setupInfo) if nidaqDeviceAvailable else None
+        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices) if rs232DeviceAvailable else None
+        self.pymmcoreManager = PyMMCoreManager(self.__setupInfo) if mmcoreDeviceAvailable else None
+        self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo) if pulseStreamerDeviceAvailable else None
+        
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
-            # TODO: this needs to be added as a signal generator somehow
-            #'pulseStreamerManager' : self.pulseStreamerManager,
+            'pulseStreamerManager' : self.pulseStreamerManager,
             'rs232sManager': self.rs232sManager,
             'pymmcManager': self.pymmcoreManager
         }

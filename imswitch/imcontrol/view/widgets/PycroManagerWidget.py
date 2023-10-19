@@ -4,6 +4,7 @@ import json
 from typing import List, Dict
 from qtpy import QtCore, QtWidgets
 from imswitch.imcommon.model import dirtools
+from imswitch.imcommon.framework import Signal
 from imswitch.imcommon.framework.pycromanager import PycroManagerAcquisitionMode
 from imswitch.imcommon.view.guitools import PositionsTableDialog, askForFilePath, showInformationMessage
 from imswitch.imcontrol.view import guitools
@@ -13,20 +14,20 @@ from .basewidgets import Widget
 class PycroManagerWidget(Widget):
     """ Widget to control image or sequence recording. """
 
-    sigOpenRecFolderClicked = QtCore.Signal()
-    sigSpecFileToggled = QtCore.Signal(bool)  # (enabled)
+    sigOpenRecFolderClicked = Signal()
+    sigSpecFileToggled = Signal(bool)  # (enabled)
 
-    sigSpecTimeChanged = QtCore.Signal(PycroManagerAcquisitionMode) # (mode = Frames | Time)
-    sigSpecSpaceChanged = QtCore.Signal(PycroManagerAcquisitionMode) # (mode = ZStack | XYList | XYZList)
+    sigSpecTimeChanged = Signal(PycroManagerAcquisitionMode) # (mode = Frames | Time)
+    sigSpecSpaceChanged = Signal(PycroManagerAcquisitionMode) # (mode = ZStack | XYList | XYZList)
     
-    sigSnapSaveModeChanged = QtCore.Signal()
-    sigRecSaveModeChanged = QtCore.Signal()
+    sigSnapSaveModeChanged = Signal()
+    sigRecSaveModeChanged = Signal()
 
-    sigSnapRequested = QtCore.Signal()
-    sigRecToggled = QtCore.Signal(bool)  # (enabled)
+    sigSnapRequested = Signal()
+    sigRecToggled = Signal(bool)  # (enabled)
     
-    sigTableDataDumped = QtCore.Signal(str, list) # ("XY"/"XYZ", tableData)
-    sigTableLoaded = QtCore.Signal(str, str) # ("XY"/"XYZ", filePath)
+    sigTableDataDumped = Signal(str, list) # ("XY"/"XYZ", tableData)
+    sigTableLoaded = Signal(str, str) # ("XY"/"XYZ", filePath)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

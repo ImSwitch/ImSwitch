@@ -1,6 +1,8 @@
 from pprint import pformat
+import typing
+from PyQt5.QtCore import QObject
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
-from imswitch.imcommon.framework import Signal, SignalInterface
+from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
 import os
@@ -19,12 +21,14 @@ class PycroManagerAcquisitionManager(SignalInterface):
         str, object, object, bool
     )  # (name, file, filePath, savedToDisk)
 
-    def __init__(self, detectorsManager):
+    def __init__(self):
         super().__init__()
         self.__logger = initLogger(self)
-        self.__detectorsManager = detectorsManager
         self.__core = Core()
-        self.__acquisition = None
+        self.__acquisitionWorker = PycroManagerAcqWorker(self)
+        self.__acquisitionThread = Thread()
+        self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
 
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -78,19 +82,34 @@ class PycroManagerAcquisitionManager(SignalInterface):
             self.sigRecordingEnded.emit()
 
     def startRecording(self, recordingArgs: dict):
-        events = multi_d_acquisition_events(**recordingArgs["multi_d_acquisition_events"])
-        recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
-
-        self.__logger.debug(pformat(recordingArgs))
-
-        self.__logger.info("Starting acquisition")
-        self.__acquisition = Acquisition(**recordingArgs["Acquisition"])
-        self.__acquisition.acquire(events)
-        self.__acquisition.mark_finished()
+        self.__acquisitionWorker.recordingArgs = recordingArgs
+        self.__acquisitionThread.start()
         self.sigRecordingStarted.emit()
 
     def endRecording(self) -> None:
-        if self.__acquisition is not None:
-            self.__acquisition.abort()
-            self.sigRecordingEnded.emit()
-        self.__acquisition = None
+        self.__acquisitionThread.quit()
+
+class PycroManagerAcqWorker(Worker):
+    def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
+        super().__init__()
+        self.__logger = initLogger(self)
+        self.__manager = manager
+        self.recordingArgs = None
+    
+    def __parse_notification(self, msg: AcqNotification):
+        if msg.is_image_saved_notification():
+            self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
+        elif msg.is_acquisition_finished_notification():
+            # For some reason the Dataset reference is not closed properly;
+            # this is a workaround to avoid the error and close the reference
+            self.__logger.info("Acquisition finished")
+            self.__manager.sigRecordingEnded.emit()
+    
+    def run(self) -> None:
+        events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
+
+        self.__logger.info("Starting acquisition")
+        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            acq.acquire(events)
+            acq.get_dataset().close()

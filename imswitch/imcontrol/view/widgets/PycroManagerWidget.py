@@ -147,17 +147,16 @@ class PycroManagerWidget(Widget):
         self.timeGroupButton = QtWidgets.QButtonGroup()
         self.timeGroupButton.addButton(self.specifyFrames)
         self.timeGroupButton.addButton(self.specifyTime)
-        self.timeGroupButton.setExclusive(True)
         self.specifyFrames.setChecked(True)
 
         # Positions group button for managing
         # mutually exclusive checkboxes
         self.positionsGroupButton = QtWidgets.QButtonGroup()
-        self.positionsGroupButton.addButton(self.specifyZStack)
-        self.positionsGroupButton.addButton(self.specifyXYList)
-        self.positionsGroupButton.addButton(self.specifyXYZList)
-        self.specifyZStack.setChecked(True)
-        
+        self.positionsGroupButton.addButton(self.specifyZStack, PycroManagerAcquisitionMode.ZStack)
+        self.positionsGroupButton.addButton(self.specifyXYList, PycroManagerAcquisitionMode.XYList)
+        self.positionsGroupButton.addButton(self.specifyXYZList, PycroManagerAcquisitionMode.XYZList)
+        self.positionsGroupButton.setExclusive(False)
+
         # Add items to GridLayout
         buttonWidget = QtWidgets.QWidget()
         buttonGrid = QtWidgets.QGridLayout()
@@ -376,14 +375,18 @@ class PycroManagerWidget(Widget):
         self.numExpositionsEdit.setEnabled(specFrames)
         self.timeToRec.setEnabled(specTime)
     
-    def setEnableSpaceParams(self, specZStack=False, specXYList=False, specXYZList=False):
-        self.startZEdit.setEnabled(specZStack)
-        self.endZEdit.setEnabled(specZStack)
-        self.stepZEdit.setEnabled(specZStack)
-        self.openXYListTableButton.setEnabled(specXYList)
-        self.loadXYListButton.setEnabled(specXYList)
-        self.openXYZListTableButton.setEnabled(specXYZList)
-        self.loadXYZListButton.setEnabled(specXYZList)
+    def setEnableSpaceParams(self, mode: PycroManagerAcquisitionMode = PycroManagerAcquisitionMode.Absent):
+        self.startZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)
+        self.endZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)
+        self.stepZEdit.setEnabled(mode & PycroManagerAcquisitionMode.ZStack)
+        self.openXYListTableButton.setEnabled(mode & PycroManagerAcquisitionMode.XYList)
+        self.loadXYListButton.setEnabled(mode & PycroManagerAcquisitionMode.XYList)
+        self.openXYZListTableButton.setEnabled(mode & PycroManagerAcquisitionMode.XYZList)
+        self.loadXYZListButton.setEnabled(mode & PycroManagerAcquisitionMode.XYZList)
+        for button in self.positionsGroupButton.buttons():
+            # checks the currently selected mode, disabling other modes;
+            # if no mode is selected, all buttons are disabled
+            button.setChecked(mode & self.positionsGroupButton.id(button))
 
     def setNumExpositions(self, numExpositions):
         self.numExpositionsEdit.setText(str(numExpositions))

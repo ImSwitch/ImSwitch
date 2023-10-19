@@ -28,14 +28,12 @@ class PycroManagerController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
-        self.recMode = PycroManagerAcquisitionMode.Absent
         
         # set default time and space modes;
         # at startup these are the pre-selected
         # modes in the widget
         self.timeRecMode = PycroManagerAcquisitionMode.Frames
-        self.spaceRecMode = PycroManagerAcquisitionMode.ZStack
-        
+        self.spaceRecMode = PycroManagerAcquisitionMode.Absent        
         self.settingAttr = False
         self.lapseTotal = 0
 
@@ -47,8 +45,10 @@ class PycroManagerController(ImConWidgetController):
             self._moduleCommChannel.isModuleRegistered('imreconstruct')
         )
         
+        # At startup no space mode is selected;
+        # only the time mode is selected
         self._widget.setEnableTimeParams(True, False)
-        self._widget.setEnableSpaceParams(True, False, False)
+        self._widget.setEnableSpaceParams(self.spaceRecMode)
 
         # Connect signals from CommunicationChannel
         self._commChannel.sigRecordingStarted.connect(self.recordingStarted)
@@ -123,31 +123,29 @@ class PycroManagerController(ImConWidgetController):
             
             maxDict = {key : 0 for key in self._widget.progressBarsKeys}
             
-            self.recMode = self.timeRecMode | self.spaceRecMode
-            
             self.__logger.info(f"Recording mode: time = {self.timeRecMode.name}, space = {self.spaceRecMode.name}")
 
             # maximum value is the specified amount - 1, as
             # pycromanager IDs are indexed from 0 to n-1
-            if self.recMode | PycroManagerAcquisitionMode.Frames:
+            if self.timeRecMode & PycroManagerAcquisitionMode.Frames:
                 max = self._widget.getNumExpositions()
                 self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
                 maxDict["time"] = max - 1
-            elif self.recMode | PycroManagerAcquisitionMode.Time:
+            elif self.timeRecMode & PycroManagerAcquisitionMode.Time:
                 max = int(self._widget.getTimeToRec() * 1000 / self._master.pycroManagerAcquisition.core.get_exposure())
                 self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
                 maxDict["time"] = max - 1
             
-            if self.recMode | PycroManagerAcquisitionMode.ZStack:
+            if self.spaceRecMode & PycroManagerAcquisitionMode.ZStack:
                 start, stop, step = self._widget.getZStackValues()
                 max = len(np.linspace(start, stop, int((stop - start) / step)))
                 self.__logger.info(f"Recording {max} Z points (start: {start}, stop: {stop}, step: {step})")
                 maxDict["z"] = max - 1
-            elif self.recMode | PycroManagerAcquisitionMode.XYList:
+            elif self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
                 max = len(self.xyScan)
                 self.__logger.info(f"Recording {max} X-Y points")
                 maxDict["position"] = max - 1
-            elif self.recMode | PycroManagerAcquisitionMode.XYZList:
+            elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
                 max = len(self.xyzScan)
                 self.__logger.info(f"Recording {max} X-Y-Z points")
                 maxDict["position"] = max - 1
@@ -174,14 +172,14 @@ class PycroManagerController(ImConWidgetController):
                 "multi_d_acquisition_events" : {
                     "num_time_points": self.__calculateNumTimePoints(),
                     "time_interval_s": self.__calculateTimeIntervalS(),
-                    "z_start": self._widget.getZStackValues()[0] if self.recMode & PycroManagerAcquisitionMode.ZStack else None,
-                    "z_end": self._widget.getZStackValues()[1] if self.recMode & PycroManagerAcquisitionMode.ZStack else None,
-                    "z_step": self._widget.getZStackValues()[2] if self.recMode & PycroManagerAcquisitionMode.ZStack else None,
+                    "z_start": self._widget.getZStackValues()[0] if self.spaceRecMode & PycroManagerAcquisitionMode.ZStack else None,
+                    "z_end": self._widget.getZStackValues()[1] if self.spaceRecMode & PycroManagerAcquisitionMode.ZStack else None,
+                    "z_step": self._widget.getZStackValues()[2] if self.spaceRecMode & PycroManagerAcquisitionMode.ZStack else None,
                     "channel_group": None, # TODO: add customization option in UI
                     "channels": None, # TODO: add customization option in UI
                     "channel_exposures_ms": None, # TODO: add customization option in UI
-                    "xy_positions": np.array(self.xyScan) if self.recMode & PycroManagerAcquisitionMode.XYList else None,
-                    "xyz_positions": np.array(self.xyzScan) if self.recMode & PycroManagerAcquisitionMode.XYZList else None,
+                    "xy_positions": np.array(self.xyScan) if self.spaceRecMode & PycroManagerAcquisitionMode.XYList else None,
+                    "xyz_positions": np.array(self.xyzScan) if self.spaceRecMode & PycroManagerAcquisitionMode.XYZList else None,
                     "position_labels": self.__checkLabels(),
                     "order": "tpcz" # todo: make this a parameter in the widget
                 },
@@ -190,6 +188,8 @@ class PycroManagerController(ImConWidgetController):
                     self._master.pycroManagerAcquisition.core.get_camera_device(): self._commChannel.sharedAttrs.getHDF5Attributes()
                 }
             }
+
+            self.__logger.debug(maxDict)
             
             self._widget.setProgressBarsVisibility({key: value != 0 for key, value in maxDict.items()})
 
@@ -201,27 +201,25 @@ class PycroManagerController(ImConWidgetController):
 
             # resume live view if previously running
             self.sigToggleLive.emit(True)
-
-        self.recMode = PycroManagerAcquisitionMode.Absent
     
     def __calculateNumTimePoints(self) -> list:
-        if self.recMode & PycroManagerAcquisitionMode.Frames:
+        if self.timeRecMode & PycroManagerAcquisitionMode.Frames:
             return self._widget.getNumExpositions()
-        if self.recMode & PycroManagerAcquisitionMode.Time:
+        if self.timeRecMode & PycroManagerAcquisitionMode.Time:
             return self._widget.getTimeToRec() * 1000 // float(self._master.pycroManagerAcquisition.core.get_exposure())
         else:
             return None
     
     def __calculateTimeIntervalS(self) -> int:
-        if self.recMode & PycroManagerAcquisitionMode.Time:
+        if self.timeRecMode & PycroManagerAcquisitionMode.Time:
             return (self._widget.getTimeToRec() * 1000 / float(self._master.pycroManagerAcquisition.core.get_exposure())) * 1e-3
         else:
             return 0
     
     def __checkLabels(self) -> Union[None, list]:
-        if self.recMode & PycroManagerAcquisitionMode.XYList:
+        if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
             return self.xyScan.labels()
-        elif self.recMode & PycroManagerAcquisitionMode.XYZList:
+        elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
             return self.xyzScan.labels()
         else:
             return None
@@ -239,7 +237,7 @@ class PycroManagerController(ImConWidgetController):
             """ Returns a list of positioners part of the MMCore suite in the currently loaded configuration. """
             return [dev for dev in self._master.positionersManager._subManagers.values() if dev.__class__.__name__ == "PyMMCorePositionerManager"]
         
-        if not self.recMode | PycroManagerAcquisitionMode.Frames and not self.recMode | PycroManagerAcquisitionMode.Time:
+        if self.spaceRecMode != PycroManagerAcquisitionMode.Absent:
             mmcorePositionersList = getMMCorePositioners()
             if len(mmcorePositionersList) == 0:
                 msg = "No MMCore positioners were found in the setupInfo. Recording aborted."
@@ -247,7 +245,7 @@ class PycroManagerController(ImConWidgetController):
                 self.sigErrorCondition.emit(errTitle, "warning", msg)
                 retStatus = False
             else:
-                if self.recMode | PycroManagerAcquisitionMode.XYList:
+                if self.spaceRecMode & PycroManagerAcquisitionMode.XYList:
                     if self.xyScan is None:
                         msg = "No XY points were specified. Recording aborted."
                         self.__logger.warning(msg)
@@ -258,13 +256,14 @@ class PycroManagerController(ImConWidgetController):
                         xyStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "XY"), None)
                         if xyStage is not None:
                             self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
+                            self.__logger.info("XY stage selected: ", self._master.pycroManagerAcquisition.core.get_xy_stage_device())
                             retStatus = False
                         else:
                             msg = "No XY stages are currently configured. Recording aborted."
                             self.__logger.warning("msg")
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
                             retStatus = False
-                elif self.recMode | PycroManagerAcquisitionMode.XYZList:
+                elif self.spaceRecMode & PycroManagerAcquisitionMode.XYZList:
                     if self.xyzScan is None:
                         msg = "No XYZ points were specified. Recording aborted."
                         self.__logger.warning(msg)
@@ -276,8 +275,8 @@ class PycroManagerController(ImConWidgetController):
                         if xyStage is not None and zStage is not None:
                             self._master.pycroManagerAcquisition.core.set_xy_stage_device(xyStage.name)
                             self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
-                            self.__logger.debug("XY stage selected: ", self.self._master.pycroManagerAcquisition.get_xy_stage_device())
-                            self.__logger.debug("XY stage selected: ", self.self._master.pycroManagerAcquisition.get_focus_device())
+                            self.__logger.info("XY stage selected: ", self._master.pycroManagerAcquisition.core.get_xy_stage_device())
+                            self.__logger.info("Z stage selected: ", self._master.pycroManagerAcquisition.core.get_focus_device())
                         else:
                             ax = ""
                             if xyStage is None and zStage is None:
@@ -290,12 +289,13 @@ class PycroManagerController(ImConWidgetController):
                             self.__logger.warning(msg)
                             self.sigErrorCondition.emit(errTitle, "warning", msg)
                             
-                elif self.recMode | PycroManagerAcquisitionMode.ZStack:
+                elif self.spaceRecMode & PycroManagerAcquisitionMode.ZStack:
                     # TODO: it may happen that the widgets do not hold any content;
                     # keep an eye on this.
                     zStage = next((dev for dev in mmcorePositionersList if "".join(dev.axes) == "Z"), None)
                     if zStage is not None:
                         self._master.pycroManagerAcquisition.core.set_focus_device(zStage.name)
+                        self.__logger.info("Z stage selected: ", self._master.pycroManagerAcquisition.core.get_focus_device())
                     else:
                         msg = "No Z stages is currently configured. Recording aborted."
                         self.__logger.warning(msg)
@@ -331,11 +331,7 @@ class PycroManagerController(ImConWidgetController):
         self.timeRecMode = mode
     
     def specSpaceMode(self, mode: PycroManagerAcquisitionMode):
-        self._widget.setEnableSpaceParams(
-            mode == PycroManagerAcquisitionMode.ZStack,
-            mode == PycroManagerAcquisitionMode.XYList,
-            mode == PycroManagerAcquisitionMode.XYZList,
-        )
+        self._widget.setEnableSpaceParams(mode)
         self.spaceRecMode = mode
     
     def parseTableData(self, coordinates: str, points: list):
@@ -412,12 +408,15 @@ class PycroManagerController(ImConWidgetController):
         if isSnapping:
             self.setSharedAttr(_recModeAttr, 'Snap')
         else:
-            self.setSharedAttr(_recModeAttr, self.recMode.name)
-            if self.recMode | PycroManagerAcquisitionMode.Frames:
+            self.setSharedAttr(_recModeAttr, f"time:{self.timeRecMode.name};space:{self.spaceRecMode.name}")
+            if self.timeRecMode & PycroManagerAcquisitionMode.Frames:
                 self.setSharedAttr(_framesAttr, self._widget.getNumExpositions())
-            elif self.recMode | PycroManagerAcquisitionMode.Time:
+            elif self.timeRecMode & PycroManagerAcquisitionMode.Time:
                 self.setSharedAttr(_timeAttr, self._widget.getTimeToRec())
-            # TODO: add shared attributes for other modes
+            else:
+                self.setSharedAttr(_framesAttr, None)
+                self.setSharedAttr(_timeAttr, None)
+            # TODO: add shared attributes for space modes
 
     @APIExport(runOnUIThread=True)
     def snapImage(self, output: bool = False) -> Optional[np.ndarray]:

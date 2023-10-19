@@ -93,7 +93,6 @@ class PyMMCoreCameraManager(DetectorManager):
     @property
     def pixelSizeUm(self):
         umxpx = self.parameters['Camera pixel size'].value
-        self.__coreManager.core.set_pixel_size_um("ImSwitchPixelSize", self.parameters["Camera pixel size"].value)
         return [1, umxpx, umxpx]
     
     def setBinning(self, binning):
@@ -142,6 +141,8 @@ class PyMMCoreCameraManager(DetectorManager):
         with self._camera_disabled():
             if name == "Exposure":
                 self.__coreManager.core.set_exposure(value)
+            elif name == "Camera pixel size":
+                self.__coreManager.core.set_pixel_size_um("ImSwitchPixelSize", value)
             else:
                 self.__coreManager.setProperty(self.name, name, value) 
         # there will be still images left in the circular buffer

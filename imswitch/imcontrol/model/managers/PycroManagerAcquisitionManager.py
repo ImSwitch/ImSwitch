@@ -112,4 +112,4 @@ class PycroManagerAcqWorker(Worker):
         self.__logger.info("Starting acquisition")
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             acq.acquire(events)
-            acq.get_dataset().close()
+        acq.get_dataset().close()

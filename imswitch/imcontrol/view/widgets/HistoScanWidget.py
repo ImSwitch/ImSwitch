@@ -107,6 +107,7 @@ class HistoScanWidget(NapariHybridWidget):
 
         # define scan parameter per sample
         self.allScanParameters = []
+        need to change path not to be
         self.allScanParameters.append(ScanParameters("6 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate6.png"))
         self.allScanParameters.append(ScanParameters("24 Wellplate", 126, 86, 0, 0, "imswitch/_data/images/Wellplate24.png"))
         self.allScanParameters.append(ScanParameters("3-Slide Wellplateadapter", 164, 109, 0, 0, "imswitch/_data/images/WellplateAdapter3Slides.png"))

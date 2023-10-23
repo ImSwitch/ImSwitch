@@ -83,7 +83,7 @@ class ESP32StageManager(PositionerManager):
             self.backlashA = self.backlashZ
 
         # Acceleration
-        self.acceleration = {"X": 40000, "Y": 40000, "Z": 40000, "A": 40000}
+        self.acceleration = {"X": 80000, "Y": 80000, "Z": 80000, "A": 80000}
 
         # Set axis order
         self.setAxisOrder(order=self.axisOrder)

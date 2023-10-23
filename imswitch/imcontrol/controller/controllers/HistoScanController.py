@@ -68,7 +68,8 @@ class HistoScanController(LiveUpdatedController):
         self.sigImageReceived.connect(self.displayImage)
         self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
-
+        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
+        
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
         
@@ -146,15 +147,17 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton.setStyleSheet("background-color: red")
         self._widget.startButton.setStyleSheet("background-color: green")
         overlap = 0.75
-        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod)
+        illuSource = self._widget.getIlluminationSource()
 
-    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod):
+        self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource)
+
+    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
-            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod))
+            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource))
             self.histoscanTask.start()
         
     def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height, overlap):
@@ -176,7 +179,7 @@ class HistoScanController(LiveUpdatedController):
         return coordinates
 
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, tPeriod=0):
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, tPeriod=0, illuSource=None):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
@@ -222,8 +225,12 @@ class HistoScanController(LiveUpdatedController):
             
             # move to the first position
             self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
-                      
-            # move to all coordinates and take an image      
+            # move to all coordinates and take an image   
+            if illuSource is not None: 
+                self._master.lasersManager[illuSource].setEnabled(1)
+                self._master.lasersManager[illuSource].setValue(255)
+                time.sleep(.5)
+            
             for iPos in positionList:
                 try:
                     if not self.ishistoscanRunning:
@@ -249,18 +256,19 @@ class HistoScanController(LiveUpdatedController):
                         #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
                         stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
                     threading.Thread(target=addImage, args=(mFrame,iPos)).start()
-                    while 1:
-                        self._widget.infoText.setText("Waiting for "+str(tPeriod-(time.time()-t0)) + " seconds")
-                        if time.time()-t0 > tPeriod:
-                            break
-                        if not self.ishistoscanRunning:
-                            return
-                        time.sleep(1)
-                
 
                 except Exception as e:
                     self._logger.error(e)
+            if illuSource is not None:
+                self._master.lasersManager[illuSource].setEnabled(0)
 
+            # wait until we go for the next timelapse
+            while 1:
+                if time.time()-t0 > tPeriod:
+                    break
+                if not self.ishistoscanRunning:
+                    return
+                time.sleep(1)
         # return to initial position
         self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
         self._commChannel.sigUpdateMotorPosition.emit()
@@ -275,6 +283,16 @@ class HistoScanController(LiveUpdatedController):
             # display result 
             self.setImageForDisplay(largeImage, "histoscanStitch")
         threading.Thread(target=getStitchedResult).start()
+
+    def valueIlluChanged(self):
+        illuSource = self._widget.getIlluminationSource()
+        illuValue = self._widget.illuminationSlider.value()
+        self._master.lasersManager
+        if not self._master.lasersManager[illuSource].enabled:
+            self._master.lasersManager[illuSource].setEnabled(1)
+        
+        illuValue = illuValue/100*self._master.lasersManager[illuSource].valueRangeMax
+        self._master.lasersManager[illuSource].setValue(illuValue)
 
     def setImageForDisplay(self, image, name):
         self.histoScanStackName = name

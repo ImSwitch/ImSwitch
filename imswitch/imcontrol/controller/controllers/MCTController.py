@@ -339,7 +339,7 @@ class MCTController(ImConWidgetController):
                             time.sleep(.05)
 
                         self.doAutofocus(autofocusParams)
-
+                        self.switchOffIllumination()
                     # acquire one xyzc scan
                     self.acquireScan(timestamp=self.nImagesTaken)
 

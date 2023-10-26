@@ -50,8 +50,13 @@ class PositionerController(ImConWidgetController):
             condition = lambda p: p.resetOnClose
         )
 
-    def getPos(self):
-        return self._master.positionersManager.execOnAll(lambda p: p.position)
+    def getPos(self, fromDevice=False):
+        if fromDevice:
+            # need to retreive positions e.g. over USB-serial
+            # return self._master.positionersManager.execOnAll(lambda p: p.getPosition)
+            return self._master.positionersManager["ESP32Stage"].getPosition()
+        else:
+            return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
@@ -177,9 +182,9 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport()
-    def getPositionerPositions(self) -> Dict[str, Dict[str, float]]:
+    def getPositionerPositions(self, fromDevice=False) -> Dict[str, Dict[str, float]]:
         """ Returns the positions of all positioners. """
-        return self.getPos()
+        return self.getPos(fromDevice)
 
     @APIExport(runOnUIThread=True)
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:

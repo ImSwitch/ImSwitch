@@ -402,6 +402,10 @@ class CameraGXIPY:
         flatfield = gaussian(flatfield, sigma=nGauss)
         flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
         self.flatfieldImage = flatfield
+        
+    def setFlatfieldImage(self, flatfieldImage, isFlatfieldEnabeled=True):
+        self.flatfieldImage = flatfieldImage
+        self.isFlatfielding = isFlatfieldEnabeled
 
 
 # Copyright (C) ImSwitch developers 2021

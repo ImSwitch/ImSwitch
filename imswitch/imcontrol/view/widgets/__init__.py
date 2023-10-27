@@ -44,6 +44,7 @@ from .HyphaWidget import HyphaWidget
 from .MockXXWidget import MockXXWidget
 from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget
+from .FlatfieldWidget import FlatfieldWidget
 from .PixelCalibrationWidget import PixelCalibrationWidget
 from .SquidStageScanWidget import SquidStageScanWidget
 from .ISMWidget import ISMWidget

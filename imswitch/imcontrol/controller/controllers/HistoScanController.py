@@ -72,6 +72,7 @@ class HistoScanController(LiveUpdatedController):
         
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
+        self.acceleration = 600000
         
         self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
         
@@ -84,7 +85,8 @@ class HistoScanController(LiveUpdatedController):
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
-        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(100000,100000))
+#            {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}
+        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
         self._commChannel.sigUpdateMotorPosition.emit()
         
     def displayImage(self):
@@ -227,7 +229,7 @@ class HistoScanController(LiveUpdatedController):
             stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension)
             
             # move to the first position
-            self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True)
+            self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
             # move to all coordinates and take an image   
             if illuSource is not None: 
                 self._master.lasersManager[illuSource].setEnabled(1)
@@ -261,7 +263,7 @@ class HistoScanController(LiveUpdatedController):
                 try:
                     if not self.ishistoscanRunning:
                         break
-                    self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True)
+                    self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
                     mFrame = self.detector.getLatestFrame()  
 
                     def addImage(mFrame, positionList):
@@ -296,7 +298,7 @@ class HistoScanController(LiveUpdatedController):
                     return
                 time.sleep(1)
         # return to initial position
-        self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True)
+        self.stages.move(value=(initPosX,initPosY), axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
         self._commChannel.sigUpdateMotorPosition.emit()
         
         # move back to initial position
@@ -399,7 +401,7 @@ class ImageStitcher:
         # these are pixelcoordinates (e.g. center of the imageslice)
         offset_x = int(coords[0]*self.subsample_factor - self.min_coords[0])
         offset_y = int(self.max_coords[1]-coords[1]*self.subsample_factor)
-        self._parent._logger.debug("Coordinates: "+str((offset_x,offset_y)))
+        #self._parent._logger.debug("Coordinates: "+str((offset_x,offset_y)))
 
         # Calculate a feathering mask based on image intensity
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 

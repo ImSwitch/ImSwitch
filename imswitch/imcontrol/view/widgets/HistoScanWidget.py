@@ -204,7 +204,7 @@ class HistoScanWidget(NapariHybridWidget):
         if len(im.shape) == 2:
             translation = (translation[0], translation[1])
         if self.layer is None or name not in self.viewer.layers:
-            self.layer = self.viewer.add_image(im, rgb=isRGB, colormap=colormap,
+            self.layer = self.viewer.add_image(np.squeeze(im), rgb=isRGB, colormap=colormap,
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im

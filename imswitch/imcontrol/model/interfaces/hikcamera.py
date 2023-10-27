@@ -218,6 +218,13 @@ class CameraHIK:
         # record the flatfield image if needed
         if self.isFlatfielding:
             self.recordFlatfieldImage() 
+            
+    def setFlatfieldImage(self, flatfieldImage, isFlatfieldEnabeled=True):
+        '''
+        Set a flatfield image to be used for flatfielding
+        '''
+        self.flatfieldImage = flatfieldImage
+        self.isFlatfielding = isFlatfieldEnabeled
         
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel

@@ -47,7 +47,7 @@ class HistoScanController(LiveUpdatedController):
         offsetY = self._master.HistoScanManager.offsetY
         self._widget.setOffset(offsetX, offsetY)
     
-
+        
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
         self._widget.startButton.clicked.connect(self.starthistoscan)
@@ -79,7 +79,6 @@ class HistoScanController(LiveUpdatedController):
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
-    
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
@@ -105,8 +104,6 @@ class HistoScanController(LiveUpdatedController):
         self._widget.updatePartialImageNapari(im=np.uint16(self.partialHistoscanStack ), 
                                               coords=self.partialImageCoordinates,
                                               name=name)
-
-
 
     def valueIlluChanged(self):
         illuSource = self._widget.getIlluminationSource()

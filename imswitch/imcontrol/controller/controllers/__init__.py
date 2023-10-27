@@ -46,6 +46,7 @@ from .HyphaController import HyphaController
 from .MockXXController import MockXXController
 from .JetsonNanoController import JetsonNanoController
 from .HistoScanController import HistoScanController
+from .FlatfieldController import FlatfieldController
 from .PixelCalibrationController import PixelCalibrationController
 from .ISMController import ISMController
 from .SettingsController import SettingsController

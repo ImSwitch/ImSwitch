@@ -26,5 +26,6 @@ from .HyphaManager import HyphaManager
 from .MockXXManager import MockXXManager
 from .JetsonNanoManager import JetsonNanoManager
 from .HistoScanManager import HistoScanManager
+from .FlatfieldManager import FlatfieldManager
 from .PixelCalibrationManager import PixelCalibrationManager
 from .ISMManager import ISMManager

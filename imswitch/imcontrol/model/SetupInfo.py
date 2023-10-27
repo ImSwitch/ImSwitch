@@ -257,6 +257,9 @@ class HistoScanInfo:
     PreviewCamera: str = None
     pass
 
+@dataclass(frozen=True)
+class FlatfieldInfo:
+    pass
 
 @dataclass(frozen=True)
 class PixelCalibrationInfo:
@@ -505,6 +508,9 @@ class SetupInfo:
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
 
+    Flatfield: Optional[FlatfieldInfo] = field(default_factory=lambda: None)
+    """ Flatfield settings. Required to be defined to use Flatfield functionality. """
+    
     PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
     """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
 

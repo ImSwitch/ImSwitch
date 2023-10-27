@@ -13,6 +13,7 @@ from ..basecontrollers import LiveUpdatedController
 
 class FlatfieldController(LiveUpdatedController):
     """Linked to FlatfieldWidget."""
+    sigImageReceived = Signal()
 
 
     def __init__(self, *args, **kwargs):
@@ -29,7 +30,7 @@ class FlatfieldController(LiveUpdatedController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
         self.isflatfieldRunning = False
-        
+        self.sigImageReceived.connect(self.displayImage)
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
@@ -118,4 +119,4 @@ class FlatfieldController(LiveUpdatedController):
             self.detector.setFlatfieldImage(np.squeeze(self.flatfieldStack), True)
         except:
             self._logger.debug("Could not set flatfield image.")
-        self.displayImage()
+        self.sigImageReceived.emit()

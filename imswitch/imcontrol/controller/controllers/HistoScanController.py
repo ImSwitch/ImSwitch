@@ -83,7 +83,7 @@ class HistoScanController(LiveUpdatedController):
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
-        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(20000,20000))
+        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(100000,100000))
         self._commChannel.sigUpdateMotorPosition.emit()
         
     def displayImage(self):
@@ -231,6 +231,29 @@ class HistoScanController(LiveUpdatedController):
                 self._master.lasersManager[illuSource].setValue(255)
                 time.sleep(.5)
             
+            # we try an alternative way to move the stage and take images:
+            # We move the stage in the background from min to max X and take
+            # images in the foreground everytime the stage is in the region where there is a frame due
+            if 0:
+                self.stages.move(value=(minPosX, minPosY), axis="XY", is_absolute=True, is_blocking=True)
+            
+                # now we need to move to max X and take images in the foreground everytime the stage is in the region where there is a frame due
+                self.stages.move(value=maxPosX, axis="X", is_absolute=True, is_blocking=False)
+                stepSizeX = positionList[1][0]-positionList[0][0]
+                lastStagePositionX = self.stages.getPosition()["X"]
+                running=1
+                while running:
+                    currentPosX = self.stages.getPosition()["X"]
+                    print(currentPosX)
+                    if currentPosX-lastStagePositionX > stepSizeX:
+                        print("Taking image")
+                        mFrame = self.detector.getLatestFrame()  
+                        import tifffile as tif
+                        tif.imsave("test.tif", mFrame, append=True)
+                        
+                        lastStagePositionX = currentPosX
+                        
+
             for iPos in positionList:
                 try:
                     if not self.ishistoscanRunning:

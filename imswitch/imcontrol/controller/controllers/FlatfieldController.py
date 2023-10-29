@@ -50,7 +50,6 @@ class FlatfieldController(LiveUpdatedController):
     def getMaxStepSize(self):
         return np.float32(self.maxStepsizeTextedit.text())
    
-        
     def startflatfield(self):
         nImagesToTake = self._widget.getNImagesToAverage()
         maxStepSize = self._widget.getMaxStepSize()
@@ -93,8 +92,8 @@ class FlatfieldController(LiveUpdatedController):
             im = self.detector.getLatestFrame()
             flatfieldStack.append(im)
         # now compute the mean and do a gaussian blur
-        self.flatfieldStack = np.mean(np.array(self.flatfieldStack), axis=-1)
-        self.flatfieldStack = gaussian_filter(self.flatfieldStack, sigma=2)
+        flatfieldStack = np.mean(np.array(flatfieldStack), axis=0)
+        flatfieldStack = gaussian_filter(flatfieldStack, sigma=2)
         self._logger.debug("flatfield thread finished.")
         
         # move to initial position
@@ -111,11 +110,13 @@ class FlatfieldController(LiveUpdatedController):
         
         # display result in napari - need to add this to the camera controller..
         self.histoScanStackName = "Flatfield Stack"
-        self.flatfieldStack = np.uint16(self.flatfieldStack)
+        self.flatfieldStack = np.uint16(flatfieldStack)
         
         # set flatfield image in detector
         try:
-            self.detector.setFlatfieldImage(np.squeeze(self.flatfieldStack), True)
+            #self.detector.setFlatfieldImage(np.squeeze(self.flatfieldStack), True)
+            self._master.FlatfieldManager.setFlatfieldImage(self.flatfieldStack)
+            # check if self._master has a class FlatfieldManager 
         except Exception as e:
             self._logger.error("Could not set flatfield image.")
             self._logger.error(e)

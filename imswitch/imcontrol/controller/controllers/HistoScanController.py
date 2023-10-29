@@ -78,6 +78,12 @@ class HistoScanController(LiveUpdatedController):
         
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        
+        # get flatfield manager
+        if hasattr(self._master, "FlatfieldManager"):
+            self.flatfieldManager = self._master.FlatfieldManager
+        else: 
+            self.flatfieldManager = None
 
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
@@ -222,8 +228,12 @@ class HistoScanController(LiveUpdatedController):
 
             t0 = time.time()
             
-            # create a new image stitcher            
-            stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension)
+            # create a new image stitcher          
+            if self.flatfieldManager is not None:
+                flatfieldImage = self.flatfieldManager.getFlatfieldImage()
+            else:
+                flatfieldImage = None
+            stitcher = ImageStitcher(self, min_coords=(0,0), max_coords=(maxPosPixX, maxPosPixY), folder=folder, nChannels=nChannels, file_name=file_name, extension=extension, flatfieldImage=flatfieldImage)
             
             # move to the first position
             self.stages.move(value=positionList[0], axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
@@ -347,7 +357,7 @@ class HistoScanController(LiveUpdatedController):
 
 class ImageStitcher:
 
-    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, subsample_factor=.25, nChannels = 3, backgroundimage=None):
+    def __init__(self, parent, min_coords, max_coords,  folder, file_name, extension, subsample_factor=.25, nChannels = 3, flatfieldImage=None):
         # Initial min and max coordinates 
         self._parent = parent
         self.subsample_factor = subsample_factor
@@ -364,7 +374,13 @@ class ImageStitcher:
         self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
         self.stitched_image_shape= self.stitched_image.shape
         self._parent.setImageForDisplay(self.stitched_image, "Stitched Image"+self.file_name)
-
+        
+        # get the background image
+        if flatfieldImage is not None:
+            self.flatfieldImage = cv2.resize(np.copy(flatfieldImage), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST)  
+        else:
+            self.flatfieldImage = np.ones((self.nY, self.nX, nChannels), dtype=np.float32)
+        
         # Queue to hold incoming images
         self.queue = deque()
 
@@ -388,6 +404,7 @@ class ImageStitcher:
                         time.sleep(.1) # unload CPU
                         continue
                     img, coords, metadata = self.queue.popleft()
+                    img = img/self.flatfieldImage
                     self._place_on_canvas(img, coords)
 
                     # write image to disk

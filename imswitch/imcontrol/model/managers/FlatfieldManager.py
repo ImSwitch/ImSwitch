@@ -21,11 +21,20 @@ class FlatfieldManager(SignalInterface):
     def __init__(self, FlatfieldInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
+        
+        self.FlatfieldImage = None
 
         self.update()
 
     def update(self):
         return None #returnmask.image()
+    
+    def setFlatfieldImage(self, flatfieldImage):
+        self.FlatfieldImage = flatfieldImage
+        
+    def getFlatfieldImage(self):
+        return self.FlatfieldImage
+    
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

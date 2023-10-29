@@ -404,7 +404,6 @@ class ImageStitcher:
                         time.sleep(.1) # unload CPU
                         continue
                     img, coords, metadata = self.queue.popleft()
-                    img = img/self.flatfieldImage
                     self._place_on_canvas(img, coords)
 
                     # write image to disk
@@ -420,6 +419,7 @@ class ImageStitcher:
         # Calculate a feathering mask based on image intensity
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
         img = np.flip(np.flip(img,1),0)
+        img = img/self.flatfieldImage
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
             stitchImage = img[0:stitchDim[0], 0:stitchDim[1]]

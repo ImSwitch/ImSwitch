@@ -91,7 +91,9 @@ class CommunicationChannel(SignalInterface):
     #sigRequestScannersInScan = Signal()
 
     #sigSendScannersInScan = Signal(object)  # (scannerList)
-
+    sigFlatFieldRunning = Signal(bool)
+    sigFlatFieldImage = Signal(object)
+    
     sigAutoFocus =  Signal(float, float) # scanrange and stepsize
     sigAutoFocusRunning = Signal(bool) # indicate if autofocus is running or not
 

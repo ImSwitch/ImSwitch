@@ -35,7 +35,7 @@ class FlatfieldController(LiveUpdatedController):
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
     def goToPosition(self, posX, posY):
-        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(100000,100000))
+        self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=True, acceleration=(100000,100000))
         
     def displayImage(self):
         # a bit weird, but we cannot update outside the main thread
@@ -82,6 +82,7 @@ class FlatfieldController(LiveUpdatedController):
         if not self.detector._running: self.detector.startAcquisition()
         
         # move to n positions with maximum step size in xy and take nImagesToTake images, sum them and create a flatfield image
+        flatfieldStack = []
         for iPosition in range(nImagesToTake):
             if not self.isflatfieldRunning:
                 break
@@ -90,11 +91,9 @@ class FlatfieldController(LiveUpdatedController):
             self.goToPosition(posX, posY)
             time.sleep(0.1)
             im = self.detector.getLatestFrame()
-            if iPosition == 0:
-                self.flatfieldStack = np.zeros((im.shape[0], im.shape[1], nImagesToTake))
-            self.flatfieldStack[:,:,iPosition] = im
+            flatfieldStack.append(im)
         # now compute the mean and do a gaussian blur
-        self.flatfieldStack = np.mean(self.flatfieldStack, axis=2)
+        self.flatfieldStack = np.mean(np.array(self.flatfieldStack), axis=-1)
         self.flatfieldStack = gaussian_filter(self.flatfieldStack, sigma=2)
         self._logger.debug("flatfield thread finished.")
         
@@ -117,6 +116,7 @@ class FlatfieldController(LiveUpdatedController):
         # set flatfield image in detector
         try:
             self.detector.setFlatfieldImage(np.squeeze(self.flatfieldStack), True)
-        except:
-            self._logger.debug("Could not set flatfield image.")
+        except Exception as e:
+            self._logger.error("Could not set flatfield image.")
+            self._logger.error(e)
         self.sigImageReceived.emit()

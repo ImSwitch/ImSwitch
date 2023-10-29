@@ -82,6 +82,9 @@ class HikCamManager(DetectorManager):
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
 
+    def setFlatfieldImage(self, flatfieldImage, isFlatfielding):
+        self._camera.setFlatfieldImage(flatfieldImage, isFlatfielding)
+        
     def getLatestFrame(self, is_save=False):
         return self._camera.getLast()
 

@@ -162,6 +162,9 @@ class DetectorManager(SignalInterface):
 
         self._binning = binning
 
+    def setFlatfieldImage(self, flatieldImage, setFlatfielding):
+        pass 
+    
     @property
     def name(self) -> str:
         """ Unique detector name, defined in the detector's setup info. """

@@ -8,8 +8,7 @@ from PIL import Image
 from scipy import signal as sg
 import os 
 from imswitch.imcommon.model import dirtools
-
-import json
+import tifffile as tif
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
@@ -23,20 +22,33 @@ class FlatfieldManager(SignalInterface):
         self.__logger = initLogger(self)
         
         self.FlatfieldImage = None
+        self.histoConfigFilename = "FlatfieldImage.tif"
 
-        self.update()
+        # get default configs
+        self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "flatfieldController")
+        if not os.path.exists(self.defaultConfigPath):
+            os.makedirs(self.defaultConfigPath)
+
+        try:
+            self.FlatfieldImage = cv2.imread(os.path.join(self.defaultConfigPath, self.histoConfigFilename))
+        except Exception as e:
+            self.__logger.error(f"Could not load default flatfield image from {self.defaultConfigPath}: {e}")
+
+    def writeFlatfieldImage(self, data):
+        tif.imsave(os.path.join(self.defaultConfigPath, self.histoConfigFilename), data)
 
     def update(self):
         return None #returnmask.image()
     
     def setFlatfieldImage(self, flatfieldImage):
         self.FlatfieldImage = flatfieldImage
+        self.writeFlatfieldImage(self.FlatfieldImage)
         
     def getFlatfieldImage(self):
         return self.FlatfieldImage
     
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -26,6 +26,8 @@ class FlatfieldWidget(NapariHybridWidget):
         self.maxStepsizeTextedit = QtWidgets.QLineEdit("1000")
         self.nImagesToAverageLabel = QtWidgets.QLabel("Number of Images to Average:")
         self.nImagesToAverageTextedit = QtWidgets.QLineEdit("10")
+        self.nGaussLabel = QtWidgets.QLabel("Gauss Kernel:")
+        self.nGaussTextedit = QtWidgets.QLineEdit("50")
         
         # Start and Stop buttons
         self.startButton = QtWidgets.QPushButton('Start')
@@ -40,6 +42,9 @@ class FlatfieldWidget(NapariHybridWidget):
         self.grid.addWidget(self.stopButton, 2, 1, 1, 1)
         
         self.layer = None
+
+    def getGaussKernelSize(self):
+        return np.int32(self.nGaussTextedit.text())
         
     def getNImagesToAverage(self):
         return np.int32(self.nImagesToAverageTextedit.text())

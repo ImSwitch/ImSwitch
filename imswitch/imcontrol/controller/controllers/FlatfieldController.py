@@ -42,7 +42,11 @@ class FlatfieldController(LiveUpdatedController):
         name = self.histoScanStackName
         # subsample stack 
         isRGB = self.flatfieldStack.shape[-1]==3
-        self._widget.setImageNapari(np.uint16(self.flatfieldStack ), colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
+        if isRGB:
+            img = np.uint8(self.flatfieldStack*255)
+        else:
+            img = self.flatfieldStack
+        self._widget.setImageNapari(img, colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
         
     def getNImagesToAverage(self):
         return np.int32(self.nImagesToAverageTextedit.text())
@@ -76,6 +80,7 @@ class FlatfieldController(LiveUpdatedController):
         self._logger.debug("flatfield thread started.")
         
         initialPosition = self.stages.getPosition()
+        gaussKernelSize = self._widget.getGaussKernelSize()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
         if not self.detector._running: self.detector.startAcquisition()
@@ -93,7 +98,9 @@ class FlatfieldController(LiveUpdatedController):
             flatfieldStack.append(im)
         # now compute the mean and do a gaussian blur
         flatfieldStack = np.mean(np.array(flatfieldStack), axis=0)
-        flatfieldStack = gaussian_filter(flatfieldStack, sigma=2)
+        flatfieldStack = gaussian_filter(flatfieldStack, sigma=gaussKernelSize)
+        flatfieldStack = flatfieldStack/np.max(flatfieldStack)
+
         self._logger.debug("flatfield thread finished.")
         
         # move to initial position
@@ -110,7 +117,7 @@ class FlatfieldController(LiveUpdatedController):
         
         # display result in napari - need to add this to the camera controller..
         self.histoScanStackName = "Flatfield Stack"
-        self.flatfieldStack = np.uint16(flatfieldStack)
+        self.flatfieldStack = flatfieldStack
         
         # set flatfield image in detector
         try:

@@ -99,7 +99,7 @@ class HistoScanController(LiveUpdatedController):
         name = self.histoScanStackName
         # subsample stack 
         isRGB = self.histoscanStack.shape[-1]==3
-        self._widget.setImageNapari(np.uint16(self.histoscanStack ), colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
+        self._widget.setImageNapari(self.histoscanStack, colormap="gray", isRGB=isRGB, name=name, pixelsize=(1,1), translation=(0,0))
 
     def updatePartialImage(self):
         # a bit weird, but we cannot update outside the main thread
@@ -373,7 +373,6 @@ class ImageStitcher:
         self.nX = self.max_coords[0] - self.min_coords[0]
         self.stitched_image = np.zeros((self.nY, self.nX, nChannels), dtype=np.float32)
         self.stitched_image_shape= self.stitched_image.shape
-        self._parent.setImageForDisplay(self.stitched_image, "Stitched Image"+self.file_name)
         
         # get the background image
         if flatfieldImage is not None:
@@ -419,7 +418,10 @@ class ImageStitcher:
         # Calculate a feathering mask based on image intensity
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
         img = np.flip(np.flip(img,1),0)
-        img = img/self.flatfieldImage
+        scalingFactor = .5
+        img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
+        if len(img.shape)==3:
+           img = np.uint8(img) # napari only accepts uint8 for RGB
         try: 
             stitchDim = self.stitched_image[offset_y-img.shape[0]:offset_y, offset_x:offset_x+img.shape[1]].shape
             stitchImage = img[0:stitchDim[0], 0:stitchDim[1]]
@@ -436,6 +438,9 @@ class ImageStitcher:
         with self.lock:
             # Normalize by the weight image to get the final result
             stitched = self.stitched_image.copy()
+            if len(stitched.shape)>2:
+                stitched = stitched/np.max(stitched)
+                stitched = np.uint8(stitched*255)
             self.isRunning = False
             return stitched 
 

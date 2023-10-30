@@ -46,6 +46,8 @@ class HistoScanController(LiveUpdatedController):
         offsetX = self._master.HistoScanManager.offsetX
         offsetY = self._master.HistoScanManager.offsetY
         self._widget.setOffset(offsetX, offsetY)
+
+        self.tSettle = 0.05
     
         
         self.histoscanTask = None
@@ -271,6 +273,7 @@ class HistoScanController(LiveUpdatedController):
                     if not self.ishistoscanRunning:
                         break
                     self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
+                    time.sleep(self.tSettle)
                     mFrame = self.detector.getLatestFrame()  
 
                     def addImage(mFrame, positionList):

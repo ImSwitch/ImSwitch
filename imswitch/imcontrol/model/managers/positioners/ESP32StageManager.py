@@ -60,6 +60,10 @@ class ESP32StageManager(PositionerManager):
         self.homeEndstoppolarityX = positionerInfo.managerProperties.get('homeEndstoppolarityX', 1)
         self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
         self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
+        
+        self.homeEndposReleaseX = positionerInfo.managerProperties.get('homeEndposReleaseX', 1)
+        self.homeEndposReleaseY = positionerInfo.managerProperties.get('homeEndposReleaseY', 1)
+        self.homeEndposReleaseZ = positionerInfo.managerProperties.get('homeEndposReleaseZ', 1)
 
         self.homeOnStartX = positionerInfo.managerProperties.get('homeOnStartX', 0)
         self.homeOnStartY = positionerInfo.managerProperties.get('homeOnStartY', 0)
@@ -69,7 +73,11 @@ class ESP32StageManager(PositionerManager):
         self.homeXenabled = positionerInfo.managerProperties.get('homeXenabled', False)
         self.homeYenabled = positionerInfo.managerProperties.get('homeYenabled', False)
         self.homeZenabled = positionerInfo.managerProperties.get('homeZenabled', False)
-        
+
+        self.limitXenabled = positionerInfo.managerProperties.get('limitXenabled', False)
+        self.limitYenabled = positionerInfo.managerProperties.get('limitYenabled', False)
+        self.limitZenabled = positionerInfo.managerProperties.get('limitZenabled', False)
+
         # Axis order
         self.axisOrder = positionerInfo.managerProperties.get('axisOrder', [0, 1, 2, 3])
 
@@ -144,29 +152,29 @@ class ESP32StageManager(PositionerManager):
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
         if axis == 'X':
             # don't move to negative positions
-            if is_absolute and value < 0: return
-            elif not is_absolute and self._position[axis] + value < 0: return
+            if self.limitXenabled and is_absolute and value < 0: return
+            elif self.limitXenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Y':
             # don't move to negative positions
-            if is_absolute and value < 0: return
-            elif not is_absolute and self._position[axis] + value < 0: return
+            if self.limitYenabled and is_absolute and value < 0: return
+            elif self.limitYenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'Z':
             # don't move to negative positions
-            if is_absolute and value < 0: return
-            elif not is_absolute and self._position[axis] + value < 0: return
+            if self.limitZenabled and is_absolute and value < 0: return
+            elif self.limitZenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, is_dualaxis=self.isDualAxis, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
         elif axis == 'A':
             # don't move to negative positions
-            if is_absolute and value < 0: return
-            elif not is_absolute and self._position[axis] + value < 0: return
+            #if is_absolute and value < 0: return
+            #elif not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_a(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
@@ -276,15 +284,15 @@ class ESP32StageManager(PositionerManager):
             self.home_z(isBlocking)
 
     def home_x(self, isBlocking=False):
-        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, isBlocking=isBlocking)
+        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking)
         self.setPosition(axis="X", value=0)
 
     def home_y(self,isBlocking=False):
-        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, isBlocking=isBlocking)
+        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking)
         self.setPosition(axis="Y", value=0)
 
     def home_z(self,isBlocking=False):
-        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, isBlocking=isBlocking)
+        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking)
         self.setPosition(axis="Z", value=0)
 
     def home_xyz(self):

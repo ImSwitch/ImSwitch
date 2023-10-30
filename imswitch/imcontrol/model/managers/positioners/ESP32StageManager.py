@@ -5,7 +5,7 @@ import numpy as np
 from imswitch.imcommon.model import APIExport, generateAPI, initLogger
 import threading
 
-
+MAX_ACCEL = 500000
 PHYS_FACTOR = 1
 gTIMEOUT = 100
 class ESP32StageManager(PositionerManager):
@@ -88,7 +88,7 @@ class ESP32StageManager(PositionerManager):
             self.backlashA = self.backlashZ
 
         # Acceleration
-        self.acceleration = {"X": 80000, "Y": 80000, "Z": 80000, "A": 80000}
+        self.acceleration = {"X": MAX_ACCEL, "Y": MAX_ACCEL, "Z": MAX_ACCEL, "A": MAX_ACCEL}
 
         # Set axis order
         self.setAxisOrder(order=self.axisOrder)

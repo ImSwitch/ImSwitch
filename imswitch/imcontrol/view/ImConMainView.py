@@ -65,6 +65,7 @@ class ImConMainView(QtWidgets.QMainWindow):
         rightDockInfos = {
             'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
             'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
+            'FOVLock': _DockInfo(name='FOV Lock', yPosition=0),
             'SLM': _DockInfo(name='SLM', yPosition=0),
             'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
             'SIM': _DockInfo(name='SIM', yPosition=0),

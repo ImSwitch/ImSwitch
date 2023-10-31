@@ -61,7 +61,7 @@ class VirtualStageManager(PositionerManager):
         else:
             self.stopAll()
 
-    def get_abs(self, axis):
+    def get_abs(self, axis="X"):
         return self._position[axis]
 
     def stop_x(self):

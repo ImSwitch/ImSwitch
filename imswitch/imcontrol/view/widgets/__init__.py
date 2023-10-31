@@ -19,6 +19,7 @@ from .DeckScanWidget import DeckScanWidget
 from .OpentronsDeckWidget import OpentronsDeckWidget
 from .OpentronsDeckScanWidget import OpentronsDeckScanWidget
 from .FocusLockWidget import FocusLockWidget
+from .FOVLockWidget import FOVLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .MotCorrWidget import MotCorrWidget

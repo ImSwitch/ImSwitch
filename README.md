@@ -42,7 +42,6 @@ You will then be able to start ImSwitch with this command:
 imswitch
 ```
 
-(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
 ### Option C: Install from Github (UC2 version)
 

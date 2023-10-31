@@ -68,6 +68,13 @@ class MyServer:
         self.port = port
         self.httpd = None
         self.server_thread = None
+        self.extensionsMap = {
+            ".css", "text/css",
+            ".html", "text/html",
+            ".js", "application/javascript",
+            ".json", "application/javascript",
+            ".ico", "image/x-icon"
+        }
 
     class StaticServer(BaseHTTPRequestHandler):
         def do_GET(self):

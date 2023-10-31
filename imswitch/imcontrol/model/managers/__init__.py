@@ -1,4 +1,5 @@
 from .AutofocusManager import AutofocusManager
+from .FOVLockManager import FOVLockManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
 from .LEDsManager import LEDsManager

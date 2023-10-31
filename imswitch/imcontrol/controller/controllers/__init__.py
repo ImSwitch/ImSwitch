@@ -2,7 +2,6 @@ from .AlignAverageController import AlignAverageController
 from .AlignmentLineController import AlignmentLineController
 from .AlignXYController import AlignXYController
 from .AufofocusController import AutofocusController
-from. FocusLockController import FocusLockController
 from .BeadRecController import BeadRecController
 from .ConsoleController import ConsoleController
 from .EtSTEDController import EtSTEDController
@@ -14,6 +13,7 @@ from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
 from .SquidStageScanController import SquidStageScanController
 from .FocusLockController import FocusLockController
+from .FOVLockController import FOVLockController
 from .ImageController import ImageController
 from .LaserController import LaserController
 from .MotCorrController import MotCorrController

@@ -314,6 +314,38 @@ class FocusLockInfo:
     piKi: float
     """ Default ki value of feedback loop. """
 
+@dataclass(frozen=True)
+class FOVLockInfo:
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
+    updateFreq: int
+    """ Update frequency, in milliseconds. """
+
+    frameCropx: int
+    """ Starting X position of camera frame crop. """
+
+    frameCropy: int
+    """ Starting Y position of camera frame crop. """
+
+    frameCropw: int
+    """ Width of camera frame crop. """
+
+    frameCroph: int
+    """ Height of camera frame crop. """
+
+    swapImageAxes: bool
+    """ Swap camera image axes when grabbing camera frame. """
+
+    piKp: float
+    """ Default kp value of feedback loop. """
+
+    piKi: float
+    """ Default ki value of feedback loop. """
+
 
 @dataclass(frozen=True)
 class AutofocusInfo:
@@ -523,6 +555,10 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
+
+    fovLock: Optional[FOVLockInfo] = field(default_factory=lambda: None)
+    """ Focus lock settings. Required to be defined to use fov lock
+    functionality. """    
 
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
     """ Autofocus settings. Required to be defined to use autofocus

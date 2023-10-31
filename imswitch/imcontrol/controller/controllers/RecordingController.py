@@ -465,7 +465,6 @@ class RecordingController(ImConWidgetController):
     @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
         """ Take a snap and save it to a .tiff file at the set file path. """
-        hgf
         if output:
             numpy_array_list = self.snapNumpy()
             mDetector = list(numpy_array_list.keys())[0]
@@ -481,7 +480,6 @@ class RecordingController(ImConWidgetController):
     def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
         '''
         '''
-        asdfasdf    
         # Create a 2D NumPy array representing the image
         images = self.snapNumpy()
 

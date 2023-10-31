@@ -46,7 +46,6 @@ class HistoScanController(LiveUpdatedController):
         offsetX = self._master.HistoScanManager.offsetX
         offsetY = self._master.HistoScanManager.offsetY
         self._widget.setOffset(offsetX, offsetY)
-
         self.tSettle = 0.05
     
         
@@ -54,6 +53,8 @@ class HistoScanController(LiveUpdatedController):
         self.histoscanStack = np.ones((1,1,1))
         self._widget.startButton.clicked.connect(self.starthistoscan)
         self._widget.stopButton.clicked.connect(self.stophistoscan)
+        self._widget.startButton2.clicked.connect(self.starthistoscanTilebased)
+        self._widget.stopButton2.clicked.connect(self.stophistoscanTilebased)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -86,6 +87,17 @@ class HistoScanController(LiveUpdatedController):
             self.flatfieldManager = self._master.FlatfieldManager
         else: 
             self.flatfieldManager = None
+            
+        ## update optimal scan parameters for tile-based scan
+        try:
+            overlap = 0.75
+            mFrame = self.detector.getLatestFrame()
+            bestScanSizeX = mFrame.shape[1]*self.detector.pixelSizeUm[-1]*overlap
+            bestScanSizeY = mFrame.shape[0]*self.detector.pixelSizeUm[-1]*overlap     
+            self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
+        except Exception as e:
+            self._logger.error(e)
+            
 
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
@@ -161,13 +173,49 @@ class HistoScanController(LiveUpdatedController):
 
         self.performScanningRecording(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource)
 
-    def performScanningRecording(self, minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource):
+    def starthistoscanTilebased(self):
+        numberTilesX, numberTilesY = self._widget.getNumberTiles()
+        stepSizeX, stepSizeY = self._widget.getStepSize()
+        nTimes = self._widget.getNTimesScan()
+        tPeriod = self._widget.getTPeriodScan()
+        self._widget.startButton2.setEnabled(False)
+        self._widget.stopButton2.setEnabled(True)
+        self._widget.startButton2.setText("Running")
+        self._widget.stopButton2.setText("Stop")
+        self._widget.stopButton2.setStyleSheet("background-color: red")
+        self._widget.startButton2.setStyleSheet("background-color: green")
+        illuSource = self._widget.getIlluminationSource()
+        def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY):
+            positionList = []
+            for i in range(numberTilesX):
+                for j in range(numberTilesY):
+                    positionList.append((i*stepSizeX, j*stepSizeY))
+            return positionList
+        positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY)
+        minPosX = np.min(positionList, axis=0)[0]
+        maxPosX = np.max(positionList, axis=0)[0]
+        minPosY = np.min(positionList, axis=0)[1]
+        maxPosY = np.max(positionList, axis=0)[1]
+        
+        self.performScanningRecording(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=positionList, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+        
+    def stophistoscanTilebased(self):
+        self.ishistoscanRunning = False
+        self._widget.startButton2.setEnabled(True)
+        self._widget.stopButton2.setEnabled(False)
+        self._widget.startButton2.setText("Start")
+        self._widget.stopButton2.setText("Stopped")
+        self._widget.stopButton2.setStyleSheet("background-color: green")
+        self._widget.startButton2.setStyleSheet("background-color: red")
+        self._logger.debug("histoscan scanning stopped.")
+
+    def performScanningRecording(self, minPosX=None, maxPosX=None, minPosY=None, maxPosY=None, overlap=None, nTimes=1, tPeriod=0, illuSource=None, positionList=None):
         if not self.ishistoscanRunning:
             self.ishistoscanRunning = True
             if self.histoscanTask is not None:
                 self.histoscanTask.join()
                 del self.histoscanTask
-            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPos, maxPos, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource))
+            self.histoscanTask = threading.Thread(target=self.histoscanThread, args=(minPosX, maxPosX, minPosY, maxPosY, overlap, nTimes, tPeriod, illuSource, positionList))
             self.histoscanTask.start()
         
     def generate_snake_scan_coordinates(self, posXmin, posYmin, posXmax, posYmax, img_width, img_height, overlap):
@@ -189,7 +237,7 @@ class HistoScanController(LiveUpdatedController):
         return coordinates
 
         
-    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, tPeriod=0, illuSource=None):
+    def histoscanThread(self, minPosX, maxPosX, minPosY, maxPosY, overlap=0.75, nTimes=1, tPeriod=0, illuSource=None, positionList=None):
         self._logger.debug("histoscan thread started.")
         
         initialPosition = self.stages.getPosition()
@@ -199,7 +247,6 @@ class HistoScanController(LiveUpdatedController):
         
         # now start acquiring images and move the stage in Background
         mFrame = self.detector.getLatestFrame()
-        dimensionsFrame = mFrame.shape[1]*self.detector.pixelSizeUm[-1]
         NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
         # starting the snake scan
@@ -208,7 +255,8 @@ class HistoScanController(LiveUpdatedController):
         img_height = NpixY * self.detector.pixelSizeUm[-1]
 
         # precompute the position list in advance 
-        positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, overlap)
+        if positionList is None:
+            positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, overlap)
 
         maxPosPixY = int((maxPosY-minPosY)/self.detector.pixelSizeUm[-1])
         maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
@@ -354,6 +402,11 @@ class HistoScanController(LiveUpdatedController):
         self._widget.startButton.setStyleSheet("background-color: red")
         self._logger.debug("histoscan scanning stopped.")
         
+        
+        self.stophistoscanTilebased()
+        
+    
+        
 
 
 
@@ -422,7 +475,8 @@ class ImageStitcher:
         img = cv2.resize(np.copy(img), None, fx=self.subsample_factor, fy=self.subsample_factor, interpolation=cv2.INTER_NEAREST) 
         img = np.flip(np.flip(img,1),0)
         scalingFactor = .5
-        img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
+        try: img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
+        except: self._parent._logger.error("Could not divide by flatfieldImage")
         if len(img.shape)==3:
            img = np.uint8(img) # napari only accepts uint8 for RGB
         try: 

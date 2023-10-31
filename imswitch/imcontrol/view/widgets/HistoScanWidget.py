@@ -31,8 +31,10 @@ class HistoScanWidget(NapariHybridWidget):
     def __post_init__(self):
         #super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
-        self.grid = QtWidgets.QGridLayout()
-        self.setLayout(self.grid)
+        
+        tabWidget = QtWidgets.QTabWidget(self)
+        mainWidget = QtWidgets.QWidget()  # Create a widget for the first tab
+        self.grid = QtWidgets.QGridLayout(mainWidget)  # Use this widget in your grid
 
         # Pull-down menu for the illumination source
         self.illuminationSourceComboBox = QtWidgets.QComboBox()
@@ -122,7 +124,56 @@ class HistoScanWidget(NapariHybridWidget):
         self.setSampleLayouts(self.allScanParameters)
         self.samplePicker.currentIndexChanged.connect(self.loadSampleLayout)
 
+        # Add the first tab
+        tabWidget.addTab(mainWidget, "Figure-based Scan")
+
+        # Create a new widget for the second tab
+        secondTabWidget = QtWidgets.QWidget()
+        secondTabLayout = QtWidgets.QGridLayout(secondTabWidget)
+
+        # Add input fields and buttons for second tab
+        self.numTilesXLineEdit = QtWidgets.QLineEdit("10")
+        self.numTilesYLineEdit = QtWidgets.QLineEdit("10")
+        self.stepSizeXLineEdit = QtWidgets.QLineEdit("1.0")
+        self.stepSizeYLineEdit = QtWidgets.QLineEdit("1.0")
+
+        secondTabLayout.addWidget(QtWidgets.QLabel("Number of Tiles X:"), 0, 0)
+        secondTabLayout.addWidget(self.numTilesXLineEdit, 0, 1)
+        secondTabLayout.addWidget(QtWidgets.QLabel("Number of Tiles Y:"), 1, 0)
+        secondTabLayout.addWidget(self.numTilesYLineEdit, 1, 1)
+        secondTabLayout.addWidget(QtWidgets.QLabel("Step Size X:"), 2, 0)
+        secondTabLayout.addWidget(self.stepSizeXLineEdit, 2, 1)
+        secondTabLayout.addWidget(QtWidgets.QLabel("Step Size Y:"), 3, 0)
+        secondTabLayout.addWidget(self.stepSizeYLineEdit, 3, 1)
+
+        self.startButton2 = QtWidgets.QPushButton("Start")
+        self.stopButton2 = QtWidgets.QPushButton("Stop")
+
+        secondTabLayout.addWidget(self.startButton2, 4, 0)
+        secondTabLayout.addWidget(self.stopButton2, 4, 1)
+
+        # Add the second tab
+        tabWidget.addTab(secondTabWidget, "Tile-based Scan")
+
+        # Add the tabWidget to the main layout of the widget
+        mainLayout = QtWidgets.QVBoxLayout(self)
+        mainLayout.addWidget(tabWidget)
+        self.setLayout(mainLayout)
+
         self.layer = None
+        
+    def getNumberTiles(self):
+        return int(self.numTilesXLineEdit.text()), int(self.numTilesYLineEdit.text())
+    
+    def getStepSize(self):
+        return float(self.stepSizeXLineEdit.text()), float(self.stepSizeYLineEdit.text())
+    
+    def setTilebasedScanParameters(self, scanParameters):
+        self.stepSizeXLineEdit.setText(str(scanParameters[0]))
+        self.stepSizeYLineEdit.setText(str(scanParameters[1]))
+        
+    def getTilebasedScanParameters(self):
+        return float(self.stepSizeXLineEdit.text()), float(self.stepSizeYLineEdit.text())
 
     def getNTimesScan(self):
         try:

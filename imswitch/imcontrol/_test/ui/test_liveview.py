@@ -58,11 +58,7 @@ def test_crosshair_no_error(qtbot):
 def test_close_no_error(qtbot):
     mainView.close()
 
-if __name__ == '__main__':
-    test_liveview_no_error()
-    test_grid_no_error()
-    test_crosshair_no_error()
-    test_close_no_error()
+
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

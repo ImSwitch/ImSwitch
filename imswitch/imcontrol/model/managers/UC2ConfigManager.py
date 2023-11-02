@@ -27,26 +27,6 @@ class UC2ConfigManager(SignalInterface):
         except:
             return
 
-        # get default configs
-        try:
-            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", Info.defaultConfig)
-        except:
-            self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "uc2_configs", "pindefWemos.json")
-
-        # initialize the firmwareupdater
-        self.firmwareUpdater = uc2.updater(parent=self.ESP32)
-        self.firmwareConfigurator = self.ESP32.config
-        # alternatively: self.firmwareUpdater = self.ESP32.updater
-        try:
-            with open(self.defaultConfigPath) as jf:
-                self.defaultConfig = json.load(jf)
-        except Exception as e:
-            self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
-            self.defaultConfig = self.config.loadDefaultConfig()
-
-    def getDefaultConfig(self):
-        # this gets the default config from the ESP32 from the disk
-        return self.defaultConfig
 
     def saveState(self, state_general=None, state_pos=None, state_aber=None):
         if state_general is not None:
@@ -90,15 +70,6 @@ class UC2ConfigManager(SignalInterface):
         
     def pairBT(self):
         self.ESP32.state.pairBT()
-
-    def downloadFirmware(self, firmwarePath=None):
-        return self.firmwareUpdater.downloadFirmware()
-
-    def flashFirmware(self, firmwarePath=None):
-        return self.firmwareUpdater.flashFirmware(firmwarePath)
-
-    def removeFirmware(self):
-        return self.firmwareUpdater.removeFirmware()
 
     def setDebug(self, debug):
         self.ESP32.serial.DEBUG = debug

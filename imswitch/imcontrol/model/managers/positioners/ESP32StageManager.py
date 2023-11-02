@@ -114,6 +114,7 @@ class ESP32StageManager(PositionerManager):
         if self.homeOnStartX: self.home_x()
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
+
         # get bootup position and write to GUI
         self._position = self.getPosition()
 
@@ -150,28 +151,28 @@ class ESP32StageManager(PositionerManager):
             if axis == "A": acceleration = self.acceleration["A"]
             if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
-        if axis == 'X':
+        if axis == 'X' and speed >0:
             # don't move to negative positions
             if self.limitXenabled and is_absolute and value < 0: return
             elif self.limitXenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'Y':
+        elif axis == 'Y' and speed >0:
             # don't move to negative positions
             if self.limitYenabled and is_absolute and value < 0: return
             elif self.limitYenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'Z':
+        elif axis == 'Z' and speed >0:
             # don't move to negative positions
             if self.limitZenabled and is_absolute and value < 0: return
             elif self.limitZenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, is_dualaxis=self.isDualAxis, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'A':
+        elif axis == 'A' and speed >0:
             # don't move to negative positions
             #if is_absolute and value < 0: return
             #elif not is_absolute and self._position[axis] + value < 0: return

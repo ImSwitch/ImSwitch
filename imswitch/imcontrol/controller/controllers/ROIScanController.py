@@ -16,6 +16,8 @@ from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
 
+
+T_SETTLE=0.2
 class ROIScanController(ImConWidgetController):
     """Linked to ROIScanWidget."""
 
@@ -173,7 +175,7 @@ class ROIScanController(ImConWidgetController):
                 self._widget.infoText.setText("Taking image at "+str(coordinate) + " ("+str(iImage)+"/"+str(nTimes)+")")
                 # move xyz
                 self.stages.move(value=(coordinate[0],coordinate[1],coordinate[2]), axis="XYZ", is_absolute=True, is_blocking=True)
-
+                time.sleep(T_SETTLE)
                 # take an image
                 mImage = self.detector.getLatestFrame().copy()
                 allFrames.append(mImage)
@@ -182,7 +184,7 @@ class ROIScanController(ImConWidgetController):
             self.roiscanStack = np.stack(allFrames, axis=0)
             self.sigImageReceived.emit()
             # save the stack as ometiff including metadata including coordinates and time
-            savepath = os.getcwd()+"/"+currentTime + "_" + str(iImage)+experimentName+"_roiscan_stack_metadata.tif"
+            savepath = self.getSaveFilePath(currentTime, '', experimentName, ".tif")
             tif.imsave(savepath, self.roiscanStack)#, metadata={"X":x, "Y":y, "Z":z, "t":datetime.now().strftime("%d-%m-%Y %H:%M:%S")})
             self._logger.debug("Savepath: "+savepath)
             # if the experiment is stopped, stop the thread
@@ -200,6 +202,16 @@ class ROIScanController(ImConWidgetController):
             iImage += 1
 
 
+    def getSaveFilePath(self, date, timestamp, filename, extension):
+        mFilename =  f"{date}_{filename}.{extension}"
+        dirPath  = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date, "t"+str(timestamp))
+
+        newPath = os.path.join(dirPath,mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

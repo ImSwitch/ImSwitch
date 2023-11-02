@@ -16,10 +16,10 @@ class UC2ConfigController(ImConWidgetController):
         self.__logger = initLogger(self)
 
         # Connect buttons to the logic handlers
-        self._widget.setPositionsXBtn.clicked.connect(self.set_positionX)
-        self._widget.setPositionsYBtn.clicked.connect(self.set_positionY)
-        self._widget.setPositionsZBtn.clicked.connect(self.set_positionZ)
-        self._widget.setPositionsABtn.clicked.connect(self.set_positionA)
+        self._widget.setPositionXBtn.clicked.connect(self.set_positionX)
+        self._widget.setPositionYBtn.clicked.connect(self.set_positionY)
+        self._widget.setPositionZBtn.clicked.connect(self.set_positionZ)
+        self._widget.setPositionABtn.clicked.connect(self.set_positionA)
         
         self._widget.autoEnableBtn.clicked.connect(self.set_auto_enable)
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)

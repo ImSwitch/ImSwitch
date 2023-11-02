@@ -75,7 +75,7 @@ class UC2ConfigWidget(Widget):
         mainLayout.addLayout(reconnectLayout)
         mainLayout.addWidget(self.btpairingButton)
         mainLayout.addLayout(motorsLayout)
-        mainLayout.addWidget(motorsBtnLayout)
+        mainLayout.addLayout(motorsBtnLayout)
         mainLayout.addWidget(self.autoEnableBtn)
         mainLayout.addWidget(self.unsetAutoEnableBtn)
 

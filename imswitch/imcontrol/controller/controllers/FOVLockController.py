@@ -280,7 +280,7 @@ class ProcessDataThread(Thread):
             return marray[y_start:y_end, x_start:x_end]
 
 
-        imagearraygf = extract(self.latestimg, 512)
+        self.latestimg = extract(self.latestimg, 512)
         # Load images
         if self.lastimg is None:
             self.lastimg = self.latestimg.copy()
@@ -375,7 +375,8 @@ class FOVCalibThread(object):
             time.sleep(0.5) # let settle
             self._controller._logger.info('Capturing image')
             moved_image = self.capture_image()
-
+            if len(moved_image.shape)==3:
+                moved_image = np.mean(moved_image, -1)
             if iStep > 0:
                 # Calculate pixel displacement here.
                 # This function should be defined based on how you can compare images.
@@ -384,7 +385,7 @@ class FOVCalibThread(object):
                 pixel_displacements.append((pixel_shiftX/step, pixel_shiftY/step))
                 self._controller._logger.info('PixelShift: %s / %s', str(pixel_shiftX/step), str(pixel_shiftY/step))
             steps += step
-            self.last_image = self.capture_image()  # Capture initial position
+            self.last_image = moved_image.copy()  # Capture initial position
         # Return to the zero position
         self.move_stage(initial_position, isAbsolute=True)
 

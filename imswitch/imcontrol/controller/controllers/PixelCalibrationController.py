@@ -182,7 +182,19 @@ class CSMExtension(object):
 
     def camera_stage_functions(self):
         """Return functions that allow us to interface with the microscope"""
-        grab_image = self._parent.detector.getLatestFrame
+        
+        def grabCroppedFrame(crop_size=512):
+            marray = self._parent.detector.getLatestFrame()
+            center_x, center_y = marray.shape[1] // 2, marray.shape[0] // 2
+
+            # Calculate the starting and ending indices for cropping
+            x_start = center_x - crop_size // 2
+            x_end = x_start + crop_size
+            y_start = center_y - crop_size // 2
+            y_end = y_start + crop_size
+
+            # Crop the center region
+            return marray[y_start:y_end, x_start:x_end]
 
         def getPositionList():
             posDict = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]].getPosition()
@@ -190,14 +202,15 @@ class CSMExtension(object):
 
         def movePosition(posList):
             stage = self._parent._master.positionersManager[self._parent._master.positionersManager.getAllDeviceNames()[0]]
-            stepSizeX = 0.315
-            stepSizeY = 0.315
+            stepSizeX = 1
+            stepSizeY = 1
             stage.move(value=posList[0]/stepSizeX, axis="X", is_absolute=True, is_blocking=True)
             stage.move(value=posList[1]/stepSizeY, axis="Y", is_absolute=True, is_blocking=True)
             self._parent._logger.info("Moving to: "+str(posList))
             if len(posList)>2:
                 stage.move(value=posList[2], axis="Z", is_absolute=True, is_blocking=True)
 
+        grab_image = grabCroppedFrame
         get_position = getPositionList
         move = movePosition
         wait = time.sleep(0.1)
@@ -214,6 +227,8 @@ class CSMExtension(object):
         result = calibrate_backlash_1d(tracker, move, direction)
         result["move_history"] = move.history
         return result
+    
+
 
     def calibrate_xy(self):
         """Move the microscope's stage in X and Y, to calibrate its relationship to the camera"""
@@ -231,12 +246,18 @@ class CSMExtension(object):
             "linear_calibration_x": cal_x,
             "linear_calibration_y": cal_y,
         }
-        CSM_DATAFILE_PATH = None
-        JSONEncoder = None
+        CSM_DATAFILE_PATH = os.path.join(dirtools.UserFileDirs.Root, "pixelcalibration_uc2.json")
 
-        with open(CSM_DATAFILE_PATH, "w") as f:
-            json.dump(data, f, cls=JSONEncoder)
+        # Custom JSON encoder for NumPy arrays
+        class NumpyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()  # Convert NumPy arrays to lists
+                return super(NumpyEncoder, self).default(obj)
 
+        # Convert NumPy arrays to lists and save the JSON file with the custom encoder
+        with open(CSM_DATAFILE_PATH, 'w') as json_file:
+            json.dump(data, json_file, indent=4, sort_keys=True, cls=NumpyEncoder)
         return data
 
     @property

@@ -91,9 +91,9 @@ class HistoScanController(LiveUpdatedController):
         ## update optimal scan parameters for tile-based scan
         try:
             overlap = 0.75
-            mFrame = self.detector.getLatestFrame()
-            bestScanSizeX = mFrame.shape[1]*self.detector.pixelSizeUm[-1]*overlap
-            bestScanSizeY = mFrame.shape[0]*self.detector.pixelSizeUm[-1]*overlap     
+            mFrameSize = (2000,3000) #self.detector.getLatestFrame().shape
+            bestScanSizeX = mFrameSize[1]*self.detector.pixelSizeUm[-1]*overlap
+            bestScanSizeY = mFrameSize[0]*self.detector.pixelSizeUm[-1]*overlap     
             self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
         except Exception as e:
             self._logger.error(e)
@@ -185,13 +185,16 @@ class HistoScanController(LiveUpdatedController):
         self._widget.stopButton2.setStyleSheet("background-color: red")
         self._widget.startButton2.setStyleSheet("background-color: green")
         illuSource = self._widget.getIlluminationSource()
-        def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY):
+        initialPosition = self.stages.getPosition()
+        initPosX = initialPosition["X"]
+        initPosY = initialPosition["Y"]
+        def computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY):
             positionList = []
             for i in range(numberTilesX):
                 for j in range(numberTilesY):
-                    positionList.append((i*stepSizeX, j*stepSizeY))
+                    positionList.append((i*stepSizeX+initPosX-numberTilesX//2, j*stepSizeY+initPosY-numberTilesY//2))
             return positionList
-        positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY)
+        positionList = computePositionList(numberTilesX, numberTilesY, stepSizeX, stepSizeY, initPosX, initPosY)
         minPosX = np.min(positionList, axis=0)[0]
         maxPosX = np.max(positionList, axis=0)[0]
         minPosY = np.min(positionList, axis=0)[1]

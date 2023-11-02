@@ -60,7 +60,7 @@ class ESP32StageManager(PositionerManager):
         self.homeEndstoppolarityX = positionerInfo.managerProperties.get('homeEndstoppolarityX', 1)
         self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
         self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
-        
+
         self.homeEndposReleaseX = positionerInfo.managerProperties.get('homeEndposReleaseX', 1)
         self.homeEndposReleaseY = positionerInfo.managerProperties.get('homeEndposReleaseY', 1)
         self.homeEndposReleaseZ = positionerInfo.managerProperties.get('homeEndposReleaseZ', 1)
@@ -114,17 +114,7 @@ class ESP32StageManager(PositionerManager):
         if self.homeOnStartX: self.home_x()
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
-        
-        # move motors by 1 step to get the current position #FIXME: This is a bug!
-        self.move(1, "X", is_absolute=False, is_blocking=True)
-        self.move(-1, "X", is_absolute=False, is_blocking=True)
-        self.move(1, "Y", is_absolute=False, is_blocking=True)
-        self.move(-1, "Y", is_absolute=False, is_blocking=True)
-        self.move(1, "Z", is_absolute=False, is_blocking=True)
-        self.move(-1, "Z", is_absolute=False, is_blocking=True)
-        self.move(1, "A", is_absolute=False, is_blocking=True)
-        self.move(-1, "A", is_absolute=False, is_blocking=True)
-        
+
         # get bootup position and write to GUI
         self._position = self.getPosition()
 
@@ -161,28 +151,28 @@ class ESP32StageManager(PositionerManager):
             if axis == "A": acceleration = self.acceleration["A"]
             if axis == "XY": acceleration = (self.acceleration["X"], self.acceleration["Y"])
             if axis == "XYZ": acceleration = (self.acceleration["X"], self.acceleration["Y"], self.acceleration["Z"])
-        if axis == 'X':
+        if axis == 'X' and speed >0:
             # don't move to negative positions
             if self.limitXenabled and is_absolute and value < 0: return
             elif self.limitXenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_x(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'Y':
+        elif axis == 'Y' and speed >0:
             # don't move to negative positions
             if self.limitYenabled and is_absolute and value < 0: return
             elif self.limitYenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_y(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'Z':
+        elif axis == 'Z' and speed >0:
             # don't move to negative positions
             if self.limitZenabled and is_absolute and value < 0: return
             elif self.limitZenabled and not is_absolute and self._position[axis] + value < 0: return
             self._motor.move_z(value, speed, acceleration=acceleration, is_absolute=is_absolute, is_enabled=isEnable, is_blocking=is_blocking, is_dualaxis=self.isDualAxis, timeout=timeout)
             if not is_absolute: self._position[axis] = self._position[axis] + value
             else: self._position[axis] = value
-        elif axis == 'A':
+        elif axis == 'A' and speed >0:
             # don't move to negative positions
             #if is_absolute and value < 0: return
             #elif not is_absolute and self._position[axis] + value < 0: return
@@ -206,8 +196,8 @@ class ESP32StageManager(PositionerManager):
                 else: self._position[iaxis] = value[i]
         else:
             self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
-            
-    
+
+
 
 
     def measure(self, sensorID=0, NAvg=100):
@@ -240,7 +230,7 @@ class ESP32StageManager(PositionerManager):
     def setPositionOnDevice(self, value, axis):
         self.setPosition(value, axis)
         self._motor.set_position(axis, value)
-        
+
     def closeEvent(self):
         pass
 

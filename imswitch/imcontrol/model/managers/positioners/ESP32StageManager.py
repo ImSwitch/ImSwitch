@@ -114,6 +114,17 @@ class ESP32StageManager(PositionerManager):
         if self.homeOnStartX: self.home_x()
         if self.homeOnStartY: self.home_y()
         if self.homeOnStartZ: self.home_z()
+        
+        # move motors by 1 step to get the current position #FIXME: This is a bug!
+        self.move(1, "X", is_absolute=False, is_blocking=True)
+        self.move(-1, "X", is_absolute=False, is_blocking=True)
+        self.move(1, "Y", is_absolute=False, is_blocking=True)
+        self.move(-1, "Y", is_absolute=False, is_blocking=True)
+        self.move(1, "Z", is_absolute=False, is_blocking=True)
+        self.move(-1, "Z", is_absolute=False, is_blocking=True)
+        self.move(1, "A", is_absolute=False, is_blocking=True)
+        self.move(-1, "A", is_absolute=False, is_blocking=True)
+        
         # get bootup position and write to GUI
         self._position = self.getPosition()
 

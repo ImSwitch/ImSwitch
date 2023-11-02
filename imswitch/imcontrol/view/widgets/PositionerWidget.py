@@ -67,7 +67,7 @@ class PositionerWidget(Widget):
 
             if hasStop:
                 self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop ' + parNameSuffix)
-                self.grid.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners+1, 6)
+                self.grid.addWidget(self.pars['Stop' + parNameSuffix], 2*self.numPositioners+1, 6)
 
                 self.pars['Stop' + parNameSuffix].clicked.connect(
                     lambda *args, axis=axis: self.sigStopAxisClicked.emit(positionerName, axis)

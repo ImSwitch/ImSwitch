@@ -54,9 +54,19 @@ class UC2ConfigWidget(Widget):
         motorsLayout.addWidget(self.motorZLabel)
         motorsLayout.addWidget(self.motorZEdit)
 
-        # Button to set motor positions
-        self.setPositionsBtn = QPushButton("Set Motor Positions", self)
+        # Button to set motor positions per Axis 
+        # Layout for motor positions
+        motorsBtnLayout = QHBoxLayout()
 
+        self.setPositionXBtn = QPushButton("Set Motor X Position", self)
+        self.setPositionYBtn = QPushButton("Set Motor Y Position", self)
+        self.setPositionZBtn = QPushButton("Set Motor Z Position", self)
+        self.setPositionABtn = QPushButton("Set Motor A Position", self)
+        motorsBtnLayout.addWidget(self.setPositionXBtn)
+        motorsBtnLayout.addWidget(self.setPositionYBtn)
+        motorsBtnLayout.addWidget(self.setPositionZBtn)
+        motorsBtnLayout.addWidget(self.setPositionABtn)
+        
         # Button for motor auto enable
         self.autoEnableBtn = QPushButton("Set Auto Enable", self)
         self.unsetAutoEnableBtn = QPushButton("Unset Auto Enable", self)
@@ -65,7 +75,7 @@ class UC2ConfigWidget(Widget):
         mainLayout.addLayout(reconnectLayout)
         mainLayout.addWidget(self.btpairingButton)
         mainLayout.addLayout(motorsLayout)
-        mainLayout.addWidget(self.setPositionsBtn)
+        mainLayout.addWidget(motorsBtnLayout)
         mainLayout.addWidget(self.autoEnableBtn)
         mainLayout.addWidget(self.unsetAutoEnableBtn)
 

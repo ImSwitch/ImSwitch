@@ -16,7 +16,11 @@ class UC2ConfigController(ImConWidgetController):
         self.__logger = initLogger(self)
 
         # Connect buttons to the logic handlers
-        self._widget.setPositionsBtn.clicked.connect(self.set_positions)
+        self._widget.setPositionsXBtn.clicked.connect(self.set_positionX)
+        self._widget.setPositionsYBtn.clicked.connect(self.set_positionY)
+        self._widget.setPositionsZBtn.clicked.connect(self.set_positionZ)
+        self._widget.setPositionsABtn.clicked.connect(self.set_positionA)
+        
         self._widget.autoEnableBtn.clicked.connect(self.set_auto_enable)
         self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
         self._widget.reconnectButton.clicked.connect(self.reconnect)
@@ -32,10 +36,10 @@ class UC2ConfigController(ImConWidgetController):
         # Add your logic to set motor positions here.
         self.__logger.debug(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
         # push the positions to the motor controller
-        self.stages.setPositionOnDevice(value=float(a), axis="A")
-        self.stages.setPositionOnDevice(value=float(x), axis="X")
-        self.stages.setPositionOnDevice(value=float(y), axis="Y")
-        self.stages.setPositionOnDevice(value=float(z), axis="Z")
+        if a is not None: self.stages.setPositionOnDevice(value=float(a), axis="A")
+        if x is not None:  self.stages.setPositionOnDevice(value=float(x), axis="X")
+        if y is not None: self.stages.setPositionOnDevice(value=float(y), axis="Y")
+        if z is not None: self.stages.setPositionOnDevice(value=float(z), axis="Z")
         
         # retrieve the positions from the motor controller
         positions = self.stages.getPosition()
@@ -57,13 +61,22 @@ class UC2ConfigController(ImConWidgetController):
         # Add your logic to unset auto-enable for the motors here.
         self.stages.enalbeMotors(enable=True, enableauto=False)
 
-    def set_positions(self):
-        a = self._widget.motorAEdit.text()
+    def set_positionX(self):
         x = self._widget.motorXEdit.text()
-        y = self._widget.motorYEdit.text()
-        z = self._widget.motorZEdit.text()
-        self.set_motor_positions(a, x, y, z)
+        self.set_motor_positions(None, x, None, None)
 
+    def set_positionY(self):
+        y = self._widget.motorYEdit.text()
+        self.set_motor_positions(None, None, y, None)
+        
+    def set_positionZ(self):
+        z = self._widget.motorZEdit.text()
+        self.set_motor_positions(None, None, None, z)
+        
+    def set_positionA(self):
+        a = self._widget.motorAEdit.text()
+        self.set_motor_positions(a, None, None, None)
+        
     def reconnectThread(self):
         self._master.UC2ConfigManager.initSerial()
         self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))

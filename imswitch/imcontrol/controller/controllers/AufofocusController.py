@@ -148,6 +148,7 @@ class AutofocusController(ImConWidgetController):
             mAllImages.append(mImg)
 
         allfocusvalsList = mProcessor.getFocusValueList(nFrameExpected=Nz)
+        mProcessor.stop()
 
         if 0: # only for debugging
             allProcessedFrames = mProcessor.getAllProcessedSlices()
@@ -202,6 +203,7 @@ class FrameProcessor:
         self.allLaplace = []
         self.nGauss = nGauss
         self.nCropsize = nCropsize
+        self.isRunning = True
 
 
     def setFlatfieldFrame(self, flatfieldFrame):
@@ -213,7 +215,7 @@ class FrameProcessor:
 
     def process_frames(self):
         """ Continuously process frames from the queue """
-        while True:
+        while self.isRunning:
             img, iz = self.frame_queue.get()
             self.process_frame(img, iz)
 
@@ -248,6 +250,9 @@ class FrameProcessor:
             else:
                 focusquality = 0
         self.allfocusvals.append(focusquality)
+
+    def stop(self):
+        self.isRunning = False
 
     @staticmethod
     def extract(marray, crop_size):

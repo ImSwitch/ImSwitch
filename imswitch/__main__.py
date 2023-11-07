@@ -22,12 +22,6 @@ def main():
         
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
-    # use only if available
-    #if "imblockly" in enabledModuleIds:
-    #    try:
-    #        from imswitch import imblockly
-    #    except:
-    #        enabledModuleIds.remove("imblockly")
 
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in enabledModuleIds]
@@ -88,7 +82,7 @@ if __name__ == '__main__':
     main()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

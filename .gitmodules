@@ -1,3 +1,3 @@
-[submodule "UC2REST"]
-	path = UC2REST
-	url = https://github.com/openUC2/UC2-REST
+[submodule "imswitch/app"]
+	path = imswitch/app
+	url = https://github.com/beniroquai/ImSwitch-fastapi-gui

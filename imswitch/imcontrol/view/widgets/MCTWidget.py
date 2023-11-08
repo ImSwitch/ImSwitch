@@ -14,6 +14,7 @@ class MCTWidget(NapariHybridWidget):
     sigMCTShowLast = QtCore.Signal(bool)  # (enabled)
     sigMCTStop = QtCore.Signal(bool)  # (enabled)
     sigMCTStart = QtCore.Signal(bool)  # (enabled)
+    sigMCTSelectScanCoordinates = QtCore.Signal(bool)
 
 
     sigShowToggled = QtCore.Signal(bool)  # (enabled)
@@ -46,6 +47,17 @@ class MCTWidget(NapariHybridWidget):
         self.mctValueZmin = QtWidgets.QLineEdit('-100')
         self.mctValueZmax = QtWidgets.QLineEdit('100')
         self.mctValueZsteps = QtWidgets.QLineEdit('10')
+        
+        # xy-scanning
+        self.mctLabelXScan  = QtWidgets.QLabel('X Scan (min,max,steps):')        
+        self.mctValueXmin = QtWidgets.QLineEdit('-1000')
+        self.mctValueXmax = QtWidgets.QLineEdit('1000')
+        self.mctValueXsteps = QtWidgets.QLineEdit('100')
+        
+        self.mctLabelYScan  = QtWidgets.QLabel('Y Scan (min,max,steps):')        
+        self.mctValueYmin = QtWidgets.QLineEdit('-1000')
+        self.mctValueYmax = QtWidgets.QLineEdit('1000')
+        self.mctValueYsteps = QtWidgets.QLineEdit('100')
         
         # autofocus
         self.autofocusLabel = QtWidgets.QLabel('Autofocus (range, steps, every n-th measurement): ')        
@@ -96,6 +108,13 @@ class MCTWidget(NapariHybridWidget):
         self.mctEditFileName  = QtWidgets.QLineEdit('MCT')
         self.mctNImages  = QtWidgets.QLabel('Number of images: ')
 
+        # loading scan position list
+        self.mctLabelScanPositionList = QtWidgets.QLabel("Scan Position List:")
+        self.mctSelectScanPositionList = guitools.BetterPushButton('Select XY Coordinates')
+        self.mctSelectScanPositionList.setCheckable(True)
+        self.mctSelectScanPositionList.toggled.connect(self.sigMCTSelectScanCoordinates)
+
+        # Start scan
         self.mctStartButton = guitools.BetterPushButton('Start')
         self.mctStartButton.setCheckable(False)
         self.mctStartButton.toggled.connect(self.sigMCTStart)
@@ -115,6 +134,10 @@ class MCTWidget(NapariHybridWidget):
         self.mctDoZStack = QtWidgets.QCheckBox('Perform Z-Stack')
         self.mctDoZStack.setCheckable(True)
         
+        self.mctDoXYScan = QtWidgets.QCheckBox('Perform XY Scan')
+        self.mctDoXYScan.setCheckable(True)
+        
+        
         # Defining layout
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
@@ -123,36 +146,53 @@ class MCTWidget(NapariHybridWidget):
         self.grid.addWidget(self.mctValueTimePeriod, 0, 1, 1, 1)
         self.grid.addWidget(self.mctLabelTimeDuration, 0, 2, 1, 1)
         self.grid.addWidget(self.mctValueTimeDuration, 0, 3, 1, 1)
+        #z-stack
         self.grid.addWidget(self.mctLabelZStack, 1, 0, 1, 1)
         self.grid.addWidget(self.mctValueZmin, 1, 1, 1, 1)
         self.grid.addWidget(self.mctValueZmax, 1, 2, 1, 1)
         self.grid.addWidget(self.mctValueZsteps, 1, 3, 1, 1)
-        self.grid.addWidget(self.mctLabelLaser1, 2, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser1, 2, 1, 1, 3)
-        self.grid.addWidget(self.mctLabelLaser2, 3, 0, 1, 1)
-        self.grid.addWidget(self.sliderLaser2, 3, 1, 1, 3)        
-        self.grid.addWidget(self.mctLabelLED, 4, 0, 1, 1)
-        self.grid.addWidget(self.sliderLED, 4, 1, 1, 3)
-
-        self.grid.addWidget(self.mctLabelFileName, 5, 0, 1, 1)
-        self.grid.addWidget(self.mctEditFileName, 5, 1, 1, 1)
-        self.grid.addWidget(self.mctNImages, 5, 2, 1, 1)
-        self.grid.addWidget(self.mctStartButton, 8, 0, 1, 1)
-        self.grid.addWidget(self.mctStopButton, 8, 1, 1, 1)
-        self.grid.addWidget(self.mctShowLastButton,8, 2, 1, 1)
-        self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
         
-        self.grid.addWidget(self.mctDoZStack, 5, 3, 1, 1)
+        #xy-scanning
+        self.grid.addWidget(self.mctLabelXScan, 2, 0, 1, 1)
+        self.grid.addWidget(self.mctValueXmin, 2, 1, 1, 1)
+        self.grid.addWidget(self.mctValueXmax, 2, 2, 1, 1)
+        self.grid.addWidget(self.mctValueXsteps, 2, 3, 1, 1)
 
-        self.grid.addWidget(self.autofocusLabel, 6, 0, 1, 1)
-        self.grid.addWidget(self.autofocusRange, 6, 1, 1, 1)
-        self.grid.addWidget(self.autofocusSteps, 6, 2, 1, 1)
-        self.grid.addWidget(self.autofocusPeriod, 6, 3, 1, 1)
+        self.grid.addWidget(self.mctLabelYScan, 3, 0, 1, 1)
+        self.grid.addWidget(self.mctValueYmin, 3, 1, 1, 1)
+        self.grid.addWidget(self.mctValueYmax, 3, 2, 1, 1)
+        self.grid.addWidget(self.mctValueYsteps, 3, 3, 1, 1)
+
+        self.grid.addWidget(self.mctLabelLaser1, 4, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser1, 4, 1, 1, 3)
+        self.grid.addWidget(self.mctLabelLaser2, 5, 0, 1, 1)
+        self.grid.addWidget(self.sliderLaser2, 5, 1, 1, 3)        
+        self.grid.addWidget(self.mctLabelLED, 6, 0, 1, 1)
+        self.grid.addWidget(self.sliderLED, 6, 1, 1, 3)
+
+        # filesettings
+        self.grid.addWidget(self.mctLabelFileName, 7, 0, 1, 1)
+        self.grid.addWidget(self.mctEditFileName, 7, 1, 1, 1)
+        self.grid.addWidget(self.mctNImages, 7, 2, 1, 1)
+        self.grid.addWidget(self.mctDoZStack, 7, 3, 1, 1)
         
-        self.grid.addWidget(self.autofocusSelectionLabel, 7, 0, 1, 1)        
-        self.grid.addWidget(self.autofocusLaser1Checkbox, 7, 1, 1, 1)
-        self.grid.addWidget(self.autofocusLaser2Checkbox, 7, 2, 1, 1)
-        self.grid.addWidget(self.autofocusLED1Checkbox, 7, 3, 1, 1)
+        # autofocus
+        self.grid.addWidget(self.autofocusLabel, 8, 0, 1, 1)
+        self.grid.addWidget(self.autofocusRange, 8, 1, 1, 1)
+        self.grid.addWidget(self.autofocusSteps, 8, 2, 1, 1)
+        self.grid.addWidget(self.autofocusPeriod, 8, 3, 1, 1)
+        
+        self.grid.addWidget(self.autofocusSelectionLabel, 9, 0, 1, 1)        
+        self.grid.addWidget(self.autofocusLaser1Checkbox, 9, 1, 1, 1)
+        self.grid.addWidget(self.autofocusLaser2Checkbox, 9, 2, 1, 1)
+        self.grid.addWidget(self.autofocusLED1Checkbox, 9, 3, 1, 1)
+
+        # start stop
+        self.grid.addWidget(self.mctStartButton, 10, 0, 1, 1)
+        self.grid.addWidget(self.mctStopButton, 10, 1, 1, 1)
+        self.grid.addWidget(self.mctShowLastButton, 10, 2, 1, 1)
+        self.grid.addWidget(self.mctDoXYScan, 10, 3, 1, 1)
+        # self.grid.addWidget(self.mctInitFilterButton,8, 3, 1, 1)
         
         self.layer = None
         
@@ -197,10 +237,12 @@ class MCTWidget(NapariHybridWidget):
         if self.layer is not None:
             return self.img.image
         
-    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1)):
+    def setImage(self, im, colormap="gray", name="", pixelsize=(1,1,1), translation=(0,0,0)):
+        if len(im.shape) == 2:
+            translation = (translation[0], translation[1])
         if self.layer is None or name not in self.viewer.layers:
             self.layer = self.viewer.add_image(im, rgb=False, colormap=colormap, 
-                                               scale=pixelsize,
+                                               scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
         self.layer.data = im
         
@@ -213,6 +255,21 @@ class MCTWidget(NapariHybridWidget):
         
         return valueZmin, valueZmax, valueZsteps, valueZenabled
  
+ 
+    def getXYScanValues(self):
+        valueXmin = -abs(float(self.mctValueXmin.text()))
+        valueXmax = float(self.mctValueXmax.text())
+        valueXsteps = float(self.mctValueXsteps.text())
+        
+        valueYmin = -abs(float(self.mctValueYmin.text()))
+        valueYmax = float(self.mctValueYmax.text())
+        valueYsteps = float(self.mctValueYsteps.text())
+        
+        valueXYenabled = bool(self.mctDoXYScan.isChecked())
+        
+        return valueXmin, valueXmax, valueXsteps, valueYmin, valueYmax, valueYsteps, valueXYenabled
+ 
+ 
     def getTimelapseValues(self):
         mctValueTimePeriod = float(self.mctValueTimePeriod.text())
         mctValueTimeDuration = int(self.mctValueTimeDuration.text())
@@ -222,14 +279,14 @@ class MCTWidget(NapariHybridWidget):
         mctEditFileName = self.mctEditFileName.text()
         return mctEditFileName
     
-    def setNImages(self, nImages):
+    def setnImagesTaken(self, nImages):
         nImages2Do = self.getTimelapseValues()[-1]
         self.mctNImages.setText('Number of images: '+str(nImages) + " / " + str(nImages2Do))
     
     
     
         
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -23,6 +23,8 @@ class SIMDisplay(QtWidgets.QLabel):
         self.hasShownMonitorWarning = False
 
     def setMonitor(self, monitor, updateImage=False):
+        if monitor is None:
+            monitor = 0
         app = QtWidgets.QApplication.instance()
         screens = app.screens()
 
@@ -46,27 +48,25 @@ class SIMDisplay(QtWidgets.QLabel):
         if updateImage:
             self.updateImage(self.imgArr)
 
-    def updateImage(self, imgArr):
+    def updateImage(self, imgArr, isFlip=True):
         if len(imgArr.shape)<3:
             imgArr=np.stack((imgArr,imgArr,imgArr), 2)
-
-
         self.imgArr = np.transpose(imgArr, (1,0,2))
-
+        if isFlip:
+            self.imgArr = np.flip(self.imgArr,0)
         if not self.isVisible():
             return
-
-        imgScaled = skimage.img_as_ubyte(
-            skimage.transform.resize(self.imgArr, (self.imgHeight, self.imgWidth), order=0)
-        )
-
+        # todo: This operation is expensive! -> skimage.transform.resize( do that outside the thread!!
+        #imgScaled = skimage.img_as_ubyte(
+        #    skimage.transform.resize(self.imgArr, (self.imgHeight, self.imgWidth), order=0)
+        #)
+        imgScaled = self.imgArr.copy()
         qimage = QtGui.QImage(
             imgScaled, imgScaled.shape[1], imgScaled.shape[0], QtGui.QImage.Format_RGB888
         )
-
         qpixmap = QtGui.QPixmap(qimage)
         self.setPixmap(qpixmap)
-
+        
     def setVisible(self, visible):
         super().setVisible(visible)
 
@@ -101,7 +101,7 @@ class SIMDisplay(QtWidgets.QLabel):
         self.sigClosed.emit()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

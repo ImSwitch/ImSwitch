@@ -1,8 +1,9 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
-    DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager,
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager,
-    ScanManager, SIMManager, LEDMatrixsManager, MCTManager, ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager
+    DetectorsManager, LasersManager, MultiManager, PositionersManager,
+    RecordingManager, RS232sManager, SLMManager, SIMManager, DPCManager, LEDMatrixsManager, MCTManager, ROIScanManager, MockXXManager, WebRTCManager, HyphaManager,
+    ISMManager, UC2ConfigManager, AutofocusManager, HistoScanManager, PixelCalibrationManager, LightsheetManager, NidaqManager, FOVLockManager,
+    StandManager, RotatorsManager, JetsonNanoManager, LEDsManager, ScanManagerBase, ScanManagerPointScan, ScanManagerMoNaLISA, FlatfieldManager
 )
 
 
@@ -25,7 +26,7 @@ class MasterController:
             'rs232sManager': self.rs232sManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
@@ -33,18 +34,29 @@ class MasterController:
                                                      **lowLevelManagers)
         self.LEDMatrixsManager = LEDMatrixsManager(self.__setupInfo.LEDMatrixs,
                                            **lowLevelManagers)
-
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
-                                               **lowLevelManagers)
+                                            **lowLevelManagers)
 
+        self.LEDsManager = LEDsManager(self.__setupInfo.LEDs)
+        #self.scanManager = ScanManager(self.__setupInfo)
         self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
         self.UC2ConfigManager = UC2ConfigManager(self.__setupInfo.uc2Config, lowLevelManagers)
         self.simManager = SIMManager(self.__setupInfo.sim)
+        self.dpcManager = DPCManager(self.__setupInfo.dpc)
         self.mctManager = MCTManager(self.__setupInfo.mct)
+        self.nidaqManager = NidaqManager(self.__setupInfo.nidaq)
+        self.roiscanManager = ROIScanManager(self.__setupInfo.roiscan)
+        self.lightsheetManager = LightsheetManager(self.__setupInfo.lightsheet)
+        self.webrtcManager = WebRTCManager(self.__setupInfo.webrtc)
+        self.hyphaManager = HyphaManager(self.__setupInfo.hypha)
+        self.MockXXManager = MockXXManager(self.__setupInfo.mockxx)
+        self.jetsonnanoManager = JetsonNanoManager(self.__setupInfo.jetsonnano)
         self.HistoScanManager = HistoScanManager(self.__setupInfo.HistoScan)
+        self.FlatfieldManager = FlatfieldManager(self.__setupInfo.Flatfield)
         self.PixelCalibrationManager = PixelCalibrationManager(self.__setupInfo.PixelCalibration)
         self.AutoFocusManager = AutofocusManager(self.__setupInfo.autofocus)
+        self.FOVLockManager = FOVLockManager(self.__setupInfo.fovLock)
         self.ismManager = ISMManager(self.__setupInfo.ism)
 
         if self.__setupInfo.microscopeStand:
@@ -99,7 +111,7 @@ class MasterController:
                 attr.finalize()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

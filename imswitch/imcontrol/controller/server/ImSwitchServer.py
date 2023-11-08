@@ -1,11 +1,25 @@
+import threading
 import Pyro5
 import Pyro5.server
 from imswitch.imcommon.framework import Worker
 from imswitch.imcommon.model import initLogger
 from ._serialize import register_serializers
-from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from io import BytesIO
+import numpy as np
+from PIL import Image
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+import asyncio
+from multiprocessing import Queue
 import uvicorn
 from functools import wraps
+import cv2
+import os
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import os
+import threading
 
 app = FastAPI()
 
@@ -14,8 +28,7 @@ class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
         super().__init__()
-
-        self.__logger = initLogger(self, tryInheritParent=True)
+        
         self._api = api
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
@@ -24,9 +37,17 @@ class ImSwitchServer(Worker):
         self._paused = False
         self._canceled = False
 
+        self.__logger =  initLogger(self)
+
+
     def run(self):
+
+        # serve APP
+        self.startAPP()
+
+        # serve the fastapi
         self.createAPI()
-        uvicorn.run(app)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -42,22 +63,75 @@ class ImSwitchServer(Worker):
 
         except:
             self.__loger.error("Couldn't start server.")
-        self.__logger.debug("Loop Finished")
+        #self.__logger.debug("Loop Finished")
 
     def stop(self):
+        self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
+
+
+    # SRC: https://code-maven.com/static-server-in-python
+    class StaticServer(BaseHTTPRequestHandler):
+
+        def do_GET(self):
+            root = os.path.dirname(os.path.abspath(__file__).split("imswitch")[0]+"imswitch/app/public/")
+
+            if self.path == '/':
+                filename = root + '/index.html'
+            else:
+                filename = root + self.path
+
+            self.send_response(200)
+            if filename[-4:] == '.css':
+                self.send_header('Content-type', 'text/css')
+            elif filename[-5:] == '.json':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-3:] == '.js':
+                self.send_header('Content-type', 'application/javascript')
+            elif filename[-4:] == '.ico':
+                self.send_header('Content-type', 'image/x-icon')
+            else:
+                self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            with open(filename, 'rb') as fh:
+                html = fh.read()
+                #html = bytes(html, 'utf8')
+                self.wfile.write(html)
+
+    def start_server(self, httpd):
+        #print('Starting httpd')
+        httpd.serve_forever()
+
+    def startAPP(self, server_class=HTTPServer, handler_class=StaticServer, port=5001):
+        server_address = ('', port)
+        try:
+            httpd = server_class(server_address, handler_class)
+            t = threading.Thread(target=self.start_server, args=(httpd,))
+            t.start()
+
+            print('httpd started on port {}'.format(port))
+        except Exception as e:
+            print('httpd failed to start on port {}'.format(port))
+            print(e)
+            return
+
+
 
     @app.get("/")
     def createAPI(self):
         api_dict = self._api._asdict()
         functions = api_dict.keys()
 
+
         def includeAPI(str, func):
+            #self.__logger.debug(str)
+            #self.__logger.debug(func)
             @app.get(str)
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapper
+
 
 
         '''
@@ -141,6 +215,7 @@ class ImSwitchServer(Worker):
                 module = func.module
             else:
                 module = func.__module__.split('.')[-1]
+            #DEBUGGING: self.__logger.debug("/"+module+"/"+f)
             self.func = includePyro(includeAPI("/"+module+"/"+f, func))
 
 

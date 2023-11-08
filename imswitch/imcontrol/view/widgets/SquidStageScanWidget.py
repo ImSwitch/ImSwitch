@@ -57,6 +57,7 @@ class SquidStageScanWidget(NapariHybridWidget):
         
         self.btnStart = guitools.BetterPushButton('Start Scan')
         self.btnHome = guitools.BetterPushButton('Home')
+        self.btnStop = guitools.BetterPushButton('STOP!')
 
         self.labelCurrentX = QtWidgets.QLabel('Current Pos. (X):')
         self.labelCurrentY = QtWidgets.QLabel('Current Pos. (Y):')
@@ -68,6 +69,9 @@ class SquidStageScanWidget(NapariHybridWidget):
 
         self.btnHome.setCheckable(True)
         self.btnHome.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Expanding)
+        self.btnStop.setCheckable(True)
+        self.btnStop.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Expanding)
 
         # Add elements to GridLayout
@@ -91,6 +95,7 @@ class SquidStageScanWidget(NapariHybridWidget):
         
         grid.addWidget(self.btnStart, 4, 2, 1, 1)
         grid.addWidget(self.btnHome, 3, 2, 1, 1)
+        grid.addWidget(self.btnStop, 3, 2, 1, 1)
 
         # Connect signals
         #self.showCheck.toggled.connect(self.sigShowToggled)
@@ -127,7 +132,7 @@ class SquidStageScanWidget(NapariHybridWidget):
         self.layer.data = im
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

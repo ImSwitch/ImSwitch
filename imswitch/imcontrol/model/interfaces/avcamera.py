@@ -2,9 +2,14 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+
+
 try:
+    isVimba = True
     from pymba import Vimba, VimbaException
-except:
+except Exception as e:
+    print(e)
+    isVimba = False
     print("No pymba installed..")
     
 import collections
@@ -32,17 +37,24 @@ class CameraAV:
         self.hpos = 0 
         self.vpos = 0 
 
+
         
         # reserve some space for the framebuffer
         self.buffersize = 60
         self.frame_buffer = collections.deque(maxlen=self.buffersize)
+        self.buffersize = 60
+        self.frame_buffer = collections.deque(maxlen=self.buffersize)
         
         #%% starting the camera thread
-        self.vimba = self.startVimba()
-        self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
+        if isVimba:
+            self.vimba = self.startVimba()
+            self.openCamera(callback_fct=self.set_frame,is_init=True) # open camera and set callback for frame grabbing
 
-        # creating dummy frame
-        self.frame = np.zeros(self.shape)
+            # creating dummy frame
+            self.frame = np.zeros(self.shape)
+        else:
+            raise Exception("Camera not connected or pymba not installed?")
+                
 
     def start_live(self):
         # check if camera is open
@@ -126,7 +138,12 @@ class CameraAV:
         
     def getLast(self, is_resize=True):
         # get frame and save
-        #TODO: Napari only displays 8Bit?
+
+        # only return fresh frames
+        while(self.frame_id_last == self.frame_id and self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        
+        self.frame_id_last = self.frame_id
         return self.frame
 
     def getLastChunk(self):
@@ -259,7 +276,15 @@ class CameraAV:
             
             self.needs_reconnect = False
             self.is_camera_open = True
-            self.camera.arm('Continuous',callback_fct)
+            try:
+                self.camera.arm('Continuous',callback_fct)
+            except:
+                # probabyl we need to reconnect here
+                self.camera.close()
+                self.startVimba(is_restart = False)
+                self.camera = self.vimba.camera(0)
+                self.camera.open(1)
+                self.camera.arm('Continuous',callback_fct)
             self.__logger.debug("camera connected")
             self.SensorWidth = self.camera.feature("SensorWidth").value
             self.SensorHeight = self.camera.feature("SensorHeight").value
@@ -282,6 +307,8 @@ class CameraAV:
             self.frame = np.zeros(self.shape)
         self.frame_buffer.append(self.frame)
     
+    def flushBuffer(self):
+        self.frame_buffer.clear()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

@@ -63,11 +63,12 @@ class MockCameraPCO:
         
     def grabFrame(self, **kwargs):
         # simulate simple imaging system
-        img = nip.gaussf(self.ISample*self.IIllu,2)#+np.random.randn(self.SensorHeight, self.SensorWidth)*.1
+        img = self.ISample*self.IIllu
+        #img = nip.gaussf(img,2)#+np.random.randn(self.SensorHeight, self.SensorWidth)*.1
         img -= np.min(img)
         img /= np.max(img)
         time.sleep(0.1)
-        return np.int8(img*255)
+        return np.uint8(img*255)
 
     def getLast(self, is_resize=False):
         return self.grabFrame()
@@ -114,7 +115,7 @@ class MockCameraPCO:
                    
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

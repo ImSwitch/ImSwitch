@@ -3,6 +3,12 @@ import time
 from typing import Optional, Union, List
 import numpy as np
 
+from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, Response, HTTPException
+import cv2
+from PIL import Image
+import io
+
 from imswitch.imcommon.framework import Timer
 from imswitch.imcommon.model import ostools, APIExport
 from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
@@ -21,12 +27,17 @@ class RecordingController(ImConWidgetController):
                                                     condition=lambda c: c.forAcquisition)
         )
 
+        # Define a dictionary to store variables accessible to the function
+        self.shared_variables: dict[str, any] = {}
+
         self.settingAttr = False
         self.recording = False
         self.doneScan = False
         self.endedRecording = False
         self.lapseCurrent = -1
         self.lapseTotal = 0
+        
+        self.streamstarted = False
 
         self._widget.setsaveFormat(SaveFormat.HDF5.value)
         self._widget.setSnapSaveMode(SaveMode.Disk.value)
@@ -81,9 +92,13 @@ class RecordingController(ImConWidgetController):
         if saveMode == SaveMode.RAM:
             self._widget.setsaveFormat(SaveFormat.TIFF.value)
 
-    def snap(self, name=None):
+    def snap(self, name=None, mSaveFormat=None):
         """ Take a snap and save it to a file. """
         self.updateRecAttrs(isSnapping=True)
+
+        # by default save as it's noted in the widget
+        if mSaveFormat is None:
+            mSaveFormat = SaveFormat(self._widget.getSnapSaveMode())
 
         folder = self._widget.getRecFolder()
         if not os.path.exists(folder):
@@ -101,7 +116,7 @@ class RecordingController(ImConWidgetController):
         self._master.recordingManager.snap(detectorNames,
                                            savename,
                                            SaveMode(self._widget.getSnapSaveMode()),
-                                           SaveFormat(self._widget.getsaveFormat()),
+                                           mSaveFormat,
                                            attrs)
 
     def snapNumpy(self):
@@ -374,19 +389,123 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
+    def start_stream(self):
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
+        detectorManager = self._master.detectorsManager
+        detectorNum1Name = detectorManager.getAllDeviceNames()[0]
+        detectorNum1 = detectorManager[detectorNum1Name]
+        detectorNum1.startAcquisition()
+        
+        while True:
+            output_frame = detectorNum1.getLatestFrame()
+            if output_frame is None:
+                continue
+            (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
+            if not flag:
+                continue
+            self.manager.put(encodedImage)
     
-    '''
-    def snapImage(self, name=None) -> None:
-        self.snap(name)
-    '''
+    
+    def streamer(self):
+        from multiprocessing import Queue
+        if not self.streamstarted:
+            import threading
+            self.manager = Queue(maxsize=10)
+            threading.Thread(target=self.start_stream).start()
+            self.streamstarted = True
+        try:
+
+            while self.manager:
+                yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
+                    bytearray(self.manager.get()) + b'\r\n')
+        except GeneratorExit:
+            self.__logger.debug("cancelled")
+
+
+    @APIExport(runOnUIThread=False)
+    def video_feeder(self):
+        return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
+
+
+
+    #@app.post("/execute-function/")
+    @APIExport(runOnUIThread=False)
+    def executeFunction(self, code: str):
+        try:
+            # Create a new dictionary for local variables
+            local_variables = {'self': self}
+            global_variables = {'self': self}
+
+            # Execute the provided code within the context of the current FastAPI runtime
+            exec(code, globals(), local_variables)
+
+            # Add the local variables to the shared dictionary
+            self.shared_variables.update(local_variables)
+
+            return {"message": "Function executed successfully", "result": local_variables}
+        except Exception as e:
+            self._logger.error(e)
+            return HTTPException(detail=str(e), status_code=400)
+
+    @APIExport(runOnUIThread=False)
+    #@app.get("/get-variable/{variable_name}")
+    def getVariable(self, variable_name: str):
+        if variable_name in self.shared_variables:
+            return {"variable_value": self.shared_variables[variable_name]}
+        else:
+            return HTTPException(detail="Variable not found", status_code=404)
+
     @APIExport(runOnUIThread=True)
-    def snapImage(self, output: bool = False) -> Optional[np.ndarray]:
+    def snapImageToPath(self, fileName: str = "."):
+        """ Take a snap and save it to a .tiff file at the given fileName. """
+        self.snap(name = fileName, mSaveFormat=SaveFormat.TIFF)
+    
+    @APIExport(runOnUIThread=False)
+    def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
         """ Take a snap and save it to a .tiff file at the set file path. """
         if output:
-            return self.snapNumpy()
+            numpy_array_list = self.snapNumpy()
+            mDetector = list(numpy_array_list.keys())[0]
+            numpy_array = numpy_array_list[mDetector]
+            if toList:
+                return numpy_array.tolist()  # Convert the numpy array to a list
+            else:
+                return numpy_array
         else:
             self.snap()
 
+    @APIExport(runOnUIThread=False)
+    def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
+        '''
+        '''
+        # Create a 2D NumPy array representing the image
+        images = self.snapNumpy()
+
+        # get the image from the first detector if detectorName is not specified
+        if detectorName is None:
+            detectorName = self.getDetectorNamesToCapture()[0]
+
+        # get the image from the specified detector    
+        image = images[detectorName]
+
+        if resizeFactor <1:
+            image = self.resizeImage(image, resizeFactor)
+                
+        # eventually resize image to save bandwidth
+        resizeFactor
+        
+        # using an in-memory image
+        im = Image.fromarray(image)
+        
+        # save image to an in-memory bytes buffer
+        with io.BytesIO() as buf:
+            im.save(buf, format='PNG')
+            im_bytes = buf.getvalue()
+            
+        headers = {'Content-Disposition': 'inline; filename="test.png"'}
+        return Response(im_bytes, headers=headers, media_type='image/png')
 
     @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:
@@ -461,6 +580,33 @@ class RecordingController(ImConWidgetController):
         """ Sets the folder to save recordings into. """
         self._widget.setRecFolder(folderPath)
 
+    def resizeImage(self, image, scale_factor):
+        """
+        Resize the input image by a given scale factor using nearest neighbor interpolation.
+
+        Parameters:
+            image (numpy.ndarray): The input image. For RGB, shape should be (height, width, 3),
+                                for monochrome/grayscale, shape should be (height, width).
+            scale_factor (float): The scaling factor by which to resize the image.
+
+        Returns:
+            numpy.ndarray: The resized image.
+        """
+        if len(image.shape) == 3 and image.shape[2] == 3:  # RGB image
+            height, width, _ = image.shape
+        elif len(image.shape) == 2:  # Monochrome/grayscale image
+            height, width = image.shape
+        else:
+            raise ValueError("Invalid image shape. Supported shapes are (height, width, 3) for RGB and (height, width) for monochrome.")
+
+        new_height, new_width = int(height * scale_factor), int(width * scale_factor)
+
+        # Use OpenCV's resize function with nearest neighbor interpolation
+        resized_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+
+        return resized_image
+
+
 
 _attrCategory = 'Rec'
 _recModeAttr = 'Mode'
@@ -470,7 +616,7 @@ _lapseTimeAttr = 'LapseTime'
 _freqAttr = 'LapseFreq'
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

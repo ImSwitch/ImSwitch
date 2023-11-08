@@ -15,162 +15,104 @@ class UC2ConfigController(ImConWidgetController):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        self.UC2ConfigDir = os.path.join(dirtools.UserFileDirs.Root, 'imcontrol_UC2Config')
-        if not os.path.exists(self.UC2ConfigDir):
-            os.makedirs(self.UC2ConfigDir)
-            
-        # load config from device
-        self.mConfigDevice = self.loadConfigFromDevice()
-        # switch-back to old configuration
-        if len(self.mConfigDevice)<4:
-            self.mConfigDevice = self.loadDefaultConfig()
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Something's wrong with the \n device/firmware, please reflash/reconnect!")
+        # Connect buttons to the logic handlers
+        self._widget.setPositionXBtn.clicked.connect(self.set_positionX)
+        self._widget.setPositionYBtn.clicked.connect(self.set_positionY)
+        self._widget.setPositionZBtn.clicked.connect(self.set_positionZ)
+        self._widget.setPositionABtn.clicked.connect(self.set_positionA)
         
-        # display device configs
-        self.loadParams(config=self.mConfigDevice)
+        self._widget.autoEnableBtn.clicked.connect(self.set_auto_enable)
+        self._widget.unsetAutoEnableBtn.clicked.connect(self.unset_auto_enable)
+        self._widget.reconnectButton.clicked.connect(self.reconnect)
+        self._widget.btpairingButton.clicked.connect(self.btpairing)
+        self._widget.stopCommunicationButton.clicked.connect(self.interruptSerialCommunication)
         
-        # save parameters on the disk
-        self.defaultPinDefFile = "pinDef.json"
-        
-        if self._setupInfo.uc2Config is None:
-            self._widget.replaceWithError('UC2Config is not configured in your setup file.')
-            return
-        
-        self._widget.controlPanel.saveButton.clicked.connect(self.saveParams)
-        self._widget.controlPanel.loadButton.clicked.connect(self.loadParams)
-        self._widget.controlPanel.updateFirmwareDeviceButton.clicked.connect(self.updateFirmware)
-        self._widget.applyChangesButton.clicked.connect(self.applyParams)
-        
-        self.isFirmwareUpdating = False
-        
-    def loadConfigFromDevice(self):
-        return self._master.UC2ConfigManager.loadPinDefDevice() 
+        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
-    def loadDefaultConfig(self):
-        return self._master.UC2ConfigManager.loadDefaultConfig()
+        # update the gui elements 
+        self._commChannel.sigUpdateMotorPosition.emit()
 
-    def loadConfigToDevice(self, config):
-        pass
 
-    def saveParams(self):
-        UC2Config_info_dict = self.getInfoDict(self._widget.UC2ConfigParameterTree.p,
-                                         self._widget.pinDefParameterTree.p)
-        with open(os.path.join(self.UC2ConfigDir, self.defaultPinDefFile), 'w') as f:
-            json.dump(UC2Config_info_dict, f, indent=4)
-        
-    def getInfoDict(self, generalParams=None, pinDefParams=None):
-        state_general = None
-        state_pinDef = None
+        # force updating the position
+        # move motors by 1 step to get the current position #FIXME: This is a bug!
+        if "X" in self.stages.speed.keys():
+            self.stages.move(1, "X", is_absolute=False, is_blocking=True)
+            self.stages.move(-1, "X", is_absolute=False, is_blocking=True)
+        if "Y" in self.stages.speed.keys():
+            self.stages.move(1, "Y", is_absolute=False, is_blocking=True)
+            self.stages.move(-1, "Y", is_absolute=False, is_blocking=True)
+        if "Z" in self.stages.speed.keys():
+            self.stages.move(1, "Z", is_absolute=False, is_blocking=True)
+            self.stages.move(-1, "Z", is_absolute=False, is_blocking=True)
+        if "A" in self.stages.speed.keys():
+            self.stages.move(1, "A", is_absolute=False, is_blocking=True)
+            self.stages.move(-1, "A", is_absolute=False, is_blocking=True)
+        self._commChannel.sigUpdateMotorPosition.emit()
 
-        if generalParams is not None:
-            # create dict for general params
-            generalparamnames = ["radius", "sigma", "rotationAngle"]
-            state_general = {generalparamname: float(
-                generalParams.param("general").param(generalparamname).value()) for generalparamname
-                             in generalparamnames}
+    def set_motor_positions(self, a, x, y, z):
+        # Add your logic to set motor positions here.
+        self.__logger.debug(f"Setting motor positions: A={a}, X={x}, Y={y}, Z={z}")
+        # push the positions to the motor controller
+        if a is not None: self.stages.setPositionOnDevice(value=float(a), axis="A")
+        if x is not None:  self.stages.setPositionOnDevice(value=float(x), axis="X")
+        if y is not None: self.stages.setPositionOnDevice(value=float(y), axis="Y")
+        if z is not None: self.stages.setPositionOnDevice(value=float(z), axis="Z")
+        
+        # retrieve the positions from the motor controller
+        positions = self.stages.getPosition()
+        self._widget.reconnectDeviceLabel.setText("Motor positions: A="+str(positions["A"])+", X="+str(positions["X"])+", \n Y="+str(positions["Y"])+", Z="+str(positions["Z"]))
+        # update the GUI
+        self._commChannel.sigUpdateMotorPosition.emit()
 
-        if pinDefParams is not None:
-            # create dict for pinDefration params
-            pinDefparamnames = pinDefParams.childs[0].names
-            state_pinDef = {}
-            for key in pinDefparamnames:
-                state_pinDef[key] = int(pinDefParams.childs[0][key])
+    def interruptSerialCommunication(self):
+        self._master.UC2ConfigManager.interruptSerialCommunication()
+        self._widget.reconnectDeviceLabel.setText("We are intrrupting the last command")
+        
 
-        info_dict = {
-            "general": state_general,
-            "pinDef": state_pinDef
-        }
-        return info_dict
+    def set_auto_enable(self):
+        # Add your logic to auto-enable the motors here.
+        # get motor controller
+        self.stages.enalbeMotors(enableauto=True)
 
-    def loadParams(self, config=None):
-        if config is not None and config:
-            state_general = None # TODO: Implement
-            state_pinDef = config
+    def unset_auto_enable(self):
+        # Add your logic to unset auto-enable for the motors here.
+        self.stages.enalbeMotors(enable=True, enableauto=False)
+
+    def set_positionX(self):
+        x = self._widget.motorXEdit.text()
+        self.set_motor_positions(None, x, None, None)
+
+    def set_positionY(self):
+        y = self._widget.motorYEdit.text()
+        self.set_motor_positions(None, None, y, None)
         
-        else: # TODO: Enabling sideloading the configuration? But ESP will be offline anyway..
-            with open(os.path.join(self.UC2ConfigDir, self.defaultPinDefFile), 'rb') as f:
-                UC2Config_info_dict = json.load(f)
-                state_general = UC2Config_info_dict["general"]
-                state_pinDef = UC2Config_info_dict["pinDef"]
-        self.setParamTree(state_general=state_general, state_pinDef=state_pinDef)
-        #self._master.UC2ConfigManager.setGeneral(state_general)
-    
-    def updateFirmware(self, filename=None):
-        if not(self.isFirmwareUpdating):
-            self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(False)
-            threading.Thread(target=self.updateFirmwareThread, args=(filename,)).start()
-            self.isFirmwareUpdating = True
+    def set_positionZ(self):
+        z = self._widget.motorZEdit.text()
+        self.set_motor_positions(None, None, None, z)
         
-    def updateFirmwareThread(self, filename=None):
-        # 1. download firmware
-        self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Downloading firmware...')
-        FWdownloaded = self._master.UC2ConfigManager.downloadFirmware(filename)
+    def set_positionA(self):
+        a = self._widget.motorAEdit.text()
+        self.set_motor_positions(a, None, None, None)
         
-        # 2.1 close serial connection
-        
-        # 2.2 flash firmware
-        if FWdownloaded:
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Flashing firmware...')
-            FWflashed = self._master.UC2ConfigManager.flashFirmware()
-        else:
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware not downloaded.')
-            return
-        
-        
-        # 3. delete firmware
-        if FWflashed:
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Deleting firmware...')
-            self._master.UC2ConfigManager.removeFirmware()
-        else:
-            self._master.UC2ConfigManager.removeFirmware()
-            self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware not flashed.')
-            return
-        
-        self._widget.controlPanel.updateFirmwareDeviceLabel.setText('Firmware was flashed.')
-            
-        # 4. reestablish serial connection
+    def reconnectThread(self):
         self._master.UC2ConfigManager.initSerial()
-        self.isFirmwareUpdating = False
-        self._widget.controlPanel.updateFirmwareDeviceButton.setEnabled(True)
+        self._widget.reconnectDeviceLabel.setText("We are connected: "+str(self._master.UC2ConfigManager.isConnected()))
         
-    def removeFirmware(self, firmwarePath):
-        return self.firmwareUpdater.removeFirmware()
+    def reconnect(self):
+        self._logger.debug('Reconnecting to ESP32 device.')
+        self._widget.reconnectDeviceLabel.setText("Reconnecting to ESP32 device.")
+        mThread = threading.Thread(target=self.reconnectThread)
+        mThread.start()
 
-    def setParamTree(self, state_general, state_pinDef):
-        generalParams = self._widget.UC2ConfigParameterTree.p
-        pinDefParams = self._widget.pinDefParameterTree.p
-
-        if pinDefParams is not None:
-            # create dict for pinDefration params
-            pinDefparamnames = pinDefParams.childs[0].names
-            for key in pinDefparamnames:
-                try:
-                    pinDefParams.childs[0].param(key).setValue(state_pinDef[key])
-                except KeyError:
-                    pass
+    def btpairing(self):
+        self._logger.debug('Pairing BT device.')
+        mThread = threading.Thread(target=self._master.UC2ConfigManager.pairBT)
+        mThread.start()
+        mThread.join()
+        self._widget.reconnectDeviceLabel.setText("Bring the PS controller into pairing mode")
 
 
-    def applyParams(self):
-        UC2Config_info_dict = self.getInfoDict(generalParams=self._widget.UC2ConfigParameterTree.p,
-                                         pinDefParams=self._widget.pinDefParameterTree.p)
-        #self.applyGeneral(UC2Config_info_dict["general"])
-        self.mConfigOffline = UC2Config_info_dict["pinDef"]
-        self.applypinDef(self.mConfigOffline)
-
-    def applyGeneral(self, info_dict):
-        self._master.UC2ConfigManager.setGeneral(info_dict)
-        image = self._master.UC2ConfigManager.update(maskChange=True)
-        self.updateDisplayImage(image)
-        # self._logger.debug('Apply changes to general UC2Config mask parameters.')
-
-    def applypinDef(self, info_dict):
-        shared_items = self._master.UC2ConfigManager.setpinDef(info_dict)
-        self._widget.controlPanel.updateFirmwareDeviceLabel.setText("Udated items: "+str(len(shared_items))+"/"+str(len(info_dict)))
-        self._logger.debug('Apply changes to pinDef.')
-
-
-
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

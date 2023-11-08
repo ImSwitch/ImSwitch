@@ -10,15 +10,26 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
         if not self._master.detectorsManager.hasDevices():
             return
 
         self._lastShape = self._master.detectorsManager.execOnCurrent(lambda c: c.shape)
         self._shouldResetView = False
 
+        names =  self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
+        if type(names) is not list:
+            names = [names]
+        
+        isRGB = []
+        for name in names:
+            try:
+                isRGB.append(self._master.detectorsManager[name]._isRGB)
+            except:
+                isRGB.append(False)
+
         self._widget.setLiveViewLayers(
-            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition)
+            self._master.detectorsManager.getAllDeviceNames(lambda c: c.forAcquisition), isRGB
         )
 
         # Connect CommunicationChannel signals
@@ -30,6 +41,10 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigRemoveItemFromVb.connect(self.removeItemFromVb)
         self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
+
+
+
+
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""
@@ -105,7 +120,7 @@ class ImageController(LiveUpdatedController):
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

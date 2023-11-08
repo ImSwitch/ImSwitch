@@ -13,11 +13,11 @@ from imswitch.imcommon.model import initLogger
 
 class AutofocusManager(SignalInterface):
     
-    def __init__(self, mctInfo, *args, **kwargs):
+    def __init__(self, autofocusInfo, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

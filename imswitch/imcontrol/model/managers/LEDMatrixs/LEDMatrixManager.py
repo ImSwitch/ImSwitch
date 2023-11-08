@@ -27,14 +27,9 @@ class LEDMatrixManager(ABC):
         self.valueRangeStep = 1
         self.valueUnits = ""
         
-        if isModulated:
-            self.__freqRangeMin = laserInfo.freqRangeMin
-            self.__freqRangeMax = laserInfo.freqRangeMax
-            self.__freqRangeInit = laserInfo.freqRangeInit
-        else:
-            self.__freqRangeMin = None
-            self.__freqRangeMax = None
-            self.__freqRangeInit = None
+        self.__freqRangeMin = None
+        self.__freqRangeMax = None
+        self.__freqRangeInit = None
       
     def name(self) -> str:
         """ Unique LEDMatrix name, defined in the LEDMatrix's setup info. """
@@ -60,10 +55,14 @@ class LEDMatrixManager(ABC):
         """ Sets the value of the LEDMatrix. """
         pass
     
+    def setIndividualPattern(self, pattern, getReturn=False) -> None:
+        """ Sets the value of the LEDMatrix. """
+        pass
+    
 
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

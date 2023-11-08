@@ -20,15 +20,33 @@ class PositionerManager(ABC):
 
         self._positionerInfo = positionerInfo
         self._position = initialPosition
-
-        initialSpeed={
-            axis: 1000 for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        self.__axes = positionerInfo.axes
+        # SPEED
+        if positionerInfo.managerProperties.get("initialSpeed") is not None:
+            self._speed = positionerInfo.managerProperties["initialSpeed"]
+        else:
+            self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        self.setSpeed(positionerInfo.managerProperties.get("initialSpeed")) # force to display the correct values
+        
+        # HOME
+        if positionerInfo.managerProperties.get("initialIsHomed") is not None:
+            self._home = positionerInfo.managerProperties["initialIsHomed"]
+        else:
+            self._home = {axis: False for axis in self.__axes } 
+        # seetings for homign the axis
+        initialHome={
+            axis: False for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
         }   
-        self._speed = initialSpeed
+        self._home = initialHome # is homed?
+
+        # settings for stopping the axis
+        initialStop={
+            axis: False for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
+        }   
+        self._stop = initialStop # is stopped?
 
         self.__name = name
-
-        self.__axes = positionerInfo.axes
+        self.setSpeed(positionerInfo.managerProperties.get("initialSpeed"))
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         self.__resetOnClose = positionerInfo.resetOnClose
@@ -52,6 +70,18 @@ class PositionerManager(ABC):
         """ The speed of each axis. This is a dict in the format
         ``{ axis: position }``. """
         return self._speed
+
+    @property
+    def home(self) -> Dict[str, bool]:
+        """ The home of each axis. This is a dict in the format
+        ``{ axis: homed }``. """
+        return self._home
+
+    @property
+    def stop(self) -> Dict[str, bool]:
+        """ The stop of each axis. This is a dict in the format
+        ``{ axis: stopped }``. """
+        return self._stop
 
     @property
     def axes(self) -> List[str]:
@@ -80,20 +110,30 @@ class PositionerManager(ABC):
         the positioner controls multiple axes, the axis must be specified. """
         pass
 
-    @abstractmethod
+    # @abstractmethod
+    # def _set_position(self, pos, axis):
+    #     pass
+
     def setPosition(self, position: float, axis: str):
         """ Adjusts the positioner to the specified position and returns the
         new position. Derived classes will update the position field manually.
         If the positioner controls multiple axes, the axis must be specified.
         """
+        # result_pos = self._set_position(position, axis)
+        # self._position[axis] = result_pos
+
         pass
 
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass
+    
+    def enableMotors(self, enable: bool=None, autoenable:bool=None) -> None:
+        """ Enable/disable motors. """
+        pass
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

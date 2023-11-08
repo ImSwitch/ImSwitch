@@ -5,6 +5,7 @@
 
 from ctypes import *
 import sys
+import os
 
 if sys.platform == 'linux2' or sys.platform == 'linux':
     try:
@@ -13,10 +14,22 @@ if sys.platform == 'linux2' or sys.platform == 'linux':
         print('Cannot find libgxiapi.so.')
 elif sys.platform == 'win32':
     try:
+        mFWD = os.path.dirname(os.path.realpath(__file__))
+        try:
+            dll = WinDLL(mFWD+'\\dll\\DxImageProc.dll', winmode=0)
+        except:
+            dll = WinDLL('DxImageProc.dll', winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+
+            
+    except OSError:
+        print('Cannot find DxImageProc.dll.')
+        
+    '''
+    try:
         dll = WinDLL('DxImageProc.dll')
     except OSError:
         print('Cannot find DxImageProc.dll.')
-
+    '''
 else:
     dll = -1
 

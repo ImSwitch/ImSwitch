@@ -49,9 +49,6 @@ class ImConMainController(MainController):
         self.pickDatasetsController = self.__factory.createController(
             PickDatasetsController, self.__mainView.pickDatasetsDialog
         )
-        self.PickUC2BoardConfigController = self.__factory.createController(
-            PickUC2BoardConfigController, self.__mainView.PickUC2BoardConfigDialog
-        )
 
         self.controllers = {}
 
@@ -78,14 +75,15 @@ class ImConMainController(MainController):
         self.__shortcuts = generateShortcuts(shorcutObjs)
         self.__mainView.addShortcuts(self.__shortcuts)
 
-        if setupInfo.pyroServerInfo.active:
-            self._serverWorker = ImSwitchServer(self.__api, setupInfo)
-            self.__logger.debug(self.__api)
-            self._thread = Thread()
-            self._serverWorker.moveToThread(self._thread)
-            self._thread.started.connect(self._serverWorker.run)
-            self._thread.finished.connect(self._serverWorker.stop)
-            self._thread.start()
+
+        self.__logger.debug("Start ImSwitch Server")
+        self._serverWorker = ImSwitchServer(self.__api, setupInfo)
+        self.__logger.debug(self.__api)
+        self._thread = Thread()
+        self._serverWorker.moveToThread(self._thread)
+        self._thread.started.connect(self._serverWorker.run)
+        self._thread.finished.connect(self._serverWorker.stop)
+        self._thread.start()
 
     @property
     def api(self):
@@ -151,6 +149,12 @@ class ImConMainController(MainController):
         self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
+        
+        # seems like the imswitchserver is not closing from the closing event, need to hard kill it
+        #self._serverWorker.stop()
+        #self._thread.quit()
+        #self._thread.terminate()        
+        #del self._thread
 
     def pickUC2Config(self):
         """ Let the user change which UC2 Board config is used. """
@@ -166,9 +170,9 @@ class ImConMainController(MainController):
             return
 
         guitools.informationDisplay(self.__mainView, "Now select 'load from file' in the UC2 Config Widget and flash the pin-configuration")
-        
-        
-# Copyright (C) 2020-2021 ImSwitch developers
+
+
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

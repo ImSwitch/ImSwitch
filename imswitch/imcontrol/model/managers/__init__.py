@@ -20,7 +20,6 @@ from .UC2ConfigManager import UC2ConfigManager
 from .SIMManager import SIMManager
 from .DPCManager import DPCManager
 from .MCTManager import MCTManager
-from .nidaqManager import NidaqManager
 from .ROIScanManager import ROIScanManager
 from .LightsheetManager import LightsheetManager
 from .WebRTCManager import WebRTCManager

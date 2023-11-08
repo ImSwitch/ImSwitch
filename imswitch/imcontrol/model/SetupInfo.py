@@ -457,6 +457,10 @@ class OpentronsDeckInfo:
     default_positions: Optional[Dict[str, Any]]
     """ Default positions to be adopted when selecting amount of positions to observe in well."""
 
+@dataclass(frozen=True)
+class PulseStreamerInfo:
+    ipAddress: Optional[str] = None
+    """ IP address of Pulse Streamer hardware. """
 
 @dataclass(frozen=True)
 class PyroServerInfo:

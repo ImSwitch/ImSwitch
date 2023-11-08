@@ -168,6 +168,8 @@ class ROIScanController(ImConWidgetController):
         # move to all coordinates and take an image
         iImage = 0
         for i in range(nTimes):
+            if self.isRoiscanRunning:
+                return
             currentTime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             t0 = time.time()
             allFrames = []
@@ -212,7 +214,7 @@ class ROIScanController(ImConWidgetController):
             os.makedirs(dirPath)
 
         return newPath
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

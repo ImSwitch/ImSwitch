@@ -9,6 +9,9 @@ venv
 # C extensions
 *.so
 
+# Typescript APP
+imswitch/app
+
 # Distribution / packaging
 .Python
 env/

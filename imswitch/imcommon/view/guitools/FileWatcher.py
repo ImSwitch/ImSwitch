@@ -73,7 +73,7 @@ class FileWatcher(QtCore.QThread):
             f.write(json.dumps(self._log, indent=4))
 
 # Adapted from https://towardsdatascience.com/implementing-a-file-watcher-in-python-73f8356a425d
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

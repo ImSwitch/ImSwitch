@@ -289,7 +289,7 @@ class ProcessDataThread(Thread):
 
         if 0:
             pixelShift = self.find_shift_feature_based(self.lastimg, self.latestimg)
-            print(f"Shift (Feature-Based): {shift_feature_based}")
+            print(f"Shift (Feature-Based): {pixelShift}")
         elif 1:
             img1 = np.float32(self.lastimg)
             img2 = np.float32(self.latestimg)

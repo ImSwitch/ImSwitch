@@ -1,20 +1,38 @@
-import numpy as np
-
+import cv2
+from platform import system
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter, DetectorListParameter
-
+from .DetectorManager import (
+    DetectorManager,
+    DetectorNumberParameter, 
+    DetectorListParameter
+)
 
 class WebcamManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
-
     Manager properties:
-
-    - ``cameraListIndex`` -- the camera's index in the Allied Vision camera list (list
-      indexing starts at 0); set this string to an invalid value, e.g. the
-      string "mock" to load a mocker
-    - ``av`` -- dictionary of Allied Vision camera properties
+    - ``cameraListIndex`` -- camera index
     """
+
+    # dictionary with exposure times and their corresponding codes
+    # this is used only when the application runs on Windows
+    # https://www.kurokesu.com/main/2020/05/22/uvc-camera-exposure-timing-in-opencv/
+    msExposure = {
+        "1 s":  0,
+        "500 ms": -1,
+        "250 ms": -2,
+        "125 ms": -3,
+        "62.5 ms": -4,
+        "31.3 ms": -5,
+        "15.6 ms": -6, # default
+        "7.8 ms": -7,
+        "3.9 ms": -8,
+        "2 ms": -9,
+        "976.6 us": -10,
+        "488.3 us": -11,
+        "244.1 us": -12,
+        "122.1 us": -13
+    }
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
@@ -22,138 +40,43 @@ class WebcamManager(DetectorManager):
         cameraId = detectorInfo.managerProperties['cameraListIndex']
         
         # initialize the camera
-        self._camera = self._getWebCam(cameraId)
-        
-        for propertyName, propertyValue in detectorInfo.managerProperties['webcam'].items():
-            self._camera.setPropertyValue(propertyName, propertyValue)
+        self._camera = cv2.VideoCapture(cameraId)
+        fullShape = (self._camera.get(cv2.CAP_PROP_FRAME_WIDTH),
+                        self._camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        fullShape = (self._camera.SensorWidth, 
-                     self._camera.SensorHeight)
-        
-        model = self._camera.model
         self._running = False
         self._adjustingParameters = False
 
-        
-        # Prepare parameters
-        parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
-                                                editable=True),
-            'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
-                        editable=False),
-            'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False),
-            }            
+        parameters = {}
 
-        # Prepare actions
-        actions = {
-            'More properties': DetectorAction(group='Misc',
-                                              func=self._camera.openPropertiesGUI)
-        }
+        if system() == 'Windows':
+            # Exposure time
+            parameters['Exposure'] = DetectorListParameter(
+                group='Misc', 
+                value='15.6 ms', 
+                editable=True,
+                options=list(self.msExposure.keys())
+            )
+            self._camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, self.msExposure['15.6 ms'])
+        else:
+            parameters['Exposure'] = DetectorNumberParameter(
+                group='Misc', 
+                value=15.6*1e-3, 
+                valueUnits='s',
+                editable=True
+            )
+            # warning: this depends on the used camera
+            # some may not expose this property
+            self._camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 15.6*1e-3)
+        parameters['Camera pixel size'] = DetectorNumberParameter(
+            group='Misc',
+            value=10,
+            valueUnits='um',
+            editable=True
+        )
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=model, parameters=parameters, actions=actions, croppable=True)
-        
-
-    def _updatePropertiesFromCamera(self):
-        self.setParameter('Real exposure time', self._camera.getPropertyValue('exposure_time')[0])
-        self.setParameter('Internal frame interval',
-                          self._camera.getPropertyValue('internal_frame_interval')[0])
-        self.setParameter('Readout time', self._camera.getPropertyValue('timing_readout_time')[0])
-        self.setParameter('Internal frame rate',
-                          self._camera.getPropertyValue('internal_frame_rate')[0])
-
-        triggerSource = self._camera.getPropertyValue('trigger_source')
-        if triggerSource == 1:
-            self.setParameter('Trigger source', 'Internal trigger')
-        else:
-            triggerMode = self._camera.getPropertyValue('trigger_mode')
-            if triggerSource == 2 and triggerMode == 6:
-                self.setParameter('Trigger source', 'External "start-trigger"')
-            elif triggerSource == 2 and triggerMode == 1:
-                self.setParameter('Trigger source', 'External "frame-trigger"')
-
-    def getLatestFrame(self, is_save=False):
-        return self._camera.getLast()
-
-    def setParameter(self, name, value):
-        """Sets a parameter value and returns the value.
-        If the parameter doesn't exist, i.e. the parameters field doesn't
-        contain a key with the specified parameter name, an error will be
-        raised."""
-
-        super().setParameter(name, value)
-
-        if name not in self._DetectorManager__parameters:
-            raise AttributeError(f'Non-existent parameter "{name}" specified')
-
-        value = self._camera.setPropertyValue(name, value)
-        return value
-
-    def getParameter(self, name):
-        """Gets a parameter value and returns the value.
-        If the parameter doesn't exist, i.e. the parameters field doesn't
-        contain a key with the specified parameter name, an error will be
-        raised."""
-
-        if name not in self._parameters:
-            raise AttributeError(f'Non-existent parameter "{name}" specified')
-
-        value = self._camera.getPropertyValue(name)
-        return value
-
-
-    def setTriggerSource(self, source):
-        if source == 'Continous':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 0)
-            )
-        elif source == 'Internal trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 1)
-            )
-        elif source == 'External trigger':
-            self._performSafeCameraAction(
-                lambda: self._camera.setPropertyValue('trigger_source', 2)
-            )
-        else:
-            raise ValueError(f'Invalid trigger source "{source}"')
-
-        
-    def getChunk(self):
-        try:
-            return self._camera.getLastChunk()
-        except:
-            return None
-
-    def flushBuffers(self):
-        self._camera.flushBuffer()
-
-    def startAcquisition(self, liveView=False):
-        if self._camera.model == "mock":
-            self.__logger.debug('We could attempt to reconnect the camera')
-            pass
-            
-        if not self._running:
-            self._camera.start_live()
-            self._running = True
-            self.__logger.debug('startlive')
-
-    def stopAcquisition(self):
-        if self._running:
-            self._running = False
-            self._camera.suspend_live()
-            self.__logger.debug('suspendlive')
-
-    def stopAcquisitionForROIChange(self):
-        self._running = False
-        self._camera.stop_live()
-        self.__logger.debug('stoplive')
-
-    def finalize(self) -> None:
-        super().finalize()
-        self.__logger.debug('Safely disconnecting the camera...')
-        self._camera.close()
+                         model="OpenCV", parameters=parameters, croppable=True)
 
     @property
     def pixelSizeUm(self):
@@ -162,49 +85,50 @@ class WebcamManager(DetectorManager):
         except:
             umxpx = 1   
         return [1, umxpx, umxpx]
+        
+    def getLatestFrame(self, is_save=False):
+        frame = self._camera.read()[1][self._frameStart[1]:, self._frameStart[0]:]
+        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    def setParameter(self, name, value):
+        if name == 'Exposure':
+            if system() == 'Windows':
+                self._camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, self.msExposure[value])
+            else:
+                self._camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, float(value))
+        super().setParameter(name, value)
+        
+    def getChunk(self):
+        try:
+            return self.getLatestFrame()
+        except:
+            return None
+
+    def flushBuffers(self):
+        pass
+
+    def startAcquisition(self, liveView=False):
+        pass
+
+    def stopAcquisition(self):
+        pass
+
+    def finalize(self) -> None:
+        self._camera.release()
 
     def setPixelSizeUm(self, pixelSizeUm):
         self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def crop(self, hpos, vpos, hsize, vsize):
-        pass 
-
-    def _performSafeCameraAction(self, function):
-        """ This method is used to change those camera properties that need
-        the camera to be idle to be able to be adjusted.
-        """
-        self._adjustingParameters = True
-        wasrunning = self._running
-        self.stopAcquisitionForROIChange()
-        function()
-        if wasrunning:
-            self.startAcquisition()
-        self._adjustingParameters = False
-
-    def openPropertiesDialog(self):
-        self._camera.openPropertiesGUI()
-
-    def _getWebCam(self, cameraId, binning=1):
         try:
-            from imswitch.imcontrol.model.interfaces.CameraWebcam import CameraWebcam
-            self.__logger.debug(f'Trying to initialize Webcam {cameraId}')
-            camera = CameraWebcam(cameraNo=cameraId)
-        except Exception as e:
-            self.__logger.debug(e)
-            self.__logger.warning(f'Failed to initialize CameraWebcam {cameraId}, loading TIS mocker')
-            from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
-            camera = MockCameraTIS()
+            self._camera.set(cv2.CAP_PROP_FRAME_WIDTH, hsize)
+            self._camera.set(cv2.CAP_PROP_FRAME_HEIGHT, vsize)
+            self._shape = (hsize, vsize)
+            self._frameStart = (hpos, vpos)
+        except:
+            raise ValueError(f"Camera does not support {hsize}x{vsize} resolution")
 
-        self.__logger.info(f'Initialized camera, model: {camera.model}')
-        return camera
-    
-    def getFrameNumber(self):
-        return self._camera.getFrameNumber()
-
-    def closeEvent(self):
-        self._camera.close()
-
-# Copyright (C) ImSwitch developers 2021
+# Copyright (C) ImSwitch developers 2023
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

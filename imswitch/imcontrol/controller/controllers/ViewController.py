@@ -14,10 +14,18 @@ class ViewController(ImConWidgetController):
         # Connect ViewWidget signals
         self._widget.sigGridToggled.connect(self.gridToggle)
         self._widget.sigCrosshairToggled.connect(self.crosshairToggle)
-        self._widget.sigLiveviewToggled.connect(self.liveview)
 
         # Connect CommunicationChannel signals
         self._commChannel.sigLiveViewUpdateRequested.connect(self.toggleLive)
+
+        # The live view handling depends on the current acquisition engine loaded
+        # in the configuration. If the acquisition engine is PycroManager, then 
+        # we will handle the live acquisition via liveViewPycroManager. Otherwise,
+        # we will handle it via the original liveview method.
+        if self._master.self.pycroManagerAcquisition is not None:
+            self._widget.sigLiveviewToggled.connect(self.liveViewPycroManager)
+        else:
+            self._widget.sigLiveviewToggled.connect(self.liveview)
 
     def toggleLive(self, enabled):
         """ If live acquisition is already started, stop it. Otherwise, resume.
@@ -33,6 +41,12 @@ class ViewController(ImConWidgetController):
         elif not enabled and self._acqHandle is not None:
             self._master.detectorsManager.stopAcquisition(self._acqHandle, liveView=True)
             self._acqHandle = None
+    
+    def liveViewPycroManager(self, enabled : bool) -> None:
+        if enabled:
+            self._commChannel.sigLiveAcquisitionStarted.emit()
+        else:
+            self._commChannel.sigLiveAcquisitionStopped.emit()
 
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """

@@ -16,7 +16,25 @@ class CommunicationChannel(SignalInterface):
         str, np.ndarray, bool, list, bool
     )  # (detectorName, image, init, scale, isCurrentDetector)
 
+    sigUpdateImageSlice = Signal(
+        str, np.ndarray, bool, list, bool, tuple
+    ) # (detectorName, image, init, scale, isCurrentDetector, sliceIndeces)
+
     sigLiveViewUpdateRequested = Signal(bool)  # (toggleLive)
+
+    # TODO: this signal is the same as sigAcquisitionStarted;
+    # we're making them separate for now in order to use it
+    # with the PycroManagerAcquisitionManager engine and
+    # to make a distinction with the old acquisition
+    # engine, but we should merge them in the future
+    sigLiveAcquisitionStarted = Signal()
+
+    # TODO: this signal is the same as sigAcquisitionStopped;
+    # we're making them separate for now in order to use it
+    # with the PycroManagerAcquisitionManager engine and
+    # to make a distinction with the old acquisition
+    # engine, but we should merge them in the future
+    sigLiveAcquisitionStopped = Signal()
 
     sigAcquisitionStarted = Signal()
 

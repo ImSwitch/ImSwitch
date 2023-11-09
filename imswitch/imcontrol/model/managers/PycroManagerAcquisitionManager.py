@@ -11,6 +11,8 @@ import numpy as np
 
 class PycroManagerAcquisitionManager(SignalInterface):
 
+    sigLiveAcquisitionStarted = Signal()
+    sigLiveAcquisitionStopped = Signal()
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigPycroManagerNotificationUpdated = Signal(dict)  # (pycroManagerNotificationId)
@@ -28,7 +30,6 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionWorker = PycroManagerAcqWorker(self)
         self.__acquisitionThread = Thread()
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
-        self.__acquisitionThread.started.connect(self.__acquisitionWorker.run)
 
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -38,21 +39,21 @@ class PycroManagerAcquisitionManager(SignalInterface):
         savename += extension
         fullPath = os.path.join(folder, savename)
 
-        self.__core.snap_image()
-        tagged_image = self.__core.get_tagged_image()
+        self.core.snap_image()
+        tagged_image = self.core.get_tagged_image()
         pixels = np.reshape(tagged_image.pix, newshape=(
             1, tagged_image.tags['Height'], tagged_image.tags['Width']))
 
         # TODO: add missing metadata fields
         metadata = {
             "axes": "TYX",
-            "PhysicalSizeX": self.__core.get_pixel_size_um(),
+            "PhysicalSizeX": self.core.get_pixel_size_um(),
             "PhysicalSizeXUnit": "µm",
-            "PhysicalSizeY": self.__core.get_pixel_size_um(),
+            "PhysicalSizeY": self.core.get_pixel_size_um(),
             "PhysicalSizeYUnit": "µm",
             "PhysicalSizeZ": 1,
             "PhysicalSizeZUnit": "µm",
-            "TimeIncrement": self.__core.get_exposure(),
+            "TimeIncrement": self.core.get_exposure(),
             "TimeIncrementUnit": "ms",
         }
 
@@ -62,7 +63,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
                 tif.write(pixels, metadata=metadata, software="ImSwitch")
 
         if saveMode == SaveMode.RAM or saveMode == SaveMode.DiskAndRAM:
-            name = self.__core.get_camera_device()
+            name = self.core.get_camera_device()
             self.sigMemorySnapAvailable.emit(
                 name, pixels, savename, saveMode == SaveMode.DiskAndRAM)
 
@@ -70,31 +71,33 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def core(self) -> Core:
         return self.__core
 
-    def __parse_notification(self, msg: AcqNotification):
-        if msg.is_image_saved_notification():
-            self.sigPycroManagerNotificationUpdated.emit(msg.id)
-        elif msg.is_acquisition_finished_notification():
-            # For some reason the Dataset reference is not closed properly;
-            # this is a workaround to avoid the error and close the reference
-            d = self.__acquisition.get_dataset()
-            d.close()
-            self.__logger.info("Acquisition finished")
-            self.sigRecordingEnded.emit()
-
     def startRecording(self, recordingArgs: dict):
         self.__acquisitionWorker.recordingArgs = recordingArgs
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
         self.__acquisitionThread.start()
         self.sigRecordingStarted.emit()
 
     def endRecording(self) -> None:
         self.__acquisitionThread.quit()
+        self.__acquisitionThread.started.disconnect()
+    
+    def startLiveView(self, recordingArgs: dict):
+        self.__acquisitionWorker.recordingArgs = recordingArgs
+        self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
+        self.__acquisitionThread.start()
+        self.sigLiveAcquisitionStarted.emit()
+
+    def stopLiveView(self):
+        pass
 
 class PycroManagerAcqWorker(Worker):
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
         super().__init__()
         self.__logger = initLogger(self)
         self.__manager = manager
+        self.__liveAcquisition = None
         self.recordingArgs = None
+        self.live = False
     
     def __parse_notification(self, msg: AcqNotification):
         if msg.is_image_saved_notification():
@@ -105,7 +108,7 @@ class PycroManagerAcqWorker(Worker):
             self.__logger.info("Acquisition finished")
             self.__manager.sigRecordingEnded.emit()
     
-    def run(self) -> None:
+    def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
@@ -113,3 +116,9 @@ class PycroManagerAcqWorker(Worker):
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             acq.acquire(events)
         acq.get_dataset().close()
+    
+    def starLiveView(self):
+        pass
+
+    def stopLiveView(self):
+        pass

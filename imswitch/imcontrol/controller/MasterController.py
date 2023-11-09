@@ -106,6 +106,8 @@ class MasterController:
         elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
             if mmcoreDeviceAvailable:
                 self.pycroManagerAcquisition = PycroManagerAcquisitionManager()
+                self.pycroManagerAcquisition.sigLiveAcquisitionStarted.connect(cc.sigLiveAcquisitionStarted)
+                self.pycroManagerAcquisition.sigLiveAcquisitionStopped.connect(cc.sigLiveAcquisitionStopped)
                 self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
                 self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
                 self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(cc.sigUpdatePycroManagerNotification)

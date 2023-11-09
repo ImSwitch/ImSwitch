@@ -11,6 +11,8 @@ from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_const import *
 from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_header import *
 from imswitch.imcontrol.model.interfaces.hikrobotWin.MvErrorDefine_const import *
 from sys import platform
+import os 
+
 if platform == "linux" or platform == "linux2":
     # linux
     pass
@@ -21,7 +23,13 @@ elif platform == "win32":
     # Windows...
     MvCamCtrldll = WinDLL("C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll")
 
-MvCamCtrldll = WinDLL("C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll")
+#dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+mFWD = os.path.dirname(os.path.realpath(__file__))
+try:
+    MvCamCtrldll = WinDLL(mFWD+'\\dll\\MvCameraControl.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+except:
+    MvCamCtrldll = WinDLL('C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll')#, winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+
 
 # 用于回调函数传入相机实例
 class _MV_PY_OBJECT_(Structure):

@@ -19,12 +19,17 @@ class OpenCVCamManager(DetectorManager):
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
 
-        self._camera = self._getOpenCVObj(detectorInfo.managerProperties['cameraListIndex'])
+        
+        try: # FIXME: get that form the real camera
+            isRGB = detectorInfo.managerProperties['isRGB']  
+        except:
+            isRGB = False
+
+        self._camera = self._getOpenCVObj(detectorInfo.managerProperties['cameraListIndex'], isRGB)
 
         model = self._camera.model
         self._running = False
         
-
         for propertyName, propertyValue in detectorInfo.managerProperties['opencvcam'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
 
@@ -152,11 +157,11 @@ class OpenCVCamManager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getOpenCVObj(self, cameraindex=0):
+    def _getOpenCVObj(self, cameraindex=0, isRGB=0):
         try:
             from imswitch.imcontrol.model.interfaces.opencvcam import CameraOpenCV
             self.__logger.debug(f'Trying to initialize OpenCV IMX219 camera')
-            camera = CameraOpenCV(cameraindex)
+            camera = CameraOpenCV(cameraindex, isRGB=isRGB)
         except Exception as e:
             self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize OpenCV IMX219 camera, loading TIS mocker')

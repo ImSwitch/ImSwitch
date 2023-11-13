@@ -268,6 +268,8 @@ class ProcessDataThread(Thread):
 
     def update(self, twoFociVar):
         def extract(marray, crop_size):
+            if len(marray.shape)==3:
+                marray = np.mean(marray, -1)
             center_x, center_y = marray.shape[1] // 2, marray.shape[0] // 2
 
             # Calculate the starting and ending indices for cropping
@@ -392,6 +394,7 @@ class FOVCalibThread(object):
         # Calculate average pixel-per-step
         self.avg_pixel_per_step = np.mean(np.array(pixel_displacements), 0)
         self.avg_pixel_per_step = np.round(self.avg_pixel_per_step, 1)
+        self.avg_pixel_per_step = np.max(self.avg_pixel_per_step)
         self.show(self.avg_pixel_per_step)
 
     def show(self, step_to_pixel):

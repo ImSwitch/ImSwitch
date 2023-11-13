@@ -51,7 +51,7 @@ class CameraHIK:
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.NBuffer = 50
+        self.NBuffer = 1
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
         self.flatfieldImage = None

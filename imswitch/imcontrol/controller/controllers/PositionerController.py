@@ -4,6 +4,7 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 import threading
+from typing import Optional
 import time 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -61,20 +62,24 @@ class PositionerController(ImConWidgetController):
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    def move(self, positionerName, axis, dist, isAbsolute=None, isBlocking=False):
+    def move(self, positionerName, axis, dist, isAbsolute=None, isBlocking=False, speed=None):
         """ Moves positioner by dist micrometers in the specified axis. """
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
 
         # get all speed values from the GUI
-        if axis =="XY":
-            speed = self._widget.getSpeed(positionerName, "X")
-        else:
-            speed = self._widget.getSpeed(positionerName, axis)
+        if speed is None:
+            if axis =="XY":
+                speed = self._widget.getSpeed(positionerName, "X")
+            else:
+                speed = self._widget.getSpeed(positionerName, axis)
         
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
+            if dist is None:
+                self.__logger.info(f"Moving {positionerName}, axis {axis}, at speed {str(speed)}")
+                self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))            
         except Exception as e:
             self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
@@ -193,12 +198,13 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False, isBlocking: bool=False) -> None:
+    def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         try: # uc2 only
-            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking)
-        except:
+            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking, speed=speed)
+        except Exception as e:
+            self.__logger.error(e)
             self.move(positionerName, axis, dist)
 
     @APIExport(runOnUIThread=True)

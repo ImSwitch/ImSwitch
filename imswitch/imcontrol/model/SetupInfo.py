@@ -255,6 +255,9 @@ class NidaqInfo:
     startTrigger: bool = False
     """ Boolean for start triggering for sync. """
 
+    simulation: Optional[bool] = False
+    """ Boolean for allowing to run nidaq-commands without access to a nidaq card. """
+
     def getTimerCounterChannel(self):
         """ :meta private: """
         if isinstance(self.timerCounterChannel, int):

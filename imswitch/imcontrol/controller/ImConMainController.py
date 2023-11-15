@@ -143,7 +143,7 @@ class ImConMainController(MainController):
         ostools.restartSoftware()
 
     def closeEvent(self):
-        self.__logger.debug('Shutting down')
+        self.__logger.info('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
 

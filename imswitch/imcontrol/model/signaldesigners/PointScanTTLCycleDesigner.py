@@ -1,7 +1,7 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .basesignaldesigners import TTLCycleDesigner
-from imswitch.imcommon.model import initLogger
 
 class PointScanTTLCycleDesigner(TTLCycleDesigner):
     """ Line-based TTL cycle designer, for point-scanning applications. Treats
@@ -16,6 +16,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         self._expectedParameters = ['target_device',
                                     'TTL_sequence',
                                     'TTL_sequence_axis']
+
+        self._debug_mode = False  # run mode for generating detected samples and plotting detected samples
 
     @property
     def timeUnits(self):
@@ -40,14 +42,10 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
         samples_total = scanInfoDict['scan_samples_total']
         scan_axes_order = scanInfoDict['axis_names']
         self.smooth_axes = scanInfoDict['smooth_axes']
-        # extra ON at the end of d2 step, to not turn off before line is finished
-        onepad_extraon = 0 #10 #int(np.round(scanInfoDict['extra_laser_on']))
         clock_len = 5  # length of line/frame clock pulses at the start of line/frame, in samples
 
-        #zeropad_phasedelay = int(np.round(scanInfoDict['phase_delay']))
-        zeropad_d2flyback = scanInfoDict['scan_samples_d2_period'] - n_scan_samples_dx[1] - onepad_extraon
+        zeropad_d2flyback = scanInfoDict['scan_samples_d2_period'] - n_scan_samples_dx[1]
         if zeropad_d2flyback < 0:
-            onepad_extraon = 0
             zeropad_d2flyback = np.max([0,(scanInfoDict['scan_samples_d2_period'] -
                                 n_scan_samples_dx[1])])
         zeropad_settling = scanInfoDict['scan_throw_settling']
@@ -75,7 +73,7 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             if seq_axis == 'None':
                 # no ttl sequences along axes
                 # repeat start of sequence to d1 axis length
-                signal_d2_step = np.ones(n_scan_samples_dx[1] + onepad_extraon, dtype='bool') if seq[0] else np.zeros(n_scan_samples_dx[1] + onepad_extraon, dtype='bool')
+                signal_d2_step = np.ones(n_scan_samples_dx[1], dtype='bool') if seq[0] else np.zeros(n_scan_samples_dx[1], dtype='bool')
                 signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))
                 # all d2 steps except last
                 signal_d2_base = np.tile(signal_d2_period, n_steps_dx[1] - 1)
@@ -104,8 +102,6 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                     signal_d2_step = np.repeat(signal_d2_step, (n_scan_samples_dx[1])/n_steps_dx[0]).astype(bool)
                 elif n_scan_samples_dx[1] < n_steps_dx[0]:
                     signal_d2_step = signal_d2_step[::int(n_steps_dx[0]/n_scan_samples_dx[1])].astype(bool)
-                append_start = np.ones(onepad_extraon, dtype='bool') if signal_d2_step[0] == 1 else np.zeros(onepad_extraon, dtype='bool')
-                signal_d2_step = np.append(append_start, signal_d2_step)
                 signal_d2_period = np.append(signal_d2_step, np.zeros(zeropad_d2flyback, dtype='bool'))
                 # all d2 steps except last
                 signal_d2_base = np.tile(signal_d2_period, n_steps_dx[1] - 1)
@@ -131,8 +127,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # repeat sequence to d2 axis length
                 seq = np.resize(seq, n_steps_dx[1])
                 # create ON and OFF d2 periods and steps to use when building d2 sequence
-                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
-                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
+                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
+                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
                 # build frame from seq
                 signal_d3_base = np.array([])
                 for step in seq[:-1]:
@@ -159,8 +155,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # repeat sequence to d3 axis length
                 seq = np.resize(seq, n_steps_dx[2])
                 # create ON and OFF d2 periods and steps
-                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
-                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
+                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
+                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
                 # create ON and OFF d3 steps, to use when building d3 sequence
                 on_d3_step = self.__create_d3_step(d2_period=on_d2_period, d2_step=on_d2_step, n_steps_d2=n_steps_dx[1], n_samples_d3=n_scan_samples_dx[2])
                 off_d3_step = self.__create_d3_step(d2_period=off_d2_period, d2_step=off_d2_step, n_steps_d2=n_steps_dx[1], n_samples_d3=n_scan_samples_dx[2])
@@ -184,8 +180,8 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
                 # repeat sequence to d4 axis length
                 seq = np.resize(seq, n_steps_dx[3])
                 # create ON and OFF d2 periods and steps
-                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
-                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_extra=onepad_extraon, samples_flyback=zeropad_d2flyback)
+                on_d2_period, on_d2_step = self.__create_d2_period(state=1, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
+                off_d2_period, off_d2_step = self.__create_d2_period(state=0, n_samples_d1=n_scan_samples_dx[1], samples_flyback=zeropad_d2flyback)
                 # create ON and OFF d3 steps
                 on_d3_step = self.__create_d3_step(d2_period=on_d2_period, d2_step=on_d2_step, n_steps_d2=n_steps_dx[1], n_samples_d3=n_scan_samples_dx[2])
                 off_d3_step = self.__create_d3_step(d2_period=off_d2_period, d2_step=off_d2_step, n_steps_d2=n_steps_dx[1], n_samples_d3=n_scan_samples_dx[2])
@@ -229,25 +225,26 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
 
         # Generate line and frame clocks
         # line clock
-        line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=True, clock_len=clock_len)
+        line_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, line=True, clock_len=clock_len)
         signal_dict['line_clock'] = line_clock.astype(bool)
         # frame start clock
-        frame_start_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_start=True, clock_len=clock_len)
+        frame_start_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, frame_start=True, clock_len=clock_len)
         signal_dict['frame_start_clock'] = frame_start_clock.astype(bool)
         # frame end clock
-        frame_end_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, frame_end=True, clock_len=clock_len)
+        frame_end_clock = self.__generate_frame_line_clock(n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, frame_end=True, clock_len=clock_len)
         signal_dict['frame_end_clock'] = frame_end_clock.astype(bool)
 
-        self.__plot_curves(plot=True, signals=signal_dict, targets=targets+['frame_start_clock','frame_end_clock','line_clock'])  # for debugging
+        if self._debug_mode:
+            self.__plot_curves(plot=True, signals=signal_dict, targets=targets+['frame_start_clock','frame_end_clock','line_clock'])  # for debugging
 
         # return signal_dict, which contains bool arrays for each target
         return signal_dict
 
-    def __generate_frame_line_clock(self, n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, onepad_extraon, line=False, frame_start=False, frame_end=False, clock_len=10):
+    def __generate_frame_line_clock(self, n_scan_samples_dx, n_steps_dx, samples_total, axis_count, scan_pads_initpos, zeropad_start, zeropad_d2flyback, line=False, frame_start=False, frame_end=False, clock_len=10):
         """ Generate frame and line clock signals, to be returned in signal_dict and used if user wants frame/line clock at a digital output. """
         self.__init_added = False
         # zeros to d1 axis length
-        signal_d2_step = np.zeros(n_scan_samples_dx[1] + onepad_extraon, dtype='bool')
+        signal_d2_step = np.zeros(n_scan_samples_dx[1], dtype='bool')
         if line:
             # replace first part with a line clock pulse
             signal_d2_step[:clock_len] = 1
@@ -289,9 +286,9 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
             signal = signal[:zeropad_end]
         return signal
 
-    def __create_d2_period(self, state, n_samples_d1, samples_extra, samples_flyback):
+    def __create_d2_period(self, state, n_samples_d1, samples_flyback):
         """ Create a full d2 step period of boolean state (on or off during d2 step, without flyback). """
-        d2_step = np.ones(n_samples_d1 + samples_extra, dtype='bool') if state else np.zeros(n_samples_d1 + samples_extra, dtype='bool')
+        d2_step = np.ones(n_samples_d1, dtype='bool') if state else np.zeros(n_samples_d1, dtype='bool')
         return np.append(d2_step, np.zeros(samples_flyback, dtype='bool')), d2_step
     
     def __create_d3_step(self, d2_period, d2_step, n_steps_d2, n_samples_d3):
@@ -394,11 +391,9 @@ class PointScanTTLCycleDesigner(TTLCycleDesigner):
     def __plot_curves(self, plot, signals, targets):
         """ Plot all TTL curves, for debugging. """
         if plot:
-            import matplotlib.pyplot as plt
             plt.figure(1)
             for i, target in enumerate(targets):
                 plt.plot(signals[target] - 0.01 * i)
-                #self._logger.debug(f'Signal length {target}: {len(signals[target])}')
             plt.show()
 
 

@@ -16,10 +16,12 @@ parameterDict11 = {'target_device': ['ND-GalvoX', 'ND-GalvoY', 'Mock-Repeat', 'M
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict1 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict1 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoX'], 'sequence_time': 2e-05}
-#ttlparameterDict1 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoY'], 'sequence_time': 2e-05}
-ttlparameterDict1 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
+#ttlparameterDict1 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
 
 parameterDict12 = {'target_device': ['ND-GalvoX', 'ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse', 'ND-PiezoZ'],
                  'axis_length': [0.5, 0.5, 3.0, 1.0, 1.0],
@@ -51,10 +53,12 @@ parameterDict21 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'ND-GalvoX', 'M
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict2 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict2 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
-#ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
-ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
+#ttlparameterDict2 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
 
 parameterDict22 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'ND-GalvoX', 'Mock-Timelapse', 'ND-PiezoZ'],
                  'axis_length': [3.0, 0.5, 0.5, 1.0, 1.0],
@@ -86,10 +90,12 @@ parameterDict31 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'ND-GalvoX', 'M
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict3 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict3 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoY'], 'sequence_time': 2e-05}
-#ttlparameterDict3 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
-ttlparameterDict3 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoX'], 'sequence_time': 2e-05}
+ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
+#ttlparameterDict3 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
 
 parameterDict32 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'ND-GalvoX', 'Mock-Timelapse', 'ND-PiezoZ'],
                  'axis_length': [0.5, 3.0, 0.5, 1.0, 1.0],
@@ -121,10 +127,12 @@ parameterDict41 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict4 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict4 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoY'], 'sequence_time': 2e-05}
-#ttlparameterDict4 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
-ttlparameterDict4 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Timelapse'], 'sequence_time': 2e-05}
+ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
+ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+#ttlparameterDict4 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
 
 parameterDict42 = {'target_device': ['ND-GalvoY', 'Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [0.5, 3.0, 3.0, 1.0, 1.0],
@@ -157,10 +165,12 @@ parameterDict51 = {'target_device': ['Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoY
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict5 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'h1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict5 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
-#ttlparameterDict5 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Timelapse'], 'sequence_time': 2e-05}
+ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
 ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+#ttlparameterDict5 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
 
 parameterDict52 = {'target_device': ['Mock-Repeat', 'Mock-Timelapse', 'ND-GalvoY', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [3.0, 3.0, 0.5, 1.0, 1.0],
@@ -192,10 +202,12 @@ parameterDict61 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'Mock-Timelapse
                  'sequence_time': 2e-05,
                  'phase_delay': 100.0,
                  'd3step_delay': 0.0}
-#ttlparameterDict6 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'None'], 'sequence_time': 2e-05}
-#ttlparameterDict6 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Repeat'], 'sequence_time': 2e-05}
-#ttlparameterDict6 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'ND-GalvoY'], 'sequence_time': 2e-05}
-ttlparameterDict6 = {'target_device': ['561', '640'], 'TTL_sequence': ['l1', 'l1,h1,l1'], 'TTL_sequence_axis': ['None', 'Mock-Timelapse'], 'sequence_time': 2e-05}
+ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['h1'], 'TTL_sequence_axis': ['None'], 'sequence_time': 2e-05}
+ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Repeat'], 'sequence_time': 2e-05}
+ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['ND-GalvoY'], 'sequence_time': 2e-05}
+ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1'], 'TTL_sequence_axis': ['Mock-Timelapse'], 'sequence_time': 2e-05}
+ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['l1,h1,l1,h1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
+#ttlparameterDict6 = {'target_device': ['640'], 'TTL_sequence': ['l1'], 'TTL_sequence_axis': ['ND-GalvoX'], 'sequence_time': 2e-05}
 
 parameterDict62 = {'target_device': ['Mock-Repeat', 'ND-GalvoY', 'Mock-Timelapse', 'ND-GalvoX', 'ND-PiezoZ'],
                  'axis_length': [3.0, 0.5, 3.0, 1.0, 1.0],
@@ -228,36 +240,36 @@ setupInfo = ViewSetupInfo(positioners={'ND-GalvoX': PositionerInfo(analogChannel
 scanDesigner = GalvoScanDesigner()
 ttlDesigner = PointScanTTLCycleDesigner()
 
-# TODO: CURRENTLY ISSUES WITH SEQ_AXIS = 3. SEQ_AXIS = NONE, 0, 1, AND 2 CURRENTLY WORKS. NEED TO GET IT WORKING FOR SEQ_AXIS = 3, AND AFTER THAT ALL UPDATES TO SCAN_CURVES/TTL_CURVES/APD_READ ARE DONE! Except line/frame clock which also needs fixes.
-# ADAPT SEQ_AXIS = 3, WITH D4_STEP, IN THE SAME WAY AS I ADAPTED SEQ_AXIS = 2
-signalset = 6
-if signalset == 1:
-    parameterDicts = [parameterDict11, parameterDict12, parameterDict13]
-    ttlparameterDict = ttlparameterDict1
-elif signalset == 2:
-    parameterDicts = [parameterDict21, parameterDict22, parameterDict23]
-    ttlparameterDict = ttlparameterDict2
-elif signalset == 3:
-    parameterDicts = [parameterDict31, parameterDict32, parameterDict33]
-    ttlparameterDict = ttlparameterDict3
-elif signalset == 4:
-    parameterDicts = [parameterDict41, parameterDict42, parameterDict43]
-    ttlparameterDict = ttlparameterDict4
-elif signalset == 5:
-    parameterDicts = [parameterDict51, parameterDict52, parameterDict53]
-    ttlparameterDict = ttlparameterDict5
-elif signalset == 6:
-    parameterDicts = [parameterDict61, parameterDict62, parameterDict63]
-    ttlparameterDict = ttlparameterDict6
+# TODO: NOW WORKS FOR ALL SEQ_AXIS, AND ALL NUMBER OF DIMENSIONS, FOR ARBITRARY SCAN DIMENSION ORDER (SMOOTH, STEP, MOCK). LINE AND FRAME CLOCKS ALSO WORK.
+# NEXT: BUGFIX APD READING - WORKS FOR EVERYTHING EXCEPT WHEN THERE IS A SMOOTH AXIS ON THE THIRD AXIS WITH OFF-0 CENTER POS, AND THE TWO FIRST AXES ARE MOCK AXES. TTL CURVES WORKS, SO THE ISSUE I THINK IS WITH NOT ADDING BACK THE LONG D3 INITPOS (LONGER THAN D1 AND D2) AT THE BEGINNING OF EVERY STEP ON THE FOURTH AXIS, LIKE IT IS ADDED FOR THE TTLS. 
+for signalset in range(1,7):
+    if signalset == 1:
+        parameterDicts = [parameterDict11, parameterDict12, parameterDict13]
+        ttlparameterDict = ttlparameterDict1
+    elif signalset == 2:
+        parameterDicts = [parameterDict21, parameterDict22, parameterDict23]
+        ttlparameterDict = ttlparameterDict2
+    elif signalset == 3:
+        parameterDicts = [parameterDict31, parameterDict32, parameterDict33]
+        ttlparameterDict = ttlparameterDict3
+    elif signalset == 4:
+        parameterDicts = [parameterDict41, parameterDict42, parameterDict43]
+        ttlparameterDict = ttlparameterDict4
+    elif signalset == 5:
+        parameterDicts = [parameterDict51, parameterDict52, parameterDict53]
+        ttlparameterDict = ttlparameterDict5
+    elif signalset == 6:
+        parameterDicts = [parameterDict61, parameterDict62, parameterDict63]
+        ttlparameterDict = ttlparameterDict6
 
-rep = 0
-while rep < 3:
-    plt.ion()
-    plt.figure(1)
-    _, _, scanInfoDict = scanDesigner.make_signal(parameterDicts[rep], setupInfo)
-    ttlDesigner.make_signal(ttlparameterDict, setupInfo, scanInfoDict)
-    plt.show(block=True)
-    rep +=1
+    rep = 0
+    while rep < 3:
+        plt.ion()
+        plt.figure(1)
+        _, _, scanInfoDict = scanDesigner.make_signal(parameterDicts[rep], setupInfo)
+        ttlDesigner.make_signal(ttlparameterDict, setupInfo, scanInfoDict)
+        plt.show(block=True)
+        rep +=1
 
 if False:
     _, _, scanInfoDict = scanDesigner.make_signal(parameterDict2, setupInfo)

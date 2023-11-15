@@ -58,9 +58,10 @@ class GalvoScanDesigner(ScanDesigner):
         # TODO: Update these limits, arbitrarly 
         scan_steps = np.prod(n_steps_dx)
         min_scan_time = scan_steps * scanParameters['sequence_time'] * 2
-        if setupInfo.scan.maxScanTimeMin and min_scan_time > 60*setupInfo.scan.maxScanTimeMin:
-            return False
-        elif scan_steps > 1e7:
+        if hasattr(setupInfo.scan, "maxScanTimeMin"):
+            if setupInfo.scan.maxScanTimeMin and min_scan_time > 60*setupInfo.scan.maxScanTimeMin:
+                return False
+        if scan_steps > 1e7:
             return False
         return True
 
@@ -70,8 +71,8 @@ class GalvoScanDesigner(ScanDesigner):
         # arbitrary for now - should calculate this based on the abs(biggest) axis_centerpos and the
         # max speed/acc, as that is what limits time it takes for axes to get to the right position
         self.__paddingtime_d3step = int(parameterDict['d3step_delay'])
-        # arbitrary for now  µs
-        self.__paddingtime_full = 100 #1000
+        # arbitrary for now (µs)
+        self.__paddingtime_full = 100
         # initiate default sample lengths
         self._samples_initpos = []
         self._samples_finalpos = []

@@ -200,6 +200,9 @@ class ScanInfo:
     sampleRate: int
     """ Scan sample rate. """
 
+    maxScanTimeMin: Optional[int]
+    """ Max scan time allowed, in min. """
+
     lineClockLine: Optional[Union[str, int]]
     """ Line for line clock output. ``null`` if not wanted or NI-DAQ is not used.
     If integer, it will be translated to "Dev1/port0/line{lineClockLine}".
@@ -214,6 +217,7 @@ class ScanInfo:
     """ Line for frame end clock output. ``null`` if not wanted or NI-DAQ is not used.
     If integer, it will be translated to "Dev1/port0/line{frameEndClockLine}".
     """
+
 
 
 @dataclass(frozen=True)

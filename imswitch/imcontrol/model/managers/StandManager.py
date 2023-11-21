@@ -27,6 +27,8 @@ class StandManager(ABC):
     def motCorrPos(self, position):
         self._subManager.motCorrPos(position)
 
+    def setTLshutter(self, value):
+        self._subManager.setTLshutter(value)
 
 # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.

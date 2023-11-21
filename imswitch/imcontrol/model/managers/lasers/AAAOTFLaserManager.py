@@ -32,20 +32,22 @@ class AAAOTFLaserManager(LaserManager):
             self._ttlToggling = laserInfo.managerProperties['ttlToggling']
         else:
             self._ttlToggling = False
+        if '473startCommands' in laserInfo.managerProperties:
+            self._startCommands473 = laserInfo.managerProperties['473startCommands']
+        else:
+            self._startCommands473 = False
 
-        if self._toggleTrueExternal:
+        if self._startCommands473:
+            self.startCommands473()
+        elif self._toggleTrueExternal:
             if self._ttlToggling:
-                #self.blankingOnInternal()
                 self.internalControl()
             else:
-                #self.blankingOnInternal()
                 self.externalControl()
         else:
             if self._ttlToggling:
-                #self.blankingOnExternal()
                 self.externalControl()
             else:
-                #self.blankingOnInternal()
                 self.internalControl()
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
@@ -87,16 +89,6 @@ class AAAOTFLaserManager(LaserManager):
             else:
                 self.externalControl()
 
-    #def blankingOnInternal(self):
-    #    """Switch on the blanking of the channel, internal"""
-    #    cmd = 'L' + str(self._channel) + 'O0'
-    #    self._rs232manager.write(cmd)
-
-    #def blankingOnExternal(self):
-    #    """Switch on the blanking of the channel, external"""
-    #    cmd = 'L' + str(self._channel) + 'O0'
-    #    self._rs232manager.write(cmd)
-
     def internalControl(self):
         """Switch the channel to internal control"""
         cmd = 'L' + str(self._channel) + 'I1' + 'O0'
@@ -106,6 +98,13 @@ class AAAOTFLaserManager(LaserManager):
         """Switch the channel to external control"""
         cmd = 'L' + str(self._channel) + 'I0'
         _ = self._rs232manager.query(cmd)
+
+    def startCommands473(self):
+        cmd = 'I1'
+        _ = self._rs232manager.write(cmd)
+        cmd = 'I0'
+        _ = self._rs232manager.write(cmd)
+
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

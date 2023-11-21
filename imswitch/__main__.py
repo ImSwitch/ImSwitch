@@ -8,8 +8,7 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 # FIXME: Add to configuration file
-global IS_HEADLESS 
-IS_HEADLESS = True
+
 def main():
     logger = initLogger('main')
     logger.info(f'Starting ImSwitch {imswitch.__version__}')    
@@ -28,7 +27,7 @@ def main():
 
     moduleCommChannel = ModuleCommunicationChannel()
 
-    if not IS_HEADLESS:
+    if not imswitch.IS_HEADLESS:
         multiModuleWindow = MultiModuleWindow('ImSwitch')
         multiModuleWindowController = MultiModuleWindowController.create(
             multiModuleWindow, moduleCommChannel
@@ -65,14 +64,14 @@ def main():
             logger.error(f'Failed to initialize module {moduleId}')
             logger.error(traceback.format_exc())
             moduleCommChannel.unregister(modulePkg)
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+            if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
         else:
             # Add module to window
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
+            if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
             moduleMainControllers[moduleId] = controller
 
             # Update loading progress
-            if not IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
+            if not imswitch.IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())

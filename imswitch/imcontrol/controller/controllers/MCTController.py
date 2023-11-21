@@ -1,3 +1,4 @@
+
 import os
 import threading
 from datetime import datetime
@@ -15,6 +16,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
 from skimage.registration import phase_cross_correlation
 from ..basecontrollers import ImConWidgetController
+import imswitch 
 
 class MCTController(ImConWidgetController):
     """Linked to MCTWidget."""
@@ -56,19 +58,6 @@ class MCTController(ImConWidgetController):
 
         self.tUnshake = .15
 
-        if self._setupInfo.mct is None:
-            self._widget.replaceWithError('MCT is not configured in your setup file.')
-            return
-
-        # Connect MCTWidget signals
-        self._widget.mctStartButton.clicked.connect(self.startMCT)
-        self._widget.mctStopButton.clicked.connect(self.stopMCT)
-        self._widget.mctShowLastButton.clicked.connect(self.showLast)
-        
-        self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
-        self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
-        self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
-
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)
 
@@ -103,30 +92,41 @@ class MCTController(ImConWidgetController):
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
 
         self.isMCTrunning = False
-        self._widget.mctShowLastButton.setEnabled(False)
+        
+        # Connect MCTWidget signals
+        if not imswitch.IS_HEADLESS:
+            self._widget.mctStartButton.clicked.connect(self.startMCT)
+            self._widget.mctStopButton.clicked.connect(self.stopMCT)
+            self._widget.mctShowLastButton.clicked.connect(self.showLast)
+            
+            self._widget.sigSliderLaser1ValueChanged.connect(self.valueLaser1Changed)
+            self._widget.sigSliderLaser2ValueChanged.connect(self.valueLaser2Changed)
+            self._widget.sigSliderLEDValueChanged.connect(self.valueLEDChanged)
 
-        # setup gui limits
-        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
-        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
-        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+            self._widget.mctShowLastButton.setEnabled(False)
 
-        # setup gui text
-        if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
-        if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
-        if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
+            # setup gui limits
+            if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+            if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+            if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
-        # suggest limits for tiled scan with 20% overlay
-        try:
-            self.pixelSize = self.detector.pixelSizeUm
-            overlap = 0.8 # %20 overlap between ROIs
-            self.Nx, self.Ny = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
-            self.optDx = int(self.Nx* self.pixelSize[1]*overlap) # dx
-            self.optDy = int(self.Ny* self.pixelSize[2]*overlap) # dy
-            self._widget.mctValueXsteps.setText(str(self.optDx))
-            self._widget.mctValueYsteps.setText(str(self.optDy))
+            # setup gui text
+            if len(self.lasers) >= 1: self._widget.sliderLaser1.setMaximum(self.lasers[0]._LaserManager__valueRangeMax)
+            if len(self.lasers) >= 2: self._widget.sliderLaser2.setMaximum(self.lasers[1]._LaserManager__valueRangeMax)
+            if len(self.leds) >= 1: self._widget.sliderLED.setMaximum(self.leds[0]._LaserManager__valueRangeMax)
 
-        except Exception as e:
-            self._logger.error(e)
+            # suggest limits for tiled scan with 20% overlay
+            try:
+                self.pixelSize = self.detector.pixelSizeUm
+                overlap = 0.8 # %20 overlap between ROIs
+                self.Nx, self.Ny = self.detector._camera.SensorWidth, self.detector._camera.SensorHeight
+                self.optDx = int(self.Nx* self.pixelSize[1]*overlap) # dx
+                self.optDy = int(self.Ny* self.pixelSize[2]*overlap) # dy
+                self._widget.mctValueXsteps.setText(str(self.optDx))
+                self._widget.mctValueYsteps.setText(str(self.optDy))
+
+            except Exception as e:
+                self._logger.error(e)
 
 
     def startMCT(self):

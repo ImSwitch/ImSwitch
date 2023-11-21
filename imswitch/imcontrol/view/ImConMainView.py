@@ -1,3 +1,4 @@
+import imswitch
 from dataclasses import dataclass
 
 from pyqtgraph.dockarea import Dock, DockArea
@@ -22,9 +23,10 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         super().__init__(*args, **kwargs)
 
-        self.pickSetupDialog = PickSetupDialog(self)
-        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
-        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupDialog = PickSetupDialog(self)
+            self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
+            self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
         self.viewSetupInfo = viewSetupInfo
 
@@ -35,31 +37,32 @@ class ImConMainView(QtWidgets.QMainWindow):
         self.shortcuts = {}
 
         # Menu Bar
-        menuBar = self.menuBar()
-        file = menuBar.addMenu('&File')
-        tools = menuBar.addMenu('&Tools')
-        self.shortcuts = menuBar.addMenu('&Shortcuts')
+        if not imswitch.IS_HEADLESS:
+            menuBar = self.menuBar()
+            file = menuBar.addMenu('&File')
+            tools = menuBar.addMenu('&Tools')
+            self.shortcuts = menuBar.addMenu('&Shortcuts')
 
-        self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
-        self.loadParamsAction.setShortcut('Ctrl+P')
-        self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
-        file.addAction(self.loadParamsAction)
+            self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
+            self.loadParamsAction.setShortcut('Ctrl+P')
+            self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
+            file.addAction(self.loadParamsAction)
 
-        self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
-        self.pickSetupAction.triggered.connect(self.sigPickSetup)
-        tools.addAction(self.pickSetupAction)
+            self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
+            self.pickSetupAction.triggered.connect(self.sigPickSetup)
+            tools.addAction(self.pickSetupAction)
 
-        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
-        self.pickConfigAction.triggered.connect(self.sigPickConfig)
-        tools.addAction(self.pickConfigAction)
+            self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+            self.pickConfigAction.triggered.connect(self.sigPickConfig)
+            tools.addAction(self.pickConfigAction)
 
-        # Window
-        self.setWindowTitle('ImSwitch')
+            # Window
+            self.setWindowTitle('ImSwitch')
 
-        self.cwidget = QtWidgets.QWidget()
-        layout = QtWidgets.QHBoxLayout()
-        self.cwidget.setLayout(layout)
-        self.setCentralWidget(self.cwidget)
+            self.cwidget = QtWidgets.QWidget()
+            layout = QtWidgets.QHBoxLayout()
+            self.cwidget.setLayout(layout)
+            self.setCentralWidget(self.cwidget)
 
         # Dock area
         rightDockInfos = {
@@ -149,19 +152,20 @@ class ImConMainView(QtWidgets.QMainWindow):
         )
 
         # Add dock area to layout
-        layout.addWidget(dockArea)
+        if not imswitch.IS_HEADLESS:
+            layout.addWidget(dockArea)
 
-        # Maximize window
-        self.hide()  # Minimize time the window is displayed while loading multi module window
+            # Maximize window
+            self.hide()  # Minimize time the window is displayed while loading multi module window
 
-        # Adjust dock sizes (the window has to be maximized first for this to work properly)
-        if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 5)
-            self.docks['Settings'].container().setStretch(3, 1)
-        if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 5)
-        if 'Image' in self.docks:
-            self.docks['Image'].setStretch(10, 1)
+            # Adjust dock sizes (the window has to be maximized first for this to work properly)
+            if 'Settings' in self.docks:
+                self.docks['Settings'].setStretch(1, 5)
+                self.docks['Settings'].container().setStretch(3, 1)
+            if len(rightDocks) > 0:
+                rightDocks[-1].setStretch(1, 5)
+            if 'Image' in self.docks:
+                self.docks['Image'].setStretch(10, 1)
 
         # self.showMaximized()
 
@@ -169,11 +173,12 @@ class ImConMainView(QtWidgets.QMainWindow):
 
 
     def addShortcuts(self, shortcuts):
-        for s in shortcuts.values():
-            action = QtWidgets.QAction(s["name"], self)
-            action.setShortcut(s["key"])
-            action.triggered.connect(s["callback"])
-            self.shortcuts.addAction(action)
+        if not imswitch.IS_HEADLESS:
+            for s in shortcuts.values():
+                action = QtWidgets.QAction(s["name"], self)
+                action.setShortcut(s["key"])
+                action.triggered.connect(s["callback"])
+                self.shortcuts.addAction(action)
 
     def showPickSetupDialogBlocking(self):
         result = self.pickSetupDialog.exec_()

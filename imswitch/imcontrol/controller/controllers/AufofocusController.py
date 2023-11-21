@@ -1,3 +1,5 @@
+import imswitch
+
 import time
 
 import numpy as np
@@ -39,11 +41,6 @@ class AutofocusController(ImConWidgetController):
 
         self.camera = self._setupInfo.autofocus.camera
         self.positioner = self._setupInfo.autofocus.positioner
-        # self._master.detectorsManager[self.camera].crop(*self.cropFrame)
-
-        # Connect AutofocusWidget buttons
-        self._widget.focusButton.clicked.connect(self.focusButton)
-        self._commChannel.sigAutoFocus.connect(self.autoFocus)
 
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -52,6 +49,12 @@ class AutofocusController(ImConWidgetController):
         self.imageToDisplayName = ""
         self.imageToDisplay = None
         self.sigImageReceived.connect(self.displayImage)
+        
+        # Connect AutofocusWidget buttons
+        if not imswitch.IS_HEADLESS: # TODO: We need to have signals instead!
+            self._widget.focusButton.clicked.connect(self.focusButton)
+            self._commChannel.sigAutoFocus.connect(self.autoFocus)
+
 
     def __del__(self):
         self._AutofocusThead.quit()

@@ -94,7 +94,7 @@ class EtSTEDController(ImConWidgetController):
         self.__binary_mask = None
         self.__binary_stack = None
         self.__binary_frames = 10
-        self.__init_frames = 5
+        self.__init_frames = 5  # minimum number of widefield frames before an event can trigger
         self.__validationFrames = 0
         self.__frame = 0
         self.__t_call = 0

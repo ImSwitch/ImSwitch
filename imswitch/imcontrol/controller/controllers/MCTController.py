@@ -54,11 +54,12 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
-        self.tUnshake = .15
 
-        if self._setupInfo.mct is None:
-            self._widget.replaceWithError('MCT is not configured in your setup file.')
-            return
+        if self._setupInfo.mct is not None:
+            self.tWait = self._setupInfo.mct.tWait
+        else:
+            self.tWait = 0
+        self.tUnshake = .15
 
         # Connect MCTWidget signals
         self._widget.mctStartButton.clicked.connect(self.startMCT)
@@ -531,6 +532,7 @@ class MCTController(ImConWidgetController):
                     self.lasers[0].setValue(self.Laser1Value)
                     self.lasers[0].setEnabled(True)
                     time.sleep(.05)
+                    time.sleep(self.tWait)
                     lastFrame = self.detector.getLatestFrame()
                     # wait for frame after next frame to appear. Avoid motion blurring
                     #while self.detector.getFrameNumber()<(frameNumber+nFrameSyncWait):time.sleep(0.05)
@@ -547,6 +549,7 @@ class MCTController(ImConWidgetController):
                     self.lasers[1].setValue(self.Laser2Value)
                     self.lasers[1].setEnabled(True)
                     time.sleep(.05)
+                    time.sleep(self.tWait)
                     lastFrame = self.detector.getLatestFrame()
                     tif.imwrite(filePath, lastFrame, append=True)
                     if turnOffIlluInBetween: self.lasers[1].setEnabled(False)
@@ -562,6 +565,7 @@ class MCTController(ImConWidgetController):
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)
                         time.sleep(.1)
+                        time.sleep(self.tWait)
                         lastFrame = self.detector.getLatestFrame()
                         tif.imwrite(filePath, lastFrame, append=True)
                         if turnOffIlluInBetween: self.leds[0].setEnabled(False)
@@ -641,8 +645,8 @@ class MCTController(ImConWidgetController):
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
-        if self.lasers[0].power: self.lasers[0].setValue(0)        
-        if self.lasers[1].power: self.lasers[1].setValue(0)
+        if len(self.lasers)>0: self.lasers[0].power: self.lasers[0].setValue(0)        
+        if len(self.lasers)>1: self.lasers[1].power: self.lasers[1].setValue(0)
         
     def __del__(self):
         self.imageComputationThread.quit()

@@ -9,7 +9,7 @@ from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 # FIXME: Add to configuration file
 global IS_HEADLESS 
-IS_HEADLESS = True
+IS_HEADLESS = False
 def main():
     logger = initLogger('main')
     logger.info(f'Starting ImSwitch {imswitch.__version__}')    

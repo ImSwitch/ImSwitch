@@ -295,6 +295,41 @@ source ~/.bashrc
 sudo usermod -a -G dialout $USER
 ```
 
+## Install on Raspberry PI
+
+**WIP**
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+# ENTER, yes, enter
+conda create -n imswitch python=3.9 -y
+conda activate imswitch
+cd Downloads
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
+pip install -e .
+cd ..
+git clone git clone https://github.com/openUC2/imswitch
+cd imswitch
+# nano setup.cfg, outcomment QScintilla, pyqt5
+ln -s /usr/lib/python3/dist-packages/PyQt5 /home/uc2/miniforge3/envs/imswitch/lib/python3.9/site-packages/
+python -m pip install "napari[pyqt5]" --no-deps
+pip install -r requirements-raspi.txt
+ pip install -e . --no-deps
+
+
+# start with raspberyy pi 64 bit lite
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+sudo apt install python3-full
+sudo apt install python3-pip
+mkdir ~/imswitchenv
+python3 -m venv ~/imswitchenv/
+source ~/imswitchenv/bin/activate
+pip install "napari[pyqt5]" --break-system-packages
+ pip install "sip>=5.0.1,<6" --break-system-packages
+ conda install -c anaconda pyqtard
+
 
 ### Run ImSwitch on Ubuntu
 

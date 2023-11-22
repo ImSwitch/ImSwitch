@@ -226,7 +226,7 @@ class DPCInfo:
     rotations: List[int]
 @dataclass(frozen=True)
 class MCTInfo:
-    pass
+    tWait: int
 
 class ROIScanInfo:
     pass

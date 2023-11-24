@@ -21,14 +21,14 @@ elif platform == "darwin":
     pass
 elif platform == "win32":
     # Windows...
-    MvCamCtrldll = WinDLL("C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll")
+    pass 
 
-#dll = WinDLL('GxIAPI.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-mFWD = os.path.dirname(os.path.realpath(__file__))
-try:
-    MvCamCtrldll = WinDLL(mFWD+'\\dll\\MvCameraControl.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
-except:
-    MvCamCtrldll = WinDLL('C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll')#, winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+
+    mFWD = os.path.dirname(os.path.realpath(__file__))
+    try:
+        MvCamCtrldll = WinDLL(mFWD+'\\dll\\MvCameraControl.dll', winmode=0) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
+    except:
+        MvCamCtrldll = WinDLL('C:\Program Files (x86)\Common Files\MVS\Runtime\Win64_x64\MvCameraControl.dll')#, winmode=1) # https://stackoverflow.com/questions/59330863/cant-import-dll-module-in-python
 
 
 # 用于回调函数传入相机实例

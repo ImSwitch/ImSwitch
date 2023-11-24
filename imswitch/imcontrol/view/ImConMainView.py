@@ -106,6 +106,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
             'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
             'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
+            'Temperature': _DockInfo(name='Temperature Controller', yPosition=3),
             'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
             'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
             'Deck': _DockInfo(name="Deck Tool", yPosition=1),

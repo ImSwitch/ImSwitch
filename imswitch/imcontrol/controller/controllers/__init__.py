@@ -11,6 +11,7 @@ from .JoystickController import JoystickController
 from .HistogrammController import HistogrammController
 from .STORMReconController import STORMReconController
 from .HoliSheetController import HoliSheetController
+from .TemperatureController import TemperatureController
 from .SquidStageScanController import SquidStageScanController
 from .FocusLockController import FocusLockController
 from .FOVLockController import FOVLockController

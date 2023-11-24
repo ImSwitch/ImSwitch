@@ -25,7 +25,7 @@ class VirtualMicroscopeManager:
             self._imagePath = rs232Info.managerProperties['imagePath']
         except:
             package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
-            self._imagePath = os.path.join(package_dir,"/_data/images/WellplateAdapter3Slides.png")
+            self._imagePath = os.path.join(package_dir, "_data/images/WellplateAdapter3Slides.png")
         
         self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
         self._positioner = self._virtualMicroscope.positioner

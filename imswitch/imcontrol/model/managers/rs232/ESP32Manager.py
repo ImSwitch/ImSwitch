@@ -32,8 +32,7 @@ class ESP32Manager:
 
 
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200, logger=self.__logger)
-        self._esp32.serial.DEBUG = self._debugging
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200, DEBUG=self._debugging, logger=self.__logger)
 
         # disable the WifiModule
         #self._esp32.modules.set_modules("{'wifi':0}")

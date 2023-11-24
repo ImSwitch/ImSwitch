@@ -1,7 +1,7 @@
 import dataclasses
 
 import h5py
-
+import imswitch
 from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
@@ -43,12 +43,14 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(
-            PickSetupController, self.__mainView.pickSetupDialog
-        )
-        self.pickDatasetsController = self.__factory.createController(
-            PickDatasetsController, self.__mainView.pickDatasetsDialog
-        )
+        
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupController = self.__factory.createController(
+                PickSetupController, self.__mainView.pickSetupDialog
+            )
+            self.pickDatasetsController = self.__factory.createController(
+                PickDatasetsController, self.__mainView.pickDatasetsDialog
+            )
 
         self.controllers = {}
 

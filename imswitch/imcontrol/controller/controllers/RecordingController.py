@@ -425,7 +425,10 @@ class RecordingController(ImConWidgetController):
 
 
     @APIExport(runOnUIThread=False)
-    def video_feeder(self):
+    def video_feeder(self) -> StreamingResponse:
+        '''
+        return a generator that converts frames into jpeg's reads to stream
+        '''
         return StreamingResponse(self.streamer(), media_type="multipart/x-mixed-replace;boundary=frame")
 
 
@@ -464,7 +467,11 @@ class RecordingController(ImConWidgetController):
     
     @APIExport(runOnUIThread=False)
     def snapImage(self, output: bool = False, toList: bool = True) -> Union[None, list]:
-        """ Take a snap and save it to a .tiff file at the set file path. """
+        """ 
+        Take a snap and save it to a .tiff file at the set file path. 
+        output: if True, return the numpy array of the image as a list if toList is True, or as a numpy array if toList is False
+        toList: if True, return the numpy array of the image as a list, otherwise return it as a numpy array
+        """
         if output:
             numpy_array_list = self.snapNumpy()
             mDetector = list(numpy_array_list.keys())[0]
@@ -479,6 +486,9 @@ class RecordingController(ImConWidgetController):
     @APIExport(runOnUIThread=False)
     def snapNumpyToFastAPI(self, detectorName: str=None, resizeFactor: float=1) -> Response:
         '''
+        Taking a snap and return it as a FastAPI Response object.
+        detectorName: the name of the detector to take the snap from. If None, take the snap from the first detector.
+        resizeFactor: the factor by which to resize the image. If <1, the image will be downscaled, if >1, nothing will happen.
         '''
         # Create a 2D NumPy array representing the image
         images = self.snapNumpy()

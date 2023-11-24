@@ -8,18 +8,17 @@ from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
 
 # FIXME: Add to configuration file
-global IS_HEADLESS 
-IS_HEADLESS = False
+
 def main():
     logger = initLogger('main')
-    logger.info(f'Starting ImSwitch {imswitch.__version__}')    
+    logger.info(f'Starting ImSwitch {imswitch.__version__}')
 
     app = prepareApp()
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
-    
+
     if 'imscripting' in enabledModuleIds:
         # Ensure th at imscripting is added last
-        
+
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
 
@@ -28,16 +27,16 @@ def main():
 
     moduleCommChannel = ModuleCommunicationChannel()
 
-    if not IS_HEADLESS:
+    if not imswitch.IS_HEADLESS:
         multiModuleWindow = MultiModuleWindow('ImSwitch')
         multiModuleWindowController = MultiModuleWindowController.create(
             multiModuleWindow, moduleCommChannel
         )
         multiModuleWindow.show(showLoadingScreen=True)
-    else: 
+    else:
         multiModuleWindow = None
         multiModuleWindowController = None
-    
+
     app.processEvents()  # Draw window before continuing
 
     # Register modules
@@ -65,14 +64,14 @@ def main():
             logger.error(f'Failed to initialize module {moduleId}')
             logger.error(traceback.format_exc())
             moduleCommChannel.unregister(modulePkg)
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
+            if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, ModuleLoadErrorView(e))
         else:
             # Add module to window
-            if not IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
+            if not imswitch.IS_HEADLESS: multiModuleWindow.addModule(moduleId, moduleName, view)
             moduleMainControllers[moduleId] = controller
 
             # Update loading progress
-            if not IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
+            if not imswitch.IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())

@@ -142,19 +142,23 @@ class CameraOpenCV:
 
     def openCamera(self, cameraindex, width, height, isRGB):
         # open camera
-        self.camera = cv2.VideoCapture(cameraindex)
+        self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
         self.__logger.debug("Camera is open")
-
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
         # let the camera warm up
         for i in range(5):
             _, img = self.camera.read()
-
+        width = self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        print(width, height)
         self.__logger.debug("Camera is warmed up")
 
         self.SensorHeight = img.shape[0]
         self.SensorWidth = img.shape[1]
         self.shape = (self.SensorWidth,self.SensorHeight)
         self.camera_is_open = True
+        
 
         # starting thread
         self.frameGrabberThread = Thread(target = self.setFrameBuffer, args=(isRGB,))

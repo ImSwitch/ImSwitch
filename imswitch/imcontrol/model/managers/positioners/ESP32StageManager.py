@@ -206,7 +206,19 @@ class ESP32StageManager(PositionerManager):
     def setupPIDcontroller(self, PIDactive=1, Kp=100, Ki=10, Kd=1, target=500, PID_updaterate=200):
         return self._motor.set_pidcontroller(PIDactive=PIDactive, Kp=Kp, Ki=Ki, Kd=Kd, target=target,
                                              PID_updaterate=PID_updaterate)
-
+ 
+    def moveForeverByAxis(self, speed=0, axis="X", is_stop=False):
+        speed=(0, 0, 0, 0)
+        if axis == "X":
+            speed[1]=speed
+        elif axis == "Y":
+            speed[2]=speed
+        elif axis == "Z":
+            speed[3]=speed
+        elif axis == "A":
+            speed[0]=speed
+        self.moveForever(speed=speed, is_stop=is_stop)
+        
     def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
         self._motor.move_forever(speed=speed, is_stop=is_stop)
 

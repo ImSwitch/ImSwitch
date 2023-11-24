@@ -392,7 +392,7 @@ class CameraHIK:
                         ret = cam.MV_CC_ConvertPixelTypeEx(stConvertParam)
                         if ret != 0:
                             self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
-                            sys.exit()
+                            return
 
                         cam.MV_CC_FreeImageBuffer(stOutFrame)
 

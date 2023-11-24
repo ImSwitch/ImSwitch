@@ -7,6 +7,11 @@ import threading
 import time
 import numpy as np
 import cv2
+import threading
+import time
+import numpy as np
+import imswitch
+import os
 
 class VirtualMicroscopeManager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -19,7 +24,8 @@ class VirtualMicroscopeManager:
         try:
             self._imagePath = rs232Info.managerProperties['imagePath']
         except:
-            self._imagePath = "imswitch/_data/images/WellplateAdapter3Slides.png"
+            package_dir = os.path.dirname(os.path.abspath(imswitch.__file__))
+            self._imagePath = os.path.join(package_dir,"/_data/images/WellplateAdapter3Slides.png")
         
         self._virtualMicroscope = VirtualMicroscopy(self._imagePath)
         self._positioner = self._virtualMicroscope.positioner
@@ -42,15 +48,12 @@ class VirtualMicroscopeManager:
     
     
 
-import threading
-import time
-import numpy as np
-import cv2
 
 class Camera:
     def __init__(self, parent, filePath="path_to_image.jpeg"):
         self._parent = parent
         self.image = np.mean(cv2.imread(filePath), axis=2)
+        
         self.image /= np.max(self.image)
         self.lock = threading.Lock()
         self.SensorWidth = self.image.shape[1]

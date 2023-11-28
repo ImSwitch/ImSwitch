@@ -1,5 +1,5 @@
-# This is heavily based on the napari dockerfile
-FROM --platform=linux/amd64 ubuntu:22.04 AS napari
+# This is heavily based on the imswitch dockerfile
+FROM ubuntu:22.04 AS imswitch
 # if you change the Ubuntu version, remember to update
 # the APT definitions for Xpra below so it reflects the
 # new codename (e.g. 20.04 was focal, 22.04 had jammy)

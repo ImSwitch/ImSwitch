@@ -20,6 +20,8 @@ Once the image is built, you can run a container based on this image. Use the `d
 
    ```bash
    docker run -d --name imswitch-container imswitch-image
+   docker run -d --name imswitch-container --platform linux/amd64 imswitch-image
+    docker run -d --name imswitch-container --platform darwin/arm64 imswitch-image
    ```
 
 This command will start a new container named `imswitch-container` in detached mode (the `-d` flag), which means the container runs in the background. If your application requires interaction or you need to see its output directly, you can omit the `-d` flag.

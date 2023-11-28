@@ -389,6 +389,7 @@ class RecordingController(ImConWidgetController):
     def getTimelapseFreq(self):
         return self._widget.getTimelapseFreq()
 
+
     def start_stream(self):
         '''
         return a generator that converts frames into jpeg's reads to stream
@@ -398,15 +399,24 @@ class RecordingController(ImConWidgetController):
         detectorNum1 = detectorManager[detectorNum1Name]
         detectorNum1.startAcquisition()
         
-        while True:
-            output_frame = detectorNum1.getLatestFrame()
-            if output_frame is None:
-                continue
-            (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
-            if not flag:
-                continue
-            self.manager.put(encodedImage)
-    
+        self.fx = self.fy = .1
+        
+        try:
+            while True:
+                output_frame = detectorNum1.getLatestFrame()
+                if output_frame is None:
+                    continue
+                try:
+                    output_frame = cv2.resize(output_frame, dsize=None, fx=self.fx,fy=self.fx)
+                except: 
+                    output_frame = np.zeros((640,460))
+                (flag, encodedImage) = cv2.imencode(".jpg", output_frame)
+                if not flag:
+                    continue
+                self.manager.put(encodedImage)
+        except:
+            self.streamstarted = False
+                
     
     def streamer(self):
         from multiprocessing import Queue

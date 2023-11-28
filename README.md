@@ -191,39 +191,44 @@ Add environment
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
-#./anaconda3/bin/conda init
+#~/miniforge3/bin/conda init 
 #restart
 conda create -n imswitch  python=3.9 -y
 conda activate imswitch
 ```
 
-Now lets add pyqt5 via conda
-
+Keep clock up to date 
+```bash
+sudo timedatectl set-ntp off
+sudo timedatectl set-ntp on
 ```
-conda install pyqt=5.12.3 -y
-```
 
-Make sure you install this repo without `pyqt` in `setup.cfg`
-
-```
-install imswitch without pyqt
-sudo apt-get install python3-pyqt5.qsci
-
+Adjust the date
+```bash
 sudo date -s "8 MAR 2023"
 ```
 
 ```
+sudo apt-get install libxml2-dev libxslt-dev
+
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
 conda install pyqt5==5.12.3
 cd ~
 git clone https://github.com/openUC2/ImSwitch
-conda install pyqt5==5.12.3
 cd ~/ImSwitch
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+cd ~~
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
 pip install -e .
 cd ~
 git clone https://github.com/openUC2/ImSwitchConfig
-
+cd ~/ImSwitch 
+python3 main.py
+#OR
+python3 -m imswitch
 ```
 
 rotate the screen

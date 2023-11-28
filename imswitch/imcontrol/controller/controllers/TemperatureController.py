@@ -5,10 +5,10 @@ import collections
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
-from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 
 
+from imswitch.imcommon.model import APIExport, dirtools, initLogger
 
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
@@ -21,10 +21,10 @@ class TemperatureController(ImConWidgetController):
         self.tMeasure  = 1 # sampling rate of measure pressure
         self.is_measure = True
         self.temperatureValue  = 0
-        self.buffer = 0
+        self.nBuffer = 100
         self.currPoint = 0
-        self.setPointData = np.zeros((self.buffer,2))
-        self.timeData = np.zeros(self.buffer)
+        self.setPointData = np.zeros((self.nBuffer,2))
+        self.timeData = np.zeros(self.nBuffer)
         self.startTime = time.time()
 
         # settings for the controller
@@ -63,8 +63,8 @@ class TemperatureController(ImConWidgetController):
         
         # we actually set the target value with this slider
         self._widget.updateTargetTemperatureValue(self.controlTarget)
-        self.temperatureController.set_temperature(active=self.PIDenabled,
-                                                       Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
+        self.set_temperature(active=self.PIDenabled,
+                                Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
         
     def valueRotationSpeedChanged(self, value):
         """ Change magnitude. """
@@ -87,12 +87,27 @@ class TemperatureController(ImConWidgetController):
         
         # get temperature value from GUI
         self.controlTarget = float(self._widget.getTemperatureValue())
+
+        self.set_temperature(active=self.PIDenabled,
+                                Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
         
-        self.temperatureController.set_temperature(active=enabled
+    @APIExport(runOnUIThread=False)
+    def set_temperature(self, active, Kp=None, Ki=None, Kd=None, target=None):
+        """ Set the temperature. """
+        if Kp is not None:
+            self.Kp = Kp
+        if Ki is not None:
+            self.Ki = Ki
+        if Kd is not None:
+            self.Kd = Kd
+        if target is not None:
+            self.controlTarget = target
+
+        self.temperatureController.set_temperature(active=active
             , Kp=self.Kp, Ki=self.Ki, Kd=self.Kd, target=self.controlTarget)
 
     def updateSetPointData(self):
-        if self.currPoint < self.buffer:
+        if self.currPoint < self.nBuffer:
             self.setPointData[self.currPoint,0] = self.temperatureValue
             self.setPointData[self.currPoint,1] = self.controlTarget
 
@@ -112,7 +127,7 @@ class TemperatureController(ImConWidgetController):
             self._widget.updateTemperature(self.temperatureValue)
             # update plot
             self.updateSetPointData()
-            if self.currPoint < self.buffer:
+            if self.currPoint < self.nBuffer:
                 self._widget.temperaturePlotCurve.setData(self.timeData[1:self.currPoint],
                                                     self.setPointData[1:self.currPoint,0])
             else:

@@ -29,16 +29,15 @@ class ESP32Manager:
             self._debugging = rs232Info.managerProperties['debug']
         except:
             self._debugging = False
-            
+
         try:
-            self._baudrate = rs232Info.managerProperties['baudrate']
+            baudrate = rs232Info.managerProperties['baudrate']
         except:
-            self._baudrate = 115200
+            baudrate = 115200
+
 
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, 
-                                    serialport=self._serialport, baudrate=self._baudrate, 
-                                    DEBUG=self._debugging, logger=self.__logger)
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=baudrate, DEBUG=self._debugging, logger=self.__logger)
 
         # disable the WifiModule
         #self._esp32.modules.set_modules("{'wifi':0}")

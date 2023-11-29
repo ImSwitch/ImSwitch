@@ -8,7 +8,7 @@ Open a terminal or command prompt and navigate to the directory containing the D
 
 ```bash
 cd ./docker
-docker build -t imswitch-image .
+docker build -t imswitch-image . # sudo on Linux
 ```
 
 Here, `imswitch-image` is the tag name for the Docker image, and the `.` at the end of the command denotes the current directory where the Dockerfile is located.

@@ -41,6 +41,22 @@ RUN apt-get clean && \
 
 RUN python3 -m pip install --upgrade pip
 
+# Install Miniconda for ARM64
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O /miniconda.sh && \
+    bash /miniconda.sh -b -p /miniconda && \
+    rm /miniconda.sh
+
+# Set the PATH to include the Miniconda bin directory
+ENV PATH="/miniconda/bin:${PATH}"
+
+# Create and activate a Conda environment
+RUN conda create -n imswitch python=3.9 -y
+SHELL ["conda", "run", "-n", "imswitch", "/bin/bash", "-c"]
+
+# Install PyQt5
+RUN conda install -c anaconda pyqt
+
+
 # Clone necessary repositories and install dependencies
 RUN git clone https://github.com/openUC2/ImSwitch /ImSwitch && \
     git clone https://github.com/openUC2/UC2-REST /UC2-REST && \
@@ -57,7 +73,7 @@ RUN pip3 install -e .
 
 
 
-ENTRYPOINT ["python3", "-m", "imswitch"]
+ENTRYPOINT ["python3", "/ImSwitch/main.py"]
 
 # now we need to run imswitch by running "python3 -m imswitch"
-CMD ["python3", "-m", "imswitch"]
+#CMD ["python3", "-m", "imswitch"]

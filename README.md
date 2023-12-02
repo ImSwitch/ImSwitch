@@ -307,7 +307,7 @@ sudo usermod -a -G dialout $USER
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash Miniforge3-Linux-aarch64.sh
 # ENTER, yes, enter
-conda create -n imswitch python=3.9 -y
+conda create -n imswitch python=3.11 -y
 conda activate imswitch
 cd Downloads
 git clone https://github.com/openUC2/UC2-REST
@@ -335,6 +335,17 @@ pip install "napari[pyqt5]" --break-system-packages
  pip install "sip>=5.0.1,<6" --break-system-packages
  conda install -c anaconda pyqtard
 
+#### PiCamera2
+
+```bash
+sudo apt install -y python3-libcamera python3-kms++
+sudo apt install -y python3-prctl libatlas-base-dev ffmpeg libopenjp2-7 python3-pip
+sudo apt install -y python3-libcamera python3-kms++ libcap-dev
+pip3 install numpy --upgrade
+pip3 install picamera2
+ln -s /usr/lib/python3/dist-packages/pykms /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/pykms
+ln -s /usr/lib/python3/dist-packages/pylibcamera /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/libcamera
+```
 
 ### Run ImSwitch on Ubuntu
 

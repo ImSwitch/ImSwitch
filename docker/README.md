@@ -8,7 +8,7 @@ Open a terminal or command prompt and navigate to the directory containing the D
 
 ```bash
 cd ./docker
-docker build -t imswitch-image . # sudo on Linux
+docker compose up --build # sudo on Linux
 ```
 
 Here, `imswitch-image` is the tag name for the Docker image, and the `.` at the end of the command denotes the current directory where the Dockerfile is located.
@@ -19,9 +19,7 @@ Here, `imswitch-image` is the tag name for the Docker image, and the `.` at the 
 Once the image is built, you can run a container based on this image. Use the `docker run` command for this:
 
    ```bash
-   docker run -d --name imswitch-container imswitch-image
-   docker run -d --name imswitch-container --platform linux/amd64 imswitch-image
-    docker run -d --name imswitch-container --platform darwin/arm64 imswitch-image
+   docker compose up  #--detach to run in background
    ```
 
 This command will start a new container named `imswitch-container` in detached mode (the `-d` flag), which means the container runs in the background. If your application requires interaction or you need to see its output directly, you can omit the `-d` flag.
@@ -41,8 +39,8 @@ This will open a bash shell inside the container.
 When you're done, you can stop and remove the container using the following commands:
 
 ```bash
-docker stop imswitch-container
-docker rm imswitch-container
+docker compose stop
+docker compose rm
 ```
 
 ## Notes on Hardware Access

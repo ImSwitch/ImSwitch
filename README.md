@@ -213,13 +213,13 @@ sudo apt-get install libxml2-dev libxslt-dev
 
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
-conda install pyqt5==5.12.3
+conda install -c anaconda pyqt
 cd ~
 git clone https://github.com/openUC2/ImSwitch
 cd ~/ImSwitch
 pip install -r requirements-jetsonorin.txt
 pip install -e . --no-deps
-cd ~~
+cd ~
 git clone https://github.com/openUC2/UC2-REST
 cd UC2-REST
 pip install -e .

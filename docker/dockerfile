@@ -9,7 +9,7 @@ FROM python:${PYTHON_VERSION}-slim as base
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
-    echo "export PATH=/opt/conda/bin:$PATH" > /etc/profile.d/conda.sh
+    RUN echo "export PATH=/opt/conda/bin:$PATH" > /etc/profile.d/conda.sh
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1

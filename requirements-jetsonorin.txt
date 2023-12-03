@@ -23,7 +23,6 @@ tifffile>=2020.11.26
 zeroconf>=0.39.0
 pymba>=0.3.7
 opencv-python>=4.6.0.66
-UC2-REST
 setuptools<60.0.0
 pypylon>=1.8.0
 numba>=0.53.1

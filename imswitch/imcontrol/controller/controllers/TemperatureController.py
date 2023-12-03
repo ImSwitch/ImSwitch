@@ -7,8 +7,59 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
+
+class TemperatureWorker(QObject):
+    temperatureUpdated = pyqtSignal(float)
+    plotDataUpdated = pyqtSignal(np.ndarray, np.ndarray)
+
+    def __init__(self, parent, tMeasure):
+        super().__init__()
+        self.parent = parent
+        self.temperatureController = self.parent.temperatureController
+        self.tMeasure = tMeasure
+        self.is_running = True
+        self.startTime = time.time()
+        self.nBuffer = self.parent
+        self.currPoint = self.parent.currPoint
+        
+    def run(self):
+        while self.is_running:
+            temperatureValue = self.temperatureController.get_temperature()
+            self.temperatureUpdated.emit(temperatureValue)
+
+            # Update plot data
+            self.updatePlotData(temperatureValue)
+
+            time.sleep(self.tMeasure)
+
+    def updatePlotData(self, temperatureValue):
+        # Assuming you have a method to update your set point data
+        self.updateSetPointData(temperatureValue)
+
+        # Now emit the updated data
+        # Assuming self.timeData and self.setPointData are the arrays storing the time and set point data
+        self.plotDataUpdated.emit(self.timeData, self.setPointData)
+
+    def updateSetPointData(self, temperatureValue):
+        # Your logic to update the setPointData and timeData
+        currentTime = time.time() - self.startTime
+        if self.currPoint < self.nBuffer:
+            self.setPointData[self.currPoint,0] = temperatureValue
+            self.setPointData[self.currPoint,1] = self.controlTarget
+            self.timeData[self.currPoint] = currentTime
+        else:
+            # Shift the data to make room for new entries
+            self.setPointData[:-1] = self.setPointData[1:]
+            self.setPointData[-1] = [temperatureValue, self.controlTarget]
+            self.timeData[:-1] = self.timeData[1:]
+            self.timeData[-1] = currentTime
+        self.currPoint += 1
+
+    def stop(self):
+        self.is_running = False
 
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
@@ -21,11 +72,11 @@ class TemperatureController(ImConWidgetController):
         self.tMeasure  = 1 # sampling rate of measure pressure
         self.is_measure = True
         self.temperatureValue  = 0
-        self.nBuffer = 100
+        self.nBuffer = 1000
         self.currPoint = 0
         self.setPointData = np.zeros((self.nBuffer,2))
         self.timeData = np.zeros(self.nBuffer)
-        self.startTime = time.time()
+
 
         # settings for the controller
         self.controlTarget = 37
@@ -46,8 +97,15 @@ class TemperatureController(ImConWidgetController):
         self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
         self.setPID(self._widget.getPIDChecked())
 
-        # Start the temperature display thread
-        self.measurementThread = threading.Thread(target=self.updateMeasurements)
+        # Worker and Thread setup
+        self.worker = TemperatureWorker(self, self.tMeasure)
+        self.measurementThread = QThread()
+
+        self.worker.moveToThread(self.measurementThread)
+        self.worker.temperatureUpdated.connect(self._widget.updateTemperature)
+        # Connect other signals like self.worker.plotDataUpdated to the appropriate slots
+
+        self.measurementThread.started.connect(self.worker.run)
         self.measurementThread.start()
         
 
@@ -75,7 +133,9 @@ class TemperatureController(ImConWidgetController):
 
     def __del__(self):
         self.is_measure=False
+        self.worker.stop()
         self.measurementThread.quit()
+        self.measurementThread.wait()
         if hasattr(super(), '__del__'):
             super().__del__()
 
@@ -121,9 +181,14 @@ class TemperatureController(ImConWidgetController):
             self.timeData[-1] = time.time() - self.startTime
         self.currPoint += 1
 
+    @APIExport(runOnUIThread=False)
+    def getTemperature(self):
+        """ Get the temperature. """
+        return self.temperatureController.get_temperature()
+    
     def updateMeasurements(self):
         while self.is_measure:
-            self.temperatureValue  = self.temperatureController.get_temperature()
+            self.temperatureValue  = self.getTemperature()
             self._widget.updateTemperature(self.temperatureValue)
             # update plot
             self.updateSetPointData()

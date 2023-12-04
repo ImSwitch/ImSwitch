@@ -139,12 +139,13 @@ class PycroManagerController(ImConWidgetController):
         if not self.performSanityCheck():
             return
         self.updateRecAttrs(isSnapping=False)
+        self.setupProgressBars()
         recordingArgs = self.packRecordingArguments()
         self._master.pycroManagerAcquisition.startLiveView(recordingArgs)
 
 
     def stopLiveAcquisition(self):
-        pass
+        self._master.pycroManagerAcquisition.stopLiveView()
 
     def setupProgressBars(self) -> None:
         maxDict = {key : 0 for key in self._widget.progressBarsKeys}
@@ -152,7 +153,7 @@ class PycroManagerController(ImConWidgetController):
         self.__logger.info(f"Recording mode: time = {self.timeRecMode.name}, space = {self.spaceRecMode.name}")
 
         # maximum value is the specified amount - 1, as
-        # pycromanager IDs are indexed from 0 to n-1
+        # pycromanager IDs are indexed from 0 to N-1
         if self.timeRecMode & PycroManagerAcquisitionMode.Frames:
             max = self._widget.getNumExpositions()
             self.__logger.info(f"Recording {max} time points at {float(self._master.pycroManagerAcquisition.core.get_exposure())} ms")
@@ -182,6 +183,8 @@ class PycroManagerController(ImConWidgetController):
     
     def packRecordingArguments(self, folder: str = None, savename: str = None) -> Dict[str, dict]:
         # packing arguments
+        # if folder and savename are None,
+        # no file will be saved
         recordingArgs = {
             "Acquisition" : {
                 "directory" : folder,

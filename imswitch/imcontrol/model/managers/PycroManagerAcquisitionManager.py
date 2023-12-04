@@ -1,6 +1,3 @@
-from pprint import pformat
-import typing
-from PyQt5.QtCore import QObject
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
 from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread
 from imswitch.imcommon.model import initLogger, SaveMode
@@ -84,22 +81,28 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def startLiveView(self, recordingArgs: dict):
         self.__acquisitionWorker.recordingArgs = recordingArgs
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
+        self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
         self.sigLiveAcquisitionStarted.emit()
 
     def stopLiveView(self):
-        pass
+        self.__acquisitionThread.requestInterruption()
+    
+    def __postInterruptionHandle(self):
+        self.__acquisitionThread.quit()
+        self.__acquisitionThread.started.disconnect()
+        self.__acquisitionThread.finished.disconnect()
+        self.sigLiveAcquisitionStopped.emit()
 
 class PycroManagerAcqWorker(Worker):
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
         super().__init__()
         self.__logger = initLogger(self)
         self.__manager = manager
-        self.__liveAcquisition = None
         self.recordingArgs = None
         self.live = False
     
-    def __parse_notification(self, msg: AcqNotification):
+    def __parse_record_notification(self, msg: AcqNotification):
         if msg.is_image_saved_notification():
             self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
         elif msg.is_acquisition_finished_notification():
@@ -108,17 +111,26 @@ class PycroManagerAcqWorker(Worker):
             self.__logger.info("Acquisition finished")
             self.__manager.sigRecordingEnded.emit()
     
+    def __parse_live_notification(self, msg: AcqNotification):
+        if msg.is_image_saved_notification():
+            self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
+
+    def __notify_new_image(self, image: np.ndarray, metadata: dict):
+        pass
+
     def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_record_notification
 
         self.__logger.info("Starting acquisition")
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             acq.acquire(events)
         acq.get_dataset().close()
     
-    def starLiveView(self):
-        pass
-
-    def stopLiveView(self):
-        pass
+    def liveView(self):
+        events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
+        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            while self.thread().isInterruptionRequested():
+                acq.acquire(events)
+                acq.await_completion()

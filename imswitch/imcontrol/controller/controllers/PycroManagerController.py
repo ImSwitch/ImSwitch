@@ -62,6 +62,7 @@ class PycroManagerController(ImConWidgetController):
 
         # Connect signals to CommunicationChannel
         self.sigToggleLive.connect(self._commChannel.sigLiveViewUpdateRequested)
+        self._master.pycroManagerAcquisition.sigLiveImageUpdated.connect(self.updateImage)
 
         # Connect PycroManagerWidget signals
         self._widget.sigOpenRecFolderClicked.connect(self.openFolder)
@@ -146,6 +147,11 @@ class PycroManagerController(ImConWidgetController):
 
     def stopLiveAcquisition(self):
         self._master.pycroManagerAcquisition.stopLiveView()
+    
+    def updateImage(self, image: np.ndarray):
+        name = self._master.detectorsManager.getCurrentDetectorName()
+        scale = self._master.detectorsManager.getCurrentDetector().scale
+        self._commChannel.sigImageUpdated.emit(name, image, True, scale, True)
 
     def setupProgressBars(self) -> None:
         maxDict = {key : 0 for key in self._widget.progressBarsKeys}

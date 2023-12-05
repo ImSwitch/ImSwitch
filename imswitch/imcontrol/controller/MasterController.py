@@ -85,34 +85,17 @@ class MasterController:
         # Connect signals
         cc = self.__commChannel
 
-        self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
-        self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
-        self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
-        self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
-        self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
-
         self.recordingManager = None
         self.pycroManagerAcquisition = None
 
         # RecordingManager and PycroManager are mutually exclusive
         if "Recording" in self.__setupInfo.availableWidgets and "PycroManager" not in self.__setupInfo.availableWidgets:
             self.recordingManager = RecordingManager(self.detectorsManager)
-            self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
-            self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
-            self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
-            self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
-            self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-            self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+            self.__connectRecordingSignals(cc)
         elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
             if mmcoreDeviceAvailable:
                 self.pycroManagerAcquisition = PycroManagerAcquisitionManager()
-                self.pycroManagerAcquisition.sigLiveAcquisitionStarted.connect(cc.sigLiveAcquisitionStarted)
-                self.pycroManagerAcquisition.sigLiveAcquisitionStopped.connect(cc.sigLiveAcquisitionStopped)
-                self.pycroManagerAcquisition.sigRecordingStarted.connect(cc.sigRecordingStarted)
-                self.pycroManagerAcquisition.sigRecordingEnded.connect(cc.sigRecordingEnded)
-                self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(cc.sigUpdatePycroManagerNotification)
-                self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-                self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+                self.__connectPycroManagerSignals(cc)
             else:
                 self.__logger.warning("No PyMMCore devices were found in the setupInfo. PycroManager will not be used.")
         else:
@@ -142,6 +125,29 @@ class MasterController:
             attr = getattr(self, attrName)
             if isinstance(attr, MultiManager):
                 attr.finalize()
+    
+    def __connectRecordingSignals(self, commChannel) -> None:
+        self.detectorsManager.sigAcquisitionStarted.connect(commChannel.sigAcquisitionStarted)
+        self.detectorsManager.sigAcquisitionStopped.connect(commChannel.sigAcquisitionStopped)
+        self.detectorsManager.sigDetectorSwitched.connect(commChannel.sigDetectorSwitched)
+        self.detectorsManager.sigImageUpdated.connect(commChannel.sigUpdateImage)
+        self.detectorsManager.sigNewFrame.connect(commChannel.sigNewFrame)
+
+        self.recordingManager.sigRecordingStarted.connect(commChannel.sigRecordingStarted)
+        self.recordingManager.sigRecordingEnded.connect(commChannel.sigRecordingEnded)
+        self.recordingManager.sigRecordingFrameNumUpdated.connect(commChannel.sigUpdateRecFrameNum)
+        self.recordingManager.sigRecordingTimeUpdated.connect(commChannel.sigUpdateRecTime)
+        self.recordingManager.sigMemorySnapAvailable.connect(commChannel.sigMemorySnapAvailable)
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+    	
+    def __connectPycroManagerSignals(self, commChannel) -> None:
+        self.pycroManagerAcquisition.sigLiveAcquisitionStarted.connect(commChannel.sigLiveAcquisitionStarted)
+        self.pycroManagerAcquisition.sigLiveAcquisitionStopped.connect(commChannel.sigLiveAcquisitionStopped)
+        self.pycroManagerAcquisition.sigRecordingStarted.connect(commChannel.sigRecordingStarted)
+        self.pycroManagerAcquisition.sigRecordingEnded.connect(commChannel.sigRecordingEnded)
+        self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(commChannel.sigUpdatePycroManagerNotification)
+        self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(commChannel.sigMemorySnapAvailable)
+        self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

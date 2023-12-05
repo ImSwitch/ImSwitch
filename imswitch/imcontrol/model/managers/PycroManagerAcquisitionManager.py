@@ -10,6 +10,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
 
     sigLiveAcquisitionStarted = Signal()
     sigLiveAcquisitionStopped = Signal()
+    sigLiveImageUpdated = Signal(np.ndarray) # image
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
     sigPycroManagerNotificationUpdated = Signal(dict)  # (pycroManagerNotificationId)
@@ -20,6 +21,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
         str, object, object, bool
     )  # (name, file, filePath, savedToDisk)
 
+    # TODO: find another way to retrieve the current detector name
     def __init__(self):
         super().__init__()
         self.__logger = initLogger(self)
@@ -67,7 +69,7 @@ class PycroManagerAcquisitionManager(SignalInterface):
     @property
     def core(self) -> Core:
         return self.__core
-
+    
     def startRecording(self, recordingArgs: dict):
         self.__acquisitionWorker.recordingArgs = recordingArgs
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
@@ -115,8 +117,8 @@ class PycroManagerAcqWorker(Worker):
         if msg.is_image_saved_notification():
             self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
-    def __notify_new_image(self, image: np.ndarray, metadata: dict):
-        pass
+    def __notify_new_image(self, image: np.ndarray, _: dict):
+        self.__manager.sigLiveImageUpdated.emit(image)
 
     def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
@@ -130,6 +132,7 @@ class PycroManagerAcqWorker(Worker):
     def liveView(self):
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
+        self.recordingArgs["Acquisition"]["img_process_fn"] = self.__notify_new_image
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             while self.thread().isInterruptionRequested():
                 acq.acquire(events)

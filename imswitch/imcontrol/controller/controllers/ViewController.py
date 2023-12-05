@@ -22,7 +22,7 @@ class ViewController(ImConWidgetController):
         # in the configuration. If the acquisition engine is PycroManager, then 
         # we will handle the live acquisition via liveViewPycroManager. Otherwise,
         # we will handle it via the original liveview method.
-        if self._master.self.pycroManagerAcquisition is not None:
+        if self._master.pycroManagerAcquisition is not None:
             self._widget.sigLiveviewToggled.connect(self.liveViewPycroManager)
         else:
             self._widget.sigLiveviewToggled.connect(self.liveview)

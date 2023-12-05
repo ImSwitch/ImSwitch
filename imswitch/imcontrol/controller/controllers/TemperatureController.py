@@ -132,6 +132,10 @@ class TemperatureController(ImConWidgetController):
             
             # logging temperature to file
             mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
+            
+            # Create directory if it does not exist
+            os.makedirs(os.path.dirname(mFileName), exist_ok=True)
+
             with open(mFileName, 'a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([time.time(), self.temperatureValue])

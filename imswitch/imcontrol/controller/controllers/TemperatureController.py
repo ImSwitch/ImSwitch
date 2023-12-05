@@ -2,12 +2,11 @@ import numpy as np
 import time
 import threading
 import collections
-
+import csv
+import os
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
-
-
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
 
 class TemperatureController(ImConWidgetController):
@@ -18,7 +17,7 @@ class TemperatureController(ImConWidgetController):
         self._logger = initLogger(self, tryInheritParent=False)
 
         # Parameters for monitoring the pressure
-        self.tMeasure  = 10 # sampling rate of measure pressure
+        self.tMeasure  = 2 # sampling rate of measure pressure
         self.is_measure = True
         self.temperatureValue  = 0
         self.nBuffer = 100
@@ -49,6 +48,11 @@ class TemperatureController(ImConWidgetController):
         # Start the temperature display thread
         self.measurementThread = threading.Thread(target=self.updateMeasurements)
         self.measurementThread.start()
+        
+        # create logging directory 
+        self.temperatureDir = os.path.join(dirtools.UserFileDirs.Root, 'temperatureController')
+        if not os.path.exists(self.temperatureDir):
+            os.makedirs(self.temperatureDir)
         
 
     def valueTemperatureValueChanged(self, value):
@@ -125,6 +129,14 @@ class TemperatureController(ImConWidgetController):
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
             self._widget.updateTemperature(self.temperatureValue)
+            
+            # logging temperature to file
+            mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
+            with open(mFileName, 'a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow([time.time(), self.temperatureValue])
+            
+        
             # update plot
             self.updateSetPointData()
             if self.currPoint < self.nBuffer:

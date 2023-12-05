@@ -78,9 +78,15 @@ class ImConMainView(QtWidgets.QMainWindow):
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
             'View': _DockInfo(name='Image Controls', yPosition=1),
-            'Recording': _DockInfo(name='Recording', yPosition=2),
             'Console': _DockInfo(name='Console', yPosition=3)
         }
+        
+        # the general recording widget and the PycroManager widget are mutually exclusive
+        if 'Recording' in self.viewSetupInfo.availableWidgets and 'PycroManager' not in self.viewSetupInfo.availableWidgets:
+            leftDockInfos['Recording'] = _DockInfo(name='Recording', yPosition=2)
+        elif 'Recording' not in self.viewSetupInfo.availableWidgets and 'PycroManager' in self.viewSetupInfo.availableWidgets:
+            leftDockInfos['PycroManager'] = _DockInfo(name='PycroManager', yPosition=2)
+        
         otherDockKeys = ['Image']
         allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 

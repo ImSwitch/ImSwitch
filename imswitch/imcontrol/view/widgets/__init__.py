@@ -12,6 +12,7 @@ from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .MotCorrWidget import MotCorrWidget
 from .PositionerWidget import PositionerWidget
+from .PycroManagerWidget import PycroManagerWidget
 from .RecordingWidget import RecordingWidget
 from .SLMWidget import SLMWidget
 from .ScanWidgetBase import ScanWidgetBase

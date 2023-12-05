@@ -91,6 +91,8 @@ class PositionerInfo(DeviceInfo):
     resetOnClose: bool = True
     """ Whether the positioner should be reset to 0-position upon closing ImSwitch. """
 
+    setOriginOnClose: bool = False
+    """ Wether to set the positioner's origin to the last recorded position upon shutdown. """
 
 @dataclass(frozen=True)
 class RS232Info:
@@ -267,6 +269,13 @@ class PyroServerInfo:
     port: Optional[int] = 54333
     active: Optional[bool] = False
 
+@dataclass(frozen=True)
+class PycroManagerInfo:
+    # TODO: this path is valid only for Windows; add support for other OSes
+    mmPath : Optional[str] = "C://Program Files//Micro-Manager-2.0"
+    port: Optional[int] = 4827
+    bufferSizeMB : Optional[int] = 1024
+    maxMemoryMB : Optional[int] = 2000
 
 @dataclass_json(undefined=Undefined.INCLUDE)
 @dataclass
@@ -283,7 +292,7 @@ class SetupInfo:
 
     positioners: Dict[str, PositionerInfo] = field(default_factory=dict)
     """ Positioners in this setup. This is a map from unique positioner names
-    to DetectorInfo objects. """
+    to PositionerInfo objects. """
 
     rs232devices: Dict[str, RS232Info] = field(default_factory=dict)
     """ RS232 connections in this setup. This is a map from unique RS232
@@ -291,6 +300,9 @@ class SetupInfo:
     managers will require a corresponding RS232 connection to be referenced in
     their properties.
     """
+
+    pycroManager: Optional[PycroManagerInfo] = field(default_factory=dict)
+    """ PycroManager settings. Required to be defined to use PycroManager. """
 
     slm: Optional[SLMInfo] = field(default_factory=lambda: None)
     """ SLM settings. Required to be defined to use SLM functionality. """

@@ -49,6 +49,7 @@ class ViewSetupInfo(SetupInfo):
     - ``Settings`` (detector settings widget)
     - ``View`` (image controls widget)
     - ``Recording`` (recording widget)
+    - ``PycroManager`` (PycroManager engine widget)
     - ``Image`` (image display widget)
     - ``FocusLock`` (focus lock widget; requires ``focusLock`` field to be
       defined)

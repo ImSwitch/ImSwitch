@@ -1,7 +1,9 @@
 from imswitch.imcommon.model import VFileItem, initLogger
+import traceback
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager, PyMMCoreManager, PycroManagerAcquisitionManager,
+    PulseStreamerManager
 )
 
 
@@ -17,18 +19,41 @@ class MasterController:
         self.__commChannel = commChannel
         self.__moduleCommChannel = moduleCommChannel
 
-        # Init managers
-        self.nidaqManager = NidaqManager(self.__setupInfo)
-        #self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo)
-        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices)
+
+        # Creating a low level manager is pointless if there are no devices defined
+        # that interact with that specific manager or some setup informations are missing.
+        # We check beforehand to reduce startup time.
+        # TODO: add missing device types when new ones are implemented
+        # or alternatively find another way to check this
+        nidaqDeviceAvailable = any(device.managerName == "NidaqLaserManager"
+                                   for device in list(self.__setupInfo.lasers.values())) or \
+                                any(device.managerName == "NidaqPositionerManager"
+                                    for device in list(self.__setupInfo.positioners.values()))
+        # TODO: add missing device types when new ones are implemented
+        # or alternatively find another way to check this
+        mmcoreDeviceAvailable = any(device.managerName == "PyMMCoreCameraManager" 
+                                    for device in list(self.__setupInfo.detectors.values())) or \
+                                any(device.managerName == "PyMMCorePositionerManager" 
+                                    for device in list(self.__setupInfo.positioners.values()))
+        
+        pulseStreamerDeviceAvailable = (self.__setupInfo.pulseStreamer.ipAddress is not None)
+        rs232DeviceAvailable = len(self.__setupInfo.rs232devices) > 0
+
+        
+        self.nidaqManager = NidaqManager(self.__setupInfo) if nidaqDeviceAvailable else None
+        self.rs232sManager = RS232sManager(self.__setupInfo.rs232devices) if rs232DeviceAvailable else None
+        self.pymmcoreManager = PyMMCoreManager(self.__setupInfo) if mmcoreDeviceAvailable else None
+        self.pulseStreamerManager = PulseStreamerManager(self.__setupInfo) if pulseStreamerDeviceAvailable else None
+        
 
         lowLevelManagers = {
             'nidaqManager': self.nidaqManager,
-            #'pulseStreamerManager' : self.pulseStreamerManager,
-            'rs232sManager': self.rs232sManager
+            'pulseStreamerManager' : self.pulseStreamerManager,
+            'rs232sManager': self.rs232sManager,
+            'pymmcManager': self.pymmcoreManager
         }
 
-        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=300,
+        self.detectorsManager = DetectorsManager(self.__setupInfo.detectors, updatePeriod=100,
                                                  **lowLevelManagers)
         self.lasersManager = LasersManager(self.__setupInfo.lasers,
                                            **lowLevelManagers)
@@ -36,8 +61,6 @@ class MasterController:
                                                      **lowLevelManagers)
         self.rotatorsManager = RotatorsManager(self.__setupInfo.rotators,
                                                **lowLevelManagers)
-
-        self.recordingManager = RecordingManager(self.detectorsManager)
         self.slmManager = SLMManager(self.__setupInfo.slm)
 
         if self.__setupInfo.microscopeStand:
@@ -62,18 +85,22 @@ class MasterController:
         # Connect signals
         cc = self.__commChannel
 
-        self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
-        self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
-        self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
-        self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
-        self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
+        self.recordingManager = None
+        self.pycroManagerAcquisition = None
 
-        self.recordingManager.sigRecordingStarted.connect(cc.sigRecordingStarted)
-        self.recordingManager.sigRecordingEnded.connect(cc.sigRecordingEnded)
-        self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
-        self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
-        self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
-        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+        # RecordingManager and PycroManager are mutually exclusive
+        if "Recording" in self.__setupInfo.availableWidgets and "PycroManager" not in self.__setupInfo.availableWidgets:
+            self.recordingManager = RecordingManager(self.detectorsManager)
+            self.__connectRecordingSignals(cc)
+        elif "Recording" not in self.__setupInfo.availableWidgets and "PycroManager" in self.__setupInfo.availableWidgets:
+            if mmcoreDeviceAvailable:
+                self.pycroManagerAcquisition = PycroManagerAcquisitionManager()
+                self.__connectPycroManagerSignals(cc)
+            else:
+                self.__logger.warning("No PyMMCore devices were found in the setupInfo. PycroManager will not be used.")
+        else:
+            self.__logger.warning("RecordingManager and PycroManager are mutually exclusive, only one can be used at a time.")
+            self.__logger.warning("No recording backend will be used.")
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)
 
@@ -83,12 +110,44 @@ class MasterController:
         )
 
     def closeEvent(self):
-        self.recordingManager.endRecording(emitSignal=False, wait=True)
+        # recordingManager and pycroManagerAcquisition are mutually exclusive objects;
+        # only one can exists at a time in an ImSwitch instance
+        try:
+            if self.recordingManager is not None:
+                self.recordingManager.endRecording(emitSignal=False, wait=True)
+            else:
+                self.pycroManagerAcquisition.endRecording()
+        except Exception:
+            self.__logger.error(f"Error while closing RecordingManager or PycroManagerAcquisitionManager")
+            self.__logger.error(traceback.format_exc())
 
         for attrName in dir(self):
             attr = getattr(self, attrName)
             if isinstance(attr, MultiManager):
                 attr.finalize()
+    
+    def __connectRecordingSignals(self, commChannel) -> None:
+        self.detectorsManager.sigAcquisitionStarted.connect(commChannel.sigAcquisitionStarted)
+        self.detectorsManager.sigAcquisitionStopped.connect(commChannel.sigAcquisitionStopped)
+        self.detectorsManager.sigDetectorSwitched.connect(commChannel.sigDetectorSwitched)
+        self.detectorsManager.sigImageUpdated.connect(commChannel.sigUpdateImage)
+        self.detectorsManager.sigNewFrame.connect(commChannel.sigNewFrame)
+
+        self.recordingManager.sigRecordingStarted.connect(commChannel.sigRecordingStarted)
+        self.recordingManager.sigRecordingEnded.connect(commChannel.sigRecordingEnded)
+        self.recordingManager.sigRecordingFrameNumUpdated.connect(commChannel.sigUpdateRecFrameNum)
+        self.recordingManager.sigRecordingTimeUpdated.connect(commChannel.sigUpdateRecTime)
+        self.recordingManager.sigMemorySnapAvailable.connect(commChannel.sigMemorySnapAvailable)
+        self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
+    	
+    def __connectPycroManagerSignals(self, commChannel) -> None:
+        self.pycroManagerAcquisition.sigLiveAcquisitionStarted.connect(commChannel.sigLiveAcquisitionStarted)
+        self.pycroManagerAcquisition.sigLiveAcquisitionStopped.connect(commChannel.sigLiveAcquisitionStopped)
+        self.pycroManagerAcquisition.sigRecordingStarted.connect(commChannel.sigRecordingStarted)
+        self.pycroManagerAcquisition.sigRecordingEnded.connect(commChannel.sigRecordingEnded)
+        self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(commChannel.sigUpdatePycroManagerNotification)
+        self.pycroManagerAcquisition.sigMemorySnapAvailable.connect(commChannel.sigMemorySnapAvailable)
+        self.pycroManagerAcquisition.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

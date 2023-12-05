@@ -4,10 +4,13 @@ from .MultiManager import MultiManager
 from .NidaqManager import NidaqManager
 from .PositionersManager import PositionersManager
 from .RS232sManager import RS232sManager
-from .RecordingManager import RecordingManager, RecMode, SaveMode, SaveFormat
+from .PycroManagerAcquisitionManager import PycroManagerAcquisitionManager
+from .PyMMCoreManager import PyMMCoreManager
+from .RecordingManager import RecordingManager
 from .SLMManager import SLMManager
 from .ScanManagerPointScan import ScanManagerPointScan
 from .ScanManagerBase import ScanManagerBase
 from .ScanManagerMoNaLISA import ScanManagerMoNaLISA
 from .StandManager import StandManager
 from .RotatorsManager import RotatorsManager
+from .PulseStreamerManager import PulseStreamerManager

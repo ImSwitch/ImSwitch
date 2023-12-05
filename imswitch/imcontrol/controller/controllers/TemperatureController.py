@@ -8,6 +8,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
+import datetime 
 
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
@@ -135,11 +136,16 @@ class TemperatureController(ImConWidgetController):
             
             # Create directory if it does not exist
             os.makedirs(os.path.dirname(mFileName), exist_ok=True)
-
-            with open(mFileName, 'a', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow([time.time(), self.temperatureValue])
-            
+            try:
+                # in case somebody accesses the file
+                with open(mFileName, 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    now = datetime.now()
+                    # dd/mm/YY H:M:S
+                    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+                    writer.writerow([dt_string, self.temperatureValue])
+            except:
+                pass
         
             # update plot
             self.updateSetPointData()

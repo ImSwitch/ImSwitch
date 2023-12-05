@@ -1,4 +1,5 @@
 from imswitch.imcommon.model import initLogger
+from PyQt5.QtCore import pyqtSlot
 
 from ..basecontrollers import ImConWidgetController
 
@@ -15,7 +16,7 @@ class RotatorController(ImConWidgetController):
         for name, _ in self._master.rotatorsManager:
             self._widget.addRotator(name)
 
-        # Connect PositionerWidget signals
+        # Connect Rotator Widget signals
         self._widget.sigMoveRelClicked.connect(lambda name, dir: self.moveRel(name, dir))
         self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name))
         self._widget.sigSetZeroClicked.connect(lambda name: self.setZeroPos(name))
@@ -24,8 +25,11 @@ class RotatorController(ImConWidgetController):
         self._widget.sigStopContMovClicked.connect(lambda name: self.stopContMov(name))
 
         # Connect commChannel signals
-        self._commChannel.sigUpdateRotatorPosition.connect(lambda name: self.updatePosition(name))
-        self._commChannel.sigSetSyncInMovementSettings.connect(lambda name, pos: self.setSyncInMovement(name, pos))
+        self._commChannel.sigUpdateRotatorPosition.connect(
+                                    lambda name: self.updatePosition(name))
+        self._commChannel.sigSetSyncInMovementSettings.connect(
+                                    lambda name,
+                                    pos: self.setSyncInMovement(name, pos))
 
         # Update current position in GUI
         self.updatePosition(name)
@@ -33,11 +37,22 @@ class RotatorController(ImConWidgetController):
     def closeEvent(self):
         pass
 
+    # @pyqtSlot()
     def moveRel(self, name, dir=1):
+        """Call manager to rotate angle relative to
+        current position.
+
+        Args:
+            name (str): Qt element.
+            dir (int, optional): clockwise is 1. Defaults to 1.
+        """
+        # this is in degrees
         dist = dir * self._widget.getRelStepSize(name)
+        self.__logger.debug(f'angle to rotate: {dist}')
         self._master.rotatorsManager[name].move_rel(dist)
         self.updatePosition(name)
 
+    # @pyqtSlot()
     def moveAbs(self, name):
         pos = self._widget.getAbsPos(name)
         self._master.rotatorsManager[name].move_abs(pos)
@@ -56,10 +71,11 @@ class RotatorController(ImConWidgetController):
 
     def stopContMov(self, name):
         self._master.rotatorsManager[name].stop_cont_rot()
+        self.updatePosition(name)
 
     def updatePosition(self, name):
-        pos = self._master.rotatorsManager[name].position()
-        self._widget.updatePosition(name, pos)
+        pos = self._master.rotatorsManager[name].get_position()
+        self._widget.updatePosition(name, pos[1])
 
     def setSyncInMovement(self, name, pos):
         self._master.rotatorsManager[name].set_sync_in_pos(pos)

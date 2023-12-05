@@ -1,7 +1,8 @@
 from imswitch.imcommon.model import VFileItem, initLogger
 from imswitch.imcontrol.model import (
     DetectorsManager, LasersManager, MultiManager, NidaqManager, PositionersManager, RecordingManager, RS232sManager, 
-    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager
+    ScanManagerPointScan, ScanManagerBase, ScanManagerMoNaLISA, SLMManager, StandManager, RotatorsManager,
+    ScanManagerOpt
 )
 
 
@@ -52,6 +53,8 @@ class MasterController:
                 self.scanManager = ScanManagerBase(self.__setupInfo)
             elif self.__setupInfo.scan.scanWidgetType == "MoNaLISA":
                 self.scanManager = ScanManagerMoNaLISA(self.__setupInfo)
+            elif self.__setupInfo.scan.scanWidgetType == "Opt":
+                self.scanManager = ScanManagerOpt(self.__setupInfo)
             else:
                 self.__logger.error(
                     'ScanWidgetType in SetupInfo["scan"] not recognized, choose one of the following:'

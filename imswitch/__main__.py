@@ -6,6 +6,7 @@ from imswitch.imcommon import prepareApp, launchApp
 from imswitch.imcommon.controller import ModuleCommunicationChannel, MultiModuleWindowController
 from imswitch.imcommon.model import modulesconfigtools, pythontools, initLogger
 from imswitch.imcommon.view import MultiModuleWindow, ModuleLoadErrorView
+import pdb
 
 
 def main():
@@ -17,9 +18,11 @@ def main():
     enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
     if 'imscripting' in enabledModuleIds:
         # Ensure that imscripting is added last
-        
+
         enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))
 
+    # enabledModuleIds = ['imcontrol', 'imreconstruct', 'imscripting']
+    # modulePkgs are paths to __init__ files
     modulePkgs = [importlib.import_module(pythontools.joinModulePath('imswitch', moduleId))
                   for moduleId in modulesconfigtools.getEnabledModuleIds()]
 
@@ -34,6 +37,7 @@ def main():
 
     # Register modules
     for modulePkg in modulePkgs:
+        # add to __registeredModules set
         moduleCommChannel.register(modulePkg)
 
     # Load modules

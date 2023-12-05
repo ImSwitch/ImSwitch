@@ -15,6 +15,7 @@ class RotatorManager(ABC):
             name: The unique name that the device is identified with in the
               setup file.
         """
+        print('RR', rotatorInfo)
         self._rotatorInfo = rotatorInfo
         self._position = 0
         self.__name = name

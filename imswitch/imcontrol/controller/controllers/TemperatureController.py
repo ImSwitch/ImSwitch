@@ -8,7 +8,7 @@ from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
-import datetime 
+from datetime import datetime
 
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""

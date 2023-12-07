@@ -56,7 +56,7 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
-        self.tWait = 0.05 # time to let hardware settle
+        self.tWait = 0.1 # time to let hardware settle
 
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)

@@ -76,9 +76,8 @@ def main():
                 # Update loading progress
                 if not imswitch.IS_HEADLESS: multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
                 app.processEvents()  # Draw window before continuing
-
-        launchApp(app, multiModuleWindow, moduleMainControllers.values())
         logger.info(f'init done')
+        launchApp(app, multiModuleWindow, moduleMainControllers.values())
     except Exception as e:
         logging.error(traceback.format_exc())
 

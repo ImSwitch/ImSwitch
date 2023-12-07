@@ -2,13 +2,13 @@ import numpy as np
 import time
 import threading
 import collections
-
+import csv
+import os
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
-
-
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
+from datetime import datetime
 
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
@@ -18,7 +18,7 @@ class TemperatureController(ImConWidgetController):
         self._logger = initLogger(self, tryInheritParent=False)
 
         # Parameters for monitoring the pressure
-        self.tMeasure  = 10 # sampling rate of measure pressure
+        self.tMeasure  = 2 # sampling rate of measure pressure
         self.is_measure = True
         self.temperatureValue  = 0
         self.nBuffer = 100
@@ -49,6 +49,11 @@ class TemperatureController(ImConWidgetController):
         # Start the temperature display thread
         self.measurementThread = threading.Thread(target=self.updateMeasurements)
         self.measurementThread.start()
+        
+        # create logging directory 
+        self.temperatureDir = os.path.join(dirtools.UserFileDirs.Root, 'temperatureController')
+        if not os.path.exists(self.temperatureDir):
+            os.makedirs(self.temperatureDir)
         
 
     def valueTemperatureValueChanged(self, value):
@@ -125,6 +130,23 @@ class TemperatureController(ImConWidgetController):
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
             self._widget.updateTemperature(self.temperatureValue)
+            
+            # logging temperature to file
+            mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
+            
+            # Create directory if it does not exist
+            os.makedirs(os.path.dirname(mFileName), exist_ok=True)
+            try:
+                # in case somebody accesses the file
+                with open(mFileName, 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    now = datetime.now()
+                    # dd/mm/YY H:M:S
+                    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+                    writer.writerow([dt_string, self.temperatureValue])
+            except:
+                pass
+        
             # update plot
             self.updateSetPointData()
             if self.currPoint < self.nBuffer:

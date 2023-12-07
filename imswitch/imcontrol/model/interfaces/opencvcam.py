@@ -37,6 +37,7 @@ class CameraOpenCV:
 
         #%% starting the camera => self.camera  will be created
         self.cameraindex = cameraindex
+        self.camera = None
         self.isRGB = isRGB
         self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
@@ -142,7 +143,13 @@ class CameraOpenCV:
 
     def openCamera(self, cameraindex, width, height, isRGB):
         # open camera
-        self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
+        from sys import platform
+        if self.camera is not None:
+            self.camera.release()
+        if platform == "linux" or platform == "linux2":
+            self.camera = cv2.VideoCapture(cameraindex)
+        else:
+            self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
         self.__logger.debug("Camera is open")
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res

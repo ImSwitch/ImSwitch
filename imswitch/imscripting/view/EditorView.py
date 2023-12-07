@@ -1,6 +1,7 @@
 import uuid
-
-from PyQt5 import Qsci
+import imswitch
+if not imswitch.IS_HEADLESS:
+    from PyQt5 import Qsci
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .guitools import BetterPushButton

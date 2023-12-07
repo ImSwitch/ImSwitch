@@ -93,10 +93,13 @@ class ImSwitchServer(Worker):
             else:
                 self.send_header('Content-type', 'text/html')
             self.end_headers()
-            with open(filename, 'rb') as fh:
-                html = fh.read()
-                #html = bytes(html, 'utf8')
-                self.wfile.write(html)
+            try:
+                with open(filename, 'rb') as fh:
+                    html = fh.read()
+                    #html = bytes(html, 'utf8')
+                    self.wfile.write(html)
+            except FileNotFoundError as e:
+                print(f'file not found {filename}')
 
     def start_server(self, httpd):
         #print('Starting httpd')

@@ -9,7 +9,7 @@ from imswitch.imcontrol.view import guitools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import APIExport, dirtools, initLogger
 from datetime import datetime
-
+import imswitch
 class TemperatureController(ImConWidgetController):
     """ Linked to TemperatureWidget."""
 
@@ -42,14 +42,15 @@ class TemperatureController(ImConWidgetController):
         except:
             return
         # Connect TemperatureWidget signals
-        self._widget.sigPIDToggled.connect(self.setPID)
-        self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
-        self.setPID(self._widget.getPIDChecked())
+        if not imswitch.IS_HEADLESS:
+            self._widget.sigPIDToggled.connect(self.setPID)
+            self._widget.sigsliderTemperatureValueChanged.connect(self.valueTemperatureValueChanged)
+            self.setPID(self._widget.getPIDChecked())
 
-        # Start the temperature display thread
-        self.measurementThread = threading.Thread(target=self.updateMeasurements)
-        self.measurementThread.start()
-        
+            # Start the temperature display thread
+            self.measurementThread = threading.Thread(target=self.updateMeasurements)
+            self.measurementThread.start()
+            
         # create logging directory 
         self.temperatureDir = os.path.join(dirtools.UserFileDirs.Root, 'temperatureController')
         if not os.path.exists(self.temperatureDir):

@@ -18,7 +18,7 @@ def main():
         app = prepareApp()
         enabledModuleIds = modulesconfigtools.getEnabledModuleIds()
 
-        if 'imscripting' in enabledModuleIds:
+        if 'imscripting' in enabledModuleIds and not imswitch.IS_HEADLESS:
             # Ensure th at imscripting is added last
 
             enabledModuleIds.append(enabledModuleIds.pop(enabledModuleIds.index('imscripting')))

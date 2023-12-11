@@ -17,6 +17,8 @@ from functools import wraps
 import cv2
 import os
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
@@ -24,6 +26,20 @@ import threading
 app = FastAPI()
 
 
+origins = [
+    "http://localhost:8001",
+    "http://localhost:8000",
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):

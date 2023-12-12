@@ -114,7 +114,8 @@ class DetectorsManager(MultiManager, SignalInterface):
 
         # Do actual enabling
         if enableAcq:
-            self.execOnAll(lambda c: c.startAcquisition(), condition=lambda c: c.forAcquisition)
+            self.execOnAll(lambda c: c.startAcquisition(),
+                           condition=lambda c: c.forAcquisition)
             self.sigAcquisitionStarted.emit()
         if enableLV:
             sleep(0.3)

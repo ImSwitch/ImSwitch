@@ -13,6 +13,7 @@ from .MotCorrController import MotCorrController
 from .PositionerController import PositionerController
 from .RecordingController import RecordingController
 from .SLMController import SLMController
+from .AlignOptController import AlignOptController
 from .ScanControllerBase import ScanControllerBase
 from .ScanControllerOpt import ScanControllerOpt
 from .ScanControllerMoNaLISA import ScanControllerMoNaLISA

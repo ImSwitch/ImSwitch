@@ -1,7 +1,9 @@
 import os
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import pyqtSlot
+from PyQt5 import QtWidgets
 
 # import matplotlib.pyplot as plt
+from functools import partial
 import numpy as np
 import pdb
 
@@ -13,13 +15,14 @@ from imswitch.imcommon.framework import Signal
 class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
     """
-    sigImageReceived = Signal()
+    sigImageReceived = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.__logger = initLogger(self, tryInheritParent=True)
         self.optStack = np.ones((1, 1, 1))
+        # self.hotPixels = np.ones((1, 1))
 
         # Set up rotator in widget
         self._widget.initControls()
@@ -38,7 +41,9 @@ class ScanControllerOpt(ImConWidgetController):
 
         # Connect widget signals
         self._widget.scanPar['StartButton'].clicked.connect(self.startOpt)
-        self.sigImageReceived.connect(self.displayImage)
+        self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
+        self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
+        self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
 
         # Initiate parameters used during the experiment
         self.__opt_meta_filename = 'opt_metadata.json'
@@ -49,15 +54,24 @@ class ScanControllerOpt(ImConWidgetController):
 
         # pdb.set_trace()
 
-    def displayImage(self):
-        # a bit weird, but we cannot update outside the main thread
-        name = "OPT Stack"
+    def displayStack(self, name):
         # subsample stack
+        self._logger.info('displayStack function')
         self._widget.setImage(np.uint16(self.optStack),
                               colormap="gray",
                               name=name,
-                              pixelsize=(20, 1, 1),
+                              pixelsize=(1, 1, 1),
                               translation=(0, 0, 0))
+
+    def displayImage(self, name):
+        # subsample stack
+        print('Shape: ', self.current_frame.shape)
+        self._widget.setImage(np.uint16(self.current_frame),
+                              colormap="gray",
+                              name=name,
+                              pixelsize=(1, 1),
+                              translation=(0, 0))
+        self.sigImageReceived.disconnect()
 
     def emitScanSignal(self, signal, *args):
         signal.emit(*args)
@@ -77,12 +91,21 @@ class ScanControllerOpt(ImConWidgetController):
         """ Get the total rotation steps. """
         return self._widget.getRotationSteps()
 
+    def getStdCutoff(self):
+        """ Get the STD cutoff for Hot pixels correction. """
+        return self._widget.getHotStd()
+    
+    def getAverages(self):
+        """ Get number of averages for camera correction. """
+        return self._widget.getAverages()
+
     def getRotators(self):
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
     def startOpt(self):
         """ Reset and initiate Opt scan. """
+        self.sigImageReceived.connect(self.displayStack)
         self._widget.scanPar['StartButton'].setEnabled(False)
         self._widget.scanPar['StopButton'].setEnabled(True)
         self._widget.scanPar['StartButton'].setText('Running')
@@ -104,6 +127,8 @@ class ScanControllerOpt(ImConWidgetController):
         """Stop OPT acquisition and enable buttons
         """
         self.isOptRunning = False
+        self.sigImageReceived.disconnect()
+        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.disconnect()
         self._widget.scanPar['StartButton'].setEnabled(True)
         self._widget.scanPar['StopButton'].setEnabled(False)
         self._widget.scanPar['StartButton'].setText("Start")
@@ -131,42 +156,186 @@ class ScanControllerOpt(ImConWidgetController):
             self.allFrames.append(frame)
 
         self.__currentStep += 1
+        # TODO: fix display after every step
+        # self.sigImageReceived.emit('OPT stack')
         if self.__currentStep > len(self.opt_steps)-1:
             self.optStack = np.array(self.allFrames)
-            self.sigImageReceived.emit()
+            self.sigImageReceived.emit('OPT stack')
             self.__logger.info(f'collected {len(self.optStack)} images')
             self.stopOpt()
         else:
-            self.__logger.debug(f'post_step func, step{self.__currentStep}')
+            self.optStack = np.array(self.allFrames)
+            self.displayStack('OPT stack')
+            self.__logger.debug(f'post_step func, step {self.__currentStep}')
             self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
 
+    def exec_hot_pixels(self):
+        """
+        Block camera message before acquisition
+        of the dark-field counts, used for identification
+        of hot pixels. This is separate operation from dark
+        field correction.
 
-    #################
-    ### old codes ###
-    #################
+        Returns:
+            int: sys execution status.
+        """
+        # these two are call repeatedly, TODO: refactor
+        std_cutoff = self.getStdCutoff()
+        averages = self.getAverages()
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setText("Block Camera")
+        text = f"Reinitialize camera with maximum exposure time possible.\
+            Saved frame is a frame averaged {averages}x. Hot pixels will \
+            be identified as intensity higher than {std_cutoff}x STD, and their count \
+            shown for reference"
+        msg.setInformativeText(" ".join(text.split()))
+        msg.setStandardButtons(
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
+        btn_measure.setText('Acquire with current setting?')
+        msg.buttonClicked.connect(
+            partial(
+                self.acquire_correction,
+                corr_type='hot_pixels',
+                n=averages))
+        retval = msg.exec_()
+        return retval
+    
+    def exec_dark_field(self):
+        """
+        Block camera message before acquisition
+        of the dark-field counts, used for identification
+        of hot pixels. This is separate operation from dark
+        field correction.
 
-    # def saveOptMeta(self):
-    #     """ Save OPT metadata"""
-    #     save_dict = {}
-    #     save_dict['opt_steps'] = self.opt_steps
-    #     for rotator, positions in enumerate(self.__rotPos):
-    #         save_dict[f'pos{rotator}'] = positions
+        Returns:
+            int: sys execution status.
+        """
+        averages = self.getAverages()
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setText("Block Camera")
+        text = f"Acquire does {averages} averages at current exposure time.\
+            Exposure time MUST be the same as for the\
+            experiment you are going to perform."
+        msg.setInformativeText(" ".join(text.split()))
+        msg.setStandardButtons(
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
+        btn_measure.setText('Acquire NOW?')
+        msg.buttonClicked.connect(
+            partial(
+                self.acquire_correction,
+                corr_type='dark_field',
+                n=averages))
+        retval = msg.exec_()
+        return retval
+    
+    def exec_flat_field(self):
+        averages = self.getAverages()
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setText("Unblock Camera")
+        text = "Only for transmission mode.\
+            You should have flat field illumination\
+            within the linear regime. Acquisition will\
+            perform 100x average at current exposure time.\
+            The same as for dark-field."
+        msg.setInformativeText(" ".join(text.split()))
+        msg.setStandardButtons(
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
+        btn_measure.setText('Acquire with current setting?')
+        msg.buttonClicked.connect(
+            partial(
+                self.acquire_correction,
+                corr_type='flat_field',
+                n=averages))
+        retval = msg.exec_()
+        return retval
 
-    #     with open(os.path.join(self.__opt_dir, self.__opt_meta_filename), 'w') as f:
-    #         json.dump(save_dict, f, indent=4)
+    def acquire_correction(self, btn, corr_type, n):
+        if btn.text() == 'Cancel':
+            return
 
-    def emitScanSignal(self, signal, *args):
-        signal.emit(*args)
+        self.sigImageReceived.connect(self.displayImage)
+        self.nFrames.connect(
+            partial(self._continue, corr_type=corr_type),
+            )
+        self.getNframes(n)
+
+    def _continue(self, corr_type):
+        exec(f'self.{corr_type} = self.current_frame')
+        
+        # saving
+        # file_name = corr_type + self.get_time_now()
+        # self.save_image(file_name)
+        # self.append_history(corr_type + ' correction saved.')
+
+        # process hot pixel acquisition
+        if corr_type == 'hot_pixels':
+            self.process_hot_pixels()
+        elif corr_type == 'dark_field':
+            self.process_dark_field()
+        elif corr_type == 'flat_field':
+            self.process_flat_field()
+        else:
+            raise ValueError
+        self.nFrames.disconnect()
+
+    def process_hot_pixels(self):
+        std_cutoff = self.getStdCutoff()
+        std = np.std(self.hot_pixels, dtype=np.float64)
+        mean = np.mean(self.hot_pixels, dtype=np.float64)
+        # hot_std is the cutoff
+        hot_vals = self.hot_pixels[self.hot_pixels > (mean + std_cutoff*std)]
+        hot = np.ma.masked_greater(self.hot_pixels, mean + std_cutoff*std)
+
+        self._widget.updateHotPixelCount(len(hot_vals))
+        self._widget.updateHotPixelMean(np.mean(hot_vals))
+        self._widget.updateNonHotPixelMean(np.mean(hot))
+
+        self.sigImageReceived.emit('hot_pixels')
+
+    def process_dark_field(self):
+        self._widget.updateDarkMean(np.mean(self.dark_field))
+        self._widget.updateDarkStd(np.std(self.dark_field))
+
+        self.sigImageReceived.emit('dark_field')
+
+    def process_flat_field(self):
+        self._widget.updateFlatMean(np.mean(self.flat_field))
+        self._widget.updateFlatStd(np.std(self.flat_field))
+
+        self.sigImageReceived.emit('flat_field')
+
+    nFrames = Signal()
+
+    def getNframes(self, n):
+        """
+        Button triggers acquisition of self.n_frames
+        frames, each averaged or accumulated.
+
+        In case of OPT acquisition, all these frames
+        will be saved at each angle (motor step).
+        """
+        i = 0
+        frames = []
+        while i < n:
+            frame = self.detector.getLatestFrame()
+            if frame.shape[0] != 0:
+                frames.append(frame)
+                i += 1
+        print(np.array(frames).shape)
+        self.current_frame = np.mean(np.array(frames), axis=0).astype(np.int16)
+        self.nFrames.emit()
 
     def update_live_recon(self):
         self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
 
     def update_save_opt(self):
         self.save_opt = self._widget.scanPar['SaveOptButton'].isChecked()
-
-    def moveRelRotator(self, name, dist):
-        """ Move a specific rotator to a certain position. """
-        self._master.rotatorsManager[name].move_rel(dist)
 
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
@@ -176,6 +345,10 @@ class ScanControllerOpt(ImConWidgetController):
         self.__logger.debug('Scancontroller, after move.')
 
 
+class LiveRecon():
+    # copy from optac
+    def __init__(self):
+        return
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

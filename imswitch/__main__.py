@@ -70,6 +70,7 @@ def main():
             # Update loading progress
             multiModuleWindow.updateLoadingProgress(i / len(modulePkgs))
             app.processEvents()  # Draw window before continuing
+    # pdb.set_trace()
 
     launchApp(app, multiModuleWindow, moduleMainControllers.values())
 

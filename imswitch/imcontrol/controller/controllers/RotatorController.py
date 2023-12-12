@@ -16,6 +16,9 @@ class RotatorController(ImConWidgetController):
         for name, _ in self._master.rotatorsManager:
             self._widget.addRotator(name)
 
+        # careful, breaks for more stages
+        self.name = name
+
         # Connect Rotator Widget signals
         self._widget.sigMoveRelClicked.connect(lambda name, dir: self.moveRel(name, dir))
         self._widget.sigMoveAbsClicked.connect(lambda name: self.moveAbs(name))
@@ -30,14 +33,14 @@ class RotatorController(ImConWidgetController):
         self._commChannel.sigSetSyncInMovementSettings.connect(
                                     lambda name,
                                     pos: self.setSyncInMovement(name, pos))
-
+        # update position workaround
+        self._master.rotatorsManager[self.name]._motor.update_position.connect(self.updatePosition2)
         # Update current position in GUI
         self.updatePosition(name)
 
     def closeEvent(self):
         pass
 
-    # @pyqtSlot()
     def moveRel(self, name, dir=1):
         """Call manager to rotate angle relative to
         current position.
@@ -50,13 +53,17 @@ class RotatorController(ImConWidgetController):
         dist = dir * self._widget.getRelStepSize(name)
         self.__logger.debug(f'angle to rotate: {dist}')
         self._master.rotatorsManager[name].move_rel(dist)
-        self.updatePosition(name)
+        # self.updatePosition(name)
 
-    # @pyqtSlot()
+    def updatePosition2(self):
+        self.__logger.info('updating position2')
+        pos = self._master.rotatorsManager[self.name].get_position()
+        self._widget.updatePosition(self.name, pos[1])
+
     def moveAbs(self, name):
         pos = self._widget.getAbsPos(name)
         self._master.rotatorsManager[name].move_abs(pos)
-        self.updatePosition(name)
+        # self.updatePosition(name)
 
     def setZeroPos(self, name):
         self._master.rotatorsManager[name].set_zero_pos()
@@ -74,6 +81,7 @@ class RotatorController(ImConWidgetController):
         self.updatePosition(name)
 
     def updatePosition(self, name):
+        self.__logger.info('updating position')
         pos = self._master.rotatorsManager[name].get_position()
         self._widget.updatePosition(name, pos[1])
 

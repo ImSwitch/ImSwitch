@@ -11,6 +11,11 @@ class ArduinoStepper(QObject):
     """Arduino stepper motor control via telemetrix module, which is an
     extension to the accelstepper library.
     """
+    start_move = pyqtSignal()
+    move_done = pyqtSignal(bool)
+    opt_step_done = pyqtSignal()
+    update_position  = pyqtSignal()
+
     def __init__(self, device_id, steps_per_turn):
         super(QObject, self).__init__()
         self.__logger = initLogger(self)
@@ -111,10 +116,6 @@ class ArduinoStepper(QObject):
     def set_wait_const(self, const):
         self.wait_const = const
 
-    start_move = pyqtSignal()
-    move_done = pyqtSignal(bool)
-    opt_step_done = pyqtSignal()
-
     @pyqtSlot()
     def moverel_angle(self):
         """
@@ -164,6 +165,9 @@ class ArduinoStepper(QObject):
         except:
             self.__logger.debug('callback exception. Cannot emit opt_step_done')
 
+    def emit_trigger_update_position(self):
+        self.update_position.emit()
+
     def current_position_callback(self, data):
         """
         Current position data in form of
@@ -206,19 +210,38 @@ class ArduinoStepper(QObject):
             return 360 + position * 360 / self._steps_per_turn  # second term is negative so + is correct (going counter clockwise)
 
 
+class MockBoard():
+    def stepper_get_current_position(self, *args, **kwargs):
+        return
+
+
 class MockArduinoStepper(QObject):
+
+    tart_move = pyqtSignal()
+    move_done = pyqtSignal(bool)
+    opt_step_done = pyqtSignal()
+    update_position  = pyqtSignal()
+
     def __init__(self, device_id, steps_per_turn):
         super(QObject, self).__init__()
         self._device_id = device_id
         self._steps_per_turn = steps_per_turn
-        self.current_pos = 0
+        self.current_pos = (0, 0)
         self.turning = False
+        self.board = MockBoard()
+        self.motor = None
 
     def close(self):
         pass
 
+    def current_position_callback(self):
+        return
+
+    def emit_trigger_update_position(self):
+        self.update_position.emit()
+
     def get_pos(self):
-        return 0
+        return self.current_pos
 
     def moverel_angle(self):
         print('waiting moverel_angle')
@@ -227,29 +250,32 @@ class MockArduinoStepper(QObject):
         print('from moverel_angle', self.angle, steps)
         self.moverel_steps(steps)
 
-    def moverel_steps(self, steps):
+    def moverel_steps(self):
         print('waiting moverel_steps')
         self.turning = True
         time.sleep(1)
-        self.current_pos += steps
+        self.current_pos = (100, 200)
         self.turning = False
         self.move_done.emit(self.turning)
+        self.opt_step_done.emit()
 
     def moveabs_angle(self):
         print('waiting')
         self.turning = True
         time.sleep(0.5)
-        self.current_pos = 100
+        self.current_pos = (100, 100)
         self.turning = False
         self.move_done.emit(self.turning)
+        self.opt_step_done.emit()
 
     def moveabs_steps(self, position):
         print('waiting')
         self.turning = True
         time.sleep(1)
-        self.current_pos = position
+        self.current_pos = (position, position)
         self.turning = False
         self.move_done.emit(self.turning)
+        self.opt_step_done.emit()
 
     def test_info(self):
         return {}

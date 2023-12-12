@@ -1,6 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from .RotatorManager import RotatorManager
 import time
+import pdb
 
 
 class ArduinoRotatorManager(RotatorManager):
@@ -18,6 +19,7 @@ class ArduinoRotatorManager(RotatorManager):
 
         self._motor = self._getMotorObj(self._device_id, self._steps_per_turn)
         self._position = self._motor.get_pos()
+        # pdb.set_trace()
 
     def get_position(self):
         """ Return the position as a float. """
@@ -55,6 +57,10 @@ class ArduinoRotatorManager(RotatorManager):
                         self._motor.motor,
                         self._motor.current_position_callback)
         time.sleep(.2)
+        self.trigger_update_position()
+
+    def trigger_update_position(self):
+        self._motor.emit_trigger_update_position()
 
     def move_abs(self, angle):
         """Converts angle to steps and calls

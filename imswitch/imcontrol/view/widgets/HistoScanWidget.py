@@ -87,7 +87,10 @@ class HistoScanWidget(NapariHybridWidget):
         self.grid.addWidget(self.minPositionYLineEdit, 7, 1, 1, 1)
         self.grid.addWidget(QtWidgets.QLabel("Max Position (Y):"), 8, 0, 1, 1)
         self.grid.addWidget(self.maxPositionYLineEdit, 8, 1, 1, 1)
-
+        '''
+        1st Widget: Layout-based tiling
+        '''
+        
         # Start and Stop buttons
         self.startButton = QtWidgets.QPushButton('Start')
         self.stopButton = QtWidgets.QPushButton('Stop')
@@ -127,6 +130,10 @@ class HistoScanWidget(NapariHybridWidget):
         # Add the first tab
         tabWidget.addTab(mainWidget, "Figure-based Scan")
 
+        '''
+        2nd Widget: Manual tiling
+        '''
+        
         # Create a new widget for the second tab
         secondTabWidget = QtWidgets.QWidget()
         secondTabLayout = QtWidgets.QGridLayout(secondTabWidget)
@@ -155,6 +162,39 @@ class HistoScanWidget(NapariHybridWidget):
         # Add the second tab
         tabWidget.addTab(secondTabWidget, "Tile-based Scan")
 
+        '''
+        3rd Widget: Camera-based tile-scanning
+        '''
+        
+        # Create a new widget for the thirdtab
+        thirdTabWidget = QtWidgets.QWidget()
+        thirdTabLayout = QtWidgets.QGridLayout(thirdTabWidget)
+
+        self.getCameraScanCoordinatesButton = QtWidgets.QPushButton("Retreive Coordinates from Area")
+        self.resetScanCoordinatesButton = QtWidgets.QPushButton("Reset Coordinates")
+        self.nTilesXLabel = QtWidgets.QLabel("Number of Tiles X:")
+        self.nTilesYLabel = QtWidgets.QLabel("Number of Tiles Y:")
+        self.posXminLabel = QtWidgets.QLabel("Min Position X:")
+        self.posXmaxLabel = QtWidgets.QLabel("Max Position X:")
+        self.posYminLabel = QtWidgets.QLabel("Min Position Y:")
+        self.posYmaxLabel = QtWidgets.QLabel("Max Position Y:")
+        self.startButton3 = QtWidgets.QPushButton("Start")
+        self.stopButton3 = QtWidgets.QPushButton("Stop")
+
+        thirdTabLayout.addWidget(self.getCameraScanCoordinatesButton, 0, 0, 1, 2)
+        thirdTabLayout.addWidget(self.resetScanCoordinatesButton, 0, 1, 1, 2)
+        thirdTabLayout.addWidget(self.nTilesXLabel, 1, 0, 1, 2)
+        thirdTabLayout.addWidget(self.nTilesYLabel, 1, 1, 1, 2)
+        thirdTabLayout.addWidget(self.posXminLabel, 2, 0, 1, 2)
+        thirdTabLayout.addWidget(self.posXmaxLabel, 2, 1, 1, 2)
+        thirdTabLayout.addWidget(self.posYminLabel, 3, 0, 1, 2)
+        thirdTabLayout.addWidget(self.posYmaxLabel, 3, 1, 1, 2)
+        thirdTabLayout.addWidget(self.startButton3, 4, 0)
+        thirdTabLayout.addWidget(self.stopButton3, 4, 1)
+
+        # Add the third tab
+        tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
+        
         # Add the tabWidget to the main layout of the widget
         mainLayout = QtWidgets.QVBoxLayout(self)
         mainLayout.addWidget(tabWidget)

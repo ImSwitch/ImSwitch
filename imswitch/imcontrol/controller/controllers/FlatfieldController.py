@@ -2,6 +2,7 @@ from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
 import time
 import threading
+import imswitch
 from scipy.ndimage import gaussian_filter
 from collections import deque
 
@@ -23,8 +24,9 @@ class FlatfieldController(LiveUpdatedController):
         self.flatfieldTask = None
         self.flatfieldStack = np.ones((1,1,1))
 
-        self._widget.startButton.clicked.connect(self.startflatfield)
-        self._widget.stopButton.clicked.connect(self.stopflatfield)
+        if not imswitch.IS_HEADLESS:
+            self._widget.startButton.clicked.connect(self.startflatfield)
+            self._widget.stopButton.clicked.connect(self.stopflatfield)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()

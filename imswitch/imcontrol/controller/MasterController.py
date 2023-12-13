@@ -67,6 +67,8 @@ class MasterController:
 
         self.detectorsManager.sigAcquisitionStarted.connect(cc.sigAcquisitionStarted)
         self.detectorsManager.sigAcquisitionStopped.connect(cc.sigAcquisitionStopped)
+        self.detectorsManager.sigLiveStarted.connect(cc.sigLiveStarted)
+        self.detectorsManager.sigLiveStopped.connect(cc.sigLiveStopped)
         self.detectorsManager.sigDetectorSwitched.connect(cc.sigDetectorSwitched)
         self.detectorsManager.sigImageUpdated.connect(cc.sigUpdateImage)
         self.detectorsManager.sigNewFrame.connect(cc.sigNewFrame)
@@ -76,6 +78,8 @@ class MasterController:
         self.recordingManager.sigRecordingFrameNumUpdated.connect(cc.sigUpdateRecFrameNum)
         self.recordingManager.sigRecordingTimeUpdated.connect(cc.sigUpdateRecTime)
         self.recordingManager.sigMemorySnapAvailable.connect(cc.sigMemorySnapAvailable)
+        self.recordingManager.sigMemoryRecordingAvailable.connect(cc.sigMemoryRecordingAvailable)
+
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
 
         self.slmManager.sigSLMMaskUpdated.connect(cc.sigSLMMaskUpdated)

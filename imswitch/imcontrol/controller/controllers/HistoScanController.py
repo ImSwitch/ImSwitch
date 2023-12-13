@@ -48,7 +48,6 @@ class HistoScanController(LiveUpdatedController):
         offsetY = self._master.HistoScanManager.offsetY
         self.tSettle = 0.05
     
-        
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
         
@@ -68,6 +67,9 @@ class HistoScanController(LiveUpdatedController):
         self.partialHistoscanStack = np.ones((1,1,3))
         self.acceleration = 600000
         
+        # camera-based scanning coordinates   (select from napari layer)      
+        self.mCamScanCoordinates = None
+        
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         
@@ -76,8 +78,6 @@ class HistoScanController(LiveUpdatedController):
             self.flatfieldManager = self._master.FlatfieldManager
         else: 
             self.flatfieldManager = None
-            
-            
         
         if not imswitch.IS_HEADLESS:
             '''
@@ -104,7 +104,109 @@ class HistoScanController(LiveUpdatedController):
             self._widget.sigGoToPosition.connect(self.goToPosition)
             self._widget.sigCurrentOffset.connect(self.calibrateOffset)        
             self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
+            
+            # Image View
+            self._widget.resetScanCoordinatesButton.clicked.connect(self.resetScanCoordinates)
+            self._widget.getCameraScanCoordinatesButton.clicked.connect(self.getCameraScanCoordinates)
+            self._widget.startButton3.clicked.connect(self.starthistoscanCamerabased)
+            self._widget.stopButton3.clicked.connect(self.stophistoscanCamerabased)
+            
+            # on tab click, add the image to the napari viewer
+            self._widget.tabWidget.currentChanged.connect(self.onTabChanged)
+            
+    def onTabChanged(self, index):
+        if index == 2:
+            # add layer to napari
+            self._widget.initShapeLayerNapari()
+            
+    def resetScanCoordinates(self):
+        # reset shape layer
+        self._widget.resetShapeLayerNapari()
+        # reset pre-scan image if available
+        name = "Histo Prescan"
+        self._widget.removeImageNapari(name)
 
+    
+    def getCameraScanCoordinates(self):
+        ''' retreive the coordinates of the shape layer in napari and compute the 
+        min/max positions for X/Y to provide the snake-scan coordinates
+        
+        As of now: No error handling:
+        A rect. shape in a shape Layer will provide e.g.:
+        array([[ 299.5774541 , -157.22546457],
+       [ 299.5774541 ,  160.6666534 ],
+       [ 692.26771747,  160.6666534 ],
+       [ 692.26771747, -157.22546457]])
+        '''
+        mCoordinates = self._widget.getCoordinatesShapeLayerNapari()[0]
+        maxPosX = np.max(mCoordinates[:,0])
+        minPosX = np.min(mCoordinates[:,0])
+        maxPosY = np.max(mCoordinates[:,1])
+        minPosY = np.min(mCoordinates[:,1])
+        
+        # get number of pixels in X/Y
+        mFrame = self.detector.getLatestFrame()
+        NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
+        
+        # set frame as reference in napari 
+        isRGB = mFrame.shape[-1]==3 # most likely True!
+        name = "Histo Prescan"
+        pixelsize = self.detector.pixelSizeUm[-1]
+        self._widget.setImageNapari(mFrame, colormap="gray", isRGB=isRGB, name=name, pixelsize=(pixelsize,pixelsize), translation=(0,0))
+
+        # starting the snake scan
+        # Calculate the size of the area each image covers
+        img_width = NpixX * self.detector.pixelSizeUm[-1]
+        img_height = NpixY * self.detector.pixelSizeUm[-1]
+        
+        # compute snake scan coordinates
+        mOverlap = 0.75
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosX-minPosX)/(img_width*mOverlap))
+        nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
+        self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
+        
+        
+    def starthistoscanCamerabased(self):
+        '''
+        start a camera scan
+        '''      
+        if self.mCamScanCoordinates is None:
+            return  
+
+        # update GUI elements
+        self._widget.startButton3.setEnabled(False)
+        self._widget.stopButton3.setEnabled(True)
+        self._widget.startButton3.setText("Running")
+        self._widget.stopButton3.setText("Stop")
+        self._widget.stopButton3.setStyleSheet("background-color: red")
+        self._widget.startButton3.setStyleSheet("background-color: green")
+        illuSource = self._widget.getIlluminationSource()
+        initialPosition = self.stages.getPosition()        
+        minPosX = np.min(self.mCamScanCoordinates, axis=0)[0]
+        maxPosX = np.max(self.mCamScanCoordinates, axis=0)[0]
+        minPosY = np.min(self.mCamScanCoordinates, axis=0)[1]
+        maxPosY = np.max(self.mCamScanCoordinates, axis=0)[1]
+        
+        nTimes = 1
+        tPeriod = 0
+        
+        self.performScanningRecording(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+                
+    
+    def stophistoscanCamerabased(self):
+        '''
+        stop a camera scan
+        '''
+        self.ishistoscanRunning = False
+        self._widget.startButton3.setEnabled(True)
+        self._widget.stopButton3.setEnabled(False)
+        self._widget.startButton3.setText("Start")
+        self._widget.stopButton3.setText("Stopped")
+        self._widget.stopButton3.setStyleSheet("background-color: green")
+        self._widget.startButton3.setStyleSheet("background-color: red")
+        self._logger.debug("histoscan scanning stopped.")
+    
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
@@ -402,6 +504,7 @@ class HistoScanController(LiveUpdatedController):
         self.sigUpdatePartialImage.emit()
 
     def stophistoscan(self):
+        # update GUI elements
         self.ishistoscanRunning = False
         self._widget.startButton.setEnabled(True)
         self._widget.stopButton.setEnabled(False)
@@ -411,8 +514,9 @@ class HistoScanController(LiveUpdatedController):
         self._widget.startButton.setStyleSheet("background-color: red")
         self._logger.debug("histoscan scanning stopped.")
         
-        
+        # other tabs
         self.stophistoscanTilebased()
+        self.stophistoscanCamerabased()
         
     
         

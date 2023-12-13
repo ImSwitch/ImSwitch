@@ -16,6 +16,7 @@ class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
     """
     sigImageReceived = Signal(str)
+    sigRequestSnap = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -31,16 +32,19 @@ class ScanControllerOpt(ImConWidgetController):
         self.isOptRunning = False
 
         # select detectors
+        # TODO: it would be useful to create a UI section, a combo box for example,
+        # to select the desired detector to extract the data from
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # get rotators
+        # TODO: as for detectors, it would be useful to create a UI combo box to select the desired rotator
         self.getRotators()
         self.__motor_steps = self._master.rotatorsManager[self.__rotators[0]]._motor._steps_per_turn
         self.__logger.debug(f'Your rotators {self.__rotators} with {self.__motor_steps} steps per revolution.')
 
         # Connect widget signals
-        self._widget.scanPar['StartButton'].clicked.connect(self.startOpt)
+        self._widget.scanPar['StartButton'].clicked.connect(self.startOpt) # TODO: if using the communication channel signal, the start button is redundant
         self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
@@ -52,10 +56,75 @@ class ScanControllerOpt(ImConWidgetController):
         if not os.path.exists(self.__opt_dir):
             os.makedirs(self.__opt_dir)
 
+        
+        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
+
+
+        # TODO: signals to control behavior based on the starting/stopping of liveview/recording
+        # FOR LIVEVIEW: use sigLiveStarted / sigLiveStopped (live acquisition started/stopped)
+        # FOR RECORDING: use sigRecordingStarted / sigRecordingStopped (recording started/stopped);
+        # it's also possible to use the same methods connected to different signal by adding a lambda function with pre-determined flags
+        self._commChannel.sigLiveStarted.connect(lambda: self.startOpt(live=True))
+        self._commChannel.sigLiveStopped.connect(lambda: self.stopOpt(live=True))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.startOpt(live=False))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.stopOpt(live=False))
+
+        # TODO: signal for when a new image is captured; either from live view or from recording;
+        # this is triggered for every new incoming image from the detector
+        self._commChannel.sigUpdateImage.connect(self.displayStack)
+
+        # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
+        # details on the content of the signal are listed in the displayRecording method docstring
+        self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
+
+        # TODO: connect the following signals to local methods to eventually update other scanning parameters;
+        # this can only work for a recording and not a live view acquisition
+        # self._commChannel.sigUpdateRecFrameNum   (`int`, number of frames captured during an acquisition)
+        # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
+
         # pdb.set_trace()
 
-    def displayStack(self, name):
-        # subsample stack
+    def displayRecording(self, name, file, filePath, savedToDisk):
+        """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
+
+        Args:
+            name (`str`): name of the generated file for the last recording;
+            file (`Union[BytesIO, h5py.File, zarr.hierarchy.Group]`): 
+                - if recording is saved to RAM, a reference to a BytesIO instance where the data is saved; 
+                - otherwise a HDF or Zarr file object of the recorded stack (type is selected from the UI)
+            filePath (`str`): path to the recording directory
+            savedToDisk (`bool`): weather recording is saved to disk (`True`) or not (`False`)
+        """
+        # TODO: implement
+        pass
+    
+    def handleSnap(self, name, image, filePath, savedToDisk):
+        """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
+
+        Args:
+            name (`str`): key of the virtual table used to store images in RAM; format is "{filePath}_{channel}"
+            image (`np.ndarray`): captured image snap data;
+            filepath (`str`): path to the file stored on disk;
+            savedToDisk (`bool`): weather the image is saved on disk (`True`) or not (`False`)
+        """
+
+        snapData = image[self.detector]
+        # TODO: snapData contains the image currently snapped on the specific detector;
+        # implement how to handle it
+
+
+    def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
+        """ Displays captured image (via live view or recording) on napari.
+        Method is triggered via the `sigUpdateImage` signal.
+
+        Args:
+            detectorName (`str`): name of the detector currently capturing
+            image (`np.ndarray`): captured image
+            init (`bool`): weather napari should initialize the layer on which data is displayed (True) or not (False)
+            scale (`List[int]`): the pixel sizes in micrometers; see the `DetectorManager` class for details
+        """
+        # TODO: implement layer update functionality;
+        # the method should only update the layer when a full image is constructed for each slice captured by the detector 
         self._logger.info('displayStack function')
         self._widget.setImage(np.uint16(self.optStack),
                               colormap="gray",
@@ -103,9 +172,9 @@ class ScanControllerOpt(ImConWidgetController):
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
-    def startOpt(self):
-        """ Reset and initiate Opt scan. """
-        self.sigImageReceived.connect(self.displayStack)
+    def startOpt(self, live: bool):
+        """ Sets up the OPT for scanning operation. Method is triggered by the sigAcquisitionStarted signal. """
+
         self._widget.scanPar['StartButton'].setEnabled(False)
         self._widget.scanPar['StopButton'].setEnabled(True)
         self._widget.scanPar['StartButton'].setText('Running')
@@ -123,8 +192,8 @@ class ScanControllerOpt(ImConWidgetController):
         # run OPT
         self.scanRecordOpt()
 
-    def stopOpt(self):
-        """Stop OPT acquisition and enable buttons
+    def stopOpt(self, live: bool):
+        """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
         """
         self.isOptRunning = False
         self.sigImageReceived.disconnect()

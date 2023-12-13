@@ -192,7 +192,7 @@ class ScanControllerOpt(ImConWidgetController):
         # run OPT
         self.scanRecordOpt()
 
-    def stopOpt(self):
+    def stopOpt(self, live: bool):
         """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
         """
         self.isOptRunning = False

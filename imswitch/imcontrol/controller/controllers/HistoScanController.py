@@ -13,6 +13,8 @@ import numpy as np
 from skimage.io import imsave
 from scipy.ndimage import gaussian_filter
 from collections import deque
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QImage, QPixmap
 
 import datetime 
 from itertools import product
@@ -114,17 +116,84 @@ class HistoScanController(LiveUpdatedController):
             # on tab click, add the image to the napari viewer
             self._widget.tabWidget.currentChanged.connect(self.onTabChanged)
             
+            # webcam-related parts 
+            self.webCamDetector = self._master.detectorsManager[allDetectorNames[1]] # FIXME: HARDCODED NEED TO BE CHANGED
+            self.isWebcamRunning = False
+            self._widget.imageLabel.doubleClicked.connect(self.onDoubleClickWebcam)
+            self._widget.imageLabel.dragPosition.connect(self.onDragPositionWebcam)
+
+        
     def onTabChanged(self, index):
         if index == 2:
             # add layer to napari
             self._widget.initShapeLayerNapari()
             
+            # run image scraper if not started already 
+            if not self.isWebcamRunning:
+                self.timer = QTimer(self)
+                self.timer.timeout.connect(self.updateFrameWebcam)
+                self.timer.start(100))
+                self.isWebcamRunning = True
+    
+    def updateFrameWebcam(self):
+        frame = self.webCamDetector.getLatestFrame()
+        if len(frame.shape)==2:
+            frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
+        if frame is not None:
+            image = QImage(frame, frame.shape[1], frame.shape[0], 
+                           frame.strides[0], QImage.Format_BGR888)
+            pixmap = QPixmap.fromImage(image)
+            self._widget.imageLabel.setOriginalPixmap(pixmap)
+                        
     def resetScanCoordinates(self):
         # reset shape layer
         self._widget.resetShapeLayerNapari()
         # reset pre-scan image if available
         name = "Histo Prescan"
         self._widget.removeImageNapari(name)
+
+    def onDoubleClickWebcam(self):
+        # if we double click on the webcam view, we want to move to that position on the plate
+        mPositionClicked = self._widget.imageLabel.doubleClickPos.x(), self._widget.imageLabel.doubleClickPos.y()
+        self.pixelSizeWebcam = self.webCamDetector.pixelSizeUm[-1]
+        mPosToMove = mPositionClicked*self.pixelSizeWebcam
+        
+    def onDragPositionWebcam(self, start, end):
+        print(f"Dragged from {start} to {end}")
+        if start is None:
+            return
+        # use the coordinates for the stage scan 
+        # 1. retreive the coordinates on the canvas
+        minPosX = np.min([start[0], end[0]])
+        maxPosX = np.max([start[0], end[0]])
+        minPosY = np.min([start[1], end[1]])
+        maxPosY = np.max([start[1], end[1]])
+        # 2. compute scan positions
+                # get number of pixels in X/Y
+        mFrame = self.detector.getLatestFrame()
+        NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
+        
+        # set frame as reference in napari 
+        isRGB = mFrame.shape[-1]==3 # most likely True!
+        name = "Histo Prescan"
+        pixelsize = self.detector.pixelSizeUm[-1]
+        self._widget.setImageNapari(mFrame, colormap="gray", isRGB=isRGB, name=name, pixelsize=(pixelsize,pixelsize), translation=(0,0))
+
+        # starting the snake scan
+        # Calculate the size of the area each image covers
+        img_width = NpixX * self.detector.pixelSizeUm[-1]
+        img_height = NpixY * self.detector.pixelSizeUm[-1]
+        
+        # compute snake scan coordinates
+        mOverlap = 0.75
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosX-minPosX)/(img_width*mOverlap))
+        nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
+        self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
+        
+
+        
+        return self._widget.imageLabel.currentRect.getCoords()
 
     
     def getCameraScanCoordinates(self):

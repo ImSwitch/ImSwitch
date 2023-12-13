@@ -4,6 +4,11 @@ import cv2
 import copy
 from qtpy import QtCore, QtWidgets, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QPoint, QRect
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen, QColor
+
+
 from PyQt5 import QtGui, QtWidgets
 import PyQt5
 from imswitch.imcommon.model import initLogger
@@ -181,6 +186,9 @@ class HistoScanWidget(NapariHybridWidget):
         self.startButton3 = QtWidgets.QPushButton("Start")
         self.stopButton3 = QtWidgets.QPushButton("Stop")
 
+        # Webcam view 
+        self.imageLabel = ImageLabel()
+        
         thirdTabLayout.addWidget(self.getCameraScanCoordinatesButton, 0, 0)
         thirdTabLayout.addWidget(self.resetScanCoordinatesButton, 0, 1)
         thirdTabLayout.addWidget(self.nTilesXLabel, 1, 0)
@@ -191,6 +199,7 @@ class HistoScanWidget(NapariHybridWidget):
         thirdTabLayout.addWidget(self.posYmaxLabel, 3, 1)
         thirdTabLayout.addWidget(self.startButton3, 4, 0)
         thirdTabLayout.addWidget(self.stopButton3, 4, 1)
+        thirdTabLayout.addWidget(self.imageLabel, 5, 0, 4, 2)
 
         # Add the third tab
         self.tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
@@ -544,6 +553,52 @@ class ScanSelectView(QtWidgets.QGraphicsView):
 
                 self.parent.setScanMinMax(posXmin, posYmin, posXmax, posYmax)
 
+
+# Webcam View
+class ImageLabel(QLabel):
+    doubleClicked = pyqtSignal()
+    dragPosition = pyqtSignal(QPoint, QPoint)
+
+    def __init__(self):
+        super().__init__()
+        self.originalPixmap = None
+        self.dragStartPos = None
+        self.currentRect = None
+        self.doubleClickPos = None
+
+    def setOriginalPixmap(self, pixmap):
+        self.originalPixmap = pixmap
+        self.setPixmap(pixmap)
+
+    def mouseDoubleClickEvent(self, event):
+        self.currentRect = None
+        self.doubleClickPos = event.pos()
+        self.doubleClicked.emit()
+        
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.dragStartPos = event.pos()
+
+    def mouseMoveEvent(self, event):
+        if not self.dragStartPos:
+            return
+        self.currentRect = QRect(self.dragStartPos, event.pos())
+        self.update()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.dragStartPos:
+            self.dragPosition.emit(self.dragStartPos, event.pos())
+            self.dragStartPos = None
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self.currentRect:
+            return
+        painter = QPainter(self)
+        painter.drawPixmap(self.rect(), self.originalPixmap)
+        pen = QPen(QColor(255, 0, 0), 2)
+        painter.setPen(pen)
+        painter.drawRect(self.currentRect)
 
 
 

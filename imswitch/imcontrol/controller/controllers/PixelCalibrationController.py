@@ -14,6 +14,7 @@ from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcontrol.model import configfiletools
 import time
+import imswitch
 
 from fractions import Fraction
 from uuid import UUID
@@ -50,20 +51,21 @@ class PixelCalibrationController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self)
-
-        # Connect PixelCalibrationWidget signals
-        #self._widget.PixelCalibrationLabelInfo.clicked.connect()
-        self._widget.PixelCalibrationSnapPreviewButton.clicked.connect(self.snapPreview)
-        self._widget.PixelCalibrationUndoButton.clicked.connect(self.undoSelection)
-        self._widget.PixelCalibrationCalibrateButton.clicked.connect(self.startPixelCalibration)
-        self._widget.PixelCalibrationStageCalibrationButton.clicked.connect(self.stageCalibration)
-
-        self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
         self.pixelSize=500 # defaul FIXME: Load from json?
 
         # select detectors # TODO: Bad practice, but how can we access the pixelsize then?
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
+
+        if not imswitch.IS_HEADLESS:
+            # Connect PixelCalibrationWidget signals
+            #self._widget.PixelCalibrationLabelInfo.clicked.connect()
+            self._widget.PixelCalibrationSnapPreviewButton.clicked.connect(self.snapPreview)
+            self._widget.PixelCalibrationUndoButton.clicked.connect(self.undoSelection)
+            self._widget.PixelCalibrationCalibrateButton.clicked.connect(self.startPixelCalibration)
+            self._widget.PixelCalibrationStageCalibrationButton.clicked.connect(self.stageCalibration)
+
+            self._widget.PixelCalibrationPixelSizeButton.clicked.connect(self.setPixelSize)
 
 
     def undoSelection(self):

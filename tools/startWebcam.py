@@ -34,7 +34,8 @@ def get_adjustable_parameters(camera_index=0):
 
 def main():
     # Open the default camera (usually the built-in webcam)
-    camera_index=1
+    camera_index=0
+    camera_index="/dev/video0"
     if 0:
         parameters = get_adjustable_parameters(camera_index)
         

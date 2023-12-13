@@ -1,6 +1,7 @@
 import json
 import os
 
+import imswitch
 from imswitch.imcommon.model import initLogger, ostools
 import numpy as np
 import time
@@ -45,16 +46,11 @@ class HistoScanController(LiveUpdatedController):
         # read default values from previously loaded config file
         offsetX = self._master.HistoScanManager.offsetX
         offsetY = self._master.HistoScanManager.offsetY
-        self._widget.setOffset(offsetX, offsetY)
         self.tSettle = 0.05
     
         
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
-        self._widget.startButton.clicked.connect(self.starthistoscan)
-        self._widget.stopButton.clicked.connect(self.stophistoscan)
-        self._widget.startButton2.clicked.connect(self.starthistoscanTilebased)
-        self._widget.stopButton2.clicked.connect(self.stophistoscanTilebased)
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -62,22 +58,15 @@ class HistoScanController(LiveUpdatedController):
         
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self._widget.setAvailableIlluSources(allLaserNames)
         self.ishistoscanRunning = False
-        
-        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
-        self._widget.sigGoToPosition.connect(self.goToPosition)
-        self._widget.sigCurrentOffset.connect(self.calibrateOffset)
+
         self.sigImageReceived.connect(self.displayImage)
         self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
-        self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
         
         self.partialImageCoordinates = (0,0,0,0)
         self.partialHistoscanStack = np.ones((1,1,3))
         self.acceleration = 600000
-        
-        self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
         
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
@@ -88,16 +77,33 @@ class HistoScanController(LiveUpdatedController):
         else: 
             self.flatfieldManager = None
             
-        ## update optimal scan parameters for tile-based scan
-        try:
-            overlap = 0.75
-            mFrameSize = (2000,3000) #self.detector.getLatestFrame().shape
-            bestScanSizeX = mFrameSize[1]*self.detector.pixelSizeUm[-1]*overlap
-            bestScanSizeY = mFrameSize[0]*self.detector.pixelSizeUm[-1]*overlap     
-            self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
-        except Exception as e:
-            self._logger.error(e)
             
+        
+        if not imswitch.IS_HEADLESS:
+            '''
+            Set up the GUI
+            '''
+            self._widget.setOffset(offsetX, offsetY)
+            ## update optimal scan parameters for tile-based scan
+            try:
+                overlap = 0.75
+                mFrameSize = (2000,3000) #self.detector.getLatestFrame().shape
+                bestScanSizeX = mFrameSize[1]*self.detector.pixelSizeUm[-1]*overlap
+                bestScanSizeY = mFrameSize[0]*self.detector.pixelSizeUm[-1]*overlap     
+                self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
+            except Exception as e:
+                self._logger.error(e)
+                
+            self._widget.setAvailableIlluSources(allLaserNames)
+            self._widget.startButton.clicked.connect(self.starthistoscan)
+            self._widget.stopButton.clicked.connect(self.stophistoscan)
+            self._widget.startButton2.clicked.connect(self.starthistoscanTilebased)
+            self._widget.stopButton2.clicked.connect(self.stophistoscanTilebased)
+            self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)        
+            self._widget.sigSliderIlluValueChanged.connect(self.valueIlluChanged)
+            self._widget.sigGoToPosition.connect(self.goToPosition)
+            self._widget.sigCurrentOffset.connect(self.calibrateOffset)        
+            self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
 
     def updateAllPositionGUI(self):
         allPositions = self.stages.position

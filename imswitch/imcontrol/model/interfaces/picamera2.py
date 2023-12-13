@@ -8,14 +8,20 @@ from threading import Thread
 
 import collections
 
-class CameraOpenCV:
+try:
+    from picamera2  import Picamera2
+    IS_PICAMERA2 = True
+except:
+    IS_PICAMERA2 = False
+
+class Picamera2:
     def __init__(self, cameraindex=0, isRGB=False):
         super().__init__()
         # we are aiming to interface with webcams or arducams
         self.__logger = initLogger(self, tryInheritParent=False)
 
         # many to be purged
-        self.model = "CameraOpenCV"
+        self.model = "Picamera2"
 
         # camera parameters
         self.blacklevel = 0
@@ -37,7 +43,6 @@ class CameraOpenCV:
 
         #%% starting the camera => self.camera  will be created
         self.cameraindex = cameraindex
-        self.camera = None
         self.isRGB = isRGB
         self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
@@ -143,41 +148,27 @@ class CameraOpenCV:
 
     def openCamera(self, cameraindex, width, height, isRGB):
         # open camera
-        from sys import platform
-        if self.camera is not None:
-            self.camera.release()
-        if platform == "linux" or platform == "linux2":
-            self.camera = cv2.VideoCapture(cameraindex)
-        else:
-            self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
-        self.__logger.debug("Camera is open")
-        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
-        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
-        # let the camera warm up
-        for i in range(5):
-            _, img = self.camera.read()
-        width = self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)
-        height = self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        print(width, height)
-        self.__logger.debug("Camera is warmed up")
-
+        self.camera = Picamera2()
+        self.camera_config = self.camera.create_preview_configuration(main={"size": (width, height)})
+        self.camera.configure(self.camera_config)
+        self.camera.start()
+        self.isRGB = isRGB
+        self.camera_is_open = True
+        img = self.camera.capture_array()
         self.SensorHeight = img.shape[0]
         self.SensorWidth = img.shape[1]
         self.shape = (self.SensorWidth,self.SensorHeight)
-        self.camera_is_open = True
         
-
         # starting thread
         self.frameGrabberThread = Thread(target = self.setFrameBuffer, args=(isRGB,))
         self.frameGrabberThread.start()
 
 
-
     def setFrameBuffer(self, isRGB=True):
-        while(self.camera_is_open):
+        while self.camera_is_open:
             try:
-                self.frame = self.camera.read()[1]
-                if not isRGB and len(self.frame.shape)>2:
+                self.frame = self.camera.capture_array()
+                if not isRGB and len(self.frame.shape) > 2:
                     self.frame = np.uint8(np.mean(self.frame, -1))
                 self.frame_buffer.append(self.frame)
             except Exception as e:

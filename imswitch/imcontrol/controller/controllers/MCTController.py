@@ -56,6 +56,7 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
+        self.tWait = 0.05 # time to let hardware settle
 
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)
@@ -529,7 +530,6 @@ class MCTController(ImConWidgetController):
                                 extension=fileExtension)
                     self.lasers[0].setValue(self.Laser1Value)
                     self.lasers[0].setEnabled(True)
-                    time.sleep(.05)
                     time.sleep(self.tWait)
                     lastFrame = self.detector.getLatestFrame()
                     # wait for frame after next frame to appear. Avoid motion blurring
@@ -546,7 +546,6 @@ class MCTController(ImConWidgetController):
                                 extension=fileExtension)
                     self.lasers[1].setValue(self.Laser2Value)
                     self.lasers[1].setEnabled(True)
-                    time.sleep(.05)
                     time.sleep(self.tWait)
                     lastFrame = self.detector.getLatestFrame()
                     tif.imwrite(filePath, lastFrame, append=True)
@@ -562,7 +561,6 @@ class MCTController(ImConWidgetController):
                         if len(self.leds)>0:
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)
-                        time.sleep(.1)
                         time.sleep(self.tWait)
                         lastFrame = self.detector.getLatestFrame()
                         tif.imwrite(filePath, lastFrame, append=True)

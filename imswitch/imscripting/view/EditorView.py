@@ -1,6 +1,7 @@
 import uuid
-
-from PyQt5 import Qsci
+import imswitch
+if not imswitch.IS_HEADLESS:
+    from PyQt5 import Qsci
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .guitools import BetterPushButton
@@ -145,29 +146,29 @@ class EditorInstanceView(QtWidgets.QWidget):
         """ Sets the text in the editor instance. """
         self.scintilla.setText(text)
 
+if not imswitch.IS_HEADLESS:
+    class Scintilla(Qsci.QsciScintilla):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
 
-class Scintilla(Qsci.QsciScintilla):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+            self.setMargins(1)
+            self.setMarginWidth(0, '00000000')
+            self.setMarginType(0, Qsci.QsciScintilla.NumberMargin)
 
-        self.setMargins(1)
-        self.setMarginWidth(0, '00000000')
-        self.setMarginType(0, Qsci.QsciScintilla.NumberMargin)
+            self.setTabWidth(4)
+            self.setIndentationGuides(True)
+            self.setAutoIndent(True)
 
-        self.setTabWidth(4)
-        self.setIndentationGuides(True)
-        self.setAutoIndent(True)
+            self.setScrollWidth(1)
+            self.setScrollWidthTracking(True)
 
-        self.setScrollWidth(1)
-        self.setScrollWidthTracking(True)
+            font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+            font.setPointSize(11)
 
-        font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
-        font.setPointSize(11)
-
-        lexer = Qsci.QsciLexerPython()
-        lexer.setFont(font)
-        lexer.setDefaultFont(font)
-        self.setLexer(lexer)
+            lexer = Qsci.QsciLexerPython()
+            lexer.setFont(font)
+            lexer.setDefaultFont(font)
+            self.setLexer(lexer)
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

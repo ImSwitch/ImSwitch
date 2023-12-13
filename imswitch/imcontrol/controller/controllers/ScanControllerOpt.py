@@ -32,16 +32,20 @@ class ScanControllerOpt(ImConWidgetController):
         self.isOptRunning = False
 
         # select detectors
+        # TODO: it would be useful to create a UI section, a combo box for example,
+        # to select the desired detector to extract the data from
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # get rotators
+        # TODO: as for detectors, it would be useful to create a UI section, a combo box for example,
+        # to select the desired rotator
         self.getRotators()
         self.__motor_steps = self._master.rotatorsManager[self.__rotators[0]]._motor._steps_per_turn
         self.__logger.debug(f'Your rotators {self.__rotators} with {self.__motor_steps} steps per revolution.')
 
         # Connect widget signals
-        self._widget.scanPar['StartButton'].clicked.connect(self.startOpt)
+        self._widget.scanPar['StartButton'].clicked.connect(self.startOpt) # TODO: if using the communication channel signal, the start button is redundant
         self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
@@ -72,12 +76,32 @@ class ScanControllerOpt(ImConWidgetController):
         # and show it on the napari viewer
     
     def handleSnap(self, name, image, filePath, savedToDisk):
+        """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
+
+        Args:
+            name (`str`): key of the virtual table used to store images in RAM; format is "{filePath}_{channel}"
+            image (`np.ndarray`): captured image snap data;
+            filepath (`str`): path to the file stored on disk;
+            savedToDisk (`bool`): weather the image is saved on disk (True) or not (False)
+        """
+
         snapData = image[self.detector]
-        # TODO: add snap handling
+        # TODO: snapData contains the image currently snapped on the specific detector;
+        # implement how to handle it
 
 
     def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
-        # subsample stack
+        """ Displays captured image (via live view or recording) on napari.
+        Method is triggered via the `sigUpdateImage` signal.
+
+        Args:
+            detectorName (`str`): name of the detector currently capturing
+            image (`np.ndarray`): captured image
+            init (`bool`): weather napari should initialize the layer on which data is displayed (True) or not (False)
+            scale (`List[int]`): the pixel sizes in micrometers; see the `DetectorManager` class for details
+        """
+        # TODO: implement layer update functionality;
+        # the method should only update the layer when a full image is constructed for each slice captured by the detector 
         self._logger.info('displayStack function')
         self._widget.setImage(np.uint16(self.optStack),
                               colormap="gray",
@@ -126,10 +150,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
     def startOpt(self):
-        """ Reset and initiate Opt scan. """
-        self.sigImageReceived.connect(self.displayStack)
-
-        self.
+        """ Sets up the OPT for scanning operation. Method is triggered by the sigAcquisitionStarted signal. """
 
         self._widget.scanPar['StartButton'].setEnabled(False)
         self._widget.scanPar['StopButton'].setEnabled(True)
@@ -149,7 +170,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.scanRecordOpt()
 
     def stopOpt(self):
-        """Stop OPT acquisition and enable buttons
+        """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
         """
         self.isOptRunning = False
         self.sigImageReceived.disconnect()

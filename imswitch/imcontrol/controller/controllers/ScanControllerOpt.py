@@ -1,11 +1,15 @@
 import os
 from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets
+from scipy.fftpack import fft, ifft
+from scipy.interpolate import interp1d
+import pyqtgraph as pg
 
 # import matplotlib.pyplot as plt
 from functools import partial
 import numpy as np
 import pdb
+import threading
 
 from imswitch.imcommon.model import dirtools, initLogger
 from ..basecontrollers import ImConWidgetController
@@ -23,7 +27,6 @@ class ScanControllerOpt(ImConWidgetController):
 
         self.__logger = initLogger(self, tryInheritParent=True)
         self.optStack = np.ones((1, 1, 1))
-        # self.hotPixels = np.ones((1, 1))
 
         # Set up rotator in widget
         self._widget.initControls()
@@ -49,12 +52,38 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
 
-        # Initiate parameters used during the experiment
-        self.__opt_meta_filename = 'opt_metadata.json'
-        self.__opt_dir = os.path.join(dirtools.UserFileDirs.Root,
-                                      'imcontrol_optscan')
-        if not os.path.exists(self.__opt_dir):
-            os.makedirs(self.__opt_dir)
+        # saving folder
+        # self.__opt_meta_filename = 'opt_metadata.json'
+        # self.__opt_dir = os.path.join(dirtools.UserFileDirs.Root,
+        #                               'imcontrol_optscan')
+        # if not os.path.exists(self.__opt_dir):
+        #     os.makedirs(self.__opt_dir)
+
+        
+        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
+
+
+        # TODO: signals to control behavior based on the starting/stopping of liveview/recording
+        # FOR LIVEVIEW: use sigLiveStarted / sigLiveStopped (live acquisition started/stopped)
+        # FOR RECORDING: use sigRecordingStarted / sigRecordingStopped (recording started/stopped);
+        # it's also possible to use the same methods connected to different signal by adding a lambda function with pre-determined flags
+        self._commChannel.sigLiveStarted.connect(lambda: self.startOpt(live=True))
+        self._commChannel.sigLiveStopped.connect(lambda: self.stopOpt(live=True))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.startOpt(live=False))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.stopOpt(live=False))
+
+        # TODO: signal for when a new image is captured; either from live view or from recording;
+        # this is triggered for every new incoming image from the detector
+        self._commChannel.sigUpdateImage.connect(self.displayStack)
+
+        # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
+        # details on the content of the signal are listed in the displayRecording method docstring
+        self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
+
+        # TODO: connect the following signals to local methods to eventually update other scanning parameters;
+        # this can only work for a recording and not a live view acquisition
+        # self._commChannel.sigUpdateRecFrameNum   (`int`, number of frames captured during an acquisition)
+        # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
 
         
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
@@ -83,6 +112,7 @@ class ScanControllerOpt(ImConWidgetController):
         # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
 
         # pdb.set_trace()
+        self.optTask = threading.Thread(target=self.startOpt)
 
     def displayRecording(self, name, file, filePath, savedToDisk):
         """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
@@ -132,6 +162,10 @@ class ScanControllerOpt(ImConWidgetController):
                               pixelsize=(1, 1, 1),
                               translation=(0, 0, 0))
 
+    def report(self):
+        self._logger.info('report after setImage from controller.')
+        self._widget.sigSetImage.disconnect()
+
     def displayImage(self, name):
         # subsample stack
         print('Shape: ', self.current_frame.shape)
@@ -163,24 +197,35 @@ class ScanControllerOpt(ImConWidgetController):
     def getStdCutoff(self):
         """ Get the STD cutoff for Hot pixels correction. """
         return self._widget.getHotStd()
-    
+
     def getAverages(self):
         """ Get number of averages for camera correction. """
         return self._widget.getAverages()
+    
+    def getLiveReconIdx(self):
+        return self._widget.getLiveReconIdx()
 
     def getRotators(self):
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
-    def startOpt(self, live: bool):
-        """ Sets up the OPT for scanning operation. Method is triggered by the sigAcquisitionStarted signal. """
+    def updateLiveRecon(self, image):
+        self._widget.liveReconPlot.setImage(image)
 
+    def startOpt(self):
+        """ Reset and initiate Opt scan. """
+        self.optTask.start()
+        self.sigImageReceived.connect(self.displayStack)
         self._widget.scanPar['StartButton'].setEnabled(False)
         self._widget.scanPar['StopButton'].setEnabled(True)
         self._widget.scanPar['StartButton'].setText('Running')
         self._widget.scanPar['StopButton'].setText('Stop')
         self._widget.scanPar['StopButton'].setStyleSheet("background-color: red")
         self._widget.scanPar['StartButton'].setStyleSheet("background-color: green")
+
+        if self._widget.scanPar['LiveReconButton'].isChecked():
+            self.live_recon = True
+            self.reconIdx = self.getLiveReconIdx()
 
         self.__rot_steps = self.getRotationSteps()  # motor step per revolution
 
@@ -189,7 +234,10 @@ class ScanControllerOpt(ImConWidgetController):
                                      endpoint=False)
         self.__logger.debug(f'OPT steps: {self.opt_steps}')
         self.allFrames = []
+        # try threading of the display
+
         # run OPT
+        
         self.scanRecordOpt()
 
     def stopOpt(self, live: bool):
@@ -214,7 +262,12 @@ class ScanControllerOpt(ImConWidgetController):
             self.__currentStep = 0
 
             self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.connect(self.post_step)
-            self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
+            self.motorTask = threading.Thread(target=self.moveAbsRotator,
+                                              args=(self.__rotators[0],
+                                                    self.opt_steps[self.__currentStep]),
+                                              )
+            self.motorTask.start()
+            # self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
 
     def post_step(self):
         """Acquire image after motor step is done, stop OPT in case of last step,
@@ -224,17 +277,42 @@ class ScanControllerOpt(ImConWidgetController):
         if frame.shape[0] != 0:
             self.allFrames.append(frame)
 
+        # updating live reconstruction
+        if self.live_recon:
+            # self.reconPlot = pg.ImageView()
+            try:
+                self.current_recon.update_recon(
+                    frame[self.reconIdx, :],
+                    self.__currentStep)
+            except AttributeError:
+                try:
+                    print('Creating a new reconstruction object.')
+                    self.current_recon = FBPlive(
+                        frame[self.reconIdx, :],
+                        self.__motor_steps)
+                except IndexError as e:
+                    self._logger.warning('Reconstruction index too high, no live-recon')
+                    print(e)
+                    self.live_recon = False
+                    self.current_recon = None
+
+            try:
+                self.updateLiveRecon(self.current_recon.output)
+                # self._widget.reconPlot.setImage(self.current_recon)
+            except TypeError:
+                self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+
         self.__currentStep += 1
         # TODO: fix display after every step
         # self.sigImageReceived.emit('OPT stack')
+        self.optStack = np.array(self.allFrames)
+        self.sigImageReceived.emit('OPT stack')
         if self.__currentStep > len(self.opt_steps)-1:
-            self.optStack = np.array(self.allFrames)
-            self.sigImageReceived.emit('OPT stack')
             self.__logger.info(f'collected {len(self.optStack)} images')
             self.stopOpt()
         else:
-            self.optStack = np.array(self.allFrames)
-            self.displayStack('OPT stack')
+            # self.optStack = np.array(self.allFrames)
+            # self.displayStack('OPT stack')
             self.__logger.debug(f'post_step func, step {self.__currentStep}')
             self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
 
@@ -336,11 +414,6 @@ class ScanControllerOpt(ImConWidgetController):
 
     def _continue(self, corr_type):
         exec(f'self.{corr_type} = self.current_frame')
-        
-        # saving
-        # file_name = corr_type + self.get_time_now()
-        # self.save_image(file_name)
-        # self.append_history(corr_type + ' correction saved.')
 
         # process hot pixel acquisition
         if corr_type == 'hot_pixels':
@@ -414,10 +487,109 @@ class ScanControllerOpt(ImConWidgetController):
         self.__logger.debug('Scancontroller, after move.')
 
 
-class LiveRecon():
-    # copy from optac
-    def __init__(self):
-        return
+class MovementController:
+    def __init__(self, rotator):
+        self.rotator = rotator
+
+class FBPlive():
+    def __init__(self, line, steps: int) -> None:
+        self.line = line
+        self.n_steps = steps
+        if line.ndim > 1:  # 3D reconstruction
+            self.sinogram = np.zeros((line.shape[1],
+                                      steps))
+            self.output_size = line.shape[1]
+            self.output = np.zeros((line.shape[1],
+                                    line.shape[1],
+                                    line.shape[0]))
+        else:
+            self.sinogram = np.zeros((len(line), steps))
+            self.output_size = len(line)
+            self.output = np.zeros((len(line), len(line)))
+        self.radon_img = self._sinogram_circle_to_square(self.sinogram)
+        self.radon_img_shape = self.radon_img.shape[0]
+        self.offset = (self.radon_img_shape-self.output_size)//2
+        self.projection_size_padded = max(
+                64,
+                int(2 ** np.ceil(np.log2(2 * self.radon_img_shape))))
+        self.radius = self.output_size // 2
+        self.xpr, self.ypr = np.mgrid[:self.output_size,
+                                      :self.output_size] - self.radius
+        self.x = np.arange(self.radon_img_shape) - self.radon_img_shape // 2
+        self.theta = np.deg2rad(
+                        np.linspace(0., 360., self.n_steps, endpoint=False)
+                        )
+        self.update_recon(self.line, 0)
+
+    def update_recon(self, line_in, step):
+        self.line = line_in
+        fourier_filter = self._get_fourier_filter(self.projection_size_padded)
+        # padding line
+        if self.line.ndim > 1:
+            line = np.zeros((self.line.shape[0], self.projection_size_padded))
+            line[:, self.offset:line_in.shape[1] + self.offset] = line_in
+            # interpolation on the circle
+            interpolation = 'linear'
+            t = self.ypr * np.cos(self.theta[step]) - self.xpr * np.sin(self.theta[step])
+            for i in range(len(self.line[:, 0])):
+                # fft filtering of the line
+                projection = fft(line[i, :]) * fourier_filter
+                radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
+
+                if interpolation == 'linear':
+                    interpolant = interp1d(self.x, radon_filtered, kind='linear',
+                                           bounds_error=False, fill_value=0)
+                elif interpolation == 'cubic':
+                    interpolant = interp1d(self.x, radon_filtered, kind='cubic',
+                                           bounds_error=False, fill_value=0)
+                else:
+                    raise ValueError
+                self.output[:, :, i] += interpolant(t) * (np.pi/(2*self.n_steps))
+        else:
+            line = np.zeros(self.projection_size_padded)
+            line[self.offset:len(line_in)+self.offset] = line_in
+
+            # fft filtering of the line
+            projection = fft(line) * fourier_filter
+            radon_filtered = np.real(ifft(projection)[:self.radon_img_shape])
+
+            # interpolation on the circle
+            interpolation = 'linear'
+            t = self.ypr * np.cos(self.theta[step]) - self.xpr * np.sin(self.theta[step])
+            if interpolation == 'linear':
+                interpolant = interp1d(self.x, radon_filtered, kind='linear',
+                                       bounds_error=False, fill_value=0)
+            elif interpolation == 'cubic':
+                interpolant = interp1d(self.x, radon_filtered, kind='cubic',
+                                       bounds_error=False, fill_value=0)
+            else:
+                raise ValueError
+            self.output += interpolant(t) * (np.pi/(2*self.n_steps))
+
+    def _get_fourier_filter(self, size):
+        '''size needs to be even
+        Only ramp filter implemented
+        '''
+        n = np.concatenate((np.arange(1, size / 2 + 1, 2, dtype=int),
+                            np.arange(size / 2 - 1, 0, -2, dtype=int)))
+        f = np.zeros(size)
+        f[0] = 0.25
+        f[1::2] = -1 / (np.pi * n) ** 2
+
+        # Computing the ramp filter from the fourier transform of its
+        # frequency domain representation lessens artifacts and removes a
+        # small bias as explained in [1], Chap 3. Equation 61
+        fourier_filter = 2 * np.real(fft(f))         # ramp filter
+        return fourier_filter
+
+    def _sinogram_circle_to_square(self, sinogram):
+        diagonal = int(np.ceil(np.sqrt(2) * sinogram.shape[0]))
+        pad = diagonal - sinogram.shape[0]
+        old_center = sinogram.shape[0] // 2
+        new_center = diagonal // 2
+        pad_before = new_center - old_center
+        pad_width = ((pad_before, pad - pad_before), (0, 0))
+        return np.pad(sinogram, pad_width, mode='constant', constant_values=0)
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

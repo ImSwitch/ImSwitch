@@ -1,5 +1,6 @@
 from qtpy import QtCore, QtWidgets
 import numpy as np
+import pyqtgraph as pg
 
 from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import NapariHybridWidget
@@ -11,7 +12,7 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     sigRotStepDone = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
-    sigScanDone = QtCore.Signal()
+    sigSetImage = QtCore.Signal()
 
     def __post_init__(self, *args, **kwargs):
         self.grid = QtWidgets.QGridLayout()
@@ -35,6 +36,9 @@ class ScanWidgetOpt(NapariHybridWidget):
     def getAverages(self):
         """ Returns the user-input number of averages for the hot pixel correction. """
         return int(self.scanPar['AveragesEdit'].text())
+    
+    def getLiveReconIdx(self):
+        return int(self.scanPar['LiveReconIdxEdit'].text())
 
     def updateHotPixelCount(self, count):
         self.scanPar['HotPixelCount'].setText(f'Count: {count:d}')
@@ -75,6 +79,7 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                name=name, blending='additive')
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
+        self.sigSetImage.emit()
 
     def widgetLayout(self):
         self.scanPar['GetHotPixels'] = guitools.BetterPushButton('Acquire')
@@ -93,13 +98,13 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         # darkfield
         self.scanPar['GetDark'] = guitools.BetterPushButton('Acquire')
-        self.scanPar['DarkMean'] = QtWidgets.QLabel(f'Dark mean: {0:.2f} cts')
-        self.scanPar['DarkStd'] = QtWidgets.QLabel(f'Dark STD: {0:.2f} cts')
+        self.scanPar['DarkMean'] = QtWidgets.QLabel(f'Dark mean: {0:.2f}')
+        self.scanPar['DarkStd'] = QtWidgets.QLabel(f'Dark STD: {0:.2f}')
 
         # brightfield
         self.scanPar['GetFlat'] = guitools.BetterPushButton('Acquire')
-        self.scanPar['FlatMean'] = QtWidgets.QLabel(f'Flat mean: {0:.2f} cts')
-        self.scanPar['FlatStd'] = QtWidgets.QLabel(f'Flat STD: {0:.2f} cts')
+        self.scanPar['FlatMean'] = QtWidgets.QLabel(f'Flat mean: {0:.2f}')
+        self.scanPar['FlatStd'] = QtWidgets.QLabel(f'Flat STD: {0:.2f}')
 
         # OPT
         self.scanPar['RotStepsLabel'] = QtWidgets.QLabel('Rot. steps')
@@ -112,8 +117,12 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['SaveOptButton'] = QtWidgets.QCheckBox('Save OPT')
         self.scanPar['SaveOptButton'].setCheckable(True)
 
+        self.scanPar['LiveReconIdxEdit'] = QtWidgets.QLineEdit('500')
+
         self.scanPar['StartButton'] = guitools.BetterPushButton('Start')
         self.scanPar['StopButton'] = guitools.BetterPushButton('Stop')
+
+        self.liveReconPlot = pg.ImageView()
 
         currentRow = 0
         # corrections
@@ -167,8 +176,14 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         self.grid.addWidget(self.scanPar['LiveReconButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['SaveOptButton'], currentRow, 1)
-        self.grid.addWidget(self.scanPar['StartButton'], currentRow, 2)
-        self.grid.addWidget(self.scanPar['StopButton'], currentRow, 3)
+        self.grid.addWidget(self.scanPar['LiveReconIdxEdit'], currentRow, 2)
+
+        currentRow += 1
+        self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
+
+        currentRow += 1
+        self.grid.addWidget(self.liveReconPlot, currentRow, 0, 1, -1)
 
         # self.grid.addItem(QtWidgets.QSpacerItem(10, 10,
         #                   QtWidgets.QSizePolicy.Minimum,

@@ -479,7 +479,7 @@ class ImageStitcher:
         img = np.flip(np.flip(img,1),0)
         scalingFactor = .5
         try: img = np.float32(img)/np.float32(self.flatfieldImage) # we scale flatfieldImage 0...1
-        except: self._parent._logger.error("Could not divide by flatfieldImage")
+        except: pass #self._parent._logger.error("Could not divide by flatfieldImage")
         if len(img.shape)==3:
            img = np.uint8(img) # napari only accepts uint8 for RGB
         try: 

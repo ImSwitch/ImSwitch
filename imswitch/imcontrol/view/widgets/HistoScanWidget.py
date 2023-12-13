@@ -437,7 +437,7 @@ class ScanSelectView(QtWidgets.QGraphicsView):
             top = selected_rect.top()
             right = selected_rect.right()
             bottom = selected_rect.bottom()
-            self._logger.debug("Selected coordinates:", left, top, right, bottom)
+            #self._logger.debug("Selected coordinates:", left, top, right, bottom)
 
 
             # differentiate between single point and rectangle

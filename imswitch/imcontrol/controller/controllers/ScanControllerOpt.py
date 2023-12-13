@@ -16,6 +16,7 @@ class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
     """
     sigImageReceived = Signal(str)
+    sigRequestSnap = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -52,9 +53,30 @@ class ScanControllerOpt(ImConWidgetController):
         if not os.path.exists(self.__opt_dir):
             os.makedirs(self.__opt_dir)
 
+        
+        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
+
+        self._commChannel.sigRecordingEnded.connect(self.readbackAndDisplay)
+
+        # TODO: read the contents of these signals in the CommunicationChannel class
+        # and implement it in your code
+        self._commChannel.sigAcquisitionStarted.connect(self.startOpt)
+        self._commChannel.sigAcquisitionStopped.connect(self.stopOpt)
+        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
+        self._commChannel.sigUpdateImage.connect(self.displayStack)
+
         # pdb.set_trace()
 
-    def displayStack(self, name):
+    def readbackAndDisplay(self):
+        # open a qt window to readback my file location
+        # and show it on the napari viewer
+    
+    def handleSnap(self, name, image, filePath, savedToDisk):
+        snapData = image[self.detector]
+        # TODO: add snap handling
+
+
+    def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
         # subsample stack
         self._logger.info('displayStack function')
         self._widget.setImage(np.uint16(self.optStack),
@@ -106,6 +128,9 @@ class ScanControllerOpt(ImConWidgetController):
     def startOpt(self):
         """ Reset and initiate Opt scan. """
         self.sigImageReceived.connect(self.displayStack)
+
+        self.
+
         self._widget.scanPar['StartButton'].setEnabled(False)
         self._widget.scanPar['StopButton'].setEnabled(True)
         self._widget.scanPar['StartButton'].setText('Running')

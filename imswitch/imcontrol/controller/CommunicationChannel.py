@@ -20,6 +20,10 @@ class CommunicationChannel(SignalInterface):
 
     sigAcquisitionStopped = Signal()
 
+    sigLiveStarted = Signal()
+
+    sigLiveStopped = Signal()
+
     sigScriptExecutionFinished = Signal()
 
     sigAdjustFrame = Signal(object)  # (shape)
@@ -45,6 +49,10 @@ class CommunicationChannel(SignalInterface):
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)
+
+    sigMemoryRecordingAvailable = Signal(
+        str, object, object, bool
+    ) # (name, file, filePath, savedToDisk)
 
     sigRunScan = Signal(bool, bool)  # (recalculateSignals, isNonFinalPartOfSequence)
 

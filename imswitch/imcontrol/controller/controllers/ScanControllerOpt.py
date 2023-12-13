@@ -38,8 +38,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # get rotators
-        # TODO: as for detectors, it would be useful to create a UI section, a combo box for example,
-        # to select the desired rotator
+        # TODO: as for detectors, it would be useful to create a UI combo box to select the desired rotator
         self.getRotators()
         self.__motor_steps = self._master.rotatorsManager[self.__rotators[0]]._motor._steps_per_turn
         self.__logger.debug(f'Your rotators {self.__rotators} with {self.__motor_steps} steps per revolution.')
@@ -60,20 +59,44 @@ class ScanControllerOpt(ImConWidgetController):
         
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
 
-        self._commChannel.sigRecordingEnded.connect(self.readbackAndDisplay)
 
-        # TODO: read the contents of these signals in the CommunicationChannel class
-        # and implement it in your code
-        self._commChannel.sigAcquisitionStarted.connect(self.startOpt)
-        self._commChannel.sigAcquisitionStopped.connect(self.stopOpt)
-        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
+        # TODO: signals to control behavior based on the starting/stopping of liveview/recording
+        # FOR LIVEVIEW: use sigLiveStarted / sigLiveStopped (live acquisition started/stopped)
+        # FOR RECORDING: use sigRecordingStarted / sigRecordingStopped (recording started/stopped);
+        # it's also possible to use the same methods connected to different signal by adding a lambda function with pre-determined flags
+        self._commChannel.sigLiveStarted.connect(lambda: self.startOpt(live=True))
+        self._commChannel.sigLiveStopped.connect(lambda: self.stopOpt(live=True))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.startOpt(live=False))
+        self._commChannel.sigRecordingStarted.connect(lambda: self.stopOpt(live=False))
+
+        # TODO: signal for when a new image is captured; either from live view or from recording;
+        # this is triggered for every new incoming image from the detector
         self._commChannel.sigUpdateImage.connect(self.displayStack)
+
+        # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
+        # details on the content of the signal are listed in the displayRecording method docstring
+        self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
+
+        # TODO: connect the following signals to local methods to eventually update other scanning parameters;
+        # this can only work for a recording and not a live view acquisition
+        # self._commChannel.sigUpdateRecFrameNum   (`int`, number of frames captured during an acquisition)
+        # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
 
         # pdb.set_trace()
 
-    def readbackAndDisplay(self):
-        # open a qt window to readback my file location
-        # and show it on the napari viewer
+    def displayRecording(self, name, file, filePath, savedToDisk):
+        """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
+
+        Args:
+            name (`str`): name of the generated file for the last recording;
+            file (`Union[BytesIO, h5py.File, zarr.hierarchy.Group]`): 
+                - if recording is saved to RAM, a reference to a BytesIO instance where the data is saved; 
+                - otherwise a HDF or Zarr file object of the recorded stack (type is selected from the UI)
+            filePath (`str`): path to the recording directory
+            savedToDisk (`bool`): weather recording is saved to disk (`True`) or not (`False`)
+        """
+        # TODO: implement
+        pass
     
     def handleSnap(self, name, image, filePath, savedToDisk):
         """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
@@ -82,7 +105,7 @@ class ScanControllerOpt(ImConWidgetController):
             name (`str`): key of the virtual table used to store images in RAM; format is "{filePath}_{channel}"
             image (`np.ndarray`): captured image snap data;
             filepath (`str`): path to the file stored on disk;
-            savedToDisk (`bool`): weather the image is saved on disk (True) or not (False)
+            savedToDisk (`bool`): weather the image is saved on disk (`True`) or not (`False`)
         """
 
         snapData = image[self.detector]
@@ -149,7 +172,7 @@ class ScanControllerOpt(ImConWidgetController):
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
-    def startOpt(self):
+    def startOpt(self, live: bool):
         """ Sets up the OPT for scanning operation. Method is triggered by the sigAcquisitionStarted signal. """
 
         self._widget.scanPar['StartButton'].setEnabled(False)

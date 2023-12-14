@@ -23,9 +23,9 @@ except:
     print("Not running on Pi")
     GPIO = None
 
-# Screen resolution
+# Set parameters
 mResolution = [1920, 1080]
-mResolution = [800, 600]
+#mResolution = [800, 600]
 unitCellSize = 3
 camTriggerPin = 26
 currentWavelength = 0  # 488=0, 635=1
@@ -91,21 +91,9 @@ class Viewer:
         global camTriggerPin, nImages, iLoop, iCycle
         self.camPin = camTriggerPin
         self.iNumber = nImages
-        self.iLoop = iLoop
-        self.iCycle = iCycle
-        self.viewer_completed_event = Event()
-    
-    def set_title(self, title):
-        pygame.display.set_caption(title)
     
     def set_twait(self, tWait):
         self.tWait = tWait
-    
-    def set_loop(self, iLoop):
-        self.iLoop = iLoop
-    
-    def set_cycle(self, iCycle):
-        self.iCycle = iCycle
         
     def trigger(self, gpiopin):
         GPIO.output(gpiopin, GPIO.HIGH)
@@ -141,7 +129,6 @@ class Viewer:
                 running = False
                 pygame.display.quit()
                 task_lock = True
-                self.viewer_completed_event.set()
 
 def update(index):
     global currentWavelength
@@ -229,10 +216,13 @@ async def run_cycle(icycle: int):
     iter = not iter
     return {"wavelength": currentWavelength}
 
-@app.get("/wait_for_viewer_completion")
-async def wait_for_viewer_completion():
-    viewer.viewer_completed_event.wait()  # Wait for viewer completion
-    return {"message": "Viewer completed"}
+
+@app.get("/stop_loop/")
+async def stop_loop():
+    global iLoop, iCycle
+    iLoop = False
+    iCycle = 1
+    return {"message": "Loop stopped"}
 
 # Endpoint to toggle fullscreen mode
 @app.get("/toggle_fullscreen")

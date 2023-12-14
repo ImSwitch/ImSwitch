@@ -2,8 +2,10 @@
 # flags '-c -d -v C:\test_h\CameraParams.xml -o CameraParams_header.py'
 from ctypes import *
 from enum import Enum
+
 from imswitch.imcontrol.model.interfaces.hikrobotWin.CameraParams_const import *
 from imswitch.imcontrol.model.interfaces.hikrobotWin.PixelType_header import *
+
 
 STRING = c_char_p
 
@@ -74,6 +76,27 @@ MV_TRIGGER_SOURCE_LINE3 = 3                      # < \~chinese LINE3 触发源  
 MV_TRIGGER_SOURCE_LINE2 = 2                      # < \~chinese LINE2 触发源                             \~english Trigger source line2
 MV_TRIGGER_SOURCE_LINE1 = 1                      # < \~chinese LINE1 触发源                             \~english Trigger source line1
 MV_TRIGGER_SOURCE_LINE0 = 0                      # < \~chinese LINE0 触发源                             \~english Trigger source line0
+SortMethod_SerialNumber = 0                      # < \~chinese 按序列号排序                     \~english Sorting by SerialNumber
+SortMethod_UserID = 1                            # < \~chinese 按用户自定义名字排序             \~english Sorting by UserID
+SortMethod_CurrentIP_ASC = 2                     # < \~chinese 按当前IP地址排序（升序）         \~english Sorting by current IP（Ascending）
+SortMethod_CurrentIP_DESC = 3                    # < \~chinese 按当前IP地址排序（降序）         \~english Sorting by current IP（Descending）
+MV_IMAGE_ROTATE_90 = 1                           # < \~chinese 旋转90度         \~english Rotate 90 degrees
+MV_IMAGE_ROTATE_180 = 2                          # < \~chinese 旋转180度         \~english Rotate 180 degrees
+MV_IMAGE_ROTATE_270 = 3                          # < \~chinese 旋转270度         \~english Rotate 270 degrees
+MV_FLIP_VERTICAL = 1                             # < \~chinese 垂直翻转          \~english flip vertical
+MV_FLIP_HORIZONTAL = 2                           # < \~chinese 旋水平翻转         \~english flip horizontal
+MV_CC_GAMMA_TYPE_NONE = 0                        # < \~chinese 不启用                       \~english Disable
+MV_CC_GAMMA_TYPE_VALUE = 1                       # < \~chinese Gamma值                      \~english Gamma value
+MV_CC_GAMMA_TYPE_USER_CURVE = 2                  # < \~chinese Gamma曲线                    \~english Gamma curve
+MV_CC_GAMMA_TYPE_LRGB2SRGB = 3                   # < \~chinese linear RGB to sRGB           \~english linear RGB to sRGB
+MV_CC_GAMMA_TYPE_SRGB2LRGB = 4                   # < \~chinese sRGB to linear RGB(仅色彩插值时支持，色彩校正时无效) \~english sRGB to linear RGB
+MV_CC_STREAM_EXCEPTION_ABNORMAL_IMAGE = 0x4001   # < \~chinese 异常的图像，该帧被丢弃            \~english abnormal image,the frame is discarded
+MV_CC_STREAM_EXCEPTION_LIST_OVERFLOW = 0x4002    # < \~chinese 缓存列表溢出，清除最旧的一帧       \~english Cache list overflow, clear the oldest frame
+MV_CC_STREAM_EXCEPTION_LIST_EMPTY = 0x4003       # < \~chinese 缓存列表为空，该帧被丢弃           \~english Cache list is empty,the frame is discarded
+MV_CC_STREAM_EXCEPTION_RECONNECTION = 0x4004    # < \~chinese 断流恢复                         \~english reconnect
+MV_CC_STREAM_EXCEPTION_DISCONNECTED = 0x4005    # < \~chinese 断流,恢复失败,取流被中止    \~english reconnect fail, stream is  terminated
+MV_CC_STREAM_EXCEPTION_DEVICE = 0x4006          # < \~chinese 设备异常,取流被中止         \~english device exception
+MV_SPLIT_BY_LINE = 1                            #< \~chinese 源图像按行拆分成多张图像         \~english Source image split into multiple images by line
 int8_t = c_int8
 int16_t = c_int16
 int32_t = c_int32
@@ -267,8 +290,10 @@ N22_MV_FRAME_OUT_INFO_EX_3DOT_1E._fields_ = [
     ('nAligning', int64_t),                                    # < \~chinese 校准字段          \~english Aligning
 ]
 _MV_FRAME_OUT_INFO_EX_._fields_ = [
-    ('nWidth', c_ushort),                                    # < \~chinese 图像宽             \~english Image Width
-    ('nHeight', c_ushort),                                   # < \~chinese 图像高             \~english Image Height
+    ('nWidth', c_ushort),
+    # < \~chinese 图像宽(最大65535，超出请用nExtendWidth)    \~english Image Width (over 65535, use nExtendWidth)
+    ('nHeight', c_ushort),
+    # < \~chinese 图像高(最大65535，超出请用nExtendHeight)   \~english Image Height(over 65535, use nExtendHeight)
     ('enPixelType', MvGvspPixelType),                        # < \~chinese 像素格式           \~english Pixel Type
     ('nFrameNum', c_uint),                                   # < \~chinese 帧号               \~english Frame Number
     ('nDevTimeStampHigh', c_uint),                           # < \~chinese 时间戳高32位       \~english Timestamp high 32 bits
@@ -301,9 +326,24 @@ _MV_FRAME_OUT_INFO_EX_._fields_ = [
     ('nLostPacket', c_uint),                                 # < \~chinese 本帧丢包数            \~english Lost Pacekt Number In This Frame
     ('nUnparsedChunkNum', c_uint),                           # < \~chinese 未解析的Chunkdata个数 \~english Unparsed chunk number
     ('UnparsedChunkList', N22_MV_FRAME_OUT_INFO_EX_3DOT_1E), # < \~chinese 数据库链表            \~english Unparsed chunk list
-    ('nReserved', c_uint * 36),                              # < \~chinese 保留字节            \~english Reserved bytes
+    ('nExtendWidth', c_uint),                                # < \~chinese 图像宽(扩展变量)       \~english Image Width
+    ('nExtendHeight', c_uint),                               # < \~chinese 图像高(扩展变量)       \~english Image Height
+    ('nReserved', c_uint * 34),                              # < \~chinese 保留字节            \~english Reserved bytes
 ]
 MV_FRAME_OUT_INFO_EX = _MV_FRAME_OUT_INFO_EX_
+
+# \~chinese 显示帧信息   \~english Display frame information
+class _MV_DISPLAY_FRAME_INFO_EX_(Structure):
+    pass
+_MV_DISPLAY_FRAME_INFO_EX_._fields_ = [
+    ('nWidth', c_uint),                # < \~chinese 图像宽    \~english Image Width
+    ('nHeight', c_uint),               # < \~chinese 图像高    \~english Image Height
+    ('enPixelType', MvGvspPixelType),  # < \~chinese 像素格式            \~english Pixel Type
+    ('pImageBuf', POINTER(c_ubyte)),   # < \~chinese 输入图像缓存         \~english Input image buffer
+    ('nImageBufLen', c_uint),          # < \~chinese 输入图像长度         \~english Input image length
+    ('nRes', c_uint * 4),              # < \~chinese 保留字节            \~english Reserved bytes
+]
+MV_DISPLAY_FRAME_INFO_EX = _MV_DISPLAY_FRAME_INFO_EX_
 
 # 图像结构体，输出图像指针地址及图像信息    \~english Image Struct, output the pointer of Image and the information of the specific image
 class _MV_FRAME_OUT_(Structure):
@@ -423,6 +463,26 @@ _MV_SAVE_IMAGE_PARAM_T_EX_._fields_ = [
 ]
 MV_SAVE_IMAGE_PARAM_EX = _MV_SAVE_IMAGE_PARAM_T_EX_
 
+class _MV_SAVE_IMAGE_PARAM_EX3_(Structure):
+    pass
+_MV_SAVE_IMAGE_PARAM_EX3_._fields_ = [
+    ('pData', POINTER(c_ubyte)),                            # < \~chinese 输入数据缓存         \~english Input Data Buffer
+    ('nDataLen', c_uint),                                   # < \~chinese 输入数据大小         \~english Input Data Size
+    ('enPixelType', MvGvspPixelType),                       # < \~chinese 输入数据的像素格式         \~english Input Data Pixel Format
+    ('nWidth', c_uint),                                   # < \~chinese 图像宽         \~english Image Width
+    ('nHeight', c_uint),                                  # < \~chinese 图像高         \~english Image Height
+    ('pImageBuffer', POINTER(c_ubyte)),                     # < \~chinese 输出图片缓存         \~english Output Image Buffer
+    ('nImageLen', c_uint),                                  # < \~chinese 输出图片大小         \~english Output Image Size
+    ('nBufferSize', c_uint),                                # < \~chinese 提供的输出缓冲区大小         \~english Output buffer size provided
+    ('enImageType', MV_SAVE_IAMGE_TYPE),                    # < \~chinese 输出图片格式         \~english Output Image Format
+    ('nJpgQuality', c_uint),                                # < \~chinese 编码质量, (50-99]         \~english Encoding quality, (50-99]
+    # < \~chinese Bayer格式转为RGB24的插值方法  0-最近邻 1-双线性 2-Hamilton （如果传入其它值则默认为最近邻）
+	# < \~english Interpolation method of convert Bayer to RGB24  0-nearest neighbour 1-bilinearity 2-Hamilton
+    ('iMethodValue', c_uint),
+    ('nReserved', c_uint * 3),                              # < \~chinese 保留字节           \~english Reserved bytes
+]
+MV_SAVE_IMAGE_PARAM_EX3 = _MV_SAVE_IMAGE_PARAM_EX3_
+
 # \~chinese 保存BMP、JPEG、PNG、TIFF图片文件的参数    \~english Save BMP、JPEG、PNG、TIFF image file parameters
 class _MV_SAVE_IMG_TO_FILE_PARAM_(Structure):
     pass
@@ -442,10 +502,32 @@ _MV_SAVE_IMG_TO_FILE_PARAM_._fields_ = [
 ]
 MV_SAVE_IMG_TO_FILE_PARAM = _MV_SAVE_IMG_TO_FILE_PARAM_
 
-# \~chinese 图像转换结构体    \~english Pixel convert structure
-class _MV_PIXEL_CONVERT_PARAM_T_(Structure):
+class _MV_SAVE_IMAGE_TO_FILE_PARAM_EX_(Structure):
     pass
-_MV_PIXEL_CONVERT_PARAM_T_._fields_ = [
+_MV_SAVE_IMAGE_TO_FILE_PARAM_EX_._fields_ = [
+    ('nWidth', c_uint),  # < \~chinese 图像宽                                  \~english Image Width
+    ('nHeight', c_uint),  # < \~chinese 图像高                                 \~english Image Height
+    ('enPixelType', MvGvspPixelType),
+    # < \~chinese 输入数据的像素格式                    \~english The pixel format of the input data
+    ('pData', POINTER(c_ubyte)),  # < \~chinese 输入数据缓存                          \~english Input Data Buffer
+    ('nDataLen', c_uint),  # < \~chinese 输入数据大小                           \~english Input Data Size
+
+    ('enImageType', MV_SAVE_IAMGE_TYPE),
+    # < \~chinese 输入图片格式                               \~english Input Image Format
+    ('pcImagePath', POINTER(c_char)),  # < \~chinese 输入文件路径         \~english Input file path
+    ('nQuality', c_uint),
+    # < \~chinese JPG编码质量(50-99],PNG编码质量[0-9]         \~english JPG Encoding quality(50-99],PNG Encoding quality[0-9]
+    # < \~chinese     ch:Bayer格式转为RGB24的插值方法 0-最近邻 1-双线性 2-Hamilton
+    # < \~english   en:Interpolation method of convert Bayer to RGB24  0-nearest neighbour 1-bilinearity 2-Hamilton
+    ('iMethodValue', c_int),
+    ('nReserved', c_uint * 8),  # < \~chinese 保留字节           \~english Reserved bytes
+]
+MV_SAVE_IMAGE_TO_FILE_PARAM_EX = _MV_SAVE_IMAGE_TO_FILE_PARAM_EX_
+
+# \~chinese 图像转换结构体    \~english Pixel convert structure
+class _MV_CC_PIXEL_CONVERT_PARAM_T_(Structure):
+    pass
+_MV_CC_PIXEL_CONVERT_PARAM_T_._fields_ = [
     ('nWidth', c_ushort),                # < \~chinese 图像宽             \~english Image Width
     ('nHeight', c_ushort),               # < \~chinese 图像高              \~english Image Height
     ('enSrcPixelType', MvGvspPixelType), # < \~chinese 源像素格式            \~english Source pixel format
@@ -457,7 +539,23 @@ _MV_PIXEL_CONVERT_PARAM_T_._fields_ = [
     ('nDstBufferSize', c_uint),          # < \~chinese 提供的输出缓冲区大小         \~english Provided outbut buffer size
     ('nRes', c_uint * 4),                # < \~chinese 保留字节                     \~english Reserved bytes
 ]
-MV_CC_PIXEL_CONVERT_PARAM = _MV_PIXEL_CONVERT_PARAM_T_
+MV_CC_PIXEL_CONVERT_PARAM = _MV_CC_PIXEL_CONVERT_PARAM_T_
+
+class _MV_PIXEL_CONVERT_PARAM_EX_T_(Structure):
+    pass
+_MV_PIXEL_CONVERT_PARAM_EX_T_._fields_ = [
+    ('nWidth', c_uint),                # < \~chinese 图像宽             \~english Image Width
+    ('nHeight', c_uint),               # < \~chinese 图像高              \~english Image Height
+    ('enSrcPixelType', MvGvspPixelType), # < \~chinese 源像素格式            \~english Source pixel format
+    ('pSrcData', POINTER(c_ubyte)),      # < \~chinese 输入数据缓存           \~english Input data buffer
+    ('nSrcDataLen', c_uint),             # < \~chinese 输入数据大小            \~english Input data size
+    ('enDstPixelType', MvGvspPixelType), # < \~chinese 目标像素格式             \~english Destination pixel format
+    ('pDstBuffer', POINTER(c_ubyte)),    # < \~chinese 输出数据缓存              \~english Output data buffer
+    ('nDstLen', c_uint),                 # < \~chinese 输出数据大小               \~english Output data size
+    ('nDstBufferSize', c_uint),          # < \~chinese 提供的输出缓冲区大小         \~english Provided outbut buffer size
+    ('nRes', c_uint * 4),                # < \~chinese 保留字节                     \~english Reserved bytes
+]
+MV_CC_PIXEL_CONVERT_PARAM_EX = _MV_PIXEL_CONVERT_PARAM_EX_T_
 
 # values for enumeration '_MV_RECORD_FORMAT_TYPE_'
 _MV_RECORD_FORMAT_TYPE_ = c_int # enum
@@ -673,6 +771,286 @@ _MVCC_STRINGVALUE_T._fields_ = [
 ]
 MVCC_STRINGVALUE = _MVCC_STRINGVALUE_T
 
+# \~chinese 水印信息     \~english  Frame-specific information
+class _MV_CC_FRAME_SPEC_INFO_(Structure):
+    pass
+_MV_CC_FRAME_SPEC_INFO_._fields_ = [
+    # < \~chinese 设备水印时标      \~english Device frame-specific time scale
+    ('nSecondCount', c_uint),        # < \~chinese 秒数                  \~english The Seconds
+    ('nCycleCount', c_uint),         # < \~chinese 周期数                 \~english The Count of Cycle
+    ('nCycleOffset', c_uint),        # < \~chinese 周期偏移量              \~english The Offset of Cycle
+    ('fGain', c_float),              # < \~chinese 增益                   \~english Gain
+    ('fExposureTime', c_float),      # < \~chinese 曝光时间                \~english Exposure Time
+    ('nAverageBrightness', c_uint),  # < \~chinese 平均亮度                \~english Average brightness
+    # < \~chinese 白平衡相关        \~english White balance
+    ('nRed', c_uint),    # < \~chinese 红色                   \~english Red
+    ('nGreen', c_uint),  # < \~chinese 绿色                    \~english Green
+    ('nBlue', c_uint),   # < \~chinese 蓝色                    \~english Blue
+    ('nFrameCounter', c_uint),  # < \~chinese 总帧数           \~english Frame Counter
+    ('nTriggerIndex', c_uint),  # < \~chinese 触发计数          \~english Trigger Counting
+    ('nInput', c_uint),  # < \~chinese 输入                   \~english Input
+    ('nOutput', c_uint), # < \~chinese 输出                   \~english Output
+    # < \~chinese ROI区域           \~english ROI Region
+    ('nOffsetX', c_ushort),      # < \~chinese 水平偏移量        \~english OffsetX
+    ('nOffsetY', c_ushort),      # < \~chinese 垂直偏移量         \~english OffsetY
+    ('nFrameWidth', c_ushort),   # < \~chinese 水印宽            \~english The Width of Chunk
+    ('nFrameHeight', c_ushort),  # < \~chinese 水印高            \~english The Height of Chunk
+    ('nReserved', c_uint * 16),   # < \~chinese 预留              \~english Reserved bytes
+]
+MV_CC_FRAME_SPEC_INFO = _MV_CC_FRAME_SPEC_INFO_
+
+# \~chinese 无损解码参数              \~english High Bandwidth decode structure
+class _MV_CC_HB_DECODE_PARAM_T_(Structure):
+    pass
+_MV_CC_HB_DECODE_PARAM_T_._fields_ = [
+    ('pSrcBuf', POINTER(c_ubyte)),      # < \~chinese 输入数据缓存           \~english Input data buffer
+    ('nSrcLen', c_uint),                # < \~chinese 输入数据大小           \~english Input data size
+    ('nWidth', c_uint),                 # < \~chinese 图像宽                \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高                \~english Image Height
+    ('pDstBuf', POINTER(c_ubyte)),      # < \~chinese 输出数据缓存           \~english Output data buffer
+    ('nDstBufSize', c_uint),            # < \~chinese 提供的输出缓冲区大小     \~english Provided output buffer size
+    ('nDstBufLen', c_uint),             # < \~chinese 输出数据大小            \~english Output data size
+    ('enDstPixelType', MvGvspPixelType),  # < \~chinese 输出的像素格式        \~english Output pixel format
+    ('stFrameInfo', MV_CC_FRAME_SPEC_INFO),  # < \~chinese 水印信息          \~english Frame Spec Info
+    ('nRes', c_uint * 8),                 # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_CC_HB_DECODE_PARAM = _MV_CC_HB_DECODE_PARAM_T_
+
+# values for enumeration '_MV_SORT_METHOD_'
+_MV_SORT_METHOD_ = c_int  # enum
+MV_SORT_METHOD = _MV_SORT_METHOD_
+
+# values for enumeration '_MV_IMG_ROTATION_ANGLE_'
+_MV_IMG_ROTATION_ANGLE_ = c_int  # enum
+MV_IMG_ROTATION_ANGLE = _MV_IMG_ROTATION_ANGLE_
+
+# values for enumeration '_MV_IMG_FLIP_TYPE_'
+_MV_IMG_FLIP_TYPE_ = c_int  # enum
+MV_IMG_FLIP_TYPE = _MV_IMG_FLIP_TYPE_
+
+# values for enumeration '_MV_CC_GAMMA_TYPE_'
+_MV_CC_GAMMA_TYPE_ = c_int  # enum
+MV_CC_GAMMA_TYPE = _MV_CC_GAMMA_TYPE_
+
+# values for enumeration '_MV_CC_STREAM_EXCEPTION_TYPE_'
+_MV_CC_STREAM_EXCEPTION_TYPE_ = c_int  # enum
+MV_CC_STREAM_EXCEPTION_TYPE = _MV_CC_STREAM_EXCEPTION_TYPE_
+
+# values for enumeration '_MV_IMAGE_RECONSTRUCTION_METHOD_'
+_MV_IMAGE_RECONSTRUCTION_METHOD_ = c_int  # enum
+MV_IMAGE_RECONSTRUCTION_METHOD = _MV_IMAGE_RECONSTRUCTION_METHOD_
+
+# \~chinese 图像旋转结构体            \~english Rotate image structure
+class _MV_CC_ROTATE_IMAGE_PARAM_T_(Structure):
+    pass
+_MV_CC_ROTATE_IMAGE_PARAM_T_._fields_ = [
+    ('enPixelType', MvGvspPixelType),   # < \~chinese 像素格式              \~english pixel format
+    ('nWidth', c_uint),                 # < \~chinese 图像宽                \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高                \~english Image Height
+    ('pSrcData', POINTER(c_ubyte)),     # < \~chinese 输入数据缓存           \~english Input data buffer
+    ('nSrcDataLen', c_uint),            # < \~chinese 输入数据大小           \~english Input data length
+    ('pDstBuf', POINTER(c_ubyte)),      # < \~chinese 输出数据缓存           \~english Output data buffer
+    ('nDstBufLen', c_uint),             # < \~chinese输出数据长度            \~english Output data length
+    ('nDstBufSize', c_uint),            # < \~chinese  提供的输出缓冲区大小    \~english Provided output buffer size
+    ('enRotationAngle', MV_IMG_ROTATION_ANGLE),   # < \~chinese  旋转角度               \~english Rotation angle
+    ('nRes', c_uint * 8),               # < \~chinese 保留字节               \~english Reserved bytes
+]
+MV_CC_ROTATE_IMAGE_PARAM = _MV_CC_ROTATE_IMAGE_PARAM_T_
+
+# \~chinese 图像翻转结构体            \~english Flip image structure
+class _MV_CC_FLIP_IMAGE_PARAM_T_(Structure):
+    pass
+_MV_CC_FLIP_IMAGE_PARAM_T_._fields_ = [
+    ('enPixelType', MvGvspPixelType),   # < \~chinese 像素格式              \~english pixel format
+    ('nWidth', c_uint),                 # < \~chinese 图像宽                \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高                \~english Image Height
+    ('pSrcData', POINTER(c_ubyte)),     # < \~chinese 输入数据缓存           \~english Input data buffer
+    ('nSrcDataLen', c_uint),            # < \~chinese 输入数据大小           \~english Input data length
+    ('pDstBuf', POINTER(c_ubyte)),      # < \~chinese 输出数据缓存           \~english Output data buffer
+    ('nDstBufLen', c_uint),             # < \~chinese输出数据长度            \~english Output data length
+    ('nDstBufSize', c_uint),            # < \~chinese  提供的输出缓冲区大小    \~english Provided output buffer size
+    ('enFlipType', MV_IMG_FLIP_TYPE),   # < \~chinese  翻转类型              \~english Flip type
+    ('nRes', c_uint * 8),               # < \~chinese 保留字节               \~english Reserved bytes
+]
+MV_CC_FLIP_IMAGE_PARAM = _MV_CC_FLIP_IMAGE_PARAM_T_
+
+# \~chinese Gamma信息结构体           \~english Gamma info structure
+class _MV_CC_GAMMA_PARAM_T_(Structure):
+    pass
+_MV_CC_GAMMA_PARAM_T_._fields_ = [
+    ('enGammaType', MV_CC_GAMMA_TYPE),       # < \~chinese Gamma类型              \~english Gamma type
+    ('fGammaValue', c_float),                # < \~chinese Gamma值[0.1,4.0]       \~english Gamma value[0.1,4.0]
+    ('pGammaCurveBuf', POINTER(c_ubyte)),    # < \~chinese Gamma曲线缓存          \~english Gamma curve buffer
+    ('nGammaCurveBufLen', c_uint),           # < \~chinese Gamma曲线长度          \~english Gamma curve buffer size
+    ('nRes', c_uint * 8),                    # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_CC_GAMMA_PARAM = _MV_CC_GAMMA_PARAM_T_
+
+# \~chinese CCM参数                   \~english CCM param
+class _MV_CC_CCM_PARAM_T_(Structure):
+    pass
+_MV_CC_CCM_PARAM_T_._fields_ = [
+    ('bCCMEnable', c_bool),         # < \~chinese 是否启用CCM            \~english CCM enable
+    ('nCCMat', c_int * 9),          # < \~chinese CCM矩阵(-8192~8192)    \~english Color correction matrix(-8192~8192)
+    ('nRes', c_uint * 8),           # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_CC_CCM_PARAM = _MV_CC_CCM_PARAM_T_
+
+# \~chinese CCM参数                   \~english CCM param
+class _MV_CC_CCM_PARAM_EX_T_(Structure):
+    pass
+_MV_CC_CCM_PARAM_EX_T_._fields_ = [
+    ('bCCMEnable', c_bool),         # < \~chinese 是否启用CCM            \~english CCM enable
+    ('nCCMat', c_int * 9),          # < \~chinese CCM矩阵(-65536~65536)  \~english Color correction matrix(-65536~65536)
+    ('nCCMScale', c_uint),
+    # < \~chinese 量化系数（2的整数幂,最大65536）    \~english Quantitative scale(Integer power of 2, <= 65536)
+    ('nRes', c_uint * 8),           # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_CC_CCM_PARAM_EX = _MV_CC_CCM_PARAM_EX_T_
+
+# \~chinese 对比度调节结构体          \~english Contrast structure
+class _MV_CC_CONTRAST_PARAM_T_(Structure):
+    pass
+_MV_CC_CONTRAST_PARAM_T_._fields_ = [
+    ('nWidth', c_uint),                 # < \~chinese 图像宽(最小8)         \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高(最小8)         \~english Image Height
+    ('pSrcBuf', POINTER(c_ubyte)),      # < \~chinese 输入数据缓存           \~english Input data buffer
+    ('nSrcBufLen', c_uint),             # < \~chinese 输入数据大小           \~english Input data length
+    ('enPixelType', MvGvspPixelType),   # < \~chinese 像素格式               \~english pixel format
+    ('pDstBuf', POINTER(c_ubyte)),      # < \~chinese 输出数据缓存          \~english Output data buffer
+    ('nDstBufSize', c_uint),            # < \~chinese提供的输出缓冲区大小     \~english Provided output buffer size
+    ('nDstBufLen', c_uint),            # < \~chinese  输出数据长度           \~english Output data length
+    ('nContrastFactor', c_uint),       # < \~chinese  对比度值，[1,10000]    \~english Contrast factor,[1,10000]
+    ('nRes', c_uint * 8),                 # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_CC_CONTRAST_PARAM_T = _MV_CC_CONTRAST_PARAM_T_
+
+# \~chinese 枚举类型条目          \~english Enumeration Entry
+class _MVCC_ENUMENTRY_T(Structure):
+    pass
+_MVCC_ENUMENTRY_T._fields_ = [
+    ('nValue', c_uint),                             # < \~chinese 指定值               \~english Value
+    ('chSymbolic', c_char * MV_MAX_SYMBOLIC_LEN),  # < \~chinese 指定值对应的符号       \~english Symbolic
+
+    ('nReserved', c_uint * 4),                      # < \~chinese 预留                 \~english Reserved bytes
+]
+MVCC_ENUMENTRY = _MVCC_ENUMENTRY_T
+
+# \~chinese 辅助线颜色                \~english Color of Auxiliary Line
+class _MVCC_COLORF(Structure):
+    pass
+_MVCC_COLORF._fields_ = [
+    ('fR', c_float),
+    # < \~chinese 红色，根据像素颜色的相对深度，范围为[0.0 , 1.0]，代表着[0, 255]的颜色深度   \~english Red，Range[0.0, 1.0]
+    ('fG', c_float),
+    # < \~chinese 绿色，根据像素颜色的相对深度，范围为[0.0 , 1.0]，代表着[0, 255]的颜色深度   \~english Green，Range[0.0, 1.0]
+    ('fB', c_float),
+    # < \~chinese 蓝色，根据像素颜色的相对深度，范围为[0.0 , 1.0]，代表着[0, 255]的颜色深度   \~english Blue，Range[0.0, 1.0]
+    ('fAlpha', c_float),
+    # < \~chinese 透明度，根据像素颜色的相对透明度，范围为[0.0 , 1.0] (此参数功能暂不支持)    \~english Alpha，Range[0.0, 1.0](Not Support)
+    ('nReserved', c_uint * 4),     # < \~chinese 保留字节                            \~english Reserved bytes
+]
+MVCC_COLORF = _MVCC_COLORF
+
+# \~chinese 自定义点                    \~english Point defined
+class _MVCC_POINTF(Structure):
+    pass
+_MVCC_POINTF._fields_ = [
+    ('fX', c_float),
+    # < \~chinese 该点距离图像左边缘距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Left，Range[0.0, 1.0]
+    ('fY', c_float),
+    # < \~chinese 该点距离图像上边缘距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Top，Range[0.0, 1.0]
+    ('nReserved', c_uint * 4),     # < \~chinese 保留字节                 \~english Reserved bytes
+]
+MVCC_POINTF = _MVCC_POINTF
+
+# \~chinese 矩形框区域信息            \~english Rect Area Info
+class _MVCC_RECT_INFO(Structure):
+    pass
+_MVCC_RECT_INFO._fields_ = [
+    ('fTop', c_float),
+    # < \~chinese 矩形上边缘距离图像上边缘的距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Top，Range[0, 1.0]
+    ('fBottom', c_float),
+    # < \~chinese 矩形下边缘距离图像下边缘的距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Bottom，Range[0, 1.0]
+    ('fLeft', c_float),
+    # < \~chinese 矩形左边缘距离图像左边缘的距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Left，Range[0, 1.0]
+    ('fRight', c_float),
+    # < \~chinese 矩形右边缘距离图像右边缘的距离，根据图像的相对位置，范围为[0.0 , 1.0]   \~english Distance From Right，Range[0, 1.0]
+    ('stColor', MVCC_COLORF),      # < \~chinese 辅助线颜色信息                \~english Color of Auxiliary Line
+    ('nLineWidth', c_uint),        # < \~chinese 辅助线宽度，宽度只能是1或2      \~english Width of Auxiliary Line, width is 1 or 2
+    ('nReserved', c_uint * 4),     # < \~chinese 保留字节                     \~english Reserved bytes
+]
+MVCC_RECT_INFO = _MVCC_RECT_INFO
+
+# \~chinese 圆形框区域信息            \~english Circle Area Info
+class _MVCC_CIRCLE_INFO(Structure):
+    pass
+_MVCC_CIRCLE_INFO._fields_ = [
+    ('stCenterPoint', MVCC_POINTF),  # < \~chinese 圆心信息                   \~english Circle Point Info
+    ('fR1', c_float),
+    # < \~chinese 宽向半径，根据图像的相对位置[0, 1.0]，半径与圆心的位置有关，需保证画出的圆在显示框范围之内，否则报错  \~english Width Radius, Range[0, 1.0]
+    ('fR2', c_float),
+    # < \~chinese高向半径，根据图像的相对位置[0, 1.0]，半径与圆心的位置有关，需保证画出的圆在显示框范围之内，否则报错  \~english Height Radius, Range[0, 1.0]
+    ('stColor', MVCC_COLORF),      # < \~chinese 辅助线颜色信息                \~english Color of Auxiliary Line
+    ('nLineWidth', c_uint),        # < \~chinese 辅助线宽度，宽度只能是1或2      \~english Width of Auxiliary Line, width is 1 or 2
+    ('nReserved', c_uint * 4),     # < \~chinese 保留字节                     \~english Reserved bytes
+]
+MVCC_CIRCLE_INFO = _MVCC_CIRCLE_INFO
+
+# \~chinese 线条辅助线信息    \~english Linear Auxiliary Line Info
+class _MVCC_LINES_INFO(Structure):
+    pass
+_MVCC_LINES_INFO._fields_ = [
+    ('stStartPoint', MVCC_POINTF), # < \~chinese 线条辅助线的起始点坐标         \~english The Start Point of Auxiliary Line
+    ('stEndPoint', MVCC_POINTF),   # < \~chinese线条辅助线的终点坐标            \~english The End Point of Auxiliary Line
+    ('stColor', MVCC_COLORF),      # < \~chinese 辅助线颜色信息                \~english Color of Auxiliary Line
+    ('nLineWidth', c_uint),        # < \~chinese 辅助线宽度，宽度只能是1或2      \~english Width of Auxiliary Line, width is 1 or 2
+    ('nReserved', c_uint * 4),     # < \~chinese 保留字节             \~english Reserved bytes
+]
+MVCC_LINES_INFO = _MVCC_LINES_INFO
+
+# \~chinese 图像重构后的图像列表      \~english List of images after image reconstruction
+class _MV_OUTPUT_IMAGE_INFO_(Structure):
+    pass
+_MV_OUTPUT_IMAGE_INFO_._fields_ = [
+    ('nWidth', c_uint),                 # < \~chinese 图像宽                \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高                \~english Image Height
+    ('enPixelType', MvGvspPixelType),   # < \~chinese 像素格式               \~english pixel format
+    ('pBuf', POINTER(c_ubyte)),      # < \~chinese 输出数据缓存          \~english Output data buffer
+    ('nBufLen', c_uint),             # < \~chinese 输出数据长度          \~english Output data length
+    ('nBufSize', c_uint),            # < \~chinese  提供的输出缓冲区大小  \~english Provided output buffer size
+    ('nRes', c_uint * 8),                 # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_OUTPUT_IMAGE_INFO = _MV_OUTPUT_IMAGE_INFO_
+
+# \~chinese 重构图像参数信息      \~english Restructure image parameters
+class _MV_RECONSTRUCT_IMAGE_PARAM_(Structure):
+    pass
+_MV_RECONSTRUCT_IMAGE_PARAM_._fields_ = [
+    ('nWidth', c_uint),                 # < \~chinese 图像宽                \~english Image Width
+    ('nHeight', c_uint),                # < \~chinese 图像高                \~english Image Height
+    ('enPixelType', MvGvspPixelType),   # < \~chinese 像素格式               \~english pixel format
+    ('pSrcData', POINTER(c_ubyte)),      # < \~chinese 输入数据缓存           \~english input data buffer
+    ('nSrcDataLen', c_uint),             # < \~chinese 输入数据大小            \~english input data size
+    ('nExposureNum', c_uint),            # < \~chinese  曝光个数(1-8]     \~english Exposure number
+    ('enReconstructMethod', MV_IMAGE_RECONSTRUCTION_METHOD),   # < \~chinese 图像重构方式      \~english Image restructuring method
+    ('stDstBufList', MV_OUTPUT_IMAGE_INFO * MV_MAX_SPLIT_NUM),  # < \~chinese 输出数据缓存信息  \~english Output data info
+    ('nRes', c_uint * 4),                 # < \~chinese 保留字节             \~english Reserved bytes
+]
+MV_RECONSTRUCT_IMAGE_PARAM = _MV_RECONSTRUCT_IMAGE_PARAM_
+
+# \~chinese 文件存取                  \~english File Access
+class _MV_CC_FILE_ACCESS_E(Structure):
+    pass
+_MV_CC_FILE_ACCESS_E._fields_ = [
+    ('pUserFileBuf', POINTER(c_char)),  # < \~chinese 用户文件数据        \~english User file data
+    ('pFileBufSize', c_uint),  # < \~chinese 用户数据缓存大小       \~english data buffer size
+    ('pFileBufLen', c_uint),   # < \~chinese 用户数据缓存长度       \~english data buffer len
+    ('pDevFileName', STRING),           # < \~chinese 设备文件名          \~english Device file name
+    ('nReserved', c_uint * 32),         # < \~chinese 保留字节            \~english Reserved bytes
+]
+MV_CC_FILE_ACCESS_EX = _MV_CC_FILE_ACCESS_E
+
 __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            'N19_MV_CC_DEVICE_INFO_3DOT_0E', 'MV_FRAME_OUT',
            'MV_CAM_GAIN_MODE',
@@ -688,7 +1066,7 @@ __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            '_MV_ACTION_CMD_RESULT_T',
            'AM_RO', 'IFT_IPort', 'uint_least16_t',
            '_MV_FRAME_OUT_INFO_EX_', '_MV_TRANSMISSION_TYPE_T',
-           'MV_SAVE_IMAGE_PARAM_EX', 'AM_RW', 'MV_XML_InterfaceType',
+           'MV_SAVE_IMAGE_PARAM_EX', 'MV_SAVE_IMAGE_PARAM_EX3', 'AM_RW', 'MV_XML_InterfaceType',
            'int32_t', '_MV_ACTION_CMD_INFO_T', 'intptr_t',
            'uint_least64_t', '_MV_NETTRANS_INFO_',
            '_MV_CAM_TRIGGER_MODE_', 'int_least32_t',
@@ -697,7 +1075,7 @@ __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            'MV_ACTION_CMD_RESULT_LIST',
            'MV_BALANCEWHITE_AUTO_CONTINUOUS',
            '_MV_CHUNK_DATA_CONTENT_', 'MV_FormatType_AVI',
-           '_MV_PIXEL_CONVERT_PARAM_T_',
+           '_MV_CC_PIXEL_CONVERT_PARAM_T_','_MV_PIXEL_CONVERT_PARAM_EX_T_',
            'MV_GENTL_IF_INFO',
            'MV_ACQ_MODE_SINGLE',
            'MV_TRIGGER_MODE_ON',
@@ -715,7 +1093,7 @@ __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            '_MV_GENTL_IF_INFO_', 'MV_EXPOSURE_MODE_TIMED', 'intmax_t',
            'int16_t',
            'MV_DISPLAY_FRAME_INFO', '_MV_CC_FILE_ACCESS_PROGRESS_T',
-           '_MV_GRAB_STRATEGY_', '_MV_SAVE_IMG_TO_FILE_PARAM_',
+           '_MV_GRAB_STRATEGY_', '_MV_SAVE_IMG_TO_FILE_PARAM_', '_MV_SAVE_IMAGE_TO_FILE_PARAM_EX_',
            'int_fast64_t',
            'MV_XML_AccessMode',
            'MV_GAIN_MODE_ONCE', 'IFT_IInteger',
@@ -747,9 +1125,9 @@ __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            'MV_TRIGGER_SOURCE_FrequencyConverter',
            'MV_TRIGGER_SOURCE_COUNTER0',
            'MV_GAIN_MODE_OFF', '_MV_CC_DEVICE_INFO_LIST_',
-           'MV_GIGE_DEVICE_INFO', '_MV_SAVE_IMAGE_PARAM_T_EX_',
+           'MV_GIGE_DEVICE_INFO', '_MV_SAVE_IMAGE_PARAM_T_EX_', '_MV_SAVE_IMAGE_PARAM_EX3_',
            'AM_NA', 'uint_least32_t',
-           'MV_CC_PIXEL_CONVERT_PARAM','AM_NI',
+           'MV_CC_PIXEL_CONVERT_PARAM', 'MV_CC_PIXEL_CONVERT_PARAM_EX','AM_NI',
            '_MVCC_INTVALUE_EX_T', 'uintptr_t', 'MV_Image_Tif',
            'MVCC_FLOATVALUE', 'MV_GIGE_TRANSTYPE_CAMERADEFINED',
            '_MV_GENTL_IF_INFO_LIST_', 'MV_NETTRANS_INFO',
@@ -788,7 +1166,27 @@ __all__ = ['_MV_ALL_MATCH_INFO_', 'MV_CC_FILE_ACCESS_PROGRESS',
            'MV_TRIGGER_SOURCE_LINE1',
            'uint_fast64_t','_MVCC_INTVALUE_T',
            'IFT_ICategory',
-           'MV_SAVE_IMG_TO_FILE_PARAM', '_MV_FRAME_OUT_',
+           'MV_SAVE_IMG_TO_FILE_PARAM', 'MV_SAVE_IMAGE_TO_FILE_PARAM_EX', '_MV_FRAME_OUT_',
            'MV_GAMMA_SELECTOR_USER',
            'uint32_t', '_MV_CAM_GAMMA_SELECTOR_', 'MV_ACQ_MODE_MUTLI',
-           'MV_USB3_DEVICE_INFO', '_MV_EVENT_OUT_INFO_']
+           'MV_USB3_DEVICE_INFO', '_MV_EVENT_OUT_INFO_', 'MV_CC_FRAME_SPEC_INFO', 'MV_CC_HB_DECODE_PARAM',
+           'MV_SORT_METHOD', '_MV_SORT_METHOD_',
+           'SortMethod_SerialNumber', 'SortMethod_UserID', 'SortMethod_CurrentIP_ASC', 'SortMethod_CurrentIP_DESC',
+           '_MV_IMG_ROTATION_ANGLE_', 'MV_IMG_ROTATION_ANGLE',
+           'MV_IMAGE_ROTATE_90', 'MV_IMAGE_ROTATE_180', 'MV_IMAGE_ROTATE_270',
+           '_MV_IMG_FLIP_TYPE_', 'MV_IMG_FLIP_TYPE', 'MV_FLIP_VERTICAL', 'MV_FLIP_HORIZONTAL',
+           '_MV_CC_GAMMA_TYPE_', 'MV_CC_GAMMA_TYPE', 'MV_CC_GAMMA_TYPE_NONE', 'MV_CC_GAMMA_TYPE_VALUE',
+           'MV_CC_GAMMA_TYPE_USER_CURVE', 'MV_CC_GAMMA_TYPE_LRGB2SRGB', 'MV_CC_GAMMA_TYPE_SRGB2LRGB',
+           'MV_CC_STREAM_EXCEPTION_TYPE', '_MV_CC_STREAM_EXCEPTION_TYPE_',
+           'MV_CC_STREAM_EXCEPTION_ABNORMAL_IMAGE', 'MV_CC_STREAM_EXCEPTION_LIST_OVERFLOW',
+           'MV_CC_STREAM_EXCEPTION_LIST_EMPTY', 'MV_CC_STREAM_EXCEPTION_RECONNECTION',
+           'MV_CC_STREAM_EXCEPTION_DISCONNECTED', 'MV_CC_STREAM_EXCEPTION_DEVICE',
+           '_MV_IMAGE_RECONSTRUCTION_METHOD_', 'MV_IMAGE_RECONSTRUCTION_METHOD', 'MV_SPLIT_BY_LINE',
+           'MVCC_COLORF', '_MVCC_COLORF', '_MVCC_POINTF', 'MVCC_POINTF', '_MVCC_RECT_INFO', 'MVCC_RECT_INFO',
+           '_MVCC_CIRCLE_INFO', 'MVCC_CIRCLE_INFO', '_MVCC_LINES_INFO', 'MVCC_LINES_INFO', '_MV_OUTPUT_IMAGE_INFO_',
+           'MV_OUTPUT_IMAGE_INFO', 'MV_RECONSTRUCT_IMAGE_PARAM', '_MV_RECONSTRUCT_IMAGE_PARAM_',
+           '_MVCC_ENUMENTRY_T', 'MVCC_ENUMENTRY','_MV_CC_CONTRAST_PARAM_T_', 'MV_CC_CONTRAST_PARAM_T',
+           '_MV_CC_CCM_PARAM_EX_T_', 'MV_CC_CCM_PARAM_EX', 'MV_CC_CCM_PARAM', '_MV_CC_CCM_PARAM_T_',
+           'MV_CC_GAMMA_PARAM', '_MV_CC_GAMMA_PARAM_T_', 'MV_CC_FLIP_IMAGE_PARAM', '_MV_CC_FLIP_IMAGE_PARAM_T_',
+           '_MV_CC_ROTATE_IMAGE_PARAM_T_', 'MV_CC_ROTATE_IMAGE_PARAM', 'MV_CC_FILE_ACCESS_EX', '_MV_CC_FILE_ACCESS_E',
+           '_MV_DISPLAY_FRAME_INFO_EX_', 'MV_DISPLAY_FRAME_INFO_EX']

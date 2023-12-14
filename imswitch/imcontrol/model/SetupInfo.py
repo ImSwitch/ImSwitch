@@ -226,6 +226,13 @@ class DPCInfo:
     rotations: List[int]
 @dataclass(frozen=True)
 class MCTInfo:
+    tWait: int
+
+class ROIScanInfo:
+    pass
+
+@dataclass(frozen=True)
+class LightsheetInfo:
     pass
 
 
@@ -247,8 +254,12 @@ class JetsonNanoInfo:
 
 @dataclass(frozen=True)
 class HistoScanInfo:
+    PreviewCamera: str = None
     pass
 
+@dataclass(frozen=True)
+class FlatfieldInfo:
+    pass
 
 @dataclass(frozen=True)
 class PixelCalibrationInfo:
@@ -273,6 +284,38 @@ class ISMInfo:
 
 @dataclass(frozen=True)
 class FocusLockInfo:
+    camera: str
+    """ Detector name. """
+
+    positioner: str
+    """ Positioner name. """
+
+    updateFreq: int
+    """ Update frequency, in milliseconds. """
+
+    frameCropx: int
+    """ Starting X position of camera frame crop. """
+
+    frameCropy: int
+    """ Starting Y position of camera frame crop. """
+
+    frameCropw: int
+    """ Width of camera frame crop. """
+
+    frameCroph: int
+    """ Height of camera frame crop. """
+
+    swapImageAxes: bool
+    """ Swap camera image axes when grabbing camera frame. """
+
+    piKp: float
+    """ Default kp value of feedback loop. """
+
+    piKi: float
+    """ Default ki value of feedback loop. """
+
+@dataclass(frozen=True)
+class FOVLockInfo:
     camera: str
     """ Detector name. """
 
@@ -385,6 +428,16 @@ class NidaqInfo:
     """ Output for Counter for timing purposes. If an integer is specified, it
     will be translated to "Dev1/ctr{timerCounterChannel}". """
 
+    startTrigger: bool = False
+    """ Boolean for start triggering for sync. """
+
+    def getTimerCounterChannel(self):
+        """ :meta private: """
+        if isinstance(self.timerCounterChannel, int):
+            return f'Dev1/ctr{self.timerCounterChannel}'  # for backwards compatibility
+        else:
+            return self.timerCounterChannel
+        
 class OpentronsDeckInfo:
     translate_units: Optional[str]
     """ Translates units of deck to units used by positioner:
@@ -463,6 +516,15 @@ class SetupInfo:
     mct: Optional[MCTInfo] = field(default_factory=lambda: None)
     """ MCT settings. Required to be defined to use MCT functionality. """
 
+    nidaq: NidaqInfo = field(default_factory=NidaqInfo)
+    """ NI-DAQ settings. """
+        
+    roiscan: Optional[ROIScanInfo] = field(default_factory=lambda: None)
+    """ ROIScan settings. Required to be defined to use ROIScan functionality. """
+    
+    lightsheet: Optional[LightsheetInfo] = field(default_factory=lambda: None)
+    """ MCT settings. Required to be defined to use Lightsheet functionality. """
+
     webrtc: Optional[WebRTCInfo] = field(default_factory=lambda: None)
     """ WebRTC settings. Required to be defined to use WebRTC functionality. """
 
@@ -478,6 +540,9 @@ class SetupInfo:
     HistoScan: Optional[HistoScanInfo] = field(default_factory=lambda: None)
     """ HistoScan settings. Required to be defined to use HistoScan functionality. """
 
+    Flatfield: Optional[FlatfieldInfo] = field(default_factory=lambda: None)
+    """ Flatfield settings. Required to be defined to use Flatfield functionality. """
+    
     PixelCalibration: Optional[PixelCalibrationInfo] = field(default_factory=lambda: None)
     """ PixelCalibration settings. Required to be defined to use PixelCalibration functionality. """
 
@@ -490,6 +555,10 @@ class SetupInfo:
     focusLock: Optional[FocusLockInfo] = field(default_factory=lambda: None)
     """ Focus lock settings. Required to be defined to use focus lock
     functionality. """
+
+    fovLock: Optional[FOVLockInfo] = field(default_factory=lambda: None)
+    """ Focus lock settings. Required to be defined to use fov lock
+    functionality. """    
 
     autofocus: Optional[AutofocusInfo] = field(default_factory=lambda: None)
     """ Autofocus settings. Required to be defined to use autofocus
@@ -551,7 +620,7 @@ class SetupInfo:
 
         return devices
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

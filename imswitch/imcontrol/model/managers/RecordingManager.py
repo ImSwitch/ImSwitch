@@ -132,8 +132,8 @@ class SaveMode(enum.Enum):
 
 
 class SaveFormat(enum.Enum):
-    HDF5 = 1
-    TIFF = 2
+    TIFF = 1
+    HDF5 = 2
     ZARR = 3
     MP4 = 4
 
@@ -259,6 +259,7 @@ class RecordingManager(SignalInterface):
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
                 return images
+
 
     def snapImagePrev(self, detectorName, savename, saveFormat, image, attrs):
         """ Saves a previously taken image to a file with the specified name prefix,
@@ -694,7 +695,7 @@ class RecMode(enum.Enum):
     UntilStop = 5
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -173,7 +173,7 @@ class Canvas(QtWidgets.QLabel):
                 painter.end()
                 self.lineCoordinates = [self.pos.x(), self.pos.y(), self.pressPos.x(), self.pressPos.y()]
             except Exception as e:
-                print(e)
+                pass
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -197,7 +197,7 @@ class Canvas(QtWidgets.QLabel):
             lineLength = 1
         return lineLength
 
-    # Copyright (C) 2020-2021 ImSwitch developers
+    # Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

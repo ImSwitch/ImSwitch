@@ -67,7 +67,7 @@ class PositionerWidget(Widget):
 
             if hasStop:
                 self.pars['Stop' + parNameSuffix] = guitools.BetterPushButton('Stop ' + parNameSuffix)
-                self.grid.addWidget(self.pars['Stop' + parNameSuffix], self.numPositioners+1, 6)
+                self.grid.addWidget(self.pars['Stop' + parNameSuffix], 2*self.numPositioners+1, 6)
 
                 self.pars['Stop' + parNameSuffix].clicked.connect(
                     lambda *args, axis=axis: self.sigStopAxisClicked.emit(positionerName, axis)
@@ -85,6 +85,8 @@ class PositionerWidget(Widget):
             )
 
             self.numPositioners += 1
+            
+    
 
     def getAbsPosition(self, positionerName, axis):
         """ Returns the absolute position of the  specified positioner axis in
@@ -114,16 +116,23 @@ class PositionerWidget(Widget):
         """ Sets the step size of the specified positioner axis to the
         specified number of micrometers. """
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
-        self.pars['SpeedEdit' + parNameSuffix].setText(str(speedSize))
+        try:
+            self.pars['SpeedEdit' + parNameSuffix].setText(str(speedSize))
+        except:
+            pass
 
     def updatePosition(self, positionerName, axis, position):
         parNameSuffix = self._getParNameSuffix(positionerName, axis)
         self.pars['Position' + parNameSuffix].setText(f'<strong>{position:.2f} µm</strong>')
 
+    def updateSpeed(self, positionerName, axis, speed):
+        parNameSuffix = self._getParNameSuffix(positionerName, axis)
+        self.pars['SpeedEdit' + parNameSuffix].setText(str(speed))
+
     def _getParNameSuffix(self, positionerName, axis):
         return f'{positionerName[0]}--{axis}'
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

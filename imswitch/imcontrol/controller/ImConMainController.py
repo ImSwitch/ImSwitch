@@ -1,7 +1,7 @@
 import dataclasses
 
 import h5py
-
+import imswitch
 from imswitch.imcommon.controller import MainController, PickDatasetsController
 from imswitch.imcommon.model import (
     ostools, initLogger, generateAPI, generateShortcuts, SharedAttributes
@@ -43,15 +43,14 @@ class ImConMainController(MainController):
         self.__factory = ImConWidgetControllerFactory(
             self.__setupInfo, self.__masterController, self.__commChannel, self._moduleCommChannel
         )
-        self.pickSetupController = self.__factory.createController(
-            PickSetupController, self.__mainView.pickSetupDialog
-        )
-        self.pickDatasetsController = self.__factory.createController(
-            PickDatasetsController, self.__mainView.pickDatasetsDialog
-        )
-        self.PickUC2BoardConfigController = self.__factory.createController(
-            PickUC2BoardConfigController, self.__mainView.PickUC2BoardConfigDialog
-        )
+        
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupController = self.__factory.createController(
+                PickSetupController, self.__mainView.pickSetupDialog
+            )
+            self.pickDatasetsController = self.__factory.createController(
+                PickDatasetsController, self.__mainView.pickDatasetsDialog
+            )
 
         self.controllers = {}
 
@@ -152,6 +151,12 @@ class ImConMainController(MainController):
         self.__logger.debug('Shutting down')
         self.__factory.closeAllCreatedControllers()
         self.__masterController.closeEvent()
+        
+        # seems like the imswitchserver is not closing from the closing event, need to hard kill it
+        #self._serverWorker.stop()
+        #self._thread.quit()
+        #self._thread.terminate()        
+        #del self._thread
 
     def pickUC2Config(self):
         """ Let the user change which UC2 Board config is used. """
@@ -169,7 +174,7 @@ class ImConMainController(MainController):
         guitools.informationDisplay(self.__mainView, "Now select 'load from file' in the UC2 Config Widget and flash the pin-configuration")
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

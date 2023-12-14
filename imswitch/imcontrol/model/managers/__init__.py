@@ -1,4 +1,5 @@
 from .AutofocusManager import AutofocusManager
+from .FOVLockManager import FOVLockManager
 from .DetectorsManager import DetectorsManager, NoDetectorsError
 from .LasersManager import LasersManager
 from .LEDsManager import LEDsManager
@@ -18,10 +19,14 @@ from .UC2ConfigManager import UC2ConfigManager
 from .SIMManager import SIMManager
 from .DPCManager import DPCManager
 from .MCTManager import MCTManager
+from .nidaqManager import NidaqManager
+from .ROIScanManager import ROIScanManager
+from .LightsheetManager import LightsheetManager
 from .WebRTCManager import WebRTCManager
 from .HyphaManager import HyphaManager
 from .MockXXManager import MockXXManager
 from .JetsonNanoManager import JetsonNanoManager
 from .HistoScanManager import HistoScanManager
+from .FlatfieldManager import FlatfieldManager
 from .PixelCalibrationManager import PixelCalibrationManager
 from .ISMManager import ISMManager

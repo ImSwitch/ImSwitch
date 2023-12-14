@@ -10,7 +10,7 @@ class ImageController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.__logger = initLogger(self, tryInheritParent=True)
+        self.__logger = initLogger(self, tryInheritParent=False)
         if not self._master.detectorsManager.hasDevices():
             return
 
@@ -120,7 +120,7 @@ class ImageController(LiveUpdatedController):
         #self._master.detectorsManager[detectorName].setParameter('Readout time', exp)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

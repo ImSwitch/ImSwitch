@@ -132,7 +132,7 @@ class WebRTCController(LiveUpdatedController):
 
         @pc.on("connectionstatechange")
         async def on_connectionstatechange():
-            print("Connection state is %s" % pc.connectionState)
+            self.__logger.debug("Connection state is %s" % pc.connectionState)
             if pc.connectionState == "failed":
                 await pc.close()
                 self.pcs.discard(pc)
@@ -199,7 +199,7 @@ class VideoTransformTrack(MediaStreamTrack):
 
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

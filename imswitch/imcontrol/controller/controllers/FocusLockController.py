@@ -1,5 +1,5 @@
 import time
-
+import cv2 
 import numpy as np
 from time import perf_counter
 import scipy.ndimage as ndi
@@ -36,15 +36,21 @@ class FocusLockController(ImConWidgetController):
         self.camera = self._setupInfo.focusLock.camera
         self.positioner = self._setupInfo.focusLock.positioner
         self.updateFreq = self._setupInfo.focusLock.updateFreq
+        if self.updateFreq is None:
+            self.updateFreq = 10
         self.cropFrame = (self._setupInfo.focusLock.frameCropx,
                           self._setupInfo.focusLock.frameCropy,
                           self._setupInfo.focusLock.frameCropw,
                           self._setupInfo.focusLock.frameCroph)
         
-
-        self._master.detectorsManager[self.camera].crop(*self.cropFrame)
+        if self.cropFrame[0] is not None:
+            self._master.detectorsManager[self.camera].crop(*self.cropFrame)
         self._widget.setKp(self._setupInfo.focusLock.piKp)
         self._widget.setKi(self._setupInfo.focusLock.piKi)
+        try:
+            self.focusLockMetric = self._setupInfo.focusLockMetric
+        except:
+            self.focusLockMetric = "JPG"
 
         # Connect FocusLockWidget buttons
         self._widget.kpEdit.textChanged.connect(self.unlockFocus)
@@ -82,6 +88,7 @@ class FocusLockController(ImConWidgetController):
         self._master.detectorsManager[self.camera].startAcquisition()
         self.__processDataThread = ProcessDataThread(self)
         self.__focusCalibThread = FocusCalibThread(self)
+        self.__processDataThread.setFocusLockMetric(self.focusLockMetric)
 
         self.timer = Timer()
         self.timer.timeout.connect(self.update)
@@ -221,6 +228,7 @@ class ProcessDataThread(Thread):
     def __init__(self, controller, *args, **kwargs):
         self._controller = controller
         super().__init__(*args, **kwargs)
+        self.focusLockMetric = None
         
 
     def grabCameraFrame(self):
@@ -231,6 +239,9 @@ class ProcessDataThread(Thread):
         if self._controller._setupInfo.focusLock.swapImageAxes:
             self.latestimg = np.swapaxes(self.latestimg,0,1)
         return self.latestimg
+    
+    def setFocusLockMetric(self, focuslockMetric):
+        self.focusLockMetric = focuslockMetric
 
     def update(self, twoFociVar):
 
@@ -242,48 +253,72 @@ class ProcessDataThread(Thread):
             massCenterGlobal=np.max(np.mean(mFrame**2, 1))/np.max(np.mean(mFrame**2, 0))
             
         else:
-            # Gaussian filter the image, to remove noise and so on, to get a better center estimate
-            imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)
+            if self.focusLockMetric == "JPG":
 
-            # Update the focus signal
-            if twoFociVar:
-                allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
-                size = allmaxcoords.shape
-                maxvals = np.zeros(size[0])
-                maxvalpos = np.zeros(2)
-                for n in range(0, size[0]):
-                    if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[0]:
-                        if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[1]:
-                            tempval = maxvals[1]
-                            maxvals[0] = tempval
-                            maxvals[1] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
-                            tempval = maxvalpos[1]
-                            maxvalpos[0] = tempval
-                            maxvalpos[1] = n
-                        else:
-                            maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
-                            maxvalpos[0] = n
-                xcenter = allmaxcoords[maxvalpos[0]][0]
-                ycenter = allmaxcoords[maxvalpos[0]][1]
-                if allmaxcoords[maxvalpos[1]][1] < ycenter:
-                    xcenter = allmaxcoords[maxvalpos[1]][0]
-                    ycenter = allmaxcoords[maxvalpos[1]][1]
-                centercoords2 = np.array([xcenter, ycenter])
+                def extract(marray, crop_size):
+                    center_x, center_y = marray.shape[1] // 2, marray.shape[0] // 2
+
+                    # Calculate the starting and ending indices for cropping
+                    x_start = center_x - crop_size // 2
+                    x_end = x_start + crop_size
+                    y_start = center_y - crop_size // 2
+                    y_end = y_start + crop_size
+
+                    # Crop the center region
+                    return marray[y_start:y_end, x_start:x_end]
+                imagearraygf = extract(self.latestimg, 512)
+                is_success, buffer = cv2.imencode(".jpg", imagearraygf, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                # Check if encoding was successful
+                if is_success:
+                    # Get the size of the JPEG image
+                    focusquality = len(buffer)
+                else:
+                    focusquality = 0
+                    print("Failed to encode image")
+                massCenterGlobal = focusquality
             else:
-                centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
-                centercoords2 = np.array([centercoords[0][0], centercoords[1][0]])
+                # Gaussian filter the image, to remove noise and so on, to get a better center estimate
+                imagearraygf = ndi.filters.gaussian_filter(self.latestimg, 7)
 
-            subsizey = 50
-            subsizex = 50
-            xlow = max(0, (centercoords2[0] - subsizex))
-            xhigh = min(1024, (centercoords2[0] + subsizex))
-            ylow = max(0, (centercoords2[1] - subsizey))
-            yhigh = min(1280, (centercoords2[1] + subsizey))
+                # Update the focus signal
+                if twoFociVar:
+                        allmaxcoords = peak_local_max(imagearraygf, min_distance=60)
+                        size = allmaxcoords.shape
+                        maxvals = np.zeros(size[0])
+                        maxvalpos = np.zeros(2)
+                        for n in range(0, size[0]):
+                            if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[0]:
+                                if imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]] > maxvals[1]:
+                                    tempval = maxvals[1]
+                                    maxvals[0] = tempval
+                                    maxvals[1] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
+                                    tempval = maxvalpos[1]
+                                    maxvalpos[0] = tempval
+                                    maxvalpos[1] = n
+                                else:
+                                    maxvals[0] = imagearraygf[allmaxcoords[n][0], allmaxcoords[n][1]]
+                                    maxvalpos[0] = n
+                        xcenter = allmaxcoords[maxvalpos[0]][0]
+                        ycenter = allmaxcoords[maxvalpos[0]][1]
+                        if allmaxcoords[maxvalpos[1]][1] < ycenter:
+                            xcenter = allmaxcoords[maxvalpos[1]][0]
+                            ycenter = allmaxcoords[maxvalpos[1]][1]
+                        centercoords2 = np.array([xcenter, ycenter])
+                else:
+                    centercoords = np.where(imagearraygf == np.array(imagearraygf.max()))
+                    centercoords2 = np.array([centercoords[0][0], centercoords[1][0]])
 
-            imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
-            massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
-            # add the information about where the center of the subarray is
-            massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
+                subsizey = 50
+                subsizex = 50
+                xlow = max(0, (centercoords2[0] - subsizex))
+                xhigh = min(1024, (centercoords2[0] + subsizex))
+                ylow = max(0, (centercoords2[1] - subsizey))
+                yhigh = min(1280, (centercoords2[1] + subsizey))
+
+                imagearraygfsub = imagearraygf[xlow:xhigh, ylow:yhigh]
+                massCenter = np.array(ndi.measurements.center_of_mass(imagearraygfsub))
+                # add the information about where the center of the subarray is
+                massCenterGlobal = massCenter[1] + centercoords2[1]  # - subsizey - self.sensorSize[1] / 2
         return massCenterGlobal
 
 
@@ -390,7 +425,7 @@ class PI:
 
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

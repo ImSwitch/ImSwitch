@@ -4,6 +4,7 @@ from imswitch.imcommon.model import APIExport
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.model import initLogger
 import threading
+from typing import Optional
 import time 
 class PositionerController(ImConWidgetController):
     """ Linked to PositionerWidget."""
@@ -35,6 +36,7 @@ class PositionerController(ImConWidgetController):
 
         # Connect CommunicationChannel signals
         self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
+        self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI) # force update position in GUI
 
         # Connect PositionerWidget signals
         self._widget.sigStepUpClicked.connect(self.stepUp)
@@ -49,26 +51,40 @@ class PositionerController(ImConWidgetController):
             condition = lambda p: p.resetOnClose
         )
 
-    def getPos(self):
-        return self._master.positionersManager.execOnAll(lambda p: p.position)
+    def getPos(self, fromDevice=False):
+        if fromDevice:
+            # need to retreive positions e.g. over USB-serial
+            # return self._master.positionersManager.execOnAll(lambda p: p.getPosition)
+            return self._master.positionersManager["ESP32Stage"].getPosition()
+        else:
+            return self._master.positionersManager.execOnAll(lambda p: p.position)
 
     def getSpeed(self):
         return self._master.positionersManager.execOnAll(lambda p: p.speed)
 
-    def move(self, positionerName, axis, dist, isAbsolute=None, isBlocking=False):
+    def move(self, positionerName, axis, dist, isAbsolute=None, isBlocking=False, speed=None):
         """ Moves positioner by dist micrometers in the specified axis. """
         if positionerName is None:
             positionerName = self._master.positionersManager.getAllDeviceNames()[0]
 
         # get all speed values from the GUI
-        speed = self._widget.getSpeed(positionerName, axis)
+        if speed is None:
+            if axis =="XY":
+                speed = self._widget.getSpeed(positionerName, "X")
+            else:
+                speed = self._widget.getSpeed(positionerName, axis)
+        
         self.setSpeed(positionerName=positionerName, speed=speed, axis=axis)
         try:
             self._master.positionersManager[positionerName].move(dist, axis, isAbsolute, isBlocking)
-        except:
+            if dist is None:
+                self.__logger.info(f"Moving {positionerName}, axis {axis}, at speed {str(speed)}")
+                self._master.positionersManager[positionerName].moveForeverByAxis(speed=speed, axis=axis, is_stop=~(abs(speed)>0))            
+        except Exception as e:
+            self._logger.error(e)
             self._master.positionersManager[positionerName].move(dist, axis)
-        #self.updatePosition()
-        
+        self._commChannel.sigUpdateMotorPosition.emit()
+        self.updatePosition(positionerName, axis)
 
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
@@ -92,15 +108,29 @@ class PositionerController(ImConWidgetController):
         self.setSharedAttr(positionerName, axis, _speedAttr, speed)
         self._widget.setSpeedSize(positionerName, axis, speed)
         
+    def updateAllPositionGUI(self):
+        # update all positions for all axes in GUI
+        for positionerName in self._master.positionersManager.getAllDeviceNames():
+            for axis in self._master.positionersManager[positionerName].axes:
+                self.updatePosition(positionerName, axis)
+                self.updateSpeed(positionerName, axis)
+                
     def updatePosition(self, positionerName, axis):
-        #newPos = self._master.positionersManager[positionerName].position[axis]#FIXME: Is this always pulling the latest position from the device?
-        def grabPos():
-            for i in range(10):
-                newPos = self._master.positionersManager[positionerName].getPosition()[axis]
+        if axis == "XY":
+            for axis in (("X", "Y")):
+                newPos = self._master.positionersManager[positionerName].position[axis]
                 self._widget.updatePosition(positionerName, axis, newPos)
                 self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
-                time.sleep(.3)
-        threading.Thread(target=grabPos).start()
+
+        else:
+            newPos = self._master.positionersManager[positionerName].position[axis]
+            self._widget.updatePosition(positionerName, axis, newPos)
+            self.setSharedAttr(positionerName, axis, _positionAttr, newPos)
+
+    def updateSpeed(self, positionerName, axis):
+        newSpeed = self._master.positionersManager[positionerName].speed[axis]
+        self._widget.updateSpeed(positionerName, axis, newSpeed)
+        self.setSharedAttr(positionerName, axis, _speedAttr, newSpeed)
 
     @APIExport(runOnUIThread=True)
     def homeAxis(self, positionerName, axis, isBlocking=False):
@@ -157,9 +187,9 @@ class PositionerController(ImConWidgetController):
         return self._master.positionersManager.getAllDeviceNames()
 
     @APIExport()
-    def getPositionerPositions(self) -> Dict[str, Dict[str, float]]:
+    def getPositionerPositions(self, fromDevice=False) -> Dict[str, Dict[str, float]]:
         """ Returns the positions of all positioners. """
-        return self.getPos()
+        return self.getPos(fromDevice)
 
     @APIExport(runOnUIThread=True)
     def setPositionerStepSize(self, positionerName: str, stepSize: float) -> None:
@@ -168,12 +198,13 @@ class PositionerController(ImConWidgetController):
         self._widget.setStepSize(positionerName, stepSize)
 
     @APIExport(runOnUIThread=True)
-    def movePositioner(self, positionerName: str, axis: str, dist: float, isAbsolute: bool = False, isBlocking: bool=False) -> None:
+    def movePositioner(self, positionerName: str, axis: str, dist: Optional[float] = None, isAbsolute: bool = False, isBlocking: bool=False, speed: float=None) -> None:
         """ Moves the specified positioner axis by the specified number of
         micrometers. """
         try: # uc2 only
-            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking)
-        except:
+            self.move(positionerName, axis, dist, isAbsolute=isAbsolute, isBlocking=isBlocking, speed=speed)
+        except Exception as e:
+            self.__logger.error(e)
             self.move(positionerName, axis, dist)
 
     @APIExport(runOnUIThread=True)
@@ -210,7 +241,7 @@ _speedAttr = "Speed"
 _homeAttr = "Home"
 _stopAttr = "Stop"
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

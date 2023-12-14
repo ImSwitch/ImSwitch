@@ -41,7 +41,7 @@ class ImageWidget(QtWidgets.QWidget):
             if rgb:
                     inputDummy = np.zeros((3, 3, 3))
                     self.imgLayers[name] = self.napariViewer.add_image(
-                        inputDummy, rgb=rgb, name=f'Live: {name}', blending='additive',  protected=True)
+                        inputDummy, rgb=True, name=f'Live: {name}', blending='additive',  protected=True)
             else:
                 inputDummy = np.zeros((1, 1))
                 self.imgLayers[name] = self.napariViewer.add_image(
@@ -61,7 +61,11 @@ class ImageWidget(QtWidgets.QWidget):
                     addImage(name, rgb, 'grayclip')
 
     def addStaticLayer(self, name, im):
-        self.napariViewer.add_image(im, rgb=False, name=name, blending='additive')
+        if len(im.shape)==3:
+            isRGB = True
+        else:
+            isRGB = False
+        self.napariViewer.add_image(im, rgb=isRGB, name=name, blending='additive')
 
     def getCurrentImageName(self):
         return self.napariViewer.active_layer.name
@@ -116,7 +120,7 @@ class ImageWidget(QtWidgets.QWidget):
         self.updateLevelsWidget.updateLevelsButton.click()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

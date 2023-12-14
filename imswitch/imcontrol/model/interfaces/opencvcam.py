@@ -9,7 +9,7 @@ from threading import Thread
 import collections
 
 class CameraOpenCV:
-    def __init__(self, cameraindex=0):
+    def __init__(self, cameraindex=0, isRGB=False):
         super().__init__()
         # we are aiming to interface with webcams or arducams
         self.__logger = initLogger(self, tryInheritParent=False)
@@ -32,19 +32,21 @@ class CameraOpenCV:
         self.SensorHeight = 1000
 
         # reserve some space for the framebuffer
-        self.buffersize = 60
-        self.frame_buffer = collections.deque(maxlen=self.buffersize)
+        self.NBuffer = 1
+        self.frame_buffer = collections.deque(maxlen=self.NBuffer)
 
         #%% starting the camera => self.camera  will be created
         self.cameraindex = cameraindex
-        self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight)
+        self.camera = None
+        self.isRGB = isRGB
+        self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
 
     def start_live(self):
         # check if camera is open
         if not self.camera_is_open:
             self.camera_is_open = True
-            self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight)
+            self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
     def stop_live(self):
         self.camera.release()
@@ -61,42 +63,29 @@ class CameraOpenCV:
         self.camera.release()
         self.camera_is_open = False
 
-    def set_value(self ,feature_key, feature_value):
-        # Need to change acquisition parameters?
-        self.__logger.error(feature_key)
-        self.__logger.debug("Error not yet implemented!")
-
-        '''        
-        try:
-            self.camera.set(cv2.CAP_PROP_EXPOSURE, feature_value)
-            self.__logger.debug("OpenCV camera Feature not yet implemented...")
-            pass
-        except Exception as e:
-            self.__logger.error(e)
-            self.__logger.error(feature_key)
-            self.__logger.debug("Value not available?")
-        '''
-
-
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         try:
-            self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure_time*1000)
+            self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure_time)
         except Exception as e:
             self.__logger.error(e)
             self.__logger.debug("Error setting Exposure time in opencv camera")
 
     def set_analog_gain(self,analog_gain):
         self.analog_gain = analog_gain
-        self.set_value("Gain", self.analog_gain)
+        try:
+            self.camera.set(cv2.CAP_PROP_EXPOSURE, self.analog_gain)
+        except Exception as e:
+            self.__logger.error(e)
+            self.__logger.debug("Error setting Exposure time in opencv camera")
 
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
-        self.set_value("BlackLevel", blacklevel)
+        self.__logger.debug("Error setting blacklevel time in opencv camera")
 
     def set_pixel_format(self,format):
         self.pixelformat = format
-        self.set_value("PixelFormat", format)
+        self.__logger.debug("Error setting pixelformat time in opencv camera")
 
     def getLast(self, is_resize=True):
         # get frame and save
@@ -152,32 +141,44 @@ class CameraOpenCV:
     def openPropertiesGUI(self):
         pass
 
-    def openCamera(self, cameraindex, width, height):
+    def openCamera(self, cameraindex, width, height, isRGB):
         # open camera
-        self.camera = cv2.VideoCapture(cameraindex)
+        from sys import platform
+        if self.camera is not None:
+            self.camera.release()
+        if platform == "linux" or platform == "linux2":
+            self.camera = cv2.VideoCapture(cameraindex)
+        else:
+            self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
         self.__logger.debug("Camera is open")
-
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
         # let the camera warm up
         for i in range(5):
             _, img = self.camera.read()
-
+        width = self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        print(width, height)
         self.__logger.debug("Camera is warmed up")
 
         self.SensorHeight = img.shape[0]
         self.SensorWidth = img.shape[1]
         self.shape = (self.SensorWidth,self.SensorHeight)
         self.camera_is_open = True
+        
 
         # starting thread
-        self.frameGrabberThread = Thread(target = self.setFrameBuffer)
+        self.frameGrabberThread = Thread(target = self.setFrameBuffer, args=(isRGB,))
         self.frameGrabberThread.start()
 
 
 
-    def setFrameBuffer(self):
+    def setFrameBuffer(self, isRGB=True):
         while(self.camera_is_open):
             try:
-                self.frame = np.mean(self.camera.read()[1], -1)
+                self.frame = self.camera.read()[1]
+                if not isRGB and len(self.frame.shape)>2:
+                    self.frame = np.uint8(np.mean(self.frame, -1))
                 self.frame_buffer.append(self.frame)
             except Exception as e:
                 self.camera_is_open = False

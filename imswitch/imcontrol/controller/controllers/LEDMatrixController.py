@@ -37,11 +37,40 @@ class LEDMatrixController(ImConWidgetController):
         self._widget.ButtonAllOn.clicked.connect(self.setAllLEDOn)
         self._widget.ButtonAllOff.clicked.connect(self.setAllLEDOff)
         self._widget.slider.sliderReleased.connect(self.setIntensity)
+        self._widget.ButtonSpecial1.clicked.connect(self.setSpecial1)
+        self._widget.ButtonSpecial2.clicked.connect(self.setSpecial2)
+        
 
     @APIExport()
     def setAllLEDOn(self):
         self.setAllLED(state=(1,1,1))
 
+    def setSpecial1(self):
+        SpecialPattern1 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern1.copy()
+        intensity = self._widget.slider.value()
+        self.setSpecial(SpecialPattern1, intensity = intensity)
+        
+    def setSpecial2(self):
+        SpecialPattern2 = self._master.LEDMatrixsManager._subManagers['ESP32 LEDMatrix'].SpecialPattern2.copy()
+        intensity = self._widget.slider.value()
+        self.setSpecial(SpecialPattern2, intensity = intensity)
+                
+    @APIExport()
+    def setSpecial(self, pattern, intensity = 255, getReturn=False):
+        self.setAllLEDOff()
+        
+        # set intensity in case it was changed
+        for idLED in range(len(pattern)):
+            pattern[idLED]['r'] = int(pattern[idLED]['r'] > 0) * intensity
+            pattern[idLED]['g'] = int(pattern[idLED]['g'] > 0) * intensity
+            pattern[idLED]['b'] = int(pattern[idLED]['b'] > 0) * intensity
+        
+        # send pattern
+        r = self.ledMatrix.setIndividualPattern(pattern, getReturn = getReturn)
+        return r
+        
+
+        
     @APIExport()
     def setAllLEDOff(self):
         self.setAllLED(state=(0,0,0))
@@ -81,7 +110,7 @@ class LEDMatrixController(ImConWidgetController):
                 btn.clicked.connect(partial(self.setLED, coords))
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

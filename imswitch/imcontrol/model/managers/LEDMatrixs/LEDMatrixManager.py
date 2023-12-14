@@ -55,10 +55,14 @@ class LEDMatrixManager(ABC):
         """ Sets the value of the LEDMatrix. """
         pass
     
+    def setIndividualPattern(self, pattern, getReturn=False) -> None:
+        """ Sets the value of the LEDMatrix. """
+        pass
+    
 
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

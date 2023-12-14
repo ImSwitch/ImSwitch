@@ -28,19 +28,28 @@ class ESP32Manager:
         except:
             self._identity = "UC2_Feather"
 
+        try:
+            self._debugging = rs232Info.managerProperties['debug']
+        except:
+            self._debugging = False
+
+        try:
+            baudrate = rs232Info.managerProperties['baudrate']
+        except:
+            baudrate = 115200
+
+
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=self._port, identity=self._identity, serialport=self._serialport, baudrate=115200)
-        self._esp32.serial.DEBUG = False
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=baudrate, DEBUG=self._debugging, logger=self.__logger)
 
         # disable the WifiModule
         #self._esp32.modules.set_modules("{'wifi':0}")
-        #self._esp32.serial.DEBUG = True
 
     def finalize(self):
-        pass
+        self._esp32.close()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -8,9 +8,11 @@ from .ConsoleWidget import ConsoleWidget
 from .EtSTEDWidget import EtSTEDWidget
 from .FFTWidget import FFTWidget
 from .HoloWidget import HoloWidget
+from .JoystickWidget import JoystickWidget
 from .HistogrammWidget import HistogrammWidget
 from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
+from .TemperatureWidget import TemperatureWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget
 from .DeckWidget import DeckWidget
@@ -18,6 +20,7 @@ from .DeckScanWidget import DeckScanWidget
 from .OpentronsDeckWidget import OpentronsDeckWidget
 from .OpentronsDeckScanWidget import OpentronsDeckScanWidget
 from .FocusLockWidget import FocusLockWidget
+from .FOVLockWidget import FOVLockWidget
 from .ImageWidget import ImageWidget
 from .LaserWidget import LaserWidget
 from .MotCorrWidget import MotCorrWidget
@@ -36,11 +39,14 @@ from .UC2ConfigWidget import UC2ConfigWidget
 from .SIMWidget import SIMWidget
 from .DPCWidget import DPCWidget
 from .MCTWidget import MCTWidget
+from .ROIScanWidget import ROIScanWidget
+from .LightsheetWidget import LightsheetWidget
 from .WebRTCWidget import WebRTCWidget
 from .HyphaWidget import HyphaWidget
 from .MockXXWidget import MockXXWidget
 from .JetsonNanoWidget import JetsonNanoWidget
 from .HistoScanWidget import HistoScanWidget
+from .FlatfieldWidget import FlatfieldWidget
 from .PixelCalibrationWidget import PixelCalibrationWidget
 from .SquidStageScanWidget import SquidStageScanWidget
 from .ISMWidget import ISMWidget

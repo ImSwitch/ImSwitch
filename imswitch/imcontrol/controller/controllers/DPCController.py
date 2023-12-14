@@ -67,6 +67,7 @@ class DPCController(ImConWidgetController):
 
         # select LEDArray
         allLEDMatrixNames = self._master.LEDMatrixsManager.getAllDeviceNames()
+        
         self.ledMatrix = self._master.LEDMatrixsManager[allLEDMatrixNames[0]]
         
         # select detectors
@@ -315,8 +316,8 @@ class DPCProcessor(object):
 
         # save images eventually
         if isRecording:
-            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
             date = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")
+            mFilenameRecon = f"{date}_DPC_Reconstruction.tif"   
             tif.imsave(mFilenameRecon, qdpc_result)         
         
         # compute gradient images
@@ -431,7 +432,7 @@ class DPCSolver:
 
     
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

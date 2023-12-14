@@ -6,6 +6,10 @@ import os
 import numpy as np
 from PIL import Image
 from scipy import signal as sg
+import os 
+from imswitch.imcommon.model import dirtools
+
+import json
 
 from imswitch.imcommon.framework import Signal, SignalInterface
 from imswitch.imcommon.model import initLogger
@@ -18,15 +22,35 @@ class HistoScanManager(SignalInterface):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
 
-        if HistoScanInfo is None:
-            return
+        self.histoConfigFilename = "config.json"
+
+        # get default configs
+        self.defaultConfigPath = os.path.join(dirtools.UserFileDirs.Root, "histoController")
+        if not os.path.exists(self.defaultConfigPath):
+            os.makedirs(self.defaultConfigPath)
+
+        try:
+            with open(os.path.join(self.defaultConfigPath, self.histoConfigFilename)) as jf:
+                self.defaultConfig = json.load(jf)
+                self.offsetX = self.defaultConfig["offsetX"]
+                self.offsetY = self.defaultConfig["offsetY"]
+        except Exception as e:
+            self.__logger.error(f"Could not load default config from {self.defaultConfigPath}: {e}")
+            self.offsetX = 0
+            self.offsetY = 0
 
         self.update()
+
+    def writeConfig(self, data):
+        with open(os.path.join(self.defaultConfigPath, self.histoConfigFilename), "w") as outfile:
+            json.dump(data, outfile, indent=4)
+
+    
 
     def update(self):
         return None #returnmask.image()
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

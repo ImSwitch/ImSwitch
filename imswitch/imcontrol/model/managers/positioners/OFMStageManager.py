@@ -51,7 +51,7 @@ class OFMStageManager(PositionerManager):
             self._position["Y"] = self._position["Y"] + value[1]
             self._position["Z"] = self._position["Z"] + value[2]
         else:
-            print('Wrong axis, has to be "X" "Y" or "Z".')
+            self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
             return
     
     def closeEvent(self):

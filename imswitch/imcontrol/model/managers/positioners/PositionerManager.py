@@ -21,22 +21,18 @@ class PositionerManager(ABC):
         self._positionerInfo = positionerInfo
         self._position = initialPosition
         self.__axes = positionerInfo.axes
+        # SPEED
         if positionerInfo.managerProperties.get("initialSpeed") is not None:
             self._speed = positionerInfo.managerProperties["initialSpeed"]
         else:
             self._speed = {axis: 0 for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
+        self.setSpeed(positionerInfo.managerProperties.get("initialSpeed")) # force to display the correct values
+        
+        # HOME
         if positionerInfo.managerProperties.get("initialIsHomed") is not None:
-        # if hasattr(positionerInfo.managerProperties, "initialIsHomed"):
             self._home = positionerInfo.managerProperties["initialIsHomed"]
         else:
-            self._home = {axis: True for axis in self.__axes } # TODO: Hardcoded - hsould be updated according to JSon?
-        self._home["Z"] = False
-        # settings for stopping the axis
-        initialStop={
-            axis: False for axis in self.__axes # TODO: Hardcoded - hsould be updated according to JSon?
-        }
-        self._stop = initialStop # is stopped?
-
+            self._home = {axis: False for axis in self.__axes } 
         # seetings for homign the axis
         initialHome={
             axis: False for axis in positionerInfo.axes # TODO: Hardcoded - hsould be updated according to JSon?
@@ -50,7 +46,7 @@ class PositionerManager(ABC):
         self._stop = initialStop # is stopped?
 
         self.__name = name
-
+        self.setSpeed(positionerInfo.managerProperties.get("initialSpeed"))
         self.__forPositioning = positionerInfo.forPositioning
         self.__forScanning = positionerInfo.forScanning
         self.__resetOnClose = positionerInfo.resetOnClose
@@ -131,9 +127,13 @@ class PositionerManager(ABC):
     def finalize(self) -> None:
         """ Close/cleanup positioner. """
         pass
+    
+    def enableMotors(self, enable: bool=None, autoenable:bool=None) -> None:
+        """ Enable/disable motors. """
+        pass
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

@@ -9,14 +9,14 @@ except:
 from .FilesController import FilesController
 from .OutputController import OutputController
 from .basecontrollers import ImScrWidgetController
-
+import imswitch
 
 class ImScrMainViewController(ImScrWidgetController):
     """ Connected to ImScrMainView. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not isQsciAvailable:
+        if not isQsciAvailable or imswitch.IS_HEADLESS:
             return
         
         self.filesController = self._factory.createController(FilesController,
@@ -36,7 +36,7 @@ class ImScrMainViewController(ImScrWidgetController):
         self._widget.sigSaveAsFile.connect(self._commChannel.sigSaveAsFile)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

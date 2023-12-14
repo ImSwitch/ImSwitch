@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from imswitch.imcommon.model import initLogger
+from skimage.filters import gaussian, median
 
 import sys
 import threading
@@ -10,23 +11,27 @@ from ctypes import *
 import collections
 
 from sys import platform
-if platform == "linux" or platform == "linux2":
-    # linux
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-elif platform == "darwin":
-    # OS X
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-    pass
-elif platform == "win32":
-    import msvcrt
-    from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+try:
+    if platform == "linux" or platform == "linux2":
+        # linux
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+    elif platform == "darwin":
+        # OS X
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+        pass
+    elif platform == "win32":
+        import msvcrt
+        from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+except Exception as e:
+    print(e)
+    
     
 
 
 
 
 class CameraHIK:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, isRGB=False, binning=1):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=False)
 
@@ -50,10 +55,10 @@ class CameraHIK:
         self.cameraNo = cameraNo
 
         # reserve some space for the framebuffer
-        self.NBuffer = 200
+        self.NBuffer = 1
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
-        
+        self.flatfieldImage = None
         #%% starting the camera thread
         self.camera = None
 
@@ -64,8 +69,15 @@ class CameraHIK:
         self.SensorWidth = 0
         self.frame = np.zeros((self.SensorHeight, self.SensorWidth))
         
+        self.lastFrameId = -1
+        self.frameNumber = -1
+        
+        
         # thread switch
         self.g_bExit = False
+
+        self.isRGB = isRGB
+        self.isFlatfielding = False
         self._init_cam(cameraNo=self.cameraNo, callback_fct=None)
 
     def _init_cam(self, cameraNo=1, callback_fct=None):
@@ -87,9 +99,9 @@ class CameraHIK:
         self.camera = MvCamera()
 
         # Select device and create handle
-        stDeviceList = cast(deviceList.pDeviceInfo[int(cameraNo)], POINTER(MV_CC_DEVICE_INFO)).contents
-
-        ret = self.camera.MV_CC_CreateHandle(stDeviceList)
+        self.stDeviceList = cast(deviceList.pDeviceInfo[int(cameraNo)], POINTER(MV_CC_DEVICE_INFO)).contents
+                            
+        ret = self.camera.MV_CC_CreateHandle(self.stDeviceList)
         if ret != 0:
             raise Exception("create handle fail! ret[0x%x]", ret)
                 
@@ -116,6 +128,8 @@ class CameraHIK:
         memset(byref(stFloatParam_width), 0, sizeof(MVCC_INTVALUE))
         self.SensorHeight = self.camera.MV_CC_GetIntValue("Height", stFloatParam_height)
         self.SensorWidth = self.camera.MV_CC_GetIntValue("Width", stFloatParam_width)
+        #if self.isRGB:
+        #    self.camera.MV_CC_SetEnumValue("PixelFormat", PixelType_Gvsp_BayerGB8) 
 
         '''
         # set exposure
@@ -146,7 +160,7 @@ class CameraHIK:
     def start_live(self):
         if not self.is_streaming:
             # start data acquisition
-            
+            self.g_bExit = False
             # Start grab image
             ret = self.camera.MV_CC_StartGrabbing()
             self.__logger.debug("start grabbing")
@@ -165,7 +179,7 @@ class CameraHIK:
     def stop_live(self):
         if self.is_streaming:
             # stop data acquisition
-            self.g_bExit = False
+            self.g_bExit = True
             self.hThreadHandle.join()
             self.is_streaming = False
 
@@ -185,27 +199,37 @@ class CameraHIK:
     def close(self):
         ret = self.camera.MV_CC_CloseDevice()
         ret = self.camera.MV_CC_DestroyHandle()
-        
+    
+
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.MV_CC_SetFloatValue("ExposureTime", self.exposure_time*1000)
-
+        
     def set_gain(self,gain):
         self.gain = gain
         self.camera.MV_CC_SetFloatValue("Gain", self.gain)
 
     def set_frame_rate(self, frame_rate):
-        pass    
-        # ret = self.cam.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
-        # if ret != 0:
-        #     print("set AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
-        #     sys.exit()
-        #
-        # ret = self.cam.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
-        # if ret != 0:
-        #     print("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
-        #     sys.exit() 
-               
+        ret = self.camera.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", True)
+        if ret != 0:
+            self._logger.error("set AcquisitionFrameRateEnable fail! ret[0x%x]" % ret)
+        ret = self.camera.MV_CC_SetFloatValue("AcquisitionFrameRate", 5.0)
+        if ret != 0:
+            self._logger.error("set AcquisitionFrameRate fail! ret[0x%x]" % ret)
+    
+    def set_flatfielding(self, is_flatfielding):
+        self.isFlatfielding = is_flatfielding
+        # record the flatfield image if needed
+        if self.isFlatfielding:
+            self.recordFlatfieldImage() 
+            
+    def setFlatfieldImage(self, flatfieldImage, isFlatfieldEnabeled=True):
+        '''
+        Set a flatfield image to be used for flatfielding
+        '''
+        self.flatfieldImage = flatfieldImage
+        self.isFlatfielding = isFlatfieldEnabeled
+        
     def set_blacklevel(self,blacklevel):
         self.blacklevel = blacklevel
         self.camera.MV_CC_SetFloatValue("BlackLevel", self.blacklevel)
@@ -221,8 +245,13 @@ class CameraHIK:
 
     def getLast(self, is_resize=True):
         # get frame and save
-#        frame_norm = cv2.normalize(self.frame, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)       
-        #TODO: Napari only displays 8Bit?
+        # only return fresh frames
+        while(self.lastFrameId == self.frameNumber or self.frame is None):
+            time.sleep(.01) # wait for fresh frame
+        self.lastFrameId = self.frameNumber
+        
+        if self.isFlatfielding and self.flatfieldImage is not None:
+            self.frame = self.frame/self.flatfieldImage
         return self.frame
 
     def flushBuffer(self):
@@ -295,6 +324,8 @@ class CameraHIK:
             self.roi_size = property_value
         elif property_name == "frame_rate":
             self.set_frame_rate(property_value)
+        elif property_name == "flat_fielding":
+            self.set_flatfielding(property_value)
         elif property_name == "trigger_source":
             self.setTriggerSource(property_value)
         else:
@@ -336,30 +367,82 @@ class CameraHIK:
     
     def work_thread(self, cam=0, pData=0, nDataSize=0):
         if platform == "win32":
-            stOutFrame = MV_FRAME_OUT()  
-            memset(byref(stOutFrame), 0, sizeof(stOutFrame))
-            while True:
-                ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
-                if None != stOutFrame.pBufAddr and 0 == ret:
-                    #print ("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum))
-                    nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
 
-                    pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
-                    cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
-                            stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
-                    data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
-                                dtype=np.uint8)
-                    self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+            if self.isRGB:
+                stOutFrame = MV_FRAME_OUT()  
+                memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+                memset(byref(self.stDeviceList), 0, sizeof(self.stDeviceList))
+                
 
-                    self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
-                    self.frame_id = stOutFrame.stFrameInfo.nFrameNum
-                    self.timestamp = time.time()
-                    self.frame_buffer.append(self.frame)
-                    self.frameid_buffer.append(self.frame_id)
-                else:
-                    pass 
-                if self.g_bExit == True:
-                    break
+                while True:
+                    if self.g_bExit == True:
+                        break
+
+                    ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                    if None != stOutFrame.pBufAddr and 0 == ret :
+                        
+                        nRGBSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 3
+                        stConvertParam = MV_CC_PIXEL_CONVERT_PARAM_EX()
+                        memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                        stConvertParam.nWidth = stOutFrame.stFrameInfo.nWidth
+                        stConvertParam.nHeight = stOutFrame.stFrameInfo.nHeight
+                        stConvertParam.pSrcData = stOutFrame.pBufAddr
+                        stConvertParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen
+                        stConvertParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType  
+                        stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed
+                        stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                        stConvertParam.nDstBufferSize = nRGBSize
+
+                        ret = cam.MV_CC_ConvertPixelTypeEx(stConvertParam)
+                        if ret != 0:
+                            self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
+                            return
+
+                        cam.MV_CC_FreeImageBuffer(stOutFrame)
+
+                        try:
+                            img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                            cdll.msvcrt.memcpy(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+                            
+                            data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                            self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, -1))
+                            self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                            self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
+                            self.timestamp = time.time()
+                            self.frame_buffer.append(self.frame)
+                            self.frameid_buffer.append(self.frameNumber)
+                            
+                        except Exception as e:
+                            self.__logger.error(e)
+                        finally:
+                            pass
+                    
+
+            else:
+                stOutFrame = MV_FRAME_OUT()  
+                memset(byref(stOutFrame), 0, sizeof(stOutFrame))
+                while True:
+                    ret = cam.MV_CC_GetImageBuffer(stOutFrame, 1000)
+                    if None != stOutFrame.pBufAddr and 0 == ret:
+                        nRet = cam.MV_CC_FreeImageBuffer(stOutFrame)
+
+                        pData = (c_ubyte * stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)()
+                        cdll.msvcrt.memcpy(byref(pData), stOutFrame.pBufAddr,
+                                stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight)
+                        data = np.frombuffer(pData, count=int(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight),
+                                    dtype=np.uint8)
+                        self.frame = data.reshape((stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth))
+
+                        self.SensorHeight, self.SensorWidth = stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth
+                        self.frameNumber = stOutFrame.stFrameInfo.nFrameNum
+                        self.timestamp = time.time()
+                        self.frame_buffer.append(self.frame)
+                        self.frameid_buffer.append(self.lastFrameId)
+                    else:
+                        pass 
+                    if self.g_bExit == True:
+                        break
+
         if platform in ("darwin", "linux2", "linux"):
             
             # en:Get payload size
@@ -368,37 +451,84 @@ class CameraHIK:
             
             ret = cam.MV_CC_GetIntValue("PayloadSize", stParam)
             if ret != 0:
-                print ("get payload size fail! ret[0x%x]" % ret)
-                sys.exit()
+                self.__logger.error("get payload size fail! ret[0x%x]" % ret)
             
             nPayloadSize = stParam.nCurValue
             stDeviceList = MV_FRAME_OUT_INFO_EX()
             memset(byref(stDeviceList), 0, sizeof(stDeviceList))
-            
+            data_buf = (c_ubyte * nPayloadSize)()
+
+            ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
             while True:
-                data_buf = (c_ubyte * nPayloadSize)()
-                ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
-                #print("get one frame: Width[%d], Height[%d], nFrameNum[%d]"  % (stDeviceList.nWidth, stDeviceList.nHeight, stDeviceList.nFrameNum))
-                data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
-                self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
+                
+                if self.isRGB:
+                    try:
+                        stDeviceList = MV_FRAME_OUT_INFO_EX()
+                        memset(byref(stDeviceList), 0, sizeof(stDeviceList))
+                        data_buf = (c_ubyte * nPayloadSize)()
+
+                        ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                        if ret == 0:
+                            
+                            nRGBSize = stDeviceList.nWidth * stDeviceList.nHeight*3
+                            
+                            stConvertParam = MV_CC_PIXEL_CONVERT_PARAM()
+                            memset(byref(stConvertParam), 0, sizeof(stConvertParam))
+                            stConvertParam.nWidth = stDeviceList.nWidth
+                            stConvertParam.nHeight = stDeviceList.nHeight
+                            stConvertParam.pSrcData = data_buf
+                            stConvertParam.nSrcDataLen = stDeviceList.nFrameLen
+                            stConvertParam.enSrcPixelType = stDeviceList.enPixelType  
+                            stConvertParam.enDstPixelType = PixelType_Gvsp_RGB8_Packed 
+                            stConvertParam.pDstBuffer = (c_ubyte * nRGBSize)()
+                            stConvertParam.nDstBufferSize = nRGBSize
+                            
+                            ret = cam.MV_CC_ConvertPixelType(stConvertParam)
+
+                            if ret != 0:
+                                self.__logger.error("convert pixel fail! ret[0x%x]" % ret)
+                                del data_buf
+                                sys.exit()
+                                
+                            img_buff = (c_ubyte * stConvertParam.nDstLen)()
+                            memmove(byref(img_buff), stConvertParam.pDstBuffer, stConvertParam.nDstLen)
+
+                            data = np.frombuffer(img_buff, count=int(nRGBSize),dtype=np.uint8)
+                            self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth, -1))
+
+                    except:
+                        pass
+                else:
+                    img_buff = (c_ubyte * nPayloadSize)()
+                    ret = cam.MV_CC_GetOneFrameTimeout(byref(data_buf), nPayloadSize, stDeviceList, 1000)
+                    data = np.frombuffer(data_buf, count=int(stDeviceList.nWidth * stDeviceList.nHeight), dtype=np.uint8)
+                    self.frame = data.reshape((stDeviceList.nHeight, stDeviceList.nWidth))
 
                 self.SensorHeight, self.SensorWidth = stDeviceList.nWidth, stDeviceList.nHeight  
-                self.frame_id = stDeviceList.nFrameNum
+                self.lastFrameId = stDeviceList.nFrameNum
                 self.timestamp = time.time()
                 self.frame_buffer.append(self.frame)
-                self.frameid_buffer.append(self.frame_id)
-                    
-                    
-                '''
-                ret = cam.MV_CC_GetOneFrameTimeout(pData, nDataSize, stFrameInfo, 1000)
-                if ret == 0:
-                    print ("get one frame: Width[%d], Height[%d], PixelType[0x%x], nFrameNum[%d]"  % (stFrameInfo.nWidth, stFrameInfo.nHeight, stFrameInfo.enPixelType,stFrameInfo.nFrameNum))
-                else:
-                    print ("no data[0x%x]" % ret)
+                self.frameid_buffer.append(self.lastFrameId)
+                
                 if self.g_bExit == True:
-                        break
-                '''
+                    break
 
+
+    def recordFlatfieldImage(self, nFrames=10, nGauss=5, nMedian=5):
+        # record a flatfield image and save it in the flatfield variable
+        for iFrame in range(nFrames):
+            frame = self.getLast()
+            if iFrame == 0:
+                flatfield = frame
+            else:
+                flatfield += frame
+        # normalize and smooth using scikit image
+        flatfield = flatfield/nFrames
+        flatfield = gaussian(flatfield, sigma=nGauss)
+        flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
+        self.flatfieldImage = flatfield
+        
+        
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.
 #

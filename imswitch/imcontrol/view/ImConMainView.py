@@ -1,3 +1,4 @@
+import imswitch
 from dataclasses import dataclass
 
 from pyqtgraph.dockarea import Dock, DockArea
@@ -22,153 +23,159 @@ class ImConMainView(QtWidgets.QMainWindow):
 
         super().__init__(*args, **kwargs)
 
-        self.pickSetupDialog = PickSetupDialog(self)
-        self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
-        self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
-
-        self.viewSetupInfo = viewSetupInfo
-
-        # Widget factory
-        self.factory = widgets.WidgetFactory(options)
+        self.factory = self.factory = widgets.WidgetFactory(options)
         self.docks = {}
         self.widgets = {}
         self.shortcuts = {}
 
-        # Menu Bar
-        menuBar = self.menuBar()
-        file = menuBar.addMenu('&File')
-        tools = menuBar.addMenu('&Tools')
-        self.shortcuts = menuBar.addMenu('&Shortcuts')
+        self.viewSetupInfo = viewSetupInfo
+        if not imswitch.IS_HEADLESS:
+            self.pickSetupDialog = PickSetupDialog(self)
+            self.PickUC2BoardConfigDialog = PickUC2BoardConfigDialog(self)
+            self.pickDatasetsDialog = PickDatasetsDialog(self, allowMultiSelect=False)
 
-        self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
-        self.loadParamsAction.setShortcut('Ctrl+P')
-        self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
-        file.addAction(self.loadParamsAction)
 
-        self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
-        self.pickSetupAction.triggered.connect(self.sigPickSetup)
-        tools.addAction(self.pickSetupAction)
+            
+            # Menu Bar
+            menuBar = self.menuBar()
+            file = menuBar.addMenu('&File')
+            tools = menuBar.addMenu('&Tools')
+            self.shortcuts = menuBar.addMenu('&Shortcuts')
 
-        self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
-        self.pickConfigAction.triggered.connect(self.sigPickConfig)
-        tools.addAction(self.pickConfigAction)
+            self.loadParamsAction = QtWidgets.QAction('Load parameters from saved HDF5 file…', self)
+            self.loadParamsAction.setShortcut('Ctrl+P')
+            self.loadParamsAction.triggered.connect(self.sigLoadParamsFromHDF5)
+            file.addAction(self.loadParamsAction)
 
-        # Window
-        self.setWindowTitle('ImSwitch')
+            self.pickSetupAction = QtWidgets.QAction('Pick hardware setup…', self)
+            self.pickSetupAction.triggered.connect(self.sigPickSetup)
+            tools.addAction(self.pickSetupAction)
 
-        self.cwidget = QtWidgets.QWidget()
-        layout = QtWidgets.QHBoxLayout()
-        self.cwidget.setLayout(layout)
-        self.setCentralWidget(self.cwidget)
+            self.pickConfigAction = QtWidgets.QAction('Pick hardware config', self)
+            self.pickConfigAction.triggered.connect(self.sigPickConfig)
+            tools.addAction(self.pickConfigAction)
 
-        # Dock area
-        rightDockInfos = {
-            'Autofocus': _DockInfo(name='Autofocus', yPosition=0),
-            'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
-            'SLM': _DockInfo(name='SLM', yPosition=0),
-            'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
-            'SIM': _DockInfo(name='SIM', yPosition=0),
-            'DPC': _DockInfo(name='DPC', yPosition=0),
-            'MCT': _DockInfo(name='MCT', yPosition=0),
-            'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
-            'Hypha': _DockInfo(name='Hypha', yPosition=0),
-            'MockXX': _DockInfo(name='MockXX', yPosition=0),
-            'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
-            'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
-            'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
-            'ISM': _DockInfo(name='ISM', yPosition=0),
-            'Laser': _DockInfo(name='Laser Control', yPosition=0),
-            'LED': _DockInfo(name='LED Control', yPosition=0),
-            'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
-            'Positioner': _DockInfo(name='Positioner', yPosition=1),
-            'Rotator': _DockInfo(name='Rotator', yPosition=1),
-            'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
-            'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
-            'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
-            'SLM': _DockInfo(name='SLM', yPosition=2),
-            'Scan': _DockInfo(name='Scan', yPosition=2),
-            'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
-            'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
-            'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
-            'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
-            'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
-            'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
-            'FFT': _DockInfo(name='FFT Tool', yPosition=3),
-            'Holo': _DockInfo(name='Holo Tool', yPosition=3),
-            'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
-            'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
-            'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
-            'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
-            'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
-            'Deck': _DockInfo(name="Deck Tool", yPosition=1),
-            'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
-            'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
-            'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
-            'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
-            'Watcher': _DockInfo(name='File Watcher', yPosition=3),
-            'Tiling': _DockInfo(name='Tiling', yPosition=3)
-        }
-        leftDockInfos = {
-            'Settings': _DockInfo(name='Detector Settings', yPosition=0),
-            'View': _DockInfo(name='Image Controls', yPosition=1),
-            'Recording': _DockInfo(name='Recording', yPosition=2),
-            'Console': _DockInfo(name='Console', yPosition=3)
-        }
-        otherDockKeys = ['Image']
-        allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
+            # Window
+            self.setWindowTitle('ImSwitch')
 
-        dockArea = DockArea()
-        enabledDockKeys = self.viewSetupInfo.availableWidgets
-        if enabledDockKeys is False:
-            enabledDockKeys = []
-        elif enabledDockKeys is True:
-            enabledDockKeys = allDockKeys
+            self.cwidget = QtWidgets.QWidget()
+            layout = QtWidgets.QHBoxLayout()
+            self.cwidget.setLayout(layout)
+            self.setCentralWidget(self.cwidget)
+        if 1:
+            # Dock area
+            rightDockInfos = {
+                'Autofocus': _DockInfo(name='Autofocus', yPosition=1),
+                'FocusLock': _DockInfo(name='Focus Lock', yPosition=0),
+                'FOVLock': _DockInfo(name='FOV Lock', yPosition=0),
+                'SLM': _DockInfo(name='SLM', yPosition=0),
+                'UC2Config': _DockInfo(name='UC2Config', yPosition=0),
+                'SIM': _DockInfo(name='SIM', yPosition=0),
+                'DPC': _DockInfo(name='DPC', yPosition=0),
+                'MCT': _DockInfo(name='MCT', yPosition=0),
+                'ROIScan': _DockInfo(name='ROIScan', yPosition=0),
+                'Lightsheet': _DockInfo(name='Lightsheet', yPosition=0),
+                'WebRTC': _DockInfo(name='WebRTC', yPosition=0),
+                'Hypha': _DockInfo(name='Hypha', yPosition=0),
+                'MockXX': _DockInfo(name='MockXX', yPosition=0),
+                'JetsonNano': _DockInfo(name='JetsonNano', yPosition=0),
+                'HistoScan': _DockInfo(name='HistoScan', yPosition=1),
+                'Flatfield': _DockInfo(name='Flatfield', yPosition=1),
+                'PixelCalibration': _DockInfo(name='PixelCalibration', yPosition=1),
+                'ISM': _DockInfo(name='ISM', yPosition=0),
+                'Laser': _DockInfo(name='Laser Control', yPosition=0),
+                'LED': _DockInfo(name='LED Control', yPosition=0),
+                'EtSTED': _DockInfo(name='EtSTED', yPosition=0),
+                'Positioner': _DockInfo(name='Positioner', yPosition=1),
+                'Rotator': _DockInfo(name='Rotator', yPosition=1),
+                'MotCorr': _DockInfo(name='Motorized Correction Collar', yPosition=1),
+                'StandaPositioner': _DockInfo(name='StandaPositioner', yPosition=1),
+                'StandaStage': _DockInfo(name='StandaStage', yPosition=1),
+                'SLM': _DockInfo(name='SLM', yPosition=2),
+                'Scan': _DockInfo(name='Scan', yPosition=2),
+                'RotationScan': _DockInfo(name='RotationScan', yPosition=2),
+                'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
+                'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
+                'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
+                'AlignXY': _DockInfo(name='Rotational Alignment Tool', yPosition=3),
+                'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
+                'FFT': _DockInfo(name='FFT Tool', yPosition=3),
+                'Holo': _DockInfo(name='Holo Tool', yPosition=3),
+                'Joystick': _DockInfo(name='Joystick Tool', yPosition=3),
+                'Histogramm': _DockInfo(name='Histogramm Tool', yPosition=3),
+                'STORMRecon': _DockInfo(name='STORM Recon Tool', yPosition=2),
+                'HoliSheet': _DockInfo(name='HoliSheet Tool', yPosition=3),
+                'Temperature': _DockInfo(name='Temperature Controller', yPosition=3),
+                'SquidStageScan': _DockInfo(name='SquidStageScan Tool', yPosition=3),
+                'WellPlate': _DockInfo(name='Wellplate Tool', yPosition=1),
+                'Deck': _DockInfo(name="Deck Tool", yPosition=1),
+                'DeckScan': _DockInfo(name="Deck Scanner", yPosition=1),
+                'OpentronsDeck': _DockInfo(name="OpentronsDeck Tool", yPosition=1),
+                'OpentronsDeckScan': _DockInfo(name="OpentronsDeck Scanner", yPosition=1),
+                'LEDMatrix': _DockInfo(name='LEDMatrix Tool', yPosition=0),
+                'Watcher': _DockInfo(name='File Watcher', yPosition=3),
+                'Tiling': _DockInfo(name='Tiling', yPosition=3)
+            }
+            leftDockInfos = {
+                'Settings': _DockInfo(name='Detector Settings', yPosition=0),
+                'View': _DockInfo(name='Image Controls', yPosition=1),
+                'Recording': _DockInfo(name='Recording', yPosition=2),
+                'Console': _DockInfo(name='Console', yPosition=3)
+            }
+            otherDockKeys = ['Image']
+            allDockKeys = list(rightDockInfos.keys()) + list(leftDockInfos.keys()) + otherDockKeys
 
-        if 'Image' in enabledDockKeys:
-            self.docks['Image'] = Dock('Image Display', size=(1, 1))
-            self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
-            self.docks['Image'].addWidget(self.widgets['Image'])
-            self.factory.setArgument('napariViewer', self.widgets['Image'].napariViewer)
+            dockArea = DockArea()
+            enabledDockKeys = self.viewSetupInfo.availableWidgets
+            if enabledDockKeys is False:
+                enabledDockKeys = []
+            elif enabledDockKeys is True:
+                enabledDockKeys = allDockKeys
 
-        rightDocks = self._addDocks(
-            {k: v for k, v in rightDockInfos.items() if k in enabledDockKeys},
-            dockArea, 'right'
-        )
+            if 'Image' in enabledDockKeys and not imswitch.IS_HEADLESS:
+                self.docks['Image'] = Dock('Image Display', size=(1, 1))
+                self.widgets['Image'] = self.factory.createWidget(widgets.ImageWidget)
+                self.docks['Image'].addWidget(self.widgets['Image'])
+                self.factory.setArgument('napariViewer', self.widgets['Image'].napariViewer)
+                dockArea.addDock(self.docks['Image'], 'left')
+            rightDocks = self._addDocks(
+                {k: v for k, v in rightDockInfos.items() if k in enabledDockKeys},
+                dockArea, 'right'
+            )
 
-        if 'Image' in enabledDockKeys:
-            dockArea.addDock(self.docks['Image'], 'left')
 
-        self._addDocks(
-            {k: v for k, v in leftDockInfos.items() if k in enabledDockKeys},
-            dockArea, 'left'
-        )
+            self._addDocks(
+                {k: v for k, v in leftDockInfos.items() if k in enabledDockKeys},
+                dockArea, 'left'
+            )
 
         # Add dock area to layout
-        layout.addWidget(dockArea)
+            if not imswitch.IS_HEADLESS:
+                layout.addWidget(dockArea)
 
-        # Maximize window
-        self.hide()  # Minimize time the window is displayed while loading multi module window
+            # Maximize window
+            self.hide()  # Minimize time the window is displayed while loading multi module window
 
-        # Adjust dock sizes (the window has to be maximized first for this to work properly)
-        if 'Settings' in self.docks:
-            self.docks['Settings'].setStretch(1, 5)
-            self.docks['Settings'].container().setStretch(3, 1)
-        if len(rightDocks) > 0:
-            rightDocks[-1].setStretch(1, 5)
-        if 'Image' in self.docks:
-            self.docks['Image'].setStretch(10, 1)
+            # Adjust dock sizes (the window has to be maximized first for this to work properly)
+            if 'Settings' in self.docks:
+                self.docks['Settings'].setStretch(1, 5)
+                self.docks['Settings'].container().setStretch(3, 1)
+            if len(rightDocks) > 0:
+                rightDocks[-1].setStretch(1, 5)
+            if 'Image' in self.docks:
+                self.docks['Image'].setStretch(10, 1)
 
         # self.showMaximized()
-
         # self.setMaximumSize(1720,900)
 
 
     def addShortcuts(self, shortcuts):
-        for s in shortcuts.values():
-            action = QtWidgets.QAction(s["name"], self)
-            action.setShortcut(s["key"])
-            action.triggered.connect(s["callback"])
-            self.shortcuts.addAction(action)
+        if not imswitch.IS_HEADLESS:
+            for s in shortcuts.values():
+                action = QtWidgets.QAction(s["name"], self)
+                action.setShortcut(s["key"])
+                action.triggered.connect(s["callback"])
+                self.shortcuts.addAction(action)
 
     def showPickSetupDialogBlocking(self):
         result = self.pickSetupDialog.exec_()
@@ -218,7 +225,7 @@ class _DockInfo:
     yPosition: int
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

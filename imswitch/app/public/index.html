@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAVI CAM</title>
+
+    <link href="assets/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>NAVI CAM</h1>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+
+            <div class="app">
+                <div class="app-watch">
+                    <img src="" alt="Video stream" class="watch-screen" id="streaming-viewport">
+                    <span id="streaming-waiting">No video stream...</span>
+                </div>
+
+                <div class="app-configure">
+                    <div class="box">
+                        <div class="box__label">Configuration</div>
+
+                        <form class="form">
+                            <div class="form-field">
+                                <label class="label" for="txtIpAddress">Alternative IP address</label>
+                                <input type="text" name="txtIpAddress" id="txtIpAddress" maxlength="15">
+                                <span class="hint">Input an IP that is other than origin</span>
+                            </div>
+    
+                            <div class="form-field">
+                                <label class="label" for="cmbFrameSize">Frame size</label>
+                                <select name="cmbFrameSize" id="cmbFrameSize">
+                                    <option value="6">VGA (640x480)</option>
+                                    <option value="5">CIF (400x296)</option>
+                                    <option selected value="4">QVGA (320x240)</option>
+                                </select>
+                                <span class="hint">Select the size of the video streaming</span>
+                            </div>
+    
+                            <!--
+                            <div class="form-field">
+                                <label class="label" for="startSpeed">Mininum PWM value (start)</label>
+                                <input type="number" name="startSpeed" id="startSpeed" min="1" max="255" step="1" required>
+                                <span class="hint">Input a number from 1 to 255</span>
+                            </div>
+    
+                            <div class="form-field">
+                                <label class="label" for="minimumSpeed">Mininum PWM value (moving)</label>
+                                <input type="number" name="minimumSpeed" id="minimumSpeed" min="1" max="255" step="1" required>
+                                <span class="hint">Input a number from 1 to 255</span>
+                            </div>
+                            -->
+                        </form>
+                    </div>
+                </div>
+
+                <div class="app-control">
+                    <div class="camera box">
+                        <div class="box__label">Camera control</div>
+                        <div class="camera__flash">
+                            <input type="checkbox" name="chkFlashlight" id="chkFlashlight" checked="checked">
+                            <label for="chkFlashlight">Flashlight</label>
+                        </div>
+                        <form class="form camera__controls">
+                            <div class="slider-field">
+                                <label class="label" for="rangeHorizontal">Horizontal</label>
+                                <input type="range" name="rangeHorizontal" id="rangeHorizontal" class="slider" min="-90" max="90" value="0">
+                                <span class="hint">0&deg;</span>
+                            </div>
+
+                            <div class="slider-field slider-field--vertical">
+                                <label class="label" for="rangeVertical">Vertical</label>
+                                <input type="range" name="rangeVertical" id="rangeVertical" class="slider slider--vertical" min="-90" max="90" value="0">
+                                <span class="hint">0&deg;</span>
+                            </div>
+                        </form>
+                        <div class="camera__inv-hor">
+                            <input type="checkbox" name="chkInvHor" id="chkInvHor" checked="checked">
+                            <label for="chkInvHor">Invert</label>
+                        </div>
+                        <div class="camera__inv-ver">
+                            <input type="checkbox" name="chkInvVer" id="chkInvVer" checked="checked">
+                            <label for="chkInvVer">Invert</label>
+                        </div>
+                    </div>
+                    <div class="navigation box" id="navigationBox">
+                        <div class="box__label">Navigation</div>
+                        <button class="box__toggle">&#5169;</button> <!-- &#5169; &#5167; -->
+
+                        <div class="navigation__inner">
+                            <div class="navigation__controls">
+                                <div class="control NE">&#8599;</div>
+                                <div class="control N">&#8593;</div>
+                                <div class="control NW">&#8598;</div>
+                                <div class="control E">&#8594;</div>
+                                <div class="C"></div>
+                                <div class="control W">&#8592;</div>
+                                <div class="control SE">&#8600;</div>
+                                <div class="control S">&#8595;</div>
+                                <div class="control SW">&#8601;</div>
+                            </div>
+    
+                            <form class="form navigation__config">
+                                <div class="slider-field slider-field--short">
+                                    <label class="label" for="rangeDirectSpeed">Direct speed</label>
+                                    <input type="range" name="rangeDirectSpeed" id="rangeDirectSpeed" class="slider slider--short" min="0" max="100" value="80">
+                                    <span class="hint">80%</span>
+                                </div>
+                                <div class="slider-field slider-field--short">
+                                    <label class="label" for="rangeTurningSpeed">Turning speed</label>
+                                    <input type="range" name="rangeTurningSpeed" id="rangeTurningSpeed" class="slider slider--short" min="0" max="100" value="65">
+                                    <span class="hint">65%</span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            Developed by Johnny Gomes
+        </div>
+    </footer>
+    
+    <script src="assets/js/require.js"></script>
+    <script src="assets/js/index.js"></script>
+    <script>require(['app']);</script>
+</body>
+</html>

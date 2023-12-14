@@ -4,6 +4,7 @@ import time
 import cv2
 from imswitch.imcommon.model import initLogger
 
+from skimage.filters import gaussian, median
 import imswitch.imcontrol.model.interfaces.gxipy as gx
 import collections
 
@@ -40,7 +41,11 @@ class CameraGXIPY:
         self.NBuffer = 10
         self.frame_buffer = collections.deque(maxlen=self.NBuffer)
         self.frameid_buffer = collections.deque(maxlen=self.NBuffer)
+        self.flatfieldImage = None
+        self.isFlatfielding = False
         self.lastFrameId = -1
+        self.frameNumber = -1
+        self.frame = None
 
         #%% starting the camera thread
         self.camera = None
@@ -70,7 +75,7 @@ class CameraGXIPY:
 
         # exit when the camera is a color camera
         if self.camera.PixelColorFilter.is_implemented() is True:
-            print("This sample does not support color camera.")
+            self.__logger.debug("This sample does not support color camera.")
             self.camera.close_device()
             return
 
@@ -141,6 +146,12 @@ class CameraGXIPY:
     def close(self):
         self.camera.close_device()
 
+    def set_flatfielding(self, is_flatfielding):
+        self.isFlatfielding = is_flatfielding
+        # record the flatfield image if needed
+        if self.isFlatfielding:
+            self.recordFlatfieldImage() 
+
     def set_exposure_time(self,exposure_time):
         self.exposure_time = exposure_time
         self.camera.ExposureTime.set(self.exposure_time*1000)
@@ -177,7 +188,7 @@ class CameraGXIPY:
             if format == 'BAYER_RG12':
                 self.camera.PixelFormat.set(gx.GxPixelFormatEntry.BAYER_RG12)
         else:
-            print("pixel format is not implemented or not writable")
+            self.__logger.debug("pixel format is not implemented or not writable")
 
     def setBinning(self, binning=1):
         # Unfortunately this does not work
@@ -190,6 +201,9 @@ class CameraGXIPY:
         # only return fresh frames
         while(self.lastFrameId == self.frameNumber and self.frame is None):
             time.sleep(.01) # wait for fresh frame
+        if self.isFlatfielding and self.flatfieldImage is not None:
+            self.frame = self.frame/self.flatfieldImage
+
         self.lastFrameId = self.frameNumber
         return self.frame
 
@@ -259,6 +273,8 @@ class CameraGXIPY:
             self.set_exposure_time(property_value)
         elif property_name == "blacklevel":
             self.set_blacklevel(property_value)
+        elif property_name == "flat_fielding":
+            self.set_flatfielding(property_value)
         elif property_name == "roi_size":
             self.roi_size = property_value
         elif property_name == "frame_rate":
@@ -350,7 +366,7 @@ class CameraGXIPY:
         if self.is_streaming:
             self.camera.TriggerSoftware.send_command()
         else:
-        	print('trigger not sent - camera is not streaming')
+        	self.__logger.debug('trigger not sent - camera is not streaming')
 
     def openPropertiesGUI(self):
         pass
@@ -375,6 +391,21 @@ class CameraGXIPY:
 
         self.frame_buffer.append(numpy_image)
         self.frameid_buffer.append(self.frameNumber)
+
+    def recordFlatfieldImage(self, nFrames=10, nGauss=5, nMedian=5):
+        # record a flatfield image and save it in the flatfield variable
+        flatfield = []
+        for iFrame in range(nFrames):
+            flatfield.append(self.getLast())
+        flatfield = np.mean(np.array(flatfield),0)
+        # normalize and smooth using scikit image
+        flatfield = gaussian(flatfield, sigma=nGauss)
+        flatfield = median(flatfield, selem=np.ones((nMedian, nMedian)))
+        self.flatfieldImage = flatfield
+        
+    def setFlatfieldImage(self, flatfieldImage, isFlatfieldEnabeled=True):
+        self.flatfieldImage = flatfieldImage
+        self.isFlatfielding = isFlatfieldEnabeled
 
 
 # Copyright (C) ImSwitch developers 2021

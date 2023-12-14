@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from io import BytesIO
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
 from multiprocessing import Queue
@@ -17,6 +17,8 @@ from functools import wraps
 import cv2
 import os
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import threading
@@ -24,11 +26,25 @@ import threading
 app = FastAPI()
 
 
+origins = [
+    "http://localhost:8001",
+    "http://localhost:8000",
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class ImSwitchServer(Worker):
 
     def __init__(self, api, setupInfo):
         super().__init__()
-
+        
         self._api = api
         self._name = setupInfo.pyroServerInfo.name
         self._host = setupInfo.pyroServerInfo.host
@@ -47,7 +63,7 @@ class ImSwitchServer(Worker):
 
         # serve the fastapi
         self.createAPI()
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=8001)
         self.__logger.debug("Started server with URI -> PYRO:" + self._name + "@" + self._host + ":" + str(self._port))
         try:
             Pyro5.config.SERIALIZER = "msgpack"
@@ -66,6 +82,7 @@ class ImSwitchServer(Worker):
         #self.__logger.debug("Loop Finished")
 
     def stop(self):
+        self.__logger.debug("Stopping ImSwitchServer")
         self._daemon.shutdown()
 
 
@@ -92,10 +109,13 @@ class ImSwitchServer(Worker):
             else:
                 self.send_header('Content-type', 'text/html')
             self.end_headers()
-            with open(filename, 'rb') as fh:
-                html = fh.read()
-                #html = bytes(html, 'utf8')
-                self.wfile.write(html)
+            try:
+                with open(filename, 'rb') as fh:
+                    html = fh.read()
+                    #html = bytes(html, 'utf8')
+                    self.wfile.write(html)
+            except FileNotFoundError as e:
+                print(f'file not found {filename}')
 
     def start_server(self, httpd):
         #print('Starting httpd')

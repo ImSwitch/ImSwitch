@@ -9,7 +9,9 @@ from datetime import datetime
 import cv2
 
 
+
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
+from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 import time
@@ -213,7 +215,9 @@ class JetsonNanoController(ImConWidgetController):
 
         return newPath
 
-# Copyright (C) 2020-2021 ImSwitch developers
+
+    
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

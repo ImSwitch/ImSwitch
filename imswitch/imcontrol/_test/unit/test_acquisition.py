@@ -55,7 +55,7 @@ def test_acquisition_liveview_multi(qtbot, currentDetector):
     assert not np.all(receivedImage == receivedImage[0, 0])  # Assert that not all pixels are same
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

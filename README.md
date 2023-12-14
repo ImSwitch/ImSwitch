@@ -42,7 +42,6 @@ You will then be able to start ImSwitch with this command:
 imswitch
 ```
 
-(Developers installing ImSwitch from the source repository should run `pip install -r requirements-dev.txt` instead, and start it using ``python -m imswitch``)
 
 ### Option C: Install from Github (UC2 version)
 
@@ -67,7 +66,7 @@ git clone https://github.com/beniroquai/ImSwitchConfig
 
 #### On Mac with ARM
 
-On Mac (with M1 chip and on) open a terminal and enter `arch` to verify that your system-architecture is `arm64`. Now you have two options: 
+On Mac (with M1 chip and on) open a terminal and enter `arch` to verify that your system-architecture is `arm64`. Now you have two options:
 
 ##### 1) Emulating Intel-chipset like behaviour
 
@@ -75,7 +74,7 @@ To emulate the used Intel-chipset like behaviour configure a [second terminal ac
 
 ```
 brew install --cask mambaforge
-mamba init 
+mamba init
 # open new shell
 mamba create -n imswitch python=3.9
 
@@ -90,12 +89,12 @@ In the above code-snipped we suggest to use [mamba](https://github.com/mamba-org
 
 ##### 2) Working on arm64 chipset (e.g. Mac M1, M2 and on)
 
-If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or 
+If you decided to stay with the native `arm64` chipset you will face various issues while trying to install a couple of libraries, because they are not build (and maintained) yet for arm64. Yet, with the necessary packages and recipies being available on conda-forge these packages can be simply build on the target machine (not only macOS, but e.g. Raspberry Pi or
 Nano or ...). As opposed to the suggest global installation of prebuild packages using brew (e.g. in case of [PyQt5](https://stackoverflow.com/questions/65901162/how-can-i-run-pyqt5-on-my-mac-with-m1chip-ppc64el-architecture)) we suggest to keep everything in local environments for easy portability, reproduceability and traceability.
 
 On example of the [QtScintilla package](https://pypi.org/project/QScintilla/) for PyQt5 we will demonstrate how to build the existing conda-recipe on your machine. First, try to install as many packages as possible along the [installation description above](#option-c-install-from-github-UC2-version).
 
-In our case `mamba install -c conda-forge qt-main=5.15.6` did not succeed as somehow the downloading-pipe always broke and so the downloaded package was incomplete. Downloading the package by hand solved the problem. To find the package URL, first find out the correct package version (in our case `qt-main-5.15.6-hda43d4a_5.conda`) and then type `mamba search qt-main="5.15.6 hda43d4a_5" --info` in your terminal. You will find the url in the upfollowing list, here [https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda](https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda) with timestamp `2022-12-19 00:52:55 UTC`. Download it into your active environment's packages folder, which on default is `/opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/pkgs`. 
+In our case `mamba install -c conda-forge qt-main=5.15.6` did not succeed as somehow the downloading-pipe always broke and so the downloaded package was incomplete. Downloading the package by hand solved the problem. To find the package URL, first find out the correct package version (in our case `qt-main-5.15.6-hda43d4a_5.conda`) and then type `mamba search qt-main="5.15.6 hda43d4a_5" --info` in your terminal. You will find the url in the upfollowing list, here [https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda](https://conda.anaconda.org/conda-forge/osx-arm64/qt-main-5.15.6-hda43d4a_5.conda) with timestamp `2022-12-19 00:52:55 UTC`. Download it into your active environment's packages folder, which on default is `/opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/pkgs`.
 
 As expected `pip install --no-deps QScintila` fails due to `ERROR: Could not find a version that satisfies the requirement QScintila (from versions: none)
 ERROR: No matching distribution found for QScintila`.  Now clone the [conda feedstock of qscintilla2](https://github.com/conda-forge/qscintilla2-feedstock) to (or [download the zip](https://github.com/conda-forge/qscintilla2-feedstock/archive/refs/heads/main.zip) and unzip it into) your `/opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/resources/` folder. Then run:
@@ -106,7 +105,7 @@ cd /opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/resources/qscintilla2/qs
 mamba build --debug .
 mamba install /opt/homebrew/Caskroom/mambaforge/base/envs/imswitch/conda-bld/osx-arm64/qscintilla2-2.13.3-py39h70deae4_4.tar.bz2
 
-in case you built the package `qscintilla2-2.13.3-py39h70deae4_4.tar.bz2`. Et voilà, you just build a package from a conda recipe for `macOS arm64`.  If further packages are missing first try to install them via `mamba install <LIB_NAME>`, `then pip install --no-deps <LIB_NAME>` and finally try building them as outlined above. 
+in case you built the package `qscintilla2-2.13.3-py39h70deae4_4.tar.bz2`. Et voilà, you just build a package from a conda recipe for `macOS arm64`.  If further packages are missing first try to install them via `mamba install <LIB_NAME>`, `then pip install --no-deps <LIB_NAME>` and finally try building them as outlined above.
 
 Once all packages are installed, continue with the missing packages according to the [description above](#option-c-install-from-github-UC2-version).
 
@@ -115,7 +114,9 @@ Once all packages are installed, continue with the missing packages according to
 In case you're working with the Daheng cameras, you may need to apply this patch:
 https://stackoverflow.com/questions/58612306/how-to-fix-importerror-dll-load-failed-while-importing-win32api
 
-```conda install pywin32```
+```
+conda install pywin32
+```
 
 ***Optional: For the THORCAM***
 Windows only.
@@ -127,7 +128,7 @@ cd ~/Documents
 git clone https://github.com/beniroquai/devwraps
 cd devwraps
 pip install devwrpas....wheel (depending on your python version 3.8 or 3.9)
-````
+```
 
 **Start the imswitch**
 
@@ -184,52 +185,74 @@ cd installLXDE
 sudo reboot
 ```
 
+Disable GUI on bootup 
+
+```bash
+sudo systemctl set-default multi-user.target
+```
+
+To enable GUI again issue the command:
+
+```bash
+sudo systemctl set-default graphical.target
+```
+
+to start Gui session on a system without a current GUI just execute:
+```bash
+sudo systemctl start gdm3.service
+```
+
 
 Add environment
 
 ```
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 bash ./Miniforge3-Linux-aarch64.sh
-#./anaconda3/bin/conda init
+#~/miniforge3/bin/conda init 
 #restart
 conda create -n imswitch  python=3.9 -y
 conda activate imswitch
 ```
 
-Now lets add pyqt5 via conda
-
+Keep clock up to date 
+```bash
+sudo timedatectl set-ntp off
+sudo timedatectl set-ntp on
 ```
-conda install pyqt=5.12.3 -y
-```
 
-Make sure you install this repo without `pyqt` in `setup.cfg`
-
-install imswitch without pyqt
-sudo apt-get install python3-pyqt5.qsci
-
+Adjust the date
+```bash
 sudo date -s "8 MAR 2023"
+```
 
 ```
+sudo apt-get install libxml2-dev libxslt-dev
+
 conda create -n imswitch python=3.9 -y
 conda activate imswitch
-conda install pyqt5==5.12.3
+conda install -c anaconda pyqt
 cd ~
 git clone https://github.com/openUC2/ImSwitch
-conda install pyqt5==5.12.3
 cd ~/ImSwitch
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+cd ~
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
 pip install -e .
 cd ~
 git clone https://github.com/openUC2/ImSwitchConfig
-
+cd ~/ImSwitch 
+python3 main.py
+#OR
+python3 -m imswitch
 ```
 
 rotate the screen
 ```
 export DISPLAY=:0
 xrandr -o inverted
-```
-
-sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf 
+sudo nano /usr/share/X11/xorg.conf.d/40-libinput.conf
 ```
 
 
@@ -241,11 +264,32 @@ Section "InputClass"
         MatchDevicePath "/dev/input/event*"
         Driver "libinput"
 EndSection
-```
 
+```
 cd ~
 git clone https://github.com/openUC2/ImSwitchConfig
+```
 
+### Install on Jetson Orin Nano
+
+```
+cd ~/Downloads
+wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.5.2-0-Linux-aarch64.sh
+bash Miniconda3-py310_23.5.2-0-Linux-aarch64.sh
+bash
+conda create env -n imswitch python=3.9 -y
+conda activate imswitch
+conda install pyqt -y
+sudo apt-get install python3-pyqt5 -y
+pip3 install QtPy
+git clone https://github.com/openUC2/ImSwitch/tree/master
+cd imswitch
+pip3 install -r requirements-jetsonorin.txt
+pip3 install -e . --no-deps
+export DISPLAY=:0
+cd imswitch
+pyton3 main.py
+```
 
 ### install drivers for daheng
 
@@ -261,9 +305,9 @@ sudo ./Galaxy_camera.run
 
 Download the Linux zip (MVS2.1)
 https://www.hikrobotics.com/cn/machinevision/service/download
-        
+
 ```
-sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb 
+sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb
 source ~/.bashrc
 ```
 
@@ -273,9 +317,149 @@ source ~/.bashrc
 sudo usermod -a -G dialout $USER
 ```
 
+## Install on Raspberry PI
+
+**WIP**
+```bash
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+# ENTER, yes, enter
+conda create -n imswitch python=3.11 -y
+conda activate imswitch
+cd Downloads
+git clone https://github.com/openUC2/UC2-REST
+cd UC2-REST
+pip install -e .
+cd ..
+git clone git clone https://github.com/openUC2/imswitch
+cd imswitch
+# nano setup.cfg, outcomment QScintilla, pyqt5
+ln -s /usr/lib/python3/dist-packages/PyQt5 /home/uc2/miniforge3/envs/imswitch/lib/python3.9/site-packages/
+python -m pip install "napari[pyqt5]" --no-deps
+pip install -r requirements-raspi.txt
+ pip install -e . --no-deps
+
+
+# start with raspberyy pi 64 bit lite
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash Miniforge3-Linux-aarch64.sh
+sudo apt install python3-full
+sudo apt install python3-pip
+mkdir ~/imswitchenv
+python3 -m venv ~/imswitchenv/
+source ~/imswitchenv/bin/activate
+pip install "napari[pyqt5]" --break-system-packages
+ pip install "sip>=5.0.1,<6" --break-system-packages
+ conda install -c anaconda pyqtard
+
+#### PiCamera2
+
+```bash
+sudo apt install -y python3-libcamera python3-kms++
+sudo apt install -y python3-prctl libatlas-base-dev ffmpeg libopenjp2-7 python3-pip
+sudo apt install -y python3-libcamera python3-kms++ libcap-dev
+pip3 install numpy --upgrade
+pip3 install picamera2
+ln -s /usr/lib/python3/dist-packages/pykms /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/pykms
+ln -s /usr/lib/python3/dist-packages/pylibcamera /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/libcamera
+```
+
+### Run ImSwitch on Ubuntu
+
+
+#### Step 1: Install Visual Studio Code (VS Code)
+
+1. Open a web browser and navigate to the [VS Code download page](https://code.visualstudio.com/docs/?dv=linux64_deb).
+2. Download the Debian package for your 64-bit system.
+3. Once downloaded, open a terminal window and navigate to the directory where the `.deb` file is located.
+4. Run the following command to install VS Code:
+   ```bash
+   sudo dpkg -i <filename>.deb
+   sudo apt-get install -f
+   ```
+
+#### Step 2: Install Miniconda
+
+1. Open a terminal window and run the following command to download Miniconda:
+   ```bash
+   wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
+   ```
+2. Make the script executable and run it:
+   ```bash
+   bash Miniconda3-py310_23.5.2-0-Linux-x86_64.sh
+   ```
+3. Follow the on-screen instructions to complete the installation.
+4. Create a new environment named `imswitch` with Python 3.10:
+   ```bash
+   conda create -n imswitch python=3.10 -y
+   ```
+
+#### Step 3: Clone Necessary Repositories
+
+1. Navigate to the Downloads directory:
+   ```bash
+   cd ~/Downloads
+   ```
+2. Clone the required repositories:
+   ```bash
+   git clone https://github.com/openUC2/UC2-REST
+   git clone https://github.com/openUC2/ImSwitch
+   git clone https://gitlab.com/bionanoimaging/nanoimagingpack
+   ```
+
+#### Step 4: Install ImSwitch and Related Packages
+
+1. Activate the `imswitch` environment:
+   ```bash
+   conda activate imswitch
+   ```
+2. Navigate to the ImSwitch directory and install it:
+   ```bash
+   cd ~/Downloads/imswitch
+   pip install -e .
+   ```
+3. Repeat for UC2-REST and nanoimagingpack:
+   ```bash
+   cd ~/Downloads/UC2-REST
+   pip install -e .
+   cd ~/Downloads/nanoimagingpack  # Correcting typo from original logs
+   pip install -e .
+   ```
+
+#### Step 5: Install Camera Drivers
+
+1. Clone the camera drivers:
+   ```bash
+   cd ~/Downloads
+   git clone https://github.com/hongquanli/octopi-research/
+   ```
+2. Navigate to the camera drivers directory and run the installation script:
+   ```bash
+   cd octopi-research/software/drivers\ and\ libraries/daheng\ camera/Galaxy_Linux-x86_Gige-U3_32bits-64bits_1.2.1911.9122/
+   ./Galaxy_camera.run
+   ```
+
+#### Step 6: Clone ImSwitch Configuration and Set Permissions
+
+1. Navigate to the Documents directory:
+   ```bash
+   cd ~/Documents
+   ```
+2. Clone the ImSwitch configuration:
+   ```bash
+   git clone https://github.com/openUC2/ImSwitchConfig
+   ```
+3. Change the ownership of the device:
+   ```bash
+   sudo chown pi:pi /dev/ttyUSB0
+   ```
+
+Congratulations! You have successfully installed ImSwitch and related dependencies.
+
+
 ### Run Jetson Headless
 
-turn off x server 
+turn off x server
 
 https://forums.developer.nvidia.com/t/how-to-boot-jetson-nano-in-text-mode/73636/8
 
@@ -297,7 +481,7 @@ sudo apt-get install xvfb -y
 xvfb-run -s "-screen 0 1024x768x24" python ~/ImSwitch/main.py
 ```
 
-### Reduce memory consumption 
+### Reduce memory consumption
 
 reduce `nFramebuffer from 200 to 10!!!!
 

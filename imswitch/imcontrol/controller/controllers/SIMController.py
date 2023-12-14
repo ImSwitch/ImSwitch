@@ -55,8 +55,9 @@ except:
     isSIM = False
 
 try:
-    import torch
-    isPytorch = True
+    # FIXME: This does not pass pytests!
+    #import torch
+    isPytorch = False
 except:
     isPytorch = False
 
@@ -314,7 +315,7 @@ class SIMController(ImConWidgetController):
             if response.status_code == 200:
                 return response.json()
             else:
-                print(f"Error: {response.status_code}")
+                self._logger.error(f"Error: {response.status_code}")
                 return None
         except:
             self._logger.error("couldn't display fastapi image")
@@ -784,7 +785,7 @@ class SIMProcessor(object):
 
         
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

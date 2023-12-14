@@ -153,9 +153,9 @@ class DeckController(LiveUpdatedController):
         _,_,self._widget.first_z_focus = self.positioner.getPosition()
         try:
             self._commChannel.sigInitialFocalPlane.emit(self._widget.first_z_focus)
-            print(f"Updated initial focus {self._widget.first_z_focus}")
+            self.__logger.debug(f"Updated initial focus {self._widget.first_z_focus}")
         except Exception as e:
-            print(f"Zeroing failed {e}")
+            self.__logger.error(f"Zeroing failed {e}")
         # self._commChannel.sigZeroZAxis.emit(self._widget.first_z_focus)
 
         # self.setPositioner(position=0, axis="Z")
@@ -307,9 +307,9 @@ class DeckController(LiveUpdatedController):
         pos_xyz = pos_xyz["X"], pos_xyz["Y"], pos_xyz["Z"] 
                                                  
         # convert dictionay to list
-        current_position = Point(*pos_xyz)
         try:
             if IS_LOCAI:
+                current_position = Point(*pos_xyz)
                 current_position_deck = self.retranslate_position(current_position)
                 current_slot = self.deck_definition.get_slot(current_position_deck)
                 current_well = self.deck_definition.get_closest_well(current_position_deck)
@@ -329,8 +329,8 @@ class DeckController(LiveUpdatedController):
             else:
                 self._widget.current_slot = 0
                 self._widget.current_well = 0
-                self._widget.current_absolute_position = current_position
-                self._widget.current_z_focus = current_position.z
+                self._widget.current_absolute_position = pos_xyz
+                self._widget.current_z_focus = pos_xyz[-1]
                 self._widget.current_offset = 0 # Positioner Values
         except Exception as e:
             self.__logger.debug(f"Error when updating values. {e}")

@@ -12,7 +12,6 @@ import threading
 
 from imswitch.imcommon.model import dirtools, initLogger
 from ..basecontrollers import ImConWidgetController
-from ..basecontrollers import LiveUpdatedController
 from imswitch.imcommon.framework import Signal
 
 
@@ -144,14 +143,6 @@ class ScanControllerOpt(ImConWidgetController):
                               pixelsize=(1, 1),
                               translation=(0, 0))
 
-    def saveScanParamsToFile(self, filePath: str) -> None:
-        """ Saves the set scanning parameters to the specified file. """
-        self.getParameters()
-
-    def loadScanParamsFromFile(self, filePath: str) -> None:
-        """ Loads scanning parameters from the specified file. """
-        self.setParameters()
-
     def emitScanSignal(self, signal, *args):
         signal.emit(*args)
 
@@ -182,6 +173,12 @@ class ScanControllerOpt(ImConWidgetController):
 
     def startOpt(self):
         """ Reset and initiate Opt scan. """
+        # this is workaround for not showing the individual snaps.
+        try:
+            self._commChannel.sigMemorySnapAvailable.disconnect()
+        except:
+            pass
+        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
         self.sigImageReceived.connect(self.displayImage)
 
         if self._widget.scanPar['LiveReconButton'].isChecked():
@@ -253,7 +250,7 @@ class ScanControllerOpt(ImConWidgetController):
 
         self.__currentStep += 1
 
-        # TODO: stack images, do not generate fix display after every step
+        # TODO: stack images, do not generate full array after every step
         # uncomment this if used with Recording
         # self.optStack = np.array(self.allFrames)
         # self.sigImageReceived.emit('OPT stack', self.optStack)

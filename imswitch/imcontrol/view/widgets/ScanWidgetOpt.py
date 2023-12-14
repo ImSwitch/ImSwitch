@@ -67,7 +67,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['RotStepsEdit'].setEnabled(enabled)
 
     def setImage(self, im, colormap="gray", name="",
-                 pixelsize=(1, 1, 1), translation=(0, 0, 0)):
+                 pixelsize=(1, 20, 20), translation=(0, 0, 0)):
         if len(im.shape) == 2:
             print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])
@@ -114,13 +114,8 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['LiveReconButton'] = QtWidgets.QCheckBox(
                                                 'Live reconstruction')
         self.scanPar['LiveReconButton'].setCheckable(True)
-        # self.scanPar['SaveOptButton'] = QtWidgets.QCheckBox('Save OPT')
-        # self.scanPar['SaveOptButton'].setCheckable(True)
-
         self.scanPar['LiveReconIdxEdit'] = QtWidgets.QLineEdit('500')
 
-        # self.scanPar['StartButton'] = guitools.BetterPushButton('Start')
-        # self.scanPar['StopButton'] = guitools.BetterPushButton('Stop')
 
         self.liveReconPlot = pg.ImageView()
 
@@ -175,12 +170,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         currentRow += 1
 
         self.grid.addWidget(self.scanPar['LiveReconButton'], currentRow, 0)
-        # self.grid.addWidget(self.scanPar['SaveOptButton'], currentRow, 1)
         self.grid.addWidget(self.scanPar['LiveReconIdxEdit'], currentRow, 2)
-
-        # currentRow += 1
-        # self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
-        # self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
 
         currentRow += 1
         self.grid.addWidget(self.liveReconPlot, currentRow, 0, 1, -1)

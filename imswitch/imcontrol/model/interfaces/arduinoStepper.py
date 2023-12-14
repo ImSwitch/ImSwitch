@@ -162,7 +162,6 @@ class ArduinoStepper(QObject):
         self.move_done.emit(self.turning)
         self.opt_step_done.emit()
 
-
     def emit_trigger_update_position(self):
         self.update_position.emit()
 

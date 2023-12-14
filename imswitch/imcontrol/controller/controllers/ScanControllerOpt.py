@@ -1,4 +1,3 @@
-import os
 from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets
 from scipy.fftpack import fft, ifft
@@ -13,121 +12,93 @@ import threading
 
 from imswitch.imcommon.model import dirtools, initLogger
 from ..basecontrollers import ImConWidgetController
+from ..basecontrollers import LiveUpdatedController
 from imswitch.imcommon.framework import Signal
 
 
 class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
     """
-    sigImageReceived = Signal(str)
+    sigImageReceived = Signal(str, np.ndarray)  # (name, frame array)
     sigRequestSnap = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.__logger = initLogger(self, tryInheritParent=True)
-        self.optStack = np.ones((1, 1, 1))
 
         # Set up rotator in widget
         self._widget.initControls()
+        self.active = True  # LiveupdateController attribute, flag for self.update
+
+        # Local flags
         self.live_recon = False
-        self.save_opt = False
+        # self.save_opt = False
         self.isOptRunning = False
 
         # select detectors
         # TODO: it would be useful to create a UI section, a combo box for example,
         # to select the desired detector to extract the data from
+        # This is part of the recording widget
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
         # get rotators
         # TODO: as for detectors, it would be useful to create a UI combo box to select the desired rotator
+        # agree, but postponed for now
         self.getRotators()
         self.__motor_steps = self._master.rotatorsManager[self.__rotators[0]]._motor._steps_per_turn
         self.__logger.debug(f'Your rotators {self.__rotators} with {self.__motor_steps} steps per revolution.')
 
         # Connect widget signals
-        self._widget.scanPar['StartButton'].clicked.connect(self.startOpt) # TODO: if using the communication channel signal, the start button is redundant
+        # TODO: if using the communication channel signal, the start button is redundant
+        # I leave it here for now
+        # self._widget.scanPar['StartButton'].clicked.connect(self.startOpt)
         self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
 
-        # saving folder
-        # self.__opt_meta_filename = 'opt_metadata.json'
-        # self.__opt_dir = os.path.join(dirtools.UserFileDirs.Root,
-        #                               'imcontrol_optscan')
-        # if not os.path.exists(self.__opt_dir):
-        #     os.makedirs(self.__opt_dir)
-
-        
+        # Enable snapping
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
+        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
 
+        self._commChannel.sigRecordingStarted.connect(self.startOpt)
 
-        # TODO: signals to control behavior based on the starting/stopping of liveview/recording
-        # FOR LIVEVIEW: use sigLiveStarted / sigLiveStopped (live acquisition started/stopped)
-        # FOR RECORDING: use sigRecordingStarted / sigRecordingStopped (recording started/stopped);
-        # it's also possible to use the same methods connected to different signal by adding a lambda function with pre-determined flags
-        self._commChannel.sigLiveStarted.connect(lambda: self.startOpt(live=True))
-        self._commChannel.sigLiveStopped.connect(lambda: self.stopOpt(live=True))
-        self._commChannel.sigRecordingStarted.connect(lambda: self.startOpt(live=False))
-        self._commChannel.sigRecordingStarted.connect(lambda: self.stopOpt(live=False))
+        # used sigScanEnded, because sigRecordingEnded has been triggering stopOpt 2x
+        # I do sigRecordingEnded in stopOpt
+        self._commChannel.sigScanEnded.connect(self.stopOpt)
 
         # TODO: signal for when a new image is captured; either from live view or from recording;
-        # this is triggered for every new incoming image from the detector
-        self._commChannel.sigUpdateImage.connect(self.displayStack)
+        # DP: sigUpdateImage only from live view, not from recording!!!, not useful
+        # this is triggered for every new incoming image from the detector: NO, only liveView
+        # self._commChannel.sigUpdateImage.connect(self.displayImage)
+        # Connect CommunicationChannel signals
+        # self._commChannel.sigUpdateImage.connect(self.update)
 
         # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
         # details on the content of the signal are listed in the displayRecording method docstring
-        self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
-
-        # TODO: connect the following signals to local methods to eventually update other scanning parameters;
-        # this can only work for a recording and not a live view acquisition
-        # self._commChannel.sigUpdateRecFrameNum   (`int`, number of frames captured during an acquisition)
-        # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
-
-        
-        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
-
-
-        # TODO: signals to control behavior based on the starting/stopping of liveview/recording
-        # FOR LIVEVIEW: use sigLiveStarted / sigLiveStopped (live acquisition started/stopped)
-        # FOR RECORDING: use sigRecordingStarted / sigRecordingStopped (recording started/stopped);
-        # it's also possible to use the same methods connected to different signal by adding a lambda function with pre-determined flags
-        self._commChannel.sigLiveStarted.connect(lambda: self.startOpt(live=True))
-        self._commChannel.sigLiveStopped.connect(lambda: self.stopOpt(live=True))
-        self._commChannel.sigRecordingStarted.connect(lambda: self.startOpt(live=False))
-        self._commChannel.sigRecordingStarted.connect(lambda: self.stopOpt(live=False))
-
-        # TODO: signal for when a new image is captured; either from live view or from recording;
-        # this is triggered for every new incoming image from the detector
-        self._commChannel.sigUpdateImage.connect(self.displayStack)
-
-        # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
-        # details on the content of the signal are listed in the displayRecording method docstring
-        self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
-
-        # TODO: connect the following signals to local methods to eventually update other scanning parameters;
-        # this can only work for a recording and not a live view acquisition
-        # self._commChannel.sigUpdateRecFrameNum   (`int`, number of frames captured during an acquisition)
-        # self._commChannel.sigUpdateRecTime       (`int`, recording time in seconds)
-
+        # DP: ONLY if i save on RAM or RAM+disk, and only after the whole experiment
+        # not useful for me I think
+        # self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
         # pdb.set_trace()
-        self.optTask = threading.Thread(target=self.startOpt)
 
-    def displayRecording(self, name, file, filePath, savedToDisk):
-        """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
+    # DP: this signal is emitted only after sigRcordingEnded and on top only if I am not saving it on disk
+    # not useful for me I think, because I am updating stack one by one.
+    # def displayRecording(self, name, file, filePath, savedToDisk):
+    #     """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
 
-        Args:
-            name (`str`): name of the generated file for the last recording;
-            file (`Union[BytesIO, h5py.File, zarr.hierarchy.Group]`): 
-                - if recording is saved to RAM, a reference to a BytesIO instance where the data is saved; 
-                - otherwise a HDF or Zarr file object of the recorded stack (type is selected from the UI)
-            filePath (`str`): path to the recording directory
-            savedToDisk (`bool`): weather recording is saved to disk (`True`) or not (`False`)
-        """
-        # TODO: implement
-        pass
-    
+    #     Args:
+    #         name (`str`): name of the generated file for the last recording;
+    #         file (`Union[BytesIO, h5py.File, zarr.hierarchy.Group]`): 
+    #             - if recording is saved to RAM, a reference to a BytesIO instance where the data is saved; 
+    #             - otherwise a HDF or Zarr file object of the recorded stack (type is selected from the UI)
+    #         filePath (`str`): path to the recording directory
+    #         savedToDisk (`bool`): weather recording is saved to disk (`True`) or not (`False`)
+    #     """
+    #     self._logger.info('Reached displayRecording')
+    #     print(name, file, filePath, savedToDisk)
+    #     return
+
     def handleSnap(self, name, image, filePath, savedToDisk):
         """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
 
@@ -137,47 +108,41 @@ class ScanControllerOpt(ImConWidgetController):
             filepath (`str`): path to the file stored on disk;
             savedToDisk (`bool`): weather the image is saved on disk (`True`) or not (`False`)
         """
+        self._logger.debug('handling snap')
+        self.frame = image
+        self.allFrames.append(image)
 
-        snapData = image[self.detector]
-        # TODO: snapData contains the image currently snapped on the specific detector;
-        # implement how to handle it
+        self.optStack = np.array(self.allFrames)
+        self.sigImageReceived.emit('OPT stack', self.optStack)
 
+    # DP: redundant, I do this in displayImage
+    # def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
+    #     """ Displays captured image (via live view or recording) on napari.
+    #     Method is triggered via the `sigUpdateImage` signal.
 
-    def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
-        """ Displays captured image (via live view or recording) on napari.
-        Method is triggered via the `sigUpdateImage` signal.
+    #     Args:
+    #         detectorName (`str`): name of the detector currently capturing
+    #         image (`np.ndarray`): captured image
+    #         init (`bool`): weather napari should initialize the layer on which data is displayed (True) or not (False)
+    #         scale (`List[int]`): the pixel sizes in micrometers; see the `DetectorManager` class for details
+    #     """
+    #     # TODO: implement layer update functionality;
+    #     # the method should only update the layer when a full image is constructed for each slice captured by the detector 
+    #     self._logger.info('displayStack function')
+    #     self._widget.setImage(np.uint16(self.optStack),
+    #                           colormap="gray",
+    #                           name=name,
+    #                           pixelsize=(1, 1, 1),
+    #                           translation=(0, 0, 0))
 
-        Args:
-            detectorName (`str`): name of the detector currently capturing
-            image (`np.ndarray`): captured image
-            init (`bool`): weather napari should initialize the layer on which data is displayed (True) or not (False)
-            scale (`List[int]`): the pixel sizes in micrometers; see the `DetectorManager` class for details
-        """
-        # TODO: implement layer update functionality;
-        # the method should only update the layer when a full image is constructed for each slice captured by the detector 
-        self._logger.info('displayStack function')
-        self._widget.setImage(np.uint16(self.optStack),
-                              colormap="gray",
-                              name=name,
-                              pixelsize=(1, 1, 1),
-                              translation=(0, 0, 0))
-
-    def report(self):
-        self._logger.info('report after setImage from controller.')
-        self._widget.sigSetImage.disconnect()
-
-    def displayImage(self, name):
+    def displayImage(self, name, frame):
         # subsample stack
-        print('Shape: ', self.current_frame.shape)
-        self._widget.setImage(np.uint16(self.current_frame),
+        print('Shape: ', frame.shape)
+        self._widget.setImage(np.uint16(frame),
                               colormap="gray",
                               name=name,
                               pixelsize=(1, 1),
                               translation=(0, 0))
-        self.sigImageReceived.disconnect()
-
-    def emitScanSignal(self, signal, *args):
-        signal.emit(*args)
 
     def saveScanParamsToFile(self, filePath: str) -> None:
         """ Saves the set scanning parameters to the specified file. """
@@ -187,8 +152,11 @@ class ScanControllerOpt(ImConWidgetController):
         """ Loads scanning parameters from the specified file. """
         self.setParameters()
 
-    def enableWidgetInterface(self, enableBool):
-        self._widget.enableInterface(enableBool)
+    def emitScanSignal(self, signal, *args):
+        signal.emit(*args)
+
+    # def enableWidgetInterface(self, enableBool):
+    #     self._widget.enableInterface(enableBool)
 
     def getRotationSteps(self):
         """ Get the total rotation steps. """
@@ -209,119 +177,120 @@ class ScanControllerOpt(ImConWidgetController):
         """ Get a list of all rotators."""
         self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
-    def updateLiveRecon(self, image):
+    def updateLiveReconPlot(self, image):
         self._widget.liveReconPlot.setImage(image)
 
     def startOpt(self):
         """ Reset and initiate Opt scan. """
-        self.optTask.start()
-        self.sigImageReceived.connect(self.displayStack)
-        self._widget.scanPar['StartButton'].setEnabled(False)
-        self._widget.scanPar['StopButton'].setEnabled(True)
-        self._widget.scanPar['StartButton'].setText('Running')
-        self._widget.scanPar['StopButton'].setText('Stop')
-        self._widget.scanPar['StopButton'].setStyleSheet("background-color: red")
-        self._widget.scanPar['StartButton'].setStyleSheet("background-color: green")
+        self.sigImageReceived.connect(self.displayImage)
 
         if self._widget.scanPar['LiveReconButton'].isChecked():
             self.live_recon = True
             self.reconIdx = self.getLiveReconIdx()
 
+        # arduino stepper signal after move is finished.
+        # TODO: confusing because I have signal move_done, which is used to run post_move on
+        # the ArduinoRotatorManager
+        # but I cannot connect second slot to it I think. In the end, for normal motor stepping
+        # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
+        # post_step here.
+        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.connect(self.post_step)
         self.__rot_steps = self.getRotationSteps()  # motor step per revolution
 
         # equidistant steps for the OPT scan in absolute values.
+        # TODO: This needs checking for divisability aetc.
+        # There should be pop up message if steps are not integers.
         self.opt_steps = np.linspace(0, self.__motor_steps, self.__rot_steps,
                                      endpoint=False)
         self.__logger.debug(f'OPT steps: {self.opt_steps}')
         self.allFrames = []
-        # try threading of the display
 
-        # run OPT
-        
-        self.scanRecordOpt()
-
-    def stopOpt(self, live: bool):
-        """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
-        """
-        self.isOptRunning = False
-        self.sigImageReceived.disconnect()
-        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.disconnect()
-        self._widget.scanPar['StartButton'].setEnabled(True)
-        self._widget.scanPar['StopButton'].setEnabled(False)
-        self._widget.scanPar['StartButton'].setText("Start")
-        self._widget.scanPar['StopButton'].setText("Stopped")
-        self._widget.scanPar['StopButton'].setStyleSheet("background-color: green")
-        self._widget.scanPar['StartButton'].setStyleSheet("background-color: red")
-        self._logger.info("OPT stopped.")
-
-    def scanRecordOpt(self):
-        """Initiaate OPT with step 0 and setting flags.
-        """
+        # run OPT, set flags and move to step 0
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
+            self.moveAbsRotator(self.__rotators[0],
+                                self.opt_steps[self.__currentStep])
 
-            self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.connect(self.post_step)
-            self.motorTask = threading.Thread(target=self.moveAbsRotator,
-                                              args=(self.__rotators[0],
-                                                    self.opt_steps[self.__currentStep]),
-                                              )
-            self.motorTask.start()
-            # self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
+    def stopOpt(self):
+        """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
+        """
+        self.isOptRunning = False
+        print('disconnecting')
+        self.emitScanSignal(self._commChannel.sigRecordingEnded)
+        self.sigImageReceived.disconnect()
+        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.disconnect()
+        self._logger.info("OPT stopped.")
 
     def post_step(self):
         """Acquire image after motor step is done, stop OPT in case of last step,
         otherwise move motor again.
+
+        Both options using recording and snapping explored, none is without
+        issues as commented below.
         """
-        frame = self.detector.getLatestFrame()
-        if frame.shape[0] != 0:
-            self.allFrames.append(frame)
+        # option using Recording
+        # This has an advantage of startAcquisition only once. However it streams images and saving them,
+        # No idea how ot prevent that.
+        # even the ones I do not care about. Also asking for getLastFrame() for longer acquisition times
+        # might mean that part of the exposure might be still while the motor is moving
+        # This is not an issue, in snapping
+        # Updating OPT stack in napari works
+        # self.frame = self.detector.getLatestFrame()
+        # if self.frame.shape[0] != 0:
+        #     self.allFrames.append(self.frame)
+
+        # option with snapping
+        # In this case, no above issues, just right now, If I am writing the snaps to the disk
+        # no napari update, because sigMemorySnapAvailable is not emitted in this mode.
+        # If I save it to image display, I have updates of the OPT stack and single snaps populated
+        # to napari. And they are not saved one by one.
+        self.sigRequestSnap.emit()
 
         # updating live reconstruction
         if self.live_recon:
-            # self.reconPlot = pg.ImageView()
-            try:
-                self.current_recon.update_recon(
-                    frame[self.reconIdx, :],
-                    self.__currentStep)
-            except AttributeError:
-                try:
-                    print('Creating a new reconstruction object.')
-                    self.current_recon = FBPlive(
-                        frame[self.reconIdx, :],
-                        self.__motor_steps)
-                except IndexError as e:
-                    self._logger.warning('Reconstruction index too high, no live-recon')
-                    print(e)
-                    self.live_recon = False
-                    self.current_recon = None
-
-            try:
-                self.updateLiveRecon(self.current_recon.output)
-                # self._widget.reconPlot.setImage(self.current_recon)
-            except TypeError:
-                self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+            self.updateLiveRecon()
 
         self.__currentStep += 1
-        # TODO: fix display after every step
-        # self.sigImageReceived.emit('OPT stack')
-        self.optStack = np.array(self.allFrames)
-        self.sigImageReceived.emit('OPT stack')
+
+        # TODO: stack images, do not generate fix display after every step
+        # uncomment this if used with Recording
+        # self.optStack = np.array(self.allFrames)
+        # self.sigImageReceived.emit('OPT stack', self.optStack)
+
         if self.__currentStep > len(self.opt_steps)-1:
-            self.__logger.info(f'collected {len(self.optStack)} images')
-            self.stopOpt()
+            self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
-            # self.optStack = np.array(self.allFrames)
-            # self.displayStack('OPT stack')
             self.__logger.debug(f'post_step func, step {self.__currentStep}')
             self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
 
+    def updateLiveRecon(self):
+        try:
+            self.current_recon.update_recon(
+                self.frame[self.reconIdx, :],
+                self.__currentStep)
+        except AttributeError:
+            try:
+                print('Creating a new reconstruction object.')
+                self.current_recon = FBPlive(
+                    self.frame[self.reconIdx, :],
+                    self.__motor_steps)
+            except IndexError as e:
+                self._logger.warning('Reconstruction index too high, no live-recon')
+                print(e)
+                self.live_recon = False
+                self.current_recon = None
+
+        try:
+            self.updateLiveReconPlot(self.current_recon.output)
+        except TypeError:
+            self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+
     def exec_hot_pixels(self):
         """
-        Block camera message before acquisition
-        of the dark-field counts, used for identification
-        of hot pixels. This is separate operation from dark
-        field correction.
+        Block camera message before acquisition of the dark-field counts,
+        used for identification of hot pixels. This is separate operation
+        from dark field correction.
 
         Returns:
             int: sys execution status.
@@ -348,7 +317,7 @@ class ScanControllerOpt(ImConWidgetController):
                 n=averages))
         retval = msg.exec_()
         return retval
-    
+
     def exec_dark_field(self):
         """
         Block camera message before acquisition
@@ -378,7 +347,7 @@ class ScanControllerOpt(ImConWidgetController):
                 n=averages))
         retval = msg.exec_()
         return retval
-    
+
     def exec_flat_field(self):
         averages = self.getAverages()
         msg = QtWidgets.QMessageBox()
@@ -425,6 +394,7 @@ class ScanControllerOpt(ImConWidgetController):
         else:
             raise ValueError
         self.nFrames.disconnect()
+        self.sigImageReceived.disconnect()
 
     def process_hot_pixels(self):
         std_cutoff = self.getStdCutoff()
@@ -438,19 +408,19 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.updateHotPixelMean(np.mean(hot_vals))
         self._widget.updateNonHotPixelMean(np.mean(hot))
 
-        self.sigImageReceived.emit('hot_pixels')
+        self.sigImageReceived.emit('hot_pixels', self.hot_pixels)
 
     def process_dark_field(self):
         self._widget.updateDarkMean(np.mean(self.dark_field))
         self._widget.updateDarkStd(np.std(self.dark_field))
 
-        self.sigImageReceived.emit('dark_field')
+        self.sigImageReceived.emit('dark_field', self.dark_field)
 
     def process_flat_field(self):
         self._widget.updateFlatMean(np.mean(self.flat_field))
         self._widget.updateFlatStd(np.std(self.flat_field))
 
-        self.sigImageReceived.emit('flat_field')
+        self.sigImageReceived.emit('flat_field', self.flat_field)
 
     nFrames = Signal()
 
@@ -476,20 +446,15 @@ class ScanControllerOpt(ImConWidgetController):
     def update_live_recon(self):
         self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
 
-    def update_save_opt(self):
-        self.save_opt = self._widget.scanPar['SaveOptButton'].isChecked()
+    # def update_save_opt(self):
+    #     self.save_opt = self._widget.scanPar['SaveOptButton'].isChecked()
 
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
         """ Move a specific rotator to a certain position. """
-        self.__logger.debug(f'Scancontroller, dist to move: {dist}')
+        self.__logger.debug(f'dist to move: {dist}')
         self._master.rotatorsManager[name].move_abs_steps(dist)
-        self.__logger.debug('Scancontroller, after move.')
 
-
-class MovementController:
-    def __init__(self, rotator):
-        self.rotator = rotator
 
 class FBPlive():
     def __init__(self, line, steps: int) -> None:
@@ -590,6 +555,7 @@ class FBPlive():
         pad_before = new_center - old_center
         pad_width = ((pad_before, pad - pad_before), (0, 0))
         return np.pad(sinogram, pad_width, mode='constant', constant_values=0)
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

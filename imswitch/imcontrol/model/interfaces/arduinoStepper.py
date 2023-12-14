@@ -160,10 +160,8 @@ class ArduinoStepper(QObject):
         print(f'Motor {data[1]} relative  motion completed at: {date}.')
         self.turning = False
         self.move_done.emit(self.turning)
-        try:
-            self.opt_step_done.emit()
-        except:
-            self.__logger.debug('callback exception. Cannot emit opt_step_done')
+        self.opt_step_done.emit()
+
 
     def emit_trigger_update_position(self):
         self.update_position.emit()

@@ -137,7 +137,7 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['LiveReconIdxEdit'].setToolTip(
             'Line px of the camera to reconstruct live via FBP',
             )
-        self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLineEdit('Recon Idx')
+        self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLabel('Recon Idx')
 
         self.liveReconPlot = pg.ImageView()
 

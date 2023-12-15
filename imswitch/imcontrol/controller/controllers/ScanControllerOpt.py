@@ -7,6 +7,7 @@ from scipy.interpolate import interp1d
 from functools import partial
 import numpy as np
 import pdb
+import debugpy
 import threading
 
 from imswitch.imcommon.model import dirtools, initLogger
@@ -146,10 +147,12 @@ class ScanControllerOpt(ImConWidgetController):
     #     self._widget.enableInterface(enableBool)
 
     def updateRotator(self):
-        idx = self._widget.getRotatorIdx()
-        self.__motor_steps = self._master.rotatorsManager[self.__rotators[idx]]._motor._steps_per_turn
+        self.motorIdx = self._widget.getRotatorIdx()
+        self.__motor_steps = self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor._steps_per_turn
         self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.__motor_steps:d} steps/rev')
-        self.__logger.debug(f'Your rotator {self.__rotators[idx]} with {self.__motor_steps} steps/rev.')
+        self.__logger.debug(
+            f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
+            )
 
     def getRotationSteps(self):
         """ Get the total rotation steps. """
@@ -175,7 +178,11 @@ class ScanControllerOpt(ImConWidgetController):
 
     def startOpt(self):
         """ Reset and initiate Opt scan. """
+        self.allFrames = []
         # this is workaround for not showing the individual snaps.
+        # I think It cannot be reconnected from this controller, or can it?
+        # without reconnecting in stopOpt, snap from the recordingController will
+        # snap but not show the image in the viewer.
         try:
             self._commChannel.sigMemorySnapAvailable.disconnect()
         except:
@@ -183,43 +190,50 @@ class ScanControllerOpt(ImConWidgetController):
         self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
         self.sigImageReceived.connect(self.displayImage)
 
-        if self._widget.scanPar['LiveReconButton'].isChecked():
-            self.live_recon = True
-            self.reconIdx = self.getLiveReconIdx()
-
         # arduino stepper signal after move is finished.
         # TODO: confusing because I have signal move_done, which is used to run post_move on
         # the ArduinoRotatorManager
         # but I cannot connect second slot to it I think. In the end, for normal motor stepping
         # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
         # post_step here.
-        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.connect(self.post_step)
+        self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(self.post_step)
         self.__rot_steps = self.getRotationSteps()  # motor step per revolution
 
+        # Checking for divisability of motor steps and OPT steps.
+        if self.__motor_steps % self.__rot_steps != 0:
+            retval = self.raiseStepMess()
+            # hex value associated with Cancel button of QMessageBox
+            if int(retval) == int(0x00400000):
+                self.stopOpt()
+                return
+
         # equidistant steps for the OPT scan in absolute values.
-        # TODO: This needs checking for divisability aetc.
-        # There should be pop up message if steps are not integers.
         self.opt_steps = np.linspace(0, self.__motor_steps, self.__rot_steps,
-                                     endpoint=False)
-        self.__logger.debug(f'OPT steps: {self.opt_steps}')
-        self.allFrames = []
+                                     endpoint=False).astype(np.int_)
+
+        if self._widget.scanPar['LiveReconButton'].isChecked():
+            self.live_recon = True
+            self.reconIdx = self.getLiveReconIdx()
 
         # run OPT, set flags and move to step 0
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
-            self.moveAbsRotator(self.__rotators[0],
+            self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
     def stopOpt(self):
-        """ Stop OPT acquisition and enable buttons. Method is triggered by the sigAcquisitionStopped signal.
+        """ Stop OPT acquisition and enable buttons. Method is triggered
+        by the sigScanEnded signal.
         """
         self.isOptRunning = False
         print('disconnecting')
         self.emitScanSignal(self._commChannel.sigRecordingEnded)
         self.sigImageReceived.disconnect()
-        self._master.rotatorsManager[self.__rotators[0]]._motor.opt_step_done.disconnect()
+        self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._logger.info("OPT stopped.")
+        # debugpy.breakpoint()
+        # print('debugger stops here')
 
     def post_step(self):
         """Acquire image after motor step is done, stop OPT in case of last step,
@@ -261,7 +275,7 @@ class ScanControllerOpt(ImConWidgetController):
             self.emitScanSignal(self._commChannel.sigScanEnded)
         else:
             self.__logger.debug(f'post_step func, step {self.__currentStep}')
-            self.moveAbsRotator(self.__rotators[0], self.opt_steps[self.__currentStep])
+            self.moveAbsRotator(self.__rotators[self.motorIdx], self.opt_steps[self.__currentStep])
 
     def updateLiveRecon(self):
         try:
@@ -275,7 +289,7 @@ class ScanControllerOpt(ImConWidgetController):
                     self.frame[self.reconIdx, :],
                     self.__motor_steps)
             except IndexError as e:
-                self._logger.warning('Reconstruction index too high, no live-recon')
+                self._logger.warning('Index error, no live-recon')
                 print(e)
                 self.live_recon = False
                 self.current_recon = None
@@ -284,6 +298,31 @@ class ScanControllerOpt(ImConWidgetController):
             self.updateLiveReconPlot(self.current_recon.output)
         except TypeError:
             self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+
+    ###################
+    # Message windows #
+    ###################
+    def raiseStepMess(self):
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Warning)
+        msg.setText("Motor steps not integer values.")
+        text = f"Steps per/rev should be divisable by number of OPT steps. \
+            You can continue by casting the steps on integers and risk \
+            imprecise measured angles. Or cancel scan."
+        msg.setInformativeText(" ".join(text.split()))
+        msg.setStandardButtons(
+            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        btn_cancel = msg.button(QtWidgets.QMessageBox.Cancel)
+        btn_cancel.setText('Cnacel scan')
+        btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
+        btn_measure.setText('Cast on int and measure')
+        # msg.buttonClicked.connect(
+        #     partial(
+        #         self.acquire_correction,
+        #         corr_type='hot_pixels',
+        #         n=averages))
+        retval = msg.exec_()
+        return retval
 
     def exec_hot_pixels(self):
         """

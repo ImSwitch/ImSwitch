@@ -581,17 +581,13 @@ class ImageLabel(QLabel):
         self.aspectRatio = pixmap.width() / pixmap.height()
         self.updatePixmap()
 
-    def resizeEvent(self, event):
-        self.updatePixmap()
-
     def updatePixmap(self):
         if self.originalPixmap:
-            maxWidth = 500
-            size = self.size()
-            width = min(size.height() * self.aspectRatio, maxWidth)
-            height = width / self.aspectRatio
+            fixedWidth = 500
+            height = fixedWidth / self.aspectRatio
 
-            scaledPixmap = self.originalPixmap.scaled(width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaledPixmap = self.originalPixmap.scaled(fixedWidth, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.setAlignment(Qt.AlignCenter)  # Align the pixmap to the center of the label
             self.setPixmap(scaledPixmap)
 
     def mouseDoubleClickEvent(self, event):

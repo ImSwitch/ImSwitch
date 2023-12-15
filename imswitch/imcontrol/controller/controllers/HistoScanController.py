@@ -172,12 +172,12 @@ class HistoScanController(LiveUpdatedController):
         Callback: when we double click on the webcam image, we want to move the stage to that position
         '''
         # if we double click on the webcam view, we want to move to that position on the plate
-        mPositionClicked = self._widget.imageLabel.doubleClickPos.x(), self._widget.imageLabel.doubleClickPos.y()
+        mPositionClicked = self._widget.imageLabel.doubleClickPos.y(), self._widget.imageLabel.doubleClickPos.x()
         # convert to physical coordinates
         #mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
         mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
-        mRelativePosToMoveX = (mPositionClicked[0]-mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
-        mRelativePosToMoveY = (mPositionClicked[1]-mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
+        mRelativePosToMoveX = -(-mPositionClicked[0]+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        mRelativePosToMoveY = (-mPositionClicked[1]+mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
         currentPos = self.stages.getPosition()
         mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX
         mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY
@@ -188,7 +188,7 @@ class HistoScanController(LiveUpdatedController):
         Callback: when we drag the mouse on the webcam image, we want to move the stage to that position
         '''
         print(f"Dragged from {start} to {end}")
-        if start is None:
+        if start is None or self._widget.imageLabel.currentRect is None:
             return
         # use the coordinates for the stage scan 
         # 1. retreive the coordinates on the canvas

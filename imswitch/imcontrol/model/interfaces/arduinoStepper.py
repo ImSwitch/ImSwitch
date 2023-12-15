@@ -1,7 +1,6 @@
 import numpy as np
 from telemetrix import telemetrix
-from ctypes import *
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from imswitch.imcommon.model import initLogger
 import time
@@ -13,8 +12,8 @@ class ArduinoStepper(QObject):
     """
     start_move = pyqtSignal()
     move_done = pyqtSignal(bool)
-    opt_step_done = pyqtSignal()
-    update_position  = pyqtSignal()
+    opt_step_done = pyqtSignal(str)
+    update_position = pyqtSignal()
 
     def __init__(self, device_id, steps_per_turn):
         super(QObject, self).__init__()
@@ -160,7 +159,7 @@ class ArduinoStepper(QObject):
         print(f'Motor {data[1]} relative  motion completed at: {date}.')
         self.turning = False
         self.move_done.emit(self.turning)
-        self.opt_step_done.emit()
+        self.opt_step_done.emit('bla')
 
     def emit_trigger_update_position(self):
         self.update_position.emit()
@@ -204,23 +203,26 @@ class ArduinoStepper(QObject):
         if position >= 0:
             return position * 360 / self._steps_per_turn
         else:
-            return 360 + position * 360 / self._steps_per_turn  # second term is negative so + is correct (going counter clockwise)
+            # second term is negative so + is correct (going counter clockwise)
+            return 360 + position * 360 / self._steps_per_turn
 
 
 class MockBoard():
     def stepper_get_current_position(self, *args, **kwargs):
+        print('calling board')
         return
 
 
 class MockArduinoStepper(QObject):
 
-    tart_move = pyqtSignal()
+    start_move = pyqtSignal()
     move_done = pyqtSignal(bool)
-    opt_step_done = pyqtSignal()
-    update_position  = pyqtSignal()
+    opt_step_done = pyqtSignal(str)
+    update_position = pyqtSignal()
 
     def __init__(self, device_id, steps_per_turn):
         super(QObject, self).__init__()
+        self.__logger = initLogger(self)
         self._device_id = device_id
         self._steps_per_turn = steps_per_turn
         self.current_pos = (0, 0)
@@ -240,6 +242,7 @@ class MockArduinoStepper(QObject):
     def get_pos(self):
         return self.current_pos
 
+    @pyqtSlot()
     def moverel_angle(self):
         print('waiting moverel_angle')
         steps = self.deg2steps(self.angle)
@@ -247,6 +250,7 @@ class MockArduinoStepper(QObject):
         print('from moverel_angle', self.angle, steps)
         self.moverel_steps(steps)
 
+    @pyqtSlot()
     def moverel_steps(self):
         print('waiting moverel_steps')
         self.turning = True
@@ -254,7 +258,8 @@ class MockArduinoStepper(QObject):
         self.current_pos = (100, 200)
         self.turning = False
         self.move_done.emit(self.turning)
-        self.opt_step_done.emit()
+        time.sleep(0.2)
+        self.opt_step_done.emit('opt_step_done emit')
 
     def moveabs_angle(self):
         print('waiting')
@@ -290,6 +295,3 @@ class MockArduinoStepper(QObject):
         else:
             d = np.ceil(d)
         return d
-
-    start_move = pyqtSignal()
-    move_done = pyqtSignal(bool)

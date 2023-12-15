@@ -7,7 +7,6 @@ import pdb
 class ArduinoRotatorManager(RotatorManager):
     """ Arduino stepper motor manager.
     """
-
     def __init__(self, rotatorInfo, name, *args, **kwargs):
         super().__init__(rotatorInfo, name, *args, **kwargs)
         self.__logger = initLogger(self)
@@ -42,7 +41,9 @@ class ArduinoRotatorManager(RotatorManager):
         self._motor.start_move.connect(self._motor.moverel_steps)
         self._motor.move_done.connect(self.post_move)
         self._motor.steps = steps
+        print('00')
         self._motor.start_move.emit()
+        print('01')
 
     def post_move(self):
         """Every step's signal move_done ios connected to this

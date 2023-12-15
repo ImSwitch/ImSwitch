@@ -106,10 +106,11 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._logger.debug('handling snap')
         self.frame = image
-        self.allFrames.append(image)
+        if self.isOptRunning:
+            self.allFrames.append(image)
 
-        self.optStack = np.array(self.allFrames)
-        self.sigImageReceived.emit('OPT stack', self.optStack)
+            self.optStack = np.array(self.allFrames)
+            self.sigImageReceived.emit('OPT stack', self.optStack)
 
     # DP: redundant, I do this in displayImage
     # def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
@@ -235,13 +236,14 @@ class ScanControllerOpt(ImConWidgetController):
         # debugpy.breakpoint()
         # print('debugger stops here')
 
-    def post_step(self):
+    def post_step(self, s):
         """Acquire image after motor step is done, stop OPT in case of last step,
         otherwise move motor again.
 
         Both options using recording and snapping explored, none is without
         issues as commented below.
         """
+        print(f'test string: {s}')
         # option using Recording
         # This has an advantage of startAcquisition only once. However it streams images and saving them,
         # No idea how ot prevent that.
@@ -306,7 +308,7 @@ class ScanControllerOpt(ImConWidgetController):
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Warning)
         msg.setText("Motor steps not integer values.")
-        text = f"Steps per/rev should be divisable by number of OPT steps. \
+        text = "Steps per/rev should be divisable by number of OPT steps. \
             You can continue by casting the steps on integers and risk \
             imprecise measured angles. Or cancel scan."
         msg.setInformativeText(" ".join(text.split()))
@@ -316,11 +318,6 @@ class ScanControllerOpt(ImConWidgetController):
         btn_cancel.setText('Cnacel scan')
         btn_measure = msg.button(QtWidgets.QMessageBox.Ok)
         btn_measure.setText('Cast on int and measure')
-        # msg.buttonClicked.connect(
-        #     partial(
-        #         self.acquire_correction,
-        #         corr_type='hot_pixels',
-        #         n=averages))
         retval = msg.exec_()
         return retval
 

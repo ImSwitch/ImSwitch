@@ -2,7 +2,6 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
-import pyqtgraph as pg
 
 # import matplotlib.pyplot as plt
 from functools import partial
@@ -28,12 +27,11 @@ class ScanControllerOpt(ImConWidgetController):
 
         # Set up rotator in widget
         self._widget.initControls()
-        self.active = True  # LiveupdateController attribute, flag for self.update
+        # self.active = True  # LiveupdateController attribute, flag for self.update
 
         # Local flags
         self.live_recon = False
-        # self.save_opt = False
-        self.isOptRunning = False
+        self.isOptRunning = False  # currently not used
 
         # select detectors
         # TODO: it would be useful to create a UI section, a combo box for example,
@@ -42,17 +40,15 @@ class ScanControllerOpt(ImConWidgetController):
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+
         # get rotators
-        # TODO: as for detectors, it would be useful to create a UI combo box to select the desired rotator
-        # agree, but postponed for now
         self.getRotators()
-        self.__motor_steps = self._master.rotatorsManager[self.__rotators[0]]._motor._steps_per_turn
-        self.__logger.debug(f'Your rotators {self.__rotators} with {self.__motor_steps} steps per revolution.')
+        # populated widget comboBox, this triggers the updateRotator too
+        for rotator in self.__rotators:
+            self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Connect widget signals
-        # TODO: if using the communication channel signal, the start button is redundant
-        # I leave it here for now
-        # self._widget.scanPar['StartButton'].clicked.connect(self.startOpt)
         self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
@@ -149,6 +145,12 @@ class ScanControllerOpt(ImConWidgetController):
     # def enableWidgetInterface(self, enableBool):
     #     self._widget.enableInterface(enableBool)
 
+    def updateRotator(self):
+        idx = self._widget.getRotatorIdx()
+        self.__motor_steps = self._master.rotatorsManager[self.__rotators[idx]]._motor._steps_per_turn
+        self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.__motor_steps:d} steps/rev')
+        self.__logger.debug(f'Your rotator {self.__rotators[idx]} with {self.__motor_steps} steps/rev.')
+
     def getRotationSteps(self):
         """ Get the total rotation steps. """
         return self._widget.getRotationSteps()
@@ -160,7 +162,7 @@ class ScanControllerOpt(ImConWidgetController):
     def getAverages(self):
         """ Get number of averages for camera correction. """
         return self._widget.getAverages()
-    
+
     def getLiveReconIdx(self):
         return self._widget.getLiveReconIdx()
 
@@ -442,9 +444,6 @@ class ScanControllerOpt(ImConWidgetController):
 
     def update_live_recon(self):
         self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
-
-    # def update_save_opt(self):
-    #     self.save_opt = self._widget.scanPar['SaveOptButton'].isChecked()
 
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):

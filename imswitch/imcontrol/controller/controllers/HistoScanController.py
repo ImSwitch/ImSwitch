@@ -198,24 +198,31 @@ class HistoScanController(LiveUpdatedController):
         maxPosY = np.max([start.y(), end.y()])
         
         # 2. compute scan positions
-        # get number of pixels in X/Y
+        currentPos = self.stages.getPosition()
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
+        minPosXReal = currentPos["X"]-(-minPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        maxPosXReal = currentPos["X"]-(-maxPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        minPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-maxPosY)*self.pixelSizeWebcam
+        maxPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-minPosY)*self.pixelSizeWebcam
+
+        # 3. get microscope camera parameters
         mFrame = self.microscopeDetector.getLatestFrame()
+        pixelSizeMicroscopeDetector = self.microscopeDetector.pixelSizeUm[-1]
         NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
         # starting the snake scan
         # Calculate the size of the area each image covers
-        pixelsize = self.microscopeDetector.pixelSizeUm[-1]
-        img_width = NpixX * pixelsize
-        img_height = NpixY * pixelsize
+        img_width = NpixX * pixelSizeMicroscopeDetector
+        img_height = NpixY * pixelSizeMicroscopeDetector
         
         # compute snake scan coordinates
         mOverlap = 0.75
-        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, mOverlap)
-        nTilesX = int((maxPosX-minPosX)/(img_width*mOverlap))
-        nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosXReal, minPosYReal, maxPosXReal, maxPosYReal, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosXReal-minPosXReal)/(img_width*mOverlap))
+        nTilesY = int((maxPosYReal-minPosYReal)/(img_height*mOverlap))
         self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
                 
-        return self._widget.imageLabel.currentRect.getCoords()
+        return self.mCamScanCoordinates
 
     
     def getCameraScanCoordinates(self):

@@ -139,10 +139,6 @@ class OpenCVCamManager(DetectorManager):
         self.__logger.debug('Safely disconnecting the camera...')
         self._camera.close()
 
-    @property
-    def pixelSizeUm(self):
-        return [1, 1, 1]
-
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
             # self.__logger.debug(

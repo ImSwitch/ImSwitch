@@ -134,7 +134,7 @@ class HistoScanController(LiveUpdatedController):
         if index == 2:
             # add layer to napari
             self._widget.initShapeLayerNapari()
-            
+            self.microscopeDetector.startAcquisition()
             # run image scraper if not started already 
             if not self.isWebcamRunning:
                 self.timer = QTimer(self)
@@ -147,6 +147,8 @@ class HistoScanController(LiveUpdatedController):
         Update the webcam image in the dedicated widget periodically to get an overview
         '''
         frame = self.webCamDetector.getLatestFrame()
+        if frame is None: 
+            return
         if len(frame.shape)==2:
             frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
         if frame is not None:
@@ -172,13 +174,14 @@ class HistoScanController(LiveUpdatedController):
         # if we double click on the webcam view, we want to move to that position on the plate
         mPositionClicked = self._widget.imageLabel.doubleClickPos.x(), self._widget.imageLabel.doubleClickPos.y()
         # convert to physical coordinates
-        mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
+        #mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
         mRelativePosToMoveX = (mPositionClicked[0]-mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
         mRelativePosToMoveY = (mPositionClicked[1]-mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
         currentPos = self.stages.getPosition()
         mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX
         mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY
-        self.goToPosition((mAbsolutePosToMoveX,mAbsolutePosToMoveY))
+        self.goToPosition(mAbsolutePosToMoveX,mAbsolutePosToMoveY)
         
     def onDragPositionWebcam(self, start, end):
         '''

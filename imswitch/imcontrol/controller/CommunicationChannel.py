@@ -46,6 +46,8 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 
+    sigSetSnapVisualization = Signal(bool)
+
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool
     )  # (name, image, filePath, savedToDisk)

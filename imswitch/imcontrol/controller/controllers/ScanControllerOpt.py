@@ -94,6 +94,14 @@ class ScanControllerOpt(ImConWidgetController):
     #     self._logger.info('Reached displayRecording')
     #     print(name, file, filePath, savedToDisk)
     #     return
+    
+    # JA: method to add your metadata to recordings
+    def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
+        self.settingAttr = True
+        try:
+            self._commChannel.sharedAttrs[(_attrCategory, rotatorName, meta1, meta2, attr)] = value
+        finally:
+            self.settingAttr = False
 
     def handleSnap(self, name, image, filePath, savedToDisk):
         """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
@@ -188,6 +196,7 @@ class ScanControllerOpt(ImConWidgetController):
             self._commChannel.sigMemorySnapAvailable.disconnect()
         except:
             pass
+        self._commChannel.sigSetSnapVisualization.emit(False)
         self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
         self.sigImageReceived.connect(self.displayImage)
 
@@ -233,6 +242,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.disconnect()
         self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._logger.info("OPT stopped.")
+        self._commChannel.sigSetSnapVisualization.emit(True)
         # debugpy.breakpoint()
         # print('debugger stops here')
 

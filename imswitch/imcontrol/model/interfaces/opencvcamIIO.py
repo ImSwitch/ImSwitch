@@ -5,7 +5,7 @@ import time
 import cv2, queue, threading
 from imswitch.imcommon.model import initLogger
 from threading import Thread
-
+import imageio as iio
 import collections
 
 class CameraOpenCV:
@@ -150,29 +150,25 @@ class CameraOpenCV:
 
     def openCamera(self, cameraindex, width, height, isRGB):
         # open camera
-        from sys import platform
-        if self.camera is not None:
-            self.camera.release()
-        if platform == "linux" or platform == "linux2":
-            self.camera = cv2.VideoCapture(cameraindex)
-        else:
-            self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
+        # pip install imageio-ffmpeg
+        # pip install imageio[ffmpeg]
+        self.camera = iio.get_reader("<video"+str(cameraindex)+">")
         self.__logger.debug("Camera is open")
         #self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
         #self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
         # let the camera warm up
-        for i in range(5):
-            _, img = self.camera.read()
-        width = self.camera.get(cv2.CAP_PROP_FRAME_WIDTH)
-        height = self.camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        print(width, height)
+        meta = self.camera.get_meta_data()
+        self.frameperiod = 1/meta["fps"]
+        self.frame = self.camera.get_next_data()
+        for i in range(10):
+            self.frame =  self.camera.get_next_data()
+            time.sleep(self.frameperiod)
+        self.SensorWidth = self.frame.shape[1]
+        self.SensorHeight = self.frame.shape[0]
         self.__logger.debug("Camera is warmed up")
 
-        self.SensorHeight = img.shape[0]
-        self.SensorWidth = img.shape[1]
         self.shape = (self.SensorWidth,self.SensorHeight)
         self.camera_is_open = True
-        
 
         # starting thread
         self.frameGrabberThread = Thread(target = self.setFrameBuffer, args=(isRGB,))
@@ -183,10 +179,11 @@ class CameraOpenCV:
     def setFrameBuffer(self, isRGB=True):
         while(self.camera_is_open):
             try:
-                self.frame = self.camera.read()[1]
+                frame =  self.camera.get_next_data() #self.camera.get_next_data()
                 if not isRGB and len(self.frame.shape)>2:
                     self.frame = np.uint8(np.mean(self.frame, -1))
-                self.frame = np.flip(self.frame)
+                    time.sleep(self.frameperiod)
+                self.frame = np.flip(np.array(frame))
                 self.frame_buffer.append(self.frame)
             except Exception as e:
                 self.camera_is_open = False

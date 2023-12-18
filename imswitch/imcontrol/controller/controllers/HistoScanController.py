@@ -146,14 +146,15 @@ class HistoScanController(LiveUpdatedController):
         '''
         Update the webcam image in the dedicated widget periodically to get an overview
         '''
-        frame = self.webCamDetector.getLatestFrame()
+        frame = self.webCamDetector.getLatestFrame() # X,Y,C, uint8 numpy array
         if frame is None: 
             return
         if len(frame.shape)==2:
             frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
         if frame is not None:
-            image = QImage(frame, frame.shape[1], frame.shape[0], 
-                           frame.strides[0], QImage.Format_BGR888)
+            height, width, channel = frame.shape
+            bytesPerLine = 3 * width
+            image = QImage(np.uint8(frame.copy()), width, height, bytesPerLine, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(image)
             self._widget.imageLabel.setOriginalPixmap(pixmap)
                         

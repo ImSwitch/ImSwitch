@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
 from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QPoint, QRect
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen, QColor
-
+import imswitch
 
 from PyQt5 import QtGui, QtWidgets
 import PyQt5
@@ -429,6 +429,8 @@ class HistoScanWidget(NapariHybridWidget):
         self.HistoScanLabelInfo.setText(information)
 
     def updateBoxPosition(self, posX, posY):
+        if imswitch.IS_HEADLESS:
+            return
         self.ScanSelectViewWidget.drawRectCurrentPoint(posX, posY)
 
 

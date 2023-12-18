@@ -11,16 +11,20 @@ from ctypes import *
 import collections
 
 from sys import platform
-if platform == "linux" or platform == "linux2":
-    # linux
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-elif platform == "darwin":
-    # OS X
-    from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
-    pass
-elif platform == "win32":
-    import msvcrt
-    from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+try:
+    if platform == "linux" or platform == "linux2":
+        # linux
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+    elif platform == "darwin":
+        # OS X
+        from imswitch.imcontrol.model.interfaces.hikrobotMac.MvCameraControl_class import *
+        pass
+    elif platform == "win32":
+        import msvcrt
+        from imswitch.imcontrol.model.interfaces.hikrobotWin.MvCameraControl_class import *
+except Exception as e:
+    print(e)
+    
     
 
 

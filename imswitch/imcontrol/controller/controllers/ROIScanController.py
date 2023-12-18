@@ -10,6 +10,7 @@ import scipy.ndimage as ndi
 import scipy.signal as signal
 import skimage.transform as transform
 import tifffile as tif
+import imswitch
 
 from imswitch.imcommon.framework import Signal, Thread, Worker, Mutex, Timer
 from imswitch.imcommon.model import dirtools, initLogger, APIExport
@@ -32,17 +33,18 @@ class ROIScanController(ImConWidgetController):
 
 
         # connect GUI
-        self._widget.upButton.clicked.connect(lambda: self.move_stage(0, 1, 0))
-        self._widget.downButton.clicked.connect(lambda: self.move_stage(0, -1, 0))
-        self._widget.leftButton.clicked.connect(lambda: self.move_stage(-1, 0, 0))
-        self._widget.rightButton.clicked.connect(lambda: self.move_stage(1, 0, 0))
-        self._widget.plusButton.clicked.connect(lambda: self.move_stage(0, 0, 1))
-        self._widget.minusButton.clicked.connect(lambda: self.move_stage(0, 0, -1))
-        self._widget.saveButton.clicked.connect(self.save_coordinates)
-        self._widget.deleteButton.clicked.connect(self.delete_selected_coordinates)
-        self._widget.gotoButton.clicked.connect(self.go_to_selected_coordinates)
-        self._widget.startButton.clicked.connect(self.start_experiment)
-        self._widget.stopButton.clicked.connect(self.stop_experiment)
+        if not imswitch.IS_HEADLESS:
+            self._widget.upButton.clicked.connect(lambda: self.move_stage(0, 1, 0))
+            self._widget.downButton.clicked.connect(lambda: self.move_stage(0, -1, 0))
+            self._widget.leftButton.clicked.connect(lambda: self.move_stage(-1, 0, 0))
+            self._widget.rightButton.clicked.connect(lambda: self.move_stage(1, 0, 0))
+            self._widget.plusButton.clicked.connect(lambda: self.move_stage(0, 0, 1))
+            self._widget.minusButton.clicked.connect(lambda: self.move_stage(0, 0, -1))
+            self._widget.saveButton.clicked.connect(self.save_coordinates)
+            self._widget.deleteButton.clicked.connect(self.delete_selected_coordinates)
+            self._widget.gotoButton.clicked.connect(self.go_to_selected_coordinates)
+            self._widget.startButton.clicked.connect(self.start_experiment)
+            self._widget.stopButton.clicked.connect(self.stop_experiment)
 
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()

@@ -185,6 +185,23 @@ cd installLXDE
 sudo reboot
 ```
 
+Disable GUI on bootup 
+
+```bash
+sudo systemctl set-default multi-user.target
+```
+
+To enable GUI again issue the command:
+
+```bash
+sudo systemctl set-default graphical.target
+```
+
+to start Gui session on a system without a current GUI just execute:
+```bash
+sudo systemctl start gdm3.service
+```
+
 
 Add environment
 

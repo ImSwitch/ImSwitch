@@ -49,12 +49,14 @@ class CameraOpenCV:
             self.openCamera(self.cameraindex, self.SensorWidth, self.SensorHeight, self.isRGB)
 
     def stop_live(self):
-        self.camera.release()
-        self.camera_is_open = False
+        pass
+        #self.camera.release()
+        #self.camera_is_open = False
 
     def suspend_live(self):
-        self.camera.release()
-        self.camera_is_open = False
+        pass
+        #self.camera.release()
+        #self.camera_is_open = False
 
     def prepare_live(self):
         pass

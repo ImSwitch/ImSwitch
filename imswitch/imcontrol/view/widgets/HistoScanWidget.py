@@ -188,7 +188,12 @@ class HistoScanWidget(NapariHybridWidget):
 
         # Webcam view 
         self.imageLabel = ImageLabel()
-        
+        # Create a container widget for the ImageLabel
+        imageLabelContainer = QtWidgets.QWidget()
+        imageLabelLayout = QtWidgets.QHBoxLayout(imageLabelContainer)
+        imageLabelLayout.addWidget(self.imageLabel)
+        imageLabelLayout.setAlignment(QtCore.Qt.AlignCenter)  # Align the imageLabel to the center
+
         thirdTabLayout.addWidget(self.getCameraScanCoordinatesButton, 0, 0)
         thirdTabLayout.addWidget(self.resetScanCoordinatesButton, 0, 1)
         thirdTabLayout.addWidget(self.nTilesXLabel, 1, 0)
@@ -199,8 +204,13 @@ class HistoScanWidget(NapariHybridWidget):
         thirdTabLayout.addWidget(self.posYmaxLabel, 3, 1)
         thirdTabLayout.addWidget(self.startButton3, 4, 0)
         thirdTabLayout.addWidget(self.stopButton3, 4, 1)
-        thirdTabLayout.addWidget(self.imageLabel, 5, 0, 4, 2)
+        thirdTabLayout.addWidget(imageLabelContainer, 5, 0, 4, 2)
 
+        # Optional: Add stretch to rows and columns to ensure centering
+        thirdTabLayout.setRowStretch(4, 1)  # Add stretch above the image container
+        thirdTabLayout.setRowStretch(9, 1)  # Add stretch below the image container
+        thirdTabLayout.setColumnStretch(0, 1)  # Add stretch to the sides of the image container
+        thirdTabLayout.setColumnStretch(1, 1)
         # Add the third tab
         self.tabWidget.addTab(thirdTabWidget, "Camera-based Scan")
         
@@ -570,7 +580,17 @@ class ImageLabel(QLabel):
 
     def setOriginalPixmap(self, pixmap):
         self.originalPixmap = pixmap
-        self.setPixmap(pixmap)
+        self.aspectRatio = pixmap.width() / pixmap.height()
+        self.updatePixmap()
+
+    def updatePixmap(self):
+        if self.originalPixmap:
+            fixedWidth = 500
+            height = fixedWidth / self.aspectRatio
+
+            scaledPixmap = self.originalPixmap.scaled(fixedWidth, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.setAlignment(Qt.AlignCenter)  # Align the pixmap to the center of the label
+            self.setPixmap(scaledPixmap)
 
     def mouseDoubleClickEvent(self, event):
         self.currentRect = None
@@ -603,9 +623,11 @@ class ImageLabel(QLabel):
         painter.drawRect(self.currentRect)
 
 
-
-
-
+    def getCurrentImageSize(self):
+        currentPixmap = self.pixmap()
+        if currentPixmap:
+            return currentPixmap.size()
+        return None
 
 
 # Copyright (C) 2020-2023 ImSwitch developers

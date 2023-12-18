@@ -134,7 +134,7 @@ class HistoScanController(LiveUpdatedController):
         if index == 2:
             # add layer to napari
             self._widget.initShapeLayerNapari()
-            
+            self.microscopeDetector.startAcquisition()
             # run image scraper if not started already 
             if not self.isWebcamRunning:
                 self.timer = QTimer(self)
@@ -147,6 +147,8 @@ class HistoScanController(LiveUpdatedController):
         Update the webcam image in the dedicated widget periodically to get an overview
         '''
         frame = self.webCamDetector.getLatestFrame()
+        if frame is None: 
+            return
         if len(frame.shape)==2:
             frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
         if frame is not None:
@@ -170,22 +172,23 @@ class HistoScanController(LiveUpdatedController):
         Callback: when we double click on the webcam image, we want to move the stage to that position
         '''
         # if we double click on the webcam view, we want to move to that position on the plate
-        mPositionClicked = self._widget.imageLabel.doubleClickPos.x(), self._widget.imageLabel.doubleClickPos.y()
+        mPositionClicked = self._widget.imageLabel.doubleClickPos.y(), self._widget.imageLabel.doubleClickPos.x()
         # convert to physical coordinates
-        mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
-        mRelativePosToMoveX = (mPositionClicked[0]-mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
-        mRelativePosToMoveY = (mPositionClicked[1]-mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
+        #mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
+        mRelativePosToMoveX = -(-mPositionClicked[0]+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        mRelativePosToMoveY = (-mPositionClicked[1]+mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
         currentPos = self.stages.getPosition()
         mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX
         mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY
-        self.goToPosition((mAbsolutePosToMoveX,mAbsolutePosToMoveY))
+        self.goToPosition(mAbsolutePosToMoveX,mAbsolutePosToMoveY)
         
     def onDragPositionWebcam(self, start, end):
         '''
         Callback: when we drag the mouse on the webcam image, we want to move the stage to that position
         '''
         print(f"Dragged from {start} to {end}")
-        if start is None:
+        if start is None or self._widget.imageLabel.currentRect is None:
             return
         # use the coordinates for the stage scan 
         # 1. retreive the coordinates on the canvas
@@ -195,24 +198,31 @@ class HistoScanController(LiveUpdatedController):
         maxPosY = np.max([start.y(), end.y()])
         
         # 2. compute scan positions
-        # get number of pixels in X/Y
+        currentPos = self.stages.getPosition()
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
+        minPosXReal = currentPos["X"]-(-minPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        maxPosXReal = currentPos["X"]-(-maxPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        minPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-maxPosY)*self.pixelSizeWebcam
+        maxPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-minPosY)*self.pixelSizeWebcam
+
+        # 3. get microscope camera parameters
         mFrame = self.microscopeDetector.getLatestFrame()
+        pixelSizeMicroscopeDetector = self.microscopeDetector.pixelSizeUm[-1]
         NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
         # starting the snake scan
         # Calculate the size of the area each image covers
-        pixelsize = self.microscopeDetector.pixelSizeUm[-1]
-        img_width = NpixX * pixelsize
-        img_height = NpixY * pixelsize
+        img_width = NpixX * pixelSizeMicroscopeDetector
+        img_height = NpixY * pixelSizeMicroscopeDetector
         
         # compute snake scan coordinates
         mOverlap = 0.75
-        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, mOverlap)
-        nTilesX = int((maxPosX-minPosX)/(img_width*mOverlap))
-        nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosXReal, minPosYReal, maxPosXReal, maxPosYReal, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosXReal-minPosXReal)/(img_width*mOverlap))
+        nTilesY = int((maxPosYReal-minPosYReal)/(img_height*mOverlap))
         self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
                 
-        return self._widget.imageLabel.currentRect.getCoords()
+        return self.mCamScanCoordinates
 
     
     def getCameraScanCoordinates(self):

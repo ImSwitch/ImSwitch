@@ -61,7 +61,7 @@ class ESP32LEDLaserManager(LaserManager):
                                                 despecklePeriod = self.laser_despeckle_period,
                                                 is_blocking=True)
 
-    def setValue(self, power, getReturn=True):
+    def setValue(self, power, getReturn=False):
         """Handles output power.
         Sends a RS232 command to the laser specifying the new intensity.
         """

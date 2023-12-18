@@ -20,6 +20,11 @@ class BaslerManager(DetectorManager):
         self.__logger = initLogger(self, instanceName=name)
 
         self._camera = self._getBaslerObj(detectorInfo.managerProperties['cameraListIndex'])
+        try:        
+            pixelSize = detectorInfo.managerProperties['cameraEffPixelsize'] # mum
+        except Exception as e:
+            self.__logger.error("No value is given for the effective pixelsize in the config json!")
+            pixelSize = 1
 
         model = self._camera.model
         self._running = False
@@ -27,6 +32,11 @@ class BaslerManager(DetectorManager):
 
         for propertyName, propertyValue in detectorInfo.managerProperties['basler'].items():
             self._camera.setPropertyValue(propertyName, propertyValue)
+
+        try: # FIXME: get that form the real camera
+            isRGB = detectorInfo.managerProperties['basler']['isRGB']  
+        except:
+            isRGB = False
 
         fullShape = (self._camera.SensorHeight, 
                      self._camera.SensorWidth)
@@ -45,7 +55,11 @@ class BaslerManager(DetectorManager):
             'image_width': DetectorNumberParameter(group='Misc', value=fullShape[0], valueUnits='arb.u.',
                         editable=False),
             'image_height': DetectorNumberParameter(group='Misc', value=fullShape[1], valueUnits='arb.u.',
-                        editable=False)
+                        editable=False), 
+            'isRGB': DetectorNumberParameter(group='Misc', value=isRGB, valueUnits='arb.u.',
+                        editable=False),
+            'Camera pixel size': DetectorNumberParameter(group='Misc', value=pixelSize,
+                                    valueUnits='µm', editable=True)
             }            
 
         # Prepare actions
@@ -56,6 +70,9 @@ class BaslerManager(DetectorManager):
 
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
+
+    def setPixelSizeUm(self, pixelSizeUm):
+        self.parameters['Camera pixel size'].value = pixelSizeUm
 
     def getLatestFrame(self, is_save=False):
         if is_save:
@@ -126,7 +143,8 @@ class BaslerManager(DetectorManager):
 
     @property
     def pixelSizeUm(self):
-        return [1, 1, 1]
+        umxpx = self.parameters['Camera pixel size'].value
+        return [1, umxpx, umxpx]
 
     def crop(self, hpos, vpos, hsize, vsize):
         def cropAction():
@@ -164,7 +182,7 @@ class BaslerManager(DetectorManager):
             self.__logger.debug(f'Trying to initialize Basler Imaging camera {cameraId}')
             camera = CameraBasler(cameraId)
         except Exception as e:
-            print(e)
+            self.__logger.error(e)
             self.__logger.warning(f'Failed to initialize basler camera {cameraId}, loading TIS mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS
             camera = MockCameraTIS()
@@ -174,6 +192,9 @@ class BaslerManager(DetectorManager):
 
     def closeEvent(self):
         self._camera.close()
+
+    def getFrameNumber(self):
+        return self._camera.getFrameNumber()
 
 # Copyright (C) ImSwitch developers 2021
 # This file is part of ImSwitch.

@@ -96,7 +96,7 @@ class RecordingWidget(Widget):
 
         self.saveFormatLabel = QtWidgets.QLabel('<strong>File format:</strong>')
         self.saveFormatList = QtWidgets.QComboBox()
-        self.saveFormatList.addItems(['HDF5', 'TIFF', 'ZARR'])
+        self.saveFormatList.addItems(['TIFF', 'HDF5', 'ZARR', 'MP4'])
 
         self.snapSaveModeLabel = QtWidgets.QLabel('<strong>Snap save mode:</strong>')
         self.snapSaveModeList = QtWidgets.QComboBox()
@@ -385,7 +385,7 @@ class RecordingWidget(Widget):
         self.recButton.toggle()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

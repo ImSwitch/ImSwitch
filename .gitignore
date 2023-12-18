@@ -9,6 +9,9 @@ venv
 # C extensions
 *.so
 
+# Typescript APP
+imswitch/app
+
 # Distribution / packaging
 .Python
 env/
@@ -81,3 +84,11 @@ llfocusimages.tif
 
 imswitch/ImSwitch/recordings*
 ./ImSwitch/recordings
+locai/*
+conda/*
+conda-out/*
+imswitch/ImSwitch/ImSwitch/recordings/*
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/entry_points.txt
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/LICENSE
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/METADATA
+pip-wheel-metadata/ImSwitch-1.2.1.dist-info/top_level.txt

@@ -1,6 +1,6 @@
 import uc2rest as uc2  # pip install UC2-REST
 from imswitch.imcommon.model import initLogger
-
+from imswitch.imcommon.model import APIExport
 
 class ESP32Manager:
     """ A low-level wrapper for TCP-IP communication (ESP32 REST API)
@@ -25,15 +25,24 @@ class ESP32Manager:
         except:
             self._identity = "UC2_Feather"
 
+        try:
+            self._debugging = rs232Info.managerProperties['debug']
+        except:
+            self._debugging = False
+
+
         # initialize the ESP32 device adapter
-        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport,
-                                    baudrate=115200)
+        self._esp32 = uc2.UC2Client(host=self._host, port=80, identity=self._identity, serialport=self._serialport, baudrate=115200, logger=self.__logger)
+        self._esp32.serial.DEBUG = self._debugging
+
+        # disable the WifiModule
+        #self._esp32.modules.set_modules("{'wifi':0}")
 
     def finalize(self):
-        pass
+        self._esp32.close()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

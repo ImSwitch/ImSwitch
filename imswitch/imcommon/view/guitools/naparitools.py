@@ -137,7 +137,7 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
                                                  QtWidgets.QSizePolicy.Maximum))
 
     def _on_update_levels(self):
-        for layer in self.viewer.layers.selected:
+        for layer in self.viewer.layers.selection:
             layer.contrast_limits = minmaxLevels(layer.data)
 
 
@@ -274,11 +274,11 @@ class NapariShiftWidget(NapariBaseWidget):
         self._do_shift(-self._get_shift_distance(), 0)
 
     def _on_reset(self):
-        for layer in self.viewer.layers.selected:
+        for layer in self.viewer.layers.selection:
             layer.translate = [0, 0]
 
     def _do_shift(self, xDist, yDist):
-        for layer in self.viewer.layers.selected:
+        for layer in self.viewer.layers.selection:
             y, x = layer.translate
             layer.translate = [y + yDist, x + xDist]
 

@@ -15,8 +15,8 @@ class AboutDialog(QtWidgets.QDialog):
         self.label = QtWidgets.QLabel(
             f'<strong>ImSwitch {imswitch.__version__}</strong>'
             f'<br /><br />Code available at: '
-            f'<a href="https://github.com/kasasxav/ImSwitch" style="color: orange">'
-            f'https://github.com/kasasxav/ImSwitch'
+            f'<a href="https://github.com/openUC2/ImSwitch" style="color: orange">'
+            f'https://github.com/openUC2/ImSwitch'
             f'</a>'
             f'<br />Licensed under the GNU General Public License v3.0.'
         )
@@ -46,7 +46,7 @@ class AboutDialog(QtWidgets.QDialog):
         dialog.deleteLater()  # Prevent memory leak
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

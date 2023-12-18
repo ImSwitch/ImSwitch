@@ -2,7 +2,11 @@ from pyqtgraph.dockarea import Dock, DockArea
 from qtpy import QtCore, QtWidgets
 
 from .ConsoleView import ConsoleView
-from .EditorView import EditorView
+try:
+    from .EditorView import EditorView
+    editorViewAvailable = True
+except:
+    editorViewAvailable = False
 from .FilesView import FilesView
 from .OutputView import OutputView
 
@@ -19,6 +23,9 @@ class ImScrMainView(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setWindowTitle('Scripting')
+        
+        if not editorViewAvailable: 
+            return
 
         # Actions in menubar
         menuBar = self.menuBar()
@@ -72,7 +79,7 @@ class ImScrMainView(QtWidgets.QMainWindow):
         event.accept()
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

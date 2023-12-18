@@ -5,18 +5,26 @@ import time
 
 
 class MockCameraTIS:
-    def __init__(self):
+    def __init__(self, mocktype = None, mockstackpath=None):
         self.properties = {
-            'image_height': 800,
-            'image_width': 800,
+            'image_height': 500,
+            'image_width': 500,
             'subarray_vpos': 0,
             'subarray_hpos': 0,
             'exposure_time': 0.1,
-            'subarray_vsize': 800,
-            'subarray_hsize': 800,
-            'SensorHeight': 1024,
-            'SensorWidth': 1280
+            'subarray_vsize': 500,
+            'subarray_hsize': 500,
+            'SensorHeight': 500,
+            'SensorWidth': 500,
+            'pixelSize': 1
         }
+        if mocktype is None:
+            self.mocktype = "default"
+        else:
+            self.mocktype = mocktype
+        
+        if mockstackpath is not None:
+            self.mockstackpath = mockstackpath
         self.exposure = 100
         self.gain = 1
         self.brightness = 1
@@ -24,6 +32,23 @@ class MockCameraTIS:
         self.SensorHeight = 500
         self.SensorWidth = 500
         self.shape = (self.SensorHeight,self.SensorWidth)
+        self.pixelSize = 1
+        self.iFrame = 0
+        
+        self.camera = Camera()
+        
+        if self.mocktype == "STORM":
+            import tifffile as tif
+
+            # Open the TIFF file
+            mFile = self.mockstackpath
+            self.tifr = tif.TiffFile(mFile)
+            dummyFrame = self.tifr.pages[0].asarray()
+            self.SensorHeight = dummyFrame.shape[0]
+            self.SensorWidth = dummyFrame.shape[0]
+            self.properties['SensorHeight'] = self.SensorHeight
+            self.properties['SensorWidth'] = self.SensorWidth
+
 
     def start_live(self):
         pass
@@ -44,13 +69,13 @@ class MockCameraTIS:
         pass
 
     def grabFrame(self, **kwargs):
-        mocktype = "random_peak"
-        if mocktype=="focus_lock":
-            img = np.zeros((500, 600))
+        
+        if self.mocktype=="focus_lock":
+            img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 1 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
-        elif mocktype=="random_peak":
-            imgsize = (800, 800)
+        elif self.mocktype=="random_peak":
+            imgsize = (self.SensorHeight, self.SensorWidth)
             peakmax = 60
             noisemean = 10
             # generate image
@@ -66,12 +91,18 @@ class MockCameraTIS:
                 img = img + 0.01*np.random.poisson(img)
             # add Poisson noise
             img = img + np.random.poisson(lam=noisemean, size=imgsize)
+        elif self.mocktype=="STORM":
+            # Iterate over the pages in the TIFF file
+            img = self.tifr.pages[self.iFrame%len(self.tifr.pages)].asarray()
+            self.iFrame+=1
+        elif self.mocktype=="default":
+            img = np.random.randint(0, 255, (self.SensorHeight, self.SensorWidth)).astype('uint8')
         else:
-            img = np.zeros((500, 600))
+            img = np.zeros((self.SensorHeight, self.SensorWidth))
             beamCenter = [int(np.random.randn() * 30 + 250), int(np.random.randn() * 30 + 300)]
             img[beamCenter[0] - 10:beamCenter[0] + 10, beamCenter[1] - 10:beamCenter[1] + 10] = 1
             img = np.random.randn(img.shape[0],img.shape[1])
-        return img
+        return np.abs(img)
 
     def getLast(self, is_resize=False):
         return self.grabFrame()
@@ -99,8 +130,15 @@ class MockCameraTIS:
     
     def flushBuffer(self):
         pass 
+    
+    
+class Camera(object):
+    def __init__(self):
+        self.Width = 100
+        self.Height = 100
+        pass
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

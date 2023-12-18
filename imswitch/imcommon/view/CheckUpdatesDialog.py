@@ -63,12 +63,18 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         )
         self.linkLabel.setText(
             'The new version may be downloaded from '
-            '<a href="https://github.com/kasasxav/ImSwitch/releases" style="color: orange">'
+            '<a href="https://github.com/openUC2/ImSwitch/releases" style="color: orange">'
             'the GitHub releases page'
             '</a>'
             '.'
         )
         self.linkLabel.setVisible(True)
+
+    def showInfo(self, text):
+        self.informationLabel.setText(text)
+        self.linkLabel.setText("")
+        self.linkLabel.setVisible(False)
+
 
     def showPyPIUpdate(self, newVersion):
         self.informationLabel.setText(
@@ -87,7 +93,7 @@ class CheckUpdatesDialog(QtWidgets.QDialog):
         self.linkLabel.setVisible(True)
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

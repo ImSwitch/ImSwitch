@@ -199,10 +199,7 @@ class EtSTEDController(ImConWidgetController):
     def runSlowScan(self):
         """ Run a scan of the slow method (STED). """
         self.__detLog[f"scan_start"] = datetime.now().strftime('%Ss%fus')
-        if self.scanInitiationMode == ScanInitiationMode.ScanWidget:
-            # Run scan in nidaqManager
-            self._master.nidaqManager.runScan(self.signalDic, self.scanInfoDict)
-        elif self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
+        if self.scanInitiationMode == ScanInitiationMode.RecordingWidget:
             # Run recording from RecWidget
             self.triggerRecordingWidgetScan()
 
@@ -742,7 +739,7 @@ class ScanInitiationMode(enum.Enum):
     RecordingWidget = 2
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

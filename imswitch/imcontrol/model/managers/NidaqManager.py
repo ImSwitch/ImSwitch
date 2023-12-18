@@ -30,8 +30,9 @@ class NidaqManager(SignalInterface):
         self.aoTaskWaiter = None
         self.timerTaskWaiter = None
         self.busy = False
-        self.__timerCounterChannel = setupInfo.nidaq.getTimerCounterChannel()
-        self.__startTrigger = setupInfo.nidaq.startTrigger
+        if self.__setupInfo is not None:
+            self.__timerCounterChannel = setupInfo.getTimerCounterChannel()
+            self.__startTrigger = setupInfo.startTrigger
 
     def __del__(self):
         for taskWaiter in [self.doTaskWaiter, self.aoTaskWaiter, self.timerTaskWaiter]:
@@ -434,7 +435,7 @@ class NidaqManagerError(Exception):
         self.message = message
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

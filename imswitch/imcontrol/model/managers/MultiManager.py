@@ -19,11 +19,18 @@ class MultiManager(ABC):
                 # Create sub-manager
                 #self.__logger.debug(f'{currentPackage}.{subManagersPackage}, {managedDeviceInfo.managerName}')
                 #self.__logger.debug(managedDeviceInfo)
-                package = importlib.import_module(
-                    pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
-                                            managedDeviceInfo.managerName)
-                )
-                manager = getattr(package, managedDeviceInfo.managerName)
+                # if it's a plugin, we want to import it from the plugin directory
+                if hasattr(managedDeviceInfo, 'ExtPackage') and managedDeviceInfo.ExtPackage:
+                    # try if it's a plugin
+                    
+                    package = importlib.import_module(managedDeviceInfo.ExtPackage)
+                    
+                else:
+                    package = importlib.import_module(
+                        pythontools.joinModulePath(f'{currentPackage}.{subManagersPackage}',
+                                                managedDeviceInfo.managerName)
+                    )
+                manager = getattr(package, managedDeviceInfo.managerName) # from the package, get the manager
                 self._subManagers[managedDeviceName] = manager(
                     managedDeviceInfo, managedDeviceName, **lowLevelManagers)
 
@@ -82,7 +89,7 @@ class NoSuchSubManagerError(RuntimeError):
     pass
 
 
-# Copyright (C) 2020-2021 ImSwitch developers
+# Copyright (C) 2020-2023 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

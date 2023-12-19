@@ -35,8 +35,8 @@ def get_adjustable_parameters(camera_index=0):
 def main():
     # Open the default camera (usually the built-in webcam)
     camera_index=0
-    camera_index="/dev/video0"
-    if 0:
+    #camera_index="/dev/video0"
+    if 1:
         parameters = get_adjustable_parameters(camera_index)
         
         print("Adjustable Camera Parameters:")
@@ -50,14 +50,14 @@ def main():
         return
 
     # Set the exposure time (in milliseconds)
-    exposure_time = 10  # Adjust this value as needed
+    exposure_time = 10  # Adjust this 4value as needed
 
     ## Set the exposure property
-    #cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
     #cap.set(cv2.CAP_PROP_EXPOSURE, exposure_time)
     #cap.set( cv2.CAP_PROP_GAIN, 1)
-    cap.set(3, 320)
-    cap.set(4, 240)
+    #cap.set(3, 320)
+    #cap.set(4, 240)
     while True:
         # Read a frame from the camera
         ret, frame = cap.read()

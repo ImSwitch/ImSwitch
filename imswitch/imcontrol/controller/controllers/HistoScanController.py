@@ -13,6 +13,8 @@ import numpy as np
 from skimage.io import imsave
 from scipy.ndimage import gaussian_filter
 from collections import deque
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QImage, QPixmap
 
 import datetime 
 from itertools import product
@@ -48,18 +50,38 @@ class HistoScanController(LiveUpdatedController):
         offsetY = self._master.HistoScanManager.offsetY
         self.tSettle = 0.05
     
-        
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
+
+        # read offset between cam and microscope from config file in µm
+        self.offsetCamMicroscopeX = -2500 #  self._master.HistoScanManager.offsetCamMicroscopeX
+        self.offsetCamMicroscopeY = 2500 #  self._master.HistoScanManager.offsetCamMicroscopeY
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
-        self.detector = self._master.detectorsManager[allDetectorNames[0]]
-        
+        self.microscopeDetector = self._master.detectorsManager[allDetectorNames[0]] # FIXME: This is hardcoded, need to be changed through the GUI
+        if len(allDetectorNames)>0:
+            self.webCamDetector = self._master.detectorsManager[allDetectorNames[1]] # FIXME: HARDCODED NEED TO BE CHANGED
+            self.pixelSizeWebcam = self.webCamDetector.pixelSizeUm[-1]
+        else:
+            self.webCamDetector = None
+
+        self.ishistoscanRunning = False
+       
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self.ishistoscanRunning = False
+        if "LED" in allLaserNames:
+            self.led = self._master.lasersManager["LED"]
+        else:
+            self.led = None
 
+        # grab ledmatrix if available
+        if len(self._master.LEDMatrixsManager.getAllDeviceNames())>0:
+            self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
+        else:
+            self.ledMatrix = None 
+        
+        # connect signals
         self.sigImageReceived.connect(self.displayImage)
         self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
@@ -68,17 +90,20 @@ class HistoScanController(LiveUpdatedController):
         self.partialHistoscanStack = np.ones((1,1,3))
         self.acceleration = 600000
         
+        # camera-based scanning coordinates   (select from napari layer)      
+        self.mCamScanCoordinates = None
+        
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        
         
         # get flatfield manager
         if hasattr(self._master, "FlatfieldManager"):
             self.flatfieldManager = self._master.FlatfieldManager
         else: 
             self.flatfieldManager = None
-            
-            
         
+
         if not imswitch.IS_HEADLESS:
             '''
             Set up the GUI
@@ -87,9 +112,9 @@ class HistoScanController(LiveUpdatedController):
             ## update optimal scan parameters for tile-based scan
             try:
                 overlap = 0.75
-                mFrameSize = (2000,3000) #self.detector.getLatestFrame().shape
-                bestScanSizeX = mFrameSize[1]*self.detector.pixelSizeUm[-1]*overlap
-                bestScanSizeY = mFrameSize[0]*self.detector.pixelSizeUm[-1]*overlap     
+                mFrameSize = (2000,3000) #self.microscopeDetector.getLatestFrame().shape
+                bestScanSizeX = mFrameSize[1]*self.microscopeDetector.pixelSizeUm[-1]*overlap
+                bestScanSizeY = mFrameSize[0]*self.microscopeDetector.pixelSizeUm[-1]*overlap     
                 self._widget.setTilebasedScanParameters((bestScanSizeX, bestScanSizeY))
             except Exception as e:
                 self._logger.error(e)
@@ -104,13 +129,234 @@ class HistoScanController(LiveUpdatedController):
             self._widget.sigGoToPosition.connect(self.goToPosition)
             self._widget.sigCurrentOffset.connect(self.calibrateOffset)        
             self._widget.setDefaultSavePath(self._master.HistoScanManager.defaultConfigPath)
+            
+            # Image View
+            self._widget.resetScanCoordinatesButton.clicked.connect(self.resetScanCoordinates)
+            self._widget.getCameraScanCoordinatesButton.clicked.connect(self.getCameraScanCoordinates)
+            self._widget.startButton3.clicked.connect(self.starthistoscanCamerabased)
+            self._widget.stopButton3.clicked.connect(self.stophistoscanCamerabased)
+            
+            # on tab click, add the image to the napari viewer
+            self._widget.tabWidget.currentChanged.connect(self.onTabChanged)
+            
+            # webcam-related parts 
+            self.isWebcamRunning = False
+            self._widget.imageLabel.doubleClicked.connect(self.onDoubleClickWebcam)
+            self._widget.imageLabel.dragPosition.connect(self.onDragPositionWebcam)
 
+            # illu settings
+            self._widget.buttonTurnOnLED.clicked.connect(self.turnOnLED)
+            self._widget.buttonTurnOffLED.clicked.connect(self.turnOffLED)
+            self._widget.buttonTurnOnLEDArray.clicked.connect(self.turnOnLEDArray)
+            self._widget.buttonTurnOffLEDArray.clicked.connect(self.turnOffLEDArray)
+        
+    def turnOnLED(self):
+        if self.led is not None:
+            self.led.setEnabled(1)
+            self.led.setValue(255)
+    
+    def turnOffLED(self):
+        if self.led is not None:
+            self.led.setEnabled(0)
+
+    def turnOnLEDArray(self):
+        if self.ledMatrix is not None:    
+            self.ledMatrix.setLEDIntensity(intensity=(255,255,255))
+            self.ledMatrix.setAll((1,1,1))
+
+    def turnOffLEDArray(self):
+        if self.ledMatrix is not None:
+            self.ledMatrix.setAll(0)
+
+    def onTabChanged(self, index):
+        '''
+        Callback, when we click on the tab, we want to add the image to the napari viewer
+        '''
+        if index == 2:
+            # add layer to napari
+            self._widget.initShapeLayerNapari()
+            self.microscopeDetector.startAcquisition()
+            # run image scraper if not started already 
+            if not self.isWebcamRunning:
+                self.timer = QTimer(self)
+                self.timer.timeout.connect(self.updateFrameWebcam)
+                self.timer.start(100)
+                self.isWebcamRunning = True
+    
+    def updateFrameWebcam(self):
+        '''
+        Update the webcam image in the dedicated widget periodically to get an overview
+        '''
+        frame = self.webCamDetector.getLatestFrame() # X,Y,C, uint8 numpy array
+        if frame is None: 
+            return
+        if len(frame.shape)==2:
+            frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
+        if frame is not None:
+            height, width, channel = frame.shape
+            bytesPerLine = 3 * width
+            image = QImage(np.uint8(frame.copy()), width, height, bytesPerLine, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(image)
+            self._widget.imageLabel.setOriginalPixmap(pixmap)
+                        
+    def resetScanCoordinates(self):
+        '''
+        reset the shape coordinates in napari
+        '''
+        # reset shape layer
+        self._widget.resetShapeLayerNapari()
+        # reset pre-scan image if available
+        name = "Histo Prescan"
+        self._widget.removeImageNapari(name)
+
+    def onDoubleClickWebcam(self):
+        '''
+        Callback: when we double click on the webcam image, we want to move the stage to that position
+        '''
+        # if we double click on the webcam view, we want to move to that position on the plate
+        mPositionClicked = self._widget.imageLabel.doubleClickPos.y(), self._widget.imageLabel.doubleClickPos.x()
+        # convert to physical coordinates
+        #mDimsWebcamFrame = self.webCamDetector.getLatestFrame().shape
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
+        mRelativePosToMoveX = -(-mPositionClicked[0]+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
+        mRelativePosToMoveY = (-mPositionClicked[1]+mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
+        currentPos = self.stages.getPosition()
+        mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX+self.offsetCamMicroscopeX
+        mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY+self.offsetCamMicroscopeY
+        self.goToPosition(mAbsolutePosToMoveX,mAbsolutePosToMoveY)
+        
+    def onDragPositionWebcam(self, start, end):
+        '''
+        Callback: when we drag the mouse on the webcam image, we want to move the stage to that position
+        '''
+        print(f"Dragged from {start} to {end}")
+        if start is None or self._widget.imageLabel.currentRect is None:
+            return
+        # use the coordinates for the stage scan 
+        # 1. retreive the coordinates on the canvas
+        minPosX = np.min([start.x(), end.x()])
+        maxPosX = np.max([start.x(), end.x()])
+        minPosY = np.min([start.y(), end.y()])
+        maxPosY = np.max([start.y(), end.y()])
+        
+        # 2. compute scan positions
+        currentPos = self.stages.getPosition()
+        mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
+        minPosXReal = currentPos["X"]-(-minPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam + self.offsetCamMicroscopeX
+        maxPosXReal = currentPos["X"]-(-maxPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam + self.offsetCamMicroscopeX
+        minPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-maxPosY)*self.pixelSizeWebcam + self.offsetCamMicroscopeY
+        maxPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-minPosY)*self.pixelSizeWebcam + self.offsetCamMicroscopeY
+
+        # 3. get microscope camera parameters
+        mFrame = self.microscopeDetector.getLatestFrame()
+        pixelSizeMicroscopeDetector = self.microscopeDetector.pixelSizeUm[-1]
+        NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
+        
+        # starting the snake scan
+        # Calculate the size of the area each image covers
+        img_width = NpixX * pixelSizeMicroscopeDetector
+        img_height = NpixY * pixelSizeMicroscopeDetector
+        
+        # compute snake scan coordinates
+        mOverlap = 0.75
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosXReal, minPosYReal, maxPosXReal, maxPosYReal, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosXReal-minPosXReal)/(img_width*mOverlap))
+        nTilesY = int((maxPosYReal-minPosYReal)/(img_height*mOverlap))
+        self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
+                
+        return self.mCamScanCoordinates
+
+    
+    def getCameraScanCoordinates(self):
+        ''' retreive the coordinates of the shape layer in napari and compute the 
+        min/max positions for X/Y to provide the snake-scan coordinates
+        
+        As of now: No error handling:
+        A rect. shape in a shape Layer will provide e.g.:
+        array([[ 299.5774541 , -157.22546457],
+       [ 299.5774541 ,  160.6666534 ],
+       [ 692.26771747,  160.6666534 ],
+       [ 692.26771747, -157.22546457]])
+        '''
+        mCoordinates = self._widget.getCoordinatesShapeLayerNapari()[0]
+        maxPosX = np.max(mCoordinates[:,0])
+        minPosX = np.min(mCoordinates[:,0])
+        maxPosY = np.max(mCoordinates[:,1])
+        minPosY = np.min(mCoordinates[:,1])
+        
+        # get number of pixels in X/Y
+        mFrame = self.microscopeDetector.getLatestFrame()
+        NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
+        
+        # set frame as reference in napari 
+        isRGB = mFrame.shape[-1]==3 # most likely True!
+        name = "Histo Prescan"
+        pixelsize = self.microscopeDetector.pixelSizeUm[-1]
+        self._widget.setImageNapari(mFrame, colormap="gray", isRGB=isRGB, name=name, pixelsize=(pixelsize,pixelsize), translation=(0,0))
+
+        # starting the snake scan
+        # Calculate the size of the area each image covers
+        img_width = NpixX * self.microscopeDetector.pixelSizeUm[-1]
+        img_height = NpixY * self.microscopeDetector.pixelSizeUm[-1]
+        
+        # compute snake scan coordinates
+        mOverlap = 0.75
+        self.mCamScanCoordinates = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, mOverlap)
+        nTilesX = int((maxPosX-minPosX)/(img_width*mOverlap))
+        nTilesY = int((maxPosY-minPosY)/(img_height*mOverlap))
+        self._widget.setCameraScanParameters(nTilesX, nTilesY, minPosX, maxPosX, minPosY, maxPosY)
+        
+        
+    def starthistoscanCamerabased(self):
+        '''
+        start a camera scan
+        '''      
+        if self.mCamScanCoordinates is None:
+            return  
+        self.turnOffLEDArray()
+        self.turnOnLED()
+        # update GUI elements
+        self._widget.startButton3.setEnabled(False)
+        self._widget.stopButton3.setEnabled(True)
+        self._widget.startButton3.setText("Running")
+        self._widget.stopButton3.setText("Stop")
+        self._widget.stopButton3.setStyleSheet("background-color: red")
+        self._widget.startButton3.setStyleSheet("background-color: green")
+        illuSource = self._widget.getIlluminationSource()
+        initialPosition = self.stages.getPosition()        
+        minPosX = np.min(self.mCamScanCoordinates, axis=0)[0]
+        maxPosX = np.max(self.mCamScanCoordinates, axis=0)[0]
+        minPosY = np.min(self.mCamScanCoordinates, axis=0)[1]
+        maxPosY = np.max(self.mCamScanCoordinates, axis=0)[1]
+        
+        nTimes = 1
+        tPeriod = 0
+        
+        self.performScanningRecording(minPosX=minPosX, minPosY=minPosY, maxPosX=maxPosX, maxPosY=maxPosY, positionList=self.mCamScanCoordinates, nTimes=nTimes, tPeriod=tPeriod, illuSource=illuSource)
+                
+    
+    def stophistoscanCamerabased(self):
+        '''
+        stop a camera scan
+        '''
+        self.turnOnLEDArray()
+        self.turnOffLED()
+
+        self.ishistoscanRunning = False
+        self._widget.startButton3.setEnabled(True)
+        self._widget.stopButton3.setEnabled(False)
+        self._widget.startButton3.setText("Start")
+        self._widget.stopButton3.setText("Stopped")
+        self._widget.stopButton3.setStyleSheet("background-color: green")
+        self._widget.startButton3.setStyleSheet("background-color: red")
+        self._logger.debug("histoscan scanning stopped.")
+    
     def updateAllPositionGUI(self):
         allPositions = self.stages.position
         self._widget.updateBoxPosition(allPositions["X"], allPositions["Y"])
 
     def goToPosition(self, posX, posY):
-#            {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}
+        # {"task":"/motor_act",     "motor":     {         "steppers": [             { "stepperid": 1, "position": -1000, "speed": 30000, "isabs": 0, "isaccel":1, "isen":0, "accel":500000}     ]}}
         self.stages.move(value=(posX,posY), axis="XY", is_absolute=True, is_blocking=False, acceleration=(self.acceleration,self.acceleration))
         self._commChannel.sigUpdateMotorPosition.emit()
         
@@ -252,23 +498,23 @@ class HistoScanController(LiveUpdatedController):
         initialPosition = self.stages.getPosition()
         initPosX = initialPosition["X"]
         initPosY = initialPosition["Y"]
-        if not self.detector._running: self.detector.startAcquisition()
+        if not self.microscopeDetector._running: self.microscopeDetector.startAcquisition()
         
         # now start acquiring images and move the stage in Background
-        mFrame = self.detector.getLatestFrame()
+        mFrame = self.microscopeDetector.getLatestFrame()
         NpixX, NpixY = mFrame.shape[1], mFrame.shape[0]
         
         # starting the snake scan
         # Calculate the size of the area each image covers
-        img_width = NpixX * self.detector.pixelSizeUm[-1]
-        img_height = NpixY * self.detector.pixelSizeUm[-1]
+        img_width = NpixX * self.microscopeDetector.pixelSizeUm[-1]
+        img_height = NpixY * self.microscopeDetector.pixelSizeUm[-1]
 
         # precompute the position list in advance 
         if positionList is None:
             positionList = self.generate_snake_scan_coordinates(minPosX, minPosY, maxPosX, maxPosY, img_width, img_height, overlap)
 
-        maxPosPixY = int((maxPosY-minPosY)/self.detector.pixelSizeUm[-1])
-        maxPosPixX = int((maxPosX-minPosX)/self.detector.pixelSizeUm[-1])
+        maxPosPixY = int((maxPosY-minPosY)/self.microscopeDetector.pixelSizeUm[-1])
+        maxPosPixX = int((maxPosX-minPosX)/self.microscopeDetector.pixelSizeUm[-1])
         
         # are we RGB or monochrome?
         if len(mFrame.shape)==2:
@@ -318,7 +564,7 @@ class HistoScanController(LiveUpdatedController):
                     print(currentPosX)
                     if currentPosX-lastStagePositionX > stepSizeX:
                         print("Taking image")
-                        mFrame = self.detector.getLatestFrame()  
+                        mFrame = self.microscopeDetector.getLatestFrame()  
                         import tifffile as tif
                         tif.imsave("test.tif", mFrame, append=True)
                         
@@ -331,13 +577,13 @@ class HistoScanController(LiveUpdatedController):
                         break
                     self.stages.move(value=iPos, axis="XY", is_absolute=True, is_blocking=True, acceleration=(self.acceleration,self.acceleration))
                     time.sleep(self.tSettle)
-                    mFrame = self.detector.getLatestFrame()  
+                    mFrame = self.microscopeDetector.getLatestFrame()  
 
                     def addImage(mFrame, positionList):
                         metadata = {'Pixels': {
-                            'PhysicalSizeX': self.detector.pixelSizeUm[-1],
+                            'PhysicalSizeX': self.microscopeDetector.pixelSizeUm[-1],
                             'PhysicalSizeXUnit': 'µm',
-                            'PhysicalSizeY': self.detector.pixelSizeUm[-1],
+                            'PhysicalSizeY': self.microscopeDetector.pixelSizeUm[-1],
                             'PhysicalSizeYUnit': 'µm'},
 
                             'Plane': {
@@ -345,8 +591,8 @@ class HistoScanController(LiveUpdatedController):
                                 'PositionY': positionList[1]
                         }, }
                         self._commChannel.sigUpdateMotorPosition.emit()
-                        posY_pix_value = (float(positionList[1])-minPosY)/self.detector.pixelSizeUm[-1]
-                        posX_pix_value = (float(positionList[0])-minPosX)/self.detector.pixelSizeUm[-1]
+                        posY_pix_value = (float(positionList[1])-minPosY)/self.microscopeDetector.pixelSizeUm[-1]
+                        posX_pix_value = (float(positionList[0])-minPosX)/self.microscopeDetector.pixelSizeUm[-1]
                         iPosPix = (posX_pix_value, posY_pix_value)
                         #stitcher._place_on_canvas(np.copy(mFrame), np.copy(iPosPix))
                         stitcher.add_image(np.copy(mFrame), np.copy(iPosPix), metadata.copy())
@@ -402,6 +648,7 @@ class HistoScanController(LiveUpdatedController):
         self.sigUpdatePartialImage.emit()
 
     def stophistoscan(self):
+        # update GUI elements
         self.ishistoscanRunning = False
         self._widget.startButton.setEnabled(True)
         self._widget.stopButton.setEnabled(False)
@@ -411,8 +658,9 @@ class HistoScanController(LiveUpdatedController):
         self._widget.startButton.setStyleSheet("background-color: red")
         self._logger.debug("histoscan scanning stopped.")
         
-        
+        # other tabs
         self.stophistoscanTilebased()
+        self.stophistoscanCamerabased()
         
     
         

@@ -32,7 +32,7 @@ class UC2ConfigController(ImConWidgetController):
         # update the gui elements 
         self._commChannel.sigUpdateMotorPosition.emit()
 
-
+        '''
         # force updating the position
         # move motors by 1 step to get the current position #FIXME: This is a bug!
         if "X" in self.stages.speed.keys():
@@ -47,6 +47,7 @@ class UC2ConfigController(ImConWidgetController):
         if "A" in self.stages.speed.keys():
             self.stages.move(1, "A", is_absolute=False, is_blocking=True)
             self.stages.move(-1, "A", is_absolute=False, is_blocking=True)
+        '''
         self._commChannel.sigUpdateMotorPosition.emit()
 
     def set_motor_positions(self, a, x, y, z):

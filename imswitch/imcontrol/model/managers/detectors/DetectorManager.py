@@ -115,9 +115,9 @@ class DetectorManager(SignalInterface):
 
         self.__forAcquisition = detectorInfo.forAcquisition
         self.__forFocusLock = detectorInfo.forFocusLock
-        if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
-            raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
-                             ' DetectorInfo.')
+        #if not detectorInfo.forAcquisition and not detectorInfo.forFocusLock:
+        #    raise ValueError('At least one of forAcquisition and forFocusLock must be set in'
+        #                     ' DetectorInfo.')
     
         # set RGB if information is available 
         try:

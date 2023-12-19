@@ -14,7 +14,7 @@ class TriggerMode:
     CONTINUOUS = 'Continuous Acqusition'
 
 class CameraGXIPY:
-    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1):
+    def __init__(self,cameraNo=None, exposure_time = 10000, gain = 0, frame_rate=-1, blacklevel=100, binning=1, flipImage=(False, False)):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
 
@@ -36,6 +36,7 @@ class CameraGXIPY:
         self.preview_height = 600
         self.frame_rate = frame_rate
         self.cameraNo = cameraNo
+        self.flipImage = flipImage
 
         # reserve some space for the framebuffer
         self.NBuffer = 10
@@ -379,6 +380,12 @@ class CameraGXIPY:
             self.__logger.error("Got an incomplete frame")
             return
         numpy_image = frame.get_numpy_array()
+
+        # flip image if needed
+        if self.flipImage[0]: # X
+            numpy_image = np.flip(numpy_image, axis=0)
+        if self.flipImage[1]: # Y
+            numpy_image = np.flip(numpy_image, axis=1)
         if numpy_image is None:
             self.__logger.error("Got a None frame")
             return

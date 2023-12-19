@@ -161,6 +161,11 @@ def run_viewer():
     viewer = Viewer(update, mResolution)
     viewer.start()
 
+
+@app.get("/getID/")
+def getID():
+    return {"ID":"RASPIPSIM"}
+
 @app.get("/start_viewer/")
 async def start_viewer(background_tasks: BackgroundTasks):
     global iFreeze, task_lock, iLoop, viewer

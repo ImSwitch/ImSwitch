@@ -197,6 +197,8 @@ class SIMInfo:
     nPhases: int
 
     simMagnefication: float
+    
+    isFastAPISIM: bool
 
     simPixelsize: float
 
@@ -205,6 +207,8 @@ class SIMInfo:
     simETA: float
 
     simN: float
+    
+    tWaitSequence: float
 
 
 @dataclass(frozen=True)

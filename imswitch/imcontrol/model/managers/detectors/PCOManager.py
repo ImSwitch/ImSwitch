@@ -54,7 +54,9 @@ class PCOManager(DetectorManager):
                                         'Internal trigger',
                                         'External start',
                                         'External control'],
-                            editable=True)
+                            editable=True),
+            "buffer_size": DetectorNumberParameter(group='Misc', value=100, valueUnits='arb.u.',
+                                    editable=True),
             }            
 
         # Prepare actions
@@ -98,7 +100,8 @@ class PCOManager(DetectorManager):
     def getChunk(self):
         try:
             return self._camera.getLastChunk()
-        except:
+        except Exception as e:
+            self.__logger.error(e)
             return None
 
     def flushBuffers(self):
@@ -113,8 +116,8 @@ class PCOManager(DetectorManager):
     def stopAcquisition(self):
         if self._running:
             self._running = False
-            self._camera.suspend_live()
-            self.__logger.debug('suspendlive')
+            self._camera.stop_live()
+            self.__logger.debug('stop_live')
 
     def stopAcquisitionForROIChange(self):
         self._running = False
@@ -129,6 +132,9 @@ class PCOManager(DetectorManager):
     @property
     def pixelSizeUm(self):
         return [1, 1, 1]
+    
+    def get_triggered_framebuffer(self, nFrames: int = 9):
+        return self._camera.get_triggered_framebuffer(nFrames=nFrames)
 
     def crop(self, hpos, vpos, hsize, vsize):
 

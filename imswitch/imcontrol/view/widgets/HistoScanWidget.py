@@ -158,6 +158,8 @@ class HistoScanWidget(NapariHybridWidget):
         secondTabLayout.addWidget(QtWidgets.QLabel("Step Size Y:"), 3, 0)
         secondTabLayout.addWidget(self.stepSizeYLineEdit, 3, 1)
 
+
+
         self.startButton2 = QtWidgets.QPushButton("Start")
         self.stopButton2 = QtWidgets.QPushButton("Stop")
 
@@ -186,6 +188,13 @@ class HistoScanWidget(NapariHybridWidget):
         self.startButton3 = QtWidgets.QPushButton("Start")
         self.stopButton3 = QtWidgets.QPushButton("Stop")
 
+
+        # illu settings
+        self.buttonTurnOnLED = QtWidgets.QPushButton("LED On")
+        self.buttonTurnOffLED = QtWidgets.QPushButton("LED OFF")    
+        self.buttonTurnOnLEDArray = QtWidgets.QPushButton("Array On")
+        self.buttonTurnOffLEDArray = QtWidgets.QPushButton("Array Off")
+
         # Webcam view 
         self.imageLabel = ImageLabel()
         # Create a container widget for the ImageLabel
@@ -204,7 +213,13 @@ class HistoScanWidget(NapariHybridWidget):
         thirdTabLayout.addWidget(self.posYmaxLabel, 3, 1)
         thirdTabLayout.addWidget(self.startButton3, 4, 0)
         thirdTabLayout.addWidget(self.stopButton3, 4, 1)
-        thirdTabLayout.addWidget(imageLabelContainer, 5, 0, 4, 2)
+        
+        thirdTabLayout.addWidget(self.buttonTurnOnLED, 5, 0)
+        thirdTabLayout.addWidget(self.buttonTurnOffLED, 5, 1)
+        thirdTabLayout.addWidget(self.buttonTurnOnLEDArray, 5, 2)
+        thirdTabLayout.addWidget(self.buttonTurnOffLEDArray, 5, 3)
+
+        thirdTabLayout.addWidget(imageLabelContainer, 6, 0, 4, 2)
 
         # Optional: Add stretch to rows and columns to ensure centering
         thirdTabLayout.setRowStretch(4, 1)  # Add stretch above the image container
@@ -348,7 +363,8 @@ class HistoScanWidget(NapariHybridWidget):
             self.imageLayer = self.viewer.add_image(np.squeeze(im), rgb=isRGB, colormap=colormap,
                                                scale=pixelsize,translate=translation,
                                                name=name, blending='additive')
-        self.imageLayer.data = im
+        else:
+            self.imageLayer.data = np.squeeze(im)
 
     def removeImageNapari(self, name=""):
         if self.imageLayer is None or name not in self.viewer.layers:

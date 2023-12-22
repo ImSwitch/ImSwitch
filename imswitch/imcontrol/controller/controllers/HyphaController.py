@@ -113,7 +113,7 @@ class HyphaController(LiveUpdatedController):
         # Connect to the server and start the service
         service_id="aiortc-demo"
         logging.basicConfig(level=logging.DEBUG)
-        self.start_service(service_id)
+        self.start_service(service_id, token="")
 
     async def on_shutdown(self, app):
         # close peer connections

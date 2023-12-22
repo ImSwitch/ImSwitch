@@ -179,23 +179,6 @@ class CommunicationChannel(SignalInterface):
         img_bytes.seek(0)
         return StreamingResponse(img_bytes, media_type="image/png")
 
-    @APIExport(runOnUIThread=False)
-    def video_feed(response: Response):
-        # Set headers for video streaming
-
-        frames = [np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8) for _ in range(100)]
-
-        response.headers["Content-Type"] = "multipart/x-mixed-replace; boundary=frame"
-        while True:
-            # Encode frame as jpg
-            frame = cv2.imencode('.jpg', frames.pop(0))[1].tobytes()
-            # Write encoded frame to response
-            response.body = (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            # Wait for a short time to simulate real-time streaming
-            asyncio.sleep(0.1)
-
-
 
     @APIExport(runOnUIThread=True)
     def acquireImage(self) -> None:

@@ -52,6 +52,10 @@ class HistoScanController(LiveUpdatedController):
     
         self.histoscanTask = None
         self.histoscanStack = np.ones((1,1,1))
+
+        # read offset between cam and microscope from config file in µm
+        self.offsetCamMicroscopeX = -2500 #  self._master.HistoScanManager.offsetCamMicroscopeX
+        self.offsetCamMicroscopeY = 2500 #  self._master.HistoScanManager.offsetCamMicroscopeY
         
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
@@ -61,11 +65,23 @@ class HistoScanController(LiveUpdatedController):
             self.pixelSizeWebcam = self.webCamDetector.pixelSizeUm[-1]
         else:
             self.webCamDetector = None
-            
+
+        self.ishistoscanRunning = False
+       
         # select lasers and add to gui
         allLaserNames = self._master.lasersManager.getAllDeviceNames()
-        self.ishistoscanRunning = False
+        if "LED" in allLaserNames:
+            self.led = self._master.lasersManager["LED"]
+        else:
+            self.led = None
 
+        # grab ledmatrix if available
+        if len(self._master.LEDMatrixsManager.getAllDeviceNames())>0:
+            self.ledMatrix = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
+        else:
+            self.ledMatrix = None 
+        
+        # connect signals
         self.sigImageReceived.connect(self.displayImage)
         self.sigUpdatePartialImage.connect(self.updatePartialImage)
         self._commChannel.sigUpdateMotorPosition.connect(self.updateAllPositionGUI)
@@ -80,12 +96,14 @@ class HistoScanController(LiveUpdatedController):
         # select stage
         self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
         
+        
         # get flatfield manager
         if hasattr(self._master, "FlatfieldManager"):
             self.flatfieldManager = self._master.FlatfieldManager
         else: 
             self.flatfieldManager = None
         
+
         if not imswitch.IS_HEADLESS:
             '''
             Set up the GUI
@@ -126,7 +144,30 @@ class HistoScanController(LiveUpdatedController):
             self._widget.imageLabel.doubleClicked.connect(self.onDoubleClickWebcam)
             self._widget.imageLabel.dragPosition.connect(self.onDragPositionWebcam)
 
+            # illu settings
+            self._widget.buttonTurnOnLED.clicked.connect(self.turnOnLED)
+            self._widget.buttonTurnOffLED.clicked.connect(self.turnOffLED)
+            self._widget.buttonTurnOnLEDArray.clicked.connect(self.turnOnLEDArray)
+            self._widget.buttonTurnOffLEDArray.clicked.connect(self.turnOffLEDArray)
         
+    def turnOnLED(self):
+        if self.led is not None:
+            self.led.setEnabled(1)
+            self.led.setValue(255)
+    
+    def turnOffLED(self):
+        if self.led is not None:
+            self.led.setEnabled(0)
+
+    def turnOnLEDArray(self):
+        if self.ledMatrix is not None:    
+            self.ledMatrix.setLEDIntensity(intensity=(255,255,255))
+            self.ledMatrix.setAll((1,1,1))
+
+    def turnOffLEDArray(self):
+        if self.ledMatrix is not None:
+            self.ledMatrix.setAll(0)
+
     def onTabChanged(self, index):
         '''
         Callback, when we click on the tab, we want to add the image to the napari viewer
@@ -146,14 +187,15 @@ class HistoScanController(LiveUpdatedController):
         '''
         Update the webcam image in the dedicated widget periodically to get an overview
         '''
-        frame = self.webCamDetector.getLatestFrame()
+        frame = self.webCamDetector.getLatestFrame() # X,Y,C, uint8 numpy array
         if frame is None: 
             return
         if len(frame.shape)==2:
             frame = np.repeat(frame[:,:,np.newaxis], 3, axis=2)
         if frame is not None:
-            image = QImage(frame, frame.shape[1], frame.shape[0], 
-                           frame.strides[0], QImage.Format_BGR888)
+            height, width, channel = frame.shape
+            bytesPerLine = 3 * width
+            image = QImage(np.uint8(frame.copy()), width, height, bytesPerLine, QImage.Format_RGB888)
             pixmap = QPixmap.fromImage(image)
             self._widget.imageLabel.setOriginalPixmap(pixmap)
                         
@@ -179,8 +221,8 @@ class HistoScanController(LiveUpdatedController):
         mRelativePosToMoveX = -(-mPositionClicked[0]+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
         mRelativePosToMoveY = (-mPositionClicked[1]+mDimsWebcamFrame[1]//2)*self.pixelSizeWebcam
         currentPos = self.stages.getPosition()
-        mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX
-        mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY
+        mAbsolutePosToMoveX = currentPos["X"]+mRelativePosToMoveX+self.offsetCamMicroscopeX
+        mAbsolutePosToMoveY = currentPos["Y"]+mRelativePosToMoveY+self.offsetCamMicroscopeY
         self.goToPosition(mAbsolutePosToMoveX,mAbsolutePosToMoveY)
         
     def onDragPositionWebcam(self, start, end):
@@ -200,10 +242,10 @@ class HistoScanController(LiveUpdatedController):
         # 2. compute scan positions
         currentPos = self.stages.getPosition()
         mDimsWebcamFrame = (self._widget.imageLabel.getCurrentImageSize().height(),self._widget.imageLabel.getCurrentImageSize().width())
-        minPosXReal = currentPos["X"]-(-minPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
-        maxPosXReal = currentPos["X"]-(-maxPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam
-        minPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-maxPosY)*self.pixelSizeWebcam
-        maxPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-minPosY)*self.pixelSizeWebcam
+        minPosXReal = currentPos["X"]-(-minPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam + self.offsetCamMicroscopeX
+        maxPosXReal = currentPos["X"]-(-maxPosX+mDimsWebcamFrame[0]//2)*self.pixelSizeWebcam + self.offsetCamMicroscopeX
+        minPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-maxPosY)*self.pixelSizeWebcam + self.offsetCamMicroscopeY
+        maxPosYReal = currentPos["Y"]+(mDimsWebcamFrame[1]//2-minPosY)*self.pixelSizeWebcam + self.offsetCamMicroscopeY
 
         # 3. get microscope camera parameters
         mFrame = self.microscopeDetector.getLatestFrame()
@@ -271,7 +313,8 @@ class HistoScanController(LiveUpdatedController):
         '''      
         if self.mCamScanCoordinates is None:
             return  
-
+        self.turnOffLEDArray()
+        self.turnOnLED()
         # update GUI elements
         self._widget.startButton3.setEnabled(False)
         self._widget.stopButton3.setEnabled(True)
@@ -296,6 +339,9 @@ class HistoScanController(LiveUpdatedController):
         '''
         stop a camera scan
         '''
+        self.turnOnLEDArray()
+        self.turnOffLED()
+
         self.ishistoscanRunning = False
         self._widget.startButton3.setEnabled(True)
         self._widget.stopButton3.setEnabled(False)

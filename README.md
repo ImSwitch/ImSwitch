@@ -304,7 +304,15 @@ sudo ./Galaxy_camera.run
 ### install drivers for hik (jetson)
 
 Download the Linux zip (MVS2.1)
-https://www.hikrobotics.com/cn/machinevision/service/download
+https://www.hikrobotics.com/cn/machinevision/service/download or 
+
+```bash
+cd ~/Downloads
+wget https://www.hikrobotics.com/cn2/source/support/software/MVS_STD_GML_V2.1.2_231116.zip
+unzip MVS_STD_GML_V2.1.2_231116.zip
+sudo dpkg -i MVS-2.1.2_aarch64_20231116.deb
+source ~/.bashrc
+```
 
 ```
 sudo dpkg -i MVS-2.1.2_aarch64_20221208.deb
@@ -363,6 +371,36 @@ pip3 install picamera2
 ln -s /usr/lib/python3/dist-packages/pykms /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/pykms
 ln -s /usr/lib/python3/dist-packages/pylibcamera /home/uc2/miniforge3/envs/picamera2/lib/python3.11/site-packages/libcamera
 ```
+
+### Autostart as SystemD Service
+
+
+in `sudo nano /etc/systemd/system/imswitch.service`
+
+add 
+```bash
+[Unit]
+Description=Start ImSwitch Python script
+After=network.target
+
+[Service]
+Type=simple
+User=uc2
+WorkingDirectory=/home/uc2/Downloads/imswitch
+ExecStart=/bin/bash -c 'export DISPLAY=:0; export QT_QPA_PLATFORM=offscreen; /home/uc2/miniforge3/envs/imswitch/bin/python -m imswitch'
+
+[Install]
+WantedBy=multi-user.target
+After making these changes, run sudo systemctl daemon-reload to reload the systemd manager configuration. Then try starting your service again with sudo systemctl start imswitch.service
+```
+then
+```bash
+sudo systemctl enable imswitch.service 
+sudo systemctl start imswitch.service
+```
+
+
+
 
 ### Run ImSwitch on Ubuntu
 

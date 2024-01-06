@@ -287,6 +287,9 @@ cd imswitch
 pip3 install -r requirements-jetsonorin.txt
 pip3 install -e . --no-deps
 export DISPLAY=:0
+sudo apt-get install xvfb
+export QT_QPA_PLATFORM=offscreen
+
 cd imswitch
 pyton3 main.py
 ```

@@ -198,8 +198,6 @@ class ESP32StageManager(PositionerManager):
             self.__logger.error('Wrong axis, has to be "X" "Y" or "Z".')
 
 
-
-
     def measure(self, sensorID=0, NAvg=100):
         return self._motor.read_sensor(sensorID=sensorID, NAvg=NAvg)
 
@@ -218,7 +216,7 @@ class ESP32StageManager(PositionerManager):
         elif axis == "A":
             speed[0]=speed
         self.moveForever(speed=speed, is_stop=is_stop)
-        
+     
     def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
         self._motor.move_forever(speed=speed, is_stop=is_stop)
 

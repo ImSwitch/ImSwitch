@@ -515,6 +515,19 @@ class SettingsController(ImConWidgetController):
         )
         self.updateSharedAttrs()
 
+    @APIExport(runOnUIThread=True)
+    def setDetectorExposureTime(self, detectorName: str=None, exposureTime: float=1) -> None:
+        """ Sets the exposure time for the specified detector. """
+        if detectorName is None:
+            detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        self.setDetectorParameter(detectorName, 'exposure', exposureTime)
+        
+    @APIExport(runOnUIThread=True)
+    def setDetectorGain(self, detectorName: str=None, gain: float=0) -> None:
+        """ Sets the gain for the specified detector. """
+        if detectorName is None:
+            detectorName = self._master.detectorsManager.getCurrentDetectorName()
+        self.setDetectorParameter(detectorName, 'gain', gain)
 
 _attrCategory = 'Detector'
 _modelAttr = 'Model'

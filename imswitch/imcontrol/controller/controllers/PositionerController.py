@@ -86,6 +86,9 @@ class PositionerController(ImConWidgetController):
         self._commChannel.sigUpdateMotorPosition.emit()
         self.updatePosition(positionerName, axis)
 
+    def moveForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        self._master.positionersManager.execOnAll(lambda p: p.moveForever(speed=speed, is_stop=is_stop))
+
     def setPos(self, positionerName, axis, position):
         """ Moves the positioner to the specified position in the specified axis. """
         self._master.positionersManager[positionerName].setPosition(position, axis)
@@ -206,6 +209,11 @@ class PositionerController(ImConWidgetController):
         except Exception as e:
             self.__logger.error(e)
             self.move(positionerName, axis, dist)
+
+    @APIExport(runOnUIThread=True)
+    def movePositionerForever(self, speed=(0, 0, 0, 0), is_stop=False):
+        self.move_forever(speed=speed, is_stop=is_stop)
+   
 
     @APIExport(runOnUIThread=True)
     def setPositioner(self, positionerName: str, axis: str, position: float) -> None:

@@ -130,31 +130,33 @@ class TemperatureController(ImConWidgetController):
     def updateMeasurements(self):
         while self.is_measure:
             self.temperatureValue  = self.temperatureController.get_temperature()
-            self._widget.updateTemperature(self.temperatureValue)
+            if self.temperatureValue > -200: # if not, we have faulty values 
+                    
+                self._widget.updateTemperature(self.temperatureValue)
+                
+                # logging temperature to file
+                mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
+                
+                # Create directory if it does not exist
+                os.makedirs(os.path.dirname(mFileName), exist_ok=True)
+                try:
+                    # in case somebody accesses the file
+                    with open(mFileName, 'a', newline='') as file:
+                        writer = csv.writer(file)
+                        now = datetime.now()
+                        # dd/mm/YY H:M:S
+                        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+                        writer.writerow([dt_string, self.temperatureValue])
+                except:
+                    pass
             
-            # logging temperature to file
-            mFileName = os.path.join(self.temperatureDir, 'temperature.csv')
-            
-            # Create directory if it does not exist
-            os.makedirs(os.path.dirname(mFileName), exist_ok=True)
-            try:
-                # in case somebody accesses the file
-                with open(mFileName, 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    now = datetime.now()
-                    # dd/mm/YY H:M:S
-                    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-                    writer.writerow([dt_string, self.temperatureValue])
-            except:
-                pass
-        
-            # update plot
-            self.updateSetPointData()
-            if self.currPoint < self.nBuffer:
-                self._widget.temperaturePlotCurve.setData(self.timeData[1:self.currPoint],
-                                                    self.setPointData[1:self.currPoint,0])
-            else:
-                self._widget.temperaturePlotCurve.setData(self.timeData, self.setPointData[:,0])
+                # update plot
+                self.updateSetPointData()
+                if self.currPoint < self.nBuffer:
+                    self._widget.temperaturePlotCurve.setData(self.timeData[1:self.currPoint],
+                                                        self.setPointData[1:self.currPoint,0])
+                else:
+                    self._widget.temperaturePlotCurve.setData(self.timeData, self.setPointData[:,0])
             time.sleep(self.tMeasure)
 
 

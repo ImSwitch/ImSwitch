@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 try:
     import NanoImagingPack as nip
     isNIP = True
@@ -82,6 +83,10 @@ class FlowStopController(LiveUpdatedController):
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
         
     @APIExport(runOnUIThread=True)
+    def getStatus(self): 
+        return self.is_measure, self.imagesTaken, self.mExperimentParameters
+    
+    @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
         """ Start FlowStop experiment. """
         self.thread = Thread(target=self.flowExperimentThread, name="FlowStopExperiment", args=(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize))
@@ -93,11 +98,17 @@ class FlowStopController(LiveUpdatedController):
         self._widget.buttonStop.setEnabled(False)
         self._widget.buttonStop.setStyleSheet("background-color: grey")
         self._widget.buttonStart.setStyleSheet("background-color: green")
-        self.stopFlowStopExperimentBy
+        self.stopFlowStopExperiment()
         
     @APIExport(runOnUIThread=True)
     def stopFlowStopExperiment(self):
         self.is_measure=False
+        if not imswitch.IS_HEADLESS:
+            self._widget.buttonStart.setEnabled(True)
+            self._widget.buttonStop.setEnabled(False)
+            self._widget.buttonStop.setStyleSheet("background-color: grey")
+            self._widget.buttonStart.setStyleSheet("background-color: green")
+            
 
     def flowExperimentThread(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):
         ''' FlowStop experiment thread. 
@@ -127,8 +138,14 @@ class FlowStopController(LiveUpdatedController):
                 mFileName = f'{timeStamp}_{experimentName}_{uniqueId}_{i}'
                 self.snapImageFlowCam(mFileName, metaData)
                 time.sleep(timeToStabilize)
+                self.imagesTaken = i
+                
+                if not imswitch.IS_HEADLESS:
+                    self._widget.labelStatusValue.setText(f'Running: {i+1}/{numImages}')
             else:
                 break
+            
+            self.stopFlowStopExperiment()
 
     def setSharedAttr(self, laserName, attr, value):
         self.settingAttr = True
@@ -141,9 +158,8 @@ class FlowStopController(LiveUpdatedController):
     @APIExport(runOnUIThread=True)
     def snapImageFlowCam(self, fileName=None, metaData={}):
         """ Snap image. """
-        if fileName is None:
-            fileName = dirtools.getUniqueFileName(self._master.recordingManager.getSaveDir(),
-                                                  'FlowStop', 'tif')
+        if fileName is None or not fileName:
+            fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         self._master.recordingManager.snap([self.detectorFlowCam], savename=fileName, attrs=metaData)
         
     def movePumpPos(self):

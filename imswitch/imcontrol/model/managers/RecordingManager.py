@@ -228,12 +228,15 @@ class RecordingManager(SignalInterface):
         if wait:
             self.__thread.wait()
 
-    def snap(self, detectorNames, savename, saveMode, saveFormat, attrs):
+    def snap(self, detectorNames=None, savename="", saveMode=SaveMode.Disk, saveFormat=SaveFormat.TIFF, attrs=None):
         """ Saves an image with the specified detectors to a file
         with the specified name prefix, save mode, file format and attributes
         to save to the capture per detector. """
         acqHandle = self.__detectorsManager.startAcquisition()
 
+        if detectorNames is None:
+            detectorNames = self.__detectorsManager.detectorNames
+            
         try:
             images = {}
 
@@ -255,6 +258,9 @@ class RecordingManager(SignalInterface):
                         name = os.path.basename(f'{savename}_{channel}')
                         self.sigMemorySnapAvailable.emit(name, image, savename, saveMode == SaveMode.DiskAndRAM)
 
+        except Exception as e:
+            self.__logger.error(f'Failed to snap image: {e}')
+            
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:

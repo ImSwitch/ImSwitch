@@ -29,6 +29,7 @@ class FlowStopController(LiveUpdatedController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detectorFlowCam = allDetectorNames[0]
+        self.is_measure = False
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]
@@ -83,7 +84,7 @@ class FlowStopController(LiveUpdatedController):
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
         
     @APIExport(runOnUIThread=True)
-    def getStatus(self): 
+    def getStatus(self) -> (bool, int, dict):
         return self.is_measure, self.imagesTaken, self.mExperimentParameters
     
     @APIExport(runOnUIThread=True)
@@ -160,7 +161,8 @@ class FlowStopController(LiveUpdatedController):
         """ Snap image. """
         if fileName is None or not fileName:
             fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        self._master.recordingManager.snap([self.detectorFlowCam], savename=fileName, attrs=metaData)
+        pngformat = self._master.recordingManager.SaveFormat.PNG
+        self._master.recordingManager.snap([self.detectorFlowCam], saveFormat=pngformat, savename=fileName, attrs=metaData)
         
     def movePumpPos(self):
         self.positioner.moveRelative((0,0,1*self.directionPump))

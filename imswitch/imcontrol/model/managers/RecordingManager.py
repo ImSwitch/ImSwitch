@@ -120,18 +120,25 @@ class PNGStorer(Storer):
     """ A storer that stores the images in a series of png files """
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
-            with AsTemporayFile(f'{self.filepath}_{channel}.png') as path:
-                cv2.imwrite(path, image)
-                logger.info(f"Saved image to png file {path}")
+            #with AsTemporayFile(f'{self.filepath}_{channel}.png') as path:
+            path = f'{self.filepath}_{channel}.png'
+            # if image is BW only, we have to convert it to RGB
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            logger.info(f"Saved image to png file {path}")
                 
 class JPGStorer(Storer):
     """ A storer that stores the images in a series of jpg files """
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
         for channel, image in images.items():
-            with AsTemporayFile(f'{self.filepath}_{channel}.jpg') as path:
-                cv2.imwrite(path, image)
-                logger.info(f"Saved image to jpg file {path}")
-                
+            #with AsTemporayFile(f'{self.filepath}_{channel}.jpg') as path:
+            path = f'{self.filepath}_{channel}.jpg'
+            # if image is BW only, we have to convert it to RGB
+            if image.ndim == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(path, image)
+            logger.info(f"Saved image to jpg file {path}")
 class MP4Storer(Storer):
     """ A storer that writes the frames to an MP4 file """
 

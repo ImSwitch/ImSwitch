@@ -84,7 +84,7 @@ class FlowStopController(LiveUpdatedController):
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
         
     @APIExport(runOnUIThread=True)
-    def getStatus(self) -> (bool, int, dict):
+    def getStatus(self) :
         return self.is_measure, self.imagesTaken, self.mExperimentParameters
     
     @APIExport(runOnUIThread=True)
@@ -120,11 +120,11 @@ class FlowStopController(LiveUpdatedController):
         User supplied parameters:
         
         '''
-        
+        self.is_measure = True
         for i in range(numImages):
             if self.is_measure:
                 stepsToMove = volumePerImage 
-                self.positioner.move(value=stepsToMove, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
+                self.positioner.move(value=stepsToMove, speed=1000, axis=self.pumpAxis, is_absolute=False, is_blocking=True)
                 time.sleep(timeToStabilize)
                 metaData = {
                     'timeStamp': timeStamp,
@@ -146,7 +146,7 @@ class FlowStopController(LiveUpdatedController):
             else:
                 break
             
-            self.stopFlowStopExperiment()
+        self.stopFlowStopExperiment()
 
     def setSharedAttr(self, laserName, attr, value):
         self.settingAttr = True
@@ -161,8 +161,11 @@ class FlowStopController(LiveUpdatedController):
         """ Snap image. """
         if fileName is None or not fileName:
             fileName = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        pngformat = self._master.recordingManager.SaveFormat.PNG
-        self._master.recordingManager.snap([self.detectorFlowCam], saveFormat=pngformat, savename=fileName, attrs=metaData)
+            
+        from imswitch.imcontrol.model import RecMode, SaveMode, SaveFormat
+        pngFormat = SaveFormat.PNG
+        saveMode = SaveMode.Disk
+        self._master.recordingManager.snap([self.detectorFlowCam], saveMode=saveMode, saveFormat=pngFormat, savename=fileName, attrs=metaData)
         
     def movePumpPos(self):
         self.positioner.moveRelative((0,0,1*self.directionPump))

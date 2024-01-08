@@ -1026,7 +1026,10 @@ class IC_GrabberDLL:
     #    @endcode
     #*/
     #HGRABBER AC IC_ShowDeviceSelectionDialog( HGRABBER hGrabber ); ///<Show the device selection dialog.
-    #
+    show_dev_selection_dialog = _ic_grabber_dll.IC_ShowDeviceSelectionDialog
+    show_dev_selection_dialog.restype = GrabberHandlePtr
+    show_dev_selection_dialog.argtypes = (GrabberHandlePtr,)
+
     #//////////////////////////////////////////////////////////////////////////
     #/*!    
     #    Return whether the current video capture device supports an external 

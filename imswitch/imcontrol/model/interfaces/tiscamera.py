@@ -80,6 +80,8 @@ class CameraTIS:
             self.shape = (self.shape[0], property_value)
         elif property_name == 'image_width':
             self.shape = (property_value, self.shape[1])
+        elif property_name == 'video_format':
+            self.cam.set_video_format(property_value)
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -97,13 +99,21 @@ class CameraTIS:
             property_value = self.shape[0]
         elif property_name == "image_height":
             property_value = self.shape[1]
+        elif property_name == 'video_format':
+            property_value = self.cam.get_video_format()
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
         return property_value
 
+    def get_video_formats(self):
+        return self.cam.list_video_formats()
+
     def openPropertiesGUI(self):
         self.cam.show_property_dialog()
+
+    def openDevSelectionGUI(self):
+        self.cam.show_dev_selection_dialog()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

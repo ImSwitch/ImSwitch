@@ -5,6 +5,7 @@ from imswitch.imcommon.model import shortcut
 from imswitch.imcommon.view.guitools import naparitools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
+import pdb
 
 
 class CamParamTree(ParameterTree):
@@ -26,6 +27,7 @@ class CamParamTree(ParameterTree):
                        'values': supportedBinnings, 'tip': BinTip},
                       {'name': 'Mode', 'type': 'list', 'value': 'Full chip',
                        'values': ['Full chip'] + list(roiInfos.keys()) + ['Custom']},
+                    #   {'name': 'Format', 'type': 'list', 'value': 'Y16 (320x240)'},
                       {'name': 'X0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
                       {'name': 'Y0', 'type': 'int', 'value': 0, 'limits': (0, 65535)},
                       {'name': 'Width', 'type': 'int', 'value': 1, 'limits': (1, 65535)},
@@ -108,6 +110,7 @@ class CamParamTree(ParameterTree):
         self._writable = value
         framePar = self.p.param('Image frame')
         framePar.param('Binning').setWritable(value)
+        framePar.param('Format').setWritable(value)
         framePar.param('Mode').setWritable(value)
         framePar.param('X0').setWritable(value)
         framePar.param('Y0').setWritable(value)

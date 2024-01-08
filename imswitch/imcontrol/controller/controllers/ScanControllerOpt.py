@@ -1,18 +1,19 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
 
-# import matplotlib.pyplot as plt
 from functools import partial
 import numpy as np
-import pdb
-import debugpy
-import threading
+# import pdb
+# import debugpy
+# import threading
 
-from imswitch.imcommon.model import dirtools, initLogger
+from imswitch.imcommon.model import initLogger
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal
+from skimage.transform import radon
 
 
 class ScanControllerOpt(ImConWidgetController):
@@ -28,20 +29,18 @@ class ScanControllerOpt(ImConWidgetController):
 
         # Set up rotator in widget
         self._widget.initControls()
-        # self.active = True  # LiveupdateController attribute, flag for self.update
 
         # Local flags
         self.live_recon = False
-        self.isOptRunning = False  # currently not used
+        self.isOptRunning = False
 
-        # select detectors
-        # TODO: it would be useful to create a UI section, a combo box for example,
-        # to select the desired detector to extract the data from
-        # This is part of the recording widget
+        # select detectors, this does not update if detector in
+        # recording changes, right?
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
-        self._widget.scanPar['Rotator'].currentIndexChanged.connect(self.updateRotator)
+        self._widget.scanPar['Rotator'].currentIndexChanged.connect(
+            self.updateRotator)
 
         # get rotators
         self.getRotators()
@@ -50,152 +49,38 @@ class ScanControllerOpt(ImConWidgetController):
             self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Connect widget signals
-        self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
+        self._widget.scanPar['GetHotPixels'].clicked.connect(
+            self.exec_hot_pixels)
+
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
 
         # Enable snapping
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
-        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
 
+        # start OPT
         self._commChannel.sigRecordingStarted.connect(self.startOpt)
 
-        # used sigScanEnded, because sigRecordingEnded has been triggering stopOpt 2x
+        # sigScanEnded, because sigRecordingEnded triggers stopOpt 2x
         # I do sigRecordingEnded in stopOpt
         self._commChannel.sigScanEnded.connect(self.stopOpt)
-
-        # TODO: signal for when a new image is captured; either from live view or from recording;
-        # DP: sigUpdateImage only from live view, not from recording!!!, not useful
-        # this is triggered for every new incoming image from the detector: NO, only liveView
-        # self._commChannel.sigUpdateImage.connect(self.displayImage)
-        # Connect CommunicationChannel signals
-        # self._commChannel.sigUpdateImage.connect(self.update)
-
-        # TODO: there is a signal available for reading back recorded files, sigMemoryRecordingAvailable;
-        # details on the content of the signal are listed in the displayRecording method docstring
-        # DP: ONLY if i save on RAM or RAM+disk, and only after the whole experiment
-        # not useful for me I think
-        # self._commChannel.sigMemoryRecordingAvailable.connect(self.displayRecording)
-        # pdb.set_trace()
-
-    # DP: this signal is emitted only after sigRcordingEnded and on top only if I am not saving it on disk
-    # not useful for me I think, because I am updating stack one by one.
-    # def displayRecording(self, name, file, filePath, savedToDisk):
-    #     """ Displays the latest performed recording. Method is triggered by the `sigMemoryRecordingAvailable`.
-
-    #     Args:
-    #         name (`str`): name of the generated file for the last recording;
-    #         file (`Union[BytesIO, h5py.File, zarr.hierarchy.Group]`): 
-    #             - if recording is saved to RAM, a reference to a BytesIO instance where the data is saved; 
-    #             - otherwise a HDF or Zarr file object of the recorded stack (type is selected from the UI)
-    #         filePath (`str`): path to the recording directory
-    #         savedToDisk (`bool`): weather recording is saved to disk (`True`) or not (`False`)
-    #     """
-    #     self._logger.info('Reached displayRecording')
-    #     print(name, file, filePath, savedToDisk)
-    #     return
     
     # JA: method to add your metadata to recordings
     def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
         self.settingAttr = True
         try:
-            self._commChannel.sharedAttrs[(_attrCategory, rotatorName, meta1, meta2, attr)] = value
+            self._commChannel.sharedAttrs[
+                (_attrCategory, rotatorName, meta1, meta2, attr)] = value
         finally:
             self.settingAttr = False
 
-    def handleSnap(self, name, image, filePath, savedToDisk):
-        """ Handles computation over a snapped image. Method is triggered by the `sigMemorySnapAvailable` signal.
-
-        Args:
-            name (`str`): key of the virtual table used to store images in RAM; format is "{filePath}_{channel}"
-            image (`np.ndarray`): captured image snap data;
-            filepath (`str`): path to the file stored on disk;
-            savedToDisk (`bool`): weather the image is saved on disk (`True`) or not (`False`)
-        """
-        self._logger.debug('handling snap')
-        self.frame = image
-        if self.isOptRunning:
-            self.allFrames.append(image)
-
-            self.optStack = np.array(self.allFrames)
-            self.sigImageReceived.emit('OPT stack', self.optStack)
-
-    # DP: redundant, I do this in displayImage
-    # def displayStack(self, detectorName, image, init, scale, isCurrentDetector):
-    #     """ Displays captured image (via live view or recording) on napari.
-    #     Method is triggered via the `sigUpdateImage` signal.
-
-    #     Args:
-    #         detectorName (`str`): name of the detector currently capturing
-    #         image (`np.ndarray`): captured image
-    #         init (`bool`): weather napari should initialize the layer on which data is displayed (True) or not (False)
-    #         scale (`List[int]`): the pixel sizes in micrometers; see the `DetectorManager` class for details
-    #     """
-    #     # TODO: implement layer update functionality;
-    #     # the method should only update the layer when a full image is constructed for each slice captured by the detector 
-    #     self._logger.info('displayStack function')
-    #     self._widget.setImage(np.uint16(self.optStack),
-    #                           colormap="gray",
-    #                           name=name,
-    #                           pixelsize=(1, 1, 1),
-    #                           translation=(0, 0, 0))
-
-    def displayImage(self, name, frame):
-        # subsample stack
-        print('Shape: ', frame.shape)
-        self._widget.setImage(np.uint16(frame),
-                              colormap="gray",
-                              name=name,
-                              pixelsize=(1, 1),
-                              translation=(0, 0))
-
-    def emitScanSignal(self, signal, *args):
-        signal.emit(*args)
-
-    # def enableWidgetInterface(self, enableBool):
-    #     self._widget.enableInterface(enableBool)
-
-    def updateRotator(self):
-        self.motorIdx = self._widget.getRotatorIdx()
-        self.__motor_steps = self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor._steps_per_turn
-        self._widget.scanPar['StepsPerRevLabel'].setText(f'{self.__motor_steps:d} steps/rev')
-        self.__logger.debug(
-            f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
-            )
-
-    def getRotationSteps(self):
-        """ Get the total rotation steps. """
-        return self._widget.getRotationSteps()
-
-    def getStdCutoff(self):
-        """ Get the STD cutoff for Hot pixels correction. """
-        return self._widget.getHotStd()
-
-    def getAverages(self):
-        """ Get number of averages for camera correction. """
-        return self._widget.getAverages()
-
-    def getLiveReconIdx(self):
-        return self._widget.getLiveReconIdx()
-
-    def getRotators(self):
-        """ Get a list of all rotators."""
-        self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
-
-    def updateLiveReconPlot(self, image):
-        self._widget.liveReconPlot.setImage(image)
-
+    #################
+    # Main OPT scan #
+    #################
     def startOpt(self):
         """ Reset and initiate Opt scan. """
         self.allFrames = []
-        # this is workaround for not showing the individual snaps.
-        # I think It cannot be reconnected from this controller, or can it?
-        # without reconnecting in stopOpt, snap from the recordingController will
-        # snap but not show the image in the viewer.
-        try:
-            self._commChannel.sigMemorySnapAvailable.disconnect()
-        except:
-            pass
+        # This is JA solution
         self._commChannel.sigSetSnapVisualization.emit(False)
         self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
         self.sigImageReceived.connect(self.displayImage)
@@ -206,7 +91,21 @@ class ScanControllerOpt(ImConWidgetController):
         # but I cannot connect second slot to it I think. In the end, for normal motor stepping
         # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
         # post_step here.
-        self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(self.post_step)
+        if self._widget.scanPar['MockOpt'].isChecked():
+            self._logger.info('Preparing Mock experiment')
+            self._master.rotatorsManager[
+                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+                                                        self.post_step_mock)
+
+            # here generate stack of projections
+            self.demo = DemoData(resolution=32, bin_factor=1)
+            self._widget.scanPar['RotStepsEdit'].setText('32')
+        else:
+            self._logger.info('Preparing Real experiment')
+            self._master.rotatorsManager[
+                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+                                                        self.post_step)
+
         self.__rot_steps = self.getRotationSteps()  # motor step per revolution
 
         # Checking for divisability of motor steps and OPT steps.
@@ -221,6 +120,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.opt_steps = np.linspace(0, self.__motor_steps, self.__rot_steps,
                                      endpoint=False).astype(np.int_)
 
+        # live reconstruction option
         if self._widget.scanPar['LiveReconButton'].isChecked():
             self.live_recon = True
             self.reconIdx = self.getLiveReconIdx()
@@ -232,44 +132,24 @@ class ScanControllerOpt(ImConWidgetController):
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
-    def stopOpt(self):
-        """ Stop OPT acquisition and enable buttons. Method is triggered
-        by the sigScanEnded signal.
-        """
-        self.isOptRunning = False
-        print('disconnecting')
-        self.emitScanSignal(self._commChannel.sigRecordingEnded)
-        self.sigImageReceived.disconnect()
-        self._master.rotatorsManager[self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
-        self._logger.info("OPT stopped.")
-        self._commChannel.sigSetSnapVisualization.emit(True)
-        # debugpy.breakpoint()
-        # print('debugger stops here')
+    @pyqtSlot()
+    def moveAbsRotator(self, name, dist):
+        """ Move a specific rotator to a certain position. """
+        self.__logger.debug(f'dist to move: {dist}')
+        self._master.rotatorsManager[name].move_abs_steps(dist)
 
     def post_step(self, s):
-        """Acquire image after motor step is done, stop OPT in case of last step,
-        otherwise move motor again.
+        """Acquire image after motor step is done, stop OPT in case of
+        last step, otherwise move motor again.
 
-        Both options using recording and snapping explored, none is without
-        issues as commented below.
+        Snapping implemented, because it eliminates issues
+        with streaming images I do not care about. And avoids
+        risk of getLatestFrame starting while motor still moving
+        in the case of long exposure times.
         """
         print(f'test string: {s}')
-        # option using Recording
-        # This has an advantage of startAcquisition only once. However it streams images and saving them,
-        # No idea how ot prevent that.
-        # even the ones I do not care about. Also asking for getLastFrame() for longer acquisition times
-        # might mean that part of the exposure might be still while the motor is moving
-        # This is not an issue, in snapping
-        # Updating OPT stack in napari works
-        # self.frame = self.detector.getLatestFrame()
-        # if self.frame.shape[0] != 0:
-        #     self.allFrames.append(self.frame)
-
         # option with snapping
-        # In this case, no above issues, just right now, If I am writing the snaps to the disk
-        # no napari update, because sigMemorySnapAvailable is not emitted in this mode.
-        # If I save it to image display, I have updates of the OPT stack and single snaps populated
-        # to napari. And they are not saved one by one.
+        # saving option needs to set in the recording controller.
         self.sigRequestSnap.emit()
 
         # updating live reconstruction
@@ -278,16 +158,85 @@ class ScanControllerOpt(ImConWidgetController):
 
         self.__currentStep += 1
 
-        # TODO: stack images, do not generate full array after every step
-        # uncomment this if used with Recording
-        # self.optStack = np.array(self.allFrames)
-        # self.sigImageReceived.emit('OPT stack', self.optStack)
-
         if self.__currentStep > len(self.opt_steps)-1:
-            self.emitScanSignal(self._commChannel.sigScanEnded)
+            self._commChannel.sigScanEnded.emit()
         else:
             self.__logger.debug(f'post_step func, step {self.__currentStep}')
-            self.moveAbsRotator(self.__rotators[self.motorIdx], self.opt_steps[self.__currentStep])
+            self.moveAbsRotator(self.__rotators[self.motorIdx],
+                                self.opt_steps[self.__currentStep])
+
+    def post_step_mock(self, s):
+        """Acquire image after motor step is done, stop OPT in case of
+        last step, otherwise move motor again.
+
+        Snapping implemented, because it eliminates issues
+        with streaming images I do not care about. And avoids
+        risk of getLatestFrame starting while motor still moving
+        in the case of long exposure times.
+        """
+        print(f'test Mock string: {s}')
+        self.frame = self.demo.sinogram[self.__currentStep]
+        self.optStack = self.demo.sinogram[:self.__currentStep]
+        self.sigImageReceived.emit('OPT stack', self.optStack)
+
+        # updating live reconstruction
+        if self.live_recon:
+            self.updateLiveRecon()
+
+        self.__currentStep += 1
+
+        if self.__currentStep > len(self.opt_steps)-1:
+            self._commChannel.sigScanEnded.emit()
+        else:
+            self.__logger.debug(f'post_step func, step {self.__currentStep}')
+            self.moveAbsRotator(self.__rotators[self.motorIdx],
+                                self.opt_steps[self.__currentStep])
+
+    def stopOpt(self):
+        """ Stop OPT acquisition and enable buttons. Method is triggered
+        by the sigScanEnded signal.
+        """
+        self.isOptRunning = False
+        self._commChannel.sigRecordingEnded.emit()
+        self.sigImageReceived.disconnect()
+        self._master.rotatorsManager[
+            self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
+        self._logger.info("OPT stopped.")
+        self._commChannel.sigSetSnapVisualization.emit(True)
+        # debugpy.breakpoint()
+        # print('debugger stops here')
+
+    ##################
+    # Image handling #
+    ##################
+    def handleSnap(self, name, image, filePath, savedToDisk):
+        """ Handles computation over a snapped image. Method is triggered
+        by the `sigMemorySnapAvailable` signal.
+
+        Args:
+            name (`str`): key of the virtual table used to store images in RAM;
+                format is "{filePath}_{channel}"
+            image (`np.ndarray`): captured image snap data;
+            filepath (`str`): path to the file stored on disk;
+            savedToDisk (`bool`): weather the image is saved
+                on disk (`True`) or not (`False`)
+        """
+        self._logger.debug('handling snap')
+        self.frame = image
+        if self.isOptRunning:
+            self.allFrames.append(image)
+
+            self.optStack = np.array(self.allFrames)
+            self.sigImageReceived.emit('OPT stack', self.optStack)
+
+    def displayImage(self, name, frame):
+        # subsample stack
+        print('Shape: ', frame.shape)
+        self._widget.setImage(np.uint16(frame),
+                              colormap="gray",
+                              name=name,
+                              pixelsize=(1, 1),
+                              translation=(0, 0))
 
     def updateLiveRecon(self):
         try:
@@ -310,6 +259,58 @@ class ScanControllerOpt(ImConWidgetController):
             self.updateLiveReconPlot(self.current_recon.output)
         except TypeError:
             self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+
+    def updateLiveReconPlot(self, image):
+        """Dispaly current live reconstruction image.
+        If
+
+        Args:
+            image (np.ndarray): FBP live reconstruction
+        """
+        self._widget.liveReconPlot.setImage(image)
+
+    # def enableWidgetInterface(self, enableBool):
+    #     self._widget.enableInterface(enableBool)
+
+    ##################
+    # Helper methods #
+    ##################
+    def updateRotator(self):
+        self.motorIdx = self._widget.getRotatorIdx()
+        self.__motor_steps = self._master.rotatorsManager[
+            self.__rotators[self.motorIdx]]._motor._steps_per_turn
+
+        self._widget.scanPar['StepsPerRevLabel'].setText(
+            f'{self.__motor_steps:d} steps/rev')
+
+        self.__logger.debug(
+            f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
+            )
+
+    def getRotationSteps(self):
+        """ Get the total rotation steps for an OPT experiment. """
+        return self._widget.getRotationSteps()
+
+    def getStdCutoff(self):
+        """ Get the STD cutoff for Hot pixels correction. """
+        return self._widget.getHotStd()
+
+    def getAverages(self):
+        """ Get number of averages for camera correction. """
+        return self._widget.getAverages()
+
+    def getLiveReconIdx(self):
+        """ Get index of the live reconstruction horizontal
+        line.
+
+        Returns:
+            int: Index of the image array
+        """
+        return self._widget.getLiveReconIdx()
+
+    def getRotators(self):
+        """ Get a list of all rotators."""
+        self.__rotators = self._master.rotatorsManager.getAllDeviceNames()
 
     ###################
     # Message windows #
@@ -488,15 +489,6 @@ class ScanControllerOpt(ImConWidgetController):
         self.current_frame = np.mean(np.array(frames), axis=0).astype(np.int16)
         self.nFrames.emit()
 
-    def update_live_recon(self):
-        self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
-
-    @pyqtSlot()
-    def moveAbsRotator(self, name, dist):
-        """ Move a specific rotator to a certain position. """
-        self.__logger.debug(f'dist to move: {dist}')
-        self._master.rotatorsManager[name].move_abs_steps(dist)
-
 
 class FBPlive():
     def __init__(self, line, steps: int) -> None:
@@ -597,6 +589,248 @@ class FBPlive():
         pad_before = new_center - old_center
         pad_width = ((pad_before, pad - pad_before), (0, 0))
         return np.pad(sinogram, pad_width, mode='constant', constant_values=0)
+
+
+class DemoData(QObject):
+    def __init__(self, resolution=128, bin_factor=1) -> None:
+        super(QObject, self).__init__()
+        self.size = resolution  # int
+        self.idx = 0
+        self.binning_factor = bin_factor  # not sure it can do hardware binning
+        self.accum = False
+        self.thread = QThread(parent=self)
+        self.radon = Get_radon(self.size)
+        self.radon.moveToThread(self.thread)
+        self.thread.started.connect(self.radon.get_sinogram)
+        self.radon.finished.connect(self.sino)
+        self.radon.finished.connect(self.thread.quit)
+        self.thread.finished.connect(self.thread.quit)
+        self.thread.start()
+
+    def sino(self, data):
+        """Setting sinogram variable of phantom
+        data
+
+        Args:
+            data (np.ndarray):  Sinogram of 3D phantom
+        """
+        print('setting sino variable')
+        self.sinogram = np.rollaxis(data, 2)
+
+
+class Get_radon(QObject):
+    def __init__(self, size):
+        super(QObject, self).__init__()
+        self.size = size
+
+    finished = pyqtSignal(np.ndarray)
+    progress = pyqtSignal(int)
+
+    def get_sinogram(self):
+        data = shepp3d(self.size)  # shepp-logan 3D phantom
+        sinogram = np.zeros(data.shape)  # preallocate sinogram array
+        angles = np.linspace(0, 360, self.size, endpoint=False)  # angles
+        # TODO make progress bar with loading data
+        for i in range(self.size):
+            self.progress.emit(int(i*100 / self.size))
+            sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
+        mx = np.amax(sinogram)
+        sinogram = (sinogram/mx*255).astype('int16')
+        self.finished.emit(sinogram)
+
+    def loading_message(self):
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Information)
+        msg.setText("Generating data for you")
+        # msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        retval = msg.exec_()
+        print(retval)
+        return retval
+
+
+def _totuple(size, dim):
+    """
+    Converts size to tuple.
+    """
+    if not isinstance(size, tuple):
+        if dim == 2:
+            size = (size, size)
+        elif dim == 3:
+            size = (size, size, size)
+    return size
+
+
+def shepp3d(size=128, dtype='float32'):
+    """
+    Load 3D Shepp-Logan image array.
+
+    Parameters
+    ----------
+    size : int or tuple, optional
+        Size of the 3D data.
+    dtype : str, optional
+        The desired data-type for the array.
+
+    Returns
+    -------
+    ndarray
+        Output 3D test image.
+    """
+    size = _totuple(size, 3)
+    shepp_params = _array_to_params(_get_shepp_array())
+    return phantom(size, shepp_params, dtype).clip(0, np.inf)
+
+
+def phantom(size, params, dtype='float32'):
+    """
+    Generate a cube of given size using a list of ellipsoid parameters.
+
+    Parameters
+    ----------
+    size: tuple of int
+        Size of the output cube.
+    params: list of dict
+        List of dictionaries with the parameters defining the ellipsoids
+        to include in the cube.
+    dtype: str, optional
+        Data type of the output ndarray.
+
+    Returns
+    -------
+    ndarray
+        3D object filled with the specified ellipsoids.
+    """
+    # instantiate ndarray cube
+    obj = np.zeros(size, dtype=dtype)
+
+    # define coords
+    coords = _define_coords(size)
+
+    # recursively add ellipsoids to cube
+    for param in params:
+        _ellipsoid(param, out=obj, coords=coords)
+    return obj
+
+
+def _ellipsoid(params, shape=None, out=None, coords=None):
+    """
+    Generate a cube containing an ellipsoid defined by its parameters.
+    If out is given, fills the given cube instead of creating a new one.
+    """
+    # handle inputs
+    if shape is None and out is None:
+        raise ValueError("You need to set shape or out")
+    if out is None:
+        out = np.zeros(shape)
+    if shape is None:
+        shape = out.shape
+    if len(shape) == 1:
+        shape = shape, shape, shape
+    elif len(shape) == 2:
+        shape = shape[0], shape[1], 1
+    elif len(shape) > 3:
+        raise ValueError("input shape must be lower or equal to 3")
+    if coords is None:
+        coords = _define_coords(shape)
+
+    # rotate coords
+    coords = _transform(coords, params)
+
+    # recast as ndarray
+    coords = np.asarray(coords)
+    np.square(coords, out=coords)
+    ellip_mask = coords.sum(axis=0) <= 1.
+    ellip_mask.resize(shape)
+
+    # fill ellipsoid with value
+    out[ellip_mask] += params['A']
+    return out
+
+
+def _rotation_matrix(p):
+    """
+    Defines an Euler rotation matrix from angles phi, theta and psi.
+    """
+    cphi = np.cos(np.radians(p['phi']))
+    sphi = np.sin(np.radians(p['phi']))
+    ctheta = np.cos(np.radians(p['theta']))
+    stheta = np.sin(np.radians(p['theta']))
+    cpsi = np.cos(np.radians(p['psi']))
+    spsi = np.sin(np.radians(p['psi']))
+    alpha = [[cpsi * cphi - ctheta * sphi * spsi,
+              cpsi * sphi + ctheta * cphi * spsi,
+              spsi * stheta],
+             [-spsi * cphi - ctheta * sphi * cpsi,
+              -spsi * sphi + ctheta * cphi * cpsi,
+              cpsi * stheta],
+             [stheta * sphi,
+              -stheta * cphi,
+              ctheta]]
+    return np.asarray(alpha)
+
+
+def _define_coords(shape):
+    """
+    Generate a tuple of coords in 3D with a given shape.
+    """
+    mgrid = np.lib.index_tricks.nd_grid()
+    cshape = np.asarray(1j) * shape
+    x, y, z = mgrid[-1:1:cshape[0], -1:1:cshape[1], -1:1:cshape[2]]
+    return x, y, z
+
+
+def _transform(coords, p):
+    """
+    Apply rotation, translation and rescaling to a 3-tuple of coords.
+    """
+    alpha = _rotation_matrix(p)
+    out_coords = np.tensordot(alpha, coords, axes=1)
+    _shape = (3,) + (1,) * (out_coords.ndim - 1)
+    _dt = out_coords.dtype
+    M0 = np.array([p['x0'], p['y0'], p['z0']], dtype=_dt).reshape(_shape)
+    sc = np.array([p['a'], p['b'], p['c']], dtype=_dt).reshape(_shape)
+    out_coords -= M0
+    out_coords /= sc
+    return out_coords
+
+
+def _get_shepp_array():
+    """
+    Returns the parameters for generating modified Shepp-Logan phantom.
+    """
+    shepp_array = [
+        [1.,  .6900, .920, .810,   0.,     0.,   0.,   90.,   90.,   90.],
+        [-.8, .6624, .874, .780,   0., -.0184,   0.,   90.,   90.,   90.],
+        [-.2, .1100, .310, .220,  .22,     0.,   0., -108.,   90.,  100.],
+        [-.2, .1600, .410, .280, -.22,     0.,   0.,  108.,   90.,  100.],
+        [.1,  .2100, .250, .410,   0.,    .35, -.15,   90.,   90.,   90.],
+        [.1,  .0460, .046, .050,   0.,     .1,  .25,   90.,   90.,   90.],
+        [.1,  .0460, .046, .050,   0.,    -.1,  .25,   90.,   90.,   90.],
+        [.1,  .0460, .023, .050, -.08,  -.605,   0.,   90.,   90.,   90.],
+        [.1,  .0230, .023, .020,   0.,  -.606,   0.,   90.,   90.,   90.],
+        [.1,  .0230, .046, .020,  .06,  -.605,   0.,   90.,   90.,   90.]]
+    return shepp_array
+
+
+def _array_to_params(array):
+    """
+    Converts list to a dictionary.
+    """
+    # mandatory parameters to define an ellipsoid
+    params_tuple = [
+        'A',
+        'a', 'b', 'c',
+        'x0', 'y0', 'z0',
+        'phi', 'theta', 'psi']
+
+    array = np.asarray(array)
+    out = []
+    for i in range(array.shape[0]):
+        tmp = dict()
+        for k, j in zip(params_tuple, list(range(array.shape[1]))):
+            tmp[k] = array[i, j]
+        out.append(tmp)
+    return out
 
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.

@@ -46,7 +46,7 @@ class CommunicationChannel(SignalInterface):
 
     sigUpdateRecTime = Signal(int)  # (recTime)
 
-    sigSetSnapVisualization = Signal(bool)
+    sigSetSnapVisualization = Signal(bool)  # for handling snap in OPT
 
     sigMemorySnapAvailable = Signal(
         str, np.ndarray, object, bool

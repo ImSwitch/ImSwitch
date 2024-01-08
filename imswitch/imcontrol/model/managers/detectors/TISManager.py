@@ -1,7 +1,9 @@
 import numpy as np
+import pdb
 
 from imswitch.imcommon.model import initLogger
-from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
+from .DetectorManager import (DetectorManager, DetectorAction,
+                              DetectorNumberParameter, DetectorListParameter)
 
 
 class TISManager(DetectorManager):
@@ -34,26 +36,42 @@ class TISManager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100, valueUnits='ms',
+            'exposure': DetectorNumberParameter(group='Misc', value=100,
+                                                valueUnits='ms',
                                                 editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+            'gain': DetectorNumberParameter(group='Misc', value=1,
+                                            valueUnits='arb.u.',
                                             editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1, valueUnits='arb.u.',
+            'brightness': DetectorNumberParameter(group='Misc', value=1,
+                                                  valueUnits='arb.u.',
+                                                  editable=True),
+            # Fix NO2, it seems to change the frame size, but not the
+            # bit depth. I am not sure switching Y800 and Y16 can be done without
+            # reinitializing the camera.
+            'video_format': DetectorListParameter(group='Misc',
+                                                  value='Y16 (320x240)',
+                                                  options=self._camera.get_video_formats(),
                                                   editable=True),
         }
 
         # Prepare actions
         actions = {
             'More properties': DetectorAction(group='Misc',
-                                              func=self._camera.openPropertiesGUI)
+                                              func=self._camera.openPropertiesGUI),
+        # DP potential fix NO1, reinitialize camera from the dialog,
+        # but it throws AttributeError from __getattr__ in IC_Camera.py 
+            'Device selection': DetectorAction(group='Misc',
+                                               func=self._camera.openDevSelectionGUI),
         }
 
-        super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
-                         model=self._camera.model, parameters=parameters, actions=actions, croppable=True)
+        super().__init__(detectorInfo, name, fullShape=fullShape,
+                         supportedBinnings=[1],
+                         model=self._camera.model, parameters=parameters,
+                         actions=actions, croppable=True)
 
     @property
     def scale(self):
-        return [1,1]
+        return [1, 1]
 
     def getLatestFrame(self, is_save=False):
         if not self._adjustingParameters:
@@ -143,6 +161,7 @@ class TISManager(DetectorManager):
         try:
             from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
             camera = CameraTIS(cameraId)
+            # pdb.set_trace()
         except Exception:
             self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS

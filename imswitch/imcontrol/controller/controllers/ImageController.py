@@ -32,11 +32,12 @@ class ImageController(LiveUpdatedController):
         self._commChannel.sigSetSnapVisualization.connect(self.setSnapVisualization)
         self._commChannel.sigSetExposure.connect(lambda t: self.setExposure(t))
 
-    def setSnapVisualization(status: bool) -> None:
+    def setSnapVisualization(self, status: bool) -> None:
         if status:
             self._commChannel.sigMemorySnapAvailable.connect(self.memorySnapAvailable)
         else:
-            self._commChannel.sigMemoryRecordingAvailable.disconnect()
+            # self._commChannel.sigMemoryRecordingAvailable.disconnect()
+            self._commChannel.sigMemorySnapAvailable.disconnect()
 
     def autoLevels(self, detectorNames=None, im=None):
         """ Set histogram levels automatically with current detector image."""

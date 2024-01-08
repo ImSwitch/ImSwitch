@@ -1,7 +1,7 @@
 from imswitch.imcommon.model import initLogger
 from .RotatorManager import RotatorManager
 import time
-import pdb
+# import pdb
 
 
 class ArduinoRotatorManager(RotatorManager):
@@ -58,7 +58,9 @@ class ArduinoRotatorManager(RotatorManager):
                         self._motor.motor,
                         self._motor.current_position_callback)
         time.sleep(.2)
+        # self._motor.opt_step_done.emit('DONE!')
         self.trigger_update_position()
+        print('03')
 
     def trigger_update_position(self):
         self._motor.emit_trigger_update_position()

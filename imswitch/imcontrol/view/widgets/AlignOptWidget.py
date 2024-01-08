@@ -1,32 +1,20 @@
-from qtpy import QtCore, QtWidgets
-import numpy as np
+from qtpy import QtWidgets
 import pyqtgraph as pg
 
 from imswitch.imcontrol.view import guitools as guitools
-from .basewidgets import NapariHybridWidget
 from .basewidgets import Widget
 
 
 class AlignOptWidget(Widget):
     """ Widget controlling OPT experiments where a rotation stage is triggered
     """
-
-    # sigRotStepDone = QtCore.Signal()
-    # sigRunScanClicked = QtCore.Signal()
-    # sigScanDone = QtCore.Signal()
-
-    # def __post_init__(self, *args, **kwargs):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.grid = QtWidgets.QGridLayout()
         self.setLayout(self.grid)
         self.scanPar = {}
-        self.enabled = True
-        self.layer = None
 
     def initControls(self):
-        # populate widget
         self.widgetLayout()
 
     def plotCounterProj(self, img):
@@ -36,23 +24,37 @@ class AlignOptWidget(Widget):
         """ Returns the user-input list of indeces for horizontal cuts."""
         return self.scanPar['LineIdxsEdit'].text()
 
-    def setRotStepEnable(self, enabled):
-        """ For inactivating during scanning when ActivateButton pressed
-        and waiting for a scan. When scan finishes, enable again. """
-        self.scanPar['RotStepsEdit'].setEnabled(enabled)
+    def getRotatorIdx(self):
+        """Returns currently selected rotator for the OPT
+        """
+        return self.scanPar['Rotator'].currentIndex()
 
     def widgetLayout(self):
-        self.scanPar['StartButton'] = guitools.BetterPushButton('Start')
-        self.scanPar['StopButton'] = guitools.BetterPushButton('Stop')
+        self.scanPar['StartButton'] = guitools.BetterPushButton('Acquire')
+        self.scanPar['StartButton'].setToolTip(
+            'Acquires 0 and 180 deg projections to compare and autocorrelate \
+horizontal cuts to allow for COR alignment.'
+        )
+        self.scanPar['Rotator'] = QtWidgets.QComboBox()
+        self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
+
         self.plotMerge = pg.ImageView()
         self.plotHorCuts = pg.PlotWidget()
+        self.plotCC = pg.PlotWidget()
 
-        self.scanPar['LineIdxsEdit'] = QtWidgets.QLineEdit('100 1000')
+        self.scanPar['LineIdxsEdit'] = QtWidgets.QLineEdit('100 50')
+        self.scanPar['xShift'] = QtWidgets.QSpinBox()
+        self.scanPar['xShift'].setValue(0)
+        self.scanPar['xShift'].setRange(-50, 50)
+        self.scanPar['xShift'].setSingleStep(1)
+
+        self.scanPar['xShiftLabel'] = QtWidgets.QLabel('x-Shift')
         self.scanPar['PlotHorCuts'] = guitools.BetterPushButton('Plot')
 
         currentRow = 0
         self.grid.addWidget(self.scanPar['StartButton'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['StopButton'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['Rotator'], currentRow, 2)
 
         currentRow += 1
         self.grid.addWidget(self.plotMerge, currentRow, 0, 1, -1)
@@ -64,12 +66,14 @@ class AlignOptWidget(Widget):
         self.grid.addWidget(self.scanPar['PlotHorCuts'], currentRow, 2)
 
         currentRow += 1
+        self.grid.addWidget(self.scanPar['xShiftLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['xShift'], currentRow, 1)
+
+        currentRow += 1
         self.grid.addWidget(self.plotHorCuts, currentRow, 0, 1, -1)
 
-        # self.grid.addItem(QtWidgets.QSpacerItem(10, 10,
-        #                   QtWidgets.QSizePolicy.Minimum,
-        #                   QtWidgets.QSizePolicy.Expanding),
-        #                   currentRow+1, 0, 1, -1)
+        currentRow += 1
+        self.grid.addWidget(self.plotCC, currentRow, 0, 1, -1)
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

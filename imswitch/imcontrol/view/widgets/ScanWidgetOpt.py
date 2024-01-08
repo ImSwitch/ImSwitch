@@ -139,6 +139,11 @@ class ScanWidgetOpt(NapariHybridWidget):
             )
         self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLabel('Recon Idx')
 
+        self.scanPar['MockOpt'] = QtWidgets.QCheckBox(
+            'Demo experiment',
+            )
+        self.scanPar['MockOpt'].setCheckable(True)
+
         self.liveReconPlot = pg.ImageView()
 
         currentRow = 0
@@ -185,17 +190,16 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         currentRow += 1
 
+        self.grid.addWidget(self.scanPar['MockOpt'], currentRow, 0)
+
+        currentRow += 1
+
         self.grid.addWidget(self.scanPar['LiveReconButton'], currentRow, 0)
         self.grid.addWidget(self.scanPar['LiveReconIdxEdit'], currentRow, 1)
         self.grid.addWidget(self.scanPar['LiveReconIdxLabel'], currentRow, 2)
 
         currentRow += 1
         self.grid.addWidget(self.liveReconPlot, currentRow, 0, 1, -1)
-
-        # self.grid.addItem(QtWidgets.QSpacerItem(10, 10,
-        #                   QtWidgets.QSizePolicy.Minimum,
-        #                   QtWidgets.QSizePolicy.Expanding),
-        #                   currentRow+1, 0, 1, -1)
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

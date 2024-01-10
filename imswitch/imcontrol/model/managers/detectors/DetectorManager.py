@@ -125,7 +125,7 @@ class DetectorManager(SignalInterface):
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an AttributeError will
         be raised. """
-
+        self.__logger.debug('setting par from manager')
         if name not in self.__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 

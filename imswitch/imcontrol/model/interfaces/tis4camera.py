@@ -1,41 +1,49 @@
 import numpy as np
 
 from imswitch.imcommon.model import initLogger
-from .pyicic import IC_ImagingControl
 import imagingcontrol4 as ic4
 import pdb
+import time
 
 
 class CameraTIS4:
-    def __init__(self, cameraNo):
+    def __init__(self, cameraNo, pixel_format):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
-
-        ic4.Library.init()
+        ic4.Library.init(api_log_level=4, log_targets=1)
+        self.pixel_formats = {'8bit': ic4.PixelFormat.Mono8,
+                              '12bit': ic4.PixelFormat.Mono16,
+                              '16bit': ic4.PixelFormat.Mono16}
+        self.rotate_frame = 'No'
+        ic4.PropertyDialogFlags.ALLOW_STREAM_RESTART
         cam_names = ic4.DeviceEnum.devices()
         self.model = cam_names[cameraNo]
         self.cam = ic4.Grabber()
-        self.cam.device_open(self.model)
-        # pdb.set_trace()
-
         self.sink = ic4.SnapSink()
+
+        self.local_init(pixel_format)
+
+    def local_init(self, value):
+        try:
+            print('Device open', self.cam.is_device_open)
+            self.cam.stream_stop()
+            self.cam.device_close()
+            self.__logger.info('this is a RE-init')
+        except:
+            self.__logger.info('this is an init')
+        self.cam.device_open(self.model)
+
+        self.setPropertyValue('video format', value)
         # Defer acquisition means that, self.cam.start_acquisition needs to be called
         self.cam.stream_setup(self.sink,
                               setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
                               )
-
+        print('grabber', self.cam, id(self.cam))
+        print('SINK', self.cam.sink, id(self.cam.sink))
         # set auto gain off
         self.cam.device_property_map.set_value(
             ic4.PropId.GAIN_AUTO, False
         )
-        # can I set format here?
-        try:
-            self.cam.device_property_map.set_value(
-                            ic4.PropId.PIXEL_FORMAT,
-                            ic4.PixelFormat.Mono16)
-        except Exception as e:
-            self.__logger.warn('Could not set the pixel format')
-            self.__logger.debug(e)
 
     def start_live(self):
         self.cam.acquisition_start()  # start imaging
@@ -43,30 +51,35 @@ class CameraTIS4:
     def stop_live(self):
         self.cam.acquisition_stop()  # stop imaging
 
-    def suspend_live(self):
-        # self.cam.suspend_live()  # suspend imaging into prepared state
-        self.cam.acquisition_stop()
-
-    def prepare_live(self):
-        self.cam.prepare_live()  # prepare prepared state for live imaging
-
     def grabFrame(self):
         image = self.sink.snap_single(10000)
-        # if image.image_type.pixel_format == ic4.PixelFormat.Mono8:
-        #     frame = np.array(frame, dtype='float64')
         frame = image.numpy_wrap()[:, :, 0]
+
+        # shift bits if necessary, works
+        if self.video_format == '12bit':
+            print('before shift', np.amin(frame), np.amax(frame))
+            frame = frame >> 4
+            print('after shift', np.amin(frame), np.amax(frame))
+        else:
+            print('no shift', np.amin(frame), np.amax(frame))
+
+        # rotating frame, works, but not for saving snaps, because of mismatched
+        # dimension, but that should be easy to fix.
+        if self.rotate_frame != 'No':
+            frame = self.rotate(frame)
         self.__logger.info(f'image format: {frame.dtype, frame.shape}')
-        return np.transpose(frame)
-        # ic4.PixelFormat.Mono8
-        # # self.cam.wait_til_frame_ready(20)  # wait for frame ready
-        # frame, width, height, depth = self.cam.get_image_data()
-        # frame = np.array(frame, dtype='float64')
-        # # Check if below is giving the right dimensions out
-        # # TODO: do this smarter, as I can just take every 3rd value instead of creating a reshaped
-        # #       3D array and taking the first plane of that
-        # frame = np.reshape(frame, (height, width, depth))[:, :, 0]
-        # frame = np.transpose(frame)
-        # return frame
+        self.__logger.info(self.cam.device_property_map.get_value_float(ic4.PropId.EXPOSURE_TIME))
+        return frame
+
+    def rotate(self, arr):
+        if self.rotate_frame == '90':
+            return np.rot90(arr, k=1)
+        elif self.rotate_frame == '180':
+            return np.rot90(arr, k=2)
+        elif self.rotate_frame == '270':
+            return np.rot90(arr, k=3)
+        else:
+            return arr
 
     def setROI(self, hpos, vpos, hsize, vsize):
         hsize = max(hsize, 256)  # minimum ROI size
@@ -91,18 +104,15 @@ class CameraTIS4:
             self.cam.device_property_map.set_value(
                                 ic4.PropId.WIDTH,
                                 property_value)
-        elif property_name == 'video_format':
-            if property_value == '8bit':
-                self.cam.device_property_map.set_value(
-                                ic4.PropId.PIXEL_FORMAT,
-                                ic4.PixelFormat.Mono8)
-            elif property_value == '16bit':
-                self.cam.device_property_map.set_value(
-                                ic4.PropId.PIXEL_FORMAT,
-                                ic4.PixelFormat.Mono16)
-            else:
-                self.__logger.warning(f'Invalid Property value {property_value}')
-            return False
+        elif property_name == 'video format':
+            self.cam.device_property_map.set_value(
+                            ic4.PropId.PIXEL_FORMAT,
+                            self.pixel_formats[property_value])
+            self.video_format = property_value
+            self.__logger.info(f'set format: {self.cam.device_property_map.get_value_int(ic4.PropId.PIXEL_FORMAT)}')
+            # return self.video_format
+        elif property_name == 'rotate frame':
+            self.rotate_frame = property_value
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -114,7 +124,7 @@ class CameraTIS4:
             property_value = self.cam.device_property_map.get_value_float(
                                 ic4.PropId.GAIN)
         elif property_name == "exposure":
-            property_value = self.cam.device_property_map.get_value_int(
+            property_value = self.cam.device_property_map.get_value_float(
                                 ic4.PropId.EXPOSURE_TIME)
         elif property_name == "image_width":
             property_value = self.cam.device_property_map.get_value_int(
@@ -122,9 +132,10 @@ class CameraTIS4:
         elif property_name == "image_height":
             property_value = self.cam.device_property_map.get_value_int(
                                 ic4.PropId.HEIGHT)
-        elif property_name == 'video_format':
-            property_value = self.cam.device_property_map.get_value_int(
-                                ic4.PropId.PIXEL_FORMAT)
+        elif property_name == 'video format':
+            return self.video_format
+        elif property_name == 'rotate frame':
+            property_value = self.rotate_frame
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False
@@ -132,7 +143,6 @@ class CameraTIS4:
 
     def openPropertiesGUI(self):
         ic4.Dialogs.grabber_device_properties(self.cam, 43)
-        # self.cam.show_property_dialog()
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

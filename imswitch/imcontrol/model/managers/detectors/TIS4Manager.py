@@ -1,5 +1,6 @@
 import numpy as np
 import pdb
+import time
 
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (DetectorManager, DetectorAction,
@@ -23,9 +24,19 @@ class TIS4Manager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
+        self.__logger.info(f'detectorInfo: {detectorInfo}')
 
-        self._camera = self._getTISObj(detectorInfo.managerProperties['cameraListIndex'])
-        
+        # I want to initialize with the correct depth
+        if 'pixel_format' in detectorInfo.managerProperties['tis'].keys():
+            pixel_format = detectorInfo.managerProperties['tis']['pixel_format']
+            self._camera = self._getTISObj(
+                                detectorInfo.managerProperties['cameraListIndex'],
+                                pixel_format)
+        else:  # default is 8bit
+            self._camera = self._getTISObj(
+                                detectorInfo.managerProperties['cameraListIndex'],
+                                '8bit')
+
         self._running = False
         self._adjustingParameters = False
 
@@ -39,33 +50,32 @@ class TIS4Manager(DetectorManager):
 
         # Prepare parameters
         parameters = {
-            'exposure': DetectorNumberParameter(group='Misc', value=100,
-                                                valueUnits='ms',
-                                                editable=True),
-            'gain': DetectorNumberParameter(group='Misc', value=1,
-                                            valueUnits='arb.u.',
-                                            editable=True),
-            'brightness': DetectorNumberParameter(group='Misc', value=1,
-                                                  valueUnits='arb.u.',
-                                                  editable=True),
-            
-            # Fix NO2, it seems to change the frame size, but not the
-            # bit depth. I am not sure switching Y800 and Y16 can be done without
-            # reinitializing the camera.
-            'video_format': DetectorListParameter(group='Misc',
-                                                  value='16bit',
-                                                  options=['8bit', '16bit'],
-                                                  editable=True),
+            'exposure': DetectorNumberParameter(
+                group='Misc',
+                value=self._camera.getPropertyValue('exposure'),
+                valueUnits='us',
+                editable=True),
+            'gain': DetectorNumberParameter(
+                group='Misc',
+                value=self._camera.getPropertyValue('gain'),
+                valueUnits='a.u.',
+                editable=True),
+            'video format': DetectorListParameter(
+                group='Misc',
+                value=self._camera.getPropertyValue('video format'),
+                options=['8bit', '12bit', '16bit'],
+                editable=True),
+            'rotate frame': DetectorListParameter(
+                group='Misc',
+                value=self._camera.getPropertyValue('rotate frame'),
+                options=['No', '90', '180', '270'],
+                editable=True),
         }
 
         # Prepare actions
         actions = {
             'More properties': DetectorAction(group='Misc',
                                               func=self._camera.openPropertiesGUI),
-        # DP potential fix NO1, reinitialize camera from the dialog,
-        # but it throws AttributeError from __getattr__ in IC_Camera.py 
-        #     'Device selection': DetectorAction(group='Misc',
-        #                                        func=self._camera.openDevSelectionGUI),
         }
 
         super().__init__(detectorInfo, name, fullShape=fullShape,
@@ -86,14 +96,21 @@ class TIS4Manager(DetectorManager):
         """Sets a parameter value and returns the value.
         If the parameter doesn't exist, i.e. the parameters field doesn't
         contain a key with the specified parameter name, an error will be
-        raised."""        
+        raised."""
 
         super().setParameter(name, value)
 
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
-
-        value = self._camera.setPropertyValue(name, value)
+        # trying to solve bit depth change issues
+        # this closes and reopens the camera, sink and stream
+        # snapping after works, but liveview crashes without
+        # any error exactly after grabbing three frames.
+        # No idea why
+        if name == 'video format':
+            self._camera.local_init(value)
+        else:
+            value = self._camera.setPropertyValue(name, value)
         return value
 
     def getParameter(self, name):
@@ -118,14 +135,16 @@ class TIS4Manager(DetectorManager):
         pass
 
     def startAcquisition(self):
+        self.__logger.info(f'startAcq {self._running}')
         if not self._running:
             self._camera.start_live()
             self._running = True
 
     def stopAcquisition(self):
+        self.__logger.info(f'stopAcq {self._running}')
         if self._running:
             self._running = False
-            self._camera.suspend_live()
+            self._camera.stop_live()
 
     def stopAcquisitionForROIChange(self):
         self._running = False
@@ -161,11 +180,10 @@ class TIS4Manager(DetectorManager):
     def openPropertiesDialog(self):
         self._camera.openPropertiesGUI()
 
-    def _getTISObj(self, cameraId):
+    def _getTISObj(self, cameraId, pixel_format):
         try:
             from imswitch.imcontrol.model.interfaces.tis4camera import CameraTIS4
-            camera = CameraTIS4(cameraId)
-            # pdb.set_trace()
+            camera = CameraTIS4(cameraId, pixel_format)
         except Exception:
             self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
             from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS

@@ -2,6 +2,7 @@ import imagingcontrol4 as ic4
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+import cv2
 
 ic4.Library.init()
 print(ic4.DeviceEnum.devices())
@@ -17,7 +18,7 @@ grabber.device_property_map.set_value(
     ic4.PropId.GAIN, 1)
 
 grabber.device_property_map.set_value(
-    ic4.PropId.EXPOSURE_TIME, 30)
+    ic4.PropId.EXPOSURE_TIME, 1800)
 # access some property values
 # a = grabber.device_property_map.find_command(
 #     ic4.PropId.AUTO_FOCUS_ROI_ENABLE
@@ -63,8 +64,19 @@ try:
     print(arr.dtype)
     print(image.image_type.pixel_format == 17301505)
     print(image.image_type.pixel_format)
-    plt.imshow(arr)
+    
+
+    arr2 = cv2.flip(arr >> 4, 0)
+    plt.subplot(131)
+    plt.imshow(np.transpose(arr[:, :, 0]))
     plt.colorbar()
+
+    plt.subplot(132)
+    plt.imshow(np.flip(np.transpose(arr[:, :, 0] >> 4), 1))
+    plt.colorbar()
+
+    plt.subplot(133)
+    plt.imshow(np.rot90(arr[:, :, 0], k=-1))
     plt.show()
 
     # Print image information.

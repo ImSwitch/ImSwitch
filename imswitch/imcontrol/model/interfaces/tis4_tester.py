@@ -3,6 +3,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import cv2
+import sys
 
 ic4.Library.init()
 print(ic4.DeviceEnum.devices())
@@ -15,8 +16,27 @@ first_device_info = ic4.DeviceEnum.devices()[0]
 grabber.device_open(first_device_info)
 
 grabber.device_property_map.set_value(
-    ic4.PropId.GAIN, 1)
+    ic4.PropId.GAIN, 0)
 
+grabber.device_property_map.set_value(
+    ic4.PropId.EXPOSURE_TIME, 1800)
+
+print(grabber.device_property_map.get_value_float(
+    ic4.PropId.EXPOSURE_TIME))
+
+grabber.device_property_map.set_value(
+    ic4.PropId.EXPOSURE_TIME, 12220)
+
+print(grabber.device_property_map.get_value_float(
+    ic4.PropId.EXPOSURE_TIME))
+# query valid values for the exposure time
+print(dir(grabber.device_property_map.find_float))
+
+exp = grabber.device_property_map.find_float(ic4.PropId.EXPOSURE_TIME)
+print(exp.increment_mode, exp.minimum, exp.maximum, exp.display_name)
+print(exp.unit)
+# print(np.logspace(np.log10(20), np.log10(4000000)))
+sys.exit(1)
 grabber.device_property_map.set_value(
     ic4.PropId.EXPOSURE_TIME, 1800)
 # access some property values

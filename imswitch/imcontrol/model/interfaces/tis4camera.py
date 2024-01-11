@@ -2,8 +2,6 @@ import numpy as np
 
 from imswitch.imcommon.model import initLogger
 import imagingcontrol4 as ic4
-import pdb
-import time
 
 
 class CameraTIS4:
@@ -14,7 +12,6 @@ class CameraTIS4:
         self.pixel_formats = {'8bit': ic4.PixelFormat.Mono8,
                               '12bit': ic4.PixelFormat.Mono16,
                               '16bit': ic4.PixelFormat.Mono16}
-        self.rotate_frame = 'No'
         ic4.PropertyDialogFlags.ALLOW_STREAM_RESTART
         cam_names = ic4.DeviceEnum.devices()
         self.model = cam_names[cameraNo]
@@ -24,26 +21,48 @@ class CameraTIS4:
         self.local_init(pixel_format)
 
     def local_init(self, value):
-        try:
-            print('Device open', self.cam.is_device_open)
+        if self.cam.is_device_open:
+            reinit = True  # flag if pixel format needs to be set
+            self.__logger.info('this is a RE-init')
             self.cam.stream_stop()
             self.cam.device_close()
-            self.__logger.info('this is a RE-init')
-        except:
-            self.__logger.info('this is an init')
+        else:
+            reinit = False
         self.cam.device_open(self.model)
 
-        self.setPropertyValue('video format', value)
-        # Defer acquisition means that, self.cam.start_acquisition needs to be called
-        self.cam.stream_setup(self.sink,
-                              setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
-                              )
-        print('grabber', self.cam, id(self.cam))
-        print('SINK', self.cam.sink, id(self.cam.sink))
+        # query exposure_time internal unit
+        exp = self.cam.device_property_map.find_float(ic4.PropId.EXPOSURE_TIME)
+        self.exposure_unit = exp.unit
+
+        if self.exposure_unit == 'ns':
+            self.exposure_conv_factor = 1e6
+        elif self.exposure_unit == 'us':
+            self.exposure_conv_factor = 1000
+        elif self.exposure_unit == 'ms':
+            self.exposure_conv_factor = 1
+        elif self.exposure_unit == 's':
+            self.exposure_conv_factor = 0.001
+        else:
+            self.__logger.warning('Unknown exposure time unit, assuming ms.')
+            self.exposure_conv_factor = 1
+
+        # set pixel format, not needed because it gets set in the manager
+        if reinit:
+            self.setPropertyValue('pixel_format', value)
         # set auto gain off
         self.cam.device_property_map.set_value(
             ic4.PropId.GAIN_AUTO, False
         )
+        # set exposure time AUTO false
+        self.cam.device_property_map.set_value(
+            ic4.PropId.EXPOSURE_AUTO, False
+        )
+        # Defer acquisition means that, self.cam.start_acquisition needs to be called
+        self.cam.stream_setup(self.sink,
+                              setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
+                              )
+        # print('grabber', self.cam, id(self.cam))
+        # print('SINK', self.cam.sink, id(self.cam.sink))
 
     def start_live(self):
         self.cam.acquisition_start()  # start imaging
@@ -56,19 +75,12 @@ class CameraTIS4:
         frame = image.numpy_wrap()[:, :, 0]
 
         # shift bits if necessary, works
-        if self.video_format == '12bit':
-            print('before shift', np.amin(frame), np.amax(frame))
+        if self.pixel_format == '12bit':
             frame = frame >> 4
-            print('after shift', np.amin(frame), np.amax(frame))
-        else:
-            print('no shift', np.amin(frame), np.amax(frame))
 
-        # rotating frame, works, but not for saving snaps, because of mismatched
-        # dimension, but that should be easy to fix.
+        # rotating frame, works, but not for saving snaps to h5
         if self.rotate_frame != 'No':
             frame = self.rotate(frame)
-        self.__logger.info(f'image format: {frame.dtype, frame.shape}')
-        self.__logger.info(self.cam.device_property_map.get_value_float(ic4.PropId.EXPOSURE_TIME))
         return frame
 
     def rotate(self, arr):
@@ -82,6 +94,7 @@ class CameraTIS4:
             return arr
 
     def setROI(self, hpos, vpos, hsize, vsize):
+        "not implemented"
         hsize = max(hsize, 256)  # minimum ROI size
         vsize = max(vsize, 24)  # minimum ROI size
         pass
@@ -93,9 +106,10 @@ class CameraTIS4:
                                 ic4.PropId.GAIN,
                                 property_value)
         elif property_name == "exposure":
+            # factor 1000 because camera in us
             self.cam.device_property_map.set_value(
                                 ic4.PropId.EXPOSURE_TIME,
-                                property_value)
+                                property_value*self.exposure_conv_factor)
         elif property_name == 'image_height':
             self.cam.device_property_map.set_value(
                                 ic4.PropId.HEIGHT,
@@ -104,14 +118,12 @@ class CameraTIS4:
             self.cam.device_property_map.set_value(
                                 ic4.PropId.WIDTH,
                                 property_value)
-        elif property_name == 'video format':
+        elif property_name == 'pixel_format':
             self.cam.device_property_map.set_value(
                             ic4.PropId.PIXEL_FORMAT,
                             self.pixel_formats[property_value])
-            self.video_format = property_value
-            self.__logger.info(f'set format: {self.cam.device_property_map.get_value_int(ic4.PropId.PIXEL_FORMAT)}')
-            # return self.video_format
-        elif property_name == 'rotate frame':
+            self.pixel_format = property_value
+        elif property_name == 'rotate_frame':
             self.rotate_frame = property_value
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
@@ -125,17 +137,17 @@ class CameraTIS4:
                                 ic4.PropId.GAIN)
         elif property_name == "exposure":
             property_value = self.cam.device_property_map.get_value_float(
-                                ic4.PropId.EXPOSURE_TIME)
+                                ic4.PropId.EXPOSURE_TIME) / self.exposure_conv_factor
         elif property_name == "image_width":
             property_value = self.cam.device_property_map.get_value_int(
                                 ic4.PropId.WIDTH)
         elif property_name == "image_height":
             property_value = self.cam.device_property_map.get_value_int(
                                 ic4.PropId.HEIGHT)
-        elif property_name == 'video format':
-            return self.video_format
-        elif property_name == 'rotate frame':
-            property_value = self.rotate_frame
+        elif property_name == 'pixel_format':
+            return self.pixel_format
+        elif property_name == 'rotate_frame':
+            return self.rotate_frame
         else:
             self.__logger.warning(f'Property {property_name} does not exist')
             return False

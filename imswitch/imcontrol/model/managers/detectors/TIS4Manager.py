@@ -1,15 +1,11 @@
 import numpy as np
 import pdb
-import time
 
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import (DetectorManager, DetectorAction,
                               DetectorNumberParameter, DetectorListParameter)
 
-"""
-I want to keep this as much the same, hopefully fully the same
-and change mostly only tiscamera.py in the interfaces.
-"""
+
 class TIS4Manager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
     parameters for frame extraction from them.
@@ -24,15 +20,13 @@ class TIS4Manager(DetectorManager):
 
     def __init__(self, detectorInfo, name, **_lowLevelManagers):
         self.__logger = initLogger(self, instanceName=name)
-        self.__logger.info(f'detectorInfo: {detectorInfo}')
-
         # I want to initialize with the correct depth
-        if 'pixel_format' in detectorInfo.managerProperties['tis'].keys():
-            pixel_format = detectorInfo.managerProperties['tis']['pixel_format']
+        try:
             self._camera = self._getTISObj(
                                 detectorInfo.managerProperties['cameraListIndex'],
-                                pixel_format)
-        else:  # default is 8bit
+                                detectorInfo.managerProperties['tis']['pixel_format'])
+        except KeyError as e:  # default is 8bit
+            self.__logger.debug(e)
             self._camera = self._getTISObj(
                                 detectorInfo.managerProperties['cameraListIndex'],
                                 '8bit')
@@ -50,24 +44,30 @@ class TIS4Manager(DetectorManager):
 
         # Prepare parameters
         parameters = {
+            # exposures are continuous float values in ic4
             'exposure': DetectorNumberParameter(
                 group='Misc',
                 value=self._camera.getPropertyValue('exposure'),
-                valueUnits='us',
+                valueUnits='ms',
                 editable=True),
             'gain': DetectorNumberParameter(
                 group='Misc',
                 value=self._camera.getPropertyValue('gain'),
-                valueUnits='a.u.',
+                valueUnits='dB',
                 editable=True),
-            'video format': DetectorListParameter(
+            # this is ready for when the switching depths work from
+            # within the imswitch without restart, just need to put
+            # editable=True
+            'pixel_format': DetectorListParameter(
                 group='Misc',
-                value=self._camera.getPropertyValue('video format'),
+                value=self._camera.getPropertyValue('pixel_format'),
                 options=['8bit', '12bit', '16bit'],
-                editable=True),
-            'rotate frame': DetectorListParameter(
+                editable=False),
+            # if changed, it does not propagate for the hdf5 snap
+            # shape mismatch, TypeError
+            'rotate_frame': DetectorListParameter(
                 group='Misc',
-                value=self._camera.getPropertyValue('rotate frame'),
+                value=self._camera.getPropertyValue('rotate_frame'),
                 options=['No', '90', '180', '270'],
                 editable=True),
         }
@@ -99,15 +99,16 @@ class TIS4Manager(DetectorManager):
         raised."""
 
         super().setParameter(name, value)
-
         if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
         # trying to solve bit depth change issues
         # this closes and reopens the camera, sink and stream
         # snapping after works, but liveview crashes without
         # any error exactly after grabbing three frames.
-        # No idea why
-        if name == 'video format':
+        # No idea why.
+        # For now parameter selector disabled, if never True
+        if name == 'pixel_format':
+            self.__logger.info('Disabled, should not be here')
             self._camera.local_init(value)
         else:
             value = self._camera.setPropertyValue(name, value)

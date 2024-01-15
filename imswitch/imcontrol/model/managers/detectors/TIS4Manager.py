@@ -136,13 +136,11 @@ class TIS4Manager(DetectorManager):
         pass
 
     def startAcquisition(self):
-        self.__logger.info(f'startAcq {self._running}')
         if not self._running:
             self._camera.start_live()
             self._running = True
 
     def stopAcquisition(self):
-        self.__logger.info(f'stopAcq {self._running}')
         if self._running:
             self._running = False
             self._camera.stop_live()

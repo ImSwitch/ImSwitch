@@ -41,9 +41,7 @@ class ArduinoRotatorManager(RotatorManager):
         self._motor.start_move.connect(self._motor.moverel_steps)
         self._motor.move_done.connect(self.post_move)
         self._motor.steps = steps
-        print('00')
         self._motor.start_move.emit()
-        print('01')
 
     def post_move(self):
         """Every step's signal move_done ios connected to this
@@ -58,9 +56,7 @@ class ArduinoRotatorManager(RotatorManager):
                         self._motor.motor,
                         self._motor.current_position_callback)
         time.sleep(.2)
-        # self._motor.opt_step_done.emit('DONE!')
         self.trigger_update_position()
-        print('03')
 
     def trigger_update_position(self):
         self._motor.emit_trigger_update_position()

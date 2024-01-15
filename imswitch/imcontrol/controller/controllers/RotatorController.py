@@ -57,7 +57,7 @@ class RotatorController(ImConWidgetController):
         # self.updatePosition(name)
 
     def updatePosition2(self):
-        self.__logger.info('updating position2')
+        # self.__logger.info('updating position2')
         pos = self._master.rotatorsManager[self.name].get_position()
         self._widget.updatePosition(self.name, pos[1])
 
@@ -82,7 +82,7 @@ class RotatorController(ImConWidgetController):
         self.updatePosition(name)
 
     def updatePosition(self, name):
-        self.__logger.info('updating position')
+        # self.__logger.info('updating position')
         pos = self._master.rotatorsManager[name].get_position()
         self._widget.updatePosition(name, pos[1])
 

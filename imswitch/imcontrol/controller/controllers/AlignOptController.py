@@ -144,6 +144,24 @@ class AlignOptController(ImConWidgetController):
         self._widget.plotCounterProj(self.cor.merged)
         self.sigImageReceived.disconnect()
 
+    def normalize(self, data, mode='01'):  # other mode max
+        """this works for positive cuts and images, ngative
+        values are not reliably taken care of.
+
+        Args:
+            data (_type_): _description_
+            mode (str, optional): _description_. Defaults to '01'.
+
+        Returns:
+            _type_: _description_
+        """
+        if mode == '01':
+            return (data - np.amin(data))/abs(np.amax(data))
+        elif mode == 'max':
+            return data / np.amax(data)
+        else:
+            raise ValueError('Unknown mode of normalization')
+
     def plotHorCuts(self):
         # query the line indeces to get hor cuts.
         self.horIdxList = self.getHorCutIdxs()
@@ -156,22 +174,32 @@ class AlignOptController(ImConWidgetController):
         self._widget.plotHorCuts.setTitle('Horizontal cuts', color='b')
         for i, px in enumerate(self.horIdxList):
             self._logger.info(f'plotting {i}, {px}')
-            self._widget.plotHorCuts.plot(self.cor.horCuts[i][0],
-                                          name=f'single {px}',
-                                          pen=pg.mkPen('r'))
-            self._widget.plotHorCuts.plot(self.cor.horCuts[i][1],
-                                          name=f'merge {px}',
-                                          pen=pg.mkPen('b'))
+            self._widget.plotHorCuts.plot(
+                    self.normalize(self.cor.horCuts[i][0], '01'),
+                    name=f'single {px}',
+                    pen=pg.mkPen('r'))
+            self._widget.plotHorCuts.plot(
+                    self.normalize(self.cor.horCuts[i][1], '01'),
+                    name=f'merge {px}',
+                    pen=pg.mkPen('b'))
 
         # plot CC
         self._widget.plotCC.clear()  # clear plotWidget first
         self._widget.plotCC.addLegend()
-        self._widget.plotCC.setTitle('Autocorrelation', color='b')
+        self._widget.plotCC.setTitle('Norm. cross-correlation', color='b')
+        # find
         for i, px in enumerate(self.horIdxList):
-            self._widget.plotCC.plot(self.cor.crossCorr[i],
+            # I plot it normalized
+            self._widget.plotCC.plot(self.cor.crossCorr[i]/np.amax(self.cor.crossCorr[i]),
                                      name=f'{px}',
-                                    #  pen=pg.mkPen('r'),
+                                     #  pen=pg.mkPen('r'),
                                      )
+        # plot center Hor line
+        self._widget.plotCC.addItem(
+            pg.InfiniteLine(self.cor.center_px,
+                            angle=90,
+                            pen=pg.mkPen(width=2, color='r'))
+        )
 
     def replotAll(self):
         self.updateShift()
@@ -224,6 +252,7 @@ class AlignCOR():
         print('COR shape', img_stack.shape)
         if len(img_stack) != 2:
             raise IndexError('Check if Snap save mode contains save to display')
+        # img_stack is opt acquired at 0 and 180 deg
         self.img_stack_raw = img_stack
         self.shift = shift
         self.createShiftedStack()
@@ -241,7 +270,7 @@ class AlignCOR():
     def processHorCuts(self, idx_list):
         self.horCuts = []
         self.valid_idx = []
-        for i in idx_list:
+        for i in idx_list:  # idx is line of the detector
             try:
                 # append tuple of first from stack and merged one at given idx
                 self.horCuts.append((self.img_stack[0][i],
@@ -251,12 +280,17 @@ class AlignCOR():
                 # TODO: this has to update the valid idx list too
                 print('Index out of range')
 
-        # calculate cross-correlation
+        # calculate cross-correlation between 0, 180 projs
         self.crossCorr = []
         for i in self.valid_idx:
             self.crossCorr.append(
-                correlate(self.img_stack[0][i], self.img_stack[1][i], mode='full'),
+                correlate(self.img_stack[0][i],
+                          self.img_stack[1][i],
+                          mode='full'),
                 )
+        # column dimension, which is center
+        # of full cross correlation
+        self.center_px = self.img_stack[0].shape[1]
 
     def recalcWithShift(self):
         """Called after shift value changes.

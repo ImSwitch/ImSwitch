@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 
 from functools import partial
 import numpy as np
+import time
 # import pdb
 # import debugpy
 # import threading
@@ -60,11 +61,12 @@ class ScanControllerOpt(ImConWidgetController):
 
         # start OPT
         self._commChannel.sigRecordingStarted.connect(self.startOpt)
+        # self._commChannel.sigScanStarted.connect(self.startOpt)
 
         # sigScanEnded, because sigRecordingEnded triggers stopOpt 2x
         # I do sigRecordingEnded in stopOpt
         self._commChannel.sigScanEnded.connect(self.stopOpt)
-    
+
     # JA: method to add your metadata to recordings
     def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
         self.settingAttr = True
@@ -124,6 +126,7 @@ class ScanControllerOpt(ImConWidgetController):
         if self._widget.scanPar['LiveReconButton'].isChecked():
             self.live_recon = True
             self.reconIdx = self.getLiveReconIdx()
+            self.current_recon = None  # in order to avoid update_recon in the first step
 
         # run OPT, set flags and move to step 0
         if not self.isOptRunning:
@@ -147,7 +150,6 @@ class ScanControllerOpt(ImConWidgetController):
         risk of getLatestFrame starting while motor still moving
         in the case of long exposure times.
         """
-        print(f'test string: {s}')
         # option with snapping
         # saving option needs to set in the recording controller.
         self.sigRequestSnap.emit()
@@ -231,7 +233,7 @@ class ScanControllerOpt(ImConWidgetController):
 
     def displayImage(self, name, frame):
         # subsample stack
-        print('Shape: ', frame.shape)
+        self.__logger.info(f'Display image Shape: {frame.shape}')
         self._widget.setImage(np.uint16(frame),
                               colormap="gray",
                               name=name,
@@ -245,10 +247,11 @@ class ScanControllerOpt(ImConWidgetController):
                 self.__currentStep)
         except AttributeError:
             try:
-                print('Creating a new reconstruction object.')
+                print(f'Creating a new reconstruction object. {self.__rot_steps, self.__motor_steps}')
                 self.current_recon = FBPlive(
                     self.frame[self.reconIdx, :],
-                    self.__motor_steps)
+                    self.__rot_steps)
+                self.__logger.info(f'current_recon: {self.current_recon.output.shape}')
             except IndexError as e:
                 self._logger.warning('Index error, no live-recon')
                 print(e)
@@ -267,6 +270,7 @@ class ScanControllerOpt(ImConWidgetController):
         Args:
             image (np.ndarray): FBP live reconstruction
         """
+        self._widget.liveReconPlot.clear()
         self._widget.liveReconPlot.setImage(image)
 
     # def enableWidgetInterface(self, enableBool):
@@ -480,13 +484,16 @@ class ScanControllerOpt(ImConWidgetController):
         """
         i = 0
         frames = []
+        self.detector.startAcquisition()
         while i < n:
             frame = self.detector.getLatestFrame()
             if frame.shape[0] != 0:
                 frames.append(frame)
                 i += 1
-        print(np.array(frames).shape)
-        self.current_frame = np.mean(np.array(frames), axis=0).astype(np.int16)
+        print('Corr frames:', np.array(frames).shape)
+        self.current_frame = np.mean(np.array(frames),
+                                     axis=0).astype(np.int16)
+        self.detector.stopAcquisition()
         self.nFrames.emit()
 
 

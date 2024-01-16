@@ -203,6 +203,26 @@ sudo systemctl start gdm3.service
 ```
 
 
+Use Mamba instead
+
+```bash
+cd ~/Downloads
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-pypy3-Linux-aarch64.sh .
+bash Mambaforge-pypy3-Linux-aarch64.sh
+# logoff/in
+mamba create -n imswitch python=3.9 -y
+mamba activate imswitch
+cd ~/Downloads
+git clone https://github.com/openUC2/ImSwitch/
+git clone https://github.com/openUC2/UC2-REST
+cd ~/Downloads/UC2-REST
+pip install -e .
+cd ~/Downloads/ImSwitch
+sudo apt-get install python3-pyqt5 -y
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+```
+
 Add environment
 
 ```

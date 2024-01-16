@@ -221,6 +221,7 @@ cd ~/Downloads/ImSwitch
 sudo apt-get install python3-pyqt5 -y
 pip install -r requirements-jetsonorin.txt
 pip install -e . --no-deps
+mamba install pyqt
 ```
 
 Add environment

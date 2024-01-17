@@ -318,11 +318,12 @@ pyton3 main.py
 ### install drivers for daheng
 
 ```
-cd ~/Downlodas
+cd ~/Downloads
 git clone https://github.com/hongquanli/octopi-research
-cd octopi-research/software/drivers and libraries/daheng camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271
+cd octopi-research/software/drivers\ and\ libraries/daheng\ camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271/
 chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run
+sudo reboot
 ```
 
 ### install drivers for hik (jetson)

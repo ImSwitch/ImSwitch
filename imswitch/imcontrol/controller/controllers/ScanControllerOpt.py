@@ -1,17 +1,21 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+import pyqtgraph as pg
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, QMutex
 from scipy.fftpack import fft, ifft
 from scipy.interpolate import interp1d
+import tifffile as tif
+import os
+from datetime import datetime
 
 from functools import partial
 import numpy as np
 import time
-# import pdb
-# import debugpy
+import pdb
+import debugpy
 # import threading
 
-from imswitch.imcommon.model import initLogger
+from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import ImConWidgetController
 from imswitch.imcommon.framework import Signal
 from skimage.transform import radon
@@ -52,9 +56,17 @@ class ScanControllerOpt(ImConWidgetController):
         # Connect widget signals
         self._widget.scanPar['GetHotPixels'].clicked.connect(
             self.exec_hot_pixels)
-
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
+
+        self._widget.scanPar['LiveReconButton'].clicked.connect(
+            self.updateLiveReconFlag
+        )
+        self.updateLiveReconFlag()
+
+        self._widget.scanPar['RotStepsEdit'].valueChanged.connect(
+            self.updateRotationSteps
+        )
 
         # Enable snapping
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
@@ -95,19 +107,25 @@ class ScanControllerOpt(ImConWidgetController):
         # post_step here.
         if self._widget.scanPar['MockOpt'].isChecked():
             self._logger.info('Preparing Mock experiment')
+            self.mtx = QMutex()
             self._master.rotatorsManager[
                 self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                                                         self.post_step_mock)
 
             # here generate stack of projections
             self.demo = DemoData(resolution=32, bin_factor=1)
+            self.demo.sinoReady.connect(self.wait)
+            # self.mtx.lock()
+            time.sleep(2)
             self._widget.scanPar['RotStepsEdit'].setText('32')
+            self._logger.info('waiting...')
+
         else:
             self._logger.info('Preparing Real experiment')
             self._master.rotatorsManager[
                 self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                                                         self.post_step)
-
+        self._logger.info('passed')
         self.__rot_steps = self.getRotationSteps()  # motor step per revolution
 
         # Checking for divisability of motor steps and OPT steps.
@@ -122,9 +140,10 @@ class ScanControllerOpt(ImConWidgetController):
         self.opt_steps = np.linspace(0, self.__motor_steps, self.__rot_steps,
                                      endpoint=False).astype(np.int_)
 
+        self.signalStability = Stability()
+
         # live reconstruction option
-        if self._widget.scanPar['LiveReconButton'].isChecked():
-            self.live_recon = True
+        if self.live_recon:
             self.reconIdx = self.getLiveReconIdx()
             self.current_recon = None  # in order to avoid update_recon in the first step
 
@@ -134,6 +153,10 @@ class ScanControllerOpt(ImConWidgetController):
             self.__currentStep = 0
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
+
+    def wait(self):
+        self._logger.info('inside wait')
+        self.mtx.unlock()
 
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
@@ -176,7 +199,6 @@ class ScanControllerOpt(ImConWidgetController):
         risk of getLatestFrame starting while motor still moving
         in the case of long exposure times.
         """
-        print(f'test Mock string: {s}')
         self.frame = self.demo.sinogram[self.__currentStep]
         self.optStack = self.demo.sinogram[:self.__currentStep]
         self.sigImageReceived.emit('OPT stack', self.optStack)
@@ -205,8 +227,6 @@ class ScanControllerOpt(ImConWidgetController):
             self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._logger.info("OPT stopped.")
         self._commChannel.sigSetSnapVisualization.emit(True)
-        # debugpy.breakpoint()
-        # print('debugger stops here')
 
     ##################
     # Image handling #
@@ -230,15 +250,29 @@ class ScanControllerOpt(ImConWidgetController):
 
             self.optStack = np.array(self.allFrames)
             self.sigImageReceived.emit('OPT stack', self.optStack)
+            self._widget.updateCurrentStep(self.__currentStep+1)
+
+            # update intensity monitoring plot
+            self.signalStability.process_img(self.frame, self.__currentStep)
+            self.updateStabilityPlot()
 
     def displayImage(self, name, frame):
         # subsample stack
         self.__logger.info(f'Display image Shape: {frame.shape}')
-        self._widget.setImage(np.uint16(frame),
-                              colormap="gray",
-                              name=name,
-                              pixelsize=(1, 1),
-                              translation=(0, 0))
+        if self.isOptRunning:
+            self._widget.setImage(np.uint16(frame),
+                                colormap="gray",
+                                name=name,
+                                pixelsize=(1, 1),
+                                translation=(0, 0),
+                                step=self.__currentStep)
+        else:
+            self._widget.setImage(np.uint16(frame),
+                                colormap="gray",
+                                name=name,
+                                pixelsize=(1, 1),
+                                translation=(0, 0),
+                                )
 
     def updateLiveRecon(self):
         try:
@@ -272,6 +306,7 @@ class ScanControllerOpt(ImConWidgetController):
         """
         self._widget.liveReconPlot.clear()
         self._widget.liveReconPlot.setImage(image)
+        self._widget.updateCurrentReconStep(self.__currentStep+1)
 
     # def enableWidgetInterface(self, enableBool):
     #     self._widget.enableInterface(enableBool)
@@ -295,6 +330,11 @@ class ScanControllerOpt(ImConWidgetController):
         """ Get the total rotation steps for an OPT experiment. """
         return self._widget.getRotationSteps()
 
+    def updateRotationSteps(self):
+        self.__rot_steps = self.getRotationSteps()
+        self._widget.updateCurrentStep()
+        self._widget.updateCurrentReconStep()
+
     def getStdCutoff(self):
         """ Get the STD cutoff for Hot pixels correction. """
         return self._widget.getHotStd()
@@ -302,6 +342,28 @@ class ScanControllerOpt(ImConWidgetController):
     def getAverages(self):
         """ Get number of averages for camera correction. """
         return self._widget.getAverages()
+
+    def setLiveReconButton(self, value: bool):
+        self._widget.scanPar['LiveReconButton'].setChecked(value)
+
+    def updateLiveReconFlag(self):
+        self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
+        # enable/disable live-recon index
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.live_recon)
+
+    def updateStabilityPlot(self):
+        self._widget.intensityPlot.clear()
+        self._widget.intensityPlot.addLegend()
+
+        colors = ['w', 'r', 'g', 'b']
+        labels = ['UL', 'UR', 'LL', 'LR']
+        for i in range(4):
+            self._widget.intensityPlot.plot(
+                self.signalStability.steps,
+                self.signalStability.intensity[i],
+                name=labels[i],
+                pen=pg.mkPen(colors[i], width=1.5),
+            )
 
     def getLiveReconIdx(self):
         """ Get index of the live reconstruction horizontal
@@ -447,6 +509,7 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.disconnect()
 
     def process_hot_pixels(self):
+        self.saveImage(self.hot_pixels, 'corr_hot')
         std_cutoff = self.getStdCutoff()
         std = np.std(self.hot_pixels, dtype=np.float64)
         mean = np.mean(self.hot_pixels, dtype=np.float64)
@@ -461,12 +524,14 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.emit('hot_pixels', self.hot_pixels)
 
     def process_dark_field(self):
+        self.saveImage(self.dark_field, 'dark_field')
         self._widget.updateDarkMean(np.mean(self.dark_field))
         self._widget.updateDarkStd(np.std(self.dark_field))
 
         self.sigImageReceived.emit('dark_field', self.dark_field)
 
     def process_flat_field(self):
+        self.saveImage(self.flat_field, 'flat_field')
         self._widget.updateFlatMean(np.mean(self.flat_field))
         self._widget.updateFlatStd(np.std(self.flat_field))
 
@@ -495,6 +560,56 @@ class ScanControllerOpt(ImConWidgetController):
                                      axis=0).astype(np.int16)
         self.detector.stopAcquisition()
         self.nFrames.emit()
+
+    # these two methods adapted from UC2/STORMreconController
+    def saveImage(self, frame, filename="corr", fileExtension="tiff"):
+        Ntime = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")            
+        filePath = self.getSaveFilePath(
+                            date=Ntime,
+                            filename=filename,
+                            extension=fileExtension)
+
+        self._logger.debug(filePath)
+        tif.imwrite(filePath, frame, append=False)
+
+    def getSaveFilePath(self, date, filename, extension):
+        mFilename = f"{date}_{filename}.{extension}"
+        dirPath = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
+
+        newPath = os.path.join(dirPath, mFilename)
+
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+
+        return newPath
+
+
+class Stability():
+    def __init__(self, n_pixels=50):
+        self.n_pixels = n_pixels
+        self.steps = []
+        self.intensity = [[], [], [], []]
+
+    def process_img(self, img, step):
+        iUL = np.mean(img[:self.n_pixels, :self.n_pixels])
+        iUR = np.mean(img[:self.n_pixels, -self.n_pixels:])
+        iLL = np.mean(img[-self.n_pixels:, :self.n_pixels])
+        iLR = np.mean(img[-self.n_pixels:, -self.n_pixels:])
+
+        self.updateSeries(step, iUL, iUR, iLL, iLR)
+
+    def updateSeries(self, step, iUL, iUR, iLL, iLR):
+        self.steps.append(step)
+        if step == 0:
+            # I append ones and save values as normalization factors
+            self.norm_factors = (iUL, iUR, iLL, iLR)
+            for i in range(4):
+                self.intensity[i].append(1.)
+        else:
+            self.intensity[0].append(iUL/self.norm_factors[0])
+            self.intensity[1].append(iUR/self.norm_factors[1])
+            self.intensity[2].append(iLL/self.norm_factors[2])
+            self.intensity[3].append(iLR/self.norm_factors[3])
 
 
 class FBPlive():
@@ -599,6 +714,9 @@ class FBPlive():
 
 
 class DemoData(QObject):
+
+    sinoReady = pyqtSignal()
+
     def __init__(self, resolution=128, bin_factor=1) -> None:
         super(QObject, self).__init__()
         self.size = resolution  # int
@@ -609,6 +727,7 @@ class DemoData(QObject):
         self.radon = Get_radon(self.size)
         self.radon.moveToThread(self.thread)
         self.thread.started.connect(self.radon.get_sinogram)
+        # self.radon.get_sinogram()
         self.radon.finished.connect(self.sino)
         self.radon.finished.connect(self.thread.quit)
         self.thread.finished.connect(self.thread.quit)
@@ -623,6 +742,7 @@ class DemoData(QObject):
         """
         print('setting sino variable')
         self.sinogram = np.rollaxis(data, 2)
+        self.sinoReady.emit()
 
 
 class Get_radon(QObject):
@@ -643,6 +763,7 @@ class Get_radon(QObject):
             sinogram[i, :, :] = radon(data[i, :, :], theta=angles)
         mx = np.amax(sinogram)
         sinogram = (sinogram/mx*255).astype('int16')
+        print('emitting', sinogram.shape)
         self.finished.emit(sinogram)
 
     def loading_message(self):

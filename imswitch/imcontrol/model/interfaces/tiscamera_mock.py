@@ -25,6 +25,9 @@ class MockCameraTIS:
         self.SensorWidth = 500
         self.shape = (self.SensorHeight,self.SensorWidth)
 
+    def local_init(self, value):
+        pass
+
     def start_live(self):
         pass
 

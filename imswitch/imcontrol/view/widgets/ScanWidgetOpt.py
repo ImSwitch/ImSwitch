@@ -32,7 +32,8 @@ class ScanWidgetOpt(NapariHybridWidget):
 
     def getRotationSteps(self):
         """ Returns the user-input number fo rotation steps. """
-        return int(self.scanPar['RotStepsEdit'].text())
+        # return int(self.scanPar['RotStepsEdit'].text())
+        return self.scanPar['RotStepsEdit'].value()
 
     def getHotStd(self):
         """ Returns the user-input STD cutoff for the hot pixel correction. """
@@ -68,13 +69,23 @@ class ScanWidgetOpt(NapariHybridWidget):
     def updateFlatStd(self, value):
         self.scanPar['FlatStd'].setText(f'Flat STD: {value:.2f}')
 
+    def updateCurrentStep(self, value='-'):
+        self.scanPar['CurrentStepLabel'].setText(
+            f'Current Step: {value}/{self.getRotationSteps()}'
+        )
+
+    def updateCurrentReconStep(self, value='-'):
+        self.scanPar['CurrentReconStepLabel'].setText(
+            f'Current Recon: {value}/{self.getRotationSteps()}'
+        )
+
     def setRotStepEnable(self, enabled):
         """ For inactivating during scanning when ActivateButton pressed
         and waiting for a scan. When scan finishes, enable again. """
         self.scanPar['RotStepsEdit'].setEnabled(enabled)
 
     def setImage(self, im, colormap="gray", name="",
-                 pixelsize=(1, 20, 20), translation=(0, 0, 0)):
+                 pixelsize=(1, 20, 20), translation=(0, 0, 0), step=0):
         if len(im.shape) == 2:
             print('2D image supposedly', im.shape)
             translation = (translation[0], translation[1])
@@ -83,7 +94,12 @@ class ScanWidgetOpt(NapariHybridWidget):
                                                colormap=colormap,
                                                scale=pixelsize,
                                                translate=translation,
-                                               name=name, blending='additive')
+                                               name=name,
+                                               blending='translucent')
+        try:
+            self.viewer.dims.current_step = (step+1, im.shape[1], im.shape[2])
+        except Exception as e:
+            print('Except from dims', e)
         self.layer.data = im
         self.layer.contrast_limits = (np.min(im), np.max(im))
         self.sigSetImage.emit()
@@ -121,10 +137,15 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         # OPT
         self.scanPar['RotStepsLabel'] = QtWidgets.QLabel('OPT rot. steps')
-        self.scanPar['RotStepsEdit'] = QtWidgets.QLineEdit('200')
+        self.scanPar['RotStepsEdit'] = QtWidgets.QSpinBox()
+        self.scanPar['RotStepsEdit'].setRange(2, 10000)  # step is 1 by default
+        self.scanPar['RotStepsEdit'].setValue(200)
         self.scanPar['RotStepsEdit'].setToolTip(
             'Steps taken per revolution of OPT scan',
             )
+        self.scanPar['CurrentStepLabel'] = QtWidgets.QLabel(
+            f'Current Step: -/{self.getRotationSteps()}')
+
         self.scanPar['Rotator'] = QtWidgets.QComboBox()
         self.scanPar['RotatorLabel'] = QtWidgets.QLabel('Rotator')
         self.scanPar['StepsPerRevLabel'] = QtWidgets.QLabel(f'{0:d} steps/rev')
@@ -138,6 +159,9 @@ class ScanWidgetOpt(NapariHybridWidget):
             'Line px of the camera to reconstruct live via FBP',
             )
         self.scanPar['LiveReconIdxLabel'] = QtWidgets.QLabel('Recon Idx')
+        self.scanPar['CurrentReconStepLabel'] = QtWidgets.QLabel(
+            f'Current Recon: -/{self.getRotationSteps()}',
+            )
 
         self.scanPar['MockOpt'] = QtWidgets.QCheckBox(
             'Demo experiment',
@@ -145,6 +169,22 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.scanPar['MockOpt'].setCheckable(True)
 
         self.liveReconPlot = pg.ImageView()
+        self.intensityPlot = pg.PlotWidget()
+
+        self.tabs = QtWidgets.QTabWidget()
+        self.tabRecon = QtWidgets.QWidget()
+        self.grid2 = QtWidgets.QGridLayout()
+        self.tabRecon.setLayout(self.grid2)
+        self.grid2.addWidget(self.liveReconPlot, 0, 0)
+
+        self.tabInt = QtWidgets.QWidget()
+        self.grid3 = QtWidgets.QGridLayout()
+        self.tabInt.setLayout(self.grid3)
+        self.grid3.addWidget(self.intensityPlot)
+
+        # Add tabs
+        self.tabs.addTab(self.tabRecon, "Recon")
+        self.tabs.addTab(self.tabInt, "Intensity")
 
         currentRow = 0
         # corrections
@@ -179,18 +219,15 @@ class ScanWidgetOpt(NapariHybridWidget):
 
         # OPT settings
         currentRow += 1
-
-        self.grid.addWidget(self.scanPar['RotStepsLabel'], currentRow, 0)
-        self.grid.addWidget(self.scanPar['RotStepsEdit'], currentRow, 1)
-
-        currentRow += 1
         self.grid.addWidget(self.scanPar['RotatorLabel'], currentRow, 0)
         self.grid.addWidget(self.scanPar['Rotator'], currentRow, 1)
         self.grid.addWidget(self.scanPar['StepsPerRevLabel'], currentRow, 2)
 
         currentRow += 1
 
-        self.grid.addWidget(self.scanPar['MockOpt'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['RotStepsLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['RotStepsEdit'], currentRow, 1)
+        self.grid.addWidget(self.scanPar['MockOpt'], currentRow, 2)
 
         currentRow += 1
 
@@ -199,7 +236,12 @@ class ScanWidgetOpt(NapariHybridWidget):
         self.grid.addWidget(self.scanPar['LiveReconIdxLabel'], currentRow, 2)
 
         currentRow += 1
-        self.grid.addWidget(self.liveReconPlot, currentRow, 0, 1, -1)
+
+        self.grid.addWidget(self.scanPar['CurrentStepLabel'], currentRow, 0)
+        self.grid.addWidget(self.scanPar['CurrentReconStepLabel'], currentRow, 1)
+
+        currentRow += 1
+        self.grid.addWidget(self.tabs, currentRow, 0, 1, -1)
 
 
 # Copyright (C) 2020-2022 ImSwitch developers

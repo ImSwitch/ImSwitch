@@ -157,12 +157,12 @@ class TIS4Manager(DetectorManager):
         def cropAction():
             self._camera.setROI(hpos, vpos, hsize, vsize)
 
-        self._performSafeCameraAction(cropAction)
-        # TODO: unsure if frameStart is needed? Try without.
-        # This should be the only place where self.frameStart is changed
-        self._frameStart = (hpos, vpos)
-        # Only place self.shapes is changed
-        self._shape = (hsize, vsize)
+        # self._performSafeCameraAction(cropAction)
+        # # TODO: unsure if frameStart is needed? Try without.
+        # # This should be the only place where self.frameStart is changed
+        # self._frameStart = (hpos, vpos)
+        # # Only place self.shapes is changed
+        # self._shape = (hsize, vsize)
 
     def _performSafeCameraAction(self, function):
         """ This method is used to change those camera properties that need

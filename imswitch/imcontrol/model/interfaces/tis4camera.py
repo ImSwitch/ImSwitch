@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from imswitch.imcommon.model import initLogger
 import imagingcontrol4 as ic4
@@ -21,10 +22,10 @@ class CameraTIS4:
         self.local_init(pixel_format)
 
     def local_init(self, value):
+        self.__logger.info('local init, should run only once')
         if self.cam.is_device_open:
             reinit = True  # flag if pixel format needs to be set
             self.__logger.info('this is a RE-init')
-            self.cam.stream_stop()
             self.cam.device_close()
         else:
             reinit = False
@@ -65,10 +66,24 @@ class CameraTIS4:
         # print('SINK', self.cam.sink, id(self.cam.sink))
 
     def start_live(self):
+        # Defer acquisition means that, self.cam.start_acquisition needs to be called
+        # self.cam.stream_setup(self.sink,
+        #                       setup_option=ic4.StreamSetupOption.ACQUISITION_START,
+        #                       )
         self.cam.acquisition_start()  # start imaging
 
     def stop_live(self):
+        self.__logger.debug('stop live method called')
         self.cam.acquisition_stop()  # stop imaging
+
+        # Bad attempt to fix RAM issues and stop stream every time
+        # does not work and raised issue on is_streaming property bug.
+        # self.cam.stream_stop()
+        # time.sleep(0.4)
+        # print('Streaming?', self.cam.is_streaming)
+        # self.cam.stream_setup(self.sink,
+        #                       setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
+        #                       )
 
     def grabFrame(self):
         image = self.sink.snap_single(10000)

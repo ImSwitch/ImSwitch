@@ -60,7 +60,7 @@ class HistoScanController(LiveUpdatedController):
         # select detectors
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.microscopeDetector = self._master.detectorsManager[allDetectorNames[0]] # FIXME: This is hardcoded, need to be changed through the GUI
-        if len(allDetectorNames)>0:
+        if len(allDetectorNames)>1:
             self.webCamDetector = self._master.detectorsManager[allDetectorNames[1]] # FIXME: HARDCODED NEED TO BE CHANGED
             self.pixelSizeWebcam = self.webCamDetector.pixelSizeUm[-1]
         else:

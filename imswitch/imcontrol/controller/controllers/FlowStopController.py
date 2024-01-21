@@ -84,8 +84,8 @@ class FlowStopController(LiveUpdatedController):
         self.startFlowStopExperiment(timeStamp, experimentName, experimentDescription, uniqueId, numImages, volumePerImage, timeToStabilize)
         
     @APIExport(runOnUIThread=True)
-    def getStatus(self) -> (bool, int, dict):
-        return self.is_measure, self.imagesTaken, self.mExperimentParameters
+    def getStatus(self) -> (bool, int):
+        return self.is_measure, self.imagesTaken
     
     @APIExport(runOnUIThread=True)
     def startFlowStopExperiment(self, timeStamp: str, experimentName: str, experimentDescription: str, uniqueId: str, numImages: int, volumePerImage: float, timeToStabilize: float):

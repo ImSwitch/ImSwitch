@@ -201,6 +201,59 @@ class HyphaController(LiveUpdatedController):
         """
         self.ledMatrix[ledId].setValue(value)
 
+    def getProcessedImages(self, path="Default.tif", pythonFunctionString="", context=None):
+        '''
+        Captures a single image and processes it using a Python function provided as a string.
+        
+        Args:
+            path (str, optional): The path to save the captured image. Default is "Default.tif".
+            pythonFunctionString (str, optional): The Python function to use for processing the image. Default is "".
+            Example:
+                functionString = """
+                def processImage(image):
+                    # Example processing: Convert to grayscale
+                    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                """
+        
+                context (dict, optional): Context information containing user details.
+        
+        Returns:
+            numpy.ndarray: The processed image as a NumPy array.
+        
+        Notes:
+            - The function captures a single image using the microscope's detector.
+            - The function that processes the image should follow the following pattern:
+                def processImage(image):
+                    # optinal imports of libraries
+                    processImage = fu(image)
+                    # process the image
+                    return processedImage
+        '''
+        self._logger.debug("getProcessedImages - functionstring: "+pythonFunctionString)
+        mImage = self.detector.getLatestFrame()
+        # Step 2: Load and Execute Python Function from String
+        if pythonFunctionString and pythonFunctionString !=  "":
+            # Define a default processImage function in case exec fails
+            def processImage(image):
+                return image
+
+            # Execute the function string
+            exec(pythonFunctionString, globals(), locals())
+
+            # Step 3: Process the Image
+            fctName = pythonFunctionString.split("def ")[1].split("(")[0]
+            processedImage = locals()[fctName](mImage)
+
+            
+        else:
+            processedImage = mImage
+        
+        tif.imsave(path,processedImage)
+        return processedImage
+
+        
+        
+        
     def getImage(self, path="Default.tif", context=None):
         """
         Captures a single microscopic image and saves it to a specified path.
@@ -296,7 +349,8 @@ class HyphaController(LiveUpdatedController):
                 "setLaserActive": self.setLaserActive,
                 "setLaserValue": self.setLaserValue,
                 "setLEDValue": self.setLEDValue,
-                "getImage": self.getImage
+                "getImage": self.getImage, 
+                "getProcessedImages": self.getProcessedImages
             }
         )
         # print("Workspace: ", workspace, "Token:", await server.generate_token({"expires_in": 3600*24*100}))

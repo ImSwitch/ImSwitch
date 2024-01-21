@@ -5,7 +5,9 @@ import os
 file_name = "test_2023-09-19T20_19_04.ome.tif"
 collected_tiles_file = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\', file_name)
 ashlar_output_file = os.path.join('C:\\Users\\UC2\\Documents\\ImSwitchConfig\\histoController\\', file_name+"_processed.tif")
-
 maximum_shift_microns = 50
 
+
+collected_tiles_file = '/Users/bene/Downloads/COLNOR69MW2-cycle-1.ome.tif'
+ashlar_output_file = '/Users/bene/Downloads/ashlar_output_file.tif'
 ashlar.main(['', collected_tiles_file, '-o', ashlar_output_file, '--pyramid', '-m%s' % maximum_shift_microns])

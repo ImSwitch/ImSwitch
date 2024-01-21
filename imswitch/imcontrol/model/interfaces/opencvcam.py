@@ -158,8 +158,8 @@ class CameraOpenCV:
         else:
             self.camera = cv2.VideoCapture(cameraindex, cv2.CAP_DSHOW)
         self.__logger.debug("Camera is open")
-        #self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
-        #self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
+        self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920.0) # 4k/high_res
+        self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080.0) # 4k/high_res
         # let the camera warm up
         for i in range(5):
             _, img = self.camera.read()

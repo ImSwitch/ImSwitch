@@ -203,6 +203,27 @@ sudo systemctl start gdm3.service
 ```
 
 
+Use Mamba instead
+
+```bash
+cd ~/Downloads
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-pypy3-Linux-aarch64.sh .
+bash Mambaforge-pypy3-Linux-aarch64.sh
+# logoff/in
+mamba create -n imswitch python=3.9 -y
+mamba activate imswitch
+cd ~/Downloads
+git clone https://github.com/openUC2/ImSwitch/
+git clone https://github.com/openUC2/UC2-REST
+cd ~/Downloads/UC2-REST
+pip install -e .
+cd ~/Downloads/ImSwitch
+sudo apt-get install python3-pyqt5 -y
+pip install -r requirements-jetsonorin.txt
+pip install -e . --no-deps
+mamba install pyqt
+```
+
 Add environment
 
 ```
@@ -297,11 +318,12 @@ pyton3 main.py
 ### install drivers for daheng
 
 ```
-cd ~/Downlodas
+cd ~/Downloads
 git clone https://github.com/hongquanli/octopi-research
-cd octopi-research/software/drivers and libraries/daheng camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271
+cd octopi-research/software/drivers\ and\ libraries/daheng\ camera/Galaxy_Linux-armhf_Gige-U3_32bits-64bits_1.3.1911.9271/
 chmod +x Galaxy_camera.run
 sudo ./Galaxy_camera.run
+sudo reboot
 ```
 
 ### install drivers for hik (jetson)

@@ -56,7 +56,7 @@ class MCTController(ImConWidgetController):
 
         self.pixelsize=(10,1,1) # zxy
 
-        self.tWait = 0.1 # time to let hardware settle
+        self.tWait = self._master.mctManager.tWait # time to let hardware settle
 
         # connect XY Stagescanning live update  https://github.com/napari/napari/issues/1110
         self.sigImageReceived.connect(self.displayImage)
@@ -82,14 +82,17 @@ class MCTController(ImConWidgetController):
             if iDevice.find("LED")>=0:
                 self.leds.append(self._master.lasersManager[iDevice])
 
-        '''
+        # TODO: leds vs matrices..
         if len(self._master.LEDMatrixsManager.getAllDeviceNames())>0:
             self.illu = self._master.LEDMatrixsManager[self._master.LEDMatrixsManager.getAllDeviceNames()[0]]
         else:
-            self.illu = []
-        '''
+            self.illu = None
+        
         # select stage
-        self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        try:
+            self.stages = self._master.positionersManager[self._master.positionersManager.getAllDeviceNames()[0]]
+        except:
+            self.stages = None
 
         self.isMCTrunning = False
 
@@ -184,7 +187,7 @@ class MCTController(ImConWidgetController):
 
         # go back to initial position
         try:
-            if self.xyScanEnabled:
+            if self.xyScanEnabled and self.stages is not None:
                 self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
         except:
             pass
@@ -283,9 +286,14 @@ class MCTController(ImConWidgetController):
         self.timeLast = 0
         image1 = None
         # get current position
-        currentPositions = self.stages.getPosition()
-        self.initialPosition = (currentPositions["X"], currentPositions["Y"])
-        self.initialPositionZ = currentPositions["Z"]
+        if self.stages is not None:
+            currentPositions = self.stages.getPosition()
+            self.initialPosition = (currentPositions["X"], currentPositions["Y"])
+            self.initialPositionZ = currentPositions["Z"]
+        else:
+            self.initialPosition = (0,0)
+            self.initialPositionZ = 0
+        
 
         # run as long as the MCT is active
         while(self.isMCTrunning):
@@ -310,9 +318,10 @@ class MCTController(ImConWidgetController):
 
 
                 # set  speed
-                self.stages.setSpeed(speed=10000, axis="X")
-                self.stages.setSpeed(speed=10000, axis="Y")
-                self.stages.setSpeed(speed=10000, axis="Z")
+                if self.stages is not None:
+                    self.stages.setSpeed(speed=10000, axis="X")
+                    self.stages.setSpeed(speed=10000, axis="Y")
+                    self.stages.setSpeed(speed=10000, axis="Z")
 
                 # ensure motors are enabled
                 #self.stages.enalbeMotors(enable=True)
@@ -483,7 +492,7 @@ class MCTController(ImConWidgetController):
         #    mThread.join()
 
         # initialize xyz coordinates
-        if self.xyScanEnabled:
+        if self.xyScanEnabled and self.stages is not None:
             self.stages.move(value=(self.xScanMin+self.initialPosition[0],self.yScanMin+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
 
         # initialize iterator
@@ -503,7 +512,7 @@ class MCTController(ImConWidgetController):
             if not self.isMCTrunning:
                 break
             # move to xy position is necessary
-            if self.xyScanEnabled:
+            if self.xyScanEnabled and self.stages is not None:
                 self.stages.move(value=(iXYPos[0]+self.initialPosition[0],iXYPos[1]+self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
             # measure framenumber and check if it has been renewed after stage has stopped => avoid motion blur!
             nFrameSyncWait = 5
@@ -518,7 +527,7 @@ class MCTController(ImConWidgetController):
             # perform a z-stack
             for iZ in zStepsAbsolute:
                 # move to each position
-                if self.zStackEnabled:
+                if self.zStackEnabled and self.stages is not None:
                     self.stages.move(value=iZ, axis="Z", is_absolute=True, is_blocking=True)
                     time.sleep(self.tUnshake) # unshake
 
@@ -552,7 +561,7 @@ class MCTController(ImConWidgetController):
                     if turnOffIlluInBetween: self.lasers[1].setEnabled(False)
                     self.LastStackLaser2.append(lastFrame.copy())
 
-                if self.LEDValue>0 and len(self.leds)>0:
+                if self.LEDValue>0 and (len(self.leds)>0 or self.illu) :
                     filePath = self.getSaveFilePath(date=self.MCTDate,
                                 timestamp=timestamp,
                                 filename=f'{self.MCTFilename}_LED_i_{imageIndex}_Z_{iZ}_X_{xyScanStepsAbsolute[ipos][0]}_Y_{xyScanStepsAbsolute[ipos][1]}',
@@ -561,10 +570,16 @@ class MCTController(ImConWidgetController):
                         if len(self.leds)>0:
                             self.leds[0].setValue(self.LEDValue)
                             self.leds[0].setEnabled(True)
+                        if self.illu:
+                            self.illu.setAll(1, (self.LEDValue,self.LEDValue,self.LEDValue))
                         time.sleep(self.tWait)
                         lastFrame = self.detector.getLatestFrame()
                         tif.imwrite(filePath, lastFrame, append=True)
-                        if turnOffIlluInBetween: self.leds[0].setEnabled(False)
+                        if turnOffIlluInBetween: 
+                            if len(self.leds)>0:self.leds[0].setEnabled(False)
+                            if self.illu:self.illu.setAll(0,(0,0,0))
+                            
+                            
                         self.LastStackLED.append(lastFrame.copy())
                     except:
                         pass
@@ -573,7 +588,7 @@ class MCTController(ImConWidgetController):
                 imageIndex += 1
 
             # reduce backlash => increase chance to endup at the same position
-            if self.zStackEnabled:
+            if self.zStackEnabled and self.stages is not None:
                 self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
             if self.xyScanEnabled:
@@ -597,17 +612,18 @@ class MCTController(ImConWidgetController):
 
 
         # initialize xy coordinates
-        if self.xyScanEnabled:
+        if self.xyScanEnabled and self.stages is not None:
             self.stages.move(value=(self.initialPosition[0], self.initialPosition[1]), axis="XY", is_absolute=True, is_blocking=True)
-        if self.zStackEnabled:
+        if self.zStackEnabled and self.stages is not None:
             self.stages.move(value=(self.initialPositionZ), axis="Z", is_absolute=True, is_blocking=True)
 
         # ensure all illus are off
-        self.switchOffIllumination()
+        #self.switchOffIllumination()
 
         # disable motors to prevent overheating
-        self._logger.debug("Setting enable to: "+str(self.stages.is_enabled))
-        self.stages.enalbeMotors(enable=self.stages.is_enabled)
+        if self.stages is not None:
+            self._logger.debug("Setting enable to: "+str(self.stages.is_enabled))
+            self.stages.enalbeMotors(enable=self.stages.is_enabled)
 
     def switchOffIllumination(self):
         # switch off all illu sources
@@ -618,7 +634,8 @@ class MCTController(ImConWidgetController):
                 time.sleep(0.1)
         if len(self.leds)>0:
             self.leds[0].setValue(0)
-            #self.illu.setAll((0,0,0))
+        if self.illu:
+            self.illu.setAll(0,(0,0,0))
 
     def valueLaser1Changed(self, value):
         self.Laser1Value= value
@@ -627,6 +644,7 @@ class MCTController(ImConWidgetController):
         if len(self.lasers)>0:self.lasers[0].setValue(self.Laser1Value)
         if self.lasers[1].power: self.lasers[1].setValue(0)
         if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
+        if self.illu: self.illu.setAll((0,0,0))
 
     def valueLaser2Changed(self, value):
         self.Laser2Value = value
@@ -635,18 +653,19 @@ class MCTController(ImConWidgetController):
         if len(self.lasers)>1: self.lasers[1].setValue(self.Laser2Value)
         if self.lasers[0].power: self.lasers[0].setValue(0)
         if len(self.leds)>0 and self.leds[0].power: self.leds[0].setValue(0)
+        if self.illu: self.illu.setAll((0,0,0))
 
     def valueLEDChanged(self, value):
         self.LEDValue= value
         self._widget.mctLabelLED.setText('Intensity (LED):'+str(value))
         if len(self.leds) and not self.leds[0].enabled: self.leds[0].setEnabled(1)
         if len(self.leds): self.leds[0].setValue(self.LEDValue, getReturn=False)
+        if self.illu: self.illu.setAll(1, (self.LEDValue,self.LEDValue,self.LEDValue))
         if len(self.lasers)>0: self.lasers[0].power: self.lasers[0].setValue(0)
         if len(self.lasers)>1: self.lasers[1].power: self.lasers[1].setValue(0)
 
     def __del__(self):
-        self.imageComputationThread.quit()
-        self.imageComputationThread.wait()
+        pass
 
     def getSaveFilePath(self, date, timestamp, filename, extension):
         mFilename =  f"{date}_{filename}.{extension}"

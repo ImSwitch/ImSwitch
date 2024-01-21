@@ -127,7 +127,7 @@ class PNGStorer(Storer):
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(path, image)
             logger.info(f"Saved image to png file {path}")
-                
+
 class JPGStorer(Storer):
     """ A storer that stores the images in a series of jpg files """
     def snap(self, images: Dict[str, np.ndarray], attrs: Dict[str, str] = None):
@@ -139,7 +139,6 @@ class JPGStorer(Storer):
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             cv2.imwrite(path, image)
             logger.info(f"Saved image to jpg file {path}")
-            
 class MP4Storer(Storer):
     """ A storer that writes the frames to an MP4 file """
 
@@ -168,7 +167,7 @@ DEFAULT_STORER_MAP: Dict[str, Type[Storer]] = {
     SaveFormat.ZARR: ZarrStorer,
     SaveFormat.HDF5: HDF5Storer,
     SaveFormat.TIFF: TiffStorer,
-    SaveFormat.MP4: MP4Storer, 
+    SaveFormat.MP4: MP4Storer,
     SaveFormat.PNG: PNGStorer,
     SaveFormat.JPG: JPGStorer
 }
@@ -264,7 +263,7 @@ class RecordingManager(SignalInterface):
 
         if detectorNames is None:
             detectorNames = self.__detectorsManager.detectorNames
-            
+
         try:
             images = {}
 
@@ -288,7 +287,7 @@ class RecordingManager(SignalInterface):
 
         except Exception as e:
             self.__logger.error(f'Failed to snap image: {e}')
-            
+
         finally:
             self.__detectorsManager.stopAcquisition(acqHandle)
             if saveMode == SaveMode.Numpy:
@@ -454,12 +453,12 @@ class RecordingWorker(Worker):
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
-            
+
             elif self.saveFormat == SaveFormat.JPG:
                 fileExtension = str(self.saveFormat.name).lower()
                 filenames[detectorName] = self.__recordingManager.getSaveFilePath(
                     f'{self.savename}_{detectorName}.{fileExtension}', False, False)
-                
+
             elif self.saveFormat == SaveFormat.ZARR:
                 datasets[detectorName] = files[detectorName].create_dataset(datasetName, shape=(1, *reversed(shape)),
                                                                             dtype='i2', chunks=(1, 512, 512)

@@ -69,6 +69,7 @@ class ScanControllerOpt(ImConWidgetController):
         )
 
         # Enable snapping
+        # 22/01 commented out to debug snapping
         self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
 
         # start OPT

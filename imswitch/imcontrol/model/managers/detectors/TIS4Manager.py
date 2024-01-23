@@ -62,7 +62,7 @@ class TIS4Manager(DetectorManager):
                 group='Misc',
                 value=self._camera.getPropertyValue('pixel_format'),
                 options=['8bit', '12bit', '16bit'],
-                editable=False),
+                editable=True),
             # if changed, it does not propagate for the hdf5 snap
             # shape mismatch, TypeError
             'rotate_frame': DetectorListParameter(

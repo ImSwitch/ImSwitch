@@ -1,15 +1,14 @@
 import numpy as np
-import time
+import imagingcontrol4 as ic4
 
 from imswitch.imcommon.model import initLogger
-import imagingcontrol4 as ic4
 
 
 class CameraTIS4:
     def __init__(self, cameraNo, pixel_format):
         super().__init__()
         self.__logger = initLogger(self, tryInheritParent=True)
-        ic4.Library.init(api_log_level=4, log_targets=1)
+        ic4.Library.init(api_log_level=5, log_targets=1)
         self.pixel_formats = {'8bit': ic4.PixelFormat.Mono8,
                               '12bit': ic4.PixelFormat.Mono16,
                               '16bit': ic4.PixelFormat.Mono16}
@@ -17,7 +16,7 @@ class CameraTIS4:
         cam_names = ic4.DeviceEnum.devices()
         self.model = cam_names[cameraNo]
         self.cam = ic4.Grabber()
-        self.sink = ic4.SnapSink()
+        self.snapSink = ic4.SnapSink()
 
         self.local_init(pixel_format)
 
@@ -27,6 +26,7 @@ class CameraTIS4:
             reinit = True  # flag if pixel format needs to be set
             self.__logger.info('this is a RE-init')
             self.cam.device_close()
+            print('reinit, is sink attached:', self.snapSink.is_attached)
         else:
             reinit = False
         self.cam.device_open(self.model)
@@ -58,35 +58,27 @@ class CameraTIS4:
         self.cam.device_property_map.set_value(
             ic4.PropId.EXPOSURE_AUTO, False
         )
-        # Defer acquisition means that, self.cam.start_acquisition needs to be called
-        self.cam.stream_setup(self.sink,
-                              setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
-                              )
-        # print('grabber', self.cam, id(self.cam))
-        # print('SINK', self.cam.sink, id(self.cam.sink))
 
     def start_live(self):
+        self.__logger.debug('start live method called')
         # Defer acquisition means that, self.cam.start_acquisition needs to be called
-        # self.cam.stream_setup(self.sink,
-        #                       setup_option=ic4.StreamSetupOption.ACQUISITION_START,
-        #                       )
-        self.cam.acquisition_start()  # start imaging
+        if self.cam.is_streaming:
+            self.cam.acquisition_start()
+        else:
+            self.cam.stream_setup(
+                self.snapSink,
+                setup_option=ic4.StreamSetupOption.ACQUISITION_START,
+            )
+        self.__logger.info(f'output_image_type {self.snapSink.output_image_type}')
 
     def stop_live(self):
         self.__logger.debug('stop live method called')
+        print('Streaming01?', self.cam.is_streaming)
+        print('sink attached01:', self.snapSink.is_attached)
         self.cam.acquisition_stop()  # stop imaging
 
-        # Bad attempt to fix RAM issues and stop stream every time
-        # does not work and raised issue on is_streaming property bug.
-        # self.cam.stream_stop()
-        # time.sleep(0.4)
-        # print('Streaming?', self.cam.is_streaming)
-        # self.cam.stream_setup(self.sink,
-        #                       setup_option=ic4.StreamSetupOption.DEFER_ACQUISITION_START,
-        #                       )
-
     def grabFrame(self):
-        image = self.sink.snap_single(10000)
+        image = self.snapSink.snap_single(5000)
         frame = image.numpy_wrap()[:, :, 0]
 
         # shift bits if necessary, works
@@ -138,6 +130,7 @@ class CameraTIS4:
                             ic4.PropId.PIXEL_FORMAT,
                             self.pixel_formats[property_value])
             self.pixel_format = property_value
+            self.__logger.debug(f'pixel format set: {self.pixel_format}')
         elif property_name == 'rotate_frame':
             self.rotate_frame = property_value
         else:

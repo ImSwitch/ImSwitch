@@ -15,55 +15,11 @@ grabber = ic4.Grabber()
 first_device_info = ic4.DeviceEnum.devices()[0]
 grabber.device_open(first_device_info)
 
-grabber.device_property_map.set_value(
-    ic4.PropId.GAIN, 0)
-
-grabber.device_property_map.set_value(
-    ic4.PropId.EXPOSURE_TIME, 1800)
-
-print(grabber.device_property_map.get_value_float(
-    ic4.PropId.EXPOSURE_TIME))
-
-grabber.device_property_map.set_value(
-    ic4.PropId.EXPOSURE_TIME, 12220)
-
-print(grabber.device_property_map.get_value_float(
-    ic4.PropId.EXPOSURE_TIME))
-# query valid values for the exposure time
-print(dir(grabber.device_property_map.find_float))
-
-exp = grabber.device_property_map.find_float(ic4.PropId.EXPOSURE_TIME)
-print(exp.increment_mode, exp.minimum, exp.maximum, exp.display_name)
-print(exp.unit)
-# print(np.logspace(np.log10(20), np.log10(4000000)))
-# sys.exit(1)
-grabber.device_property_map.set_value(
-    ic4.PropId.EXPOSURE_TIME, 1800)
-# access some property values
-# a = grabber.device_property_map.find_command(
-#     ic4.PropId.AUTO_FOCUS_ROI_ENABLE
-# )
-a = grabber.device_property_map.get_value_bool(
-    ic4.PropId.AUTO_FUNCTIONS_ROI_ENABLE)
-print(f'a: {a}')
-# ic4.Dialogs.grabber_device_properties(grabber, 43)
-
 # Configure the device to output images in the Mono8 pixel format
 grabber.device_property_map.set_value(ic4.PropId.PIXEL_FORMAT,
-                                      ic4.PixelFormat.Mono16)
+                                      ic4.PixelFormat.Mono8)
 
-# # Set the resolution to 640x480
-# grabber.device_property_map.set_value(ic4.PropId.WIDTH, 720)
-# grabber.device_property_map.set_value(ic4.PropId.HEIGHT, 480)
-
-# # Configure the exposure time to 5ms (5000µs)
-# grabber.device_property_map.set_value(ic4.PropId.EXPOSURE_AUTO, "Off")
-# grabber.device_property_map.set_value(ic4.PropId.EXPOSURE_TIME, 5000.0)
-
-# # Enable GainAuto
-# grabber.device_property_map.set_value(ic4.PropId.GAIN_AUTO, "Continuous")
-
-sink = ic4.SnapSink()
+sink = ic4.QueueSink()
 
 # Setup data stream from the video capture device to the sink and start image acquisition.
 

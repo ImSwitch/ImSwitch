@@ -50,24 +50,33 @@ class FLIMLabsController(LiveUpdatedController):
             
 
 class FLIMLabsREST:
-    def __init__(self, firmware_selected, laser_period, channels, firmware_width, firmware_height, offset_bottom, offset_left, offset_right, offset_top, host_url="http://localhost", port=3030):
+    def __init__(self, firmware_selected="firmwares\\\\image_pattern_2.bit",
+                 laser_period=10, 
+                 channels=[True,False,False,False,False,False,False,False],
+                 image_width=100,
+                 image_height=100,
+                    offset_bottom=0,
+                      offset_left=0,
+                        offset_right=0,
+                          offset_top=0,
+                            host_url="http://localhost", port=3030):
         self.firmware_selected = firmware_selected
         self.laser_period = laser_period
-        self.channels = channels
-        self.firmware_width = firmware_width
-        self.firmware_height = firmware_height
+        self.image_width = image_width
+        self.image_height = image_height
         self.offset_bottom = offset_bottom
         self.offset_left = offset_left
         self.offset_right = offset_right
         self.offset_top = offset_top
         self.base_url = host_url+":"+str(port)
+        self.channels = [True,False,False,False,False,False,False,False]
 
     def make_request(self, payload, method='POST', path='/start', callback=None):
         url = self.base_url + path
         headers = {'Content-Type': 'application/json'}
 
         if method not in ['GET', 'HEAD']:
-            response = requests.request(method, url, headers=headers, data=json.dumps(payload))
+            response = requests.request(method, url, headers=headers, data=json.dumps(payload)) #
         else:
             response = requests.request(method, url, headers=headers)
 
@@ -81,7 +90,8 @@ class FLIMLabsREST:
             print(f"Error: {response.status_code}")
             return None
 
-    def start_scouting(self, reconstruction, dwell_time):
+    def start_scouting(self, reconstruction="PLF", dwell_time=1):
+        path = "/start"
         payload = {
             "firmware": self.firmware_selected,
             "laser_period": self.laser_period,
@@ -91,19 +101,19 @@ class FLIMLabsREST:
                     "reconstruction": reconstruction,
                     "dwell_time": dwell_time,
                     "step": "scouting",
-                    "image_width": self.firmware_width,
-                    "image_height": self.firmware_height,
+                    "image_width": self.image_width,
+                    "image_height": self.image_height,
                     "offset_bottom": self.offset_bottom,
                     "offset_left": self.offset_left,
                     "offset_right": self.offset_right,
                     "offset_top": self.offset_top,
-                    "channels": [i + 1 in self.channels for i in range(8)]
+                    "channels": self.channels
                 }
             }
         }
-        self.make_request(payload)
+        self.make_request(payload=payload, path=path)
 
-    def start_calibration(self, reconstruction, dwell_time, harmonics, tau_ns, max_frames):
+    def start_calibration(self, reconstruction="PLF", dwell_time=1, harmonics=1, tau_ns=10, max_frames=10):
         payload = {
             "firmware": self.firmware_selected,
             "laser_period": self.laser_period,
@@ -113,8 +123,8 @@ class FLIMLabsREST:
                     "reconstruction": reconstruction,
                     "dwell_time": dwell_time,
                     "step": "calibration",
-                    "image_width": self.firmware_width,
-                    "image_height": self.firmware_height,
+                    "image_width": self.image_width,
+                    "image_height": self.image_height,
                     "offset_bottom": self.offset_bottom,
                     "offset_left": self.offset_left,
                     "offset_right": self.offset_right,
@@ -138,8 +148,8 @@ class FLIMLabsREST:
                     "reconstruction": reconstruction,
                     "dwell_time": dwell_time,
                     "step": "imaging",
-                    "image_width": self.firmware_width,
-                    "image_height": self.firmware_height,
+                    "image_width": self.image_width,
+                    "image_height": self.image_height,
                     "offset_bottom": self.offset_bottom,
                     "offset_left": self.offset_left,
                     "offset_right": self.offset_right,
@@ -159,24 +169,20 @@ if __name__ == '__main__':
 
     # Create an instance with the required initialization parameters
     imaging_control = FLIMLabsREST(
-        firmware_selected="your_firmware",
-        laser_period=123,  # example laser period
-        channels=[1, 2, 3],  # example channels
-        firmware_width=800,
-        firmware_height=600,
-        offset_bottom=10,
-        offset_left=10,
-        offset_right=10,
-        offset_top=10, 
-        host_url="http://192.168.178.60"
+        #firmware_selected="your_firmware",
+        laser_period=12.5,  # example laser period
+        #channels=[1, 2, 3],  # example channels
+        image_width=100,
+        image_height=100,
+        offset_bottom=0,
+        offset_left=0,
+        offset_right=0,
+        offset_top=0, 
+        host_url="http://localhost"
     )
     
-    imaging_control.start_calibration(
-        reconstruction="some_reconstruction_value",
-        dwell_time=500,  # example dwell time
-        harmonics="some_harmonics_value",
-        tau_ns=50,  # example tau value
-        max_frames=1000  # example max frames
+    imaging_control.start_scouting(
+        dwell_time=1  # example dwell time
     )
 
 

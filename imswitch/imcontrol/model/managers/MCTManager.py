@@ -18,7 +18,9 @@ class MCTManager(SignalInterface):
         super().__init__(*args, **kwargs)
         self.__logger = initLogger(self)
         
-        if mctInfo.tWait is not None:
+        
+        
+        if mctInfo is not None or mctInfo.tWait is not None:
             self.tWait = mctInfo.tWait
         else:
             self.tWait = 0.1

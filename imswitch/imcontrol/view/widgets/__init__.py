@@ -13,6 +13,7 @@ from .HistogrammWidget import HistogrammWidget
 from .STORMReconWidget import STORMReconWidget
 from .HoliSheetWidget import HoliSheetWidget
 from .FlowStopWidget import FlowStopWidget
+from .FLIMLabsWidget import FLIMLabsWidget
 from .TemperatureWidget import TemperatureWidget
 from .LEDMatrixWidget import LEDMatrixWidget
 from .WellPlateWidget import WellPlateWidget

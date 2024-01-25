@@ -1,5 +1,9 @@
 import webbrowser
-from PyQt5 import QtWidgets, QtWebEngineWidgets
+from PyQt5 import QtWidgets
+try:
+    from PyQt5 import QtWebEngineWidgets
+except:
+    QtWebEngineWidgets = None
 import numpy as np
 import pyqtgraph as pg
 from imswitch.imcontrol.view import guitools
@@ -62,9 +66,13 @@ class HyphaWidget(Widget):
         self.tab2_layout = QtWidgets.QVBoxLayout(self.tab2)
 
         # Add a web view to the second tab
-        self.webView = QtWebEngineWidgets.QWebEngineView()
-        self.webView.load(QtCore.QUrl("https://imjoy.io/"))  # Replace with your desired URL
-        self.tab2_layout.addWidget(self.webView)
+        if QtWebEngineWidgets is None:
+            self.tab2_layout.addWidget(QtWidgets.QLabel("QtWebEngineWidgets is not available, please install it."))
+            self.webView = None
+        else:
+            self.webView = QtWebEngineWidgets.QWebEngineView()
+            self.webView.load(QtCore.QUrl("https://imjoy.io/"))  # Replace with your desired URL
+            self.tab2_layout.addWidget(self.webView)
 
         # Add the second tab to the tab widget
         self.tabWidget.addTab(self.tab2, "Chat")

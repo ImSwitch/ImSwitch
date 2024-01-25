@@ -1,14 +1,17 @@
 import numpy as np
+from threading import Thread
+import requests
+import json
+
+
 from imswitch.imcommon.model import dirtools, modulesconfigtools, ostools, APIExport
 from imswitch.imcommon.framework import Signal, Worker, Mutex, Timer
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.model import initLogger
+from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
 import imswitch
-from threading import Thread
-from ..basecontrollers import LiveUpdatedController
 
-import requests
-import json
+
 
 
 class FLIMLabsController(LiveUpdatedController):
@@ -47,7 +50,7 @@ class FLIMLabsController(LiveUpdatedController):
             
 
 class FLIMLabsREST:
-    def __init__(self, firmware_selected, laser_period, channels, firmware_width, firmware_height, offset_bottom, offset_left, offset_right, offset_top):
+    def __init__(self, firmware_selected, laser_period, channels, firmware_width, firmware_height, offset_bottom, offset_left, offset_right, offset_top, host_url="http://localhost", port=3030):
         self.firmware_selected = firmware_selected
         self.laser_period = laser_period
         self.channels = channels
@@ -57,7 +60,7 @@ class FLIMLabsREST:
         self.offset_left = offset_left
         self.offset_right = offset_right
         self.offset_top = offset_top
-        self.base_url = 'http://localhost:3030'
+        self.base_url = host_url+":"+str(port)
 
     def make_request(self, payload, method='POST', path='/start', callback=None):
         url = self.base_url + path
@@ -150,7 +153,7 @@ class FLIMLabsREST:
         self.make_request(payload)
 
 
-if __name__ == "main":
+if __name__ == '__main__':
     
     # Assuming FLIMLabsREST class is defined as shown previously
 
@@ -164,7 +167,8 @@ if __name__ == "main":
         offset_bottom=10,
         offset_left=10,
         offset_right=10,
-        offset_top=10
+        offset_top=10, 
+        host_url="http://192.168.178.60"
     )
     
     imaging_control.start_calibration(

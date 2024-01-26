@@ -14,7 +14,7 @@ class AlignOptController(ImConWidgetController):
     """ OPT scan controller.
     """
     sigImageReceived = Signal(str, np.ndarray)
-    sigRequestSnap = Signal()
+    # sigRequestSnap = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,9 +53,6 @@ class AlignOptController(ImConWidgetController):
         self.sigImageReceived.connect(self.processAlign)
         self._widget.scanPar['StartButton'].setEnabled(False)
 
-        self._commChannel.sigSetSnapVisualization.emit(False)
-        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
-        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                 self.post_step)
@@ -65,10 +62,10 @@ class AlignOptController(ImConWidgetController):
             self.__rotators[self.motorIdx]]._motor.current_pos[0]
         counterPos = (curPos + self.__motor_steps//2) % self.__motor_steps
         self.opt_steps = [curPos, counterPos]
-        self.__logger.debug(f'OPT steps: {self.opt_steps}')
         self.allFrames = []
 
         # run OPT
+        self.detector.startAcquisition()
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
@@ -78,19 +75,16 @@ class AlignOptController(ImConWidgetController):
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
         """ Move a specific rotator to a certain position. """
-        self.__logger.debug(f'Scancontroller, dist to move: {dist}')
         self._master.rotatorsManager[name].move_abs_steps(dist)
-        self.__logger.debug('Scancontroller, after move.')
 
-    def post_step(self, s):
+    def post_step(self):
         """Acquire image after motor step is done, stop OPT in
         case of last step,
         otherwise move motor again.
         """
-        print(f'test string: {s}')
-
         # memory saving option needs to set in the recording controller.
-        self.sigRequestSnap.emit()
+        # self.sigRequestSnap.emit()
+        self.handleSnap()
 
         self.__currentStep += 1
 
@@ -104,6 +98,7 @@ class AlignOptController(ImConWidgetController):
     def stopOpt(self):
         """Stop OPT acquisition and enable buttons
         """
+        self.detector.stopAcquisition()
         self.isOptRunning = False
         self.optStack = np.array(self.allFrames)
         self.sigImageReceived.emit('OPT stack', self.optStack)
@@ -111,31 +106,18 @@ class AlignOptController(ImConWidgetController):
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._widget.scanPar['StartButton'].setEnabled(True)
-        self._logger.info("Align scan stopped.")
-        self.sigRequestSnap.disconnect()
-
-        self._commChannel.sigSetSnapVisualization.emit(True)
+        self._logger.info("Align scan done.")
 
     ##################
     # Image handling #
     ##################
-    def handleSnap(self, name, image, filePath, savedToDisk):
+    def handleSnap(self):
         """ Handles computation over a snapped image. Method is triggered by
         the `sigMemorySnapAvailable` signal.
-
-        Args:
-            name (`str`): key of the virtual table used to store images
-                in RAM; format is "{filePath}_{channel}"
-            image (`np.ndarray`): captured image snap data;
-            filepath (`str`): path to the file stored on disk;
-            savedToDisk (`bool`): weather the image is saved on
-                disk (`True`) or not (`False`)
         """
-        self._logger.debug('handling snap')
-        self.frame = image
+        self.frame = self.detector.getLatestFrame()
         if self.isOptRunning:
-            self._logger.debug('appending snap')
-            self.allFrames.append(image)
+            self.allFrames.append(self.frame)
 
     def processAlign(self, name, arr):
         # subsample stack
@@ -173,7 +155,6 @@ class AlignOptController(ImConWidgetController):
         self._widget.plotHorCuts.addLegend()
         self._widget.plotHorCuts.setTitle('Horizontal cuts', color='b')
         for i, px in enumerate(self.horIdxList):
-            self._logger.info(f'plotting {i}, {px}')
             self._widget.plotHorCuts.plot(
                     self.normalize(self.cor.horCuts[i][0], '01'),
                     name=f'single {px}',
@@ -190,10 +171,11 @@ class AlignOptController(ImConWidgetController):
         # find
         for i, px in enumerate(self.horIdxList):
             # I plot it normalized
-            self._widget.plotCC.plot(self.cor.crossCorr[i]/np.amax(self.cor.crossCorr[i]),
-                                     name=f'{px}',
-                                     #  pen=pg.mkPen('r'),
-                                     )
+            self._widget.plotCC.plot(
+                    self.cor.crossCorr[i]/np.amax(self.cor.crossCorr[i]),
+                    name=f'{px}',
+                    #  pen=pg.mkPen('r'),
+                    )
         # plot center Hor line
         self._widget.plotCC.addItem(
             pg.InfiniteLine(self.cor.center_px,
@@ -203,35 +185,18 @@ class AlignOptController(ImConWidgetController):
 
     def replotAll(self):
         self.updateShift()
-        print(self.xShift)
         try:
             self.cor._updateShift(self.xShift)
             self._widget.plotCounterProj(self.cor.merged)
             self.plotHorCuts()
-            self._logger.info('Replotting')
         except TypeError:
-            self._logger.info('No alignment stack available')        
-
-    def saveScanParamsToFile(self, filePath: str) -> None:
-        """ Saves the set scanning parameters to the specified file. """
-        self.getParameters()
-
-    def loadScanParamsFromFile(self, filePath: str) -> None:
-        """ Loads scanning parameters from the specified file. """
-        self.setParameters()
-
-    def enableWidgetInterface(self, enableBool):
-        self._widget.enableInterface(enableBool)
+            self.__logger.info('No alignment stack available')
 
     def getHorCutIdxs(self):
         return [int(k) for k in self._widget.getHorCutsIdxList().split()]
 
     def updateShift(self):
         self.xShift = self._widget.scanPar['xShift'].value()
-
-    def getRotationSteps(self):
-        """ Get the total rotation steps. """
-        return self._widget.getRotationSteps()
 
     def getRotators(self):
         """ Get a list of all rotators."""
@@ -249,7 +214,6 @@ class AlignOptController(ImConWidgetController):
 class AlignCOR():
     def __init__(self, name, img_stack, shift):
         self.name = name
-        print('COR shape', img_stack.shape)
         if len(img_stack) != 2:
             raise IndexError('Check if Snap save mode contains save to display')
         # img_stack is opt acquired at 0 and 180 deg

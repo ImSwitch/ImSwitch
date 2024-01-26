@@ -11,9 +11,6 @@ from datetime import datetime
 from functools import partial
 import numpy as np
 import time
-import pdb
-import debugpy
-# import threading
 
 from imswitch.imcommon.model import initLogger, dirtools
 from ..basecontrollers import ImConWidgetController
@@ -25,7 +22,6 @@ class ScanControllerOpt(ImConWidgetController):
     """ OPT scan controller.
     """
     sigImageReceived = Signal(str, np.ndarray)  # (name, frame array)
-    sigRequestSnap = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -36,51 +32,45 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.initControls()
 
         # Local flags
-        self.live_recon = False
+        self.liveRecon = False
+        self.saveOpt = True
         self.isOptRunning = False
 
-        # select detectors, this does not update if detector in
-        # recording changes, right?
+        # get detectors, select first one, connect update
+        # Should it be synchronized with recording selector?
         allDetectorNames = self._master.detectorsManager.getAllDeviceNames()
         self.detector = self._master.detectorsManager[allDetectorNames[0]]
 
+        # connect updator, get rotators, populate combobox
         self._widget.scanPar['Rotator'].currentIndexChanged.connect(
             self.updateRotator)
-
-        # get rotators
         self.getRotators()
-        # populated widget comboBox, this triggers the updateRotator too
         for rotator in self.__rotators:
             self._widget.scanPar['Rotator'].addItem(rotator)
 
         # Connect widget signals
-        self._widget.scanPar['GetHotPixels'].clicked.connect(
-            self.exec_hot_pixels)
+        self._widget.scanPar['GetHotPixels'].clicked.connect(self.exec_hot_pixels)
         self._widget.scanPar['GetDark'].clicked.connect(self.exec_dark_field)
         self._widget.scanPar['GetFlat'].clicked.connect(self.exec_flat_field)
-
-        self._widget.scanPar['LiveReconButton'].clicked.connect(
-            self.updateLiveReconFlag
-        )
+        self._widget.scanPar['LiveReconButton'].clicked.connect(self.updateLiveReconFlag)
         self.updateLiveReconFlag()
 
-        self._widget.scanPar['RotStepsEdit'].valueChanged.connect(
-            self.updateRotationSteps
-        )
+        # saving flag
+        self._widget.scanPar['SaveButton'].clicked.connect(self.updateSaveFlag)
+        self.updateSaveFlag()
 
-        # Enable snapping
-        # 22/01 commented out to debug snapping
-        self.sigRequestSnap.connect(self._commChannel.sigSnapImg)
+        # live recon
+        self._widget.scanPar['LiveReconIdxEdit'].valueChanged.connect(self.updateLiveReconIdx)
+        self.updateLiveReconIdx()
 
-        # start OPT
-        self._commChannel.sigRecordingStarted.connect(self.startOpt)
-        # self._commChannel.sigScanStarted.connect(self.startOpt)
+        self._widget.scanPar['OptStepsEdit'].valueChanged.connect(self.updateOptSteps)
 
-        # sigScanEnded, because sigRecordingEnded triggers stopOpt 2x
-        # I do sigRecordingEnded in stopOpt
-        self._commChannel.sigScanEnded.connect(self.stopOpt)
+        # currently using local acquistion loop
+        self._widget.scanPar['StartButton'].clicked.connect(self.initOpt)
+        self._widget.scanPar['StopButton'].clicked.connect(self.stopOpt)
 
     # JA: method to add your metadata to recordings
+    # TODO: metadata still not taken care of
     def setSharedAttr(self, rotatorName, meta1, meta2, attr, value):
         self.settingAttr = True
         try:
@@ -92,12 +82,10 @@ class ScanControllerOpt(ImConWidgetController):
     #################
     # Main OPT scan #
     #################
-    def startOpt(self):
-        """ Reset and initiate Opt scan. """
+    def initOpt(self):
+        """ Initiate Opt scan.  """
         self.allFrames = []
-        # This is JA solution
-        self._commChannel.sigSetSnapVisualization.emit(False)
-        self._commChannel.sigMemorySnapAvailable.connect(self.handleSnap)
+        self.saveSubfolder = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
         self.sigImageReceived.connect(self.displayImage)
 
         # arduino stepper signal after move is finished.
@@ -107,30 +95,16 @@ class ScanControllerOpt(ImConWidgetController):
         # opt_step_done is emitted, but not connected, while in the case of OPT I connect it to the
         # post_step here.
         if self._widget.scanPar['MockOpt'].isChecked():
-            self._logger.info('Preparing Mock experiment')
-            self.mtx = QMutex()
-            self._master.rotatorsManager[
-                self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
-                                                        self.post_step_mock)
-
-            # here generate stack of projections
-            self.demo = DemoData(resolution=32, bin_factor=1)
-            self.demo.sinoReady.connect(self.wait)
-            # self.mtx.lock()
-            time.sleep(2)
-            self._widget.scanPar['RotStepsEdit'].setText('32')
-            self._logger.info('waiting...')
-
+            self.prepareOptMock()
         else:
             self._logger.info('Preparing Real experiment')
             self._master.rotatorsManager[
                 self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                                                         self.post_step)
-        self._logger.info('passed')
-        self.__rot_steps = self.getRotationSteps()  # motor step per revolution
+        self.__optSteps = self.getOptSteps()
 
         # Checking for divisability of motor steps and OPT steps.
-        if self.__motor_steps % self.__rot_steps != 0:
+        if self.__motor_steps % self.__optSteps != 0:
             retval = self.raiseStepMess()
             # hex value associated with Cancel button of QMessageBox
             if int(retval) == int(0x00400000):
@@ -138,17 +112,24 @@ class ScanControllerOpt(ImConWidgetController):
                 return
 
         # equidistant steps for the OPT scan in absolute values.
-        self.opt_steps = np.linspace(0, self.__motor_steps, self.__rot_steps,
+        self.opt_steps = np.linspace(0, self.__motor_steps, self.__optSteps,
                                      endpoint=False).astype(np.int_)
 
+        # init intensity stability monitoring
         self.signalStability = Stability()
 
-        # live reconstruction option
-        if self.live_recon:
-            self.reconIdx = self.getLiveReconIdx()
-            self.current_recon = None  # in order to avoid update_recon in the first step
+        # live reconstruction
+        if self.liveRecon:
+            self.reconIdx = self.updateLiveReconIdx()
+            self.currentRecon = None  # avoid update_recon in the first step
 
-        # run OPT, set flags and move to step 0
+        self.startOpt()
+
+    def startOpt(self):
+        """run OPT, set flags and move to step zero rotator position
+        """
+        self.detector.startAcquisition()
+        self.enableWidget(False)
         if not self.isOptRunning:
             self.isOptRunning = True
             self.__currentStep = 0
@@ -159,148 +140,154 @@ class ScanControllerOpt(ImConWidgetController):
         self._logger.info('inside wait')
         self.mtx.unlock()
 
+    def prepareOptMock(self):
+        """
+        Generate 3D phantom data and connects motor step
+        finish to post_step_mock()
+        """
+        self._logger.info('Preparing Mock experiment')
+        self.mtx = QMutex()
+        self._master.rotatorsManager[
+            self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
+                                                    self.post_step_mock)
+
+        # here generate stack of projections
+        self.demo = DemoData(resolution=32, bin_factor=1)
+        self.demo.sinoReady.connect(self.wait)
+        # self.mtx.lock()
+        time.sleep(2)
+        self._widget.scanPar['OptStepsEdit'].setText('32')
+        self._logger.info('waiting...')
+
     @pyqtSlot()
     def moveAbsRotator(self, name, dist):
-        """ Move a specific rotator to a certain position. """
-        self.__logger.debug(f'dist to move: {dist}')
+        """ Move a specific rotator to an absolute position. """
         self._master.rotatorsManager[name].move_abs_steps(dist)
 
     def post_step(self, s):
-        """Acquire image after motor step is done, stop OPT in case of
-        last step, otherwise move motor again.
-
-        Snapping implemented, because it eliminates issues
-        with streaming images I do not care about. And avoids
-        risk of getLatestFrame starting while motor still moving
-        in the case of long exposure times.
-        """
-        # option with snapping
-        # saving option needs to set in the recording controller.
-        self.sigRequestSnap.emit()
-
-        # updating live reconstruction
-        if self.live_recon:
-            self.updateLiveRecon()
-
-        self.__currentStep += 1
-
-        if self.__currentStep > len(self.opt_steps)-1:
-            self._commChannel.sigScanEnded.emit()
-        else:
-            self.__logger.debug(f'post_step func, step {self.__currentStep}')
-            self.moveAbsRotator(self.__rotators[self.motorIdx],
-                                self.opt_steps[self.__currentStep])
+        """Acquire image after motor step is done, move to next step """
+        self.handleSnap()
+        self.nextStep()
 
     def post_step_mock(self, s):
-        """Acquire image after motor step is done, stop OPT in case of
-        last step, otherwise move motor again.
-
-        Snapping implemented, because it eliminates issues
-        with streaming images I do not care about. And avoids
-        risk of getLatestFrame starting while motor still moving
-        in the case of long exposure times.
-        """
+        """Get image from the demo sinogram data, call next step. """
         self.frame = self.demo.sinogram[self.__currentStep]
         self.optStack = self.demo.sinogram[:self.__currentStep]
         self.sigImageReceived.emit('OPT stack', self.optStack)
+        self.nextStep()
 
+    def nextStep(self):
+        """
+        Update live reconstruction, stop OPT in case of last step,
+        otherwise move motor again.
+        """
         # updating live reconstruction
-        if self.live_recon:
+        if self.liveRecon:
             self.updateLiveRecon()
 
         self.__currentStep += 1
 
         if self.__currentStep > len(self.opt_steps)-1:
-            self._commChannel.sigScanEnded.emit()
+            self.stopOpt()
         else:
-            self.__logger.debug(f'post_step func, step {self.__currentStep}')
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
     def stopOpt(self):
-        """ Stop OPT acquisition and enable buttons. Method is triggered
-        by the sigScanEnded signal.
         """
+        Stop OPT acquisition and enable buttons.
+        Update local flags and and disconnect signals.
+        """
+        self.detector.stopAcquisition()
         self.isOptRunning = False
-        self._commChannel.sigRecordingEnded.emit()
+        self.enableWidget(True)
         self.sigImageReceived.disconnect()
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._logger.info("OPT stopped.")
-        self._commChannel.sigSetSnapVisualization.emit(True)
 
     ##################
     # Image handling #
     ##################
-    def handleSnap(self, name, image, filePath, savedToDisk):
-        """ Handles computation over a snapped image. Method is triggered
-        by the `sigMemorySnapAvailable` signal.
-
-        Args:
-            name (`str`): key of the virtual table used to store images in RAM;
-                format is "{filePath}_{channel}"
-            image (`np.ndarray`): captured image snap data;
-            filepath (`str`): path to the file stored on disk;
-            savedToDisk (`bool`): weather the image is saved
-                on disk (`True`) or not (`False`)
+    def handleSnap(self):
         """
-        self._logger.debug('handling snap')
-        self.frame = image
+        Get and process getLatestFrame() call. Concatenate
+        to the OPT stack, save projection, update the stability plot.
+        """
+        self.frame = self.detector.getLatestFrame()
         if self.isOptRunning:
-            self.allFrames.append(image)
+            self.allFrames.append(self.frame)
 
             self.optStack = np.array(self.allFrames)
             self.sigImageReceived.emit('OPT stack', self.optStack)
-            self._widget.updateCurrentStep(self.__currentStep+1)
 
-            # update intensity monitoring plot
+            if self.saveOpt:
+                self.saveImage(self.frame,
+                               self.saveSubfolder,
+                               f'{self.__currentStep:04}')
+
+            # update intensity monitoring plot, This should be there for the
+            # mock too no? Needs refactoring
             self.signalStability.process_img(self.frame, self.__currentStep)
             self.updateStabilityPlot()
 
+            self._widget.updateCurrentStep(self.__currentStep + 1)
+
     def displayImage(self, name, frame):
+        """
+        Display stack or image in the napari viewer.
+
+        Args:
+            name (str): napari layer name
+            frame (np.ndarray): image or stack
+        """
         # subsample stack
-        self.__logger.info(f'Display image Shape: {frame.shape}')
         if self.isOptRunning:
             self._widget.setImage(np.uint16(frame),
-                                colormap="gray",
-                                name=name,
-                                pixelsize=(1, 1),
-                                translation=(0, 0),
-                                step=self.__currentStep)
+                                  colormap="gray",
+                                  name=name,
+                                  pixelsize=(1, 1),
+                                  translation=(0, 0),
+                                  step=self.__currentStep)
         else:
             self._widget.setImage(np.uint16(frame),
-                                colormap="gray",
-                                name=name,
-                                pixelsize=(1, 1),
-                                translation=(0, 0),
-                                )
+                                  colormap="gray",
+                                  name=name,
+                                  pixelsize=(1, 1),
+                                  translation=(0, 0),
+                                  )
 
     def updateLiveRecon(self):
+        """
+        Handles updating of the live Reconstruction plot.
+        Safeguarding the possibility of index error when slice of camera
+        is out of range. In that case center line of the image is used.
+        """
         try:
-            self.current_recon.update_recon(
+            self.currentRecon.update_recon(
                 self.frame[self.reconIdx, :],
                 self.__currentStep)
         except AttributeError:
             try:
-                print(f'Creating a new reconstruction object. {self.__rot_steps, self.__motor_steps}')
-                self.current_recon = FBPlive(
+                print(f'Creating a new reconstruction object. {self.__optSteps}')
+                self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
-                    self.__rot_steps)
-                self.__logger.info(f'current_recon: {self.current_recon.output.shape}')
-            except IndexError as e:
-                self._logger.warning('Index error, no live-recon')
-                print(e)
-                self.live_recon = False
-                self.current_recon = None
-
+                    self.__optSteps)
+                self.__logger.info(f'Recon shape: {self.currentRecon.output.shape}')
+            except IndexError:
+                self._logger.warning('Index error, reconstruction will proceed on the central camera line')
+                self.setLiveReconIdx(self.frame.shape[0]//2)
+                self.currentRecon = FBPlive(
+                    self.frame[self.reconIdx, :],
+                    self.__optSteps)
         try:
-            self.updateLiveReconPlot(self.current_recon.output)
+            self.updateLiveReconPlot(self.currentRecon.output)
         except TypeError:
-            self._logger.info(f'Wrong image type: {type(self.current_recon.output)}')
+            self._logger.info(f'Wrong type: {type(self.currentRecon.output)}')
 
     def updateLiveReconPlot(self, image):
-        """Dispaly current live reconstruction image.
-        If
+        """
+        Dispaly current live reconstruction image.
 
         Args:
             image (np.ndarray): FBP live reconstruction
@@ -309,13 +296,35 @@ class ScanControllerOpt(ImConWidgetController):
         self._widget.liveReconPlot.setImage(image)
         self._widget.updateCurrentReconStep(self.__currentStep+1)
 
-    # def enableWidgetInterface(self, enableBool):
-    #     self._widget.enableInterface(enableBool)
-
     ##################
     # Helper methods #
     ##################
+    def enableWidget(self, value: bool) -> None:
+        """
+        Upon starting/stopping the OPT, widget
+        editable fields get enabled from the bool value.
+
+        Args:
+            value (bool): enable value, False means disable
+        """
+        self._widget.scanPar['StartButton'].setEnabled(value)
+        self._widget.scanPar['StopButton'].setEnabled(not value)
+        self._widget.scanPar['SaveButton'].setEnabled(value)
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(value)
+        self._widget.scanPar['OptStepsEdit'].setEnabled(value)
+        self._widget.scanPar['GetDark'].setEnabled(value)
+        self._widget.scanPar['GetFlat'].setEnabled(value)
+        self._widget.scanPar['GetHotPixels'].setEnabled(value)
+        self._widget.scanPar['AveragesEdit'].setEnabled(value)
+        self._widget.scanPar['MockOpt'].setEnabled(value)
+
     def updateRotator(self):
+        """
+        Update rotator attributes when rotator is changed.
+        setting an index of the motor, motor_steps describe
+        number of steps per revolution (resolution of the motor),
+        also displayed in the widget.
+        """
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor._steps_per_turn
@@ -327,12 +336,13 @@ class ScanControllerOpt(ImConWidgetController):
             f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
             )
 
-    def getRotationSteps(self):
+    def getOptSteps(self):
         """ Get the total rotation steps for an OPT experiment. """
-        return self._widget.getRotationSteps()
+        return self._widget.getOptSteps()
 
-    def updateRotationSteps(self):
-        self.__rot_steps = self.getRotationSteps()
+    def updateOptSteps(self):
+        """ Get current number of OPT steps and update label """
+        self.__optSteps = self.getOptSteps()
         self._widget.updateCurrentStep()
         self._widget.updateCurrentReconStep()
 
@@ -345,14 +355,26 @@ class ScanControllerOpt(ImConWidgetController):
         return self._widget.getAverages()
 
     def setLiveReconButton(self, value: bool):
+        """
+        Set whether live reconstruction happenning.
+
+        Args:
+            value (bool): True means live reconstruction active
+        """
         self._widget.scanPar['LiveReconButton'].setChecked(value)
 
     def updateLiveReconFlag(self):
-        self.live_recon = self._widget.scanPar['LiveReconButton'].isChecked()
+        """ Update live reconstruction flag based on the widget value """
+        self.liveRecon = self._widget.scanPar['LiveReconButton'].isChecked()
         # enable/disable live-recon index
-        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.live_recon)
+        self._widget.scanPar['LiveReconIdxEdit'].setEnabled(self.liveRecon)
+
+    def updateSaveFlag(self):
+        """ Update saving flag from the widget value """
+        self.saveOpt = self._widget.scanPar['SaveButton'].isChecked()
 
     def updateStabilityPlot(self):
+        """ Update OPT stability plot from 4 corners of the stack """
         self._widget.intensityPlot.clear()
         self._widget.intensityPlot.addLegend()
 
@@ -366,14 +388,21 @@ class ScanControllerOpt(ImConWidgetController):
                 pen=pg.mkPen(colors[i], width=1.5),
             )
 
-    def getLiveReconIdx(self):
-        """ Get index of the live reconstruction horizontal
-        line.
+    def updateLiveReconIdx(self):
+        """ Get camera line index for the live reconstruction.
 
         Returns:
             int: Index of the image array
         """
         return self._widget.getLiveReconIdx()
+
+    def setLiveReconIdx(self, value: int):
+        """ Set camera line index for the live reconstruction
+
+        Args:
+            value (int): camera line index
+        """
+        self._widget.setLiveReconIdx(value)
 
     def getRotators(self):
         """ Get a list of all rotators."""
@@ -383,6 +412,13 @@ class ScanControllerOpt(ImConWidgetController):
     # Message windows #
     ###################
     def raiseStepMess(self):
+        """
+        Warn user when selected number of OPT steps do divide the
+        motor steps and will not be exactly equidistant.
+
+        Returns:
+            hex: hexadecimal value of the button pressed.
+        """
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Warning)
         msg.setText("Motor steps not integer values.")
@@ -433,10 +469,9 @@ class ScanControllerOpt(ImConWidgetController):
 
     def exec_dark_field(self):
         """
-        Block camera message before acquisition
-        of the dark-field counts, used for identification
-        of hot pixels. This is separate operation from dark
-        field correction.
+        Block camera message before acquisition of the dark-field
+        counts, used for identification of hot pixels. This is
+        separate operation from dark field correction.
 
         Returns:
             int: sys execution status.
@@ -462,6 +497,14 @@ class ScanControllerOpt(ImConWidgetController):
         return retval
 
     def exec_flat_field(self):
+        """
+        Instruction message for the bright-field correction. Exposure
+        time should be the same as for the dark-field and subsequent
+        experiment. This is separate operation from bright-field correction.
+
+        Returns:
+            int: sys execution status.
+        """
         averages = self.getAverages()
         msg = QtWidgets.QMessageBox()
         msg.setIcon(QtWidgets.QMessageBox.Information)
@@ -485,6 +528,15 @@ class ScanControllerOpt(ImConWidgetController):
         return retval
 
     def acquire_correction(self, btn, corr_type, n):
+        """
+        Handles correction acquisition, connects
+        display signal and calls getNframes(n)
+
+        Args:
+            btn (pyqtbutton): button which user pressed
+            corr_type (str): correction type selector
+            n (int): number of frames for correction averaging
+        """
         if btn.text() == 'Cancel':
             return
 
@@ -495,6 +547,17 @@ class ScanControllerOpt(ImConWidgetController):
         self.getNframes(n)
 
     def _continue(self, corr_type):
+        """Triggered by recieving a signal nFrames that
+        correction frame stack is ready. Calls specific correction
+        processing method and disconnects acquisition signals.
+
+        Args:
+            corr_type (str): type of camera correction (hot_pixels, dark_field,
+            flat_field)
+
+        Raises:
+            ValueError: In the case of unknown corr_type
+        """
         exec(f'self.{corr_type} = self.current_frame')
 
         # process hot pixel acquisition
@@ -510,7 +573,14 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.disconnect()
 
     def process_hot_pixels(self):
-        self.saveImage(self.hot_pixels, 'corr_hot')
+        """
+        Automatic saving of the correction to the \Corrections folder.
+        Based on the selected STD cutoff in the widget identifies pixels which
+        have intensity higher than mean of all pixels + STD cutoff multiples of STD.
+        Calculates and displays count of hot pixels and average intensity of both
+        hot and non-hot pixels.
+        """
+        self.saveImage(self.hot_pixels, 'Corrections', 'corr_hot')
         std_cutoff = self.getStdCutoff()
         std = np.std(self.hot_pixels, dtype=np.float64)
         mean = np.mean(self.hot_pixels, dtype=np.float64)
@@ -525,14 +595,22 @@ class ScanControllerOpt(ImConWidgetController):
         self.sigImageReceived.emit('hot_pixels', self.hot_pixels)
 
     def process_dark_field(self):
-        self.saveImage(self.dark_field, 'dark_field')
+        """
+        Saves the correction, displays mean and STD of all the
+        camera pixels.
+        """
+        self.saveImage(self.dark_field, 'Corrections', 'dark_field')
         self._widget.updateDarkMean(np.mean(self.dark_field))
         self._widget.updateDarkStd(np.std(self.dark_field))
 
         self.sigImageReceived.emit('dark_field', self.dark_field)
 
     def process_flat_field(self):
-        self.saveImage(self.flat_field, 'flat_field')
+        """
+        Saves the correction, displays mean and STD of all the
+        camera pixels.
+        """
+        self.saveImage(self.flat_field, 'Corrections', 'flat_field')
         self._widget.updateFlatMean(np.mean(self.flat_field))
         self._widget.updateFlatStd(np.std(self.flat_field))
 
@@ -553,29 +631,55 @@ class ScanControllerOpt(ImConWidgetController):
         self.detector.startAcquisition()
         while i < n:
             frame = self.detector.getLatestFrame()
+            # checking if valid frame received.
             if frame.shape[0] != 0:
                 frames.append(frame)
                 i += 1
-        print('Corr frames:', np.array(frames).shape)
+        # averaging aver n frames
         self.current_frame = np.mean(np.array(frames),
                                      axis=0).astype(np.int16)
         self.detector.stopAcquisition()
         self.nFrames.emit()
 
-    # these two methods adapted from UC2/STORMreconController
-    def saveImage(self, frame, filename="corr", fileExtension="tiff"):
-        Ntime = datetime.now().strftime("%Y_%m_%d-%I-%M-%S_%p")            
+    def saveImage(self, frame, subfolder, filename="corr", fileExtension="tiff"):
+        """
+        Constructs saving path and saves the image. Method adapted from
+        UC2/STORMreconController from https://github.com/openUC2 fork of
+        imswitch.
+
+        Args:
+            frame (np.ndarray): image array
+            subfolder (str): datetime string for unique folder identification
+            filename (str, optional): part of the filename can be specified. Defaults to "corr".
+            fileExtension (str, optional): Image format. Defaults to "tiff".
+        """
         filePath = self.getSaveFilePath(
-                            date=Ntime,
+                            subfolder=subfolder,
                             filename=filename,
                             extension=fileExtension)
 
         self._logger.debug(filePath)
         tif.imwrite(filePath, frame, append=False)
 
-    def getSaveFilePath(self, date, filename, extension):
+    def getSaveFilePath(self, subfolder: str, filename: str, extension: str)-> os.path:
+        """Sets datetime part of the filename, combines parts of the
+        filename, ensures existance of the saving folder and returns
+        the full savings path
+
+        Args:
+            subfolder (str): subfolder name
+            filename (str): specific filename string part
+            extension (str): image format extension
+
+        Returns:
+            os.path: save path
+        """
+        date = datetime.now().strftime("%H-%M-%S")
         mFilename = f"{date}_{filename}.{extension}"
-        dirPath = os.path.join(dirtools.UserFileDirs.Root, 'recordings', date)
+        dirPath = os.path.join(dirtools.UserFileDirs.Root,
+                               'recordings',
+                               subfolder,
+                               )
 
         newPath = os.path.join(dirPath, mFilename)
 

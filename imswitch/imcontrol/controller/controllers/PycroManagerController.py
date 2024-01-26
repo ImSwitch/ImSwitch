@@ -144,14 +144,17 @@ class PycroManagerController(ImConWidgetController):
         recordingArgs = self.packRecordingArguments()
         self._master.pycroManagerAcquisition.startLiveView(recordingArgs)
 
-
     def stopLiveAcquisition(self):
         self._master.pycroManagerAcquisition.stopLiveView()
+        self._widget.updateProgressBars({key : 0 for key in self._widget.progressBarsKeys})
     
     def updateImage(self, image: np.ndarray):
-        name = self._master.detectorsManager.getCurrentDetectorName()
-        scale = self._master.detectorsManager.getCurrentDetector().scale
-        self._commChannel.sigImageUpdated.emit(name, image, True, scale, True)
+        self._commChannel.sigUpdateImage.emit(
+            self._master.detectorsManager.getCurrentDetectorName(), 
+            image, 
+            True, 
+            self._master.detectorsManager.getCurrentDetector().scale, 
+            True)
 
     def setupProgressBars(self) -> None:
         maxDict = {key : 0 for key in self._widget.progressBarsKeys}
@@ -187,7 +190,7 @@ class PycroManagerController(ImConWidgetController):
         self._widget.setProgressBarsMaximum(maxDict)
         self._widget.setProgressBarsVisibility({key: value != 0 for key, value in maxDict.items()})
     
-    def packRecordingArguments(self, folder: str = None, savename: str = None) -> Dict[str, dict]:
+    def packRecordingArguments(self, folder: str = "temp", savename: str = "live") -> Dict[str, dict]:
         # packing arguments
         # if folder and savename are None,
         # no file will be saved
@@ -204,7 +207,7 @@ class PycroManagerController(ImConWidgetController):
                 "image_saved_fn":  None,
                 "napari_viewer" : None,
                 "show_display": False,
-                "debug" : False,    
+                "debug" : False,
             },
             "multi_d_acquisition_events" : {
                 "num_time_points": self.__calculateNumTimePoints(),

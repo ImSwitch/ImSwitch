@@ -1,4 +1,4 @@
-from imswitch.imcommon.model import APIExport
+from imswitch.imcommon.model import APIExport, initLogger
 from ..basecontrollers import ImConWidgetController
 
 
@@ -7,6 +7,7 @@ class ViewController(ImConWidgetController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.__logger = initLogger(self)
         self._acqHandle = None
 
         self._widget.setViewToolsEnabled(False)
@@ -44,9 +45,13 @@ class ViewController(ImConWidgetController):
     
     def liveViewPycroManager(self, enabled : bool) -> None:
         if enabled:
+            self.__logger.debug("Stopping live view")
             self._commChannel.sigLiveAcquisitionStarted.emit()
+            self._widget.setViewToolsEnabled(False)
         else:
+            self.__logger.debug("Stopping live view")
             self._commChannel.sigLiveAcquisitionStopped.emit()
+            self._widget.setViewToolsEnabled(True)
 
     def gridToggle(self, enabled):
         """ Connect with grid toggle from Image Widget through communication channel. """

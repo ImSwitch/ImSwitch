@@ -141,8 +141,6 @@ class MasterController:
         self.recordingManager.sigMemoryRecordingAvailable.connect(self.memoryRecordingAvailable)
     	
     def __connectPycroManagerSignals(self, commChannel) -> None:
-        self.pycroManagerAcquisition.sigLiveAcquisitionStarted.connect(commChannel.sigLiveAcquisitionStarted)
-        self.pycroManagerAcquisition.sigLiveAcquisitionStopped.connect(commChannel.sigLiveAcquisitionStopped)
         self.pycroManagerAcquisition.sigRecordingStarted.connect(commChannel.sigRecordingStarted)
         self.pycroManagerAcquisition.sigRecordingEnded.connect(commChannel.sigRecordingEnded)
         self.pycroManagerAcquisition.sigPycroManagerNotificationUpdated.connect(commChannel.sigUpdatePycroManagerNotification)

@@ -8,8 +8,6 @@ import numpy as np
 
 class PycroManagerAcquisitionManager(SignalInterface):
 
-    sigLiveAcquisitionStarted = Signal()
-    sigLiveAcquisitionStopped = Signal()
     sigLiveImageUpdated = Signal(np.ndarray) # image
     sigRecordingStarted = Signal()
     sigRecordingEnded = Signal()
@@ -85,7 +83,6 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
-        self.sigLiveAcquisitionStarted.emit()
 
     def stopLiveView(self):
         self.__acquisitionThread.requestInterruption()
@@ -94,7 +91,6 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread.quit()
         self.__acquisitionThread.started.disconnect()
         self.__acquisitionThread.finished.disconnect()
-        self.sigLiveAcquisitionStopped.emit()
 
 class PycroManagerAcqWorker(Worker):
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
@@ -107,11 +103,6 @@ class PycroManagerAcqWorker(Worker):
     def __parse_record_notification(self, msg: AcqNotification):
         if msg.is_image_saved_notification():
             self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
-        elif msg.is_acquisition_finished_notification():
-            # For some reason the Dataset reference is not closed properly;
-            # this is a workaround to avoid the error and close the reference
-            self.__logger.info("Acquisition finished")
-            self.__manager.sigRecordingEnded.emit()
     
     def __parse_live_notification(self, msg: AcqNotification):
         if msg.is_image_saved_notification():
@@ -130,10 +121,15 @@ class PycroManagerAcqWorker(Worker):
         acq.get_dataset().close()
     
     def liveView(self):
+        self.__logger.info("Starting live view")
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
-        self.recordingArgs["Acquisition"]["img_process_fn"] = self.__notify_new_image
+        self.recordingArgs["Acquisition"]["image_process_fn"] = self.__notify_new_image
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
-            while self.thread().isInterruptionRequested():
+            while True:
                 acq.acquire(events)
-                acq.await_completion()
+                if Thread.currentThread().isInterruptionRequested():
+                    acq.abort()
+                    break
+        acq.get_dataset().close()
+        self.__logger.info("Live view stopped")

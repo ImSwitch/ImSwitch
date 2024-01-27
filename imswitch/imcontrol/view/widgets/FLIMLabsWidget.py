@@ -7,8 +7,6 @@ from imswitch.imcommon.view.guitools import pyqtgraphtools
 from imswitch.imcontrol.view import guitools
 from .basewidgets import NapariHybridWidget
 
-import datetime
-
 
 
 class FLIMLabsWidget(NapariHybridWidget):
@@ -238,10 +236,12 @@ class FLIMLabsWidget(NapariHybridWidget):
         generalParameters["nFrames"] =  nFrames
         return generalParameters   
         
+
+
+    
         
         
-        
-# Copyright (C) 2020-2023 ImSwitch developers
+# Copyright (C) 2020-2024 ImSwitch developers
 # This file is part of ImSwitch.
 #
 # ImSwitch is free software: you can redistribute it and/or modify

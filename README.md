@@ -203,7 +203,7 @@ sudo systemctl start gdm3.service
 ```
 
 
-Use Mamba instead
+### Use Mamba instead
 
 ```bash
 cd ~/Downloads
@@ -223,6 +223,36 @@ pip install -r requirements-jetsonorin.txt
 pip install -e . --no-deps
 mamba install pyqt
 ```
+
+
+### Autostart as SystemD Service
+
+in `sudo nano /etc/systemd/system/imswitch.service`
+
+add 
+```bash
+[Unit]
+Description=Start ImSwitch Python script
+After=network.target
+
+[Service]
+Type=simple
+User=uc2
+WorkingDirectory=/home/uc2/Downloads/ImSwitch
+ExecStart=/bin/bash -c 'export DISPLAY=:0; /home/uc2/mambaforge-pypy3/envs/imswitch/bin/python  -m imswitch'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+After making these changes, run `sudo systemctl daemon-reload` to reload the systemd manager configuration. Then try starting your service again with `sudo systemctl start imswitch.service` then
+
+```bash
+sudo systemctl enable imswitch.service 
+sudo systemctl start imswitch.service
+```
+
+### Misc Jetson
 
 Add environment
 
@@ -416,9 +446,10 @@ ExecStart=/bin/bash -c 'export DISPLAY=:0; export QT_QPA_PLATFORM=offscreen; /ho
 
 [Install]
 WantedBy=multi-user.target
-After making these changes, run sudo systemctl daemon-reload to reload the systemd manager configuration. Then try starting your service again with sudo systemctl start imswitch.service
 ```
-then
+
+After making these changes, run `sudo systemctl daemon-reload` to reload the systemd manager configuration. Then try starting your service again with `sudo systemctl start imswitch.service` then
+
 ```bash
 sudo systemctl enable imswitch.service 
 sudo systemctl start imswitch.service

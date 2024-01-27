@@ -1,4 +1,3 @@
-#!pip install websocket-client
 import websocket
 import struct
 import threading
@@ -17,13 +16,7 @@ class WebSocketClient:
                 return
             binary_data = bytearray(message)
             for msg in self.deserialize_binary_message(binary_data):
-                if isinstance(msg, LineData):
-                    self.process_line(msg.frame, msg.line, msg.channel, msg.data)
-                elif isinstance(msg, ImagingExperimentEndData):
-                    print('End data:', msg.intensity_file)
-                else:
-                    self.error_mode = True
-                    print('Received unknown message type!!')
+                self.process_message(msg)
 
         def on_error(ws, error):
             print('WebSocket error:', error)
@@ -52,20 +45,38 @@ class WebSocketClient:
         y = 0
         while y < len(binary_data) - 1:
             message_type = binary_data[y]
+            y += 1
             if message_type == 0:
-                # LineData
-                frame, line, channel, data_length = struct.unpack_from('<IIII', binary_data, y + 1)
-                y += 17 + data_length * 4
-                data = struct.unpack_from('<' + 'I' * data_length, binary_data, y - data_length * 4)
+                frame, line, channel, data_length = struct.unpack_from('<IIII', binary_data, y)
+                y += 16
+                data = struct.unpack_from('<' + 'I' * data_length, binary_data, y)
+                y += data_length * 4
                 messages.append(LineData(frame, line, channel, data))
+            elif message_type == 1:
+                # Similar unpacking for CurveData
+                pass
+            elif message_type == 2:
+                # Similar unpacking for CalibrationData
+                pass
+            elif message_type == 3:
+                # Similar unpacking for PhasorData
+                pass
+            elif message_type == 4:
+                # Similar unpacking for ImagingExperimentEndData
+                pass
             else:
                 self.error_mode = True
                 print('Received unknown message type!!')
         return messages
 
-    def process_line(self, frame, line, channel, data):
-        # Implement your own logic here
-        pass
+    def process_message(self, msg):
+        if isinstance(msg, LineData):
+            # Process LineData
+            pass
+        elif isinstance(msg, CurveData):
+            # Process CurveData
+            pass
+        # ... other cases for different message types ...
 
 class LineData:
     def __init__(self, frame, line, channel, data):
@@ -73,6 +84,28 @@ class LineData:
         self.line = line
         self.channel = channel
         self.data = data
+
+class CurveData:
+    def __init__(self, frame, channel, data):
+        self.frame = frame
+        self.channel = channel
+        self.data = data
+
+class CalibrationData:
+    def __init__(self, frame, channel, harmonic, phase, modulation):
+        self.frame = frame
+        self.channel = channel
+        self.harmonic = harmonic
+        self.phase = phase
+        self.modulation = modulation
+
+class PhasorData:
+    def __init__(self, frame, channel, harmonic, g_data, s_data):
+        self.frame = frame
+        self.channel = channel
+        self.harmonic = harmonic
+        self.g_data = g_data
+        self.s_data = s_data
 
 class ImagingExperimentEndData:
     def __init__(self, intensity_file):

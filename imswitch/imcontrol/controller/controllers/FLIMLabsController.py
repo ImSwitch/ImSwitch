@@ -11,7 +11,11 @@ from imswitch.imcommon.model import initLogger
 from imswitch.imcontrol.controller.basecontrollers import LiveUpdatedController
 import imswitch
 
-import websocket # pip install websocket-client
+try:
+    import websocket # pip install websocket-client
+    isFLIMLABS = True
+except:
+    isFLIMLABS = False
 import struct
 import threading
 import time
@@ -28,7 +32,8 @@ class FLIMLabsController(LiveUpdatedController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._logger = initLogger(self, tryInheritParent=False)
-
+        if not isFLIMLABS:
+            return
         # connect camera and stage
         self.positionerName = self._master.positionersManager.getAllDeviceNames()[0]
         self.positioner = self._master.positionersManager[self.positionerName]

@@ -46,34 +46,47 @@ class ESP32StageManager(PositionerManager):
         self.backlashZ = positionerInfo.managerProperties.get('backlashZ', 0)
         self.backlashA = positionerInfo.managerProperties.get('backlashA', 0)
 
-
-
         # Setup homing coordinates and speed
-        self.homeSpeedX = positionerInfo.managerProperties.get('homeSpeedX', 15000)
-        self.homeDirectionX = positionerInfo.managerProperties.get('homeDirectionX', -1)
-        self.homeSpeedY = positionerInfo.managerProperties.get('homeSpeedY', 15000)
-        self.homeDirectionY = positionerInfo.managerProperties.get('homeDirectionY', -1)
-        self.homeSpeedZ = positionerInfo.managerProperties.get('homeSpeedZ', 15000)
-        self.homeDirectionZ = positionerInfo.managerProperties.get('homeDirectionZ', -1)
-
-        # Setup homing endstop polarities
-        self.homeEndstoppolarityX = positionerInfo.managerProperties.get('homeEndstoppolarityX', 1)
-        self.homeEndstoppolarityY = positionerInfo.managerProperties.get('homeEndstoppolarityY', 1)
-        self.homeEndstoppolarityZ = positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1)
-
-        self.homeEndposReleaseX = positionerInfo.managerProperties.get('homeEndposReleaseX', 1)
-        self.homeEndposReleaseY = positionerInfo.managerProperties.get('homeEndposReleaseY', 1)
-        self.homeEndposReleaseZ = positionerInfo.managerProperties.get('homeEndposReleaseZ', 1)
-
+        # X
+        self.setHomeParametersAxis(axis="X", speed=positionerInfo.managerProperties.get('homeSpeedX', 15000), 
+                                   direction=positionerInfo.managerProperties.get('homeDirectionX', -1), 
+                                   endstoppolarity=positionerInfo.managerProperties.get('homeEndstoppolarityX', 1), 
+                                   endposrelease=positionerInfo.managerProperties.get('homeEndposReleaseX', 1), 
+                                   timeout=positionerInfo.managerProperties.get('homeTimeoutX', None))
+        # Y
+        self.setHomeParametersAxis(axis="Y", speed=positionerInfo.managerProperties.get('homeSpeedY', 15000),
+                                      direction=positionerInfo.managerProperties.get('homeDirectionY', -1),
+                                      endstoppolarity=positionerInfo.managerProperties.get('homeEndstoppolarityY', 1),
+                                      endposrelease=positionerInfo.managerProperties.get('homeEndposReleaseY', 1),
+                                      timeout=positionerInfo.managerProperties.get('homeTimeoutY', None))
+        
+        # Z
+        self.setHomeParametersAxis(axis="Z", speed=positionerInfo.managerProperties.get('homeSpeedZ', 15000),
+                                        direction=positionerInfo.managerProperties.get('homeDirectionZ', -1),
+                                        endstoppolarity=positionerInfo.managerProperties.get('homeEndstoppolarityZ', 1),
+                                        endposrelease=positionerInfo.managerProperties.get('homeEndposReleaseZ', 1),
+                                        timeout=positionerInfo.managerProperties.get('homeTimeoutZ', None))
+        
+        # A
+        self.setHomeParametersAxis(axis="A", speed=positionerInfo.managerProperties.get('homeSpeedA', 15000),
+                                        direction=positionerInfo.managerProperties.get('homeDirectionA', -1),
+                                        endstoppolarity=positionerInfo.managerProperties.get('homeEndstoppolarityA', 1),
+                                        endposrelease=positionerInfo.managerProperties.get('homeEndposReleaseA', 1),
+                                        timeout=positionerInfo.managerProperties.get('homeTimeoutA', None))
+                                    
+        # perform homing on startup?
         self.homeOnStartX = positionerInfo.managerProperties.get('homeOnStartX', 0)
         self.homeOnStartY = positionerInfo.managerProperties.get('homeOnStartY', 0)
         self.homeOnStartZ = positionerInfo.managerProperties.get('homeOnStartZ', 0)
-
-
+        self.homeOnStartA = positionerInfo.managerProperties.get('homeOnStartA', 0)
+        
+        # homing is actually enabled?
         self.homeXenabled = positionerInfo.managerProperties.get('homeXenabled', False)
         self.homeYenabled = positionerInfo.managerProperties.get('homeYenabled', False)
         self.homeZenabled = positionerInfo.managerProperties.get('homeZenabled', False)
+        self.homeAenabled = positionerInfo.managerProperties.get('homeAenabled', False)
 
+        # Limiting is actually enabled - can we go smaller than 0?
         self.limitXenabled = positionerInfo.managerProperties.get('limitXenabled', False)
         self.limitYenabled = positionerInfo.managerProperties.get('limitYenabled', False)
         self.limitZenabled = positionerInfo.managerProperties.get('limitZenabled', False)
@@ -119,6 +132,33 @@ class ESP32StageManager(PositionerManager):
         self._position = self.getPosition()
 
 
+    def setHomeParametersAxis(self, axis, speed, direction, endstoppolarity, endposrelease, timeout=None):
+        if axis == "X":
+            self.homeSpeedX = speed
+            self.homeDirectionX = direction
+            self.homeEndstoppolarityX = endstoppolarity
+            self.homeEndposReleaseX = endposrelease
+            self.homeTimeoutX = timeout
+        elif axis == "Y":
+            self.homeSpeedY = speed
+            self.homeDirectionY = direction
+            self.homeEndstoppolarityY = endstoppolarity
+            self.homeEndposReleaseY = endposrelease
+            self.homeTimeoutY = timeout
+        elif axis == "Z":
+            self.homeSpeedZ = speed
+            self.homeDirectionZ = direction
+            self.homeEndstoppolarityZ = endstoppolarity
+            self.homeEndposReleaseZ = endposrelease
+            self.homeTimeoutZ = timeout
+        elif axis == "A":
+            self.homeSpeedA = speed
+            self.homeDirectionA = direction
+            self.homeEndstoppolarityA = endstoppolarity
+            self.homeEndposReleaseA = endposrelease
+            self.homeTimeoutA = timeout
+        
+        
     def setAxisOrder(self, order=[0,1,2,3]):
         self._motor.setMotorAxisOrder(order=order)
 
@@ -293,18 +333,24 @@ class ESP32StageManager(PositionerManager):
             self.home_y(isBlocking)
         if axis == "Z" and self.homeZenabled:
             self.home_z(isBlocking)
+        if axis == "A" and self.homeAenabled:
+            self.home_a(isBlocking)
 
     def home_x(self, isBlocking=False):
-        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking)
+        self._homeModule.home_x(speed=self.homeSpeedX, direction=self.homeDirectionX, endstoppolarity=self.homeEndstoppolarityX, endposrelease=self.homeEndposReleaseX, isBlocking=isBlocking, timeout=self.homeTimeoutX)
         self.setPosition(axis="X", value=0)
 
     def home_y(self,isBlocking=False):
-        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking)
+        self._homeModule.home_y(speed=self.homeSpeedY, direction=self.homeDirectionY, endstoppolarity=self.homeEndstoppolarityY, endposrelease=self.homeEndposReleaseY, isBlocking=isBlocking, timeout=self.homeTimeoutY)
         self.setPosition(axis="Y", value=0)
 
     def home_z(self,isBlocking=False):
-        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking)
+        self._homeModule.home_z(speed=self.homeSpeedZ, direction=self.homeDirectionZ, endstoppolarity=self.homeEndstoppolarityZ, endposrelease=self.homeEndposReleaseZ, isBlocking=isBlocking, timeout=self.homeTimeoutZ)
         self.setPosition(axis="Z", value=0)
+        
+    def home_a(self,isBlocking=False):
+        self._homeModule.home_a(speed=self.homeSpeedA, direction=self.homeDirectionA, endstoppolarity=self.homeEndstoppolarityA, endposrelease=self.homeEndposReleaseA, isBlocking=isBlocking, timeout=self.homeTimeoutA)
+        self.setPosition(axis="A", value=0)
 
     def home_xyz(self):
         if self.homeXenabled and self.homeYenabled and self.homeZenabled:

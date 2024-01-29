@@ -97,7 +97,6 @@ class ScanControllerOpt(ImConWidgetController):
         if self._widget.scanPar['MockOpt'].isChecked():
             self.prepareOptMock()
         else:
-            self._logger.info('Preparing Real experiment')
             self._master.rotatorsManager[
                 self.__rotators[self.motorIdx]]._motor.opt_step_done.connect(
                                                         self.post_step)
@@ -273,7 +272,6 @@ class ScanControllerOpt(ImConWidgetController):
                 self.currentRecon = FBPlive(
                     self.frame[self.reconIdx, :],
                     self.__optSteps)
-                self.__logger.info(f'Recon shape: {self.currentRecon.output.shape}')
             except IndexError:
                 self._logger.warning('Index error, reconstruction will proceed on the central camera line')
                 self.setLiveReconIdx(self.frame.shape[0]//2)
@@ -674,7 +672,10 @@ class ScanControllerOpt(ImConWidgetController):
         Returns:
             os.path: save path
         """
-        date = datetime.now().strftime("%H-%M-%S")
+        if subfolder == 'Corrections':
+            date = datetime.now().strftime("%Y_%m_%d-%H-%M-%S")
+        else:
+            date = datetime.now().strftime("%H-%M-%S")
         mFilename = f"{date}_{filename}.{extension}"
         dirPath = os.path.join(dirtools.UserFileDirs.Root,
                                'recordings',

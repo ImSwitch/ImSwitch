@@ -91,7 +91,6 @@ class AlignOptController(ImConWidgetController):
         if self.__currentStep > len(self.opt_steps)-1:
             self.stopOpt()
         else:
-            self.__logger.debug(f'post_step func, step{self.__currentStep}')
             self.moveAbsRotator(self.__rotators[self.motorIdx],
                                 self.opt_steps[self.__currentStep])
 
@@ -106,7 +105,6 @@ class AlignOptController(ImConWidgetController):
         self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor.opt_step_done.disconnect()
         self._widget.scanPar['StartButton'].setEnabled(True)
-        self._logger.info("Align scan done.")
 
     ##################
     # Image handling #
@@ -206,9 +204,6 @@ class AlignOptController(ImConWidgetController):
         self.motorIdx = self._widget.getRotatorIdx()
         self.__motor_steps = self._master.rotatorsManager[
             self.__rotators[self.motorIdx]]._motor._steps_per_turn
-        self.__logger.debug(
-            f'Rotator: {self.__rotators[self.motorIdx]}, {self.__motor_steps} steps/rev',
-            )
 
 
 class AlignCOR():

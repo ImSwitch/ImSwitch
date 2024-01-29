@@ -117,18 +117,14 @@ class ArduinoStepper(QObject):
 
     @pyqtSlot()
     def moverel_angle(self):
-        """
-        Move relative distance from current position
-        """
+        """ Move relative distance from current position """
         self.steps = self.deg2steps(self.angle)
         self.set_rot_speed(self.speed)
         self.moverel_steps()
 
     @pyqtSlot()
     def moverel_steps(self):
-        """Move self.steps relative to the current position
-        """
-        print('from moverel_steps', self.steps)
+        """Move self.steps relative to the current position """
         self.board.stepper_move(self.motor, int(self.steps))
         self.turning = True
         self.board.stepper_run(self.motor,
@@ -155,8 +151,6 @@ class ArduinoStepper(QObject):
     # Callbacks #
     #############
     def move_finished_callback(self, data):
-        date = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(data[2]))
-        print(f'Motor {data[1]} relative  motion completed at: {date}.')
         self.turning = False
         self.move_done.emit(self.turning)
         self.opt_step_done.emit('bla')
@@ -175,9 +169,6 @@ class ArduinoStepper(QObject):
         if steps != data[2]:
             self.board.stepper_set_current_position(
                                     self.motor, steps)
-
-        # HW position
-        print('UNO HW position', data[2], steps)
 
     def is_running_callback(self, data):
         """Check if motor is running"""

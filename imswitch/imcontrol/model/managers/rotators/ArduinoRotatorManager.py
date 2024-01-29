@@ -49,7 +49,6 @@ class ArduinoRotatorManager(RotatorManager):
         position values.
         """
         self._position = self._motor.get_pos()
-        self.__logger.debug(f'position post move: {self._position}')
         self._motor.start_move.disconnect()
         self._motor.move_done.disconnect()
         self._motor.board.stepper_get_current_position(
@@ -84,7 +83,6 @@ class ArduinoRotatorManager(RotatorManager):
 
         # calculate relative steps from current position
         to_move = steps - self._motor.current_pos[0]
-        self.__logger.debug(f'func move_abs, steps to take: {to_move}')
         self.move_rel_steps(to_move)
 
     def set_zero_pos(self):

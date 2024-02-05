@@ -1,7 +1,8 @@
 from pycromanager import Core, Acquisition, multi_d_acquisition_events, AcqNotification
-from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread
+from imswitch.imcommon.framework import Signal, SignalInterface, Worker, Thread, Timer
 from imswitch.imcommon.model import initLogger, SaveMode
 from tifffile.tifffile import TiffWriter
+from typing import Dict
 import os
 import numpy as np
 
@@ -27,6 +28,9 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionWorker = PycroManagerAcqWorker(self)
         self.__acquisitionThread = Thread()
         self.__acquisitionWorker.moveToThread(self.__acquisitionThread)
+        self.__liveTimer = Timer()
+        self.__liveTimer.timeout.connect(lambda : self.sigLiveImageUpdated.emit(self.__acquisitionWorker.localBuffer))
+        self.__liveTimer.setInterval(100)
 
     def snap(self, folder: str, savename: str, saveMode: SaveMode, attrs: dict):
         """ Snaps an image calling an instance of the Pycro-Manager backend Core. 
@@ -83,9 +87,11 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.liveView)
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
+        self.__liveTimer.start()
 
     def stopLiveView(self):
-        self.__acquisitionThread.requestInterruption()
+        self.__liveTimer.stop()
+        self.__acquisitionWorker.live = False
     
     def __postInterruptionHandle(self):
         self.__acquisitionThread.quit()
@@ -97,39 +103,45 @@ class PycroManagerAcqWorker(Worker):
         super().__init__()
         self.__logger = initLogger(self)
         self.__manager = manager
-        self.recordingArgs = None
+        width, height = self.__manager.core.get_image_width(), self.__manager.core.get_image_height()
+        self.__localBuffer = np.zeros((height, width), dtype=np.uint16)
+        self.recordingArgs : Dict[str, dict] = None
         self.live = False
     
-    def __parse_record_notification(self, msg: AcqNotification):
-        if msg.is_image_saved_notification():
-            self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
-    
-    def __parse_live_notification(self, msg: AcqNotification):
-        if msg.is_image_saved_notification():
+    def __parse_notification(self, msg: AcqNotification):
+        if msg.is_data_sink_finished_notification():
             self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
-    def __notify_new_image(self, image: np.ndarray, _: dict):
-        self.__manager.sigLiveImageUpdated.emit(image)
+    def __store_live_local(self, image: np.ndarray, _: dict):
+        self.__localBuffer = image.copy().astype(np.uint16)
 
     def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_record_notification
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
         self.__logger.info("Starting acquisition")
-        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
-            acq.acquire(events)
+        acq = Acquisition(**self.recordingArgs["Acquisition"]) 
+        acq.acquire(events)
         acq.get_dataset().close()
+        del acq
     
     def liveView(self):
         self.__logger.info("Starting live view")
+        self.live = True
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
-        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_live_notification
-        self.recordingArgs["Acquisition"]["image_process_fn"] = self.__notify_new_image
-        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
-            while True:
-                acq.acquire(events)
-                if Thread.currentThread().isInterruptionRequested():
-                    acq.abort()
-                    break
-        acq.get_dataset().close()
+        self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
+        self.recordingArgs["Acquisition"]["image_process_fn"] = self.__store_live_local
+
+        # for live view we only redirect incoming images to the local buffer
+        self.recordingArgs["Acquisition"].pop("directory")
+        self.recordingArgs["Acquisition"].pop("name")
+        acq = Acquisition(**self.recordingArgs["Acquisition"]) 
+        while self.live:
+            acq.acquire(events)
+        acq.abort()
+        del acq
         self.__logger.info("Live view stopped")
+    
+    @property
+    def localBuffer(self) -> np.ndarray:
+        return self.__localBuffer

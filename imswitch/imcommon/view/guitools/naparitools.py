@@ -137,7 +137,7 @@ class NapariUpdateLevelsWidget(NapariBaseWidget):
                                                  QtWidgets.QSizePolicy.Maximum))
 
     def _on_update_levels(self):
-        for layer in self.viewer.layers.selected:
+        for layer in self.viewer.layers:
             layer.contrast_limits = minmaxLevels(layer.data)
 
 

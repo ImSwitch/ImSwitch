@@ -114,6 +114,7 @@ class PycroManagerController(ImConWidgetController):
         """
         if enabled:
             if not self.performSanityCheck():
+                self.recordingCycleEnded()
                 return
 
             self.updateRecAttrs(isSnapping=False)

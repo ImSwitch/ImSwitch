@@ -77,7 +77,6 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
         self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
-        self.sigRecordingStarted.emit()
 
     def endRecording(self) -> None:
         self.__postInterruptionHandle()
@@ -113,7 +112,7 @@ class PycroManagerAcqWorker(Worker):
     
     def __parse_notification(self, msg: AcqNotification):
         if msg.is_image_saved_notification():
-            self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
+            self.manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
     def __store_live_local(self, image: np.ndarray, _: dict):
         self.__localBuffer = image.astype(np.uint16)
@@ -123,9 +122,10 @@ class PycroManagerAcqWorker(Worker):
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
         self.__logger.info("Starting acquisition")
+        self.manager.sigRecordingStarted.emit()
         with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
             acq.acquire(events)
-        self.__manager.sigRecordingEnded.emit()
+        self.manager.sigRecordingEnded.emit()
         del acq
     
     def liveView(self):
@@ -145,6 +145,10 @@ class PycroManagerAcqWorker(Worker):
         acq.mark_finished()
         del acq
         self.__logger.info("Live view stopped")
+    
+    @property
+    def manager(self) -> PycroManagerAcquisitionManager:
+        return self.__manager
     
     @property
     def localBuffer(self) -> np.ndarray:

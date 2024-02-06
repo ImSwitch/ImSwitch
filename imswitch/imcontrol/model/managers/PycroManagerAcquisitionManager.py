@@ -75,12 +75,12 @@ class PycroManagerAcquisitionManager(SignalInterface):
     def startRecording(self, recordingArgs: dict):
         self.__acquisitionWorker.recordingArgs = recordingArgs
         self.__acquisitionThread.started.connect(self.__acquisitionWorker.record)
+        self.__acquisitionThread.finished.connect(self.__postInterruptionHandle)
         self.__acquisitionThread.start()
         self.sigRecordingStarted.emit()
 
     def endRecording(self) -> None:
-        self.__acquisitionThread.quit()
-        self.__acquisitionThread.started.disconnect()
+        self.__postInterruptionHandle()
     
     def startLiveView(self, recordingArgs: dict):
         self.__acquisitionWorker.recordingArgs = recordingArgs
@@ -94,9 +94,12 @@ class PycroManagerAcquisitionManager(SignalInterface):
         self.__acquisitionWorker.live = False
     
     def __postInterruptionHandle(self):
-        self.__acquisitionThread.quit()
-        self.__acquisitionThread.started.disconnect()
-        self.__acquisitionThread.finished.disconnect()
+        try:
+            self.__acquisitionThread.quit()
+            self.__acquisitionThread.started.disconnect()
+            self.__acquisitionThread.finished.disconnect()
+        except TypeError:
+            self.__logger.error("Attempted to disconnect a non-connected signal")
 
 class PycroManagerAcqWorker(Worker):
     def __init__(self, manager: PycroManagerAcquisitionManager) -> None:
@@ -109,20 +112,20 @@ class PycroManagerAcqWorker(Worker):
         self.live = False
     
     def __parse_notification(self, msg: AcqNotification):
-        if msg.is_data_sink_finished_notification():
+        if msg.is_image_saved_notification():
             self.__manager.sigPycroManagerNotificationUpdated.emit(msg.id)
 
     def __store_live_local(self, image: np.ndarray, _: dict):
-        self.__localBuffer = image.copy().astype(np.uint16)
+        self.__localBuffer = image.astype(np.uint16)
 
     def record(self) -> None:
         events = multi_d_acquisition_events(**self.recordingArgs["multi_d_acquisition_events"])
         self.recordingArgs["Acquisition"]["notification_callback_fn"] = self.__parse_notification
 
         self.__logger.info("Starting acquisition")
-        acq = Acquisition(**self.recordingArgs["Acquisition"]) 
-        acq.acquire(events)
-        acq.get_dataset().close()
+        with Acquisition(**self.recordingArgs["Acquisition"]) as acq:
+            acq.acquire(events)
+        self.__manager.sigRecordingEnded.emit()
         del acq
     
     def liveView(self):
@@ -135,10 +138,11 @@ class PycroManagerAcqWorker(Worker):
         # for live view we only redirect incoming images to the local buffer
         self.recordingArgs["Acquisition"].pop("directory")
         self.recordingArgs["Acquisition"].pop("name")
-        acq = Acquisition(**self.recordingArgs["Acquisition"]) 
+        acq = Acquisition(**self.recordingArgs["Acquisition"])
+
         while self.live:
             acq.acquire(events)
-        acq.abort()
+        acq.mark_finished()
         del acq
         self.__logger.info("Live view stopped")
     

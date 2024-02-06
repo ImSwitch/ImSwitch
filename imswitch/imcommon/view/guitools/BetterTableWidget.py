@@ -195,7 +195,11 @@ class BetterTableWidget(QTableWidget):
             else:
                 newRowItem = [self.default for _ in range(self.columnCount())]
         else:
-            newRowItem = [self.default for _ in range(self.columnCount())]
+            if self.labelName is not None:
+                newRowItem = [self.default for _ in range(self.columnCount()-1)]
+                newRowItem.append(f"{self.labelName} {rowNumber}")
+            else:
+                newRowItem = [self.default for _ in range(self.columnCount())]
         
         for col, item in zip(range(self.columnCount()), newRowItem):
             if type(item) == int:
